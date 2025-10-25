@@ -1,4 +1,4 @@
-import { ChartDataPoint } from "@/lib/types/reports";
+import { ChartDataPoint } from '@/lib/types/reports';
 import {
   BarChart,
   Bar,
@@ -7,8 +7,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from "recharts";
-import { formatCurrency } from "@/lib/utils/currency";
+} from 'recharts';
+import { formatCurrency } from '@/lib/utils/currency';
 
 type PerformanceChartProps = {
   data: ChartDataPoint[];
@@ -22,11 +22,11 @@ export default function PerformanceChart({
   if (!data || data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center bg-gray-50 rounded-lg"
+        className="flex items-center justify-center rounded-lg bg-gray-50"
         style={{ height }}
       >
         <div className="text-center text-grayHighlight">
-          <div className="text-2xl mb-2">📈</div>
+          <div className="mb-2 text-2xl">📈</div>
           <p>No performance data available</p>
         </div>
       </div>
@@ -34,7 +34,7 @@ export default function PerformanceChart({
   }
 
   // Transform data for Recharts
-  const chartData = data.map((point) => ({
+  const chartData = data.map(point => ({
     date: point.label,
     value: point.value,
     formattedValue: formatCurrency(point.value),
@@ -51,7 +51,7 @@ export default function PerformanceChart({
   }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-md">
           <p className="text-sm font-medium text-gray-900">{label}</p>
           <p className="text-sm text-buttonActive">
             Handle: {formatCurrency(payload[0].value)}
@@ -72,22 +72,18 @@ export default function PerformanceChart({
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 12, fill: "#666" }}
-            axisLine={{ stroke: "#e0e0e0" }}
-            tickLine={{ stroke: "#e0e0e0" }}
+            tick={{ fontSize: 12, fill: '#666' }}
+            axisLine={{ stroke: '#e0e0e0' }}
+            tickLine={{ stroke: '#e0e0e0' }}
           />
           <YAxis
-            tick={{ fontSize: 12, fill: "#666" }}
-            axisLine={{ stroke: "#e0e0e0" }}
-            tickLine={{ stroke: "#e0e0e0" }}
-            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
+            tick={{ fontSize: 12, fill: '#666' }}
+            axisLine={{ stroke: '#e0e0e0' }}
+            tickLine={{ stroke: '#e0e0e0' }}
+            tickFormatter={value => `$${(value / 1000).toFixed(0)}K`}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Bar
-            dataKey="value"
-            fill="#5119E9"
-            radius={[4, 4, 0, 0]}
-          />
+          <Bar dataKey="value" fill="#5119E9" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

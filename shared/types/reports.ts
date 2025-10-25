@@ -40,6 +40,6 @@ export type ReportQuery = {
 export type ReportGenerationRequest = {
   reportType: string;
   filters: ReportQuery;
-  format: "pdf" | "csv" | "excel";
+  format: 'pdf' | 'csv' | 'excel';
   userId: string;
-}; 
+};

@@ -1,16 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get("licensee");
+    const licensee = searchParams.get('licensee');
 
     // Make licensee optional - if not provided or "all", we'll get stats for all machines
     const effectiveLicensee =
-      licensee && licensee.toLowerCase() !== "all" ? licensee : null;
+      licensee && licensee.toLowerCase() !== 'all' ? licensee : null;
 
     const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
     const machineMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
 
@@ -28,26 +27,26 @@ export async function GET(request: NextRequest) {
       const db = await connectDB();
       if (!db) {
         return NextResponse.json(
-          { error: "DB connection failed" },
+          { error: 'DB connection failed' },
           { status: 500 }
         );
       }
 
       const locationIds = await db
-        .collection("gaminglocations")
+        .collection('gaminglocations')
         .find(
           {
-            "rel.licencee": effectiveLicensee,
+            'rel.licencee': effectiveLicensee,
             $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
-      ],
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
           },
           { projection: { _id: 1 } }
         )
         .toArray();
 
-      const locationIdStrings = locationIds.map((loc) => loc._id.toString());
+      const locationIdStrings = locationIds.map(loc => loc._id.toString());
       machineMatchStage.gamingLocation = { $in: locationIdStrings };
     }
 
@@ -55,46 +54,46 @@ export async function GET(request: NextRequest) {
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
-        { error: "DB connection failed" },
+        { error: 'DB connection failed' },
         { status: 500 }
       );
     }
 
     // Count totals and online in parallel - only count machines with lastActivity
     const [totalMachines, onlineMachines] = await Promise.all([
-      db.collection("machines").countDocuments({
+      db.collection('machines').countDocuments({
         ...machineMatchStage,
         lastActivity: { $exists: true }, // Only count machines with lastActivity field
       }),
-      db.collection("machines").countDocuments({
+      db.collection('machines').countDocuments({
         ...machineMatchStage,
         lastActivity: { $gte: onlineThreshold }, // This already filters for existing lastActivity
       }),
     ]);
 
     // Count SAS machines
-    const sasMachines = await db.collection("machines").countDocuments({
+    const sasMachines = await db.collection('machines').countDocuments({
       ...machineMatchStage,
       isSasMachine: true,
     });
 
     // Get financial totals (this might be empty if no financial data exists)
     const financialTotals = await db
-      .collection("machines")
+      .collection('machines')
       .aggregate([
         { $match: machineMatchStage },
         {
           $group: {
             _id: null,
-            totalDrop: { $sum: { $ifNull: ["$sasMeters.drop", 0] } },
+            totalDrop: { $sum: { $ifNull: ['$sasMeters.drop', 0] } },
             totalCancelledCredits: {
-              $sum: { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
+              $sum: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
             },
             totalGross: {
               $sum: {
                 $subtract: [
-                  { $ifNull: ["$sasMeters.drop", 0] },
-                  { $ifNull: ["$sasMeters.totalCancelledCredits", 0] },
+                  { $ifNull: ['$sasMeters.drop', 0] },
+                  { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
                 ],
               },
             },
@@ -130,10 +129,10 @@ export async function GET(request: NextRequest) {
       offlineMachines: stats.totalMachines - stats.onlineMachines,
     });
   } catch (error) {
-    console.error("Error fetching machine stats:", error);
+    console.error('Error fetching machine stats:', error);
     return NextResponse.json(
       {
-        message: "Failed to fetch machine stats",
+        message: 'Failed to fetch machine stats',
         error: (error as Error).message,
       },
       { status: 500 }

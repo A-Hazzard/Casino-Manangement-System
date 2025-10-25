@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
-import { Meters } from "@/app/api/lib/models/meters";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { getGamingDayRangeForPeriod } from "@/lib/utils/gamingDayRange";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 
 /**
  * GET /api/machines/[machineId]
@@ -17,11 +17,11 @@ export async function GET(
   try {
     const { machineId } = await params;
     const { searchParams } = new URL(request.url);
-    const timePeriod = searchParams.get("timePeriod");
-    const startDateParam = searchParams.get("startDate");
-    const endDateParam = searchParams.get("endDate");
+    const timePeriod = searchParams.get('timePeriod');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
 
-    console.warn("[DEBUG] API received parameters:", {
+    console.warn('[DEBUG] API received parameters:', {
       machineId,
       timePeriod,
       startDateParam,
@@ -31,7 +31,7 @@ export async function GET(
     // Only proceed if timePeriod or custom date range is provided
     if (!timePeriod && !startDateParam && !endDateParam) {
       return NextResponse.json(
-        { error: "timePeriod or startDate/endDate parameters are required" },
+        { error: 'timePeriod or startDate/endDate parameters are required' },
         { status: 400 }
       );
     }
@@ -46,20 +46,20 @@ export async function GET(
 
     if (!machine) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
 
     // Fetch location details including gameDayOffset if machine has a gamingLocation
-    let locationName = "No Location Assigned";
+    let locationName = 'No Location Assigned';
     let gameDayOffset = 0;
     if (machine.gamingLocation) {
       try {
         const location = (await GamingLocations.findOne({
           _id: machine.gamingLocation,
         })
-          .select("name locationName gameDayOffset")
+          .select('name locationName gameDayOffset')
           .lean()) as {
           name?: string;
           locationName?: string;
@@ -68,14 +68,14 @@ export async function GET(
 
         if (location) {
           locationName =
-            location.name || location.locationName || "Unknown Location";
+            location.name || location.locationName || 'Unknown Location';
           gameDayOffset = location.gameDayOffset || 0;
         } else {
-          locationName = "Location Not Found";
+          locationName = 'Location Not Found';
         }
       } catch (error) {
-        console.warn("Failed to fetch location name for machine:", error);
-        locationName = "Location Error";
+        console.warn('Failed to fetch location name for machine:', error);
+        locationName = 'Location Error';
       }
     }
 
@@ -83,18 +83,18 @@ export async function GET(
     let startDate: Date | undefined;
     let endDate: Date | undefined;
 
-    if (timePeriod === "Custom" && startDateParam && endDateParam) {
+    if (timePeriod === 'Custom' && startDateParam && endDateParam) {
       // For Custom dates, use the exact dates provided by the UI without gaming day offset adjustment
       // The Date constructor already handles the local time to UTC conversion
       startDate = new Date(startDateParam);
       endDate = new Date(endDateParam);
-    } else if (timePeriod === "All Time") {
+    } else if (timePeriod === 'All Time') {
       // For "All Time", don't apply any date filtering - query all records
       startDate = undefined;
       endDate = undefined;
     } else {
       // For predefined time periods (Today, Yesterday, 7d, 30d), use gaming day offset
-      const timePeriodForGamingDay = timePeriod || "Today";
+      const timePeriodForGamingDay = timePeriod || 'Today';
       const gamingDayRange = getGamingDayRangeForPeriod(
         timePeriodForGamingDay,
         gameDayOffset
@@ -104,7 +104,7 @@ export async function GET(
     }
 
     // Fetch financial metrics from meters collection using aggregation for date filtering
-    console.warn("[DEBUG] Querying meters with date range:", {
+    console.warn('[DEBUG] Querying meters with date range:', {
       timePeriod,
       startDate: startDate?.toISOString(),
       endDate: endDate?.toISOString(),
@@ -125,16 +125,16 @@ export async function GET(
     pipeline.push({
       $group: {
         _id: null,
-        moneyIn: { $sum: "$movement.drop" },
-        moneyOut: { $sum: "$movement.totalCancelledCredits" },
-        jackpot: { $sum: "$movement.jackpot" },
+        moneyIn: { $sum: '$movement.drop' },
+        moneyOut: { $sum: '$movement.totalCancelledCredits' },
+        jackpot: { $sum: '$movement.jackpot' },
         // For Live Metrics, we need cumulative values, not daily deltas
         // So we get the latest values from the most recent meter record
-        coinIn: { $last: "$coinIn" },
-        coinOut: { $last: "$coinOut" },
-        gamesPlayed: { $last: "$gamesPlayed" },
-        gamesWon: { $last: "$gamesWon" },
-        handPaidCancelledCredits: { $last: "$handPaidCancelledCredits" },
+        coinIn: { $last: '$coinIn' },
+        coinOut: { $last: '$coinOut' },
+        gamesPlayed: { $last: '$gamesPlayed' },
+        gamesWon: { $last: '$gamesWon' },
+        handPaidCancelledCredits: { $last: '$handPaidCancelledCredits' },
         meterCount: { $sum: 1 },
       },
     });
@@ -162,11 +162,11 @@ export async function GET(
     const gamesWon = metrics.gamesWon || 0;
     const handPaidCancelledCredits = metrics.handPaidCancelledCredits || 0;
 
-    console.warn("[DEBUG] Found meters:", metrics.meterCount);
+    console.warn('[DEBUG] Found meters:', metrics.meterCount);
 
     const gross = moneyIn - moneyOut;
 
-    console.warn("[DEBUG] Calculated metrics:", {
+    console.warn('[DEBUG] Calculated metrics:', {
       moneyIn,
       moneyOut,
       jackpot,
@@ -181,21 +181,21 @@ export async function GET(
     // Transform the data to match frontend expectations
     const transformedMachine = {
       _id: machine._id,
-      assetNumber: machine.serialNumber || "",
-      serialNumber: machine.serialNumber || "",
-      installedGame: machine.game || "",
-      game: machine.game || "",
-      gamingLocation: machine.gamingLocation || "",
-      locationId: machine.gamingLocation || "",
+      assetNumber: machine.serialNumber || '',
+      serialNumber: machine.serialNumber || '',
+      installedGame: machine.game || '',
+      game: machine.game || '',
+      gamingLocation: machine.gamingLocation || '',
+      locationId: machine.gamingLocation || '',
       locationName: locationName, // Add the resolved location name
       gameDayOffset: gameDayOffset, // Add the location's gameDayOffset
-      assetStatus: machine.assetStatus || "",
-      status: machine.assetStatus || "",
-      cabinetType: machine.cabinetType || "",
-      smbId: machine.relayId || "",
-      relayId: machine.relayId || "",
-      accountingDenomination: machine.gameConfig?.accountingDenomination || "1",
-      collectionMultiplier: machine.collectionMeters ? "1" : "1",
+      assetStatus: machine.assetStatus || '',
+      status: machine.assetStatus || '',
+      cabinetType: machine.cabinetType || '',
+      smbId: machine.relayId || '',
+      relayId: machine.relayId || '',
+      accountingDenomination: machine.gameConfig?.accountingDenomination || '1',
+      collectionMultiplier: machine.collectionMeters ? '1' : '1',
       isCronosMachine: false,
       createdAt: machine.createdAt,
       updatedAt: machine.updatedAt,
@@ -265,22 +265,22 @@ export async function GET(
       data: transformedMachine,
     });
   } catch (error) {
-    console.error(" Error fetching machine:", error);
+    console.error(' Error fetching machine:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch machine" },
+      { success: false, error: 'Failed to fetch machine' },
       { status: 500 }
     );
   }
 }
 
 export function POST() {
-  return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
 
 export function PUT() {
-  return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
 
 export function DELETE() {
-  return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }

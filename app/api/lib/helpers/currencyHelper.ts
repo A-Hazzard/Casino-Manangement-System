@@ -1,4 +1,4 @@
-import { convertCurrency, getLicenseeCurrency } from "@/lib/helpers/rates";
+import { convertCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
 
 /**
  * Check if currency conversion should be applied based on licensee selection
@@ -8,20 +8,20 @@ import { convertCurrency, getLicenseeCurrency } from "@/lib/helpers/rates";
 export function shouldApplyCurrencyConversion(
   licensee: string | null
 ): boolean {
-  return !licensee || licensee === "all" || licensee === "";
+  return !licensee || licensee === 'all' || licensee === '';
 }
 
 /**
  * Financial fields that need currency conversion from meters movement object
  */
 export const FINANCIAL_FIELDS = [
-  "drop",
-  "totalCancelledCredits",
-  "coinIn",
-  "coinOut",
-  "jackpot",
-  "gamesPlayed",
-  "gamesWon",
+  'drop',
+  'totalCancelledCredits',
+  'coinIn',
+  'coinOut',
+  'jackpot',
+  'gamesPlayed',
+  'gamesWon',
 ] as const;
 
 /**
@@ -44,7 +44,7 @@ export function convertFinancialFields<T extends Record<string, unknown>>(
 
   for (const field of FINANCIAL_FIELDS) {
     const value = converted[field];
-    if (typeof value === "number") {
+    if (typeof value === 'number') {
       converted[field] = convertCurrency(
         value,
         fromCurrency as never,
@@ -74,25 +74,25 @@ export async function applyCurrencyConversionToMetrics<T>(
   }
 
   // No conversion needed if display currency is USD
-  if (displayCurrency === "USD") {
+  if (displayCurrency === 'USD') {
     return data;
   }
 
   // Helper function to convert a single object
   const convertObject = (obj: unknown): unknown => {
-    if (!obj || typeof obj !== "object") {
+    if (!obj || typeof obj !== 'object') {
       return obj;
     }
 
     const record = obj as Record<string, unknown>;
 
     // If object has licensee information, convert based on that licensee's currency
-    const objLicensee = (record["licensee"] || record["licencee"]) as
+    const objLicensee = (record['licensee'] || record['licencee']) as
       | string
       | undefined;
     const sourceCurrency = objLicensee
       ? getLicenseeCurrency(objLicensee)
-      : "USD";
+      : 'USD';
 
     if (sourceCurrency !== displayCurrency) {
       return convertFinancialFields(record, sourceCurrency, displayCurrency);
@@ -136,7 +136,7 @@ export async function applyCurrencyConversionToAggregation<T>(
  * @returns Sessions with converted financial metrics
  */
 export async function convertSessionFinancialMetrics<
-  T extends Array<Record<string, unknown>>
+  T extends Array<Record<string, unknown>>,
 >(sessions: T, licensee: string | null, displayCurrency: string): Promise<T> {
   return applyCurrencyConversionToMetrics(sessions, licensee, displayCurrency);
 }
@@ -147,5 +147,5 @@ export async function convertSessionFinancialMetrics<
  * @returns Currency code or 'USD' as default
  */
 export function getCurrencyFromQuery(searchParams: URLSearchParams): string {
-  return searchParams.get("currency") || "USD";
+  return searchParams.get('currency') || 'USD';
 }

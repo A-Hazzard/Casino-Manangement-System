@@ -1,9 +1,9 @@
-import axios from "axios";
+import axios from 'axios';
 import type {
   User,
   SortKey,
   ResourcePermissions,
-} from "@/lib/types/administration";
+} from '@/lib/types/administration';
 
 /**
  * Fetches a list of users with full profile data.
@@ -12,11 +12,11 @@ import type {
  */
 export const fetchUsers = async (licensee?: string): Promise<User[]> => {
   const params: Record<string, string> = {};
-  if (licensee && licensee !== "all") {
+  if (licensee && licensee !== 'all') {
     params.licensee = licensee;
   }
 
-  const response = await axios.get("/api/users", { params });
+  const response = await axios.get('/api/users', { params });
   return response.data?.users || [];
 };
 
@@ -26,7 +26,7 @@ export const updateUser = async (
     resourcePermissions: ResourcePermissions;
   }
 ) => {
-  return axios.put("/api/users", user);
+  return axios.put('/api/users', user);
 };
 
 /**
@@ -41,14 +41,14 @@ export const updateUser = async (
 export const filterAndSortUsers = (
   users: User[],
   searchValue: string,
-  searchMode: "username" | "email",
-  sortConfig: { key: SortKey; direction: "ascending" | "descending" } | null
+  searchMode: 'username' | 'email',
+  sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null
 ): User[] => {
   let processedUsers = [...users];
   if (searchValue) {
     const lowerSearchValue = searchValue.toLowerCase();
-    processedUsers = processedUsers.filter((user) =>
-      searchMode === "username"
+    processedUsers = processedUsers.filter(user =>
+      searchMode === 'username'
         ? user.username.toLowerCase().includes(lowerSearchValue)
         : user.email.toLowerCase().includes(lowerSearchValue)
     );
@@ -59,12 +59,12 @@ export const filterAndSortUsers = (
       const valA = a[key!];
       const valB = b[key!];
       if (valA == null && valB != null)
-        return direction === "ascending" ? -1 : 1;
+        return direction === 'ascending' ? -1 : 1;
       if (valA != null && valB == null)
-        return direction === "ascending" ? 1 : -1;
+        return direction === 'ascending' ? 1 : -1;
       if (valA == null && valB == null) return 0;
-      if (valA! < valB!) return direction === "ascending" ? -1 : 1;
-      if (valA! > valB!) return direction === "ascending" ? 1 : -1;
+      if (valA! < valB!) return direction === 'ascending' ? -1 : 1;
+      if (valA! > valB!) return direction === 'ascending' ? 1 : -1;
       return 0;
     });
   }
@@ -85,6 +85,6 @@ export const createUser = async (user: {
   profilePicture?: string | null;
   resourcePermissions?: ResourcePermissions;
 }) => {
-  const response = await axios.post("/api/users", user);
+  const response = await axios.post('/api/users', user);
   return response.data.user;
 };

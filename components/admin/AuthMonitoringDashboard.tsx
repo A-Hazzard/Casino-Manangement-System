@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+} from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Shield,
   Users,
@@ -29,8 +29,8 @@ import {
   Eye,
   RefreshCw,
   Download,
-} from "lucide-react";
-import axios from "axios";
+} from 'lucide-react';
+import axios from 'axios';
 type AuthMetrics = {
   totalLogins: number;
   successfulLogins: number;
@@ -65,10 +65,10 @@ export function AuthMonitoringDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
-    action: "all",
-    success: "all",
-    timeRange: "24h",
-    search: "",
+    action: 'all',
+    success: 'all',
+    timeRange: '24h',
+    search: '',
   });
 
   const loadData = useCallback(async () => {
@@ -77,11 +77,11 @@ export function AuthMonitoringDashboard({
       setError(null);
 
       const params = new URLSearchParams();
-      if (filters.action !== "all") params.append("action", filters.action);
-      if (filters.success !== "all") params.append("success", filters.success);
-      if (filters.timeRange !== "all")
-        params.append("timeRange", filters.timeRange);
-      if (filters.search) params.append("search", filters.search);
+      if (filters.action !== 'all') params.append('action', filters.action);
+      if (filters.success !== 'all') params.append('success', filters.success);
+      if (filters.timeRange !== 'all')
+        params.append('timeRange', filters.timeRange);
+      if (filters.search) params.append('search', filters.search);
 
       const [metricsResponse, eventsResponse] = await Promise.all([
         axios.get(`/api/admin/auth/metrics?${params.toString()}`),
@@ -91,8 +91,8 @@ export function AuthMonitoringDashboard({
       setMetrics(metricsResponse.data);
       setEvents(eventsResponse.data.events || []);
     } catch (err) {
-      console.error("Failed to load auth monitoring data:", err);
-      setError("Failed to load monitoring data. Please try again.");
+      console.error('Failed to load auth monitoring data:', err);
+      setError('Failed to load monitoring data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -104,19 +104,19 @@ export function AuthMonitoringDashboard({
 
   const getActionIcon = (action: string) => {
     switch (action) {
-      case "login_success":
+      case 'login_success':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "login_failed":
+      case 'login_failed':
         return <XCircle className="h-4 w-4 text-red-500" />;
-      case "logout":
+      case 'logout':
         return <Shield className="h-4 w-4 text-blue-500" />;
-      case "token_refresh_success":
+      case 'token_refresh_success':
         return <RefreshCw className="h-4 w-4 text-green-500" />;
-      case "token_refresh_failed":
+      case 'token_refresh_failed':
         return <RefreshCw className="h-4 w-4 text-red-500" />;
-      case "account_locked":
+      case 'account_locked':
         return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-      case "suspicious_activity":
+      case 'suspicious_activity':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       default:
         return <Eye className="h-4 w-4 text-gray-500" />;
@@ -124,15 +124,15 @@ export function AuthMonitoringDashboard({
   };
 
   const getActionColor = (action: string) => {
-    if (action.includes("success")) return "bg-green-100 text-green-800";
+    if (action.includes('success')) return 'bg-green-100 text-green-800';
     if (
-      action.includes("failed") ||
-      action.includes("locked") ||
-      action.includes("suspicious")
+      action.includes('failed') ||
+      action.includes('locked') ||
+      action.includes('suspicious')
     )
-      return "bg-red-100 text-red-800";
-    if (action.includes("logout")) return "bg-blue-100 text-blue-800";
-    return "bg-gray-100 text-gray-800";
+      return 'bg-red-100 text-red-800';
+    if (action.includes('logout')) return 'bg-blue-100 text-blue-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -145,35 +145,35 @@ export function AuthMonitoringDashboard({
       const response = await axios.get(
         `/api/admin/auth/export?${params.toString()}`,
         {
-          responseType: "blob",
+          responseType: 'blob',
         }
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = url;
       link.setAttribute(
-        "download",
-        `auth-events-${new Date().toISOString().split("T")[0]}.csv`
+        'download',
+        `auth-events-${new Date().toISOString().split('T')[0]}.csv`
       );
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (err) {
-      console.error("Failed to export data:", err);
+      console.error('Failed to export data:', err);
     }
   };
 
   if (loading && !metrics) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Authentication Monitoring</h1>
@@ -183,11 +183,11 @@ export function AuthMonitoringDashboard({
         </div>
         <div className="flex gap-2">
           <Button onClick={loadData} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
           <Button onClick={exportData} variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
         </div>
@@ -202,7 +202,7 @@ export function AuthMonitoringDashboard({
 
       {/* Metrics Overview */}
       {metrics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -287,12 +287,12 @@ export function AuthMonitoringDashboard({
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div>
               <label className="text-sm font-medium">Action</label>
               <Select
                 value={filters.action}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setFilters({ ...filters, action: value })
                 }
               >
@@ -317,7 +317,7 @@ export function AuthMonitoringDashboard({
               <label className="text-sm font-medium">Status</label>
               <Select
                 value={filters.success}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setFilters({ ...filters, success: value })
                 }
               >
@@ -336,7 +336,7 @@ export function AuthMonitoringDashboard({
               <label className="text-sm font-medium">Time Range</label>
               <Select
                 value={filters.timeRange}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setFilters({ ...filters, timeRange: value })
                 }
               >
@@ -358,7 +358,7 @@ export function AuthMonitoringDashboard({
               <Input
                 placeholder="Search by email, IP, or details..."
                 value={filters.search}
-                onChange={(e) =>
+                onChange={e =>
                   setFilters({ ...filters, search: e.target.value })
                 }
               />
@@ -377,15 +377,15 @@ export function AuthMonitoringDashboard({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {events.map((event) => (
-              <div key={event._id} className="border rounded-lg p-4">
+            {events.map(event => (
+              <div key={event._id} className="rounded-lg border p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3">
                     {getActionIcon(event.action)}
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
+                      <div className="mb-1 flex items-center space-x-2">
                         <Badge className={getActionColor(event.action)}>
-                          {event.action.replace(/_/g, " ").toUpperCase()}
+                          {event.action.replace(/_/g, ' ').toUpperCase()}
                         </Badge>
                         {event.email && (
                           <span className="text-sm font-medium text-gray-900">
@@ -394,13 +394,13 @@ export function AuthMonitoringDashboard({
                         )}
                       </div>
                       <p className="text-sm text-gray-600">{event.details}</p>
-                      <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                      <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
                         <span>IP: {event.ipAddress}</span>
                         <span>{formatTimestamp(event.timestamp)}</span>
                         {event.metadata &&
                           Object.keys(event.metadata).length > 0 && (
                             <span>
-                              Metadata: {Object.keys(event.metadata).length}{" "}
+                              Metadata: {Object.keys(event.metadata).length}{' '}
                               fields
                             </span>
                           )}
@@ -412,7 +412,7 @@ export function AuthMonitoringDashboard({
             ))}
 
             {events.length === 0 && !loading && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="py-8 text-center text-gray-500">
                 No events found matching your filters.
               </div>
             )}

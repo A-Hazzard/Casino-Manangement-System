@@ -1,7 +1,7 @@
-import { Db, Document } from "mongodb";
-import { AggregatedLocation, LocationDateRange } from "@/lib/types/location";
-import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
-import { getGamingDayRangeForPeriod } from "@/lib/utils/gamingDayRange";
+import { Db, Document } from 'mongodb';
+import { AggregatedLocation, LocationDateRange } from '@/lib/types/location';
+import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 
 /**
  * Aggregates and returns location metrics, including machine counts and online status, with optional filters.
@@ -35,14 +35,14 @@ export const getLocationsWithMetrics = async (
   let licenseeLocationIds: string[] | null = null;
   if (licencee) {
     const locs = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .find(
         {
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date("2020-01-01") } },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
           ],
-          "rel.licencee": licencee,
+          'rel.licencee': licencee,
         },
         {
           projection: { _id: 1 },
@@ -51,7 +51,7 @@ export const getLocationsWithMetrics = async (
         }
       )
       .toArray();
-    licenseeLocationIds = locs.map((l) => l._id.toString());
+    licenseeLocationIds = locs.map(l => l._id.toString());
   }
 
   // Build the base pipeline with location matching
@@ -60,7 +60,7 @@ export const getLocationsWithMetrics = async (
       $match: {
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date("2020-01-01") } },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
         ],
         ...(licenseeLocationIds && licenseeLocationIds.length > 0
           ? { _id: { $in: licenseeLocationIds } }
@@ -71,7 +71,7 @@ export const getLocationsWithMetrics = async (
 
   // Filter by selected locations if provided (string matching only)
   if (selectedLocations) {
-    const selectedLocationIdStrings: string[] = selectedLocations.split(",");
+    const selectedLocationIdStrings: string[] = selectedLocations.split(',');
 
     // Direct _id matching since all IDs are stored as strings
     basePipeline.push({ $match: { _id: { $in: selectedLocationIdStrings } } });
@@ -83,7 +83,7 @@ export const getLocationsWithMetrics = async (
   if (!basicList) {
     // Execute the location pipeline first to get all matching locations
     const locations = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .aggregate(basePipeline)
       .toArray();
 
@@ -97,13 +97,13 @@ export const getLocationsWithMetrics = async (
 
     // Now aggregate meters for each location using gaming day ranges
     const locationsWithMetrics = await Promise.all(
-      locations.map(async (location) => {
+      locations.map(async location => {
         const locationId = location._id.toString();
         const gameDayOffset = location.gameDayOffset || 0;
 
         // Calculate gaming day range for this location
         const gamingDayRange = getGamingDayRangeForPeriod(
-          timePeriod || "Today",
+          timePeriod || 'Today',
           gameDayOffset,
           customStartDate,
           customEndDate
@@ -111,24 +111,24 @@ export const getLocationsWithMetrics = async (
 
         // First get all machines for this location
         const machinesForLocation = await db
-          .collection("machines")
+          .collection('machines')
           .find(
             {
               gamingLocation: location._id,
               $or: [
                 { deletedAt: null },
-                { deletedAt: { $lt: new Date("2020-01-01") } },
+                { deletedAt: { $lt: new Date('2020-01-01') } },
               ],
             },
             { projection: { _id: 1 } }
           )
           .toArray();
 
-        const machineIds = machinesForLocation.map((m) => m._id);
+        const machineIds = machinesForLocation.map(m => m._id);
 
         // Now aggregate meters for all machines in this location using gaming day range
         const metersAggregation = await db
-          .collection("meters")
+          .collection('meters')
           .aggregate([
             {
               $match: {
@@ -142,16 +142,16 @@ export const getLocationsWithMetrics = async (
             {
               $group: {
                 _id: null,
-                totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+                totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
                 totalMoneyOut: {
-                  $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
                 },
                 totalGamesPlayed: {
-                  $sum: { $ifNull: ["$movement.gamesPlayed", 0] },
+                  $sum: { $ifNull: ['$movement.gamesPlayed', 0] },
                 },
-                totalCoinIn: { $sum: { $ifNull: ["$movement.coinIn", 0] } },
-                totalCoinOut: { $sum: { $ifNull: ["$movement.coinOut", 0] } },
-                totalJackpot: { $sum: { $ifNull: ["$movement.jackpot", 0] } },
+                totalCoinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
+                totalCoinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
+                totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
               },
             },
           ])
@@ -159,14 +159,14 @@ export const getLocationsWithMetrics = async (
 
         // Get machine data for this location
         const machineData = await db
-          .collection("machines")
+          .collection('machines')
           .aggregate([
             {
               $match: {
                 gamingLocation: location._id,
                 $or: [
                   { deletedAt: null },
-                  { deletedAt: { $lt: new Date("2020-01-01") } },
+                  { deletedAt: { $lt: new Date('2020-01-01') } },
                 ],
               },
             },
@@ -176,12 +176,12 @@ export const getLocationsWithMetrics = async (
                 total: { $sum: 1 },
                 online: {
                   $sum: {
-                    $cond: [{ $gte: ["$lastActivity", onlineThreshold] }, 1, 0],
+                    $cond: [{ $gte: ['$lastActivity', onlineThreshold] }, 1, 0],
                   },
                 },
-                sasMachines: { $sum: { $cond: ["$isSasMachine", 1, 0] } },
+                sasMachines: { $sum: { $cond: ['$isSasMachine', 1, 0] } },
                 nonSasMachines: {
-                  $sum: { $cond: [{ $eq: ["$isSasMachine", false] }, 1, 0] },
+                  $sum: { $cond: [{ $eq: ['$isSasMachine', false] }, 1, 0] },
                 },
               },
             },
@@ -207,7 +207,7 @@ export const getLocationsWithMetrics = async (
 
         return {
           location: locationId,
-          locationName: location.name || "Unknown Location",
+          locationName: location.name || 'Unknown Location',
           moneyIn: meterMetrics.totalDrop,
           moneyOut: meterMetrics.totalMoneyOut,
           gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut,
@@ -231,7 +231,7 @@ export const getLocationsWithMetrics = async (
     // Filter by SAS evaluation if requested
     const filteredLocations = sasEvaluationOnly
       ? locationsWithMetrics.filter(
-          (loc) => (loc as unknown as { sasMachines: number }).sasMachines > 0
+          loc => (loc as unknown as { sasMachines: number }).sasMachines > 0
         )
       : locationsWithMetrics;
 
@@ -257,7 +257,7 @@ export const getLocationsWithMetrics = async (
     // For basic list, just add the location field and get machine counts
     basePipeline.push({
       $addFields: {
-        location: { $toString: "$_id" },
+        location: { $toString: '$_id' },
         // Set default values for financial fields
         moneyIn: 0,
         moneyOut: 0,
@@ -278,22 +278,22 @@ export const getLocationsWithMetrics = async (
 
     // Execute the location-based aggregation with machine lookup
     const locationsWithMetrics = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .aggregate(
         [
           ...locationPipeline,
           // Add machine lookup to the same pipeline
           {
             $lookup: {
-              from: "machines",
-              let: { locationId: "$_id" },
+              from: 'machines',
+              let: { locationId: '$_id' },
               pipeline: [
                 {
                   $match: {
-                    $expr: { $eq: ["$gamingLocation", "$$locationId"] },
+                    $expr: { $eq: ['$gamingLocation', '$$locationId'] },
                     $or: [
                       { deletedAt: null },
-                      { deletedAt: { $lt: new Date("2020-01-01") } },
+                      { deletedAt: { $lt: new Date('2020-01-01') } },
                     ],
                   },
                 },
@@ -304,42 +304,42 @@ export const getLocationsWithMetrics = async (
                     online: {
                       $sum: {
                         $cond: [
-                          { $gte: ["$lastActivity", onlineThreshold] },
+                          { $gte: ['$lastActivity', onlineThreshold] },
                           1,
                           0,
                         ],
                       },
                     },
-                    sasMachines: { $sum: { $cond: ["$isSasMachine", 1, 0] } },
+                    sasMachines: { $sum: { $cond: ['$isSasMachine', 1, 0] } },
                     nonSasMachines: {
                       $sum: {
-                        $cond: [{ $eq: ["$isSasMachine", false] }, 1, 0],
+                        $cond: [{ $eq: ['$isSasMachine', false] }, 1, 0],
                       },
                     },
                   },
                 },
               ],
-              as: "machineData",
+              as: 'machineData',
             },
           },
           {
             $addFields: {
               totalMachines: {
-                $ifNull: [{ $arrayElemAt: ["$machineData.total", 0] }, 0],
+                $ifNull: [{ $arrayElemAt: ['$machineData.total', 0] }, 0],
               },
               onlineMachines: {
-                $ifNull: [{ $arrayElemAt: ["$machineData.online", 0] }, 0],
+                $ifNull: [{ $arrayElemAt: ['$machineData.online', 0] }, 0],
               },
               sasMachines: {
-                $ifNull: [{ $arrayElemAt: ["$machineData.sasMachines", 0] }, 0],
+                $ifNull: [{ $arrayElemAt: ['$machineData.sasMachines', 0] }, 0],
               },
               nonSasMachines: {
                 $ifNull: [
-                  { $arrayElemAt: ["$machineData.nonSasMachines", 0] },
+                  { $arrayElemAt: ['$machineData.nonSasMachines', 0] },
                   0,
                 ],
               },
-              gross: { $subtract: ["$moneyIn", "$moneyOut"] },
+              gross: { $subtract: ['$moneyIn', '$moneyOut'] },
             },
           },
           // Add SAS evaluation filter if requested
@@ -363,7 +363,7 @@ export const getLocationsWithMetrics = async (
       .toArray();
 
     // Transform the aggregated data to the expected format
-    const enhancedMetrics = locationsWithMetrics.map((location) => {
+    const enhancedMetrics = locationsWithMetrics.map(location => {
       const locationId = location._id.toString();
 
       // Calculate metrics with proper fallbacks
@@ -389,7 +389,7 @@ export const getLocationsWithMetrics = async (
 
       return {
         location: locationId,
-        locationName: location.name || "Unknown Location",
+        locationName: location.name || 'Unknown Location',
         moneyIn,
         moneyOut,
         gross,

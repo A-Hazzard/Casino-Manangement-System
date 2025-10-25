@@ -1,12 +1,12 @@
 # Locations & Machines API Documentation
 
-
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** October 29th, 2025
 
 ## Quick Search Guide
 
 Use **Ctrl+F** to find these key topics:
+
 - **location creation** - What happens when you create a new location
 - **location editing** - How location updates work and what fields are modified
 - **machine aggregation** - How machine performance data is aggregated and calculated
@@ -30,6 +30,7 @@ The Locations & Machines API manages gaming locations and individual gaming mach
    - Links to licensee and country
 
 2. **Location Model Fields**:
+
 ```typescript
 GamingLocation {
   _id: string;                    // Unique location identifier
@@ -125,6 +126,7 @@ GamingLocation {
    - Links to location and SMIB controller
 
 2. **Machine Model Fields**:
+
 ```typescript
 Machine {
   _id: string;                    // Unique machine identifier
@@ -210,6 +212,7 @@ Machine {
    - Groups data by location, manufacturer, or time period
 
 2. **Machine Aggregation Model Fields**:
+
 ```typescript
 MachineAggregation {
   _id: string;                    // Machine identifier
@@ -229,6 +232,7 @@ MachineAggregation {
 ```
 
 3. **Machine Aggregation Formulas**:
+
 ```javascript
 // Money In Calculation
 moneyIn = Σ(movement.drop + movement.coinIn) WHERE machine = machineId AND readAt BETWEEN startDate AND endDate
@@ -275,6 +279,7 @@ timePeriod = "last7days" | "last30days" | "custom" | "today" | "yesterday"
    - Affects all machines at the location
 
 2. **Bill Validator Options**:
+
 ```typescript
 BillValidatorOptions {
   denom1: boolean;                // $1 bills accepted
@@ -310,6 +315,7 @@ BillValidatorOptions {
    - Provides real-time status information
 
 2. **Machine Status Formulas**:
+
 ```javascript
 // Online Status Calculation
 onlineStatus = lastActivity >= (currentTime - 3 minutes)
@@ -335,125 +341,147 @@ if (deletedAt) return "deleted"
 **Base URL:** `/api/locations`
 
 #### GET /api/locations
+
 **What it does**: Retrieves all gaming locations with optional filtering
 **Database Operations**:
+
 - Queries `gaminglocations` collection
 - Filters by licensee and search criteria
 - Applies soft delete filtering
-**Query Parameters**: `licencee`, `search`, `page`, `limit`
-**Response Fields**: Array of `GamingLocation` objects
-**Used By**: Location management page, location selection components
+  **Query Parameters**: `licencee`, `search`, `page`, `limit`
+  **Response Fields**: Array of `GamingLocation` objects
+  **Used By**: Location management page, location selection components
 
 #### POST /api/locations
+
 **What it does**: Creates a new gaming location
 **Database Operations**:
+
 - Validates input data
 - Creates new `GamingLocation` document
 - Sets up default bill validator options
 - Logs creation activity
-**Request Fields**: All `GamingLocation` model fields except `_id`, `createdAt`, `updatedAt`
-**Response Fields**: Created `GamingLocation` object
-**Used By**: Location creation forms
+  **Request Fields**: All `GamingLocation` model fields except `_id`, `createdAt`, `updatedAt`
+  **Response Fields**: Created `GamingLocation` object
+  **Used By**: Location creation forms
 
 #### PUT /api/locations
+
 **What it does**: Updates an existing gaming location
 **Database Operations**:
+
 - Finds location by `_id` (using `locationName` as identifier)
 - Updates specified fields
 - Handles bill validator options updates
 - Logs change activity
-**Request Fields**: All `GamingLocation` model fields (including `_id`)
-**Response Fields**: Updated `GamingLocation` object
-**Used By**: Location editing forms
+  **Request Fields**: All `GamingLocation` model fields (including `_id`)
+  **Response Fields**: Updated `GamingLocation` object
+  **Used By**: Location editing forms
 
 #### DELETE /api/locations
+
 **What it does**: Soft deletes a gaming location
 **Database Operations**:
+
 - Finds location by `_id`
 - Sets `deletedAt` timestamp
 - Logs deletion activity
-**Request Fields**: Location ID to delete
-**Response Fields**: Success confirmation message
-**Used By**: Location management page
+  **Request Fields**: Location ID to delete
+  **Response Fields**: Success confirmation message
+  **Used By**: Location management page
 
 ### Machines Management
 
 **Base URL:** `/api/machines`
 
 #### GET /api/machines
+
 **What it does**: Retrieves detailed information for a specific machine
 **Database Operations**:
+
 - Queries `machines` collection by ID
 - Includes meter data if time period specified
 - Calculates performance metrics
-**Query Parameters**: `id` (required), `timePeriod` (optional)
-**Response Fields**: `Machine` object with performance data
-**Used By**: Machine details page, machine management
+  **Query Parameters**: `id` (required), `timePeriod` (optional)
+  **Response Fields**: `Machine` object with performance data
+  **Used By**: Machine details page, machine management
 
 #### POST /api/machines
+
 **What it does**: Creates a new gaming machine
 **Database Operations**:
+
 - Validates input data
 - Creates new `Machine` document
 - Initializes collection settings
 - Logs creation activity
-**Request Fields**: All `Machine` model fields except `_id`, `createdAt`, `updatedAt`
-**Response Fields**: Created `Machine` object
-**Used By**: Machine registration forms
+  **Request Fields**: All `Machine` model fields except `_id`, `createdAt`, `updatedAt`
+  **Response Fields**: Created `Machine` object
+  **Used By**: Machine registration forms
 
 #### PUT /api/machines
+
 **What it does**: Updates an existing gaming machine
 **Database Operations**:
+
 - Finds machine by ID
 - Updates specified fields
 - Recalculates dependent values
 - Logs change activity
-**Request Fields**: Machine ID and fields to update
-**Response Fields**: Updated `Machine` object
-**Used By**: Machine editing forms
+  **Request Fields**: Machine ID and fields to update
+  **Response Fields**: Updated `Machine` object
+  **Used By**: Machine editing forms
 
 #### DELETE /api/machines
+
 **What it does**: Soft deletes a gaming machine
 **Database Operations**:
+
 - Finds machine by ID
 - Sets `deletedAt` timestamp
 - Logs deletion activity
-**Request Fields**: Machine ID to delete
-**Response Fields**: Success confirmation message
-**Used By**: Machine management page
+  **Request Fields**: Machine ID to delete
+  **Response Fields**: Success confirmation message
+  **Used By**: Machine management page
 
 ### Machine Events and Aggregation
 
 #### GET /api/machines/[id]/events
+
 **What it does**: Retrieves events for a specific machine
 **Database Operations**:
+
 - Queries `machineEvents` collection
 - Filters by machine ID and date range
 - Returns paginated event data
-**Query Parameters**: `page`, `limit`
-**Response Fields**: Array of machine events with pagination
-**Used By**: Machine event monitoring, debugging
+  **Query Parameters**: `page`, `limit`
+  **Response Fields**: Array of machine events with pagination
+  **Used By**: Machine event monitoring, debugging
 
 #### GET /api/machines/aggregation
+
 **What it does**: Retrieves aggregated machine data across locations
 **Database Operations**:
+
 - Queries `machines` collection with filters
 - Aggregates data from `meters` collection
 - Calculates performance metrics
 - Groups by location or other criteria
-**Query Parameters**: `locationId`, `status`, `dateRange`
-**Response Fields**: Array of `MachineAggregation` objects
-**Used By**: Performance dashboards, location comparison
+  **Query Parameters**: `locationId`, `status`, `dateRange`
+  **Response Fields**: Array of `MachineAggregation` objects
+  **Used By**: Performance dashboards, location comparison
 
 ## Performance Considerations
 
 ### Database Optimization
+
 - **Indexing**: Proper indexes on `gamingLocation`, `lastActivity`, `deletedAt`
 - **Aggregation Pipelines**: Efficient MongoDB aggregation for complex queries
 - **Query Optimization**: Optimized queries with proper filtering
 - **Caching**: Response caching for frequently accessed location and machine data
 
 ### API Performance
+
 - **Pagination**: Efficient pagination for large machine datasets
 - **Response Compression**: Compressed responses for large aggregation data
 - **Rate Limiting**: Protection against excessive API usage
@@ -462,12 +490,14 @@ if (deletedAt) return "deleted"
 ## Security Features
 
 ### Access Control
+
 - **Authentication**: JWT token required for all endpoints
 - **Authorization**: Role-based access to location and machine data
 - **Data Filtering**: Results filtered by user permissions
 - **Audit Logging**: All location and machine operations logged
 
 ### Data Protection
+
 - **Input Validation**: Comprehensive validation of all location and machine data
 - **SQL Injection Prevention**: Parameterized queries throughout
 - **Rate Limiting**: Protection against API abuse
@@ -476,12 +506,14 @@ if (deletedAt) return "deleted"
 ## Error Handling
 
 ### Common Error Scenarios
+
 - **Invalid Location Data**: Malformed location information
 - **Machine Configuration Errors**: Invalid machine settings
 - **Duplicate Serial Numbers**: Non-unique machine identifiers
 - **Location Not Found**: References to non-existent locations
 
 ### Error Response Format
+
 ```json
 {
   "success": false,
@@ -493,9 +525,11 @@ if (deletedAt) return "deleted"
 **Author:** Aaron Hazzard - Senior Software Engineer
 
 ## Overview
+
 The Locations & Machines API manages gaming locations and individual gaming machines. It provides CRUD operations for location management, machine configuration, and performance tracking.
 
 ## Base URLs
+
 ```
 /api/locations
 /api/machines
@@ -504,12 +538,15 @@ The Locations & Machines API manages gaming locations and individual gaming mach
 ## Locations API
 
 ### GET /api/locations
+
 Retrieves all gaming locations with optional licensee filtering.
 
 **Query Parameters:**
+
 - `licencee` (string, optional): Filter locations by licensee name
 
 **Response (Success - 200):**
+
 ```json
 {
   "locations": [
@@ -538,6 +575,7 @@ Retrieves all gaming locations with optional licensee filtering.
 ```
 
 **Used By:**
+
 - `/locations` page - Location management page
 - Location selection components
 - Geographic mapping features
@@ -545,9 +583,11 @@ Retrieves all gaming locations with optional licensee filtering.
 ---
 
 ### POST /api/locations
+
 Creates a new gaming location.
 
 **Request Body:**
+
 ```json
 {
   "name": "New Casino",
@@ -569,6 +609,7 @@ Creates a new gaming location.
 ```
 
 **Response (Success - 201):**
+
 ```json
 {
   "success": true,
@@ -596,15 +637,18 @@ Creates a new gaming location.
 ```
 
 **Used By:**
+
 - Location creation forms
 - Administrative pages
 
 ---
 
 ### PUT /api/locations
+
 Updates an existing gaming location.
 
 **Request Body:**
+
 ```json
 {
   "locationName": "Main Casino",
@@ -627,6 +671,7 @@ Updates an existing gaming location.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -636,18 +681,22 @@ Updates an existing gaming location.
 ```
 
 **Used By:**
+
 - Location editing forms
 - Administrative pages
 
 ---
 
 ### DELETE /api/locations
+
 Soft deletes a gaming location.
 
 **Query Parameters:**
+
 - `id` (string, required): Location ID to delete
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -656,19 +705,23 @@ Soft deletes a gaming location.
 ```
 
 **Used By:**
+
 - Location management page
 - Administrative cleanup
 
 ## Machines API
 
 ### GET /api/machines
+
 Retrieves detailed information for a specific machine with optional meter data.
 
 **Query Parameters:**
+
 - `id` (string, required): Machine ID
 - `timePeriod` (string, optional): Time period for meter data (today, week, month, year)
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -687,15 +740,15 @@ Retrieves detailed information for a specific machine with optional meter data.
     "relayId": "relay_123",
     "collectionTime": "2024-01-01T12:00:00.000Z",
     "collectionMeters": {
-      "metersIn": 1000.00,
-      "metersOut": 950.00
+      "metersIn": 1000.0,
+      "metersOut": 950.0
     },
     "sasMeters": {
-      "drop": 5000.00,
-      "totalCancelledCredits": 100.00,
-      "jackpot": 500.00,
-      "coinIn": 10000.00,
-      "coinOut": 9500.00,
+      "drop": 5000.0,
+      "totalCancelledCredits": 100.0,
+      "jackpot": 500.0,
+      "coinIn": 10000.0,
+      "coinOut": 9500.0,
       "gamesPlayed": 1000,
       "gamesWon": 950
     },
@@ -706,6 +759,7 @@ Retrieves detailed information for a specific machine with optional meter data.
 ```
 
 **Used By:**
+
 - `/cabinets/[slug]` page - Machine details view
 - Machine management page
 - Performance monitoring
@@ -713,9 +767,11 @@ Retrieves detailed information for a specific machine with optional meter data.
 ---
 
 ### POST /api/machines
+
 Creates a new gaming machine.
 
 **Request Body:**
+
 ```json
 {
   "serialNumber": "SN789012",
@@ -736,6 +792,7 @@ Creates a new gaming machine.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -754,8 +811,8 @@ Creates a new gaming machine.
     "relayId": "smib_456",
     "collectionTime": "2024-01-01T12:00:00.000Z",
     "collectionMeters": {
-      "metersIn": 1000.00,
-      "metersOut": 950.00
+      "metersIn": 1000.0,
+      "metersOut": 950.0
     },
     "createdAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2024-01-01T00:00:00.000Z"
@@ -764,18 +821,22 @@ Creates a new gaming machine.
 ```
 
 **Used By:**
+
 - Machine registration forms
 - Administrative pages
 
 ---
 
 ### PUT /api/machines
+
 Updates an existing gaming machine.
 
 **Query Parameters:**
+
 - `id` (string, required): Machine ID to update
 
 **Request Body:**
+
 ```json
 {
   "serialNumber": "SN789012",
@@ -789,6 +850,7 @@ Updates an existing gaming machine.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -807,18 +869,22 @@ Updates an existing gaming machine.
 ```
 
 **Used By:**
+
 - Machine editing forms
 - Configuration updates
 
 ---
 
 ### DELETE /api/machines
+
 Soft deletes a gaming machine.
 
 **Query Parameters:**
+
 - `id` (string, required): Machine ID to delete
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -827,22 +893,27 @@ Soft deletes a gaming machine.
 ```
 
 **Used By:**
+
 - Machine management page
 - Administrative cleanup
 
 ## Additional Machine Endpoints
 
 ### GET /api/machines/[id]/events
+
 Retrieves events for a specific machine.
 
 **Path Parameters:**
+
 - `id` (string): Machine ID
 
 **Query Parameters:**
+
 - `page` (number, default: 1): Page number for pagination
 - `limit` (number, default: 50): Number of events per page
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -855,8 +926,8 @@ Retrieves events for a specific machine.
         "timestamp": "2024-01-01T10:00:00.000Z",
         "data": {
           "gameId": "game_123",
-          "bet": 1.00,
-          "win": 2.50
+          "bet": 1.0,
+          "win": 2.5
         }
       }
     ],
@@ -872,18 +943,22 @@ Retrieves events for a specific machine.
 ```
 
 **Used By:**
+
 - Machine event monitoring
 - Debugging and analysis
 
 ### GET /api/machines/aggregation
+
 Retrieves aggregated machine data across locations.
 
 **Query Parameters:**
+
 - `locationId` (string, optional): Filter by location
 - `status` (string, optional): Filter by machine status
 - `dateRange` (string, optional): Date range for metrics
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -891,7 +966,7 @@ Retrieves aggregated machine data across locations.
     "aggregatedData": {
       "totalMachines": 150,
       "activeMachines": 142,
-      "totalRevenue": 250000.00,
+      "totalRevenue": 250000.0,
       "averageUtilization": 85.5
     },
     "byLocation": [
@@ -899,7 +974,7 @@ Retrieves aggregated machine data across locations.
         "locationId": "location_1",
         "locationName": "Main Casino",
         "machines": 100,
-        "revenue": 150000.00
+        "revenue": 150000.0
       }
     ]
   }
@@ -907,23 +982,28 @@ Retrieves aggregated machine data across locations.
 ```
 
 **Used By:**
+
 - Performance dashboards
 - Location comparison reports
 
 ## How the Machines Aggregation Works (Simple Explanation)
 
 ### **What This API Does**
+
 The machines aggregation API is like a **financial calculator for your slot machines**. It takes raw meter readings from each machine and calculates useful business metrics.
 
 ### **Database Collections Used**
 
 #### **1. Machines Collection (`machines`)**
+
 **What it contains:**
+
 - Basic machine information (serial number, game type, location)
 - Machine status and configuration
 - SMIB settings and firmware information
 
 **Key fields:**
+
 - `_id`: Unique machine identifier
 - `serialNumber`: Machine's serial number
 - `gamingLocation`: Which casino location the machine is at
@@ -932,12 +1012,15 @@ The machines aggregation API is like a **financial calculator for your slot mach
 - `smibBoard`: SMIB controller identifier
 
 #### **2. Meters Collection (`meters`)**
+
 **What it contains:**
+
 - Raw meter readings from each machine
 - Financial data recorded at specific times
 - Historical performance data
 
 **Key fields:**
+
 - `machine`: Which machine this reading is from (references `machines._id`)
 - `readAt`: When this reading was taken
 - `movement.totalCancelledCredits`: Money that was cancelled/refunded
@@ -948,6 +1031,7 @@ The machines aggregation API is like a **financial calculator for your slot mach
 ### **How the Aggregation Process Works**
 
 #### **Step 1: Find the Right Machines**
+
 ```javascript
 // What the system does:
 // 1. Looks up all machines in the database
@@ -957,6 +1041,7 @@ The machines aggregation API is like a **financial calculator for your slot mach
 ```
 
 #### **Step 2: Get Financial Data from Meters**
+
 ```javascript
 // What the system does:
 // 1. For each machine, finds all meter readings within the time period
@@ -968,6 +1053,7 @@ The machines aggregation API is like a **financial calculator for your slot mach
 ```
 
 #### **Step 3: Combine and Format the Data**
+
 ```javascript
 // What the system does:
 // 1. Combines machine info with financial calculations
@@ -978,6 +1064,7 @@ The machines aggregation API is like a **financial calculator for your slot mach
 ### **Financial Calculations Explained**
 
 #### **Money In Calculation**
+
 ```javascript
 // Formula: coinIn + drop
 // Example: If players put in $1000 and $500 was collected from the machine
@@ -985,6 +1072,7 @@ The machines aggregation API is like a **financial calculator for your slot mach
 ```
 
 #### **Money Out (Cancelled Credits) Calculation**
+
 ```javascript
 // Formula: sum of all totalCancelledCredits readings
 // Example: If $50 was cancelled on Monday and $75 on Tuesday
@@ -992,6 +1080,7 @@ The machines aggregation API is like a **financial calculator for your slot mach
 ```
 
 #### **Gross Revenue Calculation**
+
 ```javascript
 // Formula: Money In - Money Out
 // Example: $1500 - $125 = $1375 gross revenue
@@ -1000,14 +1089,17 @@ The machines aggregation API is like a **financial calculator for your slot mach
 ### **Recent Fix: Cancelled Credits Display**
 
 #### **The Problem**
+
 - **Before**: The frontend was looking for a field called `cancelledCredits` that didn't exist in the API response
 - **Result**: Cancelled credits always showed as $0, even when there were actual cancelled credits
 
 #### **The Solution**
+
 - **After**: The frontend now correctly uses the `moneyOut` field from the API response
 - **Result**: Cancelled credits now display correctly, showing the actual amount of money that was refunded
 
 #### **Why This Matters**
+
 - **Accurate Financial Reporting**: You can see the real profit after refunds
 - **Operational Insights**: High cancelled credits might indicate machine problems
 - **Compliance**: Accurate financial tracking is required for casino regulations
@@ -1016,24 +1108,26 @@ The machines aggregation API is like a **financial calculator for your slot mach
 ### **Database Query in Plain English**
 
 #### **What the MongoDB Query Does**
+
 ```javascript
 // 1. Start with all machines
-db.machines.find({})
+db.machines.find({});
 
 // 2. Filter by company and location (if specified)
 // 3. Only include machines that aren't deleted
 
 // 4. For each machine, look up its meter readings
 db.meters.find({
-  machine: "machine_id",
-  readAt: { $gte: startDate, $lte: endDate }
-})
+  machine: 'machine_id',
+  readAt: { $gte: startDate, $lte: endDate },
+});
 
 // 5. Add up all the financial data
 // 6. Calculate totals and return the results
 ```
 
 #### **Performance Considerations**
+
 - **Indexing**: The system uses database indexes to make queries fast
 - **Time Periods**: Queries are limited to specific time periods to avoid processing too much data
 - **Aggregation**: Uses MongoDB's aggregation pipeline for efficient calculations
@@ -1042,6 +1136,7 @@ db.meters.find({
 ### **API Response Structure**
 
 #### **Individual Machine Data**
+
 ```json
 {
   "_id": "machine_id",
@@ -1050,15 +1145,16 @@ db.meters.find({
   "assetNumber": "12345",
   "smbId": "smib_controller_id",
   "lastOnline": "2024-01-01T12:00:00.000Z",
-  "moneyIn": 15000.00,        // Total money put into machine
-  "moneyOut": 125.00,         // Total cancelled credits
-  "jackpot": 500.00,          // Total jackpot amounts
-  "gross": 14875.00,          // Actual profit (moneyIn - moneyOut)
-  "timePeriod": "last7days"   // What time period this data covers
+  "moneyIn": 15000.0, // Total money put into machine
+  "moneyOut": 125.0, // Total cancelled credits
+  "jackpot": 500.0, // Total jackpot amounts
+  "gross": 14875.0, // Actual profit (moneyIn - moneyOut)
+  "timePeriod": "last7days" // What time period this data covers
 }
 ```
 
 #### **What Each Field Means**
+
 - **moneyIn**: Total amount of money players put into the machine
 - **moneyOut**: Total amount of money that was cancelled/refunded
 - **jackpot**: Total jackpot amounts paid out
@@ -1068,21 +1164,25 @@ db.meters.find({
 ### **Common Use Cases**
 
 #### **1. Daily Performance Review**
+
 - **Query**: Get data for the last 24 hours
 - **Use**: See which machines performed best yesterday
 - **Business Value**: Identify top-performing machines and potential issues
 
 #### **2. Weekly Financial Reports**
+
 - **Query**: Get data for the last 7 days
 - **Use**: Generate weekly profit reports
 - **Business Value**: Track weekly performance trends
 
 #### **3. Monthly Analysis**
+
 - **Query**: Get data for the last 30 days
 - **Use**: Monthly financial analysis and planning
 - **Business Value**: Long-term performance tracking and budgeting
 
 #### **4. Location Comparison**
+
 - **Query**: Get data for specific locations
 - **Use**: Compare performance between different casino locations
 - **Business Value**: Identify which locations are most profitable
@@ -1090,16 +1190,19 @@ db.meters.find({
 ### **Error Handling and Edge Cases**
 
 #### **Missing Data**
+
 - **Scenario**: A machine hasn't sent meter readings recently
 - **Handling**: Shows $0 for financial fields, but still displays machine info
 - **User Impact**: You can see the machine exists but know it needs attention
 
 #### **Invalid Data**
+
 - **Scenario**: Meter readings have negative values or impossible amounts
 - **Handling**: System validates data and flags suspicious readings
 - **User Impact**: You get warnings about potentially incorrect data
 
 #### **Network Issues**
+
 - **Scenario**: Database connection problems
 - **Handling**: Returns error message with retry options
 - **User Impact**: Clear error messages help you understand what went wrong
@@ -1109,6 +1212,7 @@ This aggregation system essentially **turns raw meter data into business intelli
 ## Database Models
 
 ### Gaming Location Model
+
 ```typescript
 type GamingLocation = {
   _id: string;
@@ -1130,10 +1234,11 @@ type GamingLocation = {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
-}
+};
 ```
 
 ### Machine Model
+
 ```typescript
 type Machine = {
   _id: string;
@@ -1165,18 +1270,20 @@ type Machine = {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
-}
+};
 ```
 
 ## Features
 
 ### Location Management
+
 - **Geographic Coordinates**: GPS coordinates for mapping
 - **Licensee Association**: Link locations to gaming licensees
 - **Profit Sharing**: Configurable profit sharing percentages
 - **Local Server Support**: Support for local server configurations
 
 ### Machine Management
+
 - **Serial Number Tracking**: Unique machine identification
 - **Game Configuration**: Game type and denomination settings
 - **Asset Status**: Active, maintenance, offline status tracking
@@ -1184,6 +1291,7 @@ type Machine = {
 - **SAS Integration**: SAS protocol meter data
 
 ### Performance Tracking
+
 - **Meter Aggregation**: Time-based meter data aggregation
 - **Event Logging**: Detailed machine event tracking
 - **Utilization Metrics**: Machine utilization calculations
@@ -1191,13 +1299,13 @@ type Machine = {
 
 ## Error Codes
 
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request (Invalid input) |
-| 404 | Not Found (Location/Machine not found) |
-| 500 | Internal Server Error |
+| Status Code | Description                            |
+| ----------- | -------------------------------------- |
+| 200         | Success                                |
+| 201         | Created                                |
+| 400         | Bad Request (Invalid input)            |
+| 404         | Not Found (Location/Machine not found) |
+| 500         | Internal Server Error                  |
 
 ## Dependencies
 
@@ -1221,68 +1329,91 @@ type Machine = {
 **Current Implementation Analysis:**
 
 ##### **Location Money In (Drop) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  moneyIn: { $sum: "$movement.drop" }
+  moneyIn: {
+    $sum: '$movement.drop';
+  }
   ```
 - **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
 - **Business Context**: Total physical cash collected across all machines at location
 - **Aggregation**: Groups by `gamingLocation`, sums across time period
 
 ##### **Location Money Out (Total Cancelled Credits) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  moneyOut: { $sum: "$movement.totalCancelledCredits" }
+  moneyOut: {
+    $sum: '$movement.totalCancelledCredits';
+  }
   ```
 - **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
 - **Business Context**: Total credits refunded/cancelled at location
 - **Aggregation**: Groups by `gamingLocation`, sums across time period
 
 ##### **Location Gross Revenue ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+  gross: {
+    $subtract: ['$moneyIn', '$moneyOut'];
+  }
   ```
 - **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
 - **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` per location
 
 ##### **Machine Status by Location ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Online machines per location
   totalOnlineMachines: {
     $sum: {
-      $cond: [
-        { $gte: ["$lastActivity", recentThreshold] },
-        1, 0
-      ]
+      $cond: [{ $gte: ['$lastActivity', recentThreshold] }, 1, 0];
     }
   }
   // Total machines per location
-  totalMachines: { $sum: 1 }
+  totalMachines: {
+    $sum: 1;
+  }
   ```
-- **Business Logic**: 
+- **Business Logic**:
   - **Online**: Machines with `lastActivity >= (currentTime - 3 minutes)`
   - **Total**: Count of all non-deleted machines at location
 - ✅ **CONSISTENT** - Standard machine status calculation
 
 ##### **Machine Aggregation Pipeline ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // MongoDB aggregation pipeline
   [
-    { $match: { gamingLocation: { $in: locationIds }, deletedAt: { $exists: false } } },
-    { $lookup: { from: "meters", localField: "_id", foreignField: "machine" } },
-    { $unwind: "$metersData" },
-    { $match: { "metersData.readAt": { $gte: startDate, $lte: endDate } } },
-    { $group: {
-      _id: "$gamingLocation",
-      totalDrop: { $sum: "$metersData.movement.drop" },
-      totalCancelledCredits: { $sum: "$metersData.movement.totalCancelledCredits" },
-      totalMachines: { $sum: 1 }
-    }},
-    { $addFields: { gross: { $subtract: ["$totalDrop", "$totalCancelledCredits"] } } }
-  ]
+    {
+      $match: {
+        gamingLocation: { $in: locationIds },
+        deletedAt: { $exists: false },
+      },
+    },
+    { $lookup: { from: 'meters', localField: '_id', foreignField: 'machine' } },
+    { $unwind: '$metersData' },
+    { $match: { 'metersData.readAt': { $gte: startDate, $lte: endDate } } },
+    {
+      $group: {
+        _id: '$gamingLocation',
+        totalDrop: { $sum: '$metersData.movement.drop' },
+        totalCancelledCredits: {
+          $sum: '$metersData.movement.totalCancelledCredits',
+        },
+        totalMachines: { $sum: 1 },
+      },
+    },
+    {
+      $addFields: {
+        gross: { $subtract: ['$totalDrop', '$totalCancelledCredits'] },
+      },
+    },
+  ];
   ```
 - **Financial Guide**: Uses `movement.drop` and `movement.totalCancelledCredits` ✅ **MATCHES**
 - **Aggregation Strategy**: Groups machines by location, aggregates financial data
@@ -1290,7 +1421,8 @@ type Machine = {
 #### Machine Individual Calculations vs Financial Metrics Guide
 
 ##### **Individual Machine Revenue ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Per machine aggregation
   machineDrop: { $sum: "$movement.drop" },
@@ -1301,7 +1433,8 @@ type Machine = {
 - **Business Logic**: Individual machine performance within location context
 
 ##### **Machine Collection Meters ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   collectionMeters: {
     metersIn: Number,  // Not clearly defined in current docs
@@ -1314,6 +1447,7 @@ type Machine = {
 ### Mathematical Formulas Summary
 
 #### **Location-Level Aggregations**
+
 ```
 Location Total Drop = Σ(movement.drop) WHERE gamingLocation = locationId
 Location Total Cancelled Credits = Σ(movement.totalCancelledCredits) WHERE gamingLocation = locationId
@@ -1321,6 +1455,7 @@ Location Gross Revenue = Location Total Drop - Location Total Cancelled Credits
 ```
 
 #### **Machine Status by Location**
+
 ```
 Location Online Machines = COUNT(machines WHERE gamingLocation = locationId AND lastActivity >= currentTime - 3min)
 Location Total Machines = COUNT(machines WHERE gamingLocation = locationId AND deletedAt IS NULL)
@@ -1328,13 +1463,15 @@ Location Offline Machines = Location Total Machines - Location Online Machines
 ```
 
 #### **Machine Performance within Location**
+
 ```
 Machine Revenue at Location = Σ(movement.drop) WHERE machine = machineId AND gamingLocation = locationId
-Machine Cancelled Credits = Σ(movement.totalCancelledCredits) WHERE machine = machineId AND gamingLocation = locationId  
+Machine Cancelled Credits = Σ(movement.totalCancelledCredits) WHERE machine = machineId AND gamingLocation = locationId
 Machine Gross = Machine Revenue - Machine Cancelled Credits
 ```
 
 #### **Location Performance Ranking**
+
 ```
 Top Locations by Revenue = ORDER BY Σ(movement.drop) DESC
 Top Locations by Gross = ORDER BY gross DESC
@@ -1342,21 +1479,25 @@ Top Locations by Machine Count = ORDER BY totalMachines DESC
 ```
 
 #### **Collection Meters (Not in Guide)**
+
 ```
 Collection Meters In = collectionMeters.metersIn  // Definition unclear
 Collection Meters Out = collectionMeters.metersOut // Definition unclear
 ```
+
 **Note**: Collection meters calculations are not defined in the financial metrics guide and may need review.
 
 ## Performance Considerations
 
 ### Data Optimization
+
 - **Geographic Filtering**: Efficient coordinate-based queries
 - **Meter Aggregation**: Pre-calculated meter summaries
 - **Indexing**: Proper indexing on frequently queried fields
 - **Soft Deletes**: Maintain data integrity with soft deletion
 
 ### Real-time Updates
+
 - **Status Monitoring**: Real-time machine status updates
 - **Meter Synchronization**: Live meter data integration
 - **Event Streaming**: Real-time event logging

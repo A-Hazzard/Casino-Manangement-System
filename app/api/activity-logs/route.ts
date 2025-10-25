@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../lib/middleware/db";
-import { ActivityLog } from "@/app/api/lib/models/activityLog";
-import { calculateChanges } from "@/app/api/lib/helpers/activityLogger";
-import { getIPInfo, formatIPForDisplay } from "@/lib/utils/ipDetection";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../lib/middleware/db';
+import { ActivityLog } from '@/app/api/lib/models/activityLog';
+import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
+import { getIPInfo, formatIPForDisplay } from '@/lib/utils/ipDetection';
 
-import { generateMongoId } from "@/lib/utils/id";
+import { generateMongoId } from '@/lib/utils/id';
 
 /**
  * GET /api/activity-logs
@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
 
     // Ensure ActivityLog model is available
     if (!ActivityLog) {
-      console.error("ActivityLog model is not available");
+      console.error('ActivityLog model is not available');
       return NextResponse.json(
-        { success: false, error: "ActivityLog model not available" },
+        { success: false, error: 'ActivityLog model not available' },
         { status: 500 }
       );
     }
@@ -26,24 +26,24 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // Pagination parameters
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
 
     // Filter parameters
-    const userId = searchParams.get("userId");
-    const username = searchParams.get("username");
-    const email = searchParams.get("email");
-    const action = searchParams.get("action");
-    const resource = searchParams.get("resource");
-    const resourceId = searchParams.get("resourceId");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const search = searchParams.get("search");
+    const userId = searchParams.get('userId');
+    const username = searchParams.get('username');
+    const email = searchParams.get('email');
+    const action = searchParams.get('action');
+    const resource = searchParams.get('resource');
+    const resourceId = searchParams.get('resourceId');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const search = searchParams.get('search');
 
     // Sort parameters
-    const sortBy = searchParams.get("sortBy") || "timestamp";
-    const sortOrder = searchParams.get("sortOrder") || "desc";
+    const sortBy = searchParams.get('sortBy') || 'timestamp';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     // Build query filter
     const filter: Record<string, unknown> = {};
@@ -53,12 +53,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (username) {
-      filter.username = { $regex: username, $options: "i" };
+      filter.username = { $regex: username, $options: 'i' };
     }
 
     if (email) {
       // More explicit email search - ensure it's searching the right field
-      filter["actor.email"] = { $regex: email, $options: "i" };
+      filter['actor.email'] = { $regex: email, $options: 'i' };
     }
 
     if (action) {
@@ -77,31 +77,31 @@ export async function GET(request: NextRequest) {
       filter.timestamp = {} as Record<string, Date>;
       if (startDate) {
         (filter.timestamp as Record<string, Date>).$gte = new Date(startDate);
-        console.warn("Activity logs start date filter:", new Date(startDate));
+        console.warn('Activity logs start date filter:', new Date(startDate));
       }
       if (endDate) {
         (filter.timestamp as Record<string, Date>).$lte = new Date(endDate);
-        console.warn("Activity logs end date filter:", new Date(endDate));
+        console.warn('Activity logs end date filter:', new Date(endDate));
       }
     }
 
     // Global search across multiple fields (only if no specific filters are applied)
     if (search && !username && !email) {
       filter.$or = [
-        { username: { $regex: search, $options: "i" } },
-        { "actor.email": { $regex: search, $options: "i" } },
-        { resourceName: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { details: { $regex: search, $options: "i" } },
+        { username: { $regex: search, $options: 'i' } },
+        { 'actor.email': { $regex: search, $options: 'i' } },
+        { resourceName: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { details: { $regex: search, $options: 'i' } },
       ];
     }
 
     // Build sort object
     const sort: Record<string, 1 | -1> = {};
-    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
     console.warn(
-      "Activity logs query filter:",
+      'Activity logs query filter:',
       JSON.stringify(filter, null, 2)
     );
 
@@ -131,9 +131,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching activity logs:", error);
+    console.error('Error fetching activity logs:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch activity logs" },
+      { success: false, error: 'Failed to fetch activity logs' },
       { status: 500 }
     );
   }
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     if (!action || !resource || !resourceId || !userId || !username) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields" },
+        { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
       actor: body.actor || {
         id: userId,
         email: username,
-        role: userRole || "user",
+        role: userRole || 'user',
       },
       ipAddress: formattedIP,
       userAgent: ipInfo.userAgent,
@@ -203,9 +203,9 @@ export async function POST(request: NextRequest) {
       data: { activityLog },
     });
   } catch (error) {
-    console.error("Error creating activity log:", error);
+    console.error('Error creating activity log:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to create activity log" },
+      { success: false, error: 'Failed to create activity log' },
       { status: 500 }
     );
   }

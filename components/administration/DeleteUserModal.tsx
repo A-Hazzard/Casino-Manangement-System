@@ -1,12 +1,12 @@
-import { Button } from "@/components/ui/button";
-import type { DeleteUserModalProps } from "@/lib/types/administration";
-import { X } from "lucide-react";
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
+import { Button } from '@/components/ui/button';
+import type { DeleteUserModalProps } from '@/lib/types/administration';
+import { X } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
 
 // Import SVG icons for pre-rendering
-import deleteIcon from "@/public/deleteIcon.svg";
+import deleteIcon from '@/public/deleteIcon.svg';
 
 export default function DeleteUserModal({
   open,
@@ -23,12 +23,12 @@ export default function DeleteUserModal({
       gsap.fromTo(
         modalRef.current,
         { y: 100, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
       );
       gsap.fromTo(
         backdropRef.current,
         { opacity: 0 },
-        { opacity: 1, duration: 0.3, ease: "power2.out" }
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
       );
     }
   }, [open]);
@@ -46,11 +46,11 @@ export default function DeleteUserModal({
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="bg-container rounded-md shadow-lg max-w-md w-full"
-          style={{ opacity: 0, transform: "translateY(-20px)" }}
+          className="w-full max-w-md rounded-md bg-container shadow-lg"
+          style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
-          <div className="p-4 border-b border-border">
-            <div className="flex justify-between items-center">
+          <div className="border-b border-border p-4">
+            <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-buttonActive">
                 Delete User
               </h2>
@@ -59,20 +59,20 @@ export default function DeleteUserModal({
                 onClick={onClose}
                 className="text-grayHighlight hover:bg-buttonInactive/10"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </Button>
             </div>
           </div>
           <div className="p-6">
             <div className="text-center">
-              <div className="flex justify-center mb-4">
+              <div className="mb-4 flex justify-center">
                 <Image src={deleteIcon} alt="Delete" width={64} height={64} />
               </div>
-              <p className="text-lg font-semibold text-grayHighlight mb-4">
+              <p className="mb-4 text-lg font-semibold text-grayHighlight">
                 Are you sure you want to delete user
                 <span className="font-bold text-buttonActive">
-                  {" "}
-                  {user.username}{" "}
+                  {' '}
+                  {user.username}{' '}
                 </span>
                 ?
               </p>
@@ -82,7 +82,7 @@ export default function DeleteUserModal({
               </p>
             </div>
           </div>
-          <div className="p-4 border-t border-border">
+          <div className="border-t border-border p-4">
             <div className="flex justify-center space-x-4">
               <Button
                 onClick={() => {
@@ -93,7 +93,7 @@ export default function DeleteUserModal({
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={loading}
               >
-                {loading ? "Deleting..." : "Delete"}
+                {loading ? 'Deleting...' : 'Delete'}
               </Button>
               <Button
                 onClick={onClose}

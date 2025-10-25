@@ -1,43 +1,43 @@
-import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const ActivityLogSkeleton = () => (
   <div className="w-full">
     {/* Desktop Table View Skeleton */}
-    <div className="hidden lg:block w-full overflow-x-auto rounded-lg">
+    <div className="hidden w-full overflow-x-auto rounded-lg lg:block">
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-button text-white">
-            <th className="p-3 border border-border text-sm">Type</th>
-            <th className="p-3 border border-border text-sm">Event</th>
-            <th className="p-3 border border-border text-sm">Event Code</th>
-            <th className="p-3 border border-border text-sm">Game</th>
-            <th className="p-3 border border-border text-sm">Date</th>
+            <th className="border border-border p-3 text-sm">Type</th>
+            <th className="border border-border p-3 text-sm">Event</th>
+            <th className="border border-border p-3 text-sm">Event Code</th>
+            <th className="border border-border p-3 text-sm">Game</th>
+            <th className="border border-border p-3 text-sm">Date</th>
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: 10 }).map((_, index) => (
             <tr key={index} className="text-center">
-              <td className="p-3 border border-border">
+              <td className="border border-border p-3">
                 <div className="flex items-center justify-center gap-2">
-                  <Skeleton className="w-4 h-4 rounded-full" />
+                  <Skeleton className="h-4 w-4 rounded-full" />
                   <Skeleton className="h-4 w-16" />
                 </div>
               </td>
-              <td className="p-3 border border-border text-left">
+              <td className="border border-border p-3 text-left">
                 <div className="flex items-center justify-between">
                   <Skeleton className="h-4 w-32" />
-                  <Skeleton className="w-4 h-4" />
+                  <Skeleton className="h-4 w-4" />
                 </div>
               </td>
-              <td className="p-3 border border-border">
-                <Skeleton className="h-4 w-8 mx-auto" />
+              <td className="border border-border p-3">
+                <Skeleton className="mx-auto h-4 w-8" />
               </td>
-              <td className="p-3 border border-border">
-                <Skeleton className="h-4 w-24 mx-auto" />
+              <td className="border border-border p-3">
+                <Skeleton className="mx-auto h-4 w-24" />
               </td>
-              <td className="p-3 border border-border">
-                <Skeleton className="h-4 w-32 mx-auto" />
+              <td className="border border-border p-3">
+                <Skeleton className="mx-auto h-4 w-32" />
               </td>
             </tr>
           ))}
@@ -46,24 +46,24 @@ export const ActivityLogSkeleton = () => (
     </div>
 
     {/* Mobile Cards View Skeleton */}
-    <div className="block lg:hidden space-y-4 w-full">
+    <div className="block w-full space-y-4 lg:hidden">
       {Array.from({ length: 5 }).map((_, index) => (
         <div
           key={index}
-          className="bg-container rounded-lg shadow-md overflow-hidden w-full border border-border"
+          className="w-full overflow-hidden rounded-lg border border-border bg-container shadow-md"
         >
-          <div className="bg-button text-white px-4 py-3 font-semibold text-sm">
+          <div className="bg-button px-4 py-3 text-sm font-semibold text-white">
             <div className="flex items-center justify-between">
               <Skeleton className="h-4 w-20" />
-              <Skeleton className="w-4 h-4" />
+              <Skeleton className="h-4 w-4" />
             </div>
           </div>
-          <div className="p-4 flex flex-col gap-3">
-            <div className="flex justify-between items-start">
+          <div className="flex flex-col gap-3 p-4">
+            <div className="flex items-start justify-between">
               <Skeleton className="h-4 w-16" />
               <div className="flex items-center gap-2">
                 <Skeleton className="h-4 w-32" />
-                <Skeleton className="w-4 h-4" />
+                <Skeleton className="h-4 w-4" />
               </div>
             </div>
             <div className="flex justify-between">

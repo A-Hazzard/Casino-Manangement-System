@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
-} from "@radix-ui/react-icons";
+} from '@radix-ui/react-icons';
 
 type CabinetsPaginationProps = {
   currentPage: number;
@@ -51,11 +51,11 @@ export default function CabinetsPagination({
         >
           <ChevronLeftIcon className="h-4 w-4" />
         </Button>
-        
+
         <span className="px-3 py-1 text-sm">
           Page {currentPage + 1} of {totalPages}
         </span>
-        
+
         <Button
           variant="outline"
           size="sm"

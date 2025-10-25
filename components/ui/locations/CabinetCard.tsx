@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import React, { useEffect, useRef } from "react";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import gsap from "gsap";
-import { useParams, useRouter } from "next/navigation";
-import { formatCurrency } from "@/lib/utils";
-import { CabinetCardProps } from "@/lib/types/cardProps";
-import Image from "next/image";
-import { motion } from "framer-motion";
+import React, { useEffect, useRef } from 'react';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import gsap from 'gsap';
+import { useParams, useRouter } from 'next/navigation';
+import { formatCurrency } from '@/lib/utils';
+import { CabinetCardProps } from '@/lib/types/cardProps';
+import Image from 'next/image';
+import { motion } from 'framer-motion';
 
 // Import SVG icons for pre-rendering
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 export default function CabinetCard(props: CabinetCardProps) {
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
@@ -40,7 +40,7 @@ export default function CabinetCard(props: CabinetCardProps) {
             scale: 1,
             y: 0,
             duration: 0.4,
-            ease: "back.out(1.5)",
+            ease: 'back.out(1.5)',
           }
         );
       }
@@ -56,8 +56,8 @@ export default function CabinetCard(props: CabinetCardProps) {
       } else {
         if (!locationId) {
           // Log error for debugging in development
-          if (process.env.NODE_ENV === "development") {
-            console.error("Location ID not found for navigation.");
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Location ID not found for navigation.');
           }
           return;
         }
@@ -69,30 +69,30 @@ export default function CabinetCard(props: CabinetCardProps) {
     e.stopPropagation(); // Prevent card click
     const cabinetData = {
       _id: props._id,
-      assetNumber: props.assetNumber || "",
-      serialNumber: props.serialNumber || "",
-      game: props.game || "",
-      locationId: props.locationId || "",
-      locationName: props.locationName || "",
-      smbId: props.smbId || "",
-      relayId: props.smbId || "",
+      assetNumber: props.assetNumber || '',
+      serialNumber: props.serialNumber || '',
+      game: props.game || '',
+      locationId: props.locationId || '',
+      locationName: props.locationName || '',
+      smbId: props.smbId || '',
+      relayId: props.smbId || '',
       moneyIn: props.moneyIn || 0,
       moneyOut: props.moneyOut || 0,
       gross: props.gross || 0,
       jackpot: props.jackpot || 0,
       lastOnline: props.lastOnline,
-      installedGame: props.game || "",
-      accountingDenomination: "1",
-      collectionMultiplier: "1",
-      status: props.status || "functional",
-      assetStatus: props.status || "functional",
-      gameType: "slot",
+      installedGame: props.game || '',
+      accountingDenomination: '1',
+      collectionMultiplier: '1',
+      status: props.status || 'functional',
+      assetStatus: props.status || 'functional',
+      gameType: 'slot',
       isCronosMachine: false,
-      cabinetType: "Standing",
-      gamingLocation: props.locationId || "",
+      cabinetType: 'Standing',
+      gamingLocation: props.locationId || '',
       createdAt: new Date(),
       updatedAt: new Date(),
-      custom: { name: props.serialNumber || props._id || "Unknown" },
+      custom: { name: props.serialNumber || props._id || 'Unknown' },
     };
     openEditModal(cabinetData);
   };
@@ -101,55 +101,55 @@ export default function CabinetCard(props: CabinetCardProps) {
     e.stopPropagation(); // Prevent card click
     const cabinetData = {
       _id: props._id,
-      assetNumber: props.assetNumber || "",
-      serialNumber: props.serialNumber || "",
-      game: props.game || "",
-      locationId: props.locationId || "",
-      locationName: props.locationName || "",
-      smbId: props.smbId || "",
-      relayId: props.smbId || "",
+      assetNumber: props.assetNumber || '',
+      serialNumber: props.serialNumber || '',
+      game: props.game || '',
+      locationId: props.locationId || '',
+      locationName: props.locationName || '',
+      smbId: props.smbId || '',
+      relayId: props.smbId || '',
       moneyIn: props.moneyIn || 0,
       moneyOut: props.moneyOut || 0,
       gross: props.gross || 0,
       jackpot: props.jackpot || 0,
       lastOnline: props.lastOnline,
-      installedGame: props.game || "",
-      accountingDenomination: "1",
-      collectionMultiplier: "1",
-      status: props.status || "functional",
-      assetStatus: props.status || "functional",
-      gameType: "slot",
+      installedGame: props.game || '',
+      accountingDenomination: '1',
+      collectionMultiplier: '1',
+      status: props.status || 'functional',
+      assetStatus: props.status || 'functional',
+      gameType: 'slot',
       isCronosMachine: false,
-      cabinetType: "Standing",
-      gamingLocation: props.locationId || "",
+      cabinetType: 'Standing',
+      gamingLocation: props.locationId || '',
       createdAt: new Date(),
       updatedAt: new Date(),
-      custom: { name: props.serialNumber || props._id || "Unknown" },
+      custom: { name: props.serialNumber || props._id || 'Unknown' },
     };
     openDeleteModal(cabinetData);
   };
 
   // Determine if cabinet is online
-  const isOnline = props.status === "functional" || props.online === true;
+  const isOnline = props.status === 'functional' || props.online === true;
 
   return (
     <div
       ref={cardRef}
-      className="bg-white shadow-sm rounded-lg p-4 w-full mx-auto relative cursor-pointer hover:shadow-md transition-shadow border border-gray-100 mb-4"
-      onClick={(e) => {
+      className="relative mx-auto mb-4 w-full cursor-pointer rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+      onClick={e => {
         // Only handle card click if not clicking action buttons
-        if (!(e.target as HTMLElement).closest(".action-buttons")) {
+        if (!(e.target as HTMLElement).closest('.action-buttons')) {
           handleCardClick();
         }
       }}
     >
       {/* Header with Asset Number and Status Indicator */}
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-base font-semibold flex items-center gap-1">
-          {props.assetNumber || "(No Asset #)"}
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="flex items-center gap-1 text-base font-semibold">
+          {props.assetNumber || '(No Asset #)'}
           <motion.span
-            className={`w-2 h-2 rounded-full ${
-              isOnline ? "bg-button" : "bg-destructive"
+            className={`h-2 w-2 rounded-full ${
+              isOnline ? 'bg-button' : 'bg-destructive'
             } ml-1`}
             animate={{ scale: [1, 1.2, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
@@ -161,16 +161,16 @@ export default function CabinetCard(props: CabinetCardProps) {
             width={20}
             height={20}
             alt="Edit"
-            className="w-5 h-5"
+            className="h-5 w-5"
           />
         </button>
       </div>
 
       {/* SMIB ID and Location */}
       <div className="mb-3">
-        <p className="text-sm text-button">SMIB ID: {props.smbId || "N/A"}</p>
-        <p className="text-sm text-grayHighlight font-bold">
-          {props.locationName || "Unknown Location"}
+        <p className="text-sm text-button">SMIB ID: {props.smbId || 'N/A'}</p>
+        <p className="text-sm font-bold text-grayHighlight">
+          {props.locationName || 'Unknown Location'}
         </p>
       </div>
 
@@ -198,7 +198,7 @@ export default function CabinetCard(props: CabinetCardProps) {
           <span>Gross</span>
           <span
             className={`break-words text-right ${
-              (props.gross || 0) < 0 ? "text-destructive" : "text-button"
+              (props.gross || 0) < 0 ? 'text-destructive' : 'text-button'
             }`}
           >
             {formatCurrency(props.gross || 0)}
@@ -207,14 +207,14 @@ export default function CabinetCard(props: CabinetCardProps) {
       </div>
 
       {/* Hidden delete button - only shown in edit mode or on hover */}
-      <div className="hidden absolute bottom-2 right-2 action-buttons">
+      <div className="action-buttons absolute bottom-2 right-2 hidden">
         <button onClick={handleDeleteClick} className="text-destructive">
           <Image
             src={deleteIcon}
             width={20}
             height={20}
             alt="Delete"
-            className="w-5 h-5"
+            className="h-5 w-5"
           />
         </button>
       </div>

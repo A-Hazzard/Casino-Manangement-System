@@ -1,4 +1,4 @@
-import type { CollectionDocument } from "@/lib/types/collections";
+import type { CollectionDocument } from '@/lib/types/collections';
 
 /**
  * Generate machine metrics data with pagination
@@ -29,10 +29,10 @@ export function generateMachineMetricsData(
     };
   }
 
-  const metricsData = collections.map((collection) => ({
-    id: collection._id || collection.machineId || "",
+  const metricsData = collections.map(collection => ({
+    id: collection._id || collection.machineId || '',
     machineCustomName:
-      collection.machineCustomName || collection.machineId || "Unknown",
+      collection.machineCustomName || collection.machineId || 'Unknown',
     droppedCancelled: `${collection.movement?.metersIn || 0} / ${
       collection.movement?.metersOut || 0
     }`,
@@ -43,13 +43,13 @@ export function generateMachineMetricsData(
       collection.sasMeters.gross === undefined ||
       collection.sasMeters.gross === null ||
       collection.sasMeters.gross === 0
-        ? "No SAS Data"
+        ? 'No SAS Data'
         : (
             (collection.movement?.gross ?? 0) -
             (collection.sasMeters?.gross ?? 0)
           ).toLocaleString(),
-    sasStartTime: collection.sasMeters?.sasStartTime || "-",
-    sasEndTime: collection.sasMeters?.sasEndTime || "-",
+    sasStartTime: collection.sasMeters?.sasStartTime || '-',
+    sasEndTime: collection.sasMeters?.sasEndTime || '-',
   }));
 
   const totalPages = Math.ceil(metricsData.length / itemsPerPage);
@@ -99,9 +99,9 @@ export function calculateSasMetricsTotals(collections: CollectionDocument[]): {
  * Format currency for display
  */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
   }).format(amount);
 }
 
@@ -113,7 +113,7 @@ export function validateCollectionReportData(
 ): boolean {
   return !!(
     data &&
-    typeof data === "object" &&
+    typeof data === 'object' &&
     data.reportId &&
     data.locationName &&
     (data.locationMetrics || data.sasMetrics || data.machineMetrics)

@@ -1,29 +1,29 @@
-import { NextRequest } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
+import { NextRequest } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import {
   getAllLicensees,
   formatLicenseesForResponse,
   createLicensee as createLicenseeHelper,
   updateLicensee as updateLicenseeHelper,
   deleteLicensee as deleteLicenseeHelper,
-} from "@/app/api/lib/helpers/licensees";
-import { apiLogger } from "@/app/api/lib/utils/logger";
+} from '@/app/api/lib/helpers/licensees';
+import { apiLogger } from '@/app/api/lib/utils/logger';
 
 export async function GET(request: NextRequest) {
-  const context = apiLogger.createContext(request, "/api/licensees");
+  const context = apiLogger.createContext(request, '/api/licensees');
   apiLogger.startLogging();
 
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
-    const licenseeFilter = searchParams.get("licensee");
+    const licenseeFilter = searchParams.get('licensee');
 
     // Get user authentication info
     const authResponse = await fetch(
       `${request.nextUrl.origin}/api/auth/token`,
       {
         headers: {
-          cookie: request.headers.get("cookie") || "",
+          cookie: request.headers.get('cookie') || '',
         },
       }
     );
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
           `${request.nextUrl.origin}/api/users/${authData.userId}`,
           {
             headers: {
-              cookie: request.headers.get("cookie") || "",
+              cookie: request.headers.get('cookie') || '',
             },
           }
         );
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
           if (userData.success && userData.user) {
             userRoles = userData.user.roles || [];
             userLocations =
-              userData.user.resourcePermissions?.["gaming-locations"]
+              userData.user.resourcePermissions?.['gaming-locations']
                 ?.resources || [];
           }
         }
@@ -62,18 +62,18 @@ export async function GET(request: NextRequest) {
     // Apply location-based filtering for non-admin users
     if (
       userRoles.length > 0 &&
-      !userRoles.includes("evolution admin") &&
-      !userRoles.includes("admin")
+      !userRoles.includes('evolution admin') &&
+      !userRoles.includes('admin')
     ) {
       // Get all locations to determine licensee relationships
       // We need full location data including licensee information
       const response = await fetch(`${request.nextUrl.origin}/api/locations`, {
         headers: {
-          cookie: request.headers.get("cookie") || "",
+          cookie: request.headers.get('cookie') || '',
         },
       });
 
-      let allLocations: Array<{ _id: string; "rel.licencee"?: string }> = [];
+      let allLocations: Array<{ _id: string; 'rel.licencee'?: string }> = [];
       if (response.ok) {
         const data = await response.json();
         allLocations = data.locations || [];
@@ -81,30 +81,30 @@ export async function GET(request: NextRequest) {
 
       // Create a map of location ID to licensee ID
       const locationToLicenseeMap = new Map<string, string>();
-      allLocations.forEach((location) => {
-        if (location["rel.licencee"]) {
-          locationToLicenseeMap.set(location._id, location["rel.licencee"]);
+      allLocations.forEach(location => {
+        if (location['rel.licencee']) {
+          locationToLicenseeMap.set(location._id, location['rel.licencee']);
         }
       });
 
       // Filter licensees based on user's accessible locations
       const accessibleLicenseeIds = new Set<string>();
-      userLocations.forEach((locationId) => {
+      userLocations.forEach(locationId => {
         const licenseeId = locationToLicenseeMap.get(locationId);
         if (licenseeId) {
           accessibleLicenseeIds.add(licenseeId);
         }
       });
 
-      formattedLicensees = formattedLicensees.filter((licensee) => {
+      formattedLicensees = formattedLicensees.filter(licensee => {
         const licenseeId = (licensee as Record<string, unknown>)._id as string;
         return accessibleLicenseeIds.has(licenseeId);
       });
     }
 
     // Filter by licensee if provided
-    if (licenseeFilter && licenseeFilter !== "all") {
-      formattedLicensees = formattedLicensees.filter((licensee) => {
+    if (licenseeFilter && licenseeFilter !== 'all') {
+      formattedLicensees = formattedLicensees.filter(licensee => {
         const licenseeId = (licensee as Record<string, unknown>)._id as string;
         const licenseeName = (licensee as Record<string, unknown>)
           .name as string;
@@ -121,10 +121,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    apiLogger.logError(context, "Failed to fetch licensees", errorMessage);
+      error instanceof Error ? error.message : 'Unknown error';
+    apiLogger.logError(context, 'Failed to fetch licensees', errorMessage);
     return new Response(
-      JSON.stringify({ success: false, message: "Failed to fetch licensees" }),
+      JSON.stringify({ success: false, message: 'Failed to fetch licensees' }),
       { status: 500 }
     );
   }
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Name and country are required",
+        message: 'Name and country are required',
       }),
       { status: 400 }
     );
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (err: unknown) {
     const error = err as Error & { message?: string };
-    console.error("Error creating licensee:", error);
+    console.error('Error creating licensee:', error);
     return new Response(
       JSON.stringify({ success: false, message: error.message }),
       { status: 500 }
@@ -183,7 +183,7 @@ export async function PUT(request: NextRequest) {
     return new Response(
       JSON.stringify({
         success: false,
-        message: "ID is required",
+        message: 'ID is required',
       }),
       { status: 400 }
     );
@@ -225,7 +225,7 @@ export async function DELETE(request: NextRequest) {
 
   if (!_id) {
     return new Response(
-      JSON.stringify({ success: false, message: "Licensee ID is required" }),
+      JSON.stringify({ success: false, message: 'Licensee ID is required' }),
       { status: 400 }
     );
   }

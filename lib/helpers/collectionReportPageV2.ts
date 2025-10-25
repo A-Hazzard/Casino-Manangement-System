@@ -1,13 +1,13 @@
 import type {
   CollectionReportRow,
   SchedulerTableRow,
-} from "@/lib/types/componentProps";
-import type { CollectionView } from "@/lib/types/collection";
-import type { CollectionDocument } from "@/lib/types/collections";
-import { formatDateString } from "@/lib/utils/dateUtils";
-import { fetchSchedulersWithFilters } from "@/lib/helpers/schedulers";
-import type { LocationSelectItem } from "@/lib/types/location";
-import type { DateRange as RDPDateRange } from "react-day-picker";
+} from '@/lib/types/componentProps';
+import type { CollectionView } from '@/lib/types/collection';
+import type { CollectionDocument } from '@/lib/types/collections';
+import { formatDateString } from '@/lib/utils/dateUtils';
+import { fetchSchedulersWithFilters } from '@/lib/helpers/schedulers';
+import type { LocationSelectItem } from '@/lib/types/location';
+import type { DateRange as RDPDateRange } from 'react-day-picker';
 import { parse } from 'date-fns';
 
 /**
@@ -35,17 +35,17 @@ export function syncStateWithURL(
   activeTab: CollectionView,
   setActiveTab: (tab: CollectionView) => void
 ) {
-  const section = searchParams?.get("section");
-  if (section === "monthly" && activeTab !== "monthly") {
-    setActiveTab("monthly");
-  } else if (section === "manager" && activeTab !== "manager") {
-    setActiveTab("manager");
-  } else if (section === "collector" && activeTab !== "collector") {
-    setActiveTab("collector");
-  } else if (section === "collection" && activeTab !== "collection") {
-    setActiveTab("collection");
-  } else if (!section && activeTab !== "collection") {
-    setActiveTab("collection");
+  const section = searchParams?.get('section');
+  if (section === 'monthly' && activeTab !== 'monthly') {
+    setActiveTab('monthly');
+  } else if (section === 'manager' && activeTab !== 'manager') {
+    setActiveTab('manager');
+  } else if (section === 'collector' && activeTab !== 'collector') {
+    setActiveTab('collector');
+  } else if (section === 'collection' && activeTab !== 'collection') {
+    setActiveTab('collection');
+  } else if (!section && activeTab !== 'collection') {
+    setActiveTab('collection');
   }
 }
 
@@ -60,7 +60,7 @@ export function handlePaginationWithAnimation(
   animatePagination: (ref: React.RefObject<HTMLDivElement | null>) => void
 ) {
   setPage(pageNumber);
-  if (activeTab === "collection") {
+  if (activeTab === 'collection') {
     animatePagination(paginationRef);
   }
 }
@@ -73,9 +73,9 @@ export function resetSchedulerFilters(
   setSelectedCollector: (collector: string) => void,
   setSelectedStatus: (status: string) => void
 ) {
-  setSelectedSchedulerLocation("all");
-  setSelectedCollector("all");
-  setSelectedStatus("all");
+  setSelectedSchedulerLocation('all');
+  setSelectedCollector('all');
+  setSelectedStatus('all');
 }
 
 /**
@@ -86,21 +86,19 @@ export function resetCollectorFilters(
   setSelectedCollectorFilter: (filter: string) => void,
   setSelectedCollectorStatus: (status: string) => void
 ) {
-  setSelectedCollectorLocation("all");
-  setSelectedCollectorFilter("all");
-  setSelectedCollectorStatus("all");
+  setSelectedCollectorLocation('all');
+  setSelectedCollectorFilter('all');
+  setSelectedCollectorStatus('all');
 }
 
 /**
  * Applies CSS animation to pagination controls
  */
-export function animatePagination(
-  ref: React.RefObject<HTMLDivElement | null>
-) {
+export function animatePagination(ref: React.RefObject<HTMLDivElement | null>) {
   if (ref.current) {
     // Add CSS animation class
     ref.current.classList.add('animate-pulse');
-    
+
     // Remove animation class after animation completes
     setTimeout(() => {
       if (ref.current) {
@@ -117,15 +115,15 @@ export function animateTableRows(
   tableRef: React.RefObject<HTMLDivElement | null>
 ) {
   if (tableRef.current) {
-    const tableRows = tableRef.current.querySelectorAll("tbody tr");
-    
+    const tableRows = tableRef.current.querySelectorAll('tbody tr');
+
     // Add staggered animation classes
     tableRows.forEach((row, index) => {
       const element = row as HTMLElement;
       element.style.opacity = '0';
       element.style.transform = 'translateY(15px)';
       element.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-      
+
       // Stagger the animations
       setTimeout(() => {
         element.style.opacity = '1';
@@ -140,15 +138,15 @@ export function animateTableRows(
  */
 export function animateCards(cardsRef: React.RefObject<HTMLDivElement | null>) {
   if (cardsRef.current) {
-    const cards = cardsRef.current.querySelectorAll(".card-item");
-    
+    const cards = cardsRef.current.querySelectorAll('.card-item');
+
     // Add staggered animation classes
     cards.forEach((card, index) => {
       const element = card as HTMLElement;
       element.style.opacity = '0';
       element.style.transform = 'scale(0.95) translateY(15px)';
       element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-      
+
       // Stagger the animations
       setTimeout(() => {
         element.style.opacity = '1';
@@ -169,7 +167,7 @@ export function animateContentTransition(
     element.style.opacity = '0';
     element.style.transform = 'translateY(20px)';
     element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    
+
     // Trigger animation
     requestAnimationFrame(() => {
       element.style.opacity = '1';
@@ -190,16 +188,22 @@ export function filterCollectionReports(
   dateRange?: RDPDateRange
 ): CollectionReportRow[] {
   console.warn('[filterCollectionReports] Starting filter process');
-  console.warn(`[filterCollectionReports] selectedLocation: "${selectedLocation}"`);
+  console.warn(
+    `[filterCollectionReports] selectedLocation: "${selectedLocation}"`
+  );
   console.warn(`[filterCollectionReports] search: "${search}"`);
-  console.warn(`[filterCollectionReports] showUncollectedOnly: ${showUncollectedOnly}`);
-  console.warn(`[filterCollectionReports] locations count: ${locations.length}`);
+  console.warn(
+    `[filterCollectionReports] showUncollectedOnly: ${showUncollectedOnly}`
+  );
+  console.warn(
+    `[filterCollectionReports] locations count: ${locations.length}`
+  );
   console.warn(`[filterCollectionReports] reports count: ${reports.length}`);
 
   const filtered = reports.filter((r, index) => {
     // Location matching logic
-    const isAllLocations = selectedLocation === "all";
-    const foundLocation = locations.find((l) => l._id === selectedLocation);
+    const isAllLocations = selectedLocation === 'all';
+    const foundLocation = locations.find(l => l._id === selectedLocation);
     const locationName = foundLocation?.name;
     const matchesLocation = isAllLocations || r.location === locationName;
 
@@ -231,22 +235,28 @@ export function filterCollectionReports(
         reportDate = null;
       }
       if (reportDate) {
-        matchesDate = reportDate >= dateRange.from && reportDate <= dateRange.to;
+        matchesDate =
+          reportDate >= dateRange.from && reportDate <= dateRange.to;
       } else {
         matchesDate = true;
       }
     }
 
-    const finalMatch = matchesLocation && matchesSearch && matchesUncollected && matchesDate;
-    
+    const finalMatch =
+      matchesLocation && matchesSearch && matchesUncollected && matchesDate;
+
     if (index < 3) {
-      console.warn(`  - Final match: ${finalMatch} (location: ${matchesLocation}, search: ${matchesSearch}, uncollected: ${matchesUncollected}, date: ${matchesDate})`);
+      console.warn(
+        `  - Final match: ${finalMatch} (location: ${matchesLocation}, search: ${matchesSearch}, uncollected: ${matchesUncollected}, date: ${matchesDate})`
+      );
     }
 
     return finalMatch;
   });
 
-  console.warn(`[filterCollectionReports] Filtered ${filtered.length} reports from ${reports.length} total`);
+  console.warn(
+    `[filterCollectionReports] Filtered ${filtered.length} reports from ${reports.length} total`
+  );
   return filtered;
 }
 
@@ -284,21 +294,21 @@ export async function fetchAndFormatSchedulers(
   collectors: string[];
 }> {
   const locationName =
-    selectedSchedulerLocation !== "all"
-      ? locations.find((loc) => loc._id === selectedSchedulerLocation)?.name
+    selectedSchedulerLocation !== 'all'
+      ? locations.find(loc => loc._id === selectedSchedulerLocation)?.name
       : undefined;
 
   const data = await fetchSchedulersWithFilters({
     location: locationName,
-    collector: selectedCollector !== "all" ? selectedCollector : undefined,
-    status: selectedStatus !== "all" ? selectedStatus : undefined,
+    collector: selectedCollector !== 'all' ? selectedCollector : undefined,
+    status: selectedStatus !== 'all' ? selectedStatus : undefined,
   });
 
   const uniqueCollectors = Array.from(
-    new Set(data.map((item) => item.collector))
+    new Set(data.map(item => item.collector))
   ).filter(Boolean);
 
-  const formattedData: SchedulerTableRow[] = data.map((item) => ({
+  const formattedData: SchedulerTableRow[] = data.map(item => ({
     id: item._id,
     collector: item.collector,
     location: item.location,

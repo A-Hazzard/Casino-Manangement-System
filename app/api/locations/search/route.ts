@@ -1,56 +1,56 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import {
   LocationResponse,
   MetricsMatchStage,
   MeterMatchStage,
   Metric,
-} from "@/lib/types/location";
+} from '@/lib/types/location';
 
 // Main search endpoint for dashboard location search
 export async function GET(request: NextRequest) {
   try {
     const searchParams = new URL(request.url).searchParams;
-    const licencee = searchParams.get("licencee") ?? "";
-    const timePeriod = searchParams.get("timePeriod") ?? "today";
+    const licencee = searchParams.get('licencee') ?? '';
+    const timePeriod = searchParams.get('timePeriod') ?? 'today';
 
     // Fix: Allow capital or lowercase for time period case
     const timePeriodNormalized = timePeriod.toLowerCase();
 
     const metricsMatch: MetricsMatchStage = {};
-    if (licencee) metricsMatch["rel.licencee"] = licencee;
-    if (timePeriodNormalized) metricsMatch["timePeriod"] = timePeriodNormalized;
+    if (licencee) metricsMatch['rel.licencee'] = licencee;
+    if (timePeriodNormalized) metricsMatch['timePeriod'] = timePeriodNormalized;
 
-    const search = searchParams.get("search")?.trim() || "";
+    const search = searchParams.get('search')?.trim() || '';
 
     // Build location matching
     const locationMatch: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
 
     if (search) {
-      locationMatch.name = { $regex: search, $options: "i" };
+      locationMatch.name = { $regex: search, $options: 'i' };
     }
-    if (licencee) locationMatch["rel.licencee"] = licencee;
+    if (licencee) locationMatch['rel.licencee'] = licencee;
 
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
-        { success: false, message: "DB connection failed" },
+        { success: false, message: 'DB connection failed' },
         { status: 500 }
       );
     }
 
     const { searchParams: searchParamsFromRequest } = new URL(request.url);
     const startDate = new Date(
-      searchParamsFromRequest.get("startDate") ??
+      searchParamsFromRequest.get('startDate') ??
         Date.now() - 30 * 24 * 60 * 60 * 1000
     );
     const endDate = new Date(
-      searchParamsFromRequest.get("endDate") ?? Date.now()
+      searchParamsFromRequest.get('endDate') ?? Date.now()
     );
 
     // Build metrics aggregation
@@ -58,48 +58,50 @@ export async function GET(request: NextRequest) {
       readAt: { $gte: startDate, $lte: endDate },
     };
     if (licencee) {
-      matchStage["rel.licencee"] = licencee;
+      matchStage['rel.licencee'] = licencee;
     }
 
     const metrics = await db
-      .collection("meters")
+      .collection('meters')
       .aggregate<Metric>([
         // Stage 1: Filter meter records by date range and licencee
         { $match: matchStage },
         // Stage 2: Group by location to calculate financial metrics
         {
           $group: {
-            _id: "$location",
-            moneyIn: { $sum: "$movement.drop" },
-            moneyOut: { $sum: "$movement.totalCancelledCredits" },
+            _id: '$location',
+            moneyIn: { $sum: '$movement.drop' },
+            moneyOut: { $sum: '$movement.totalCancelledCredits' },
           },
         },
         // Stage 3: Calculate gross revenue (money in minus money out)
-        { $addFields: { gross: { $subtract: ["$moneyIn", "$moneyOut"] } } },
+        { $addFields: { gross: { $subtract: ['$moneyIn', '$moneyOut'] } } },
       ])
       .toArray();
 
-    const metricsMap = new Map<string, Metric>(metrics.map((m: Metric) => [m._id, m]));
+    const metricsMap = new Map<string, Metric>(
+      metrics.map((m: Metric) => [m._id, m])
+    );
 
     const locations = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .aggregate<LocationResponse>([
         // Stage 1: Filter locations by deletion status, search term, and licencee
         { $match: locationMatch },
         // Stage 2: Lookup machine statistics for each location
         {
           $lookup: {
-            from: "machines",
-            let: { id: "$_id" },
+            from: 'machines',
+            let: { id: '$_id' },
             pipeline: [
               // Stage 2a: Match machines for this location (excluding deleted ones)
               {
                 $match: {
-                  $expr: { $eq: ["$gamingLocation", "$$id"] },
+                  $expr: { $eq: ['$gamingLocation', '$$id'] },
                   $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
-      ],
+                    { deletedAt: null },
+                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                  ],
                 },
               },
               // Stage 2b: Group machines to calculate counts and online status
@@ -112,7 +114,7 @@ export async function GET(request: NextRequest) {
                       $cond: [
                         {
                           $gt: [
-                            "$lastActivity",
+                            '$lastActivity',
                             new Date(Date.now() - 3 * 60 * 1000),
                           ],
                         },
@@ -124,7 +126,7 @@ export async function GET(request: NextRequest) {
                 },
               },
             ],
-            as: "machineStats",
+            as: 'machineStats',
           },
         },
         // Stage 3: Add computed fields for machine statistics and location flags
@@ -132,18 +134,18 @@ export async function GET(request: NextRequest) {
           $addFields: {
             totalMachines: {
               $ifNull: [
-                { $arrayElemAt: ["$machineStats.totalMachines", 0] },
+                { $arrayElemAt: ['$machineStats.totalMachines', 0] },
                 0,
               ],
             },
             onlineMachines: {
               $ifNull: [
-                { $arrayElemAt: ["$machineStats.onlineMachines", 0] },
+                { $arrayElemAt: ['$machineStats.onlineMachines', 0] },
                 0,
               ],
             },
-            isLocalServer: { $ifNull: ["$isLocalServer", false] },
-            hasSmib: { $ifNull: ["$hasSmib", false] },
+            isLocalServer: { $ifNull: ['$isLocalServer', false] },
+            hasSmib: { $ifNull: ['$hasSmib', false] },
           },
         },
         // Stage 4: Project final fields for location response
@@ -187,9 +189,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("🔥 Search Metrics API Error:", error);
+    console.error('🔥 Search Metrics API Error:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }

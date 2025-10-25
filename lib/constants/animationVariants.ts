@@ -1,4 +1,4 @@
-import { Variants } from "framer-motion";
+import { Variants } from 'framer-motion';
 
 /**
  * Animation variants for expanding/collapsing configuration content.
@@ -6,7 +6,7 @@ import { Variants } from "framer-motion";
  */
 export const configContentVariants: Variants = {
   hidden: { opacity: 0, height: 0 },
-  visible: { opacity: 1, height: "auto" },
+  visible: { opacity: 1, height: 'auto' },
 };
 
 /**
@@ -18,7 +18,7 @@ export const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      when: "beforeChildren",
+      when: 'beforeChildren',
       staggerChildren: 0.1,
     },
   },

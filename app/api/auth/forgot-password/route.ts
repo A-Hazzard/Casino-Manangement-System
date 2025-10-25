@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { sendPasswordResetEmail } from "../../lib/helpers/auth";
-import { validateEmail } from "../../lib/utils/validation";
-import { connectDB } from "../../lib/middleware/db";
-import type { AuthResult } from "@/shared/types";
+import { NextResponse } from 'next/server';
+import { sendPasswordResetEmail } from '../../lib/helpers/auth';
+import { validateEmail } from '../../lib/utils/validation';
+import { connectDB } from '../../lib/middleware/db';
+import type { AuthResult } from '@/shared/types';
 
 /**
  * Handles password reset requests by sending a reset token via email.
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
   if (!validateEmail(email)) {
     return NextResponse.json(
-      { success: false, message: "Invalid email format." },
+      { success: false, message: 'Invalid email format.' },
       { status: 400 }
     );
   }
@@ -25,11 +25,11 @@ export async function POST(request: Request) {
   if (result.success) {
     return NextResponse.json({
       success: true,
-      message: "Reset instructions sent.",
+      message: 'Reset instructions sent.',
     });
   } else {
     return NextResponse.json(
-      { success: false, message: result.message || "Failed to send email." },
+      { success: false, message: result.message || 'Failed to send email.' },
       { status: 500 }
     );
   }

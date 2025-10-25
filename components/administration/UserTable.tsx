@@ -1,6 +1,6 @@
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -8,15 +8,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import type { User, SortKey } from "@/lib/types/administration";
-import defaultAvatar from "@/public/defaultAvatar.svg";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+} from '@/components/ui/table';
+import type { User, SortKey } from '@/lib/types/administration';
+import defaultAvatar from '@/public/defaultAvatar.svg';
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 type UserTableProps = {
   users: User[];
-  sortConfig: { key: SortKey; direction: "ascending" | "descending" } | null;
+  sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null;
   requestSort: (key: SortKey) => void;
   onEdit?: (user: User) => void;
   onDelete?: (user: User) => void;
@@ -30,22 +30,22 @@ export default function UserTable({
   onDelete,
 }: UserTableProps) {
   return (
-    <div className="overflow-x-auto hidden lg:block bg-white rounded-lg shadow-md">
+    <div className="hidden overflow-x-auto rounded-lg bg-white shadow-md lg:block">
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            {["NAME", "USERNAME", "EMAIL ADDRESS", "ENABLED", "ACTIONS"].map(
-              (col) => {
-                const sortKey = col.toLowerCase().replace(" ", "") as SortKey;
+            {['NAME', 'USERNAME', 'EMAIL ADDRESS', 'ENABLED', 'ACTIONS'].map(
+              col => {
+                const sortKey = col.toLowerCase().replace(' ', '') as SortKey;
                 return (
                   <TableHead
                     key={col}
-                    className="text-white font-semibold cursor-pointer select-none text-left"
+                    className="cursor-pointer select-none text-left font-semibold text-white"
                     onClick={() => requestSort(sortKey)}
                   >
                     {col}
                     {sortConfig?.key === sortKey &&
-                      (sortConfig.direction === "ascending" ? " ▲" : " ▼")}
+                      (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                   </TableHead>
                 );
               }
@@ -53,16 +53,16 @@ export default function UserTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.map((user) => (
+          {users.map(user => (
             <TableRow
               key={user.username}
-              className="hover:bg-gray-50 transition-colors"
+              className="transition-colors hover:bg-gray-50"
             >
-              <TableCell className="font-medium text-gray-700 text-left">
+              <TableCell className="text-left font-medium text-gray-700">
                 {user.name ? (
                   user.name
                 ) : (
-                  <span className="text-red-500 italic">No name provided</span>
+                  <span className="italic text-red-500">No name provided</span>
                 )}
               </TableCell>
               <TableCell className="text-left">
@@ -73,13 +73,13 @@ export default function UserTable({
                         {user.username}
                       </span>
                     ) : (
-                      <span className="text-red-500 italic">
+                      <span className="italic text-red-500">
                         No username provided
                       </span>
                     )}
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <div className="mt-1 flex flex-wrap gap-1">
                       {user.roles && user.roles.length > 0 ? (
-                        user.roles.map((role) => (
+                        user.roles.map(role => (
                           <Badge
                             key={role}
                             variant="secondary"
@@ -89,7 +89,7 @@ export default function UserTable({
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-red-500 italic text-xs">
+                        <span className="text-xs italic text-red-500">
                           No roles assigned
                         </span>
                       )}
@@ -98,37 +98,37 @@ export default function UserTable({
                   <Image
                     src={
                       user.profilePicture &&
-                      !user.profilePicture.startsWith("blob:")
+                      !user.profilePicture.startsWith('blob:')
                         ? user.profilePicture
                         : defaultAvatar
                     }
-                    alt={`${user.username || "user"} avatar`}
+                    alt={`${user.username || 'user'} avatar`}
                     width={32}
                     height={32}
-                    className="rounded-full ml-2 flex-shrink-0"
+                    className="ml-2 flex-shrink-0 rounded-full"
                   />
                 </div>
               </TableCell>
-              <TableCell className="text-gray-600 text-left">
+              <TableCell className="text-left text-gray-600">
                 {user.email ? (
                   user.email
                 ) : (
-                  <span className="text-red-500 italic">No email provided</span>
+                  <span className="italic text-red-500">No email provided</span>
                 )}
               </TableCell>
-              <TableCell className="text-gray-600 text-left">
+              <TableCell className="text-left text-gray-600">
                 {user.enabled !== undefined ? (
                   user.enabled ? (
-                    "True"
+                    'True'
                   ) : (
-                    "False"
+                    'False'
                   )
                 ) : (
-                  <span className="text-red-500 italic">Status unknown</span>
+                  <span className="italic text-red-500">Status unknown</span>
                 )}
               </TableCell>
               <TableCell className="text-left">
-                <div className="flex gap-2 items-center max-w-[120px]">
+                <div className="flex max-w-[120px] items-center gap-2">
                   <Button
                     variant="ghost"
                     size="sm"

@@ -3,14 +3,14 @@
  * Handles the header section with location information and navigation
  */
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeftIcon, ChevronDownIcon } from "@radix-ui/react-icons";
-import { RefreshCw } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import RefreshButton from "@/components/ui/RefreshButton";
-import type { LocationInfo } from "@/lib/types/pages";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeftIcon, ChevronDownIcon } from '@radix-ui/react-icons';
+import { RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import RefreshButton from '@/components/ui/RefreshButton';
+import type { LocationInfo } from '@/lib/types/pages';
 
 type ExtendedLocationInfo = LocationInfo & {
   status?: string;
@@ -37,7 +37,7 @@ type LocationDetailsHeaderProps = {
 // Animation variants
 const configContentVariants = {
   hidden: { opacity: 0, height: 0 },
-  visible: { opacity: 1, height: "auto" },
+  visible: { opacity: 1, height: 'auto' },
 };
 
 const itemVariants = {
@@ -76,18 +76,18 @@ export const LocationDetailsHeader = ({
 
   // Get status badge color
   const getStatusBadgeColor = () => {
-    if (!locationInfo) return "bg-gray-100 text-gray-800 border-gray-200";
+    if (!locationInfo) return 'bg-gray-100 text-gray-800 border-gray-200';
 
-    const isActive = locationInfo?.status === "active";
+    const isActive = locationInfo?.status === 'active';
     return isActive
-      ? "bg-green-100 text-green-800 border-green-200"
-      : "bg-red-100 text-red-800 border-red-200";
+      ? 'bg-green-100 text-green-800 border-green-200'
+      : 'bg-red-100 text-red-800 border-red-200';
   };
 
   // Get status text
   const getStatusText = () => {
-    if (!locationInfo) return "Unknown";
-    return locationInfo?.status === "active" ? "Active" : "Inactive";
+    if (!locationInfo) return 'Unknown';
+    return locationInfo?.status === 'active' ? 'Active' : 'Inactive';
   };
 
   if (loading) {
@@ -96,15 +96,15 @@ export const LocationDetailsHeader = ({
         {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="h-10 w-10 bg-gray-200 rounded animate-pulse" />
+            <div className="h-10 w-10 animate-pulse rounded bg-gray-200" />
             <div className="space-y-2">
-              <div className="h-6 w-48 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+              <div className="h-6 w-48 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
             </div>
           </div>
           <div className="flex gap-2">
-            <div className="h-10 w-24 bg-gray-200 rounded animate-pulse" />
-            <div className="h-10 w-10 bg-gray-200 rounded animate-pulse" />
+            <div className="h-10 w-24 animate-pulse rounded bg-gray-200" />
+            <div className="h-10 w-10 animate-pulse rounded bg-gray-200" />
           </div>
         </div>
       </div>
@@ -113,9 +113,9 @@ export const LocationDetailsHeader = ({
 
   if (!locationInfo) {
     return (
-      <div className="text-center py-8">
-        <div className="text-gray-500 text-lg">Location not found</div>
-        <div className="text-gray-400 text-sm">
+      <div className="py-8 text-center">
+        <div className="text-lg text-gray-500">Location not found</div>
+        <div className="text-sm text-gray-400">
           The requested location could not be loaded
         </div>
       </div>
@@ -142,11 +142,11 @@ export const LocationDetailsHeader = ({
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {locationInfo.name || "Unknown Location"}
+              {locationInfo.name || 'Unknown Location'}
             </h1>
             <p className="text-sm text-gray-600">
-              {locationInfo.address || "No address provided"} •{" "}
-              {locationInfo?.city || "Unknown City"}
+              {locationInfo.address || 'No address provided'} •{' '}
+              {locationInfo?.city || 'Unknown City'}
             </p>
           </div>
         </div>
@@ -164,13 +164,13 @@ export const LocationDetailsHeader = ({
       </div>
 
       {/* Location Status and Information */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Status Card */}
-        <div className="bg-white rounded-lg border p-4">
+        <div className="rounded-lg border bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Status</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">
+              <p className="mt-1 text-lg font-semibold text-gray-900">
                 {getStatusText()}
               </p>
             </div>
@@ -179,34 +179,34 @@ export const LocationDetailsHeader = ({
         </div>
 
         {/* Total Cabinets Card */}
-        <div className="bg-white rounded-lg border p-4">
+        <div className="rounded-lg border bg-white p-4">
           <div>
             <p className="text-sm font-medium text-gray-600">Total Cabinets</p>
-            <p className="text-2xl font-bold text-blue-600 mt-1">
+            <p className="mt-1 text-2xl font-bold text-blue-600">
               {locationInfo?.cabinets?.length || 0}
             </p>
           </div>
         </div>
 
         {/* Online Cabinets Card */}
-        <div className="bg-white rounded-lg border p-4">
+        <div className="rounded-lg border bg-white p-4">
           <div>
             <p className="text-sm font-medium text-gray-600">Online Cabinets</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">
-              {locationInfo?.cabinets?.filter((cabinet) => cabinet.online)
+            <p className="mt-1 text-2xl font-bold text-green-600">
+              {locationInfo?.cabinets?.filter(cabinet => cabinet.online)
                 .length || 0}
             </p>
           </div>
         </div>
 
         {/* Offline Cabinets Card */}
-        <div className="bg-white rounded-lg border p-4">
+        <div className="rounded-lg border bg-white p-4">
           <div>
             <p className="text-sm font-medium text-gray-600">
               Offline Cabinets
             </p>
-            <p className="text-2xl font-bold text-red-600 mt-1">
-              {locationInfo?.cabinets?.filter((cabinet) => !cabinet.online)
+            <p className="mt-1 text-2xl font-bold text-red-600">
+              {locationInfo?.cabinets?.filter(cabinet => !cabinet.online)
                 .length || 0}
             </p>
           </div>
@@ -214,10 +214,10 @@ export const LocationDetailsHeader = ({
       </div>
 
       {/* Location Details Toggle */}
-      <div className="bg-white rounded-lg border">
+      <div className="rounded-lg border bg-white">
         <button
           onClick={toggleLocationDetails}
-          className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          className="flex w-full items-center justify-between p-4 transition-colors hover:bg-gray-50"
         >
           <div className="text-left">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -229,7 +229,7 @@ export const LocationDetailsHeader = ({
           </div>
           <ChevronDownIcon
             className={`h-5 w-5 text-gray-400 transition-transform ${
-              showLocationDetails ? "rotate-180" : ""
+              showLocationDetails ? 'rotate-180' : ''
             }`}
           />
         </button>
@@ -243,55 +243,55 @@ export const LocationDetailsHeader = ({
               exit="hidden"
               className="border-t"
             >
-              <div className="p-4 space-y-4">
+              <div className="space-y-4 p-4">
                 {/* Basic Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-medium text-gray-600">
                       Location ID
                     </label>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {locationInfo._id || "N/A"}
+                    <p className="mt-1 text-sm text-gray-900">
+                      {locationInfo._id || 'N/A'}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">
                       Status
                     </label>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {locationInfo?.status || "N/A"}
+                    <p className="mt-1 text-sm text-gray-900">
+                      {locationInfo?.status || 'N/A'}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">
                       Address
                     </label>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {locationInfo.address || "N/A"}
+                    <p className="mt-1 text-sm text-gray-900">
+                      {locationInfo.address || 'N/A'}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">
                       City
                     </label>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {locationInfo?.city || "N/A"}
+                    <p className="mt-1 text-sm text-gray-900">
+                      {locationInfo?.city || 'N/A'}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">
                       State
                     </label>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {locationInfo?.state || "N/A"}
+                    <p className="mt-1 text-sm text-gray-900">
+                      {locationInfo?.state || 'N/A'}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">
                       Zip Code
                     </label>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {locationInfo?.zipCode || "N/A"}
+                    <p className="mt-1 text-sm text-gray-900">
+                      {locationInfo?.zipCode || 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -299,16 +299,16 @@ export const LocationDetailsHeader = ({
                 {/* Contact Information */}
                 {(locationInfo?.phone || locationInfo?.email) && (
                   <div className="border-t pt-4">
-                    <h4 className="text-md font-semibold text-gray-900 mb-3">
+                    <h4 className="text-md mb-3 font-semibold text-gray-900">
                       Contact Information
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {locationInfo?.phone && (
                         <div>
                           <label className="text-sm font-medium text-gray-600">
                             Phone
                           </label>
-                          <p className="text-sm text-gray-900 mt-1">
+                          <p className="mt-1 text-sm text-gray-900">
                             {locationInfo.phone}
                           </p>
                         </div>
@@ -318,7 +318,7 @@ export const LocationDetailsHeader = ({
                           <label className="text-sm font-medium text-gray-600">
                             Email
                           </label>
-                          <p className="text-sm text-gray-900 mt-1">
+                          <p className="mt-1 text-sm text-gray-900">
                             {locationInfo.email}
                           </p>
                         </div>
@@ -330,15 +330,15 @@ export const LocationDetailsHeader = ({
                 {/* License Information */}
                 {locationInfo?.licenseNumber && (
                   <div className="border-t pt-4">
-                    <h4 className="text-md font-semibold text-gray-900 mb-3">
+                    <h4 className="text-md mb-3 font-semibold text-gray-900">
                       License Information
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
                         <label className="text-sm font-medium text-gray-600">
                           License Number
                         </label>
-                        <p className="text-sm text-gray-900 mt-1 font-mono">
+                        <p className="mt-1 font-mono text-sm text-gray-900">
                           {locationInfo.licenseNumber}
                         </p>
                       </div>
@@ -347,7 +347,7 @@ export const LocationDetailsHeader = ({
                           <label className="text-sm font-medium text-gray-600">
                             License Expiry
                           </label>
-                          <p className="text-sm text-gray-900 mt-1">
+                          <p className="mt-1 text-sm text-gray-900">
                             {new Date(
                               locationInfo.licenseExpiry
                             ).toLocaleDateString()}

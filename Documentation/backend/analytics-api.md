@@ -1,4 +1,3 @@
-
 # Analytics API
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
@@ -32,6 +31,7 @@ The Analytics API provides comprehensive analytics and reporting capabilities fo
    - Calculates real-time statistics
 
 2. **Dashboard Metrics Model Fields**:
+
 ```typescript
 DashboardMetrics {
   totalDrop: number;              // Total money collected from all machines
@@ -44,11 +44,12 @@ DashboardMetrics {
 ```
 
 3. **Financial Calculation Formulas**:
+
 ```javascript
 // Total Drop Calculation
 totalDrop = Σ(sasMeters.drop) across all machines
 
-// Total Cancelled Credits Calculation  
+// Total Cancelled Credits Calculation
 totalCancelledCredits = Σ(sasMeters.totalCancelledCredits) across all machines
 
 // Total Gross Revenue Calculation
@@ -79,6 +80,7 @@ sasMachines = COUNT(machines WHERE isSasMachine = true AND deletedAt IS NULL)
    - Groups data according to report configuration
 
 2. **Revenue Report Model Fields**:
+
 ```typescript
 RevenueReport {
   summary: {
@@ -103,6 +105,7 @@ RevenueReport {
 ```
 
 3. **Revenue Calculation Formulas**:
+
 ```javascript
 // Location Revenue Calculation
 locationRevenue = Σ(movement.drop) WHERE gamingLocation = locationId AND readAt BETWEEN startDate AND endDate
@@ -128,6 +131,7 @@ revenueTrend = (currentPeriod - previousPeriod) / previousPeriod * 100
    - Ranks machines by performance criteria
 
 2. **Machine Analytics Model Fields**:
+
 ```typescript
 MachineAnalytics {
   _id: string;                    // Machine identifier
@@ -149,6 +153,7 @@ MachineAnalytics {
 ```
 
 3. **Machine Performance Formulas**:
+
 ```javascript
 // Machine Revenue Calculation
 machineRevenue = Σ(movement.drop) WHERE machine = machineId AND readAt BETWEEN startDate AND endDate
@@ -177,6 +182,7 @@ winRate = (Σ(movement.gamesWon) / Σ(movement.gamesPlayed)) * 100
    - Includes machine details if requested
 
 2. **Location Analytics Model Fields**:
+
 ```typescript
 LocationAnalytics {
   _id: string;                    // Location identifier
@@ -199,6 +205,7 @@ LocationAnalytics {
 ```
 
 3. **Location Performance Formulas**:
+
 ```javascript
 // Location Revenue Calculation
 locationRevenue = Σ(movement.drop) WHERE gamingLocation = locationId AND readAt BETWEEN startDate AND endDate
@@ -227,6 +234,7 @@ averageRevenuePerMachine = locationRevenue / totalMachines
    - Limits results to top N machines
 
 2. **Top Machines Model Fields**:
+
 ```typescript
 TopMachines {
   rank: number;                   // Performance ranking (1, 2, 3, etc.)
@@ -241,6 +249,7 @@ TopMachines {
 ```
 
 3. **Top Machines Ranking Formulas**:
+
 ```javascript
 // Revenue Ranking
 revenueRanking = ORDER BY Σ(movement.drop) DESC
@@ -266,6 +275,7 @@ performanceScore = (revenue * 0.4) + (gamesPlayed * 0.3) + (utilization * 0.3)
    - Identifies peak performance hours
 
 2. **Hourly Trends Model Fields**:
+
 ```typescript
 HourlyTrends {
   hourlyData: [{
@@ -283,6 +293,7 @@ HourlyTrends {
 ```
 
 3. **Hourly Trend Formulas**:
+
 ```javascript
 // Hourly Revenue Calculation
 hourlyRevenue = Σ(movement.drop) WHERE HOUR(readAt) = hour AND readAt BETWEEN startDate AND endDate
@@ -308,6 +319,7 @@ peakHour = MAX(revenue) BY hour
    - Identifies growth patterns and anomalies
 
 2. **Trend Analysis Model Fields**:
+
 ```typescript
 TrendAnalysis {
   trends: [{
@@ -326,6 +338,7 @@ TrendAnalysis {
 ```
 
 3. **Trend Analysis Formulas**:
+
 ```javascript
 // Handle Trend Calculation
 handleTrend = Σ(movement.coinIn) BY date
@@ -353,100 +366,118 @@ trendDirection = percentageChange > 5 ? "increasing" : percentageChange < -5 ? "
 **Base URL:** `/api/analytics`
 
 #### GET /api/analytics/dashboard
+
 **What it does**: Retrieves global dashboard statistics for a specific licensee
 **Database Operations**:
+
 - Queries `machines` collection for machine counts
 - Aggregates `meters` data for financial calculations
 - Filters by licensee and date ranges
-**Query Parameters**: `licensee` (required) - Licensee name for filtering
-**Response Fields**: Returns `DashboardMetrics` object with calculated statistics
-**Used By**: Dashboard page for real-time metrics display
+  **Query Parameters**: `licensee` (required) - Licensee name for filtering
+  **Response Fields**: Returns `DashboardMetrics` object with calculated statistics
+  **Used By**: Dashboard page for real-time metrics display
 
 #### POST /api/analytics/reports
+
 **What it does**: Generates comprehensive reports based on configuration parameters
 **Database Operations**:
+
 - Queries multiple collections based on report type
 - Aggregates data according to grouping criteria
 - Calculates summary statistics and trends
-**Request Fields**: Report configuration including title, type, date range, filters
-**Response Fields**: Returns `RevenueReport` object with summary and details
-**Used By**: Reports page for report generation and export
+  **Request Fields**: Report configuration including title, type, date range, filters
+  **Response Fields**: Returns `RevenueReport` object with summary and details
+  **Used By**: Reports page for report generation and export
 
 #### GET /api/analytics/charts
+
 **What it does**: Retrieves chart data for various analytics visualizations
 **Database Operations**:
+
 - Queries data based on chart type and filters
 - Formats data for chart library consumption
 - Applies date range and location filters
-**Query Parameters**: `chartType`, `dateRange`, `licensee`
-**Response Fields**: Returns chart data with labels and datasets
-**Used By**: Dashboard charts and visualization components
+  **Query Parameters**: `chartType`, `dateRange`, `licensee`
+  **Response Fields**: Returns chart data with labels and datasets
+  **Used By**: Dashboard charts and visualization components
 
 ### Machine Analytics
 
 #### GET /api/analytics/machines
+
 **What it does**: Retrieves machine-specific analytics and performance data
 **Database Operations**:
+
 - Queries `machines` collection with filters
 - Aggregates meter data for performance metrics
 - Calculates utilization and efficiency ratios
-**Query Parameters**: `locationId`, `manufacturer`, `status`, `dateRange`
-**Response Fields**: Returns array of `MachineAnalytics` objects
-**Used By**: Machine management page and performance reports
+  **Query Parameters**: `locationId`, `manufacturer`, `status`, `dateRange`
+  **Response Fields**: Returns array of `MachineAnalytics` objects
+  **Used By**: Machine management page and performance reports
 
 #### GET /api/analytics/top-machines
+
 **What it does**: Retrieves top-performing machines based on various metrics
 **Database Operations**:
+
 - Aggregates machine performance data
 - Ranks machines by specified metric
 - Limits results to top N machines
-**Query Parameters**: `metric`, `limit`, `dateRange`, `locationId`
-**Response Fields**: Returns array of `TopMachines` objects with rankings
-**Used By**: Performance dashboards and optimization analysis
+  **Query Parameters**: `metric`, `limit`, `dateRange`, `locationId`
+  **Response Fields**: Returns array of `TopMachines` objects with rankings
+  **Used By**: Performance dashboards and optimization analysis
 
 ### Location Analytics
 
 #### GET /api/analytics/locations
+
 **What it does**: Retrieves location-based analytics and performance metrics
 **Database Operations**:
+
 - Queries `machines` collection filtered by location
 - Aggregates meter data by location
 - Calculates location-specific metrics
-**Query Parameters**: `licensee`, `dateRange`, `includeMachines`
-**Response Fields**: Returns array of `LocationAnalytics` objects
-**Used By**: Location management page and geographic analytics
+  **Query Parameters**: `licensee`, `dateRange`, `includeMachines`
+  **Response Fields**: Returns array of `LocationAnalytics` objects
+  **Used By**: Location management page and geographic analytics
 
 ### Trend Analytics
 
 #### GET /api/analytics/hourly-revenue
+
 **What it does**: Retrieves hourly revenue trends and patterns
 **Database Operations**:
+
 - Queries `meters` collection grouped by hour
 - Aggregates revenue data for each hour
 - Identifies peak performance hours
-**Query Parameters**: `date`, `locationId`, `machineId`
-**Response Fields**: Returns `HourlyTrends` object with hourly data and summary
-**Used By**: Revenue trend analysis and operational planning
+  **Query Parameters**: `date`, `locationId`, `machineId`
+  **Response Fields**: Returns `HourlyTrends` object with hourly data and summary
+  **Used By**: Revenue trend analysis and operational planning
 
 #### GET /api/analytics/trends
+
 **What it does**: Retrieves various trend data including handle, jackpot, and win/loss trends
 **Database Operations**:
+
 - Queries `meters` collection with time period filters
 - Groups data by specified period
 - Calculates trend indicators and changes
-**Query Parameters**: `trendType`, `period`, `dateRange`
-**Response Fields**: Returns `TrendAnalysis` object with trends and summary
-**Used By**: Trend analysis dashboards and performance monitoring
+  **Query Parameters**: `trendType`, `period`, `dateRange`
+  **Response Fields**: Returns `TrendAnalysis` object with trends and summary
+  **Used By**: Trend analysis dashboards and performance monitoring
 
 ## Performance Considerations
 
 ### Database Optimization
+
 - **Indexing**: Proper indexes on frequently queried fields (`machine`, `gamingLocation`, `readAt`)
 - **Aggregation Pipelines**: Efficient MongoDB aggregation for complex calculations
 - **Query Optimization**: Optimized queries with proper filtering and grouping
 - **Caching**: Response caching for frequently accessed analytics data
 
 ### API Performance
+
 - **Pagination**: Efficient pagination for large datasets
 - **Response Compression**: Compressed responses for large analytics data
 - **Rate Limiting**: Protection against excessive API usage
@@ -455,12 +486,14 @@ trendDirection = percentageChange > 5 ? "increasing" : percentageChange < -5 ? "
 ## Error Handling
 
 ### Common Error Scenarios
+
 - **Invalid Date Ranges**: Malformed date parameters
 - **Missing Licensee**: Required licensee parameter not provided
 - **No Data Found**: No data available for specified criteria
 - **Calculation Errors**: Mathematical errors in aggregation
 
 ### Error Response Format
+
 ```json
 {
   "success": false,
@@ -472,12 +505,14 @@ trendDirection = percentageChange > 5 ? "increasing" : percentageChange < -5 ? "
 ## Security Features
 
 ### Access Control
+
 - **Authentication**: JWT token required for all endpoints
 - **Authorization**: Role-based access to analytics data
 - **Data Filtering**: Results filtered by user permissions
 - **Audit Logging**: All analytics queries logged for compliance
 
 ### Data Protection
+
 - **Input Validation**: Comprehensive validation of all parameters
 - **SQL Injection Prevention**: Parameterized queries throughout
 - **Rate Limiting**: Protection against API abuse
@@ -488,9 +523,11 @@ trendDirection = percentageChange > 5 ? "increasing" : percentageChange < -5 ? "
 **Author:** Aaron Hazzard - Senior Software Engineer
 
 ## Overview
+
 The Analytics API provides comprehensive data analytics and reporting capabilities for the gaming system. It includes dashboard metrics, trend analysis, performance reports, and data visualization endpoints.
 
 ## Base URL
+
 ```
 /api/analytics
 ```
@@ -498,18 +535,21 @@ The Analytics API provides comprehensive data analytics and reporting capabiliti
 ## Endpoints
 
 ### GET /api/analytics/dashboard
+
 Retrieves global dashboard statistics for a specific licensee.
 
 **Query Parameters:**
+
 - `licensee` (string, required): Licensee name for filtering data
 
 **Response (Success - 200):**
+
 ```json
 {
   "globalStats": {
-    "totalDrop": 150000.00,
-    "totalCancelledCredits": 5000.00,
-    "totalGross": 45000.00,
+    "totalDrop": 150000.0,
+    "totalCancelledCredits": 5000.0,
+    "totalGross": 45000.0,
     "totalMachines": 150,
     "onlineMachines": 142,
     "sasMachines": 120
@@ -518,6 +558,7 @@ Retrieves global dashboard statistics for a specific licensee.
 ```
 
 **Response (Error - 400):**
+
 ```json
 {
   "message": "Licensee is required"
@@ -525,6 +566,7 @@ Retrieves global dashboard statistics for a specific licensee.
 ```
 
 **Used By:**
+
 - Dashboard page (`/`) - Main dashboard metrics
 - Real-time dashboard updates
 - Licensee-specific analytics
@@ -532,9 +574,11 @@ Retrieves global dashboard statistics for a specific licensee.
 ---
 
 ### POST /api/analytics/reports
+
 Generates comprehensive reports based on configuration parameters.
 
 **Request Body:**
+
 ```json
 {
   "title": "Monthly Revenue Report",
@@ -553,6 +597,7 @@ Generates comprehensive reports based on configuration parameters.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -582,6 +627,7 @@ Generates comprehensive reports based on configuration parameters.
 ```
 
 **Used By:**
+
 - `/reports` page - Report generation page
 - Export functionality (CSV/Excel)
 - Dashboard widgets
@@ -589,14 +635,17 @@ Generates comprehensive reports based on configuration parameters.
 ---
 
 ### GET /api/analytics/charts
+
 Retrieves chart data for various analytics visualizations.
 
 **Query Parameters:**
+
 - `chartType` (string, required): Type of chart (revenue, machines, trends)
 - `dateRange` (string, optional): Date range for data
 - `licensee` (string, optional): Licensee filter
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -614,6 +663,7 @@ Retrieves chart data for various analytics visualizations.
 ```
 
 **Used By:**
+
 - Dashboard charts and visualizations
 - Report generation
 - Real-time analytics display
@@ -621,14 +671,17 @@ Retrieves chart data for various analytics visualizations.
 ---
 
 ### GET /api/analytics/locations
+
 Retrieves location-based analytics and performance metrics.
 
 **Query Parameters:**
+
 - `licensee` (string, optional): Filter by licensee
 - `dateRange` (string, optional): Date range for metrics
 - `includeMachines` (boolean, optional): Include machine details
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -639,17 +692,17 @@ Retrieves location-based analytics and performance metrics.
         "name": "Main Casino",
         "address": "123 Casino St",
         "metrics": {
-          "totalRevenue": 150000.00,
+          "totalRevenue": 150000.0,
           "totalMachines": 100,
           "onlineMachines": 95,
           "utilization": 90.2,
-          "averageRevenuePerMachine": 1500.00
+          "averageRevenuePerMachine": 1500.0
         },
         "machines": [
           {
             "machineId": "machine_1",
             "name": "Slot Machine A",
-            "revenue": 5000.00,
+            "revenue": 5000.0,
             "status": "active"
           }
         ]
@@ -660,6 +713,7 @@ Retrieves location-based analytics and performance metrics.
 ```
 
 **Used By:**
+
 - `/locations` page - Location management
 - Location performance reports
 - Geographic analytics
@@ -667,15 +721,18 @@ Retrieves location-based analytics and performance metrics.
 ---
 
 ### GET /api/analytics/machines
+
 Retrieves machine-specific analytics and performance data.
 
 **Query Parameters:**
+
 - `locationId` (string, optional): Filter by location
 - `manufacturer` (string, optional): Filter by manufacturer
 - `status` (string, optional): Filter by machine status
 - `dateRange` (string, optional): Date range for metrics
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -689,10 +746,10 @@ Retrieves machine-specific analytics and performance data.
         "model": "Game King",
         "location": "Main Casino",
         "metrics": {
-          "totalRevenue": 5000.00,
+          "totalRevenue": 5000.0,
           "gamesPlayed": 1000,
           "utilization": 85.5,
-          "averageBet": 2.50,
+          "averageBet": 2.5,
           "winRate": 95.2
         },
         "status": "active",
@@ -704,6 +761,7 @@ Retrieves machine-specific analytics and performance data.
 ```
 
 **Used By:**
+
 - Machine management page
 - Machine performance reports
 - Maintenance scheduling
@@ -711,15 +769,18 @@ Retrieves machine-specific analytics and performance data.
 ---
 
 ### GET /api/analytics/top-machines
+
 Retrieves top-performing machines based on various metrics.
 
 **Query Parameters:**
+
 - `metric` (string, required): Performance metric (revenue, games, utilization)
 - `limit` (number, default: 10): Number of machines to return
 - `dateRange` (string, optional): Date range for analysis
 - `locationId` (string, optional): Filter by location
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -730,7 +791,7 @@ Retrieves top-performing machines based on various metrics.
         "machineId": "machine_1",
         "machineName": "Slot Machine A",
         "location": "Main Casino",
-        "revenue": 15000.00,
+        "revenue": 15000.0,
         "gamesPlayed": 5000,
         "utilization": 95.5,
         "performance": 98.2
@@ -741,6 +802,7 @@ Retrieves top-performing machines based on various metrics.
 ```
 
 **Used By:**
+
 - Performance dashboards
 - Machine optimization analysis
 - Revenue optimization
@@ -748,14 +810,17 @@ Retrieves top-performing machines based on various metrics.
 ---
 
 ### GET /api/analytics/hourly-revenue
+
 Retrieves hourly revenue trends and patterns.
 
 **Query Parameters:**
+
 - `date` (string, optional): Specific date for analysis
 - `locationId` (string, optional): Filter by location
 - `machineId` (string, optional): Filter by specific machine
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -763,27 +828,28 @@ Retrieves hourly revenue trends and patterns.
     "hourlyData": [
       {
         "hour": 0,
-        "revenue": 5000.00,
+        "revenue": 5000.0,
         "gamesPlayed": 200,
-        "averageBet": 25.00
+        "averageBet": 25.0
       },
       {
         "hour": 1,
-        "revenue": 4500.00,
+        "revenue": 4500.0,
         "gamesPlayed": 180,
-        "averageBet": 25.00
+        "averageBet": 25.0
       }
     ],
     "summary": {
-      "totalRevenue": 120000.00,
+      "totalRevenue": 120000.0,
       "peakHour": 20,
-      "peakRevenue": 8000.00
+      "peakRevenue": 8000.0
     }
   }
 }
 ```
 
 **Used By:**
+
 - Revenue trend analysis
 - Peak hour identification
 - Operational planning
@@ -791,14 +857,17 @@ Retrieves hourly revenue trends and patterns.
 ---
 
 ### GET /api/analytics/trends
+
 Retrieves various trend data including handle, jackpot, and win/loss trends.
 
 **Query Parameters:**
+
 - `trendType` (string, required): Type of trend (handle, jackpot, winloss, plays)
 - `period` (string, optional): Time period (daily, weekly, monthly)
 - `dateRange` (string, optional): Custom date range
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -806,22 +875,23 @@ Retrieves various trend data including handle, jackpot, and win/loss trends.
     "trends": [
       {
         "date": "2024-01-01",
-        "handle": 50000.00,
-        "jackpot": 5000.00,
-        "winLoss": 4500.00,
+        "handle": 50000.0,
+        "jackpot": 5000.0,
+        "winLoss": 4500.0,
         "plays": 2000
       }
     ],
     "summary": {
       "trend": "increasing",
       "percentageChange": 15.5,
-      "averageValue": 52000.00
+      "averageValue": 52000.0
     }
   }
 }
 ```
 
 **Used By:**
+
 - Trend analysis dashboards
 - Performance monitoring
 - Predictive analytics
@@ -829,39 +899,42 @@ Retrieves various trend data including handle, jackpot, and win/loss trends.
 ## Report Types
 
 ### Location Performance Report
+
 - **Purpose**: Analyze performance across different gaming locations
 - **Metrics**: Revenue, machine utilization, player activity
 - **Visualization**: Bar charts, heat maps, geographic distribution
 
 ### Machine Revenue Report
+
 - **Purpose**: Track individual machine performance and revenue
 - **Metrics**: Revenue per machine, games played, win rates
 - **Visualization**: Line charts, scatter plots, performance rankings
 
 ### Full Financials Report
+
 - **Purpose**: Comprehensive financial analysis and reporting
 - **Metrics**: Revenue, expenses, profit margins, ROI
 - **Visualization**: Pie charts, stacked bar charts, financial dashboards
 
 ## Chart Types
 
-| Chart Type | Description | Use Case |
-|------------|-------------|----------|
-| `bar` | Bar chart | Revenue comparison, machine rankings |
-| `line` | Line chart | Trend analysis, time series data |
-| `pie` | Pie chart | Revenue distribution, market share |
-| `scatter` | Scatter plot | Correlation analysis, performance vs. utilization |
-| `heatmap` | Heat map | Geographic distribution, time-based patterns |
+| Chart Type | Description  | Use Case                                          |
+| ---------- | ------------ | ------------------------------------------------- |
+| `bar`      | Bar chart    | Revenue comparison, machine rankings              |
+| `line`     | Line chart   | Trend analysis, time series data                  |
+| `pie`      | Pie chart    | Revenue distribution, market share                |
+| `scatter`  | Scatter plot | Correlation analysis, performance vs. utilization |
+| `heatmap`  | Heat map     | Geographic distribution, time-based patterns      |
 
 ## Error Codes
 
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 400 | Bad Request (Invalid parameters) |
-| 401 | Unauthorized (Authentication required) |
-| 404 | Not Found (Data not available) |
-| 500 | Internal Server Error |
+| Status Code | Description                            |
+| ----------- | -------------------------------------- |
+| 200         | Success                                |
+| 400         | Bad Request (Invalid parameters)       |
+| 401         | Unauthorized (Authentication required) |
+| 404         | Not Found (Data not available)         |
+| 500         | Internal Server Error                  |
 
 ## Dependencies
 
@@ -885,52 +958,69 @@ Retrieves various trend data including handle, jackpot, and win/loss trends.
 **Current Implementation Analysis:**
 
 ##### **Total Drop (Money In) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } }
+  totalDrop: {
+    $sum: {
+      $ifNull: ['$movement.drop', 0];
+    }
+  }
   ```
 - **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
 - **Business Context**: Aggregate physical cash inserted across all machines
 - **Aggregation Level**: Global sum across all licensee locations
 
 ##### **Total Cancelled Credits (Money Out) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  totalCancelledCredits: { $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] } }
+  totalCancelledCredits: {
+    $sum: {
+      $ifNull: ['$movement.totalCancelledCredits', 0];
+    }
+  }
   ```
 - **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
 - **Business Context**: All credits paid out to players (vouchers + hand-paid)
 - **Aggregation Level**: Global sum across all licensee locations
 
 ##### **Total Gross Revenue ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  totalGross = totalDrop - totalCancelledCredits
+  totalGross = totalDrop - totalCancelledCredits;
   ```
 - **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
 - **Mathematical Formula**: `totalGross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)`
 
 ##### **Machine Status Calculations ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Online machines
-  lastActivity: { $gte: new Date(Date.now() - 3 * 60 * 1000) }
-  // Total machines  
-  deletedAt: { $exists: false }
+  lastActivity: {
+    $gte: new Date(Date.now() - 3 * 60 * 1000);
+  }
+  // Total machines
+  deletedAt: {
+    $exists: false;
+  }
   // SAS machines
-  isSasMachine: true
+  isSasMachine: true;
   ```
-- **Business Logic**: 
+- **Business Logic**:
   - **Online**: `lastActivity >= (currentTime - 3 minutes)`
   - **Total**: Count of non-deleted machines
   - **SAS**: Count of SAS-enabled machines
 - ✅ **CONSISTENT** - Standard machine status calculation
 
 ##### **Handle/Win-Loss Calculation ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   handle: { $sum: { $ifNull: ["$movement.coinIn", 0] } },
-  winLoss: { 
+  winLoss: {
     $subtract: [
       { $ifNull: ["$movement.coinIn", 0] },
       { $ifNull: ["$movement.coinOut", 0] }
@@ -942,7 +1032,8 @@ Retrieves various trend data including handle, jackpot, and win/loss trends.
 - ❌ **NOT IN GUIDE** - Custom calculation not defined in financial metrics guide
 
 ##### **Top Performing Analytics ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Ranked by totalDrop descending
   totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
@@ -955,6 +1046,7 @@ Retrieves various trend data including handle, jackpot, and win/loss trends.
 #### Mathematical Formulas Summary
 
 ##### **Core Dashboard Metrics**
+
 ```
 Total Drop = Σ(movement.drop) across all machines/locations/time
 Total Cancelled Credits = Σ(movement.totalCancelledCredits) across all machines/locations/time
@@ -962,6 +1054,7 @@ Total Gross = Total Drop - Total Cancelled Credits
 ```
 
 ##### **Machine Status Counts**
+
 ```
 Online Machines = COUNT(machines WHERE lastActivity >= currentTime - 3min AND deletedAt IS NULL)
 Total Machines = COUNT(machines WHERE deletedAt IS NULL)
@@ -969,36 +1062,42 @@ SAS Machines = COUNT(machines WHERE isSasMachine = true AND deletedAt IS NULL)
 ```
 
 ##### **Performance Rankings**
+
 ```
 Top Locations = ORDER BY Σ(movement.drop) DESC LIMIT 5
 Top Machines = ORDER BY Σ(movement.drop) DESC LIMIT 5
 ```
 
 ##### **Hourly/Daily Aggregations**
+
 ```
 Hourly (Today/Yesterday):
   GROUP BY year, month, day, hour OF readAt
-  
+
 Daily (7d/30d/Custom):
   GROUP BY year, month, day OF readAt
 ```
 
 ##### **Custom Calculations (Not in Guide)**
+
 ```
 Handle = Σ(movement.coinIn) across time period
 Win/Loss = Handle - Coin Out = Σ(movement.coinIn) - Σ(movement.coinOut)
 ```
+
 **Note**: These calculations are not defined in the financial metrics guide and may need review.
 
 ## Performance Considerations
 
 ### Data Aggregation
+
 - **Pre-aggregated Data**: Store pre-calculated metrics for faster queries
 - **Caching Strategy**: Cache frequently accessed analytics data
 - **Indexing**: Proper indexing on date and filter fields
 - **Pagination**: Limit result sets for large datasets
 
 ### Real-time Updates
+
 - **WebSocket Integration**: Real-time dashboard updates
 - **Incremental Updates**: Update only changed data
 - **Background Processing**: Process analytics in background jobs

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { useUserStore } from "@/lib/store/userStore";
-import { fetchUserId } from "@/lib/helpers/user";
-import { fetchUserWithCache, CACHE_KEYS } from "@/lib/utils/userCache";
-import axios from "axios";
-import type { UserAuthPayload } from "@/shared/types/auth";
+import { useEffect, useState } from 'react';
+import { useUserStore } from '@/lib/store/userStore';
+import { fetchUserId } from '@/lib/helpers/user';
+import { fetchUserWithCache, CACHE_KEYS } from '@/lib/utils/userCache';
+import axios from 'axios';
+import type { UserAuthPayload } from '@/shared/types/auth';
 
 export function useAuth() {
   const { user, setUser, clearUser } = useUserStore();
@@ -22,14 +22,14 @@ export function useAuth() {
           // If we have a user in localStorage but no userId from token, clear everything
           if (currentUser && !userId) {
             console.warn(
-              "User in store but no valid token found, clearing auth state"
+              'User in store but no valid token found, clearing auth state'
             );
             clearUser();
             return;
           }
 
           if (userId) {
-            console.warn("Validating user existence in database:", userId);
+            console.warn('Validating user existence in database:', userId);
 
             // Use cached user data to reduce API calls
             const userData = await fetchUserWithCache(
@@ -45,51 +45,51 @@ export function useAuth() {
               const userPayload: UserAuthPayload = {
                 _id: userData.user._id,
                 emailAddress: userData.user.emailAddress,
-                username: userData.user.username || "",
+                username: userData.user.username || '',
                 isEnabled: userData.user.isEnabled,
                 roles: userData.user.roles || [],
                 profile: userData.user.profile || undefined,
               };
               console.warn(
-                "User validated successfully:",
+                'User validated successfully:',
                 userPayload.emailAddress
               );
               setUser(userPayload);
             } else {
               // User not found in database - clear all auth state
-              console.warn("User not found in database, clearing auth state");
+              console.warn('User not found in database, clearing auth state');
               clearUser();
               // Also clear localStorage and cookies
-              if (typeof window !== "undefined") {
-                localStorage.removeItem("user-auth-store");
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('user-auth-store');
                 document.cookie =
-                  "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                  'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                 document.cookie =
-                  "refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                  'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
               }
             }
           } else {
             // No userId from token - clear user state if it exists
             if (currentUser) {
               console.warn(
-                "No valid token but user in store, clearing auth state"
+                'No valid token but user in store, clearing auth state'
               );
               clearUser();
             }
           }
         } catch (error) {
-          console.error("Failed to validate auth:", error);
+          console.error('Failed to validate auth:', error);
 
           // Check if it's a 404 (user not found) or database mismatch error
           if (axios.isAxiosError(error)) {
             if (error.response?.status === 404) {
-              console.warn("User not found (404), clearing auth state");
+              console.warn('User not found (404), clearing auth state');
             } else if (
               error.response?.data?.message?.includes(
-                "Database context mismatch"
+                'Database context mismatch'
               )
             ) {
-              console.warn("Database mismatch detected, clearing auth state");
+              console.warn('Database mismatch detected, clearing auth state');
             }
           }
 
@@ -97,12 +97,12 @@ export function useAuth() {
           clearUser();
 
           // Also clear localStorage and cookies on auth errors
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("user-auth-store");
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('user-auth-store');
             document.cookie =
-              "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+              'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             document.cookie =
-              "refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+              'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
           }
         } finally {
           // CRITICAL: Always set initialized and loading to false, even on error

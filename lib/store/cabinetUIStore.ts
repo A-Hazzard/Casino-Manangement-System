@@ -1,7 +1,7 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
-type TimePeriod = "Today" | "Yesterday" | "7d" | "30d" | "All Time" | "Custom";
+type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
 
 type BillValidatorState = {
   timePeriod: TimePeriod;
@@ -29,7 +29,7 @@ type CabinetUIState = {
 };
 
 const defaultBillValidatorState: BillValidatorState = {
-  timePeriod: "7d",
+  timePeriod: '7d',
   customDateRange: undefined,
 };
 
@@ -42,7 +42,7 @@ const createStore = () => {
 
         // Actions
         setBillValidatorTimePeriod: (machineId, timePeriod) =>
-          set((state) => ({
+          set(state => ({
             billValidatorState: {
               ...state.billValidatorState,
               [machineId]: {
@@ -54,7 +54,7 @@ const createStore = () => {
           })),
 
         setBillValidatorDateRange: (machineId, dateRange) =>
-          set((state) => ({
+          set(state => ({
             billValidatorState: {
               ...state.billValidatorState,
               [machineId]: {
@@ -65,22 +65,22 @@ const createStore = () => {
             },
           })),
 
-        getBillValidatorState: (machineId) => {
+        getBillValidatorState: machineId => {
           const state = get().billValidatorState[machineId];
           return state || defaultBillValidatorState;
         },
 
-        resetBillValidatorState: (machineId) =>
-          set((state) => {
+        resetBillValidatorState: machineId =>
+          set(state => {
             const newState = { ...state.billValidatorState };
             delete newState[machineId];
             return { billValidatorState: newState };
           }),
       }),
       {
-        name: "cabinet-ui-store",
+        name: 'cabinet-ui-store',
         storage: createJSONStorage(() => {
-          if (typeof window !== "undefined") {
+          if (typeof window !== 'undefined') {
             return localStorage;
           }
           return {
@@ -104,4 +104,4 @@ const dummyState: CabinetUIState = {
 };
 
 export const useCabinetUIStore =
-  typeof window !== "undefined" ? createStore() : () => dummyState;
+  typeof window !== 'undefined' ? createStore() : () => dummyState;

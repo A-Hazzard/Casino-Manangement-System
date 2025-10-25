@@ -1,11 +1,11 @@
-import { NextRequest } from "next/server";
-import { MovementRequest } from "@/app/api/lib/models/movementrequests";
+import { NextRequest } from 'next/server';
+import { MovementRequest } from '@/app/api/lib/models/movementrequests';
 import {
   logActivity,
   calculateChanges,
-} from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "../../lib/helpers/users";
-import { getClientIP } from "@/lib/utils/ipAddress";
+} from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '../../lib/helpers/users';
+import { getClientIP } from '@/lib/utils/ipAddress';
 
 export async function DELETE(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function DELETE(
     return new Response(
       JSON.stringify({
         success: false,
-        message: "MovementRequest ID is required",
+        message: 'MovementRequest ID is required',
       }),
       { status: 400 }
     );
@@ -28,7 +28,7 @@ export async function DELETE(
       return new Response(
         JSON.stringify({
           success: false,
-          message: "MovementRequest not found",
+          message: 'MovementRequest not found',
         }),
         { status: 404 }
       );
@@ -46,59 +46,59 @@ export async function DELETE(
       try {
         const deleteChanges = [
           {
-            field: "cabinetIn",
+            field: 'cabinetIn',
             oldValue: movementRequestToDelete.cabinetIn,
             newValue: null,
           },
           {
-            field: "locationFrom",
+            field: 'locationFrom',
             oldValue: movementRequestToDelete.locationFrom,
             newValue: null,
           },
           {
-            field: "locationTo",
+            field: 'locationTo',
             oldValue: movementRequestToDelete.locationTo,
             newValue: null,
           },
           {
-            field: "reason",
+            field: 'reason',
             oldValue: movementRequestToDelete.reason,
             newValue: null,
           },
           {
-            field: "status",
+            field: 'status',
             oldValue: movementRequestToDelete.status,
             newValue: null,
           },
         ];
 
         await logActivity({
-          action: "DELETE",
+          action: 'DELETE',
           details: `Deleted movement request for cabinet ${movementRequestToDelete.cabinetIn} from ${movementRequestToDelete.locationFrom} to ${movementRequestToDelete.locationTo}`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "movement_request",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'movement_request',
             resourceId: id,
             resourceName: `Cabinet ${movementRequestToDelete.cabinetIn}`,
             changes: deleteChanges,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Delete failed",
+        message: 'Delete failed',
         error: errorMsg,
       }),
       { status: 500 }
@@ -115,7 +115,7 @@ export async function PATCH(
     return new Response(
       JSON.stringify({
         success: false,
-        message: "MovementRequest ID is required",
+        message: 'MovementRequest ID is required',
       }),
       { status: 400 }
     );
@@ -128,7 +128,7 @@ export async function PATCH(
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Invalid JSON in request body",
+        message: 'Invalid JSON in request body',
       }),
       { status: 400 }
     );
@@ -141,7 +141,7 @@ export async function PATCH(
       return new Response(
         JSON.stringify({
           success: false,
-          message: "MovementRequest not found",
+          message: 'MovementRequest not found',
         }),
         { status: 404 }
       );
@@ -166,32 +166,32 @@ export async function PATCH(
         );
 
         await logActivity({
-          action: "UPDATE",
+          action: 'UPDATE',
           details: `Updated movement request for cabinet ${originalMovementRequest.cabinetIn} from ${originalMovementRequest.locationFrom} to ${originalMovementRequest.locationTo}`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "movement_request",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'movement_request',
             resourceId: id,
             resourceName: `Cabinet ${originalMovementRequest.cabinetIn}`,
             changes: changes,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
     return new Response(JSON.stringify(updated), { status: 200 });
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Update failed",
+        message: 'Update failed',
         error: errorMsg,
       }),
       { status: 500 }

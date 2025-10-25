@@ -21,12 +21,12 @@ These are the main metrics used to assess casino location performance:
 
 The color indicators represent different levels of performance based on thresholds.
 
-| Color | Meaning               | Description                                   |
-|-------|-----------------------|-----------------------------------------------|
-| 🟢    | Excellent Performance  | Significantly exceeds performance targets      |
-| 🔵    | Good Performance       | Meets or slightly exceeds expectations         |
-| 🟡    | Average Performance    | Acceptable but shows room for improvement      |
-| 🔴    | Poor Performance       | Below expected performance levels               |
+| Color | Meaning               | Description                               |
+| ----- | --------------------- | ----------------------------------------- |
+| 🟢    | Excellent Performance | Significantly exceeds performance targets |
+| 🔵    | Good Performance      | Meets or slightly exceeds expectations    |
+| 🟡    | Average Performance   | Acceptable but shows room for improvement |
+| 🔴    | Poor Performance      | Below expected performance levels         |
 
 ---
 
@@ -47,12 +47,12 @@ The core calculation for assessing revenue performance is:
 
 ## 📘 Suggested Thresholds
 
-| Revenue %   | Color Code | Performance Level |
-|-------------|------------|-------------------|
-| > 20%       | 🟢 Green   | Excellent         |
-| 15% – 20%   | 🔵 Blue    | Good              |
-| 10% – 15%   | 🟡 Yellow  | Average           |
-| < 10%       | 🔴 Red     | Poor              |
+| Revenue % | Color Code | Performance Level |
+| --------- | ---------- | ----------------- |
+| > 20%     | 🟢 Green   | Excellent         |
+| 15% – 20% | 🔵 Blue    | Good              |
+| 10% – 15% | 🟡 Yellow  | Average           |
+| < 10%     | 🔴 Red     | Poor              |
 
 In the example above, a 12.15% return would fall under 🟡 Average Performance.
 

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -10,30 +10,30 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
+} from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import type { NewMovementModalProps } from "@/lib/types/components";
-import type { MachineMovementRecord } from "@/lib/types/reports";
-import type { LocationSelectItem } from "@/lib/types/location";
+} from '@/components/ui/popover';
+import { CalendarIcon, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import type { NewMovementModalProps } from '@/lib/types/components';
+import type { MachineMovementRecord } from '@/lib/types/reports';
+import type { LocationSelectItem } from '@/lib/types/location';
 
 // Define types for movement modal
 type MachineForMovement = {
@@ -47,14 +47,14 @@ type LocationForMovement = LocationSelectItem;
 // TODO: Replace with MongoDB data fetching
 
 const movementReasons = [
-  "Performance optimization",
-  "Maintenance relocation",
-  "Customer demand",
-  "Space reconfiguration",
-  "New installation",
-  "Equipment upgrade",
-  "Seasonal adjustment",
-  "Other",
+  'Performance optimization',
+  'Maintenance relocation',
+  'Customer demand',
+  'Space reconfiguration',
+  'New installation',
+  'Equipment upgrade',
+  'Seasonal adjustment',
+  'Other',
 ];
 
 export default function NewMovementModal({
@@ -69,13 +69,13 @@ export default function NewMovementModal({
   const [machines, _setMachines] = useState<MachineForMovement[]>([]);
   const [locations, _setLocations] = useState<LocationForMovement[]>([]);
   const [formData, setFormData] = useState({
-    machineId: "",
-    toLocationId: "",
+    machineId: '',
+    toLocationId: '',
     moveDate: undefined as Date | undefined,
-    reason: "",
-    notes: "",
-    estimatedCost: "",
-    priority: "medium",
+    reason: '',
+    notes: '',
+    estimatedCost: '',
+    priority: 'medium',
   });
 
   // TODO: Implement proper data fetching from MongoDB
@@ -95,12 +95,12 @@ export default function NewMovementModal({
       !formData.moveDate ||
       !formData.reason
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error('Please fill in all required fields');
       return;
     }
 
     if (selectedMachine?.location === selectedToLocation?.name) {
-      toast.error("Machine is already at the selected location");
+      toast.error('Machine is already at the selected location');
       return;
     }
 
@@ -108,20 +108,20 @@ export default function NewMovementModal({
 
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const newMovement: MachineMovementRecord = {
         _id: `MOV${Date.now()}`,
         machineId: formData.machineId,
-        machineName: selectedMachine?.name || "",
+        machineName: selectedMachine?.name || '',
         fromLocationId: undefined, // Mock data - would come from actual machine data
         fromLocationName: selectedMachine?.location || undefined,
         toLocationId: formData.toLocationId,
-        toLocationName: selectedToLocation?.name || "",
+        toLocationName: selectedToLocation?.name || '',
         moveDate: formData.moveDate!,
         reason: formData.reason,
-        status: "pending",
-        movedBy: "current-user", // This should come from auth context
+        status: 'pending',
+        movedBy: 'current-user', // This should come from auth context
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -136,24 +136,24 @@ export default function NewMovementModal({
         onRefresh();
       }
 
-      toast.success("Movement request created successfully!");
+      toast.success('Movement request created successfully!');
       onClose();
 
       // Reset form
       setFormData({
-        machineId: "",
-        toLocationId: "",
+        machineId: '',
+        toLocationId: '',
         moveDate: undefined,
-        reason: "",
-        notes: "",
-        estimatedCost: "",
-        priority: "medium",
+        reason: '',
+        notes: '',
+        estimatedCost: '',
+        priority: 'medium',
       });
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      console.error("Failed to create movement request:", errorMessage);
-      toast.error("Failed to create movement request");
+        error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Failed to create movement request:', errorMessage);
+      toast.error('Failed to create movement request');
     } finally {
       setIsSubmitting(false);
     }
@@ -167,7 +167,7 @@ export default function NewMovementModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Create New Movement Request</DialogTitle>
           <DialogDescription>
@@ -177,14 +177,14 @@ export default function NewMovementModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Machine Selection */}
             <div className="space-y-2">
               <Label htmlFor="machine">Machine *</Label>
               <Select
                 value={formData.machineId}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, machineId: value }))
+                onValueChange={value =>
+                  setFormData(prev => ({ ...prev, machineId: value }))
                 }
                 disabled={isSubmitting}
               >
@@ -219,8 +219,8 @@ export default function NewMovementModal({
               <Label htmlFor="location">Destination Location *</Label>
               <Select
                 value={formData.toLocationId}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, toLocationId: value }))
+                onValueChange={value =>
+                  setFormData(prev => ({ ...prev, toLocationId: value }))
                 }
                 disabled={isSubmitting}
               >
@@ -251,7 +251,7 @@ export default function NewMovementModal({
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-blue-50 rounded-lg border border-blue-200"
+              className="rounded-lg border border-blue-200 bg-blue-50 p-4"
             >
               <div className="flex items-center justify-between text-sm">
                 <div>
@@ -271,7 +271,7 @@ export default function NewMovementModal({
             </motion.div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Move Date */}
             <div className="space-y-2">
               <Label>Scheduled Date *</Label>
@@ -280,25 +280,25 @@ export default function NewMovementModal({
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.moveDate && "text-muted-foreground"
+                      'w-full justify-start text-left font-normal',
+                      !formData.moveDate && 'text-muted-foreground'
                     )}
                     disabled={isSubmitting}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData.moveDate
-                      ? format(formData.moveDate, "PPP")
-                      : "Select date"}
+                      ? format(formData.moveDate, 'PPP')
+                      : 'Select date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={formData.moveDate}
-                    onSelect={(date) =>
-                      setFormData((prev) => ({ ...prev, moveDate: date }))
+                    onSelect={date =>
+                      setFormData(prev => ({ ...prev, moveDate: date }))
                     }
-                    disabled={(date) => date < new Date()}
+                    disabled={date => date < new Date()}
                     initialFocus
                   />
                 </PopoverContent>
@@ -310,8 +310,8 @@ export default function NewMovementModal({
               <Label htmlFor="priority">Priority</Label>
               <Select
                 value={formData.priority}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, priority: value }))
+                onValueChange={value =>
+                  setFormData(prev => ({ ...prev, priority: value }))
                 }
                 disabled={isSubmitting}
               >
@@ -328,14 +328,14 @@ export default function NewMovementModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Reason */}
             <div className="space-y-2">
               <Label htmlFor="reason">Reason for Movement *</Label>
               <Select
                 value={formData.reason}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, reason: value }))
+                onValueChange={value =>
+                  setFormData(prev => ({ ...prev, reason: value }))
                 }
                 disabled={isSubmitting}
               >
@@ -343,7 +343,7 @@ export default function NewMovementModal({
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  {movementReasons.map((reason) => (
+                  {movementReasons.map(reason => (
                     <SelectItem key={reason} value={reason}>
                       {reason}
                     </SelectItem>
@@ -362,8 +362,8 @@ export default function NewMovementModal({
                 min="0"
                 placeholder="0.00"
                 value={formData.estimatedCost}
-                onChange={(e) =>
-                  setFormData((prev) => ({
+                onChange={e =>
+                  setFormData(prev => ({
                     ...prev,
                     estimatedCost: e.target.value,
                   }))
@@ -380,8 +380,8 @@ export default function NewMovementModal({
               id="notes"
               placeholder="Any additional information about this movement..."
               value={formData.notes}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, notes: e.target.value }))
+              onChange={e =>
+                setFormData(prev => ({ ...prev, notes: e.target.value }))
               }
               disabled={isSubmitting}
               rows={3}
@@ -404,7 +404,7 @@ export default function NewMovementModal({
                   Creating...
                 </>
               ) : (
-                "Create Movement Request"
+                'Create Movement Request'
               )}
             </Button>
           </DialogFooter>

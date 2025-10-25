@@ -1,12 +1,13 @@
 # Sessions API Documentation
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
+**Author:** Aaron Hazzard - Senior Software Engineer
 
 **Last Updated:** October 20th, 2025
 
 ## Quick Search Guide
 
 Use **Ctrl+F** to find these key topics:
+
 - **session tracking** - How gaming sessions are tracked and managed
 - **session events** - How session events are recorded and retrieved
 - **financial calculations** - How session financial metrics are calculated
@@ -30,6 +31,7 @@ The Sessions API manages gaming session tracking, analytics, and event managemen
    - Initializes session statistics
 
 2. **Machine Session Model Fields**:
+
 ```typescript
 MachineSession {
   _id: string;                    // Unique session identifier
@@ -39,7 +41,7 @@ MachineSession {
   startTime: Date;                // Session start timestamp
   endTime?: Date;                 // Session end timestamp (null if active)
   duration?: number;              // Session duration in minutes
-  
+
   // Game Statistics
   gamesPlayed: number;            // Total games played during session
   gamesWon: number;              // Number of games won
@@ -48,7 +50,7 @@ MachineSession {
   won: number;                    // Total amount won
   jackpot: number;                // Jackpot amounts won
   cancelledCredits: number;       // Credits cancelled/refunded
-  
+
   // Meter Data
   startMeters: {                  // Meter readings at session start
     coinIn: number;               // Coin in meter reading
@@ -68,7 +70,7 @@ MachineSession {
       dollarTotalUnknown: number; // Additional movement tracking
     };
   };
-  
+
   // Session Management
   lastAutoLogoutTime?: Date;      // Last automatic logout timestamp
 }
@@ -89,6 +91,7 @@ MachineSession {
    - Links to session events for detailed analysis
 
 2. **Session End Calculations**:
+
 ```javascript
 // Session Duration Calculation
 duration = endTime - startTime (in minutes)
@@ -117,6 +120,7 @@ averageBet = bet / gamesPlayed
    - Maintains chronological event order
 
 2. **Session Event Model Fields**:
+
 ```typescript
 SessionEvent {
   _id: string;                    // Unique event identifier
@@ -159,6 +163,7 @@ SessionEvent {
    - Generates summary statistics
 
 2. **Session Analytics Formulas**:
+
 ```javascript
 // Session Performance Metrics
 sessionDuration = endTime - startTime
@@ -203,11 +208,12 @@ overallWinRate = SUM(gamesWon) / SUM(gamesPlayed) * 100
    - **Location Filtering**: Via machine association
 
 3. **Search Query Structure**:
+
 ```javascript
 // MongoDB search query
 {
 
-**Last Updated:** October 20th, 2025  
+**Last Updated:** October 20th, 2025
 **Version:** 2.0.0
 
 ## Table of Contents
@@ -241,10 +247,12 @@ The Sessions API provides comprehensive gaming session management for the Evolut
 ## Base URLs
 
 ```
+
 /api/sessions
 /api/sessions/[sessionId]
 /api/sessions/[sessionId]/[machineId]/events
-```
+
+````
 
 ## Endpoints
 
@@ -297,9 +305,10 @@ Retrieves a paginated list of gaming sessions with advanced filtering and search
     }
   }
 }
-```
+````
 
 **Used By:**
+
 - `/sessions` page - Session listing and management
 - Session search and filtering
 - Session analytics dashboard
@@ -307,17 +316,21 @@ Retrieves a paginated list of gaming sessions with advanced filtering and search
 ---
 
 ### GET /api/sessions/[sessionId]/[machineId]/events
+
 Retrieves detailed events for a specific session on a specific machine.
 
 **Path Parameters:**
+
 - `sessionId` (string): Session ID
 - `machineId` (string): Machine ID
 
 **Query Parameters:**
+
 - `page` (number, default: 1): Page number for pagination
 - `limit` (number, default: 50): Number of events per page
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -331,8 +344,8 @@ Retrieves detailed events for a specific session on a specific machine.
         "timestamp": "2024-01-01T10:05:00.000Z",
         "data": {
           "gameId": "game_123",
-          "bet": 1.00,
-          "win": 2.50,
+          "bet": 1.0,
+          "win": 2.5,
           "multiplier": 2.5,
           "lines": 20,
           "coinsPerLine": 1
@@ -346,7 +359,7 @@ Retrieves detailed events for a specific session on a specific machine.
         "timestamp": "2024-01-01T10:10:00.000Z",
         "data": {
           "jackpotType": "progressive",
-          "amount": 1000.00,
+          "amount": 1000.0,
           "jackpotId": "jackpot_1"
         }
       }
@@ -363,6 +376,7 @@ Retrieves detailed events for a specific session on a specific machine.
 ```
 
 **Used By:**
+
 - `/sessions/[sessionId]/[machineId]/events` page - Session event details
 - Event analysis and debugging
 - Session replay functionality
@@ -370,6 +384,7 @@ Retrieves detailed events for a specific session on a specific machine.
 ## Database Models
 
 ### Machine Session Model
+
 ```typescript
 type MachineSession = {
   _id: string;
@@ -403,10 +418,11 @@ type MachineSession = {
   won: number;
   duration?: number;
   lastAutoLogoutTime?: Date;
-}
+};
 ```
 
 ### Session Event Model
+
 ```typescript
 type SessionEvent = {
   _id: string;
@@ -415,30 +431,34 @@ type SessionEvent = {
   eventType: string;
   timestamp: Date;
   data: Record<string, any>;
-}
+};
 ```
 
 ## Features
 
 ### Advanced Filtering
+
 - **Text Search**: Search by session ID, machine ID, or member ID
 - **Date Filtering**: Predefined filters (today, yesterday, week, month) and custom date ranges
 - **Licensee Filtering**: Filter sessions by gaming licensee
 - **Pagination**: Efficient pagination with configurable limits
 
 ### Data Aggregation
+
 - **Machine Lookup**: Populates machine names and details
 - **Location Lookup**: Links machines to gaming locations
 - **Licensee Lookup**: Links locations to licensees
 - **Calculated Fields**: Duration, handle amounts, win/loss calculations
 
 ### Session Analytics
+
 - **Duration Calculation**: Automatic session duration calculation
 - **Financial Metrics**: Handle, won, bet, jackpot tracking
 - **Game Statistics**: Games played, games won, points earned
 - **Performance Metrics**: Win/loss ratios, average bet amounts
 
 ### Event Tracking
+
 - **Real-time Events**: Detailed event logging during sessions
 - **Event Types**: Game plays, jackpots, credits, system events
 - **Event Data**: Rich event data with game-specific information
@@ -446,34 +466,34 @@ type SessionEvent = {
 
 ## Date Filtering Options
 
-| Filter Value | Description |
-|--------------|-------------|
-| `today` | Sessions from today only |
-| `yesterday` | Sessions from yesterday only |
-| `week` | Sessions from last 7 days |
-| `month` | Sessions from last 30 days |
-| `custom` | Custom date range (requires startDate/endDate) |
-| `all` | All sessions (no date filtering) |
+| Filter Value | Description                                    |
+| ------------ | ---------------------------------------------- |
+| `today`      | Sessions from today only                       |
+| `yesterday`  | Sessions from yesterday only                   |
+| `week`       | Sessions from last 7 days                      |
+| `month`      | Sessions from last 30 days                     |
+| `custom`     | Custom date range (requires startDate/endDate) |
+| `all`        | All sessions (no date filtering)               |
 
 ## Sorting Options
 
-| Sort Field | Description |
-|------------|-------------|
-| `startTime` | Session start time |
-| `handle` | Total handle amount |
-| `won` | Total won amount |
+| Sort Field    | Description            |
+| ------------- | ---------------------- |
+| `startTime`   | Session start time     |
+| `handle`      | Total handle amount    |
+| `won`         | Total won amount       |
 | `gamesPlayed` | Number of games played |
-| `duration` | Session duration |
+| `duration`    | Session duration       |
 
 ## Error Codes
 
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 400 | Bad Request (Invalid parameters) |
-| 401 | Unauthorized (Authentication required) |
-| 404 | Not Found (Session not found) |
-| 500 | Internal Server Error |
+| Status Code | Description                            |
+| ----------- | -------------------------------------- |
+| 200         | Success                                |
+| 400         | Bad Request (Invalid parameters)       |
+| 401         | Unauthorized (Authentication required) |
+| 404         | Not Found (Session not found)          |
+| 500         | Internal Server Error                  |
 
 ## Dependencies
 
@@ -496,7 +516,8 @@ type SessionEvent = {
 **Current Implementation Analysis:**
 
 ##### **Session Financial Data Structure ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Session financial fields from machinesessions collection
   {
@@ -516,39 +537,44 @@ type SessionEvent = {
 - ❌ **NOT IN GUIDE** - Session financial structure not defined in financial metrics guide
 
 ##### **Session Duration Calculation ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  duration = endTime - startTime (calculated in minutes)
+  duration = endTime - startTime(calculated in minutes);
   ```
 - **Business Logic**: Actual playing time calculation
 - ✅ **CONSISTENT** - Standard duration calculation
 
 ##### **Session Performance Metrics ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Performance calculations (if implemented)
-  winRate = gamesWon / gamesPlayed * 100
-  averageBet = bet / gamesPlayed
-  pointsPerGame = points / gamesPlayed
-  netWin = won - bet
+  winRate = (gamesWon / gamesPlayed) * 100;
+  averageBet = bet / gamesPlayed;
+  pointsPerGame = points / gamesPlayed;
+  netWin = won - bet;
   ```
 - **Financial Guide**: No guidance for session-level performance metrics
 - ❌ **NOT IN GUIDE** - Session performance calculations not defined in financial metrics guide
 
 ##### **Session Event Tracking ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Links sessions to machine events
-  { $match: { 
+  { $match: {
     currentSession: sessionId,
-    machine: machineId 
+    machine: machineId
   }}
   ```
 - **Business Logic**: Associates events with specific sessions and machines
 - ✅ **CONSISTENT** - Standard session-event association
 
 ##### **Session Search and Filtering ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
+
   ```javascript
   // Multi-field search
   $or: [
@@ -562,8 +588,10 @@ type SessionEvent = {
     $lte: endDate
   }
   // Additional filters applied via aggregation pipeline
-}
-```
+  }
+  ```
+
+````
 
 ## API Endpoints
 
@@ -621,12 +649,13 @@ totalHandle = SUM(handle) per time period
 totalWon = SUM(won) per time period
 totalBet = SUM(bet) per time period
 overallWinRate = SUM(gamesWon) / SUM(gamesPlayed) * 100
-```
+````
 
 ### Session Event Association
+
 ```javascript
 // Session Events Query
-sessionEvents = FIND(machineevents WHERE 
+sessionEvents = FIND(machineevents WHERE
   currentSession = sessionId AND
   machine = machineId
 ) ORDER BY timestamp ASC
@@ -640,6 +669,7 @@ creditEvents = FILTER(events WHERE eventType IN ["credit_in", "credit_out"])
 ## Date Filtering System
 
 ### Date Filter Options
+
 - **today**: Sessions from current day only
 - **yesterday**: Sessions from previous day only
 - **week**: Sessions from last 7 days
@@ -648,6 +678,7 @@ creditEvents = FILTER(events WHERE eventType IN ["credit_in", "credit_out"])
 - **all**: All sessions (no date filtering)
 
 ### Date Filter Implementation
+
 ```javascript
 // Date range calculation
 const dateFilters = {
@@ -665,12 +696,14 @@ const dateFilters = {
 ## Performance Considerations
 
 ### Database Optimization
+
 - **Indexing**: Proper indexes on `sessionId`, `machineId`, `memberId`, `startTime`
 - **Aggregation Pipelines**: Efficient MongoDB aggregation for analytics
 - **Query Optimization**: Optimized queries with proper filtering
 - **Caching**: Response caching for frequently accessed session data
 
 ### API Performance
+
 - **Pagination**: Efficient pagination for large session datasets
 - **Response Compression**: Compressed responses for large event data
 - **Rate Limiting**: Protection against excessive API usage
@@ -679,12 +712,14 @@ const dateFilters = {
 ## Security Features
 
 ### Access Control
+
 - **Authentication**: JWT token required for all endpoints
 - **Authorization**: Role-based access to session data
 - **Data Filtering**: Results filtered by user permissions and licensee
 - **Audit Logging**: All session operations logged for compliance
 
 ### Data Protection
+
 - **Input Validation**: Comprehensive validation of all session data
 - **SQL Injection Prevention**: Parameterized queries throughout
 - **Rate Limiting**: Protection against API abuse
@@ -693,12 +728,14 @@ const dateFilters = {
 ## Error Handling
 
 ### Common Error Scenarios
+
 - **Invalid Session Data**: Malformed session information
 - **Session Not Found**: Session ID doesn't exist
 - **Missing Required Fields**: Required session data not provided
 - **Invalid Date Range**: Malformed date parameters
 
 ### Error Response Format
+
 ```json
 {
   "success": false,
@@ -707,23 +744,26 @@ const dateFilters = {
 }
 ```
 
-  ]
-  ```
+]
+
+````
 - **Business Logic**: Comprehensive search across session identifiers
 - ✅ **COMPREHENSIVE** - Standard search pattern
 
 ##### **Session Date Filtering ✅**
-- **Current Implementation**: 
-  ```javascript
-  // Date range filtering
-  { startTime: { $gte: startDate, $lte: endDate } }
-  ```
+- **Current Implementation**:
+```javascript
+// Date range filtering
+{ startTime: { $gte: startDate, $lte: endDate } }
+````
+
 - **Business Logic**: Filters sessions by start time within date range
 - ✅ **CONSISTENT** - Standard date filtering
 
 ### Mathematical Formulas Summary
 
 #### **Session Financial Metrics (Requires Verification)**
+
 ```
 Session Handle = Total betting activity during session
 Session Cancelled Credits = Credits refunded during session
@@ -735,16 +775,18 @@ Session House Edge = bet - won (from casino perspective)
 ```
 
 #### **Session Performance Calculations (Requires Verification)**
+
 ```
 Session Duration = endTime - startTime (in minutes)
 Win Rate = (gamesWon / gamesPlayed) * 100
-Average Bet = bet / gamesPlayed  
+Average Bet = bet / gamesPlayed
 Points Per Game = points / gamesPlayed
 Handle Per Minute = handle / duration
 Games Per Minute = gamesPlayed / duration
 ```
 
 #### **Session Aggregation Patterns**
+
 ```
 Sessions by Member = GROUP BY memberId
 Sessions by Machine = GROUP BY machineId
@@ -753,8 +795,9 @@ Sessions by Date = GROUP BY DATE(startTime)
 ```
 
 #### **Session Event Association**
+
 ```
-Session Events = FIND(machineevents WHERE 
+Session Events = FIND(machineevents WHERE
   currentSession = sessionId AND
   machine = machineId
 ) ORDER BY timestamp ASC
@@ -774,12 +817,14 @@ Session Events = FIND(machineevents WHERE
 ## Performance Considerations
 
 ### Query Optimization
+
 - **Indexed Fields**: Proper indexing on frequently queried fields
 - **Projection**: Selective field retrieval to reduce data transfer
 - **Aggregation Pipeline**: Efficient data processing and joining
 - **Pagination**: Limit result sets for better performance
 
 ### Caching Strategy
+
 - **Session Data**: Cache frequently accessed session data
 - **Machine Names**: Cache machine name lookups
 - **Location Data**: Cache location and licensee information

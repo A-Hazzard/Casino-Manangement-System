@@ -1,6 +1,6 @@
-import { Db } from "mongodb";
-import { PipelineStage } from "mongoose";
-import { CustomDate, QueryFilter } from "../../types";
+import { Db } from 'mongodb';
+import { PipelineStage } from 'mongoose';
+import { CustomDate, QueryFilter } from '../../types';
 
 /**
  * Returns meter field projections based on whether account denominations are used.
@@ -10,39 +10,39 @@ import { CustomDate, QueryFilter } from "../../types";
  */
 function getMeterFieldProjections(useAccountDenom: boolean) {
   const meterFieldProjectionsWithAccountDenom = {
-    drop: "$_totalDrop",
-    totalCancelledCredits: "$_totalCancelledCredits",
+    drop: '$_totalDrop',
+    totalCancelledCredits: '$_totalCancelledCredits',
     gross: {
       $subtract: [
         {
           $subtract: [
-            { $ifNull: ["$_totalDrop", 0] },
-            { $ifNull: ["$_totalJackpot", 0] },
+            { $ifNull: ['$_totalDrop', 0] },
+            { $ifNull: ['$_totalJackpot', 0] },
           ],
         },
-        { $ifNull: ["$_totalCancelledCredits", 0] },
+        { $ifNull: ['$_totalCancelledCredits', 0] },
       ],
     },
-    gamesPlayed: "$totalGamesPlayed",
-    jackpot: "$_totalJackpot",
+    gamesPlayed: '$totalGamesPlayed',
+    jackpot: '$_totalJackpot',
   };
 
   const meterFieldProjectionsWithoutAccountDenom = {
-    drop: "$totalDrop",
-    totalCancelledCredits: "$totalCancelledCredits",
+    drop: '$totalDrop',
+    totalCancelledCredits: '$totalCancelledCredits',
     gross: {
       $subtract: [
         {
           $subtract: [
-            { $ifNull: ["$totalDrop", 0] },
-            { $ifNull: ["$totalJackpot", 0] },
+            { $ifNull: ['$totalDrop', 0] },
+            { $ifNull: ['$totalJackpot', 0] },
           ],
         },
-        { $ifNull: ["$totalCancelledCredits", 0] },
+        { $ifNull: ['$totalCancelledCredits', 0] },
       ],
     },
-    gamesPlayed: "$totalGamesPlayed",
-    jackpot: "$totalJackpot",
+    gamesPlayed: '$totalGamesPlayed',
+    jackpot: '$totalJackpot',
   };
 
   return useAccountDenom
@@ -63,21 +63,21 @@ export function aggregateMetersWithoutLocationSession(
     { $match: filter },
     {
       $addFields: {
-        day: { $dateToString: { date: "$readAt", format: "%Y-%m-%d" } },
-        time: { $dateToString: { date: "$readAt", format: "%H:%M" } },
+        day: { $dateToString: { date: '$readAt', format: '%Y-%m-%d' } },
+        time: { $dateToString: { date: '$readAt', format: '%H:%M' } },
       },
     },
     {
       $lookup: {
-        from: "gaminglocations",
-        localField: "location",
-        foreignField: "_id",
-        as: "locationDetails",
+        from: 'gaminglocations',
+        localField: 'location',
+        foreignField: '_id',
+        as: 'locationDetails',
       },
     },
     {
       $unwind: {
-        path: "$locationDetails",
+        path: '$locationDetails',
         preserveNullAndEmptyArrays: true,
       },
     },
@@ -85,26 +85,26 @@ export function aggregateMetersWithoutLocationSession(
     {
       $group: {
         _id: {
-          day: "$day",
-          time: "$time",
+          day: '$day',
+          time: '$time',
         },
-        movementDrop: { $sum: "$movement.drop" },
+        movementDrop: { $sum: '$movement.drop' },
         movementTotalCancelledCredits: {
-          $sum: "$movement.totalCancelledCredits",
+          $sum: '$movement.totalCancelledCredits',
         },
-        movementJackpot: { $sum: "$movement.jackpot" },
-        movementGamesPlayed: { $sum: "$movement.gamesPlayed" },
-        viewingAccountDenomination: { $first: "$viewingAccountDenomination" },
+        movementJackpot: { $sum: '$movement.jackpot' },
+        movementGamesPlayed: { $sum: '$movement.gamesPlayed' },
+        viewingAccountDenomination: { $first: '$viewingAccountDenomination' },
         // Keep location info for display purposes
-        location: { $first: "$location" },
-        geoCoords: { $first: "$locationDetails.geoCoords" },
+        location: { $first: '$location' },
+        geoCoords: { $first: '$locationDetails.geoCoords' },
       },
     },
     {
       $project: {
-        day: "$_id.day",
-        time: "$_id.time", // Include actual time from grouping
-        location: "$location",
+        day: '$_id.day',
+        time: '$_id.time', // Include actual time from grouping
+        location: '$location',
         movementDrop: 1,
         movementJackpot: 1,
         movementTotalCancelledCredits: 1,
@@ -115,18 +115,18 @@ export function aggregateMetersWithoutLocationSession(
           movementDrop: {
             $ceil: {
               $divide: [
-                "$movementDrop",
-                { $ifNull: ["$viewingAccountDenomination.drop", 1] },
+                '$movementDrop',
+                { $ifNull: ['$viewingAccountDenomination.drop', 1] },
               ],
             },
           },
           movementTotalCancelledCredits: {
             $ceil: {
               $divide: [
-                "$movementTotalCancelledCredits",
+                '$movementTotalCancelledCredits',
                 {
                   $ifNull: [
-                    "$viewingAccountDenomination.totalCancelledCredits",
+                    '$viewingAccountDenomination.totalCancelledCredits',
                     1,
                   ],
                 },
@@ -136,8 +136,8 @@ export function aggregateMetersWithoutLocationSession(
           movementJackpot: {
             $ceil: {
               $divide: [
-                "$movementJackpot",
-                { $ifNull: ["$viewingAccountDenomination.jackpot", 1] },
+                '$movementJackpot',
+                { $ifNull: ['$viewingAccountDenomination.jackpot', 1] },
               ],
             },
           },
@@ -150,7 +150,6 @@ export function aggregateMetersWithoutLocationSession(
   ];
 }
 
-
 /**
  * Creates a simplified aggregation pipeline that matches the totals API logic.
  * This groups by day only (not by location and time) to ensure chart data matches totals.
@@ -162,26 +161,26 @@ function aggregateByDayOnlyStages(useAccountDenom: boolean): PipelineStage[] {
   return [
     {
       $group: {
-        _id: { day: "$day" },
-        totalDrop: { $sum: "$movementDrop" },
-        _totalDrop: { $sum: "$_viewingAccountDenomination.movementDrop" },
-        totalCancelledCredits: { $sum: "$movementTotalCancelledCredits" },
+        _id: { day: '$day' },
+        totalDrop: { $sum: '$movementDrop' },
+        _totalDrop: { $sum: '$_viewingAccountDenomination.movementDrop' },
+        totalCancelledCredits: { $sum: '$movementTotalCancelledCredits' },
         _totalCancelledCredits: {
-          $sum: "$_viewingAccountDenomination.movementTotalCancelledCredits",
+          $sum: '$_viewingAccountDenomination.movementTotalCancelledCredits',
         },
-        _totalJackpot: { $sum: "$_viewingAccountDenomination.movementJackpot" },
+        _totalJackpot: { $sum: '$_viewingAccountDenomination.movementJackpot' },
         // Keep the first location and geoCoords for display purposes
-        location: { $first: "$location" },
-        geoCoords: { $first: "$geoCoords" },
+        location: { $first: '$location' },
+        geoCoords: { $first: '$geoCoords' },
       },
     },
     {
       $project: {
         _id: 0,
-        location: "$location",
-        day: "$_id.day",
-        time: "00:00", // Default time for daily aggregation
-        geoCoords: "$geoCoords",
+        location: '$location',
+        day: '$_id.day',
+        time: '00:00', // Default time for daily aggregation
+        geoCoords: '$geoCoords',
         ...getMeterFieldProjections(useAccountDenom),
       },
     },
@@ -195,30 +194,32 @@ function aggregateByDayOnlyStages(useAccountDenom: boolean): PipelineStage[] {
  * @param useAccountDenom - Boolean flag indicating whether to use account denominations.
  * @returns MongoDB aggregation pipeline array.
  */
-function aggregateByDayAndTimeStages(useAccountDenom: boolean): PipelineStage[] {
+function aggregateByDayAndTimeStages(
+  useAccountDenom: boolean
+): PipelineStage[] {
   return [
     {
       $group: {
-        _id: { day: "$day", time: "$time" },
-        totalDrop: { $sum: "$movementDrop" },
-        _totalDrop: { $sum: "$_viewingAccountDenomination.movementDrop" },
-        totalCancelledCredits: { $sum: "$movementTotalCancelledCredits" },
+        _id: { day: '$day', time: '$time' },
+        totalDrop: { $sum: '$movementDrop' },
+        _totalDrop: { $sum: '$_viewingAccountDenomination.movementDrop' },
+        totalCancelledCredits: { $sum: '$movementTotalCancelledCredits' },
         _totalCancelledCredits: {
-          $sum: "$_viewingAccountDenomination.movementTotalCancelledCredits",
+          $sum: '$_viewingAccountDenomination.movementTotalCancelledCredits',
         },
-        _totalJackpot: { $sum: "$_viewingAccountDenomination.movementJackpot" },
+        _totalJackpot: { $sum: '$_viewingAccountDenomination.movementJackpot' },
         // Keep the first location and geoCoords for display purposes
-        location: { $first: "$location" },
-        geoCoords: { $first: "$geoCoords" },
+        location: { $first: '$location' },
+        geoCoords: { $first: '$geoCoords' },
       },
     },
     {
       $project: {
         _id: 0,
-        location: "$location",
-        day: "$_id.day",
-        time: "$_id.time", // Include actual time for hourly aggregation
-        geoCoords: "$geoCoords",
+        location: '$location',
+        day: '$_id.day',
+        time: '$_id.time', // Include actual time for hourly aggregation
+        geoCoords: '$geoCoords',
         ...getMeterFieldProjections(useAccountDenom),
       },
     },
@@ -246,7 +247,7 @@ export async function getMetricsForLocations(
 ) {
   // Handle "All Time" case where timeframe is undefined
   const filter: QueryFilter = {};
-  
+
   if (timeframe.startDate && timeframe.endDate) {
     filter.readAt = { $gte: timeframe.startDate, $lte: timeframe.endDate };
   }
@@ -257,18 +258,23 @@ export async function getMetricsForLocations(
   if (licencee) {
     // Insert the licencee filter after $unwind stage (index 4)
     metersStageAggregationQuery.splice(4, 0, {
-      $match: { "locationDetails.rel.licencee": licencee },
+      $match: { 'locationDetails.rel.licencee': licencee },
     });
   }
 
   // Determine if we should use hourly or daily aggregation
   let shouldUseHourlyAggregation = false;
-  
-  if (timePeriod === "Today" || timePeriod === "Yesterday") {
+
+  if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
     shouldUseHourlyAggregation = true;
-  } else if (timePeriod === "Custom" && timeframe.startDate && timeframe.endDate) {
+  } else if (
+    timePeriod === 'Custom' &&
+    timeframe.startDate &&
+    timeframe.endDate
+  ) {
     // For custom ranges, check if it spans only one day
-    const diffInMs = timeframe.endDate.getTime() - timeframe.startDate.getTime();
+    const diffInMs =
+      timeframe.endDate.getTime() - timeframe.startDate.getTime();
     const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
     shouldUseHourlyAggregation = diffInDays <= 1;
   }
@@ -279,7 +285,7 @@ export async function getMetricsForLocations(
     : aggregateByDayOnlyStages(useAccountDenom);
 
   return db
-    .collection("meters")
+    .collection('meters')
     .aggregate(
       metersStageAggregationQuery.concat(locationStageAggregationQuery),
       {

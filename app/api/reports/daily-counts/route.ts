@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { getUserFromServer } from "../../lib/helpers/users";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { getUserFromServer } from '../../lib/helpers/users';
 type DailyCountsReport = {
   id: string;
   date: string;
@@ -24,32 +24,32 @@ export async function GET(request: NextRequest) {
     const user = await getUserFromServer();
     if (!user) {
       return NextResponse.json(
-        { success: false, message: "Authentication required" },
+        { success: false, message: 'Authentication required' },
         { status: 401 }
       );
     }
 
     // Check if user has required roles
     const userRoles = (user.roles as string[]) || [];
-    const hasAccess = userRoles.some((role) =>
-      ["admin", "manager", "collector"].includes(role)
+    const hasAccess = userRoles.some(role =>
+      ['admin', 'manager', 'collector'].includes(role)
     );
 
     if (!hasAccess) {
       return NextResponse.json(
-        { success: false, message: "Insufficient permissions" },
+        { success: false, message: 'Insufficient permissions' },
         { status: 403 }
       );
     }
 
     // Get query parameters
     const url = new URL(request.url);
-    const locationId = url.searchParams.get("locationId");
+    const locationId = url.searchParams.get('locationId');
 
     // Apply location-based filtering if user has resource permissions
     const userPermissions = user.resourcePermissions as Record<string, unknown>;
     const allowedLocationIds =
-      ((userPermissions?.["gaming-locations"] as Record<string, unknown>)
+      ((userPermissions?.['gaming-locations'] as Record<string, unknown>)
         ?.resources as string[]) || [];
 
     // Filter by user's allowed locations if not admin
@@ -61,11 +61,11 @@ export async function GET(request: NextRequest) {
     // Add specific location filter if requested
     if (locationId) {
       if (
-        !userRoles.includes("admin") &&
+        !userRoles.includes('admin') &&
         !allowedLocationIds.includes(locationId)
       ) {
         return NextResponse.json(
-          { success: false, message: "Access denied to this location" },
+          { success: false, message: 'Access denied to this location' },
           { status: 403 }
         );
       }
@@ -83,12 +83,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: responseData,
-      message: "Daily counts endpoint - MongoDB implementation pending",
+      message: 'Daily counts endpoint - MongoDB implementation pending',
     });
   } catch (error) {
-    console.error("Error fetching daily counts:", error);
+    console.error('Error fetching daily counts:', error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch daily counts" },
+      { success: false, message: 'Failed to fetch daily counts' },
       { status: 500 }
     );
   }

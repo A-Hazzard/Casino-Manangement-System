@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { formatAmount as _formatAmount } from '@/lib/helpers/rates';
@@ -8,12 +8,19 @@ import type { CurrencyCode } from '@/shared/types/currency';
  * Hook for currency formatting and display
  */
 export function useCurrencyFormat() {
-  const { displayCurrency, formatAmount: contextFormatAmount, isAllLicensee } = useCurrency();
+  const {
+    displayCurrency,
+    formatAmount: contextFormatAmount,
+    isAllLicensee,
+  } = useCurrency();
 
   /**
    * Format an amount with the current display currency
    */
-  const formatAmountWithCurrency = (amount: number, currency?: CurrencyCode) => {
+  const formatAmountWithCurrency = (
+    amount: number,
+    currency?: CurrencyCode
+  ) => {
     return contextFormatAmount(amount, currency);
   };
 
@@ -32,11 +39,17 @@ export function useCurrencyFormat() {
    */
   const formatAmountSimple = (amount: number, currency?: CurrencyCode) => {
     const targetCurrency = currency || displayCurrency;
-    const symbol = targetCurrency === 'USD' ? '$' : 
-                   targetCurrency === 'TTD' ? 'TT$' :
-                   targetCurrency === 'GYD' ? 'G$' :
-                   targetCurrency === 'BBD' ? 'Bds$' : '$';
-    
+    const symbol =
+      targetCurrency === 'USD'
+        ? '$'
+        : targetCurrency === 'TTD'
+          ? 'TT$'
+          : targetCurrency === 'GYD'
+            ? 'G$'
+            : targetCurrency === 'BBD'
+              ? 'Bds$'
+              : '$';
+
     return `${symbol}${amount.toFixed(2)}`;
   };
 
@@ -45,14 +58,26 @@ export function useCurrencyFormat() {
    */
   const getCurrencyInfo = () => ({
     code: displayCurrency,
-    symbol: displayCurrency === 'USD' ? '$' : 
-            displayCurrency === 'TTD' ? 'TT$' :
-            displayCurrency === 'GYD' ? 'G$' :
-            displayCurrency === 'BBD' ? 'Bds$' : '$',
-    name: displayCurrency === 'USD' ? 'US Dollar' :
-          displayCurrency === 'TTD' ? 'Trinidad & Tobago Dollar' :
-          displayCurrency === 'GYD' ? 'Guyanese Dollar' :
-          displayCurrency === 'BBD' ? 'Barbados Dollar' : 'US Dollar'
+    symbol:
+      displayCurrency === 'USD'
+        ? '$'
+        : displayCurrency === 'TTD'
+          ? 'TT$'
+          : displayCurrency === 'GYD'
+            ? 'G$'
+            : displayCurrency === 'BBD'
+              ? 'Bds$'
+              : '$',
+    name:
+      displayCurrency === 'USD'
+        ? 'US Dollar'
+        : displayCurrency === 'TTD'
+          ? 'Trinidad & Tobago Dollar'
+          : displayCurrency === 'GYD'
+            ? 'Guyanese Dollar'
+            : displayCurrency === 'BBD'
+              ? 'Barbados Dollar'
+              : 'US Dollar',
   });
 
   return {
@@ -62,6 +87,6 @@ export function useCurrencyFormat() {
     shouldShowCurrency,
     getCurrencyInfo,
     displayCurrency,
-    isAllLicensee
+    isAllLicensee,
   };
 }

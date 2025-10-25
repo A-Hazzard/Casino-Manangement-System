@@ -1,22 +1,22 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Check, ChevronDown, X, Search } from "lucide-react";
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Check, ChevronDown, X, Search } from 'lucide-react';
 
-import type { LocationMultiSelectProps } from "@/lib/types/components";
+import type { LocationMultiSelectProps } from '@/lib/types/components';
 
 export default function LocationMultiSelect({
   locations,
   selectedLocations,
   onSelectionChange,
-  placeholder = "Select locations...",
+  placeholder = 'Select locations...',
   className,
 }: LocationMultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -30,13 +30,13 @@ export default function LocationMultiSelect({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleToggleLocation = (locationId: string) => {
     const newSelection = selectedLocations.includes(locationId)
-      ? selectedLocations.filter((id) => id !== locationId)
+      ? selectedLocations.filter(id => id !== locationId)
       : [...selectedLocations, locationId];
     onSelectionChange(newSelection);
   };
@@ -47,18 +47,18 @@ export default function LocationMultiSelect({
   };
 
   // Filter options based on search term
-  const filteredOptions = locations.filter((option) => {
-    const name = option.name || "";
+  const filteredOptions = locations.filter(option => {
+    const name = option.name || '';
     return name.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const selectedOptions = locations.filter((option) =>
+  const selectedOptions = locations.filter(option =>
     selectedLocations.includes(option.id)
   );
   const displayText =
     selectedOptions.length > 0
       ? `${selectedOptions.length} location${
-          selectedOptions.length > 1 ? "s" : ""
+          selectedOptions.length > 1 ? 's' : ''
         } selected`
       : placeholder;
 
@@ -72,16 +72,16 @@ export default function LocationMultiSelect({
         <span className="truncate">{displayText}</span>
         <ChevronDown
           className={`h-4 w-4 transition-transform ${
-            isOpen ? "rotate-180" : ""
+            isOpen ? 'rotate-180' : ''
           }`}
         />
       </Button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
           {/* Header with search and clear button */}
-          <div className="p-2 border-b border-gray-100">
-            <div className="flex justify-between items-center mb-2">
+          <div className="border-b border-gray-100 p-2">
+            <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">
                 Locations
               </span>
@@ -89,7 +89,7 @@ export default function LocationMultiSelect({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleClearAll();
@@ -102,52 +102,52 @@ export default function LocationMultiSelect({
             </div>
             {/* Search input */}
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
               <Input
                 type="text"
                 placeholder="Search locations..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-8 text-sm"
-                onClick={(e) => e.stopPropagation()}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="h-8 pl-8 text-sm"
+                onClick={e => e.stopPropagation()}
               />
             </div>
           </div>
 
           {/* Options */}
           <div className="py-1">
-            {filteredOptions.map((option) => {
+            {filteredOptions.map(option => {
               const isSelected = selectedLocations.includes(option.id);
               return (
                 <div
                   key={option.id}
-                  className={`px-3 py-2 cursor-pointer hover:bg-gray-50 flex items-center justify-between ${
-                    isSelected ? "bg-blue-50" : ""
+                  className={`flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-gray-50 ${
+                    isSelected ? 'bg-blue-50' : ''
                   }`}
                   onClick={() => handleToggleLocation(option.id)}
                 >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <div className="flex-shrink-0">
                       {isSelected ? (
                         <Check className="h-4 w-4 text-blue-600" />
                       ) : (
-                        <div className="h-4 w-4 border border-gray-300 rounded" />
+                        <div className="h-4 w-4 rounded border border-gray-300" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 truncate">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-gray-900">
                         {option.name}
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge
-                          variant={option.sasEnabled ? "default" : "secondary"}
+                          variant={option.sasEnabled ? 'default' : 'secondary'}
                           className={`text-xs ${
                             option.sasEnabled
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-600"
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-600'
                           }`}
                         >
-                          {option.sasEnabled ? "SAS Enabled" : "Non-SAS"}
+                          {option.sasEnabled ? 'SAS Enabled' : 'Non-SAS'}
                         </Badge>
                       </div>
                     </div>
@@ -159,10 +159,10 @@ export default function LocationMultiSelect({
 
           {/* Footer with selection count */}
           {selectedLocations.length > 0 && (
-            <div className="p-2 border-t border-gray-100 bg-gray-50">
+            <div className="border-t border-gray-100 bg-gray-50 p-2">
               <div className="text-xs text-gray-600">
                 {selectedLocations.length} location
-                {selectedLocations.length > 1 ? "s" : ""} selected
+                {selectedLocations.length > 1 ? 's' : ''} selected
               </div>
             </div>
           )}
@@ -172,13 +172,13 @@ export default function LocationMultiSelect({
       {/* Selected items display */}
       {selectedOptions.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {selectedOptions.map((option) => (
+          {selectedOptions.map(option => (
             <Badge
               key={option.id}
               variant="secondary"
               className="flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200"
             >
-              <span className="truncate max-w-32">{option.name}</span>
+              <span className="max-w-32 truncate">{option.name}</span>
               <X
                 className="h-3 w-3 cursor-pointer"
                 onClick={() => handleToggleLocation(option.id)}

@@ -1,11 +1,11 @@
-import axios from "axios";
-import { locations } from "@/lib/types";
-import { GamingMachine as Cabinet } from "@/shared/types/entities";
-import { LocationData, AggregatedLocation } from "../types/location";
-import { TimePeriod } from "../types/api";
-import { DateRange } from "react-day-picker";
-import { getAuthHeaders } from "@/lib/utils/auth";
-import { getLicenseeObjectId } from "@/lib/utils/licenseeMapping";
+import axios from 'axios';
+import { locations } from '@/lib/types';
+import { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { LocationData, AggregatedLocation } from '../types/location';
+import { TimePeriod } from '../types/api';
+import { DateRange } from 'react-day-picker';
+import { getAuthHeaders } from '@/lib/utils/auth';
+import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 
 /**
  * Fetches both location details and its cabinets for a given locationId.
@@ -23,7 +23,7 @@ export async function fetchLocationAndCabinets(
   try {
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
-      return { name: "Location", cabinets: [] };
+      return { name: 'Location', cabinets: [] };
     }
 
     // Fetch location details
@@ -33,7 +33,7 @@ export async function fetchLocationAndCabinets(
     const locationData = Array.isArray(locationRes.data)
       ? locationRes.data[0]
       : locationRes.data;
-    const name = locationData?.name || locationData?.locationName || "Location";
+    const name = locationData?.name || locationData?.locationName || 'Location';
 
     // Fetch cabinets for the location
     const params: Record<string, string> = {
@@ -60,7 +60,7 @@ export async function fetchLocationAndCabinets(
       error
     );
     // Always return fallback structure on error
-    return { name: "Location", cabinets: [] };
+    return { name: 'Location', cabinets: [] };
   }
 }
 
@@ -75,7 +75,7 @@ export default async function getAllGamingLocations(
 ): Promise<locations> {
   try {
     const params: Record<string, string> = {};
-    if (licencee && licencee !== "all") {
+    if (licencee && licencee !== 'all') {
       // Convert licensee name to ObjectId for API compatibility
       const licenseeObjectId = getLicenseeObjectId(licencee);
       if (licenseeObjectId) {
@@ -84,7 +84,7 @@ export default async function getAllGamingLocations(
     }
 
     const response = await axios.get<{ locations: locations }>(
-      "/api/locations",
+      '/api/locations',
       {
         params,
         headers: getAuthHeaders(),
@@ -94,7 +94,7 @@ export default async function getAllGamingLocations(
 
     return Array.isArray(fetchedLocations) ? fetchedLocations : [];
   } catch (error) {
-    console.error("Error fetching gaming locations:", error);
+    console.error('Error fetching gaming locations:', error);
     return [];
   }
 }
@@ -160,7 +160,7 @@ export async function fetchCabinets(
   try {
     const params: Record<string, string> = {};
     if (timePeriod) params.timePeriod = timePeriod;
-    if (licensee && licensee !== "all") {
+    if (licensee && licensee !== 'all') {
       // Convert licensee name to ObjectId for API compatibility
       const licenseeObjectId = getLicenseeObjectId(licensee);
       if (licenseeObjectId) {
@@ -193,17 +193,17 @@ export async function fetchAllGamingLocations(licensee?: string) {
   try {
     const locationsList = await getAllGamingLocations(licensee);
     if (locationsList && Array.isArray(locationsList)) {
-      const formattedLocations = locationsList.map((loc) => {
+      const formattedLocations = locationsList.map(loc => {
         const locationWithProps = loc as unknown as Record<string, unknown>;
         return {
           id:
             (locationWithProps._id as string)?.toString() ||
             (locationWithProps._id as string) ||
-            "",
+            '',
           name:
             (locationWithProps.name as string) ||
             (locationWithProps.locationName as string) ||
-            "Unknown Location",
+            'Unknown Location',
         };
       });
       // Sort alphabetically by name as additional safeguard
@@ -211,7 +211,7 @@ export async function fetchAllGamingLocations(licensee?: string) {
     }
     return [];
   } catch (err) {
-    console.error("Error fetching locations for dropdown:", err);
+    console.error('Error fetching locations for dropdown:', err);
     return [];
   }
 }
@@ -229,9 +229,9 @@ export async function fetchLocationDetailsById(
 ) {
   try {
     // Handle empty or invalid location IDs
-    if (!locationId || locationId.trim() === "") {
+    if (!locationId || locationId.trim() === '') {
       return {
-        name: "Unknown Location",
+        name: 'Unknown Location',
         data: null,
       };
     }
@@ -253,12 +253,12 @@ export async function fetchLocationDetailsById(
     });
 
     if (!response.data) {
-      throw new Error("No location data returned from API");
+      throw new Error('No location data returned from API');
     }
 
     // Check for security violations
     if (response.status === 403) {
-      throw new Error("Location does not belong to selected licensee");
+      throw new Error('Location does not belong to selected licensee');
     }
 
     if (response.status !== 200) {
@@ -292,20 +292,20 @@ export async function fetchLocationDetailsById(
         `Location ${locationId} not found in current licensee's locations`
       );
       return {
-        name: "Location Not Found",
+        name: 'Location Not Found',
         data: null,
       };
     }
 
     return {
-      name: locationData.name || locationData.locationName || "Location",
+      name: locationData.name || locationData.locationName || 'Location',
       data: locationData,
     };
   } catch (err) {
-    console.error("Error fetching location details:", err);
+    console.error('Error fetching location details:', err);
     // Return fallback data instead of throwing
     return {
-      name: "Unknown Location",
+      name: 'Unknown Location',
       data: null,
     };
   }
@@ -320,7 +320,7 @@ export async function fetchLocationDetailsById(
  * @returns Promise resolving to formatted location data array, or empty array on error.
  */
 export const fetchLocationsData = async (
-  timePeriod: TimePeriod = "Today",
+  timePeriod: TimePeriod = 'Today',
   licensee?: string,
   filters?: string,
   customDateRange?: DateRange
@@ -333,16 +333,16 @@ export const fetchLocationsData = async (
     if (filters) params.machineTypeFilter = filters;
 
     if (
-      timePeriod === "Custom" &&
+      timePeriod === 'Custom' &&
       customDateRange?.from &&
       customDateRange?.to
     ) {
       params.startDate = customDateRange.from.toISOString();
       params.endDate = customDateRange.to.toISOString();
-      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
+      params.timePeriod = 'Custom'; // Set timePeriod to "Custom" when using custom dates
     }
 
-    const response = await axios.get("/api/locationAggregation", { params });
+    const response = await axios.get('/api/locationAggregation', { params });
 
     // Handle both old array format and new paginated format
     const result = Array.isArray(response.data)
@@ -351,7 +351,7 @@ export const fetchLocationsData = async (
 
     return result;
   } catch (error) {
-    console.error(" fetchLocationsData Error:", error);
+    console.error(' fetchLocationsData Error:', error);
     return [];
   }
 };
@@ -367,7 +367,7 @@ export const fetchLocationsData = async (
  */
 export const searchLocations = async (
   term: string,
-  timePeriod: TimePeriod = "Today",
+  timePeriod: TimePeriod = 'Today',
   licensee?: string,
   filters?: string,
   customDateRange?: DateRange
@@ -381,19 +381,19 @@ export const searchLocations = async (
     if (filters) params.filters = filters;
 
     if (
-      timePeriod === "Custom" &&
+      timePeriod === 'Custom' &&
       customDateRange?.from &&
       customDateRange?.to
     ) {
       params.startDate = customDateRange.from.toISOString();
       params.endDate = customDateRange.to.toISOString();
-      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
+      params.timePeriod = 'Custom'; // Set timePeriod to "Custom" when using custom dates
     }
 
-    const response = await axios.get("/api/locations/search", { params });
+    const response = await axios.get('/api/locations/search', { params });
     return response.data || [];
   } catch (error) {
-    console.error("Failed to search locations:", error);
+    console.error('Failed to search locations:', error);
     return [];
   }
 };
@@ -411,10 +411,10 @@ export const searchAllLocations = async (
     if (searchTerm) params.search = searchTerm;
     if (licensee) params.licencee = licensee;
 
-    const response = await axios.get("/api/locations/search-all", { params });
+    const response = await axios.get('/api/locations/search-all', { params });
     return response.data || [];
   } catch (error) {
-    console.error("Failed to search all locations:", error);
+    console.error('Failed to search all locations:', error);
     return [];
   }
 };
@@ -456,14 +456,14 @@ export async function fetchAggregatedLocationsData(
     queryParams.push(`showAllLocations=true`);
 
     // Handle custom date range
-    if (timePeriod === "Custom" && dateRange?.from && dateRange?.to) {
+    if (timePeriod === 'Custom' && dateRange?.from && dateRange?.to) {
       queryParams.push(`startDate=${dateRange.from.toISOString()}`);
       queryParams.push(`endDate=${dateRange.to.toISOString()}`);
     }
 
     // Append query string if we have parameters
     if (queryParams.length > 0) {
-      url += `?${queryParams.join("&")}`;
+      url += `?${queryParams.join('&')}`;
     }
 
     const response = await axios.get(url, {
@@ -479,8 +479,8 @@ export async function fetchAggregatedLocationsData(
     const responseData = response.data;
     if (
       responseData &&
-      typeof responseData === "object" &&
-      "data" in responseData
+      typeof responseData === 'object' &&
+      'data' in responseData
     ) {
       // Paginated response: { data: [...], pagination: {...} }
       return responseData.data || [];
@@ -489,11 +489,11 @@ export async function fetchAggregatedLocationsData(
       return responseData;
     } else {
       // Fallback for unexpected structure
-      console.warn("Unexpected API response structure:", responseData);
+      console.warn('Unexpected API response structure:', responseData);
       return [];
     }
   } catch (error) {
-    console.error("Error fetching locations data:", error);
+    console.error('Error fetching locations data:', error);
     return [];
   }
 }
@@ -505,12 +505,12 @@ export async function fetchLocationMetricsForMap(
   try {
     const url =
       `/api/locationAggregation?timePeriod=${timePeriod}` +
-      (licencee ? `&licencee=${licencee}` : "");
+      (licencee ? `&licencee=${licencee}` : '');
 
     const response = await axios.get(url);
 
     if (!response.data) {
-      console.error("No data returned from location metrics API");
+      console.error('No data returned from location metrics API');
       return [];
     }
 
@@ -519,7 +519,7 @@ export async function fetchLocationMetricsForMap(
       ? response.data
       : response.data?.data || [];
   } catch (error) {
-    console.error("Error fetching location metrics for map:", error);
+    console.error('Error fetching location metrics for map:', error);
     return [];
   }
 }

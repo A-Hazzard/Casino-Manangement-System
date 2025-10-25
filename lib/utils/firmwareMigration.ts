@@ -1,5 +1,5 @@
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { Firmware } from "@/app/api/lib/models/firmware";
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Firmware } from '@/app/api/lib/models/firmware';
 
 /**
  * Migration utility to handle existing firmware records with old schema
@@ -9,7 +9,7 @@ export async function migrateFirmwareSchema() {
   try {
     const db = await connectDB();
     if (!db) {
-      throw new Error("Database connection failed");
+      throw new Error('Database connection failed');
     }
 
     // Find all firmware documents that might have the old schema
@@ -27,20 +27,25 @@ export async function migrateFirmwareSchema() {
       try {
         // If it has the old file object structure, we need to handle it
         if (firmware.file && typeof firmware.file === 'object') {
-          type OldFileType = { originalname?: string; filename?: string; size?: number };
+          type OldFileType = {
+            originalname?: string;
+            filename?: string;
+            size?: number;
+          };
           const oldFile: OldFileType = firmware.file;
-          
+
           // Update with new schema fields
           await Firmware.findByIdAndUpdate(firmware._id, {
             $set: {
-              fileName: oldFile.originalname || oldFile.filename || 'unknown.bin',
+              fileName:
+                oldFile.originalname || oldFile.filename || 'unknown.bin',
               fileSize: oldFile.size || 0,
             },
             $unset: {
               file: 1, // Remove the old file object
             },
           });
-          
+
           // console.log(`Migrated firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
         } else {
           // If missing new fields but no old file object, set defaults
@@ -50,7 +55,7 @@ export async function migrateFirmwareSchema() {
               fileSize: 0,
             },
           });
-          
+
           // console.log(`Set defaults for firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
         }
       } catch (error) {
@@ -88,4 +93,4 @@ export async function checkMigrationNeeded(): Promise<boolean> {
     console.error('Error checking migration status:', error);
     return false;
   }
-} 
+}

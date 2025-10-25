@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { ComponentType, useState, useCallback } from "react";
-import { useGlobalErrorHandler } from "@/lib/hooks/data/useGlobalErrorHandler";
-import ConnectionError from "./ConnectionError";
+import React, { ComponentType, useState, useCallback } from 'react';
+import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
+import ConnectionError from './ConnectionError';
 
 type PageErrorBoundaryProps = {
   children: React.ReactNode;
@@ -28,7 +28,7 @@ export default function PageErrorBoundary({
     setError(null);
 
     // Wait a moment before retrying
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     setIsRetrying(false);
   }, []);
@@ -36,7 +36,7 @@ export default function PageErrorBoundary({
   const handleErrorBoundary = useCallback(
     (error: Error, _errorInfo: React.ErrorInfo) => {
       setError(error);
-      handleError(error, "Page Error");
+      handleError(error, 'Page Error');
       onError?.(error);
     },
     [handleError, onError]
@@ -49,7 +49,7 @@ export default function PageErrorBoundary({
     }
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center p-4">
         <ConnectionError
           error={error}
           onRetry={handleRetry}
@@ -82,7 +82,7 @@ function ErrorBoundaryWrapper({
   const [error, setError] = useState<Error | null>(null);
 
   if (hasError && error) {
-    onError(error, { componentStack: "" });
+    onError(error, { componentStack: '' });
     return null;
   }
 

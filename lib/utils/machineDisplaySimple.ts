@@ -19,21 +19,21 @@ type MachineLike = {
  */
 export function getMachineDisplayName(machine: MachineLike): string {
   // 1. Try serialNumber (if not empty/whitespace)
-  if (machine.serialNumber && machine.serialNumber.trim() !== "") {
+  if (machine.serialNumber && machine.serialNumber.trim() !== '') {
     return machine.serialNumber.trim();
   }
 
   // 2. Try custom.name or machineCustomName
   const customName = machine.custom?.name || machine.machineCustomName;
-  if (customName && customName.trim() !== "") {
+  if (customName && customName.trim() !== '') {
     return customName.trim();
   }
 
   // 3. Try origSerialNumber
-  if (machine.origSerialNumber && machine.origSerialNumber.trim() !== "") {
+  if (machine.origSerialNumber && machine.origSerialNumber.trim() !== '') {
     return machine.origSerialNumber.trim();
   }
 
   // 4. Fallback to machineId or _id
-  return machine.machineId || machine._id || "Unknown Machine";
+  return machine.machineId || machine._id || 'Unknown Machine';
 }

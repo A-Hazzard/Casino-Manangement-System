@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { Collections } from "../../lib/models/collections";
-import { Machine } from "../../lib/models/machines";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { Collections } from '../../lib/models/collections';
+import { Machine } from '../../lib/models/machines';
 
 // Type for machine document with collectionMetersHistory
 type MachineWithHistory = {
@@ -56,8 +56,8 @@ type MachineInvestigationResult =
       machineId: string;
       error: string;
     };
-import { CollectionReport } from "../../lib/models/collectionReport";
-import { getUserIdFromServer, getUserById } from "../../lib/helpers/users";
+import { CollectionReport } from '../../lib/models/collectionReport';
+import { getUserIdFromServer, getUserById } from '../../lib/helpers/users';
 
 /**
  * POST /api/collection-reports/investigate-machine
@@ -69,31 +69,31 @@ import { getUserIdFromServer, getUserById } from "../../lib/helpers/users";
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    console.warn("🔍 Starting machine investigation...");
+    console.warn('🔍 Starting machine investigation...');
 
     const body = await request.json().catch(() => ({}));
     const { machineId, reportId } = body;
 
     // Check authentication (skip in development)
-    if (process.env.NODE_ENV === "development") {
-      console.warn("🔍 Skipping authentication in development mode");
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🔍 Skipping authentication in development mode');
     } else {
       const userId = await getUserIdFromServer();
       if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
       const user = await getUserById(userId);
       if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
       if (
-        !user.roles?.includes("admin") &&
-        !user.roles?.includes("evolution admin")
+        !user.roles?.includes('admin') &&
+        !user.roles?.includes('evolution admin')
       ) {
         return NextResponse.json(
-          { error: "Insufficient permissions" },
+          { error: 'Insufficient permissions' },
           { status: 403 }
         );
       }
@@ -107,17 +107,17 @@ export async function POST(request: NextRequest) {
       return await investigateSpecificMachine(machineId);
     } else {
       return NextResponse.json(
-        { error: "Either machineId or reportId is required" },
+        { error: 'Either machineId or reportId is required' },
         { status: 400 }
       );
     }
   } catch (error) {
-    console.error("Error investigating machine:", error);
+    console.error('Error investigating machine:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -135,7 +135,7 @@ async function investigateSpecificMachine(machineId: string) {
     machineId
   ).lean()) as MachineWithHistory | null;
   if (!machine) {
-    return NextResponse.json({ error: "Machine not found" }, { status: 404 });
+    return NextResponse.json({ error: 'Machine not found' }, { status: 404 });
   }
 
   // Get all collections for this machine, sorted by timestamp
@@ -216,7 +216,7 @@ async function investigateSpecificMachine(machineId: string) {
   const collectionMatches = [];
   for (const collection of collections) {
     const matchingHistoryEntry = history.find(
-      (entry) =>
+      entry =>
         entry.metersIn === collection.metersIn &&
         entry.metersOut === collection.metersOut &&
         Math.abs(
@@ -258,10 +258,10 @@ async function investigateSpecificMachine(machineId: string) {
     summary: {
       totalIssues: issues.length,
       fieldNameIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes("prevIn/prevOut"))
+        i.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
       ).length,
       prevMetersIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes("prevMeters"))
+        i.issues.some((issue: string) => issue.includes('prevMeters'))
       ).length,
     },
   });
@@ -280,7 +280,7 @@ async function investigateReportMachines(reportId: string) {
 
   if (!collectionReport) {
     return NextResponse.json(
-      { error: "Collection report not found" },
+      { error: 'Collection report not found' },
       { status: 404 }
     );
   }
@@ -333,7 +333,7 @@ async function investigateReportMachines(reportId: string) {
       console.error(`Error investigating machine ${machineId}:`, error);
       machineInvestigations.push({
         machineId: machineId,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -350,7 +350,7 @@ async function investigateReportMachines(reportId: string) {
       totalIssues: totalIssues,
       machinesWithIssues: machineInvestigations.filter(
         (m: MachineInvestigationResult) =>
-          "summary" in m && m.summary.totalIssues > 0
+          'summary' in m && m.summary.totalIssues > 0
       ).length,
     },
   });
@@ -374,7 +374,7 @@ async function investigateSpecificMachineInternal(
     machineId
   ).lean()) as MachineWithHistory | null;
   if (!machine) {
-    throw new Error("Machine not found");
+    throw new Error('Machine not found');
   }
 
   // Analyze collectionMetersHistory
@@ -450,10 +450,10 @@ async function investigateSpecificMachineInternal(
     summary: {
       totalIssues: issues.length,
       fieldNameIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes("prevIn/prevOut"))
+        i.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
       ).length,
       prevMetersIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes("prevMeters"))
+        i.issues.some((issue: string) => issue.includes('prevMeters'))
       ).length,
     },
   };

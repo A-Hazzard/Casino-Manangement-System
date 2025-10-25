@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, {
   useState,
@@ -6,28 +6,28 @@ import React, {
   useRef,
   useCallback,
   useMemo,
-} from "react";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+} from 'react';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 // Date formatting function for SAS times
 const formatSasTime = (dateString: string) => {
   try {
     const date = new Date(dateString);
     const options: Intl.DateTimeFormatOptions = {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
       hour12: true,
     };
-    return date.toLocaleDateString("en-US", options);
+    return date.toLocaleDateString('en-US', options);
   } catch {
     return dateString; // Return original if parsing fails
   }
 };
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   ArrowLeft,
   RefreshCw,
@@ -35,17 +35,17 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
-} from "@radix-ui/react-icons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { SyncButton } from "@/components/ui/RefreshButton";
-import { motion, AnimatePresence } from "framer-motion";
+} from '@radix-ui/react-icons';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { SyncButton } from '@/components/ui/RefreshButton';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Table,
   TableBody,
@@ -53,13 +53,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -67,49 +67,49 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 
 // Layout components
 
-import PageLayout from "@/components/layout/PageLayout";
-import NotFoundError from "@/components/ui/errors/NotFoundError";
+import PageLayout from '@/components/layout/PageLayout';
+import NotFoundError from '@/components/ui/errors/NotFoundError';
 
 // Skeleton components
 import {
   CollectionReportSkeleton,
   TableSkeleton,
   CardSkeleton,
-} from "@/components/ui/skeletons/CollectionReportDetailSkeletons";
+} from '@/components/ui/skeletons/CollectionReportDetailSkeletons';
 
 // Helper functions
-import { fetchCollectionReportById } from "@/lib/helpers/collectionReport";
-import { fetchCollectionsByLocationReportId } from "@/lib/helpers/collections";
+import { fetchCollectionReportById } from '@/lib/helpers/collectionReport';
+import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
 import {
   syncMetersForReport,
   checkSasTimeIssues,
-} from "@/lib/helpers/collectionReportDetailPageData";
-import { validateCollectionReportData } from "@/lib/utils/validation";
+} from '@/lib/helpers/collectionReportDetailPageData';
+import { validateCollectionReportData } from '@/lib/utils/validation';
 import {
   animateDesktopTabTransition,
   calculateLocationTotal,
   calculateSasMetricsTotals,
-} from "@/lib/helpers/collectionReportDetailPage";
-import { formatCurrency } from "@/lib/utils/currency";
-import { toast } from "sonner";
-import axios from "axios";
-import { getFinancialColorClass } from "@/lib/utils/financialColors";
+} from '@/lib/helpers/collectionReportDetailPage';
+import { formatCurrency } from '@/lib/utils/currency';
+import { toast } from 'sonner';
+import axios from 'axios';
+import { getFinancialColorClass } from '@/lib/utils/financialColors';
 
 // Types
-import type { CollectionReportData } from "@/lib/types/api";
-import type { CollectionDocument } from "@/lib/types/collections";
-import type { MachineMetric } from "@/lib/types/api";
+import type { CollectionReportData } from '@/lib/types/api';
+import type { CollectionDocument } from '@/lib/types/collections';
+import type { MachineMetric } from '@/lib/types/api';
 import type {
   CollectionIssue,
   CollectionIssueDetails,
-} from "@/shared/types/entities";
+} from '@/shared/types/entities';
 
 // Components
-import { CollectionIssueModal } from "@/components/collectionReport/CollectionIssueModal";
+import { CollectionIssueModal } from '@/components/collectionReport/CollectionIssueModal';
 
 function CollectionReportPageContent() {
   const params = useParams();
@@ -124,13 +124,13 @@ function CollectionReportPageContent() {
   const [error, setError] = useState<string | null>(null);
   // Initialize activeTab from URL or default to "Machine Metrics"
   const [activeTab, setActiveTab] = useState<
-    "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare"
+    'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare'
   >(() => {
-    const section = searchParams?.get("section");
-    if (section === "location") return "Location Metrics";
-    if (section === "sas") return "SAS Metrics Compare";
-    if (section === "machine") return "Machine Metrics";
-    return "Machine Metrics"; // default
+    const section = searchParams?.get('section');
+    if (section === 'location') return 'Location Metrics';
+    if (section === 'sas') return 'SAS Metrics Compare';
+    if (section === 'machine') return 'Machine Metrics';
+    return 'Machine Metrics'; // default
   });
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
   const ITEMS_PER_PAGE = 10;
@@ -152,19 +152,19 @@ function CollectionReportPageContent() {
   );
 
   // Search and sort state
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<keyof MachineMetric>("sasGross");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<keyof MachineMetric>('sasGross');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const tabContentRef = useRef<HTMLDivElement>(null);
 
   // Sort handler
   const handleSort = (field: keyof MachineMetric) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortDirection("desc");
+      setSortDirection('desc');
     }
     setMachinePage(1); // Reset to first page when sorting
   };
@@ -178,8 +178,8 @@ function CollectionReportPageContent() {
   // Utility function for proper alphabetical and numerical sorting
   const sortMachinesAlphabetically = (machines: MachineMetric[]) => {
     return machines.sort((a, b) => {
-      const nameA = (a.machineId || "").toString();
-      const nameB = (b.machineId || "").toString();
+      const nameA = (a.machineId || '').toString();
+      const nameB = (b.machineId || '').toString();
 
       // Extract the base name and number parts
       const matchA = nameA.match(/^(.+?)(\d+)?$/);
@@ -212,8 +212,8 @@ function CollectionReportPageContent() {
 
     // Apply search filter
     if (searchTerm) {
-      filtered = metricsData.filter((metric) =>
-        (metric.machineId?.toLowerCase() || "").includes(
+      filtered = metricsData.filter(metric =>
+        (metric.machineId?.toLowerCase() || '').includes(
           searchTerm.toLowerCase()
         )
       );
@@ -223,10 +223,10 @@ function CollectionReportPageContent() {
     let sorted = [...filtered];
 
     // If sorting by machineId, use alphabetical and numerical sorting
-    if (sortField === "machineId") {
+    if (sortField === 'machineId') {
       sorted = sortMachinesAlphabetically(filtered);
       // Reverse if descending order
-      if (sortDirection === "desc") {
+      if (sortDirection === 'desc') {
         sorted = sorted.reverse();
       }
     } else {
@@ -235,12 +235,12 @@ function CollectionReportPageContent() {
         const aValue = a[sortField];
         const bValue = b[sortField];
 
-        if (typeof aValue === "number" && typeof bValue === "number") {
-          return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
         }
 
-        if (typeof aValue === "string" && typeof bValue === "string") {
-          return sortDirection === "asc"
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortDirection === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
@@ -268,22 +268,21 @@ function CollectionReportPageContent() {
   // Function to check for SAS time issues using the enhanced API
   const checkForSasTimeIssues = useCallback(async (reportId: string) => {
     try {
-      const issueDetails: CollectionIssueDetails = await checkSasTimeIssues(
-        reportId
-      );
+      const issueDetails: CollectionIssueDetails =
+        await checkSasTimeIssues(reportId);
 
       // Separate SAS time issues from collection history issues
       const sasTimeIssues = issueDetails.issues.filter(
-        (issue) =>
-          issue.issueType !== "prev_meters_mismatch" ||
-          !issue.collectionId.includes("machine-") ||
-          !issue.collectionId.includes("-history-")
+        issue =>
+          issue.issueType !== 'prev_meters_mismatch' ||
+          !issue.collectionId.includes('machine-') ||
+          !issue.collectionId.includes('-history-')
       );
       const collectionHistoryIssues = issueDetails.issues.filter(
-        (issue) =>
-          issue.issueType === "prev_meters_mismatch" &&
-          issue.collectionId.includes("machine-") &&
-          issue.collectionId.includes("-history-")
+        issue =>
+          issue.issueType === 'prev_meters_mismatch' &&
+          issue.collectionId.includes('machine-') &&
+          issue.collectionId.includes('-history-')
       );
 
       setHasSasTimeIssues(sasTimeIssues.length > 0);
@@ -293,24 +292,24 @@ function CollectionReportPageContent() {
       // Also check for orphaned history entries and other machine-level issues
       // This will only check machines in this specific report (no global scan)
       try {
-        const axios = (await import("axios")).default;
+        const axios = (await import('axios')).default;
         const issuesResponse = await axios.get(
-          "/api/collection-reports/check-all-issues",
+          '/api/collection-reports/check-all-issues',
           {
             params: { reportId },
           }
         );
-        
-        console.warn("🔍 Machine history check response:", issuesResponse.data);
-        console.warn("🔍 Looking for reportId:", reportId);
-        
+
+        console.warn('🔍 Machine history check response:', issuesResponse.data);
+        console.warn('🔍 Looking for reportId:', reportId);
+
         const reportIssues = issuesResponse.data.reportIssues || {};
-        console.warn("🔍 All report issues keys:", Object.keys(reportIssues));
-        
+        console.warn('🔍 All report issues keys:', Object.keys(reportIssues));
+
         // The reportIssues object uses MongoDB _id as keys, and we're looking for our reportId
         // Since we called the API with reportId, there should be exactly one entry in reportIssues
         const reportKeys = Object.keys(reportIssues);
-        
+
         if (reportKeys.length === 0) {
           console.warn(`❌ No report issues found in response`);
           setHasCollectionHistoryIssues(false);
@@ -318,23 +317,31 @@ function CollectionReportPageContent() {
           // Get the first (and should be only) report's issues
           const reportKey = reportKeys[0];
           const reportIssueData = reportIssues[reportKey];
-          
+
           console.warn(`🔍 Found report key: ${reportKey}`);
           console.warn(`🔍 Report issue data:`, reportIssueData);
-          
-          if (reportIssueData && reportIssueData.hasIssues && reportIssueData.issueCount > 0) {
-            console.warn(`✅ Setting hasCollectionHistoryIssues to true (${reportIssueData.issueCount} issues found)`);
+
+          if (
+            reportIssueData &&
+            reportIssueData.hasIssues &&
+            reportIssueData.issueCount > 0
+          ) {
+            console.warn(
+              `✅ Setting hasCollectionHistoryIssues to true (${reportIssueData.issueCount} issues found)`
+            );
             setHasCollectionHistoryIssues(true);
           } else {
-            console.warn(`❌ No machine history issues found, hasCollectionHistoryIssues remains false`);
+            console.warn(
+              `❌ No machine history issues found, hasCollectionHistoryIssues remains false`
+            );
             setHasCollectionHistoryIssues(false);
           }
         }
       } catch (error) {
-        console.error("Error checking machine history issues:", error);
+        console.error('Error checking machine history issues:', error);
       }
     } catch (error) {
-      console.error("Error checking SAS time issues:", error);
+      console.error('Error checking SAS time issues:', error);
       setHasSasTimeIssues(false);
       setHasCollectionHistoryIssues(false);
       setSasTimeIssues([]);
@@ -351,12 +358,12 @@ function CollectionReportPageContent() {
     setLoading(true);
     setError(null);
     fetchCollectionReportById(reportId)
-      .then((data) => {
+      .then(data => {
         if (data === null) {
-          setError("Report not found. Please use a valid report ID.");
+          setError('Report not found. Please use a valid report ID.');
           setReportData(null);
         } else if (!validateCollectionReportData(data)) {
-          setError("Invalid report data received from server.");
+          setError('Invalid report data received from server.');
           setReportData(null);
         } else {
           setReportData(data);
@@ -364,11 +371,11 @@ function CollectionReportPageContent() {
           checkForSasTimeIssues(reportId);
         }
       })
-      .catch((error) => {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Error fetching collection report:", error);
+      .catch(error => {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error fetching collection report:', error);
         }
-        setError("Failed to fetch report data. Please try again.");
+        setError('Failed to fetch report data. Please try again.');
         setReportData(null);
       })
       .finally(() => setLoading(false));
@@ -380,15 +387,15 @@ function CollectionReportPageContent() {
 
   // Keep state in sync with URL changes (for browser back/forward)
   useEffect(() => {
-    const section = searchParams?.get("section");
-    if (section === "location" && activeTab !== "Location Metrics") {
-      setActiveTab("Location Metrics");
-    } else if (section === "sas" && activeTab !== "SAS Metrics Compare") {
-      setActiveTab("SAS Metrics Compare");
-    } else if (section === "machine" && activeTab !== "Machine Metrics") {
-      setActiveTab("Machine Metrics");
-    } else if (!section && activeTab !== "Machine Metrics") {
-      setActiveTab("Machine Metrics");
+    const section = searchParams?.get('section');
+    if (section === 'location' && activeTab !== 'Location Metrics') {
+      setActiveTab('Location Metrics');
+    } else if (section === 'sas' && activeTab !== 'SAS Metrics Compare') {
+      setActiveTab('SAS Metrics Compare');
+    } else if (section === 'machine' && activeTab !== 'Machine Metrics') {
+      setActiveTab('Machine Metrics');
+    } else if (!section && activeTab !== 'Machine Metrics') {
+      setActiveTab('Machine Metrics');
     }
   }, [searchParams, activeTab]);
 
@@ -404,25 +411,25 @@ function CollectionReportPageContent() {
       setShowFloatingRefresh(scrollTop > 200);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Handle tab change with URL update
   const handleTabChange = (
-    tab: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare"
+    tab: 'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare'
   ) => {
     setActiveTab(tab);
 
     // Update URL based on tab selection
     const sectionMap: Record<string, string> = {
-      "Machine Metrics": "machine",
-      "Location Metrics": "location",
-      "SAS Metrics Compare": "sas",
+      'Machine Metrics': 'machine',
+      'Location Metrics': 'location',
+      'SAS Metrics Compare': 'sas',
     };
 
-    const params = new URLSearchParams(searchParams?.toString() || "");
-    params.set("section", sectionMap[tab]);
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('section', sectionMap[tab]);
     const newUrl = `/collection-report/report/${reportId}?${params.toString()}`;
     router.push(newUrl, { scroll: false });
   };
@@ -442,25 +449,24 @@ function CollectionReportPageContent() {
       // Then refresh the data
       const data = await fetchCollectionReportById(reportId);
       if (data === null) {
-        setError("Report not found. Please use a valid report ID.");
+        setError('Report not found. Please use a valid report ID.');
         setReportData(null);
       } else if (!validateCollectionReportData(data)) {
-        setError("Invalid report data received from server.");
+        setError('Invalid report data received from server.');
         setReportData(null);
       } else {
         setReportData(data);
         // Check for SAS time issues after sync
         checkForSasTimeIssues(reportId);
       }
-      const collectionsData = await fetchCollectionsByLocationReportId(
-        reportId
-      );
+      const collectionsData =
+        await fetchCollectionsByLocationReportId(reportId);
       setCollections(collectionsData);
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error syncing meters:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error syncing meters:', error);
       }
-      setError("Failed to sync meter data.");
+      setError('Failed to sync meter data.');
     } finally {
       setRefreshing(false);
     }
@@ -505,28 +511,27 @@ function CollectionReportPageContent() {
         // Refresh data
         const data = await fetchCollectionReportById(reportId);
         if (data === null) {
-          setError("Report not found. Please use a valid report ID.");
+          setError('Report not found. Please use a valid report ID.');
           setReportData(null);
         } else if (!validateCollectionReportData(data)) {
-          setError("Invalid report data received from server.");
+          setError('Invalid report data received from server.');
           setReportData(null);
         } else {
           setReportData(data);
           // Check for issues after fix
           checkForSasTimeIssues(reportId);
         }
-        const collectionsData = await fetchCollectionsByLocationReportId(
-          reportId
-        );
+        const collectionsData =
+          await fetchCollectionsByLocationReportId(reportId);
         setCollections(collectionsData);
       } else {
-        toast.error(response.data.error || "Failed to fix report");
+        toast.error(response.data.error || 'Failed to fix report');
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error fixing report:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fixing report:', error);
       }
-      toast.error("Failed to fix report. Please try again.");
+      toast.error('Failed to fix report. Please try again.');
     } finally {
       setIsFixingReport(false);
     }
@@ -540,7 +545,7 @@ function CollectionReportPageContent() {
     return (
       <PageLayout
         headerProps={{
-          containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+          containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
           disabled: loading,
         }}
         pageTitle=""
@@ -565,7 +570,7 @@ function CollectionReportPageContent() {
     return (
       <PageLayout
         headerProps={{
-          containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+          containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
           disabled: loading,
         }}
         pageTitle=""
@@ -589,16 +594,16 @@ function CollectionReportPageContent() {
   const TabButton = ({
     label,
   }: {
-    label: "Machine Metrics" | "Location Metrics" | "SAS Metrics Compare";
+    label: 'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare';
   }) => (
     <button
       onClick={() => !loading && handleTabChange(label)}
       disabled={loading}
-      className={`px-4 py-3 text-sm font-medium rounded-md transition-colors w-full text-left ${
+      className={`w-full rounded-md px-4 py-3 text-left text-sm font-medium transition-colors ${
         activeTab === label
-          ? "bg-buttonActive text-white"
-          : "text-gray-700 hover:bg-gray-100"
-      } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+          ? 'bg-buttonActive text-white'
+          : 'text-gray-700 hover:bg-gray-100'
+      } ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
     >
       {label}
     </button>
@@ -620,8 +625,8 @@ function CollectionReportPageContent() {
     if (!hasData) {
       return (
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="text-4xl mb-4">🛠️</div>
-          <p className="text-lg text-gray-600 font-semibold mb-2">
+          <div className="mb-4 text-4xl">🛠️</div>
+          <p className="mb-2 text-lg font-semibold text-gray-600">
             No machine metrics available for this report.
           </p>
           <p className="text-sm text-gray-400">
@@ -632,20 +637,20 @@ function CollectionReportPageContent() {
     }
     return (
       <div>
-        <div className="lg:hidden space-y-4">
-          <h2 className="text-xl font-bold text-center my-4">
+        <div className="space-y-4 lg:hidden">
+          <h2 className="my-4 text-center text-xl font-bold">
             Machine Metrics
           </h2>
-          {metricsData.some((m) => m.ramClear) && (
-            <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded-md">
+          {metricsData.some(m => m.ramClear) && (
+            <div className="rounded-md border-l-4 border-orange-500 bg-orange-100 p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <Zap className="h-5 w-5 text-orange-500" />
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-orange-700 font-semibold">
-                    {metricsData.filter((m) => m.ramClear).length} machine(s)
-                    were ram cleared
+                  <p className="text-sm font-semibold text-orange-700">
+                    {metricsData.filter(m => m.ramClear).length} machine(s) were
+                    ram cleared
                   </p>
                 </div>
               </div>
@@ -653,14 +658,14 @@ function CollectionReportPageContent() {
           )}
 
           {/* Search Bar - Mobile */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <div className="mb-4 rounded-lg bg-white p-4 shadow-md">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
               <Input
                 type="text"
                 placeholder="Search machines by name or ID..."
                 value={searchTerm}
-                onChange={(e) => {
+                onChange={e => {
                   setSearchTerm(e.target.value);
                   setMachinePage(1); // Reset to first page when searching
                 }}
@@ -673,27 +678,27 @@ function CollectionReportPageContent() {
           {paginatedMetricsData.map((metric: MachineMetric) => (
             <div
               key={metric.id}
-              className={`rounded-lg shadow-md overflow-hidden ${
+              className={`overflow-hidden rounded-lg shadow-md ${
                 metric.ramClear
-                  ? "border-l-4 border-orange-500 bg-orange-50 shadow-lg"
-                  : "bg-white"
+                  ? 'border-l-4 border-orange-500 bg-orange-50 shadow-lg'
+                  : 'bg-white'
               }`}
             >
-              <div className="bg-lighterBlueHighlight text-white p-3">
+              <div className="bg-lighterBlueHighlight p-3 text-white">
                 <div className="flex items-center justify-between">
                   <h3
-                    className="font-semibold cursor-pointer hover:underline"
+                    className="cursor-pointer font-semibold hover:underline"
                     onClick={() => {
                       if (metric.actualMachineId) {
                         const url = `/cabinets/${metric.actualMachineId}`;
-                        if (process.env.NODE_ENV === "development") {
-                          console.warn("Navigating to:", url);
+                        if (process.env.NODE_ENV === 'development') {
+                          console.warn('Navigating to:', url);
                         }
                         router.push(url);
                       } else {
-                        if (process.env.NODE_ENV === "development") {
+                        if (process.env.NODE_ENV === 'development') {
                           console.warn(
-                            "No actualMachineId found for machine:",
+                            'No actualMachineId found for machine:',
                             metric.machineId
                           );
                         }
@@ -706,8 +711,8 @@ function CollectionReportPageContent() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="flex items-center justify-center w-6 h-6 bg-orange-500 rounded-full shadow-lg border-2 border-orange-600 animate-pulse">
-                            <Zap className="w-3 h-3 text-white" />
+                          <div className="flex h-6 w-6 animate-pulse items-center justify-center rounded-full border-2 border-orange-600 bg-orange-500 shadow-lg">
+                            <Zap className="h-3 w-3 text-white" />
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -720,20 +725,20 @@ function CollectionReportPageContent() {
                   )}
                 </div>
               </div>
-              <div className="p-4 space-y-2 text-sm">
+              <div className="space-y-2 p-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Dropped / Cancelled</span>
                   <span className="font-medium text-gray-800">
-                    {metric.dropCancelled || "0 / 0"}
+                    {metric.dropCancelled || '0 / 0'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-gray-600">Meters Gross</span>
                   <span className="font-medium text-gray-800">
                     {metric.metersGross?.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    }) || "0.00"}
+                    }) || '0.00'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -742,7 +747,7 @@ function CollectionReportPageContent() {
                     {metric.sasGross?.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    }) || "0.00"}
+                    }) || '0.00'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -753,14 +758,14 @@ function CollectionReportPageContent() {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })
-                      : "-"}
+                      : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">SAS Times</span>
-                  <div className="font-medium text-gray-800 text-right">
-                    <div>{formatSasTime(metric.sasStartTime || "")}</div>
-                    <div>{formatSasTime(metric.sasEndTime || "")}</div>
+                  <div className="text-right font-medium text-gray-800">
+                    <div>{formatSasTime(metric.sasStartTime || '')}</div>
+                    <div>{formatSasTime(metric.sasEndTime || '')}</div>
                   </div>
                 </div>
               </div>
@@ -774,46 +779,46 @@ function CollectionReportPageContent() {
               size="icon"
               onClick={() => setMachinePage(1)}
               disabled={machinePage === 1}
-              className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+              className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
             >
               <DoubleArrowLeftIcon className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setMachinePage((p) => Math.max(1, p - 1))}
+              onClick={() => setMachinePage(p => Math.max(1, p - 1))}
               disabled={machinePage === 1}
-              className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+              className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="text-gray-700 text-sm">Page</span>
+            <span className="text-sm text-gray-700">Page</span>
             <input
               type="number"
               min={1}
               max={machineTotalPages}
               value={machinePage}
-              onChange={(e) => {
+              onChange={e => {
                 let val = Number(e.target.value);
                 if (isNaN(val)) val = 1;
                 if (val < 1) val = 1;
                 if (val > machineTotalPages) val = machineTotalPages;
                 setMachinePage(val);
               }}
-              className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+              className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
               aria-label="Page number"
             />
-            <span className="text-gray-700 text-sm">
+            <span className="text-sm text-gray-700">
               of {machineTotalPages}
             </span>
             <Button
               variant="outline"
               size="icon"
               onClick={() =>
-                setMachinePage((p) => Math.min(machineTotalPages, p + 1))
+                setMachinePage(p => Math.min(machineTotalPages, p + 1))
               }
               disabled={machinePage === machineTotalPages}
-              className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+              className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
@@ -822,23 +827,23 @@ function CollectionReportPageContent() {
               size="icon"
               onClick={() => setMachinePage(machineTotalPages)}
               disabled={machinePage === machineTotalPages}
-              className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+              className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
             >
               <DoubleArrowRightIcon className="h-4 w-4" />
             </Button>
           </div>
         </div>
         <div className="hidden lg:block">
-          {metricsData.some((m) => m.ramClear) && (
-            <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded-md mb-4">
+          {metricsData.some(m => m.ramClear) && (
+            <div className="mb-4 rounded-md border-l-4 border-orange-500 bg-orange-100 p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <Zap className="h-5 w-5 text-orange-500" />
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-orange-700 font-semibold">
-                    {metricsData.filter((m) => m.ramClear).length} machine(s)
-                    were ram cleared
+                  <p className="text-sm font-semibold text-orange-700">
+                    {metricsData.filter(m => m.ramClear).length} machine(s) were
+                    ram cleared
                   </p>
                 </div>
               </div>
@@ -846,14 +851,14 @@ function CollectionReportPageContent() {
           )}
 
           {/* Search Bar */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <div className="mb-4 rounded-lg bg-white p-4 shadow-md">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
               <Input
                 type="text"
                 placeholder="Search machines by name or ID..."
                 value={searchTerm}
-                onChange={(e) => {
+                onChange={e => {
                   setSearchTerm(e.target.value);
                   setMachinePage(1); // Reset to first page when searching
                 }}
@@ -863,18 +868,18 @@ function CollectionReportPageContent() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md overflow-x-auto pb-6">
+          <div className="overflow-x-auto rounded-lg bg-white pb-6 shadow-md">
             <Table>
               <TableHeader>
                 <TableRow className="bg-button hover:bg-button">
                   <TableHead
-                    className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
-                    onClick={() => handleSort("machineId")}
+                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    onClick={() => handleSort('machineId')}
                   >
                     <div className="flex items-center gap-1">
                       MACHINE
-                      {sortField === "machineId" &&
-                        (sortDirection === "asc" ? (
+                      {sortField === 'machineId' &&
+                        (sortDirection === 'asc' ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
@@ -882,13 +887,13 @@ function CollectionReportPageContent() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
-                    onClick={() => handleSort("dropCancelled")}
+                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    onClick={() => handleSort('dropCancelled')}
                   >
                     <div className="flex items-center gap-1">
                       DROP/CANCELLED
-                      {sortField === "dropCancelled" &&
-                        (sortDirection === "asc" ? (
+                      {sortField === 'dropCancelled' &&
+                        (sortDirection === 'asc' ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
@@ -896,13 +901,13 @@ function CollectionReportPageContent() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
-                    onClick={() => handleSort("metersGross")}
+                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    onClick={() => handleSort('metersGross')}
                   >
                     <div className="flex items-center gap-1">
                       METER GROSS
-                      {sortField === "metersGross" &&
-                        (sortDirection === "asc" ? (
+                      {sortField === 'metersGross' &&
+                        (sortDirection === 'asc' ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
@@ -910,13 +915,13 @@ function CollectionReportPageContent() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
-                    onClick={() => handleSort("sasGross")}
+                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    onClick={() => handleSort('sasGross')}
                   >
                     <div className="flex items-center gap-1">
                       SAS GROSS
-                      {sortField === "sasGross" &&
-                        (sortDirection === "asc" ? (
+                      {sortField === 'sasGross' &&
+                        (sortDirection === 'asc' ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
@@ -924,20 +929,20 @@ function CollectionReportPageContent() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
-                    onClick={() => handleSort("variation")}
+                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    onClick={() => handleSort('variation')}
                   >
                     <div className="flex items-center gap-1">
                       VARIATION
-                      {sortField === "variation" &&
-                        (sortDirection === "asc" ? (
+                      {sortField === 'variation' &&
+                        (sortDirection === 'asc' ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
                         ))}
                     </div>
                   </TableHead>
-                  <TableHead className="text-white font-semibold">
+                  <TableHead className="font-semibold text-white">
                     SAS TIMES
                   </TableHead>
                 </TableRow>
@@ -948,17 +953,17 @@ function CollectionReportPageContent() {
                     key={metric.id}
                     className={`hover:bg-gray-50 ${
                       metric.ramClear
-                        ? "bg-orange-50 border-l-4 border-orange-500 shadow-sm"
-                        : ""
+                        ? 'border-l-4 border-orange-500 bg-orange-50 shadow-sm'
+                        : ''
                     }`}
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <span
-                          className="bg-lighterBlueHighlight text-white px-3 py-1 rounded text-xs font-semibold cursor-pointer hover:bg-lighterBlueHighlight/80 transition-colors"
+                          className="cursor-pointer rounded bg-lighterBlueHighlight px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-lighterBlueHighlight/80"
                           onClick={() => {
-                            if (process.env.NODE_ENV === "development") {
-                              console.warn("Machine click debug:", {
+                            if (process.env.NODE_ENV === 'development') {
+                              console.warn('Machine click debug:', {
                                 machineId: metric.machineId,
                                 actualMachineId: metric.actualMachineId,
                                 metric: metric,
@@ -966,14 +971,14 @@ function CollectionReportPageContent() {
                             }
                             if (metric.actualMachineId) {
                               const url = `/cabinets/${metric.actualMachineId}`;
-                              if (process.env.NODE_ENV === "development") {
-                                console.warn("Navigating to:", url);
+                              if (process.env.NODE_ENV === 'development') {
+                                console.warn('Navigating to:', url);
                               }
                               router.push(url);
                             } else {
-                              if (process.env.NODE_ENV === "development") {
+                              if (process.env.NODE_ENV === 'development') {
                                 console.warn(
-                                  "No actualMachineId found for machine:",
+                                  'No actualMachineId found for machine:',
                                   metric.machineId
                                 );
                               }
@@ -986,8 +991,8 @@ function CollectionReportPageContent() {
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center justify-center w-6 h-6 bg-orange-500 rounded-full shadow-lg border-2 border-orange-600 animate-pulse">
-                                  <Zap className="w-3 h-3 text-white" />
+                                <div className="flex h-6 w-6 animate-pulse items-center justify-center rounded-full border-2 border-orange-600 bg-orange-500 shadow-lg">
+                                  <Zap className="h-3 w-3 text-white" />
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
@@ -1000,18 +1005,18 @@ function CollectionReportPageContent() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{metric.dropCancelled || "0 / 0"}</TableCell>
+                    <TableCell>{metric.dropCancelled || '0 / 0'}</TableCell>
                     <TableCell>
                       {metric.metersGross?.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
-                      }) || "0.00"}
+                      }) || '0.00'}
                     </TableCell>
                     <TableCell>
                       {metric.sasGross?.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
-                      }) || "0.00"}
+                      }) || '0.00'}
                     </TableCell>
                     <TableCell>
                       {metric.variation !== undefined &&
@@ -1020,7 +1025,7 @@ function CollectionReportPageContent() {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })
-                        : "-"}
+                        : '-'}
                     </TableCell>
                     <TableCell className="text-xs">
                       {(() => {
@@ -1034,15 +1039,15 @@ function CollectionReportPageContent() {
                         return (
                           <div
                             className={
-                              inverted ? "text-red-600 font-semibold" : ""
+                              inverted ? 'font-semibold text-red-600' : ''
                             }
                           >
                             <div>
-                              {formatSasTime(metric.sasStartTime || "")}
+                              {formatSasTime(metric.sasStartTime || '')}
                             </div>
-                            <div>{formatSasTime(metric.sasEndTime || "")}</div>
+                            <div>{formatSasTime(metric.sasEndTime || '')}</div>
                             {inverted && (
-                              <div className="text-[10px] mt-1">
+                              <div className="mt-1 text-[10px]">
                                 Warning: Start is after End
                               </div>
                             )}
@@ -1060,46 +1065,46 @@ function CollectionReportPageContent() {
                 size="icon"
                 onClick={() => setMachinePage(1)}
                 disabled={machinePage === 1}
-                className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
               >
                 <DoubleArrowLeftIcon className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setMachinePage((p) => Math.max(1, p - 1))}
+                onClick={() => setMachinePage(p => Math.max(1, p - 1))}
                 disabled={machinePage === 1}
-                className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
-              <span className="text-gray-700 text-sm">Page</span>
+              <span className="text-sm text-gray-700">Page</span>
               <input
                 type="number"
                 min={1}
                 max={machineTotalPages}
                 value={machinePage}
-                onChange={(e) => {
+                onChange={e => {
                   let val = Number(e.target.value);
                   if (isNaN(val)) val = 1;
                   if (val < 1) val = 1;
                   if (val > machineTotalPages) val = machineTotalPages;
                   setMachinePage(val);
                 }}
-                className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
                 aria-label="Page number"
               />
-              <span className="text-gray-700 text-sm">
+              <span className="text-sm text-gray-700">
                 of {machineTotalPages}
               </span>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() =>
-                  setMachinePage((p) => Math.min(machineTotalPages, p + 1))
+                  setMachinePage(p => Math.min(machineTotalPages, p + 1))
                 }
                 disabled={machinePage === machineTotalPages}
-                className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
               >
                 <ChevronRightIcon className="h-4 w-4" />
               </Button>
@@ -1108,7 +1113,7 @@ function CollectionReportPageContent() {
                 size="icon"
                 onClick={() => setMachinePage(machineTotalPages)}
                 disabled={machinePage === machineTotalPages}
-                className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
               >
                 <DoubleArrowRightIcon className="h-4 w-4" />
               </Button>
@@ -1136,21 +1141,21 @@ function CollectionReportPageContent() {
     return (
       <>
         {/* Mobile layout */}
-        <div className="lg:hidden space-y-4">
-          <h2 className="text-xl font-bold text-center my-4">
+        <div className="space-y-4 lg:hidden">
+          <h2 className="my-4 text-center text-xl font-bold">
             Location Metrics
           </h2>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-button text-white p-3">
+          <div className="overflow-hidden rounded-lg bg-white shadow-md">
+            <div className="bg-button p-3 text-white">
               <h3 className="font-semibold">Location Total</h3>
             </div>
-            <div className="p-4 space-y-2 text-sm">
+            <div className="space-y-2 p-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">
                   Total Drop / Total Cancelled
                 </span>
                 <span className="font-medium text-gray-800">
-                  {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
+                  {reportData?.locationMetrics?.droppedCancelled || '0 / 0'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -1166,7 +1171,7 @@ function CollectionReportPageContent() {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }
-                  ) || "0.00"}
+                  ) || '0.00'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -1182,7 +1187,7 @@ function CollectionReportPageContent() {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }
-                  ) || "0.00"}
+                  ) || '0.00'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -1201,15 +1206,15 @@ function CollectionReportPageContent() {
                           maximumFractionDigits: 2,
                         }
                       )
-                    : "-"}
+                    : '-'}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 space-y-2 text-sm">
+            <div className="overflow-hidden rounded-lg bg-white shadow-md">
+              <div className="space-y-2 p-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Variance</span>
                   <span
@@ -1225,7 +1230,7 @@ function CollectionReportPageContent() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Variance Reason</span>
                   <span className="font-medium">
-                    {reportData?.locationMetrics?.varianceReason || "-"}
+                    {reportData?.locationMetrics?.varianceReason || '-'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -1254,8 +1259,8 @@ function CollectionReportPageContent() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 space-y-2 text-sm">
+            <div className="overflow-hidden rounded-lg bg-white shadow-md">
+              <div className="space-y-2 p-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Location Revenue</span>
                   <span
@@ -1284,19 +1289,19 @@ function CollectionReportPageContent() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Machines Number</span>
                   <span className="font-medium">
-                    {reportData?.locationMetrics?.machinesNumber || "-"}
+                    {reportData?.locationMetrics?.machinesNumber || '-'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Reason For Shortage</span>
                   <span className="font-medium">
-                    {reportData?.locationMetrics?.reasonForShortage || "-"}
+                    {reportData?.locationMetrics?.reasonForShortage || '-'}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 space-y-2 text-sm">
+            <div className="overflow-hidden rounded-lg bg-white shadow-md">
+              <div className="space-y-2 p-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Taxes</span>
                   <span
@@ -1350,8 +1355,8 @@ function CollectionReportPageContent() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 space-y-2 text-sm">
+            <div className="overflow-hidden rounded-lg bg-white shadow-md">
+              <div className="space-y-2 p-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Balance Correction</span>
                   <span
@@ -1368,7 +1373,7 @@ function CollectionReportPageContent() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Correction Reason</span>
                   <span className="font-medium">
-                    {reportData?.locationMetrics?.correctionReason || "-"}
+                    {reportData?.locationMetrics?.correctionReason || '-'}
                   </span>
                 </div>
               </div>
@@ -1377,9 +1382,9 @@ function CollectionReportPageContent() {
         </div>
 
         {/* Desktop layout */}
-        <div className="hidden lg:block bg-white rounded-lg shadow-md">
+        <div className="hidden rounded-lg bg-white shadow-md lg:block">
           {/* Top summary table */}
-          <div className="bg-button text-white rounded-t-lg px-4 py-2 font-semibold">
+          <div className="rounded-t-lg bg-button px-4 py-2 font-semibold text-white">
             Location Total
           </div>
           <table className="w-full text-sm">
@@ -1389,7 +1394,7 @@ function CollectionReportPageContent() {
                   Total Drop / Total Cancelled
                 </td>
                 <td className="p-3 text-right">
-                  {reportData?.locationMetrics?.droppedCancelled || "0 / 0"}
+                  {reportData?.locationMetrics?.droppedCancelled || '0 / 0'}
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
@@ -1407,7 +1412,7 @@ function CollectionReportPageContent() {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }
-                  ) || "0.00"}
+                  ) || '0.00'}
                 </td>
               </tr>
               <tr className="border-b border-gray-200">
@@ -1425,7 +1430,7 @@ function CollectionReportPageContent() {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }
-                  ) || "0.00"}
+                  ) || '0.00'}
                 </td>
               </tr>
               <tr>
@@ -1446,7 +1451,7 @@ function CollectionReportPageContent() {
                           maximumFractionDigits: 2,
                         }
                       )
-                    : "-"}
+                    : '-'}
                 </td>
               </tr>
             </tbody>
@@ -1454,7 +1459,7 @@ function CollectionReportPageContent() {
 
           {/* Detail grids */}
           <div className="grid grid-cols-2 gap-4 px-4 pb-4 pt-4">
-            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+            <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
               <table className="w-full text-sm">
                 <tbody>
                   <tr className="border-b border-gray-200">
@@ -1472,7 +1477,7 @@ function CollectionReportPageContent() {
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Variance Reason</td>
                     <td className="p-3 text-right">
-                      {reportData?.locationMetrics?.varianceReason || "-"}
+                      {reportData?.locationMetrics?.varianceReason || '-'}
                     </td>
                   </tr>
                   <tr className="border-b border-gray-200">
@@ -1504,7 +1509,7 @@ function CollectionReportPageContent() {
                 </tbody>
               </table>
             </div>
-            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+            <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
               <table className="w-full text-sm">
                 <tbody>
                   <tr className="border-b border-gray-200">
@@ -1537,19 +1542,19 @@ function CollectionReportPageContent() {
                   <tr className="border-b border-gray-200">
                     <td className="p-3 text-gray-700">Machines Number</td>
                     <td className="p-3 text-right">
-                      {reportData?.locationMetrics?.machinesNumber || "-"}
+                      {reportData?.locationMetrics?.machinesNumber || '-'}
                     </td>
                   </tr>
                   <tr>
                     <td className="p-3 text-gray-700">Reason For Shortage</td>
                     <td className="p-3 text-right">
-                      {reportData?.locationMetrics?.reasonForShortage || "-"}
+                      {reportData?.locationMetrics?.reasonForShortage || '-'}
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+            <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
               <table className="w-full text-sm">
                 <tbody>
                   <tr className="border-b border-gray-200">
@@ -1607,7 +1612,7 @@ function CollectionReportPageContent() {
                 </tbody>
               </table>
             </div>
-            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
+            <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
               <table className="w-full text-sm">
                 <tbody>
                   <tr className="border-b border-gray-200">
@@ -1627,7 +1632,7 @@ function CollectionReportPageContent() {
                   <tr>
                     <td className="p-3 text-gray-700">Correction Reason</td>
                     <td className="p-3 text-right">
-                      {reportData?.locationMetrics?.correctionReason || "-"}
+                      {reportData?.locationMetrics?.correctionReason || '-'}
                     </td>
                   </tr>
                 </tbody>
@@ -1670,15 +1675,15 @@ function CollectionReportPageContent() {
 
     return (
       <>
-        <div className="lg:hidden space-y-4">
-          <h2 className="text-xl font-bold text-center my-4">
+        <div className="space-y-4 lg:hidden">
+          <h2 className="my-4 text-center text-xl font-bold">
             SAS Metrics Compare
           </h2>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-lighterBlueHighlight text-white p-3">
+          <div className="overflow-hidden rounded-lg bg-white shadow-md">
+            <div className="bg-lighterBlueHighlight p-3 text-white">
               <h3 className="font-semibold">SAS Totals</h3>
             </div>
-            <div className="p-4 space-y-2 text-sm">
+            <div className="space-y-2 p-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">SAS Drop Total</span>
                 <span
@@ -1721,14 +1726,14 @@ function CollectionReportPageContent() {
             </div>
           </div>
         </div>
-        <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-x-auto">
+        <div className="hidden overflow-x-auto rounded-lg bg-white shadow-md lg:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-button hover:bg-button">
-                <TableHead className="text-white font-semibold">
+                <TableHead className="font-semibold text-white">
                   METRIC
                 </TableHead>
-                <TableHead className="text-white font-semibold">
+                <TableHead className="font-semibold text-white">
                   VALUE
                 </TableHead>
               </TableRow>
@@ -1774,11 +1779,11 @@ function CollectionReportPageContent() {
 
   const renderDesktopTabContent = () => {
     switch (activeTab) {
-      case "Machine Metrics":
+      case 'Machine Metrics':
         return <MachineMetricsContent loading={false} />;
-      case "Location Metrics":
+      case 'Location Metrics':
         return <LocationMetricsContent loading={false} />;
-      case "SAS Metrics Compare":
+      case 'SAS Metrics Compare':
         return <SASMetricsCompareContent loading={false} />;
       default:
         return <MachineMetricsContent loading={false} />;
@@ -1788,7 +1793,7 @@ function CollectionReportPageContent() {
   return (
     <PageLayout
       headerProps={{
-        containerPaddingMobile: "px-4 py-8 lg:px-0 lg:py-0",
+        containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
         disabled: loading || refreshing,
       }}
       pageTitle=""
@@ -1798,13 +1803,13 @@ function CollectionReportPageContent() {
       showToaster={false}
     >
       {/* Header Section: Back button, title, and sync button */}
-      <div className="px-2 lg:px-6 pt-6 hidden lg:block">
-        <div className="flex items-center justify-between mb-6">
+      <div className="hidden px-2 pt-6 lg:block lg:px-6">
+        <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/collection-report">
               <Button
                 variant="ghost"
-                className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+                className="rounded-full border border-gray-200 p-2 hover:bg-gray-100"
               >
                 <ArrowLeft size={18} className="h-5 w-5" />
               </Button>
@@ -1823,7 +1828,7 @@ function CollectionReportPageContent() {
                 onClick={handleFixReportClick}
                 disabled={loading || refreshing || isFixingReport}
                 variant="outline"
-                className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+                className="flex items-center gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
               >
                 {isFixingReport ? (
                   <>
@@ -1843,32 +1848,32 @@ function CollectionReportPageContent() {
       </div>
 
       {/* Report Header Section: Location name, report ID, and financial summary */}
-      <div className="px-2 lg:px-6 pt-2 lg:pt-4 pb-6">
-        <div className="bg-white lg:bg-container rounded-lg shadow lg:border-t-4 lg:border-lighterBlueHighlight py-4 lg:py-8">
-          <div className="text-center py-2 lg:py-4 px-4">
-            <div className="lg:hidden text-xs text-gray-500 mb-2">
+      <div className="px-2 pb-6 pt-2 lg:px-6 lg:pt-4">
+        <div className="rounded-lg bg-white py-4 shadow lg:border-t-4 lg:border-lighterBlueHighlight lg:bg-container lg:py-8">
+          <div className="px-4 py-2 text-center lg:py-4">
+            <div className="mb-2 text-xs text-gray-500 lg:hidden">
               COLLECTION REPORT
             </div>
-            <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 mb-2">
+            <h1 className="mb-2 text-2xl font-bold text-gray-800 lg:text-4xl">
               {reportData.locationName}
             </h1>
-            <p className="text-sm lg:text-base text-gray-600 mb-4">
+            <p className="mb-4 text-sm text-gray-600 lg:text-base">
               Report ID: {reportData.reportId}
             </p>
             {(() => {
               const locationTotal = calculateLocationTotal(collections);
               const textColorClass =
-                locationTotal < 0 ? "text-red-600" : "text-green-600";
+                locationTotal < 0 ? 'text-red-600' : 'text-green-600';
               return (
                 <p className={`text-lg font-semibold`}>
-                  Location Total:{" "}
+                  Location Total:{' '}
                   <span className={textColorClass}>
                     {formatCurrency(locationTotal)}
                   </span>
                 </p>
               );
             })()}
-            <div className="lg:hidden mt-4 space-y-2">
+            <div className="mt-4 space-y-2 lg:hidden">
               <SyncButton
                 onClick={handleSyncClick}
                 isSyncing={refreshing}
@@ -1881,7 +1886,7 @@ function CollectionReportPageContent() {
                   onClick={handleFixReportClick}
                   disabled={loading || refreshing || isFixingReport}
                   variant="outline"
-                  className="w-full justify-center flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+                  className="flex w-full items-center justify-center gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
                 >
                   {isFixingReport ? (
                     <>
@@ -1903,8 +1908,8 @@ function CollectionReportPageContent() {
 
       {/* Warning Banner for SAS Time Issues */}
       {(hasSasTimeIssues || hasCollectionHistoryIssues) && (
-        <div className="mx-2 lg:mx-6 mb-6">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="mx-2 mb-6 lg:mx-6">
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <svg
@@ -1922,59 +1927,76 @@ function CollectionReportPageContent() {
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-yellow-800">
                   {hasSasTimeIssues && hasCollectionHistoryIssues
-                    ? "Multiple Issues Detected"
+                    ? 'Multiple Issues Detected'
                     : hasSasTimeIssues
-                    ? "SAS Time Issues Detected"
-                    : "Collection History Issues Detected"}
+                      ? 'SAS Time Issues Detected'
+                      : 'Collection History Issues Detected'}
                 </h3>
                 <div className="mt-2 text-sm text-yellow-700">
                   <p>
                     {hasSasTimeIssues && hasCollectionHistoryIssues
-                      ? "This report has multiple types of data inconsistencies:"
+                      ? 'This report has multiple types of data inconsistencies:'
                       : hasSasTimeIssues
-                      ? "This report has SAS time inconsistencies:"
-                      : "This report has collection history inconsistencies:"}
+                        ? 'This report has SAS time inconsistencies:'
+                        : 'This report has collection history inconsistencies:'}
                   </p>
                   <div className="mt-2 space-y-1">
                     {/* Show SAS Time Issues */}
                     {hasSasTimeIssues && sasTimeIssues.length > 0 && (
                       <div>
-                        <p className="font-semibold text-yellow-800">SAS Time Issues:</p>
+                        <p className="font-semibold text-yellow-800">
+                          SAS Time Issues:
+                        </p>
                         {sasTimeIssues
-                          .reduce((acc, issue) => {
-                            const existing = acc.find(
-                              (item) => item.machineName === issue.machineName
-                            );
-                            if (existing) {
-                              existing.issues.push(issue);
-                            } else {
-                              acc.push({
-                                machineName: issue.machineName,
-                                issues: [issue],
-                              });
-                            }
-                            return acc;
-                          }, [] as { machineName: string; issues: CollectionIssue[] }[])
-                      .map((machine, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleIssueClick(machine.issues[0])}
-                            className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
-                          >
-                            {machine.machineName} ({machine.issues.length} issue
-                            {machine.issues.length > 1 ? "s" : ""})
-                          </button>
-                        </div>
-                      ))}
+                          .reduce(
+                            (acc, issue) => {
+                              const existing = acc.find(
+                                item => item.machineName === issue.machineName
+                              );
+                              if (existing) {
+                                existing.issues.push(issue);
+                              } else {
+                                acc.push({
+                                  machineName: issue.machineName,
+                                  issues: [issue],
+                                });
+                              }
+                              return acc;
+                            },
+                            [] as {
+                              machineName: string;
+                              issues: CollectionIssue[];
+                            }[]
+                          )
+                          .map((machine, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2"
+                            >
+                              <button
+                                onClick={() =>
+                                  handleIssueClick(machine.issues[0])
+                                }
+                                className="cursor-pointer text-blue-600 underline hover:text-blue-800"
+                              >
+                                {machine.machineName} ({machine.issues.length}{' '}
+                                issue
+                                {machine.issues.length > 1 ? 's' : ''})
+                              </button>
+                            </div>
+                          ))}
                       </div>
                     )}
-                    
+
                     {/* Show Collection History Issues */}
                     {hasCollectionHistoryIssues && (
                       <div className="mt-3">
-                        <p className="font-semibold text-yellow-800">Collection History Issues:</p>
+                        <p className="font-semibold text-yellow-800">
+                          Collection History Issues:
+                        </p>
                         <p className="text-sm text-yellow-700">
-                          • Machine 1007 has orphaned history entries referencing non-existent reports
+                          • Machine 1007 has orphaned history entries
+                          referencing non-existent reports
                         </p>
                       </div>
                     )}
@@ -1992,10 +2014,10 @@ function CollectionReportPageContent() {
       )}
 
       {/* Desktop Content Section: Sidebar navigation and main content */}
-      <div className="px-2 lg:px-6 pb-6 hidden lg:flex lg:flex-row lg:space-x-6">
-        <div className="lg:w-1/4 mb-6 lg:mb-0">
-          <div className="space-y-2 bg-white p-3 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+      <div className="hidden px-2 pb-6 lg:flex lg:flex-row lg:space-x-6 lg:px-6">
+        <div className="mb-6 lg:mb-0 lg:w-1/4">
+          <div className="space-y-2 rounded-lg bg-white p-3 shadow">
+            <h3 className="mb-4 text-lg font-semibold text-gray-800">
               Report Sections
             </h3>
             <div className="space-y-2">
@@ -2010,15 +2032,13 @@ function CollectionReportPageContent() {
         </div>
       </div>
       {/* Mobile Content Section: Select navigation for mobile devices */}
-      <div className="px-2 lg:px-6 pb-6 lg:hidden">
+      <div className="px-2 pb-6 lg:hidden lg:px-6">
         {/* Mobile Navigation Select */}
         <div className="mb-6">
           <select
             value={activeTab}
-            onChange={(e) =>
-              handleTabChange(e.target.value as typeof activeTab)
-            }
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive cursor-pointer"
+            onChange={e => handleTabChange(e.target.value as typeof activeTab)}
+            className="w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
             disabled={loading || refreshing}
           >
             <option value="Machine Metrics">Machine Metrics</option>
@@ -2029,13 +2049,13 @@ function CollectionReportPageContent() {
 
         {/* Mobile Content - Show only active tab */}
         <div className="space-y-4">
-          {activeTab === "Machine Metrics" && (
+          {activeTab === 'Machine Metrics' && (
             <MachineMetricsContent loading={false} />
           )}
-          {activeTab === "Location Metrics" && (
+          {activeTab === 'Location Metrics' && (
             <LocationMetricsContent loading={false} />
           )}
-          {activeTab === "SAS Metrics Compare" && (
+          {activeTab === 'SAS Metrics Compare' && (
             <SASMetricsCompareContent loading={false} />
           )}
         </div>
@@ -2054,12 +2074,12 @@ function CollectionReportPageContent() {
             <motion.button
               onClick={handleSyncClick}
               disabled={refreshing}
-              className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-full bg-button p-3 text-container shadow-lg transition-colors duration-200 hover:bg-buttonActive disabled:cursor-not-allowed disabled:opacity-50"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
               <RefreshCw
-                className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
+                className={`h-6 w-6 ${refreshing ? 'animate-spin' : ''}`}
               />
             </motion.button>
           </motion.div>
@@ -2089,7 +2109,7 @@ function CollectionReportPageContent() {
               </div>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setShowSyncConfirmation(false)}
@@ -2100,9 +2120,9 @@ function CollectionReportPageContent() {
             <Button
               onClick={handleSyncConfirm}
               disabled={refreshing}
-              className="w-full sm:w-auto bg-buttonActive hover:bg-buttonActive/90"
+              className="w-full bg-buttonActive hover:bg-buttonActive/90 sm:w-auto"
             >
-              {refreshing ? "Syncing..." : "Sync Meters"}
+              {refreshing ? 'Syncing...' : 'Sync Meters'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2120,7 +2140,7 @@ function CollectionReportPageContent() {
               <div>
                 This unified fix will automatically detect and resolve ALL
                 issues in this report:
-                <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-gray-600">
+                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-gray-600">
                   <li>Fix SAS time issues (inverted, missing, incorrect)</li>
                   <li>Recalculate movement values</li>
                   <li>Fix prevIn/prevOut meter mismatches</li>
@@ -2138,7 +2158,7 @@ function CollectionReportPageContent() {
               </div>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setShowFixReportConfirmation(false)}
@@ -2152,7 +2172,7 @@ function CollectionReportPageContent() {
               disabled={isFixingReport}
               className="w-full sm:w-auto"
             >
-              {isFixingReport ? "Fixing Report..." : "Fix Report"}
+              {isFixingReport ? 'Fixing Report...' : 'Fix Report'}
             </Button>
           </DialogFooter>
         </DialogContent>

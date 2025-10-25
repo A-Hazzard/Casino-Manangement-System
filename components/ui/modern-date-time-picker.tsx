@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import * as React from 'react';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 export type ModernDateTimePickerProps = {
   date: Date | undefined;
@@ -32,21 +32,21 @@ export function ModernDateTimePicker({
   date,
   setDate,
   disabled = false,
-  placeholder = "Pick a date and time",
+  placeholder = 'Pick a date and time',
   className,
 }: ModernDateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
   const [tempDate, setTempDate] = React.useState<Date | undefined>(date);
-  const [tempTime, setTempTime] = React.useState<string>("");
+  const [tempTime, setTempTime] = React.useState<string>('');
 
   // Initialize temp values when date changes
   React.useEffect(() => {
     if (date) {
       setTempDate(date);
-      setTempTime(format(date, "HH:mm"));
+      setTempTime(format(date, 'HH:mm'));
     } else {
       setTempDate(undefined);
-      setTempTime("");
+      setTempTime('');
     }
   }, [date]);
 
@@ -55,12 +55,12 @@ export function ModernDateTimePicker({
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
-        const timeString = `${hour.toString().padStart(2, "0")}:${minute
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute
           .toString()
-          .padStart(2, "0")}`;
+          .padStart(2, '0')}`;
         const displayTime = format(
           new Date(2000, 0, 1, hour, minute),
-          "h:mm aa"
+          'h:mm aa'
         );
         options.push({ value: timeString, label: displayTime });
       }
@@ -72,7 +72,7 @@ export function ModernDateTimePicker({
     if (selectedDate) {
       // If we have a time selected, combine date and time
       if (tempTime) {
-        const [hours, minutes] = tempTime.split(":").map(Number);
+        const [hours, minutes] = tempTime.split(':').map(Number);
         const combinedDate = new Date(selectedDate);
         combinedDate.setHours(hours, minutes, 0, 0);
         setTempDate(combinedDate);
@@ -85,7 +85,7 @@ export function ModernDateTimePicker({
   const handleTimeSelect = (timeValue: string) => {
     setTempTime(timeValue);
     if (tempDate) {
-      const [hours, minutes] = timeValue.split(":").map(Number);
+      const [hours, minutes] = timeValue.split(':').map(Number);
       const combinedDate = new Date(tempDate);
       combinedDate.setHours(hours, minutes, 0, 0);
       setTempDate(combinedDate);
@@ -101,7 +101,7 @@ export function ModernDateTimePicker({
 
   const handleCancel = () => {
     setTempDate(date);
-    setTempTime(date ? format(date, "HH:mm") : "");
+    setTempTime(date ? format(date, 'HH:mm') : '');
     setOpen(false);
   };
 
@@ -116,8 +116,8 @@ export function ModernDateTimePicker({
         <Button
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
+            'w-full justify-start text-left font-normal',
+            !date && 'text-muted-foreground',
             className
           )}
           disabled={disabled}
@@ -134,15 +134,15 @@ export function ModernDateTimePicker({
               mode="single"
               selected={tempDate}
               onSelect={handleDateSelect}
-              disabled={(date) =>
-                date > new Date() || date < new Date("1900-01-01")
+              disabled={date =>
+                date > new Date() || date < new Date('1900-01-01')
               }
               initialFocus
             />
           </div>
 
           {/* Time Section */}
-          <div className="w-48 p-3 border-l">
+          <div className="w-48 border-l p-3">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
@@ -154,7 +154,7 @@ export function ModernDateTimePicker({
                   <SelectValue placeholder="Select time" />
                 </SelectTrigger>
                 <SelectContent className="max-h-48">
-                  {timeOptions.map((option) => (
+                  {timeOptions.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

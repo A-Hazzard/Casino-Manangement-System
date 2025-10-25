@@ -27,15 +27,15 @@ function getGamingDayRangeForPeriod(
   console.log(`Current Time (UTC): ${nowUtc.toISOString()}`);
   console.log(`Current Time (Trinidad Local): ${nowLocal.toISOString()}`);
   console.log(`Today (UTC normalized): ${today.toISOString()}`);
-  console.log("");
+  console.log('');
 
-  if (timePeriod === "7d" || timePeriod === "last7days") {
+  if (timePeriod === '7d' || timePeriod === 'last7days') {
     // Last 7 gaming days, starting from 7 days ago at gameDayStartHour
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // -6 because today is day 1
 
     console.log(`Seven Days Ago (date): ${sevenDaysAgo.toISOString()}`);
-    console.log("");
+    console.log('');
 
     // Gaming day start on the start date at gameDayStartHour
     const rangeStart = new Date(sevenDaysAgo);
@@ -55,35 +55,35 @@ function getGamingDayRangeForPeriod(
 
 // Test with October 16th, 2025
 console.log("🔍 Testing 'Last 7 Days' Date Range");
-console.log("=".repeat(60));
+console.log('='.repeat(60));
 console.log("Scenario: User clicks 'Last 7 Days' on October 16th, 2025");
-console.log("Gaming Day Offset: 8 (8:00 AM)");
-console.log("Timezone: Trinidad (UTC-4)");
-console.log("");
+console.log('Gaming Day Offset: 8 (8:00 AM)');
+console.log('Timezone: Trinidad (UTC-4)');
+console.log('');
 
 // Simulate different times of day on October 16th
 const testCases = [
   {
-    time: "2025-10-16T06:00:00.000Z",
-    description: "6:00 AM Trinidad (before gaming day starts)",
+    time: '2025-10-16T06:00:00.000Z',
+    description: '6:00 AM Trinidad (before gaming day starts)',
   },
   {
-    time: "2025-10-16T10:00:00.000Z",
-    description: "6:00 AM Trinidad (before gaming day starts)",
+    time: '2025-10-16T10:00:00.000Z',
+    description: '6:00 AM Trinidad (before gaming day starts)',
   },
   {
-    time: "2025-10-16T15:00:00.000Z",
-    description: "11:00 AM Trinidad (after gaming day started)",
+    time: '2025-10-16T15:00:00.000Z',
+    description: '11:00 AM Trinidad (after gaming day started)',
   },
   {
-    time: "2025-10-16T20:00:00.000Z",
-    description: "4:00 PM Trinidad (afternoon)",
+    time: '2025-10-16T20:00:00.000Z',
+    description: '4:00 PM Trinidad (afternoon)',
   },
 ];
 
 for (const testCase of testCases) {
   console.log(`\n📋 Test Case: ${testCase.description}`);
-  console.log("=".repeat(40));
+  console.log('='.repeat(40));
 
   // Mock the current time
   const originalDate = Date;
@@ -99,9 +99,9 @@ for (const testCase of testCases) {
     }
   };
 
-  const result = getGamingDayRangeForPeriod("7d", 8, -4);
+  const result = getGamingDayRangeForPeriod('7d', 8, -4);
 
-  console.log("\n📊 Result:");
+  console.log('\n📊 Result:');
   console.log(`Start (UTC): ${result.rangeStart.toISOString()}`);
   console.log(`End (UTC):   ${result.rangeEnd.toISOString()}`);
 
@@ -111,7 +111,7 @@ for (const testCase of testCases) {
   );
   const endTrinidad = new Date(result.rangeEnd.getTime() - 4 * 60 * 60 * 1000);
 
-  console.log("\n📅 In Trinidad Time (for verification):");
+  console.log('\n📅 In Trinidad Time (for verification):');
   console.log(
     `Start: ${startTrinidad.toISOString()} (Oct 10, 8:00 AM Trinidad)`
   );
@@ -123,27 +123,27 @@ for (const testCase of testCases) {
   global.Date = originalDate;
 }
 
-console.log("\n\n🎯 SUMMARY:");
-console.log("=".repeat(60));
+console.log('\n\n🎯 SUMMARY:');
+console.log('='.repeat(60));
 console.log("When you click 'Last 7 Days' on October 16th:");
-console.log("");
-console.log("📅 Date Range (Trinidad Time):");
-console.log("   Start: October 10, 2025 at 8:00:00 AM");
-console.log("   End:   October 17, 2025 at 7:59:59.999 AM");
-console.log("");
-console.log("🗓️  Days Included:");
-console.log("   Day 1: Oct 10 (8 AM - 7:59 AM next day)");
-console.log("   Day 2: Oct 11 (8 AM - 7:59 AM next day)");
-console.log("   Day 3: Oct 12 (8 AM - 7:59 AM next day)");
-console.log("   Day 4: Oct 13 (8 AM - 7:59 AM next day)");
-console.log("   Day 5: Oct 14 (8 AM - 7:59 AM next day)");
-console.log("   Day 6: Oct 15 (8 AM - 7:59 AM next day)");
-console.log("   Day 7: Oct 16 (8 AM - 7:59 AM next day)");
-console.log("");
-console.log("📊 Database Query (UTC):");
-console.log("   Start: October 10, 2025 at 12:00:00 PM UTC");
-console.log("   End:   October 17, 2025 at 11:59:59.999 AM UTC");
-console.log("");
+console.log('');
+console.log('📅 Date Range (Trinidad Time):');
+console.log('   Start: October 10, 2025 at 8:00:00 AM');
+console.log('   End:   October 17, 2025 at 7:59:59.999 AM');
+console.log('');
+console.log('🗓️  Days Included:');
+console.log('   Day 1: Oct 10 (8 AM - 7:59 AM next day)');
+console.log('   Day 2: Oct 11 (8 AM - 7:59 AM next day)');
+console.log('   Day 3: Oct 12 (8 AM - 7:59 AM next day)');
+console.log('   Day 4: Oct 13 (8 AM - 7:59 AM next day)');
+console.log('   Day 5: Oct 14 (8 AM - 7:59 AM next day)');
+console.log('   Day 6: Oct 15 (8 AM - 7:59 AM next day)');
+console.log('   Day 7: Oct 16 (8 AM - 7:59 AM next day)');
+console.log('');
+console.log('📊 Database Query (UTC):');
+console.log('   Start: October 10, 2025 at 12:00:00 PM UTC');
+console.log('   End:   October 17, 2025 at 11:59:59.999 AM UTC');
+console.log('');
 console.log(
   "⚠️  Note: The calculation is 'today - 6 days' because today counts as day 1"
 );

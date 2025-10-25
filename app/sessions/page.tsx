@@ -1,31 +1,31 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
 
 // Layout components
-import PageLayout from "@/components/layout/PageLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import PageLayout from '@/components/layout/PageLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 // Store
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 // Hooks
 import {
   useSessions,
   useSessionsFilters,
   useSessionsNavigation,
-} from "@/lib/hooks/data";
+} from '@/lib/hooks/data';
 
 // Components
-import SessionsFilters from "@/components/sessions/SessionsFilters";
-import SessionsTable from "@/components/sessions/SessionsTable";
-import SessionsPagination from "@/components/sessions/SessionsPagination";
-import { SessionsPageSkeleton } from "@/components/ui/skeletons/SessionsSkeletons";
+import SessionsFilters from '@/components/sessions/SessionsFilters';
+import SessionsTable from '@/components/sessions/SessionsTable';
+import SessionsPagination from '@/components/sessions/SessionsPagination';
+import { SessionsPageSkeleton } from '@/components/ui/skeletons/SessionsSkeletons';
 
 // Constants
-import { SESSIONS_ANIMATIONS } from "@/lib/constants/sessions";
-import Image from "next/image";
-import { IMAGES } from "@/lib/constants/images";
+import { SESSIONS_ANIMATIONS } from '@/lib/constants/sessions';
+import Image from 'next/image';
+import { IMAGES } from '@/lib/constants/images';
 
 /**
  * Sessions Page
@@ -68,7 +68,7 @@ function SessionsPageContent() {
       >
         {/* Main Content Section: Sessions page with animations */}
         <motion.div
-          className="w-full mt-8"
+          className="mt-8 w-full"
           variants={SESSIONS_ANIMATIONS.pageVariants}
           initial="initial"
           animate="animate"
@@ -82,7 +82,7 @@ function SessionsPageContent() {
                 alt="Sessions Icon"
                 width={32}
                 height={32}
-                className="w-6 h-6 sm:w-8 sm:h-8"
+                className="h-6 w-6 sm:h-8 sm:w-8"
               />
             </div>
             <p className="text-gray-600">
@@ -104,7 +104,7 @@ function SessionsPageContent() {
 
           {/* Error State Section: Error display for failed requests */}
           {error && (
-            <div className="bg-red-50 rounded-lg border border-red-200 p-4">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
               <p className="text-red-600">{error}</p>
             </div>
           )}
@@ -112,7 +112,7 @@ function SessionsPageContent() {
           {/* Sessions Table Section: Main data display with table and pagination */}
           {!loading && !error && (
             <>
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
                 <SessionsTable
                   sessions={sessions}
                   onViewEvents={handleViewEvents}

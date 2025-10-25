@@ -1,33 +1,33 @@
-"use client";
+'use client';
 
-import { Suspense, useState } from "react";
-import Image from "next/image";
-import PageLayout from "@/components/layout/PageLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { Suspense, useState } from 'react';
+import Image from 'next/image';
+import PageLayout from '@/components/layout/PageLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 // Modal components
-import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
-import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
-import { NewCabinetModal } from "@/components/ui/cabinets/NewCabinetModal";
-import NewMovementRequestModal from "@/components/ui/movements/NewMovementRequestModal";
-import UploadSmibDataModal from "@/components/ui/firmware/UploadSmibDataModal";
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
+import { NewCabinetModal } from '@/components/ui/cabinets/NewCabinetModal';
+import NewMovementRequestModal from '@/components/ui/movements/NewMovementRequestModal';
+import UploadSmibDataModal from '@/components/ui/firmware/UploadSmibDataModal';
 
 // Section components
-import SMIBManagement from "@/components/cabinets/SMIBManagement";
-import MovementRequests from "@/components/cabinets/MovementRequests";
-import SMIBFirmwareSection from "@/components/ui/firmware/SMIBFirmwareSection";
-import CabinetsNavigation from "@/components/cabinets/CabinetsNavigation";
+import SMIBManagement from '@/components/cabinets/SMIBManagement';
+import MovementRequests from '@/components/cabinets/MovementRequests';
+import SMIBFirmwareSection from '@/components/ui/firmware/SMIBFirmwareSection';
+import CabinetsNavigation from '@/components/cabinets/CabinetsNavigation';
 
 // New extracted components
-import { CabinetActions } from "@/components/cabinets/CabinetActions";
-import { CabinetSearchFilters } from "@/components/cabinets/CabinetSearchFilters";
-import { CabinetContentDisplay } from "@/components/cabinets/CabinetContentDisplay";
+import { CabinetActions } from '@/components/cabinets/CabinetActions';
+import { CabinetSearchFilters } from '@/components/cabinets/CabinetSearchFilters';
+import { CabinetContentDisplay } from '@/components/cabinets/CabinetContentDisplay';
 
 // UI components
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
-import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
-import { CabinetTableSkeleton } from "@/components/ui/cabinets/CabinetSkeletonLoader";
-import RefreshButton from "@/components/ui/RefreshButton";
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
+import { CabinetTableSkeleton } from '@/components/ui/cabinets/CabinetSkeletonLoader';
+import RefreshButton from '@/components/ui/RefreshButton';
 
 // Custom hooks
 import {
@@ -35,16 +35,16 @@ import {
   useCabinetSorting,
   useCabinetFilters,
   useCabinetModals,
-} from "@/lib/hooks/data";
-import { useCabinetNavigation } from "@/lib/hooks/navigation";
-import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
+} from '@/lib/hooks/data';
+import { useCabinetNavigation } from '@/lib/hooks/navigation';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 
 // Store hooks
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 // Constants and types
-import { CABINET_TABS_CONFIG } from "@/lib/constants/cabinets";
-import { IMAGES } from "@/lib/constants/images";
+import { CABINET_TABS_CONFIG } from '@/lib/constants/cabinets';
+import { IMAGES } from '@/lib/constants/images';
 // Removed unused Cabinet type import
 
 function CabinetsPageContent() {
@@ -138,7 +138,7 @@ function CabinetsPageContent() {
   };
 
   // Sort change handler
-  const handleSortChange = (_option: string, _order: "asc" | "desc") => {
+  const handleSortChange = (_option: string, _order: 'asc' | 'desc') => {
     // This will be handled by the useCabinetSorting hook
     // Sort logic is managed by the hook
   };
@@ -151,8 +151,8 @@ function CabinetsPageContent() {
       <NewCabinetModal
         locations={locations}
         currentLocationName={
-          selectedLocation !== "all"
-            ? locations.find((location) => location._id === selectedLocation)
+          selectedLocation !== 'all'
+            ? locations.find(location => location._id === selectedLocation)
                 ?.name
             : undefined
         }
@@ -183,8 +183,8 @@ function CabinetsPageContent() {
         {/* Mobile-friendly header layout */}
         <div className="mt-4 w-full max-w-full">
           {/* Title row */}
-          <div className="flex items-center gap-3 mb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+          <div className="mb-4 flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">
               Cabinets
             </h1>
             <Image
@@ -192,12 +192,12 @@ function CabinetsPageContent() {
               alt="Cabinet Icon"
               width={32}
               height={32}
-              className="w-6 h-6 sm:w-8 sm:h-8"
+              className="h-6 w-6 sm:h-8 sm:w-8"
             />
           </div>
-          
+
           {/* Actions row - stacked on mobile, side-by-side on desktop */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <RefreshButton
                 onClick={handleRefresh}
@@ -221,7 +221,7 @@ function CabinetsPageContent() {
         </div>
 
         {/* Section Navigation */}
-        <div className="mt-6 mb-4">
+        <div className="mb-4 mt-6">
           <CabinetsNavigation
             tabs={CABINET_TABS_CONFIG}
             activeSection={activeSection}
@@ -231,18 +231,18 @@ function CabinetsPageContent() {
         </div>
 
         {/* Financial Metrics Cards - Only show on cabinets section */}
-        {activeSection === "cabinets" && (
+        {activeSection === 'cabinets' && (
           <FinancialMetricsCards
             totals={financialTotals}
             loading={loading}
             title="Total for all Machines"
-            className="mt-4 mb-4"
+            className="mb-4 mt-4"
           />
         )}
 
         {/* Date Filters */}
-        <div className="flex items-center justify-between mt-2 mb-2 gap-4">
-          <div className="flex-1 min-w-0">
+        <div className="mb-2 mt-2 flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
             <DashboardDateFilters
               disabled={loading}
               hideAllTime={true}
@@ -271,7 +271,7 @@ function CabinetsPageContent() {
         />
 
         {/* Section Content */}
-        {activeSection === "cabinets" ? (
+        {activeSection === 'cabinets' ? (
           <CabinetContentDisplay
             paginatedCabinets={paginatedCabinets}
             filteredCabinets={filteredCabinets}
@@ -285,20 +285,20 @@ function CabinetsPageContent() {
             totalPages={totalPages}
             onSort={handleColumnSort}
             onPageChange={setCurrentPage}
-            onEdit={(_cabinet) => {
+            onEdit={_cabinet => {
               // Edit functionality is handled by the CabinetActions component
             }}
-            onDelete={(_cabinet) => {
+            onDelete={_cabinet => {
               // Delete functionality is handled by the CabinetActions component
             }}
             onRetry={loadCabinets}
             transformCabinet={transformCabinet}
           />
-        ) : activeSection === "smib" ? (
+        ) : activeSection === 'smib' ? (
           <SMIBManagement />
-        ) : activeSection === "movement" ? (
+        ) : activeSection === 'movement' ? (
           <MovementRequests locations={locations} />
-        ) : activeSection === "firmware" ? (
+        ) : activeSection === 'firmware' ? (
           <SMIBFirmwareSection />
         ) : (
           <SMIBManagement />

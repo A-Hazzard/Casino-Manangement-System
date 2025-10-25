@@ -1,10 +1,10 @@
-import { NextResponse, NextRequest } from "next/server";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { connectDB } from "../../lib/middleware/db";
-import { TransformedCabinet } from "@/lib/types/mongo";
-import { TimePeriod } from "../../lib/types";
-import mongoose from "mongoose";
-import { getGamingDayRangeForPeriod } from "@/lib/utils/gamingDayRange";
+import { NextResponse, NextRequest } from 'next/server';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { connectDB } from '../../lib/middleware/db';
+import { TransformedCabinet } from '@/lib/types/mongo';
+import { TimePeriod } from '../../lib/types';
+import mongoose from 'mongoose';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 
 // Helper function to safely convert an ID to ObjectId if possible
 function safeObjectId(id: string): string | mongoose.Types.ObjectId {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   try {
     // Extract locationId from the URL
     const url = request.nextUrl;
-    const locationId = url.pathname.split("/")[3];
+    const locationId = url.pathname.split('/')[3];
 
     // Check if this is a request for basic location details (no query params)
     const hasQueryParams = url.searchParams.toString().length > 0;
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
       if (!location) {
         return NextResponse.json(
-          { success: false, message: "Location not found" },
+          { success: false, message: 'Location not found' },
           { status: 404 }
         );
       }
@@ -50,22 +50,22 @@ export async function GET(request: NextRequest) {
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
-        { error: "Failed to connect to database" },
+        { error: 'Failed to connect to database' },
         { status: 500 }
       );
     }
 
     // Get query parameters
-    const licencee = url.searchParams.get("licencee");
-    const searchTerm = url.searchParams.get("search");
-    const timePeriod = url.searchParams.get("timePeriod") as TimePeriod;
-    const customStartDate = url.searchParams.get("startDate");
-    const customEndDate = url.searchParams.get("endDate");
+    const licencee = url.searchParams.get('licencee');
+    const searchTerm = url.searchParams.get('search');
+    const timePeriod = url.searchParams.get('timePeriod') as TimePeriod;
+    const customStartDate = url.searchParams.get('startDate');
+    const customEndDate = url.searchParams.get('endDate');
 
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       return NextResponse.json(
-        { error: "timePeriod parameter is required" },
+        { error: 'timePeriod parameter is required' },
         { status: 400 }
       );
     }
@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
     let customStartDateForGamingDay: Date | undefined;
     let customEndDateForGamingDay: Date | undefined;
 
-    if (timePeriod === "Custom" && customStartDate && customEndDate) {
-      timePeriodForGamingDay = "Custom";
+    if (timePeriod === 'Custom' && customStartDate && customEndDate) {
+      timePeriodForGamingDay = 'Custom';
       customStartDateForGamingDay = new Date(customStartDate);
       customEndDateForGamingDay = new Date(customEndDate);
     } else {
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     if (!locationCheck) {
       return NextResponse.json(
-        { error: "Location not found" },
+        { error: 'Location not found' },
         { status: 404 }
       );
     }
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         `Access denied: Location ${locationId} does not belong to licensee ${licencee}`
       );
       return NextResponse.json(
-        { error: "Access denied: Location not found for selected licensee" },
+        { error: 'Access denied: Location not found for selected licensee' },
         { status: 403 }
       );
     }
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     let gamingDayRange: { rangeStart: Date; rangeEnd: Date };
 
     if (
-      timePeriod === "Custom" &&
+      timePeriod === 'Custom' &&
       customStartDateForGamingDay &&
       customEndDateForGamingDay
     ) {
@@ -146,16 +146,16 @@ export async function GET(request: NextRequest) {
       // Lookup machines for this location
       {
         $lookup: {
-          from: "machines",
-          localField: "_id",
-          foreignField: "gamingLocation",
-          as: "machines",
+          from: 'machines',
+          localField: '_id',
+          foreignField: 'gamingLocation',
+          as: 'machines',
         },
       },
       // Unwind machines to get individual machine documents
       {
         $unwind: {
-          path: "$machines",
+          path: '$machines',
           preserveNullAndEmptyArrays: false, // Only return locations that have machines
         },
       },
@@ -166,10 +166,10 @@ export async function GET(request: NextRequest) {
       aggregationPipeline.push({
         $match: {
           $or: [
-            { "machines.serialNumber": { $regex: searchTerm, $options: "i" } },
-            { "machines.relayId": { $regex: searchTerm, $options: "i" } },
-            { "machines.smibBoard": { $regex: searchTerm, $options: "i" } },
-            { "machines._id": searchTerm }, // Exact match for machine _id
+            { 'machines.serialNumber': { $regex: searchTerm, $options: 'i' } },
+            { 'machines.relayId': { $regex: searchTerm, $options: 'i' } },
+            { 'machines.smibBoard': { $regex: searchTerm, $options: 'i' } },
+            { 'machines._id': searchTerm }, // Exact match for machine _id
           ],
         },
       });
@@ -179,12 +179,12 @@ export async function GET(request: NextRequest) {
     // IMPORTANT: Meters are CUMULATIVE, so we calculate last - first, NOT sum
     aggregationPipeline.push({
       $lookup: {
-        from: "meters",
-        let: { machineId: "$machines._id" },
+        from: 'meters',
+        let: { machineId: '$machines._id' },
         pipeline: [
           {
             $match: {
-              $expr: { $eq: ["$machine", "$$machineId"] },
+              $expr: { $eq: ['$machine', '$$machineId'] },
               // Use the calculated gaming day range for this location
               readAt: {
                 $gte: gamingDayRange.rangeStart,
@@ -196,81 +196,81 @@ export async function GET(request: NextRequest) {
             $group: {
               _id: null,
               // Use sum of deltas to match locations list API and MongoDB Compass results
-              moneyIn: { $sum: "$movement.drop" },
-              moneyOut: { $sum: "$movement.totalCancelledCredits" },
-              jackpot: { $sum: "$movement.jackpot" },
-              gamesPlayed: { $sum: "$movement.gamesPlayed" },
-              gamesWon: { $sum: "$movement.gamesWon" },
+              moneyIn: { $sum: '$movement.drop' },
+              moneyOut: { $sum: '$movement.totalCancelledCredits' },
+              jackpot: { $sum: '$movement.jackpot' },
+              gamesPlayed: { $sum: '$movement.gamesPlayed' },
+              gamesWon: { $sum: '$movement.gamesWon' },
             },
           },
           {
             $addFields: {
-              gross: { $subtract: ["$moneyIn", "$moneyOut"] },
+              gross: { $subtract: ['$moneyIn', '$moneyOut'] },
             },
           },
         ],
-        as: "metersData",
+        as: 'metersData',
       },
     });
 
     // Project the final structure (similar to your $project)
     aggregationPipeline.push({
       $project: {
-        _id: "$machines._id",
-        locationId: "$_id",
-        locationName: "$name",
-        assetNumber: "$machines.serialNumber",
-        serialNumber: "$machines.serialNumber",
-        relayId: "$machines.relayId",
-        smibBoard: "$machines.smibBoard",
+        _id: '$machines._id',
+        locationId: '$_id',
+        locationName: '$name',
+        assetNumber: '$machines.serialNumber',
+        serialNumber: '$machines.serialNumber',
+        relayId: '$machines.relayId',
+        smibBoard: '$machines.smibBoard',
         smbId: {
           $ifNull: [
-            "$machines.smibBoard",
-            { $ifNull: ["$machines.relayId", ""] },
+            '$machines.smibBoard',
+            { $ifNull: ['$machines.relayId', ''] },
           ],
         },
-        lastActivity: "$machines.lastActivity",
-        lastOnline: "$machines.lastActivity",
-        game: "$machines.game",
-        installedGame: "$machines.game",
+        lastActivity: '$machines.lastActivity',
+        lastOnline: '$machines.lastActivity',
+        game: '$machines.game',
+        installedGame: '$machines.game',
         manufacturer: {
           $ifNull: [
-            "$machines.manufacturer",
-            "$machines.manuf",
-            "Unknown Manufacturer",
+            '$machines.manufacturer',
+            '$machines.manuf',
+            'Unknown Manufacturer',
           ],
         },
-        cabinetType: "$machines.cabinetType",
-        assetStatus: "$machines.assetStatus",
-        status: "$machines.assetStatus",
-        gameType: "$machines.gameType",
-        isCronosMachine: "$machines.isCronosMachine",
+        cabinetType: '$machines.cabinetType',
+        assetStatus: '$machines.assetStatus',
+        status: '$machines.assetStatus',
+        gameType: '$machines.gameType',
+        isCronosMachine: '$machines.isCronosMachine',
         // Use aggregated meter data with proper fallbacks (exactly like your query)
-        moneyIn: { $ifNull: [{ $arrayElemAt: ["$metersData.moneyIn", 0] }, 0] },
+        moneyIn: { $ifNull: [{ $arrayElemAt: ['$metersData.moneyIn', 0] }, 0] },
         moneyOut: {
-          $ifNull: [{ $arrayElemAt: ["$metersData.moneyOut", 0] }, 0],
+          $ifNull: [{ $arrayElemAt: ['$metersData.moneyOut', 0] }, 0],
         },
-        jackpot: { $ifNull: [{ $arrayElemAt: ["$metersData.jackpot", 0] }, 0] },
-        gross: { $ifNull: [{ $arrayElemAt: ["$metersData.gross", 0] }, 0] },
+        jackpot: { $ifNull: [{ $arrayElemAt: ['$metersData.jackpot', 0] }, 0] },
+        gross: { $ifNull: [{ $arrayElemAt: ['$metersData.gross', 0] }, 0] },
         gamesPlayed: {
-          $ifNull: [{ $arrayElemAt: ["$metersData.gamesPlayed", 0] }, 0],
+          $ifNull: [{ $arrayElemAt: ['$metersData.gamesPlayed', 0] }, 0],
         },
         gamesWon: {
-          $ifNull: [{ $arrayElemAt: ["$metersData.gamesWon", 0] }, 0],
+          $ifNull: [{ $arrayElemAt: ['$metersData.gamesWon', 0] }, 0],
         },
         cancelledCredits: {
-          $ifNull: [{ $arrayElemAt: ["$metersData.moneyOut", 0] }, 0],
+          $ifNull: [{ $arrayElemAt: ['$metersData.moneyOut', 0] }, 0],
         },
-        sasMeters: "$machines.sasMeters",
+        sasMeters: '$machines.sasMeters',
         // Calculate online status (3 minutes threshold)
         online: {
           $cond: [
             {
               $and: [
-                { $ne: ["$machines.lastActivity", null] },
+                { $ne: ['$machines.lastActivity', null] },
                 {
                   $gte: [
-                    "$machines.lastActivity",
+                    '$machines.lastActivity',
                     { $subtract: [new Date(), 3 * 60 * 1000] },
                   ],
                 },
@@ -285,7 +285,7 @@ export async function GET(request: NextRequest) {
 
     // Execute the aggregation
     const cabinetsWithMeters = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .aggregate(aggregationPipeline, {
         allowDiskUse: true,
         maxTimeMS: 60000,
@@ -295,22 +295,22 @@ export async function GET(request: NextRequest) {
     // Transform the results to ensure proper data types
     const transformedCabinets: TransformedCabinet[] = cabinetsWithMeters.map(
       (cabinet: Record<string, unknown>) => ({
-        _id: cabinet._id?.toString() || "",
-        locationId: cabinet.locationId?.toString() || "",
-        locationName: (cabinet.locationName as string) || "",
-        assetNumber: (cabinet.assetNumber as string) || "",
-        serialNumber: (cabinet.serialNumber as string) || "",
-        relayId: (cabinet.relayId as string) || "",
-        smibBoard: (cabinet.smibBoard as string) || "",
-        smbId: (cabinet.smbId as string) || "",
+        _id: cabinet._id?.toString() || '',
+        locationId: cabinet.locationId?.toString() || '',
+        locationName: (cabinet.locationName as string) || '',
+        assetNumber: (cabinet.assetNumber as string) || '',
+        serialNumber: (cabinet.serialNumber as string) || '',
+        relayId: (cabinet.relayId as string) || '',
+        smibBoard: (cabinet.smibBoard as string) || '',
+        smbId: (cabinet.smbId as string) || '',
         lastActivity: (cabinet.lastActivity as Date) || null,
         lastOnline: (cabinet.lastOnline as Date) || null,
-        game: (cabinet.game as string) || "",
-        installedGame: (cabinet.installedGame as string) || "",
-        cabinetType: (cabinet.cabinetType as string) || "",
-        assetStatus: (cabinet.assetStatus as string) || "",
-        status: (cabinet.status as string) || "",
-        gameType: (cabinet.gameType as string) || "",
+        game: (cabinet.game as string) || '',
+        installedGame: (cabinet.installedGame as string) || '',
+        cabinetType: (cabinet.cabinetType as string) || '',
+        assetStatus: (cabinet.assetStatus as string) || '',
+        status: (cabinet.status as string) || '',
+        gameType: (cabinet.gameType as string) || '',
         isCronosMachine: cabinet.isCronosMachine || false,
         // Ensure all numeric fields are properly typed
         moneyIn: Number(cabinet.moneyIn) || 0,
@@ -329,9 +329,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transformedCabinets);
   } catch (error) {
-    console.error("Error processing location cabinets request:", error);
+    console.error('Error processing location cabinets request:', error);
     return NextResponse.json(
-      { error: "Failed to fetch location cabinets data" },
+      { error: 'Failed to fetch location cabinets data' },
       { status: 500 }
     );
   }

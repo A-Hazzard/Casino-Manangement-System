@@ -23,22 +23,22 @@ export type GamingDayRange = {
 export function getTimezoneOffsetForLicensee(licenseeName: string): number {
   // Trinidad and Tobago Gaming (TTG) = UTC-4
   if (
-    licenseeName?.toLowerCase().includes("ttg") ||
-    licenseeName?.toLowerCase().includes("trinidad")
+    licenseeName?.toLowerCase().includes('ttg') ||
+    licenseeName?.toLowerCase().includes('trinidad')
   ) {
     return -4;
   }
 
   // Guyana (Cabana) = UTC-4
   if (
-    licenseeName?.toLowerCase().includes("cabana") ||
-    licenseeName?.toLowerCase().includes("guyana")
+    licenseeName?.toLowerCase().includes('cabana') ||
+    licenseeName?.toLowerCase().includes('guyana')
   ) {
     return -4;
   }
 
   // Barbados = UTC-4
-  if (licenseeName?.toLowerCase().includes("barbados")) {
+  if (licenseeName?.toLowerCase().includes('barbados')) {
     return -4;
   }
 
@@ -136,16 +136,16 @@ export function getGamingDayRangeForPeriod(
   );
 
   switch (timePeriod) {
-    case "Today":
+    case 'Today':
       return getGamingDayRange(today, gameDayStartHour, timezoneOffset);
 
-    case "Yesterday":
+    case 'Yesterday':
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       return getGamingDayRange(yesterday, gameDayStartHour, timezoneOffset);
 
-    case "last7days":
-    case "7d":
+    case 'last7days':
+    case '7d':
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // -6 because today is day 1
       return getGamingDayRangeMultiDay(
@@ -155,8 +155,8 @@ export function getGamingDayRangeForPeriod(
         timezoneOffset
       );
 
-    case "last30days":
-    case "30d":
+    case 'last30days':
+    case '30d':
       const thirtyDaysAgo = new Date(today);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 because today is day 1
       return getGamingDayRangeMultiDay(
@@ -166,10 +166,10 @@ export function getGamingDayRangeForPeriod(
         timezoneOffset
       );
 
-    case "Custom":
+    case 'Custom':
       if (!customStartDate || !customEndDate) {
         throw new Error(
-          "Custom start and end dates are required for Custom time period"
+          'Custom start and end dates are required for Custom time period'
         );
       }
 
@@ -247,22 +247,22 @@ export function formatGamingDayRange(
   gameDayOffset: number
 ): string {
   const startTime = range.rangeStart.toLocaleString(undefined, {
-    timeZone: "America/Port_of_Spain",
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
+    timeZone: 'America/Port_of_Spain',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
     hour12: true,
   });
 
   const endTime = range.rangeEnd.toLocaleString(undefined, {
-    timeZone: "America/Port_of_Spain",
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
+    timeZone: 'America/Port_of_Spain',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
     hour12: true,
   });
 

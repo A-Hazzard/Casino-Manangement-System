@@ -80,9 +80,9 @@ export const userCache = new UserCache();
  * Cache keys for different types of user data
  */
 export const CACHE_KEYS = {
-  CURRENT_USER: "current_user",
-  USER_PROFILE: "user_profile",
-  USER_PERMISSIONS: "user_permissions",
+  CURRENT_USER: 'current_user',
+  USER_PROFILE: 'user_profile',
+  USER_PERMISSIONS: 'user_permissions',
 } as const;
 
 /**
@@ -116,7 +116,7 @@ export async function fetchUserWithCache<T>(
  * Clear all user-related cache entries
  */
 export function clearUserCache(): void {
-  Object.values(CACHE_KEYS).forEach((key) => {
+  Object.values(CACHE_KEYS).forEach(key => {
     userCache.clear(key);
   });
 }

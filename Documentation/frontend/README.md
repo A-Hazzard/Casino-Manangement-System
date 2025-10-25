@@ -7,6 +7,7 @@ This directory contains comprehensive documentation for all frontend pages and c
 ## Documentation Structure
 
 ### Core Pages
+
 - **[Dashboard](./dashboard.md)** - Main landing page with real-time metrics and analytics
 - **[Administration](./administration.md)** - User and licensee management system
 - **[Cabinets](./cabinets.md)** - Cabinet (slot machine) management and monitoring
@@ -19,12 +20,14 @@ This directory contains comprehensive documentation for all frontend pages and c
 - **[Sessions](./sessions.md)** - Gaming session tracking and management
 
 ### System Documentation
+
 - **[Pages Overview](./pages-overview.md)** - High-level overview of all frontend pages
 - **[Redirect Pages](./redirect-pages.md)** - Authentication and routing redirects
 
 ## Key Features Across All Pages
 
 ### Consistent Architecture
+
 - **Next.js 14+ App Router** with TypeScript
 - **Zustand** for global state management
 - **Tailwind CSS** for styling
@@ -32,6 +35,7 @@ This directory contains comprehensive documentation for all frontend pages and c
 - **Framer Motion** for animations
 
 ### Standard Patterns
+
 - **Responsive Design**: Desktop and mobile layouts
 - **Skeleton Loading**: Content-specific loading states
 - **Error Handling**: Graceful degradation with user feedback
@@ -39,9 +43,11 @@ This directory contains comprehensive documentation for all frontend pages and c
 - **Real-time Updates**: Live data synchronization
 
 ### Financial Calculations
+
 All pages follow the **Financial Metrics Guide** standards:
+
 - **Money In (Drop)**: `movement.drop` field
-- **Money Out**: `movement.totalCancelledCredits` field  
+- **Money Out**: `movement.totalCancelledCredits` field
 - **Gross Revenue**: `Drop - Total Cancelled Credits`
 - **Variance Analysis**: Expected vs actual calculations
 
@@ -50,11 +56,13 @@ All pages follow the **Financial Metrics Guide** standards:
 The collection system is the most complex part of the frontend, consisting of:
 
 ### Main Components
+
 1. **Collection Report Page** (`/collection-report`) - Main dashboard
 2. **Collection Detail Page** (`/collection-report/report/[reportId]`) - Detailed analysis
 3. **New Collection Modal** - Collection creation interface
 
 ### Key Features
+
 - **Multi-tab Interface**: Collection, Monthly, Manager, Collector schedules
 - **Real-time Financial Tracking**: Drop, cancelled credits, gross revenue
 - **Machine Selection**: Location-based machine collection
@@ -62,6 +70,7 @@ The collection system is the most complex part of the frontend, consisting of:
 - **Audit Trail**: Complete collection history and logging
 
 ### Data Flow
+
 ```
 User Action → API Call → Database Update → State Refresh → UI Update
 ```
@@ -69,17 +78,20 @@ User Action → API Call → Database Update → State Refresh → UI Update
 ## Development Guidelines
 
 ### Code Organization
+
 - **Components**: Feature-specific components in dedicated directories
 - **Types**: All types in `shared/types/`, `lib/types/`, or `types/` directories
 - **Helpers**: Business logic in `lib/helpers/` directory
 - **Utils**: Utility functions in `lib/utils/` directory
 
 ### State Management
+
 - **Global State**: Zustand stores for cross-component data
 - **Local State**: React hooks for component-specific state
 - **Form State**: Controlled components with validation
 
 ### Performance
+
 - **Memoization**: `useMemo` and `useCallback` for expensive operations
 - **Lazy Loading**: Code splitting for large components
 - **Optimistic Updates**: Immediate UI feedback with rollback capability
@@ -87,12 +99,14 @@ User Action → API Call → Database Update → State Refresh → UI Update
 ## Testing and Quality
 
 ### Manual Testing
+
 - **Critical User Flows**: Test all major user journeys
 - **Cross-browser Compatibility**: Test on major browsers
 - **Mobile Responsiveness**: Test on various screen sizes
 - **Error Scenarios**: Test error handling and recovery
 
 ### Code Quality
+
 - **TypeScript**: Strict type checking enabled
 - **ESLint**: Code style and best practices enforcement
 - **No `any` Types**: All variables properly typed
@@ -101,11 +115,13 @@ User Action → API Call → Database Update → State Refresh → UI Update
 ## Security Considerations
 
 ### Authentication
+
 - **JWT Tokens**: Secure authentication with `jose` library
 - **Role-based Access**: Granular permissions system
 - **Session Management**: Secure session handling
 
 ### Data Protection
+
 - **Input Validation**: All user input validated and sanitized
 - **XSS Prevention**: Safe handling of user-generated content
 - **CSRF Protection**: Cross-site request forgery prevention
@@ -113,12 +129,14 @@ User Action → API Call → Database Update → State Refresh → UI Update
 ## Future Enhancements
 
 ### Planned Features
+
 - **Real-time WebSocket Integration**: Live data updates
 - **Advanced Analytics**: Enhanced reporting and insights
 - **Mobile App**: Native mobile application
 - **Offline Support**: Progressive Web App capabilities
 
 ### Technical Debt
+
 - **Component Optimization**: Further performance improvements
 - **Test Coverage**: Automated testing implementation
 - **Documentation**: API documentation generation

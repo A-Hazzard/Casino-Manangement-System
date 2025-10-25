@@ -1,4 +1,4 @@
-import { model, models, Schema } from "mongoose";
+import { model, models, Schema } from 'mongoose';
 
 const ActivityLogSchema = new Schema(
   {
@@ -15,34 +15,34 @@ const ActivityLogSchema = new Schema(
       type: String,
       required: true,
       enum: [
-        "create",
-        "update",
-        "delete",
-        "view",
-        "download",
-        "login_success",
-        "login_failed",
-        "login_blocked",
-        "login_error",
-        "logout",
-        "password_reset",
-        "account_locked",
-        "account_unlocked",
+        'create',
+        'update',
+        'delete',
+        'view',
+        'download',
+        'login_success',
+        'login_failed',
+        'login_blocked',
+        'login_error',
+        'logout',
+        'password_reset',
+        'account_locked',
+        'account_unlocked',
       ],
     },
     resource: {
       type: String,
       required: true,
       enum: [
-        "user",
-        "licensee",
-        "member",
-        "location",
-        "machine",
-        "session",
-        "collection",
-        "firmware",
-        "auth",
+        'user',
+        'licensee',
+        'member',
+        'location',
+        'machine',
+        'session',
+        'collection',
+        'firmware',
+        'auth',
       ],
     },
     resourceId: { type: String, required: true },
@@ -91,9 +91,9 @@ ActivityLogSchema.index({ resourceId: 1, timestamp: -1 });
 ActivityLogSchema.index({ ipAddress: 1, timestamp: -1 }); // Index for IP address queries
 // Legacy indexes for backward compatibility
 ActivityLogSchema.index({ entityType: 1, timestamp: -1 });
-ActivityLogSchema.index({ "actor.id": 1, timestamp: -1 });
+ActivityLogSchema.index({ 'actor.id': 1, timestamp: -1 });
 ActivityLogSchema.index({ actionType: 1, timestamp: -1 });
 
 export const ActivityLog =
   models?.ActivityLog ||
-  model("ActivityLog", ActivityLogSchema, "activityLogs");
+  model('ActivityLog', ActivityLogSchema, 'activityLogs');

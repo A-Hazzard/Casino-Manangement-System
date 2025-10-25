@@ -1,25 +1,25 @@
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 const MONGODB_URI =
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function manualFixTest() {
   const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
-    console.log("🔍 Connected to MongoDB");
+    console.log('🔍 Connected to MongoDB');
 
-    const db = client.db("sas-prod-local");
-    const machinesCollection = db.collection("machines");
-    const collectionsCollection = db.collection("collections");
+    const db = client.db('sas-prod-local');
+    const machinesCollection = db.collection('machines');
+    const collectionsCollection = db.collection('collections');
 
     // Get machine 1309
-    const machineId = "5769366190e560cdab9b8e51";
+    const machineId = '5769366190e560cdab9b8e51';
     const machine = await machinesCollection.findOne({ _id: machineId });
 
     if (!machine) {
-      console.log("❌ Machine 1309 not found");
+      console.log('❌ Machine 1309 not found');
       return;
     }
 
@@ -57,7 +57,7 @@ async function manualFixTest() {
       };
     });
 
-    console.log("\n🔧 Rebuilt history:");
+    console.log('\n🔧 Rebuilt history:');
     newHistory.forEach((entry, index) => {
       console.log(
         `  Entry ${index + 1}: prevIn=${entry.prevIn}, prevOut=${entry.prevOut}`
@@ -78,8 +78,8 @@ async function manualFixTest() {
             collections.length > 1
               ? new Date(collections[collections.length - 2].timestamp)
               : undefined,
-          "collectionMeters.metersIn": mostRecentCollection?.metersIn || 0,
-          "collectionMeters.metersOut": mostRecentCollection?.metersOut || 0,
+          'collectionMeters.metersIn': mostRecentCollection?.metersIn || 0,
+          'collectionMeters.metersOut': mostRecentCollection?.metersOut || 0,
           updatedAt: new Date(),
         },
       }
@@ -104,7 +104,7 @@ async function manualFixTest() {
       });
     }
   } catch (error) {
-    console.error("❌ Error:", error.message || error);
+    console.error('❌ Error:', error.message || error);
   } finally {
     await client.close();
   }

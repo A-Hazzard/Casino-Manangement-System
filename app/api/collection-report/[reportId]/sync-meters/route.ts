@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../lib/middleware/db";
-import { Collections } from "../../../lib/models/collections";
-import { CollectionReport } from "../../../lib/models/collectionReport";
-import { Meters } from "../../../lib/models/meters";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../../lib/middleware/db';
+import { Collections } from '../../../lib/models/collections';
+import { CollectionReport } from '../../../lib/models/collectionReport';
+import { Meters } from '../../../lib/models/meters';
 
 /**
  * POST /api/collection-report/[reportId]/sync-meters
@@ -25,7 +25,7 @@ export async function POST(
 
     if (!reportId) {
       return NextResponse.json(
-        { success: false, error: "Report ID is required" },
+        { success: false, error: 'Report ID is required' },
         { status: 400 }
       );
     }
@@ -37,7 +37,7 @@ export async function POST(
 
     if (!collectionReport) {
       return NextResponse.json(
-        { success: false, error: "Collection report not found" },
+        { success: false, error: 'Collection report not found' },
         { status: 404 }
       );
     }
@@ -49,7 +49,7 @@ export async function POST(
 
     if (collections.length === 0) {
       return NextResponse.json(
-        { success: false, error: "No collections found for this report" },
+        { success: false, error: 'No collections found for this report' },
         { status: 404 }
       );
     }
@@ -112,11 +112,11 @@ export async function POST(
         { _id: collection._id },
         {
           $set: {
-            "sasMeters.drop": finalDrop,
-            "sasMeters.totalCancelledCredits": finalCancelled,
-            "sasMeters.gross": finalGross,
-            "sasMeters.sasStartTime": sasStartTime.toISOString(),
-            "sasMeters.sasEndTime": sasEndTime.toISOString(),
+            'sasMeters.drop': finalDrop,
+            'sasMeters.totalCancelledCredits': finalCancelled,
+            'sasMeters.gross': finalGross,
+            'sasMeters.sasStartTime': sasStartTime.toISOString(),
+            'sasMeters.sasEndTime': sasEndTime.toISOString(),
           },
         }
       );
@@ -198,11 +198,11 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error(" Error syncing meter data:", error);
+    console.error(' Error syncing meter data:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Internal server error",
+        error: error instanceof Error ? error.message : 'Internal server error',
       },
       { status: 500 }
     );

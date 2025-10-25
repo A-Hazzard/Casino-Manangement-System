@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import type { GamingMachine } from "@/shared/types/entities";
+import { create } from 'zustand';
+import type { GamingMachine } from '@/shared/types/entities';
 
 type CabinetActionsState = {
   selectedCabinet: GamingMachine | null;
@@ -24,13 +24,13 @@ const dummyState: CabinetActionsState = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<CabinetActionsState>((set) => ({
+  return create<CabinetActionsState>(set => ({
     selectedCabinet: null,
     isEditModalOpen: false,
     isDeleteModalOpen: false,
-    openEditModal: (cabinet) =>
+    openEditModal: cabinet =>
       set({ selectedCabinet: cabinet, isEditModalOpen: true }),
-    openDeleteModal: (cabinet) =>
+    openDeleteModal: cabinet =>
       set({ selectedCabinet: cabinet, isDeleteModalOpen: true }),
     closeEditModal: () =>
       set({ selectedCabinet: null, isEditModalOpen: false }),
@@ -61,4 +61,4 @@ const getClientStore = () => {
  */
 // Use this store only on client side
 export const useCabinetActionsStore =
-  typeof window !== "undefined" ? getClientStore() : create(() => dummyState);
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

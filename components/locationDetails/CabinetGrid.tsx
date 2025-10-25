@@ -1,19 +1,19 @@
-import React from "react";
-import Image from "next/image";
-import { formatCurrency } from "@/lib/utils";
+import React from 'react';
+import Image from 'next/image';
+import { formatCurrency } from '@/lib/utils';
 
 // Import SVG icons for pre-rendering
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
-import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-import type { CabinetSortOption } from "@/lib/hooks/data";
-import type { ExtendedCabinetDetail } from "@/lib/types/pages";
-import type { CabinetGridProps } from "@/lib/types/components";
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import CabinetTable from "@/components/ui/cabinets/CabinetTable";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import gsap from "gsap";
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import type { CabinetSortOption } from '@/lib/hooks/data';
+import type { ExtendedCabinetDetail } from '@/lib/types/pages';
+import type { CabinetGridProps } from '@/lib/types/components';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import CabinetTable from '@/components/ui/cabinets/CabinetTable';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import gsap from 'gsap';
 
 function CabinetCardMobile({
   cabinet,
@@ -34,12 +34,12 @@ function CabinetCardMobile({
         scale: 1.3,
         opacity: 0.7,
         duration: 1,
-        ease: "power1.inOut",
+        ease: 'power1.inOut',
       }).to(statusRef.current, {
         scale: 1,
         opacity: 1,
         duration: 1,
-        ease: "power1.inOut",
+        ease: 'power1.inOut',
       });
       return () => {
         tl.kill();
@@ -50,28 +50,28 @@ function CabinetCardMobile({
   return (
     <div
       key={cabinet._id}
-      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
       onClick={() => router.push(`/cabinets/${cabinet._id}`)}
     >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold truncate max-w-[60%]">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="max-w-[60%] truncate font-semibold">
           {getSerialNumberIdentifier(cabinet)}
         </h3>
         <div className="flex items-center gap-2">
           <span
             ref={statusRef}
-            className={`inline-flex items-center justify-center w-3 h-3 rounded-full ${
-              cabinet.isOnline ? "bg-green-500" : "bg-red-500"
+            className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
+              cabinet.isOnline ? 'bg-green-500' : 'bg-red-500'
             }`}
-            title={cabinet.isOnline ? "Online" : "Offline"}
+            title={cabinet.isOnline ? 'Online' : 'Offline'}
           ></span>
           <div className="flex gap-1">
             <button
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 onEdit(cabinet);
               }}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="rounded p-1 hover:bg-gray-100"
               title="Edit"
             >
               <Image
@@ -79,15 +79,15 @@ function CabinetCardMobile({
                 alt="Edit"
                 width={16}
                 height={16}
-                className="w-4 h-4"
+                className="h-4 w-4"
               />
             </button>
             <button
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 onDelete(cabinet);
               }}
-              className="p-1 hover:bg-gray-100 rounded text-red-600"
+              className="rounded p-1 text-red-600 hover:bg-gray-100"
               title="Delete"
             >
               <Image
@@ -95,26 +95,26 @@ function CabinetCardMobile({
                 alt="Delete"
                 width={16}
                 height={16}
-                className="w-4 h-4"
+                className="h-4 w-4"
               />
             </button>
           </div>
         </div>
       </div>
-      <p className="text-sm text-gray-600 mb-1">
-        Game: {cabinet.game || cabinet.installedGame || "Unknown"}
+      <p className="mb-1 text-sm text-gray-600">
+        Game: {cabinet.game || cabinet.installedGame || 'Unknown'}
       </p>
-      <p className="text-sm text-gray-600 mb-1">
-        SMIB: {cabinet.smibBoard || cabinet.smbId || "N/A"}
+      <p className="mb-1 text-sm text-gray-600">
+        SMIB: {cabinet.smibBoard || cabinet.smbId || 'N/A'}
       </p>
-      <div className="border-t border-gray-200 mt-2 pt-2">
-        <div className="flex justify-between mb-1">
+      <div className="mt-2 border-t border-gray-200 pt-2">
+        <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Money In:</span>
           <span className="text-xs font-medium">
             {formatCurrency(cabinet.moneyIn || 0)}
           </span>
         </div>
-        <div className="flex justify-between mb-1">
+        <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Money Out:</span>
           <span className="text-xs font-medium">
             {formatCurrency(cabinet.moneyOut || 0)}
@@ -139,18 +139,18 @@ export default function CabinetGrid({
 }: CabinetGridProps) {
   // Handle sorting for the table view
   const [sortOption, setSortOption] =
-    React.useState<CabinetSortOption>("moneyIn");
-  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+    React.useState<CabinetSortOption>('moneyIn');
+  const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('desc');
 
   // Use cabinet actions store for modal management
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   const handleColumnSort = (column: CabinetSortOption) => {
     if (sortOption === column) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortOption(column);
-      setSortOrder("desc");
+      setSortOrder('desc');
     }
   };
 
@@ -170,7 +170,7 @@ export default function CabinetGrid({
         <CabinetTable
           data={filteredCabinets
             .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
-            .map((cabinet) => ({
+            .map(cabinet => ({
               ...(cabinet as Cabinet),
               onEdit: () => handleEdit(cabinet),
               onDelete: () => handleDelete(cabinet),
@@ -178,16 +178,16 @@ export default function CabinetGrid({
           loading={false}
           sortOption={sortOption}
           sortOrder={sortOrder}
-          onSort={(column) => handleColumnSort(column as CabinetSortOption)}
+          onSort={column => handleColumnSort(column as CabinetSortOption)}
           onPageChange={() => {}}
-          onEdit={(cabinet) => handleEdit(cabinet as ExtendedCabinetDetail)}
-          onDelete={(cabinet) => handleDelete(cabinet as ExtendedCabinetDetail)}
+          onEdit={cabinet => handleEdit(cabinet as ExtendedCabinetDetail)}
+          onDelete={cabinet => handleDelete(cabinet as ExtendedCabinetDetail)}
         />
       </div>
 
       {/* Grid view for smaller screens */}
-      <div className="block mt-4 lg:hidden">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="mt-4 block lg:hidden">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {filteredCabinets
             .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
             .map((cabinet: ExtendedCabinetDetail) => (
@@ -203,7 +203,7 @@ export default function CabinetGrid({
       </div>
 
       {filteredCabinets.length === 0 && (
-        <div className="bg-white rounded-lg p-6 text-center border border-gray-200">
+        <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
           <Image
             src="/images/no-data.svg"
             width={120}

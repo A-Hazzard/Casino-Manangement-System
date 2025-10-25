@@ -1,5 +1,5 @@
-import axios from "axios";
-import type { AggregatedLocation } from "@/lib/types/location";
+import axios from 'axios';
+import type { AggregatedLocation } from '@/lib/types/location';
 
 /**
  * Fetch locations data with filters and date range
@@ -14,26 +14,26 @@ export async function fetchLocationsData(
     const params = new URLSearchParams();
 
     if (selectedLicencee) {
-      params.append("licencee", selectedLicencee);
+      params.append('licencee', selectedLicencee);
     }
 
     if (filterString) {
-      params.append("filters", filterString);
+      params.append('filters', filterString);
     }
 
-    if (activeMetricsFilter && activeMetricsFilter !== "All Time") {
-      params.append("timePeriod", activeMetricsFilter);
+    if (activeMetricsFilter && activeMetricsFilter !== 'All Time') {
+      params.append('timePeriod', activeMetricsFilter);
     }
 
     if (dateRangeForFetch) {
-      params.append("startDate", dateRangeForFetch.from.toISOString());
-      params.append("endDate", dateRangeForFetch.to.toISOString());
+      params.append('startDate', dateRangeForFetch.from.toISOString());
+      params.append('endDate', dateRangeForFetch.to.toISOString());
     }
 
     const response = await axios.get(`/api/locations?${params.toString()}`);
     return response.data;
   } catch (error) {
-    console.error(" Error fetching locations data:", error);
+    console.error(' Error fetching locations data:', error);
     return [];
   }
 }
@@ -47,9 +47,9 @@ export async function searchAllLocations(
 ): Promise<AggregatedLocation[]> {
   try {
     const params = new URLSearchParams();
-    params.append("search", searchTerm);
+    params.append('search', searchTerm);
     if (selectedLicencee) {
-      params.append("licencee", selectedLicencee);
+      params.append('licencee', selectedLicencee);
     }
 
     const response = await axios.get(
@@ -57,7 +57,7 @@ export async function searchAllLocations(
     );
     return response.data;
   } catch (error) {
-    console.error(" Error searching locations:", error);
+    console.error(' Error searching locations:', error);
     return [];
   }
 }
@@ -72,7 +72,7 @@ export async function fetchMachineStats(): Promise<{
 }> {
   try {
     const params = new URLSearchParams();
-    params.append("licensee", "all"); // Get all machines
+    params.append('licensee', 'all'); // Get all machines
 
     const response = await axios.get(
       `/api/analytics/machines/stats?${params.toString()}`
@@ -85,7 +85,7 @@ export async function fetchMachineStats(): Promise<{
       offlineMachines: data.offlineMachines || 0,
     };
   } catch (error) {
-    console.error(" Error fetching machine stats:", error);
+    console.error(' Error fetching machine stats:', error);
     return {
       totalMachines: 0,
       onlineMachines: 0,

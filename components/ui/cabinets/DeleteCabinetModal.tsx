@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,14 +8,14 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import axios from "axios";
-import { toast } from "sonner";
-import { useUserStore } from "@/lib/store/userStore";
-import Image from "next/image";
-import deleteIcon from "@/public/deleteIcon.svg";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { useUserStore } from '@/lib/store/userStore';
+import Image from 'next/image';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 export const DeleteCabinetModal = ({
   onCabinetDeleted,
@@ -29,7 +29,7 @@ export const DeleteCabinetModal = ({
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
-    if (!user) return "Unknown User";
+    if (!user) return 'Unknown User';
 
     // Check if user has profile with firstName and lastName
     if (user.profile?.firstName && user.profile?.lastName) {
@@ -47,17 +47,17 @@ export const DeleteCabinetModal = ({
     }
 
     // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== "") {
+    if (user.username && user.username.trim() !== '') {
       return user.username;
     }
 
     // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== "") {
+    if (user.emailAddress && user.emailAddress.trim() !== '') {
       return user.emailAddress;
     }
 
     // Fallback
-    return "Unknown User";
+    return 'Unknown User';
   };
 
   // Activity logging function
@@ -71,10 +71,10 @@ export const DeleteCabinetModal = ({
     newData?: Record<string, unknown> | null
   ) => {
     try {
-      const response = await fetch("/api/activity-logs", {
-        method: "POST",
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
@@ -82,9 +82,9 @@ export const DeleteCabinetModal = ({
           resourceId,
           resourceName,
           details,
-          userId: user?._id || "unknown",
+          userId: user?._id || 'unknown',
           username: getUserDisplayName(),
-          userRole: "user",
+          userRole: 'user',
           previousData: previousData || null,
           newData: newData || null,
           changes: [], // Will be calculated by the API
@@ -92,10 +92,10 @@ export const DeleteCabinetModal = ({
       });
 
       if (!response.ok) {
-        console.error("Failed to log activity:", response.statusText);
+        console.error('Failed to log activity:', response.statusText);
       }
     } catch (error) {
-      console.error("Error logging activity:", error);
+      console.error('Error logging activity:', error);
     }
   };
 
@@ -108,10 +108,10 @@ export const DeleteCabinetModal = ({
 
       // Log the deletion activity
       await logActivity(
-        "delete",
-        "cabinet",
+        'delete',
+        'cabinet',
         selectedCabinet._id,
-        selectedCabinet.assetNumber || "Unknown Cabinet",
+        selectedCabinet.assetNumber || 'Unknown Cabinet',
         `Deleted cabinet: ${
           selectedCabinet.assetNumber || selectedCabinet._id
         }`,
@@ -119,12 +119,12 @@ export const DeleteCabinetModal = ({
         null // No new data for deletion
       );
 
-      toast.success("Cabinet deleted successfully");
+      toast.success('Cabinet deleted successfully');
       onCabinetDeleted?.();
       closeDeleteModal();
     } catch (error) {
-      console.error("Error deleting cabinet:", error);
-      toast.error("Failed to delete cabinet");
+      console.error('Error deleting cabinet:', error);
+      toast.error('Failed to delete cabinet');
     } finally {
       setLoading(false);
     }
@@ -149,27 +149,27 @@ export const DeleteCabinetModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="text-center text-foreground space-y-4">
-          <div className="flex justify-center mb-4">
+        <div className="space-y-4 text-center text-foreground">
+          <div className="mb-4 flex justify-center">
             <Image src={deleteIcon} alt="Delete" width={64} height={64} />
           </div>
           <p className="text-lg font-semibold">
             Are you sure you want to delete this cabinet?
           </p>
-          <div className="text-sm text-muted-foreground space-y-2">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <p>
-              <strong>Asset Number:</strong>{" "}
-              {selectedCabinet.assetNumber || "N/A"}
+              <strong>Asset Number:</strong>{' '}
+              {selectedCabinet.assetNumber || 'N/A'}
             </p>
             <p>
-              <strong>Location:</strong> {selectedCabinet.locationName || "N/A"}
+              <strong>Location:</strong> {selectedCabinet.locationName || 'N/A'}
             </p>
             <p>
-              <strong>SMIB ID:</strong>{" "}
+              <strong>SMIB ID:</strong>{' '}
               {selectedCabinet.relayId ||
                 selectedCabinet.smbId ||
                 selectedCabinet.smibBoard ||
-                "N/A"}
+                'N/A'}
             </p>
           </div>
         </div>
@@ -180,7 +180,7 @@ export const DeleteCabinetModal = ({
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={loading}
           >
-            {loading ? "Deleting..." : "Yes, Delete It"}
+            {loading ? 'Deleting...' : 'Yes, Delete It'}
           </Button>
           <Button
             onClick={handleClose}

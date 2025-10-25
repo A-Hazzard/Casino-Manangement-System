@@ -1,4 +1,4 @@
-import { Schema, model, models, Types } from "mongoose";
+import { Schema, model, models, Types } from 'mongoose';
 
 const firmwareSchema = new Schema(
   {
@@ -19,4 +19,4 @@ const firmwareSchema = new Schema(
 
 firmwareSchema.index({ deletedAt: 1 });
 
-export const Firmware = models.Firmware || model("Firmware", firmwareSchema);
+export const Firmware = models.Firmware || model('Firmware', firmwareSchema);

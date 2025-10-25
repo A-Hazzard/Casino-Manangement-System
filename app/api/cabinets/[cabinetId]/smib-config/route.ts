@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { getUserFromServer } from "../../../lib/helpers/users";
-import { getClientIP } from "@/lib/utils/ipAddress";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../../lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { getUserFromServer } from '../../../lib/helpers/users';
+import { getClientIP } from '@/lib/utils/ipAddress';
 import {
   logActivity,
   calculateChanges,
-} from "@/app/api/lib/helpers/activityLogger";
-import { mqttService } from "@/lib/services/mqttService";
-import type { SmibConfig } from "@/shared/types/entities";
+} from '@/app/api/lib/helpers/activityLogger';
+import { mqttService } from '@/lib/services/mqttService';
+import type { SmibConfig } from '@/shared/types/entities';
 
 /**
  * POST /api/cabinets/[cabinetId]/smib-config
@@ -25,7 +25,7 @@ export async function POST(
 
     // Parse the request data
     const data = await request.json();
-    console.warn("🔧 SMIB Config Update Request:", {
+    console.warn('🔧 SMIB Config Update Request:', {
       cabinetId,
       smibConfig: data.smibConfig,
       smibVersion: data.smibVersion,
@@ -36,7 +36,7 @@ export async function POST(
     const cabinet = await Machine.findById(cabinetId);
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, error: "Cabinet not found" },
+        { success: false, error: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -45,7 +45,7 @@ export async function POST(
     const location = await GamingLocations.findById(cabinet.gamingLocation);
     if (!location) {
       return NextResponse.json(
-        { success: false, error: "Location not found" },
+        { success: false, error: 'Location not found' },
         { status: 404 }
       );
     }
@@ -54,7 +54,7 @@ export async function POST(
     const originalCabinet = await Machine.findById(cabinetId);
     if (!originalCabinet) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -81,7 +81,7 @@ export async function POST(
 
     if (!updatedMachine) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -90,14 +90,14 @@ export async function POST(
     const relayId = cabinet.relayId || cabinet.smibBoard;
     if (data.smibConfig && relayId) {
       try {
-        console.warn("📡 Sending SMIB config via MQTT to:", relayId);
+        console.warn('📡 Sending SMIB config via MQTT to:', relayId);
         await mqttService.sendSMIBConfigUpdate(
           relayId,
           data.smibConfig as SmibConfig
         );
-        console.warn("✅ SMIB config sent successfully via MQTT");
+        console.warn('✅ SMIB config sent successfully via MQTT');
       } catch (mqttError) {
-        console.error("❌ Failed to send SMIB config via MQTT:", mqttError);
+        console.error('❌ Failed to send SMIB config via MQTT:', mqttError);
         // Don't fail the entire operation if MQTT fails
       }
     }
@@ -106,16 +106,16 @@ export async function POST(
     if (data.machineControl && relayId) {
       try {
         console.warn(
-          "🎮 Sending machine control command:",
+          '🎮 Sending machine control command:',
           data.machineControl
         );
         await mqttService.sendMachineControlCommand(
           relayId,
           data.machineControl
         );
-        console.warn("✅ Machine control command sent successfully");
+        console.warn('✅ Machine control command sent successfully');
       } catch (mqttError) {
-        console.error("❌ Failed to send machine control command:", mqttError);
+        console.error('❌ Failed to send machine control command:', mqttError);
         // Don't fail the entire operation if MQTT fails
       }
     }
@@ -130,17 +130,17 @@ export async function POST(
         );
 
         await logActivity({
-          action: "UPDATE",
+          action: 'UPDATE',
           details: `Updated SMIB configuration for cabinet "${
             originalCabinet.serialNumber || originalCabinet.game
           }" in location "${location.name}"`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "machine",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'machine',
             resourceId: cabinetId,
             resourceName: originalCabinet.serialNumber || originalCabinet.game,
             changes: changes,
@@ -148,7 +148,7 @@ export async function POST(
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
@@ -158,9 +158,9 @@ export async function POST(
       mqttSent: !!(data.smibConfig || data.machineControl),
     });
   } catch (error) {
-    console.error("Error updating SMIB configuration:", error);
+    console.error('Error updating SMIB configuration:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to update SMIB configuration" },
+      { success: false, error: 'Failed to update SMIB configuration' },
       { status: 500 }
     );
   }
@@ -182,12 +182,12 @@ export async function GET(
     const cabinet = await Machine.findById(cabinetId);
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, error: "Cabinet not found" },
+        { success: false, error: 'Cabinet not found' },
         { status: 404 }
       );
     }
 
-    const relayId = cabinet.relayId || cabinet.smibBoard || "";
+    const relayId = cabinet.relayId || cabinet.smibBoard || '';
 
     return NextResponse.json({
       success: true,
@@ -198,9 +198,9 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error fetching SMIB configuration:", error);
+    console.error('Error fetching SMIB configuration:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch SMIB configuration" },
+      { success: false, error: 'Failed to fetch SMIB configuration' },
       { status: 500 }
     );
   }

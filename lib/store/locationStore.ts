@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import axios from "axios";
-import { LocationStore } from "@/lib/types/location";
+import { create } from 'zustand';
+import axios from 'axios';
+import { LocationStore } from '@/lib/types/location';
 // Activity logging removed - handled via API calls
 
 // Define a no-op version for SSR
@@ -13,24 +13,24 @@ const dummyState: LocationStore = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<LocationStore>((set) => ({
+  return create<LocationStore>(set => ({
     isLocationModalOpen: false,
     openLocationModal: () => set({ isLocationModalOpen: true }),
     closeLocationModal: () => set({ isLocationModalOpen: false }),
-    createLocation: async (location) => {
+    createLocation: async location => {
       try {
-        const response = await axios.post("/api/locations", {
+        const response = await axios.post('/api/locations', {
           name: location.name,
           address: {
             street: location.address,
           },
-          country: "Trinidad and Tobago", // Default country
+          country: 'Trinidad and Tobago', // Default country
           geoCoords: {
             latitude: location.latitude,
             longitude: location.longitude,
           },
           rel: {
-            licencee: location.licencee || "",
+            licencee: location.licencee || '',
           },
         });
 
@@ -39,7 +39,7 @@ const createStore = () => {
         // Return the created location data
         return response.data?.data;
       } catch (error) {
-        console.error("Error creating location:", error);
+        console.error('Error creating location:', error);
         throw error;
       }
     },
@@ -68,4 +68,4 @@ const getClientStore = () => {
  */
 // Use this store only on client side
 export const useLocationStore =
-  typeof window !== "undefined" ? getClientStore() : create(() => dummyState);
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

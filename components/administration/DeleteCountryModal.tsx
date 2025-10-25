@@ -4,9 +4,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import type { DeleteCountryModalProps } from "@/lib/types/components";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import type { DeleteCountryModalProps } from '@/lib/types/components';
 
 export default function DeleteCountryModal({
   isOpen,
@@ -23,12 +23,12 @@ export default function DeleteCountryModal({
           <DialogTitle>Delete Country</DialogTitle>
         </DialogHeader>
         <div className="py-4">
-          <p className="text-gray-700 text-center">
-            Are you sure you want to delete{" "}
+          <p className="text-center text-gray-700">
+            Are you sure you want to delete{' '}
             <span className="font-semibold">{country.name}</span>?
           </p>
         </div>
-        <DialogFooter className="flex gap-3 justify-center">
+        <DialogFooter className="flex justify-center gap-3">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

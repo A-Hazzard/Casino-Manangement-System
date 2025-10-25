@@ -1,6 +1,6 @@
-import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
  * Skeleton component for location evaluation tables
@@ -8,10 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export const TableSkeleton = () => (
   <div className="space-y-3">
     {/* Header skeleton */}
-    <div className="h-10 bg-gray-200 rounded animate-pulse" />
+    <div className="h-10 animate-pulse rounded bg-gray-200" />
     {/* Row skeletons */}
     {Array.from({ length: 5 }).map((_, i) => (
-      <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+      <div key={i} className="h-12 animate-pulse rounded bg-gray-100" />
     ))}
   </div>
 );
@@ -28,7 +28,7 @@ export const ChartSkeleton = () => (
       </CardTitle>
     </CardHeader>
     <CardContent className="p-0">
-      <div className="w-full h-[300px] p-6">
+      <div className="h-[300px] w-full p-6">
         <Skeleton className="h-full w-full" />
       </div>
     </CardContent>
@@ -54,8 +54,8 @@ export const CardSkeleton = () => (
  * Skeleton component for metric cards (like dashboard stat cards)
  */
 export const MetricCardSkeleton = () => (
-  <div className="w-full px-4 py-6 bg-white shadow-md rounded-lg">
-    <div className="h-6 w-1/3 mx-auto bg-gray-200 rounded animate-pulse"></div>
+  <div className="w-full rounded-lg bg-white px-4 py-6 shadow-md">
+    <div className="mx-auto h-6 w-1/3 animate-pulse rounded bg-gray-200"></div>
   </div>
 );
 
@@ -63,7 +63,7 @@ export const MetricCardSkeleton = () => (
  * Skeleton component for multiple metric cards
  */
 export const MetricCardsSkeleton = ({ count = 4 }: { count?: number }) => (
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
     {Array.from({ length: count }).map((_, index) => (
       <MetricCardSkeleton key={index} />
     ))}
@@ -88,7 +88,7 @@ export const DropdownSkeleton = () => (
  * Skeleton component for machine hourly charts grid
  */
 export const MachineHourlyChartsSkeleton = () => (
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
     {Array.from({ length: 4 }).map((_, i) => (
       <ChartSkeleton key={i} />
     ))}
@@ -99,7 +99,7 @@ export const MachineHourlyChartsSkeleton = () => (
  * Skeleton component for revenue analysis charts grid
  */
 export const RevenueAnalysisChartsSkeleton = () => (
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
     {Array.from({ length: 3 }).map((_, i) => (
       <ChartSkeleton key={i} />
     ))}
@@ -122,15 +122,18 @@ export const TopMachinesTableSkeleton = () => (
       <div className="space-y-3">
         {/* Desktop table skeleton */}
         <div className="hidden md:block">
-          <div className="h-10 bg-gray-200 rounded animate-pulse mb-3" />
+          <div className="mb-3 h-10 animate-pulse rounded bg-gray-200" />
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 bg-gray-100 rounded animate-pulse mb-2" />
+            <div
+              key={i}
+              className="mb-2 h-12 animate-pulse rounded bg-gray-100"
+            />
           ))}
         </div>
         {/* Mobile cards skeleton */}
-        <div className="md:hidden space-y-3">
+        <div className="space-y-3 md:hidden">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="p-4 border rounded-lg">
+            <div key={i} className="rounded-lg border p-4">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
@@ -148,7 +151,7 @@ export const TopMachinesTableSkeleton = () => (
  * Skeleton component for summary cards grid
  */
 export const SummaryCardsSkeleton = () => (
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
     {Array.from({ length: 4 }).map((_, i) => (
       <CardSkeleton key={i} />
     ))}
@@ -187,16 +190,16 @@ export const MainContentSkeleton = () => (
         <LocationSelectionSkeleton />
       </CardContent>
     </Card>
-    
+
     {/* Summary cards skeleton */}
     <MetricCardsSkeleton count={4} />
-    
+
     {/* Charts skeleton */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <ChartSkeleton />
       <ChartSkeleton />
     </div>
-    
+
     {/* Table skeleton */}
     <Card>
       <CardHeader>
@@ -214,7 +217,7 @@ export const MainContentSkeleton = () => (
  * Skeleton component for dashboard KPI cards
  */
 export const DashboardKPISkeleton = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
     {Array.from({ length: 4 }).map((_, i) => (
       <Card key={i} className="p-6">
         <div className="flex items-center justify-between">
@@ -237,7 +240,7 @@ export const DashboardKPISkeleton = () => (
  * Skeleton component for dashboard charts section
  */
 export const DashboardChartsSkeleton = () => (
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -292,7 +295,7 @@ export const MetersTableSkeleton = () => (
         <Skeleton className="h-4 w-48" />
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col gap-4 md:flex-row">
           <Skeleton className="h-10 w-full md:w-64" />
           <Skeleton className="h-10 w-full md:w-48" />
           <Skeleton className="h-10 w-32" />
@@ -315,15 +318,18 @@ export const MetersTableSkeleton = () => (
         <div className="space-y-3">
           {/* Desktop table skeleton */}
           <div className="hidden md:block">
-            <div className="h-12 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="mb-3 h-12 animate-pulse rounded bg-gray-200" />
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded animate-pulse mb-2" />
+              <div
+                key={i}
+                className="mb-2 h-14 animate-pulse rounded bg-gray-100"
+              />
             ))}
           </div>
           {/* Mobile cards skeleton */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="p-4 border rounded-lg">
+              <div key={i} className="rounded-lg border p-4">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -364,7 +370,7 @@ export const ReportsPageSkeleton = () => (
     {/* Date filters skeleton */}
     <Card>
       <CardContent className="p-4">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col gap-4 md:flex-row">
           <Skeleton className="h-10 w-full md:w-48" />
           <Skeleton className="h-10 w-full md:w-48" />
           <Skeleton className="h-10 w-32" />
@@ -394,7 +400,7 @@ export const ReportsPageSkeleton = () => (
 export const MachinesOverviewSkeleton = () => (
   <div className="space-y-6">
     {/* Machine Statistics Cards */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i} className="min-h-[120px]">
           <CardContent className="p-6">
@@ -426,7 +432,7 @@ export const MachinesOverviewSkeleton = () => (
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col gap-4 md:flex-row">
           <Skeleton className="h-10 w-full md:w-64" />
           <Skeleton className="h-10 w-full md:w-48" />
           <Skeleton className="h-10 w-32" />
@@ -449,15 +455,18 @@ export const MachinesOverviewSkeleton = () => (
         <div className="space-y-3">
           {/* Desktop table skeleton */}
           <div className="hidden md:block">
-            <div className="h-12 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="mb-3 h-12 animate-pulse rounded bg-gray-200" />
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded animate-pulse mb-2" />
+              <div
+                key={i}
+                className="mb-2 h-14 animate-pulse rounded bg-gray-100"
+              />
             ))}
           </div>
           {/* Mobile cards skeleton */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="p-4 border rounded-lg">
+              <div key={i} className="rounded-lg border p-4">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -531,15 +540,18 @@ export const MachinesEvaluationSkeleton = () => (
         <div className="space-y-3">
           {/* Desktop table skeleton */}
           <div className="hidden md:block">
-            <div className="h-12 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="mb-3 h-12 animate-pulse rounded bg-gray-200" />
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded animate-pulse mb-2" />
+              <div
+                key={i}
+                className="mb-2 h-14 animate-pulse rounded bg-gray-100"
+              />
             ))}
           </div>
           {/* Mobile cards skeleton */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="p-4 border rounded-lg">
+              <div key={i} className="rounded-lg border p-4">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -589,7 +601,7 @@ export const MachinesOfflineSkeleton = () => (
         <Skeleton className="h-6 w-32" />
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col gap-4 md:flex-row">
           <Skeleton className="h-10 w-full md:w-64" />
           <Skeleton className="h-10 w-full md:w-48" />
           <Skeleton className="h-10 w-32" />
@@ -612,16 +624,19 @@ export const MachinesOfflineSkeleton = () => (
         <div className="space-y-3">
           {/* Desktop table skeleton */}
           <div className="hidden md:block">
-            <div className="h-12 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="mb-3 h-12 animate-pulse rounded bg-gray-200" />
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded animate-pulse mb-2" />
+              <div
+                key={i}
+                className="mb-2 h-14 animate-pulse rounded bg-gray-100"
+              />
             ))}
           </div>
           {/* Mobile cards skeleton */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
+              <div key={i} className="rounded-lg border p-4">
+                <div className="mb-2 flex items-center justify-between">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-4 rounded-full bg-red-200" />
                 </div>
@@ -656,7 +671,7 @@ export const MachinesOfflineSkeleton = () => (
 export const LocationsOverviewSkeleton = () => (
   <div className="space-y-6">
     {/* Metrics Overview Cards */}
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i}>
           <CardContent className="p-6">
@@ -688,15 +703,18 @@ export const LocationsOverviewSkeleton = () => (
         <div className="space-y-3">
           {/* Desktop table skeleton */}
           <div className="hidden md:block">
-            <div className="h-12 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="mb-3 h-12 animate-pulse rounded bg-gray-200" />
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded animate-pulse mb-2" />
+              <div
+                key={i}
+                className="mb-2 h-14 animate-pulse rounded bg-gray-100"
+              />
             ))}
           </div>
           {/* Mobile cards skeleton */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="p-4 border rounded-lg">
+              <div key={i} className="rounded-lg border p-4">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -745,7 +763,7 @@ export const LocationsSASEvaluationSkeleton = () => (
     </Card>
 
     {/* Summary Cards (when multiple locations selected) */}
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i}>
           <CardContent className="p-6">
@@ -763,7 +781,7 @@ export const LocationsSASEvaluationSkeleton = () => (
     </div>
 
     {/* Machine Hourly Charts */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i}>
           <CardHeader>
@@ -792,15 +810,18 @@ export const LocationsSASEvaluationSkeleton = () => (
         <div className="space-y-3">
           {/* Desktop table skeleton */}
           <div className="hidden md:block">
-            <div className="h-12 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="mb-3 h-12 animate-pulse rounded bg-gray-200" />
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded animate-pulse mb-2" />
+              <div
+                key={i}
+                className="mb-2 h-14 animate-pulse rounded bg-gray-100"
+              />
             ))}
           </div>
           {/* Mobile cards skeleton */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="p-4 border rounded-lg">
+              <div key={i} className="rounded-lg border p-4">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -838,7 +859,7 @@ export const LocationsRevenueAnalysisSkeleton = () => (
     </Card>
 
     {/* Summary Cards (when multiple locations selected) */}
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i}>
           <CardContent className="p-6">
@@ -856,7 +877,7 @@ export const LocationsRevenueAnalysisSkeleton = () => (
     </div>
 
     {/* Revenue Analysis Charts */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {Array.from({ length: 3 }).map((_, i) => (
         <Card key={i}>
           <CardHeader>
@@ -885,15 +906,18 @@ export const LocationsRevenueAnalysisSkeleton = () => (
         <div className="space-y-3">
           {/* Desktop table skeleton */}
           <div className="hidden md:block">
-            <div className="h-12 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="mb-3 h-12 animate-pulse rounded bg-gray-200" />
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded animate-pulse mb-2" />
+              <div
+                key={i}
+                className="mb-2 h-14 animate-pulse rounded bg-gray-100"
+              />
             ))}
           </div>
           {/* Mobile cards skeleton */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="p-4 border rounded-lg">
+              <div key={i} className="rounded-lg border p-4">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -931,7 +955,7 @@ export const MetersTabSkeleton = () => (
         <Skeleton className="h-4 w-64" />
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-4 w-32" />
@@ -957,21 +981,24 @@ export const MetersTabSkeleton = () => (
         {/* Search bar skeleton */}
         <div className="mb-4">
           <Skeleton className="h-10 w-full max-w-md" />
-          <Skeleton className="h-4 w-32 mt-2" />
+          <Skeleton className="mt-2 h-4 w-32" />
         </div>
 
         <div className="space-y-3">
           {/* Desktop table skeleton */}
           <div className="hidden md:block">
-            <div className="h-12 bg-gray-200 rounded animate-pulse mb-3" />
+            <div className="mb-3 h-12 animate-pulse rounded bg-gray-200" />
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-100 rounded animate-pulse mb-2" />
+              <div
+                key={i}
+                className="mb-2 h-14 animate-pulse rounded bg-gray-100"
+              />
             ))}
           </div>
           {/* Mobile cards skeleton */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="p-4 border rounded-lg">
+              <div key={i} className="rounded-lg border p-4">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
@@ -1001,14 +1028,14 @@ export const MetersTabSkeleton = () => (
 /**
  * Component for charts with no data
  */
-export const ChartNoData = ({ 
-  title, 
-  icon, 
-  message 
-}: { 
-  title: string; 
-  icon: React.ReactNode; 
-  message: string; 
+export const ChartNoData = ({
+  title,
+  icon,
+  message,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  message: string;
 }) => (
   <Card>
     <CardHeader>
@@ -1019,15 +1046,9 @@ export const ChartNoData = ({
     </CardHeader>
     <CardContent>
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="text-gray-400 mb-4">
-          {icon}
-        </div>
-        <div className="text-gray-500 text-lg mb-2">
-          No Data Available
-        </div>
-        <div className="text-gray-400 text-sm">
-          {message}
-        </div>
+        <div className="mb-4 text-gray-400">{icon}</div>
+        <div className="mb-2 text-lg text-gray-500">No Data Available</div>
+        <div className="text-sm text-gray-400">{message}</div>
       </div>
     </CardContent>
   </Card>

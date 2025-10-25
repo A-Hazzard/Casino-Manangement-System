@@ -1,7 +1,7 @@
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 const MONGODB_URI =
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function testBillValidatorVsMetrics() {
   const client = new MongoClient(MONGODB_URI);
@@ -11,16 +11,16 @@ async function testBillValidatorVsMetrics() {
     const db = client.db();
 
     console.log(
-      "🔍 Testing Bill Validator vs Metrics for Machine 1309 (ID: 5769366190e560cdab9b8e51)"
+      '🔍 Testing Bill Validator vs Metrics for Machine 1309 (ID: 5769366190e560cdab9b8e51)'
     );
-    console.log("📅 Date Range: October 15th to 16th");
+    console.log('📅 Date Range: October 15th to 16th');
 
     // Get machine info
     const machine = await db
-      .collection("machines")
-      .findOne({ _id: "5769366190e560cdab9b8e51" });
+      .collection('machines')
+      .findOne({ _id: '5769366190e560cdab9b8e51' });
     if (!machine) {
-      console.error("❌ Machine not found");
+      console.error('❌ Machine not found');
       return;
     }
 
@@ -28,7 +28,7 @@ async function testBillValidatorVsMetrics() {
 
     // Get location info for gaming day offset
     const location = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .findOne({ _id: machine.locationId });
     const gameDayOffset = location?.gameDayOffset || 0;
     console.log(
@@ -36,8 +36,8 @@ async function testBillValidatorVsMetrics() {
     );
 
     // Test date range: Oct 15-16, 2025
-    const startDate = new Date("2025-10-15T04:00:00.000Z"); // 4 AM UTC = Midnight Trinidad
-    const endDate = new Date("2025-10-16T03:59:59.999Z"); // 3:59 AM UTC = 11:59 PM Trinidad
+    const startDate = new Date('2025-10-15T04:00:00.000Z'); // 4 AM UTC = Midnight Trinidad
+    const endDate = new Date('2025-10-16T03:59:59.999Z'); // 3:59 AM UTC = 11:59 PM Trinidad
 
     console.log(
       `📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`
@@ -45,9 +45,9 @@ async function testBillValidatorVsMetrics() {
 
     // 1. Get bill validator data (accepted bills) - use readAt for V2 data
     const acceptedBills = await db
-      .collection("acceptedbills")
+      .collection('acceptedbills')
       .find({
-        machine: "5769366190e560cdab9b8e51",
+        machine: '5769366190e560cdab9b8e51',
         readAt: { $gte: startDate, $lte: endDate },
       })
       .sort({ readAt: -1 })
@@ -71,13 +71,13 @@ async function testBillValidatorVsMetrics() {
         value: firstBill.value,
         movementKeys: firstBill.movement
           ? Object.keys(firstBill.movement)
-          : "none",
+          : 'none',
       });
 
       if (firstBill.value !== undefined) {
         // V1 format - count by value field
         const denominationTotals = {};
-        acceptedBills.forEach((bill) => {
+        acceptedBills.forEach(bill => {
           if (bill.value !== undefined) {
             const value = Number(bill.value);
             denominationTotals[value] = (denominationTotals[value] || 0) + 1;
@@ -89,25 +89,25 @@ async function testBillValidatorVsMetrics() {
         console.log(`   V1 Total: $${billValidatorTotal}`);
       } else if (firstBill.movement) {
         // V2 format - use movement object
-        acceptedBills.forEach((bill) => {
+        acceptedBills.forEach(bill => {
           if (bill.movement) {
             const movement = bill.movement;
 
             // Sum known denominations
             const denominationMap = [
-              { key: "dollar1", value: 1 },
-              { key: "dollar2", value: 2 },
-              { key: "dollar5", value: 5 },
-              { key: "dollar10", value: 10 },
-              { key: "dollar20", value: 20 },
-              { key: "dollar50", value: 50 },
-              { key: "dollar100", value: 100 },
-              { key: "dollar200", value: 200 },
-              { key: "dollar500", value: 500 },
-              { key: "dollar1000", value: 1000 },
-              { key: "dollar2000", value: 2000 },
-              { key: "dollar5000", value: 5000 },
-              { key: "dollar10000", value: 10000 },
+              { key: 'dollar1', value: 1 },
+              { key: 'dollar2', value: 2 },
+              { key: 'dollar5', value: 5 },
+              { key: 'dollar10', value: 10 },
+              { key: 'dollar20', value: 20 },
+              { key: 'dollar50', value: 50 },
+              { key: 'dollar100', value: 100 },
+              { key: 'dollar200', value: 200 },
+              { key: 'dollar500', value: 500 },
+              { key: 'dollar1000', value: 1000 },
+              { key: 'dollar2000', value: 2000 },
+              { key: 'dollar5000', value: 5000 },
+              { key: 'dollar10000', value: 10000 },
             ];
 
             denominationMap.forEach(({ key, value }) => {
@@ -132,9 +132,9 @@ async function testBillValidatorVsMetrics() {
 
     // 2. Get metrics data (meters collection)
     const meters = await db
-      .collection("meters")
+      .collection('meters')
       .find({
-        machineId: "5769366190e560cdab9b8e51",
+        machineId: '5769366190e560cdab9b8e51',
         readAt: { $gte: startDate, $lte: endDate },
       })
       .sort({ readAt: -1 })
@@ -146,10 +146,10 @@ async function testBillValidatorVsMetrics() {
     if (meters.length > 0) {
       // Calculate movement from meters
       const meterMovements = {};
-      meters.forEach((meter) => {
+      meters.forEach(meter => {
         if (meter.movement) {
-          Object.keys(meter.movement).forEach((key) => {
-            if (typeof meter.movement[key] === "number") {
+          Object.keys(meter.movement).forEach(key => {
+            if (typeof meter.movement[key] === 'number') {
               meterMovements[key] =
                 (meterMovements[key] || 0) + meter.movement[key];
             }
@@ -170,9 +170,9 @@ async function testBillValidatorVsMetrics() {
 
     // 3. Check collections for this date range
     const collections = await db
-      .collection("collections")
+      .collection('collections')
       .find({
-        machineId: "5769366190e560cdab9b8e51",
+        machineId: '5769366190e560cdab9b8e51',
         timestamp: { $gte: startDate, $lte: endDate },
         deletedAt: { $exists: false },
       })
@@ -195,7 +195,7 @@ async function testBillValidatorVsMetrics() {
                 drop: collection.sasMeters.drop,
                 gross: collection.sasMeters.gross,
               }
-            : "none",
+            : 'none',
         });
       });
     }
@@ -238,7 +238,7 @@ async function testBillValidatorVsMetrics() {
       console.log(`   ✅ Values match!`);
     }
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error('❌ Error:', error);
   } finally {
     await client.close();
   }

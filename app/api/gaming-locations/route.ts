@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get("licensee");
+    const licensee = searchParams.get('licensee');
 
     const query: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
 
     // If licensee is provided, filter by licensee
     if (licensee) {
-      query["rel.licencee"] = licensee;
+      query['rel.licencee'] = licensee;
     }
 
     const locations = await GamingLocations.find(query, {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       name: 1,
     }).lean();
 
-    const formattedLocations = locations.map((loc) => ({
+    const formattedLocations = locations.map(loc => ({
       _id: loc._id,
       name: loc.name,
     }));
@@ -35,11 +35,11 @@ export async function GET(request: NextRequest) {
       data: formattedLocations,
     });
   } catch (error) {
-    console.error("Error fetching gaming locations:", error);
+    console.error('Error fetching gaming locations:', error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch gaming locations",
+        message: 'Failed to fetch gaming locations',
         error: (error as Error).message,
       },
       { status: 500 }

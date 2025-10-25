@@ -5,6 +5,7 @@
 **Status:** Current Implementation Documentation
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [SAS GROSS Calculation Method](#sas-gross-calculation-method)
 - [Data Sources](#data-sources)
@@ -29,17 +30,20 @@ SAS GROSS (Slot Accounting System Gross) represents the net revenue from slot ma
 ### Current Implementation (Movement Delta Method)
 
 **Formula:**
+
 ```
 SAS GROSS = Sum(movement.drop) - Sum(movement.totalCancelledCredits)
 ```
 
 **Data Source:**
+
 - Collection: `meters`
 - Fields: `movement.drop`, `movement.totalCancelledCredits`
 - Time Filter: `readAt` field
 - Machine Filter: `machine` field (string ID)
 
 **Process:**
+
 1. Query all meter readings for the machine within the SAS time period
 2. Sum all `movement.drop` values (money in)
 3. Sum all `movement.totalCancelledCredits` values (money out)
@@ -48,11 +52,13 @@ SAS GROSS = Sum(movement.drop) - Sum(movement.totalCancelledCredits)
 ### Deprecated Method (First/Last Cumulative)
 
 **Previous Formula (No Longer Used):**
+
 ```
 SAS GROSS = (lastMeter.coinIn - firstMeter.coinIn) - (lastMeter.coinOut - firstMeter.coinOut)
 ```
 
 **Why Deprecated:**
+
 - Only uses 2 data points (first and last meter readings)
 - Misses intermediate changes and corrections
 - Only works with cumulative data (coinIn/coinOut fields)
@@ -64,6 +70,7 @@ SAS GROSS = (lastMeter.coinIn - firstMeter.coinIn) - (lastMeter.coinOut - firstM
 
 **Collection:** `meters`
 **Key Fields:**
+
 - `machine`: Machine ID (string)
 - `readAt`: Timestamp of meter reading
 - `movement.drop`: Money dropped into machine (delta)
@@ -74,6 +81,7 @@ SAS GROSS = (lastMeter.coinIn - firstMeter.coinIn) - (lastMeter.coinOut - firstM
 
 **Collection:** `collections`
 **Key Fields:**
+
 - `machineId`: Machine ID
 - `sasMeters.drop`: Stored SAS drop value
 - `sasMeters.totalCancelledCredits`: Stored SAS cancelled credits
@@ -91,6 +99,7 @@ SAS GROSS = (lastMeter.coinIn - firstMeter.coinIn) - (lastMeter.coinOut - firstM
 **Function:** `getCollectionReportById()` in `app/api/lib/helpers/accountingDetails.ts`
 
 **Implementation:**
+
 ```typescript
 // Query meters for SAS time period
 const meters = await Meters.find({
@@ -99,11 +108,19 @@ const meters = await Meters.find({
     $gte: new Date(collection.sasMeters.sasStartTime),
     $lte: new Date(collection.sasMeters.sasEndTime),
   },
-}).sort({ readAt: 1 }).lean();
+})
+  .sort({ readAt: 1 })
+  .lean();
 
 // Calculate SAS GROSS using movement delta method
-const totalDrop = meters.reduce((sum, meter) => sum + (meter.movement?.drop || 0), 0);
-const totalCancelled = meters.reduce((sum, meter) => sum + (meter.movement?.totalCancelledCredits || 0), 0);
+const totalDrop = meters.reduce(
+  (sum, meter) => sum + (meter.movement?.drop || 0),
+  0
+);
+const totalCancelled = meters.reduce(
+  (sum, meter) => sum + (meter.movement?.totalCancelledCredits || 0),
+  0
+);
 const sasGross = totalDrop - totalCancelled;
 ```
 
@@ -113,6 +130,7 @@ const sasGross = totalDrop - totalCancelled;
 **Function:** `GET()` in `app/api/machines/aggregation/route.ts`
 
 **Implementation:**
+
 ```typescript
 // MongoDB aggregation pipeline
 {
@@ -136,6 +154,7 @@ const sasGross = totalDrop - totalCancelled;
 **Function:** `GET()` in `app/api/machines/[id]/route.ts`
 
 **Implementation:**
+
 ```typescript
 // MongoDB aggregation pipeline
 {
@@ -154,6 +173,7 @@ const sasGross = totalDrop - totalCancelled;
 **Function:** `GET()` in `app/api/reports/locations/route.ts`
 
 **Implementation:**
+
 - Uses same aggregation pipeline as Cabinets page
 - Aggregates across all locations for licensee
 - Applies gaming day ranges for time filtering
@@ -164,6 +184,7 @@ const sasGross = totalDrop - totalCancelled;
 **Function:** `getAllCollectionReportsWithMachineCounts()`
 
 **Implementation:**
+
 - Uses stored `collections.sasMeters.gross` values for performance
 - Recalculates SAS GROSS on-the-fly for accuracy
 - Uses same movement delta method as Collection Report Details
@@ -177,6 +198,7 @@ const sasGross = totalDrop - totalCancelled;
 **Accounts for:** `gameDayOffset` per location
 
 **Example:**
+
 - `gameDayOffset: 8` = Gaming day starts at 8 AM Trinidad time
 - Today (Oct 9, 2025) with offset 8 = Oct 8, 2025 08:00:00 to Oct 9, 2025 07:59:59 Trinidad time
 
@@ -187,6 +209,7 @@ const sasGross = totalDrop - totalCancelled;
 **Conversion:** Local time to UTC for database queries
 
 **Example:**
+
 - Oct 1, 2025 00:00:00 Trinidad → Oct 1, 2025 04:00:00 UTC
 - Oct 1, 2025 23:59:59 Trinidad → Oct 2, 2025 03:59:59 UTC
 
@@ -205,6 +228,7 @@ const sasGross = totalDrop - totalCancelled;
 **Meter Readings:** 140 readings in period
 
 **Calculation:**
+
 ```
 Total Drop = Sum(movement.drop) = 9,028
 Total Cancelled Credits = Sum(movement.totalCancelledCredits) = 6,760
@@ -218,6 +242,7 @@ SAS GROSS = 9,028 - 6,760 = 2,268
 **Machines:** 4 machines collected
 
 **Calculation:**
+
 ```
 Machine 1 (GM5660): SAS GROSS = 2,268
 Machine 2: SAS GROSS = 620
@@ -248,25 +273,35 @@ Total SAS GROSS = 2,268 + 620 + (-1,575) + 610 = 1,923
 ### Debugging Steps
 
 1. **Check meter data:**
+
    ```javascript
-   db.meters.find({
-     machine: "machine_id",
-     readAt: { $gte: startDate, $lte: endDate }
-   }).sort({ readAt: 1 })
+   db.meters
+     .find({
+       machine: 'machine_id',
+       readAt: { $gte: startDate, $lte: endDate },
+     })
+     .sort({ readAt: 1 });
    ```
 
 2. **Verify SAS time periods:**
+
    ```javascript
-   db.collections.find({
-     machineId: "machine_id"
-   }, { sasMeters: 1 })
+   db.collections.find(
+     {
+       machineId: 'machine_id',
+     },
+     { sasMeters: 1 }
+   );
    ```
 
 3. **Check gaming day ranges:**
    ```javascript
-   db.gaminglocations.find({
-     _id: "location_id"
-   }, { gameDayOffset: 1 })
+   db.gaminglocations.find(
+     {
+       _id: 'location_id',
+     },
+     { gameDayOffset: 1 }
+   );
    ```
 
 ### Performance Considerations

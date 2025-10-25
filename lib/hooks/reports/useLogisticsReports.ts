@@ -1,9 +1,9 @@
-import { useEffect, useCallback } from "react";
-import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
-import axios from "axios";
+import { useEffect, useCallback } from 'react';
+import { useAnalyticsDataStore } from '@/lib/store/reportsDataStore';
+import axios from 'axios';
 
 export function useLogisticsAnalytics() {
-  const timePeriod = "last7days";
+  const timePeriod = 'last7days';
   const dateRange = null;
   const { setLogisticsEntries, setLastUpdated } = useAnalyticsDataStore();
 
@@ -23,19 +23,19 @@ export function useLogisticsAnalytics() {
       try {
         const params: Record<string, unknown> = { timePeriod };
 
-        const response = await axios.get("/api/analytics/logistics", {
+        const response = await axios.get('/api/analytics/logistics', {
           params,
         });
 
         if (response.data.success) {
           const { movements } = response.data.data;
           setLogisticsEntries(movements);
-          setLastUpdated("logistics");
+          setLastUpdated('logistics');
         } else {
           setError();
         }
       } catch (err) {
-        console.error("Failed to fetch logistics data:", err);
+        console.error('Failed to fetch logistics data:', err);
         setError();
       } finally {
         setIsLoading();

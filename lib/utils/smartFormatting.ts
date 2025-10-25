@@ -27,7 +27,7 @@ export function formatSmartNumber(
     decimals = 2,
     showDecimals = true,
     currency = 'USD',
-    style = 'decimal'
+    style = 'decimal',
   } = options;
 
   // Check if the value has meaningful decimal places
@@ -39,8 +39,10 @@ export function formatSmartNumber(
   const formatOptions: Intl.NumberFormatOptions = {
     style,
     ...(style === 'currency' && { currency }),
-    minimumFractionDigits: showDecimals && hasSignificantDecimals ? decimals : 0,
-    maximumFractionDigits: showDecimals && hasSignificantDecimals ? decimals : 0,
+    minimumFractionDigits:
+      showDecimals && hasSignificantDecimals ? decimals : 0,
+    maximumFractionDigits:
+      showDecimals && hasSignificantDecimals ? decimals : 0,
   };
 
   return new Intl.NumberFormat('en-US', formatOptions).format(value);
@@ -52,7 +54,10 @@ export function formatSmartNumber(
  * @param currency - The currency code (default: USD)
  * @returns Formatted currency string
  */
-export function formatSmartCurrency(value: number, currency: string = 'USD'): string {
+export function formatSmartCurrency(
+  value: number,
+  currency: string = 'USD'
+): string {
   return formatSmartNumber(value, { style: 'currency', currency });
 }
 
@@ -62,7 +67,10 @@ export function formatSmartCurrency(value: number, currency: string = 'USD'): st
  * @param decimals - Number of decimal places (default: 1)
  * @returns Formatted percentage string
  */
-export function formatSmartPercentage(value: number, decimals: number = 1): string {
+export function formatSmartPercentage(
+  value: number,
+  decimals: number = 1
+): string {
   const percentage = value * 100;
   return formatSmartNumber(percentage, { decimals, style: 'percent' });
 }
@@ -73,7 +81,10 @@ export function formatSmartPercentage(value: number, decimals: number = 1): stri
  * @param decimals - Number of decimal places (default: 2)
  * @returns Formatted number string
  */
-export function formatSmartDecimal(value: number, decimals: number = 2): string {
+export function formatSmartDecimal(
+  value: number,
+  decimals: number = 2
+): string {
   return formatSmartNumber(value, { decimals });
 }
 

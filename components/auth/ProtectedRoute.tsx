@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/hooks/useAuth";
-import { PageName, hasPageAccess } from "@/lib/utils/permissions";
-import { hasAdminAccessDb, hasPageAccessDb } from "@/lib/utils/permissionsDb";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { PageName, hasPageAccess } from '@/lib/utils/permissions';
+import { hasAdminAccessDb, hasPageAccessDb } from '@/lib/utils/permissionsDb';
 
-import type React from "react";
+import type React from 'react';
 
 type ProtectedRouteProps = {
   children: React.ReactNode;
@@ -31,7 +31,7 @@ export default function ProtectedRoute({
     const checkAuthentication = async () => {
       // First check if user is authenticated
       if (!isAuthenticated || !user) {
-        router.push("/login");
+        router.push('/login');
         return;
       }
 
@@ -43,9 +43,9 @@ export default function ProtectedRoute({
           setTimeout(() => {
             if (!user.roles || user.roles.length === 0) {
               console.warn(
-                "User has no roles after timeout, redirecting to login"
+                'User has no roles after timeout, redirecting to login'
               );
-              router.push("/login");
+              router.push('/login');
             }
           }, 2000);
         }
@@ -55,10 +55,10 @@ export default function ProtectedRoute({
       // Check local permissions first (faster)
       if (requireAdminAccess && user.roles) {
         const hasAdminLocal =
-          user.roles.includes("admin") ||
-          user.roles.includes("evolution admin");
+          user.roles.includes('admin') ||
+          user.roles.includes('evolution admin');
         if (!hasAdminLocal) {
-          router.push("/"); // Redirect to dashboard if not admin
+          router.push('/'); // Redirect to dashboard if not admin
           return;
         }
       }
@@ -66,7 +66,7 @@ export default function ProtectedRoute({
       if (requiredPage && user.roles) {
         const hasPageLocal = hasPageAccess(user.roles, requiredPage);
         if (!hasPageLocal) {
-          router.push("/unauthorized"); // Redirect to unauthorized page
+          router.push('/unauthorized'); // Redirect to unauthorized page
           return;
         }
       }
@@ -77,12 +77,12 @@ export default function ProtectedRoute({
         if (
           requireAdminAccess &&
           (!user.roles ||
-            (!user.roles.includes("admin") &&
-              !user.roles.includes("evolution admin")))
+            (!user.roles.includes('admin') &&
+              !user.roles.includes('evolution admin')))
         ) {
           const hasAdmin = await hasAdminAccessDb();
           if (!hasAdmin) {
-            router.push("/"); // Redirect to dashboard if not admin
+            router.push('/'); // Redirect to dashboard if not admin
             return;
           }
         }
@@ -94,7 +94,7 @@ export default function ProtectedRoute({
         ) {
           const hasPage = await hasPageAccessDb(requiredPage);
           if (!hasPage) {
-            router.push("/unauthorized"); // Redirect to unauthorized page
+            router.push('/unauthorized'); // Redirect to unauthorized page
             return;
           }
         }
@@ -102,21 +102,21 @@ export default function ProtectedRoute({
         setIsChecking(false);
         return;
       } catch (error) {
-        console.error("Error checking permissions:", error);
+        console.error('Error checking permissions:', error);
         // Only redirect on error if user definitely doesn't have local access
         if (
           requireAdminAccess &&
           user.roles &&
-          !user.roles.includes("admin") &&
-          !user.roles.includes("evolution admin")
+          !user.roles.includes('admin') &&
+          !user.roles.includes('evolution admin')
         ) {
-          router.push("/");
+          router.push('/');
         } else if (
           requiredPage &&
           user.roles &&
           !hasPageAccess(user.roles, requiredPage)
         ) {
-          router.push("/unauthorized");
+          router.push('/unauthorized');
         } else {
           setIsChecking(false);
         }
@@ -138,8 +138,8 @@ export default function ProtectedRoute({
   // Show loading while checking authentication
   if (isLoading || isChecking) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-gray-900"></div>
       </div>
     );
   }

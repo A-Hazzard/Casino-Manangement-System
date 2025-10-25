@@ -3,16 +3,16 @@
  * Handles users, licensees, and activity logs data management
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
-import { fetchUsers } from "@/lib/helpers/administration";
-import type { 
-  User, 
-  UseAdministrationDataProps, 
-  UseAdministrationDataReturn 
-} from "@/lib/types/administration";
-import type { Licensee } from "@/lib/types/licensee";
-import { ActivityLogData } from "@/lib/types/hooks";
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
+import { fetchUsers } from '@/lib/helpers/administration';
+import type {
+  User,
+  UseAdministrationDataProps,
+  UseAdministrationDataReturn,
+} from '@/lib/types/administration';
+import type { Licensee } from '@/lib/types/licensee';
+import { ActivityLogData } from '@/lib/types/hooks';
 
 export function useAdministrationData({
   selectedLicencee,
@@ -22,12 +22,12 @@ export function useAdministrationData({
   const [users, setUsers] = useState<User[]>([]);
   const [licensees] = useState<Licensee[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLogData[]>([]);
-  
+
   // Loading states
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingLicensees] = useState(false);
   const [loadingActivityLogs, setLoadingActivityLogs] = useState(false);
-  
+
   // Error state
   const [error, setError] = useState<string | null>(null);
 
@@ -35,14 +35,15 @@ export function useAdministrationData({
   const fetchUsersData = useCallback(async () => {
     setLoadingUsers(true);
     setError(null);
-    
+
     try {
       const usersData = await fetchUsers(selectedLicencee);
       setUsers(usersData);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch users";
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch users';
       setError(errorMessage);
-      toast.error("Failed to load users");
+      toast.error('Failed to load users');
     } finally {
       setLoadingUsers(false);
     }
@@ -55,16 +56,17 @@ export function useAdministrationData({
   const fetchActivityLogsData = useCallback(async () => {
     setLoadingActivityLogs(true);
     setError(null);
-    
+
     try {
       // This would be implemented based on the actual API
       // const logsData = await fetchActivityLogs(selectedLicencee);
       // setActivityLogs(logsData);
       setActivityLogs([]);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch activity logs";
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch activity logs';
       setError(errorMessage);
-      toast.error("Failed to load activity logs");
+      toast.error('Failed to load activity logs');
     } finally {
       setLoadingActivityLogs(false);
     }
@@ -84,19 +86,16 @@ export function useAdministrationData({
   }, [fetchActivityLogsData]);
 
   const refreshAllData = useCallback(async () => {
-    await Promise.all([
-      fetchUsersData(),
-      fetchActivityLogsData(),
-    ]);
+    await Promise.all([fetchUsersData(), fetchActivityLogsData()]);
   }, [fetchUsersData, fetchActivityLogsData]);
 
   // Load data based on active section
   useEffect(() => {
-    if (activeSection === "users") {
+    if (activeSection === 'users') {
       fetchUsersData();
-    } else if (activeSection === "licensees") {
+    } else if (activeSection === 'licensees') {
       // Licensees data fetching is not implemented yet
-    } else if (activeSection === "activity-logs") {
+    } else if (activeSection === 'activity-logs') {
       fetchActivityLogsData();
     }
   }, [activeSection, fetchUsersData, fetchActivityLogsData]);

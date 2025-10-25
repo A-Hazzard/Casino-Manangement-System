@@ -1,12 +1,12 @@
 # Administration & Users API Documentation
 
-
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** October 29th, 2025
 
 ## Quick Search Guide
 
 Use **Ctrl+F** to find these key topics:
+
 - **create user** - What happens when you create a new user
 - **update user** - How user updates work and what fields are modified
 - **delete user** - How user deletion works
@@ -30,6 +30,7 @@ The Administration & Users API manages system users, licensees, and activity log
    - Generates unique `_id` and timestamps
 
 2. **User Model Fields**:
+
 ```typescript
 User {
   _id: string;                    // Unique user identifier
@@ -107,6 +108,7 @@ User {
    - Generates unique `licenseKey`
 
 2. **Licensee Model Fields**:
+
 ```typescript
 Licensee {
   _id: string;                    // Unique licensee identifier
@@ -152,6 +154,7 @@ Licensee {
    - Captures `timestamp`, `ip`, `userAgent`
 
 2. **Activity Log Model Fields**:
+
 ```typescript
 ActivityLog {
   _id: string;                    // Unique log entry identifier
@@ -186,6 +189,7 @@ ActivityLog {
 ### Activity Log Types
 
 **User Actions**:
+
 - `create` - New user created
 - `update` - User profile or permissions modified
 - `delete` - User account deactivated
@@ -193,6 +197,7 @@ ActivityLog {
 - `logout` - User logged out of system
 
 **Entity Actions**:
+
 - `user` - User entity modifications
 - `licensee` - Licensee entity modifications
 - `location` - Location entity modifications
@@ -205,117 +210,138 @@ ActivityLog {
 **Base URL:** `/api/users`
 
 #### GET /api/users
+
 **What it does**: Retrieves all system users with optional filtering
 **Database Query**: Queries `users` collection, filters by `licensee` if provided
 **Response Fields**: Returns array of `User` objects with all fields
 **Used By**: Administration page for user management
 
 #### POST /api/users
+
 **What it does**: Creates a new system user
-**Database Operations**: 
+**Database Operations**:
+
 - Validates input data
 - Hashes password using bcrypt
 - Creates new `User` document
 - Logs creation activity
-**Request Fields**: All `User` model fields except `_id`, `createdAt`, `updatedAt`
-**Response Fields**: Created `User` object with generated `_id`
+  **Request Fields**: All `User` model fields except `_id`, `createdAt`, `updatedAt`
+  **Response Fields**: Created `User` object with generated `_id`
 
 #### PUT /api/users
+
 **What it does**: Updates an existing system user
 **Database Operations**:
+
 - Finds user by `_id`
 - Updates specified fields
 - Logs change activity with before/after values
-**Request Fields**: All `User` model fields (including `_id` for identification)
-**Response Fields**: Updated `User` object with new `updatedAt`
+  **Request Fields**: All `User` model fields (including `_id` for identification)
+  **Response Fields**: Updated `User` object with new `updatedAt`
 
 #### DELETE /api/users
+
 **What it does**: Soft deletes a system user
 **Database Operations**:
+
 - Finds user by `_id`
 - Sets `deletedAt` timestamp
 - Logs deletion activity
-**Request Fields**: `_id` of user to delete
-**Response Fields**: Success confirmation message
+  **Request Fields**: `_id` of user to delete
+  **Response Fields**: Success confirmation message
 
 ### Licensees API
 
 **Base URL:** `/api/licensees`
 
 #### GET /api/licensees
+
 **What it does**: Retrieves all licensees with optional filtering
 **Database Query**: Queries `licensees` collection, filters by `licensee` parameter
 **Response Fields**: Returns array of `Licensee` objects
 **Used By**: Licensee management pages
 
 #### POST /api/licensees
+
 **What it does**: Creates a new licensee
 **Database Operations**:
+
 - Validates input data
 - Generates unique `licenseKey`
 - Creates new `Licensee` document
 - Logs creation activity
-**Request Fields**: All `Licensee` model fields except `_id`, `licenseKey`, `createdAt`, `updatedAt`
-**Response Fields**: Created `Licensee` object with generated fields
+  **Request Fields**: All `Licensee` model fields except `_id`, `licenseKey`, `createdAt`, `updatedAt`
+  **Response Fields**: Created `Licensee` object with generated fields
 
 #### PUT /api/licensees
+
 **What it does**: Updates an existing licensee
 **Database Operations**:
+
 - Finds licensee by `_id`
 - Updates specified fields (except `licenseKey`)
 - Logs change activity
-**Request Fields**: All `Licensee` model fields (including `_id`)
-**Response Fields**: Updated `Licensee` object
+  **Request Fields**: All `Licensee` model fields (including `_id`)
+  **Response Fields**: Updated `Licensee` object
 
 #### DELETE /api/licensees
+
 **What it does**: Soft deletes a licensee
 **Database Operations**:
+
 - Finds licensee by `_id`
 - Sets `deletedAt` timestamp
 - Logs deletion activity
-**Request Fields**: `_id` of licensee to delete
-**Response Fields**: Success confirmation message
+  **Request Fields**: `_id` of licensee to delete
+  **Response Fields**: Success confirmation message
 
 ### Activity Logs API
 
 **Base URL:** `/api/activity-logs`
 
 #### GET /api/activity-logs
+
 **What it does**: Retrieves system activity logs with filtering and pagination
 **Database Query**: Queries `activityLogs` collection with filters
 **Query Parameters**:
+
 - `entityType` - Filter by entity type (user, licensee, etc.)
 - `actionType` - Filter by action type (create, update, delete)
 - `actor` - Filter by actor ID
 - `startDate`/`endDate` - Date range filtering
 - `page`/`limit` - Pagination controls
-**Response Fields**: Array of `ActivityLog` objects with pagination info
-**Used By**: Activity log pages, audit trail systems
+  **Response Fields**: Array of `ActivityLog` objects with pagination info
+  **Used By**: Activity log pages, audit trail systems
 
 #### POST /api/activity-logs
+
 **What it does**: Creates a new activity log entry
 **Database Operations**:
+
 - Validates log entry data
 - Creates new `ActivityLog` document
 - Captures current timestamp and context
-**Request Fields**: All `ActivityLog` model fields except `_id`, `timestamp`, `ip`, `userAgent`, `createdAt`
-**Response Fields**: Created `ActivityLog` object
+  **Request Fields**: All `ActivityLog` model fields except `_id`, `timestamp`, `ip`, `userAgent`, `createdAt`
+  **Response Fields**: Created `ActivityLog` object
 
 ## Security Features
 
 ### Authentication & Authorization
+
 - **JWT Tokens**: All endpoints require valid JWT authentication
 - **Role-Based Access**: Different permissions for admin, user, viewer roles
 - **Resource Permissions**: Granular permissions for locations, machines, reports
 - **Session Management**: Secure session handling with HTTP-only cookies
 
 ### Data Protection
+
 - **Password Hashing**: bcrypt used for password security
 - **Input Validation**: Comprehensive validation for all inputs
 - **SQL Injection Prevention**: Parameterized queries used throughout
 - **XSS Protection**: Output sanitization and escaping
 
 ### Audit Trail
+
 - **Complete Logging**: All user actions logged with context
 - **Change Tracking**: Before/after values recorded for modifications
 - **IP Tracking**: IP addresses captured for security monitoring
@@ -328,9 +354,11 @@ ActivityLog {
 **Author:** Aaron Hazzard - Senior Software Engineer
 
 ## Overview
+
 The Administration & Users API provides comprehensive user management, system administration, and access control functionality for the gaming system. It handles user creation, role management, permissions, and administrative operations with comprehensive logging for audit trails and security monitoring.
 
 ## Base URLs
+
 ```
 /api/users
 /api/admin
@@ -351,6 +379,7 @@ All endpoints in this API include comprehensive logging using the `APILogger` ut
 - **Response Status**: Success/failure status with details
 
 **Log Format Example:**
+
 ```
 [2024-01-15T10:30:45.123Z] [INFO] (245ms) GET /api/users: Users fetched successfully User: admin123 IP: 192.168.1.100 Params: {"licensee":"all"} Data: {"count":15}
 ```
@@ -358,12 +387,15 @@ All endpoints in this API include comprehensive logging using the `APILogger` ut
 ## Users API
 
 ### GET /api/users
+
 Retrieves all system users with optional filtering.
 
 **Query Parameters:**
+
 - `licensee` (string, optional): Filter users by licensee (currently returns all users)
 
 **Response (Success - 200):**
+
 ```json
 {
   "users": [
@@ -394,6 +426,7 @@ Retrieves all system users with optional filtering.
 **Logging:** Comprehensive logging with user count and filtering context
 
 **Used By:**
+
 - `/administration` page - User management page
 - User listing components
 - Access control systems
@@ -401,9 +434,11 @@ Retrieves all system users with optional filtering.
 ---
 
 ### POST /api/users
+
 Creates a new system user.
 
 **Request Body:**
+
 ```json
 {
   "username": "newuser",
@@ -427,6 +462,7 @@ Creates a new system user.
 ```
 
 **Response (Success - 201):**
+
 ```json
 {
   "success": true,
@@ -453,6 +489,7 @@ Creates a new system user.
 ```
 
 **Response (Error - 400):**
+
 ```json
 {
   "success": false,
@@ -461,6 +498,7 @@ Creates a new system user.
 ```
 
 **Response (Error - 409):**
+
 ```json
 {
   "success": false,
@@ -471,15 +509,18 @@ Creates a new system user.
 **Logging:** Success/failure logging with user creation details and validation errors
 
 **Used By:**
+
 - User creation forms
 - Administrative pages
 
 ---
 
 ### PUT /api/users
+
 Updates an existing system user.
 
 **Request Body:**
+
 ```json
 {
   "_id": "user_id",
@@ -503,6 +544,7 @@ Updates an existing system user.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -532,15 +574,18 @@ Updates an existing system user.
 **Logging:** Change tracking with before/after values and update context
 
 **Used By:**
+
 - User editing forms
 - Profile management
 
 ---
 
 ### DELETE /api/users
+
 Deletes a system user.
 
 **Request Body:**
+
 ```json
 {
   "_id": "user_id"
@@ -548,6 +593,7 @@ Deletes a system user.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -556,6 +602,7 @@ Deletes a system user.
 ```
 
 **Response (Error - 404):**
+
 ```json
 {
   "success": false,
@@ -566,6 +613,7 @@ Deletes a system user.
 **Logging:** Deletion confirmation with user context and security tracking
 
 **Used By:**
+
 - User deletion forms
 - Administrative pages
 
@@ -574,12 +622,15 @@ Deletes a system user.
 ## Licensees API
 
 ### GET /api/licensees
+
 Retrieves all licensees with optional filtering.
 
 **Query Parameters:**
+
 - `licensee` (string, optional): Filter by specific licensee ID or name
 
 **Response (Success - 200):**
+
 ```json
 {
   "licensees": [
@@ -601,15 +652,18 @@ Retrieves all licensees with optional filtering.
 **Logging:** Access logging with filtering context and licensee count
 
 **Used By:**
+
 - Licensee management pages
 - Payment tracking systems
 
 ---
 
 ### POST /api/licensees
+
 Creates a new licensee.
 
 **Request Body:**
+
 ```json
 {
   "name": "New Casino",
@@ -622,6 +676,7 @@ Creates a new licensee.
 ```
 
 **Response (Success - 201):**
+
 ```json
 {
   "success": true,
@@ -643,15 +698,18 @@ Creates a new licensee.
 **Logging:** Creation logging with licensee details and license key generation
 
 **Used By:**
+
 - Licensee creation forms
 - Administrative pages
 
 ---
 
 ### PUT /api/licensees
+
 Updates an existing licensee.
 
 **Request Body:**
+
 ```json
 {
   "_id": "licensee_id",
@@ -662,6 +720,7 @@ Updates an existing licensee.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -678,15 +737,18 @@ Updates an existing licensee.
 **Logging:** Update logging with change tracking and payment status updates
 
 **Used By:**
+
 - Licensee editing forms
 - Payment management pages
 
 ---
 
 ### DELETE /api/licensees
+
 Deletes a licensee.
 
 **Request Body:**
+
 ```json
 {
   "_id": "licensee_id"
@@ -694,6 +756,7 @@ Deletes a licensee.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -704,6 +767,7 @@ Deletes a licensee.
 **Logging:** Deletion logging with licensee context and security tracking
 
 **Used By:**
+
 - Licensee deletion forms
 - Administrative pages
 
@@ -712,9 +776,11 @@ Deletes a licensee.
 ## Activity Logs API
 
 ### GET /api/activity-logs
+
 Retrieves system activity logs with filtering and pagination.
 
 **Query Parameters:**
+
 - `entityType` (string, optional): Filter by entity type (user, licensee, etc.)
 - `actionType` (string, optional): Filter by action type (create, update, delete)
 - `actor` (string, optional): Filter by actor ID
@@ -724,6 +790,7 @@ Retrieves system activity logs with filtering and pagination.
 - `limit` (number, optional): Number of records per page
 
 **Response (Success - 200):**
+
 ```json
 {
   "activityLogs": [
@@ -767,6 +834,7 @@ Retrieves system activity logs with filtering and pagination.
 **Logging:** Access logging for audit trail queries with filtering context
 
 **Used By:**
+
 - Activity log pages
 - Audit trail systems
 - Security monitoring
@@ -774,9 +842,11 @@ Retrieves system activity logs with filtering and pagination.
 ---
 
 ### POST /api/activity-logs
+
 Creates a new activity log entry.
 
 **Request Body:**
+
 ```json
 {
   "actor": {
@@ -803,6 +873,7 @@ Creates a new activity log entry.
 ```
 
 **Response (Success - 201):**
+
 ```json
 {
   "success": true,
@@ -838,6 +909,7 @@ Creates a new activity log entry.
 **Logging:** Creation logging for audit trail entries with security context
 
 **Used By:**
+
 - System-wide activity tracking
 - Audit trail generation
 - Security monitoring systems
@@ -847,6 +919,7 @@ Creates a new activity log entry.
 ## Data Models
 
 ### User Model
+
 ```typescript
 type User = {
   _id: string;
@@ -870,10 +943,11 @@ type User = {
   };
   createdAt: Date;
   updatedAt: Date;
-}
+};
 ```
 
 ### Licensee Model
+
 ```typescript
 type Licensee = {
   _id: string;
@@ -887,10 +961,11 @@ type Licensee = {
   contactPhone: string;
   createdAt: Date;
   updatedAt: Date;
-}
+};
 ```
 
 ### Activity Log Model
+
 ```typescript
 type ActivityLog = {
   _id: string;
@@ -913,7 +988,7 @@ type ActivityLog = {
   ip: string;
   userAgent: string;
   createdAt: Date;
-}
+};
 ```
 
 ## Security Features
@@ -930,6 +1005,7 @@ type ActivityLog = {
 All endpoints return consistent error responses:
 
 **Standard Error Format:**
+
 ```json
 {
   "success": false,
@@ -938,8 +1014,8 @@ All endpoints return consistent error responses:
 }
 ```
 
-
 ### Common Error Scenarios
+
 - **Validation Errors**: Invalid input data format
 - **Duplicate Data**: Username or email already exists
 - **Permission Denied**: Insufficient user permissions
@@ -949,12 +1025,14 @@ All endpoints return consistent error responses:
 ## Performance Considerations
 
 ### Database Optimization
+
 - **Indexing**: Proper indexes on frequently queried fields (`username`, `email`, `licensee`)
 - **Query Optimization**: Efficient database queries with proper filtering
 - **Connection Pooling**: Optimized database connection management
 - **Caching**: Response caching for frequently accessed data
 
 ### API Performance
+
 - **Pagination**: Efficient pagination for large datasets
 - **Response Compression**: Compressed responses for large data
 - **Rate Limiting**: Protection against API abuse
@@ -963,18 +1041,21 @@ All endpoints return consistent error responses:
 ## Compliance & Audit
 
 ### Regulatory Compliance
+
 - **Gaming Regulations**: Meets gaming industry audit requirements
 - **Data Retention**: Configurable log retention policies
 - **Audit Trail**: Complete audit trail for all operations
 - **Security Monitoring**: Real-time security event tracking
 
 ### Data Privacy
+
 - **GDPR Compliance**: Personal data handling according to privacy laws
 - **Data Encryption**: Sensitive data encrypted at rest
 - **Access Logging**: All data access logged for privacy compliance
 - **Consent Tracking**: User consent recorded and managed
 
 **Common HTTP Status Codes:**
+
 - `200` - Success
 - `201` - Created
 - `400` - Bad Request (validation errors)

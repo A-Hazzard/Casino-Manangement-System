@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, {
   useCallback,
@@ -6,17 +6,17 @@ import React, {
   useRef,
   useState,
   useMemo,
-} from "react";
-import { GoogleMap, useLoadScript, Marker } from "@react-google-maps/api";
-import { Search, MapPin, Globe, X } from "lucide-react";
-import { LocationPickerMapProps, PlaceSuggestion } from "@/lib/types/maps";
+} from 'react';
+import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
+import { Search, MapPin, Globe, X } from 'lucide-react';
+import { LocationPickerMapProps, PlaceSuggestion } from '@/lib/types/maps';
 
-const libraries: "places"[] = ["places"];
+const libraries: 'places'[] = ['places'];
 
 const containerStyle = {
-  width: "100%",
-  height: "400px",
-  borderRadius: "0.5rem",
+  width: '100%',
+  height: '400px',
+  borderRadius: '0.5rem',
 };
 
 const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
@@ -29,30 +29,30 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
 }) => {
   // Load Google Maps API
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries,
   });
 
   // Debug API key loading
   useEffect(() => {
     if (loadError) {
-      console.error("Google Maps API Error:", loadError);
+      console.error('Google Maps API Error:', loadError);
       console.error(
-        "API Key:",
-        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? "Present" : "Missing"
+        'API Key:',
+        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? 'Present' : 'Missing'
       );
-      console.error("Current domain:", window.location.hostname);
+      console.error('Current domain:', window.location.hostname);
       // Call the error handler if provided
       onMapLoadError?.();
     }
     if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
       console.error(
-        "Google Maps API Key is missing from environment variables"
+        'Google Maps API Key is missing from environment variables'
       );
       // Call the error handler if provided
       onMapLoadError?.();
     } else {
-      console.warn("Google Maps API Key loaded successfully");
+      console.warn('Google Maps API Key loaded successfully');
     }
   }, [loadError, onMapLoadError]);
 
@@ -68,7 +68,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
   const [center, setCenter] = useState({ lat: initialLat, lng: initialLng });
 
   // Search state
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -87,7 +87,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
 
     return {
       mapTypeId:
-        mapType === "satellite"
+        mapType === 'satellite'
           ? window.google.maps.MapTypeId.SATELLITE
           : window.google.maps.MapTypeId.ROADMAP,
       mapTypeControl: true,
@@ -100,7 +100,6 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       },
     };
   }, [mapType, isLoaded]);
-
 
   // Handle map load
   const onMapLoad = useCallback(
@@ -128,24 +127,24 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
         (results, status) => {
           if (status === window.google.maps.GeocoderStatus.OK && results?.[0]) {
             const result = results[0];
-            let city = "";
-            let country = "";
+            let city = '';
+            let country = '';
 
             // Extract city and country from address components
             for (const component of result.address_components) {
               const types = component.types;
 
-              if (types.includes("locality")) {
+              if (types.includes('locality')) {
                 city = component.long_name;
               } else if (
-                types.includes("administrative_area_level_1") &&
+                types.includes('administrative_area_level_1') &&
                 !city
               ) {
                 // Fallback to state/province if no city found
                 city = component.long_name;
               }
 
-              if (types.includes("country")) {
+              if (types.includes('country')) {
                 country = component.long_name;
               }
             }
@@ -220,7 +219,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
           ) {
             const placeSuggestions: PlaceSuggestion[] = results
               .slice(0, 8)
-              .map((place) => {
+              .map(place => {
                 const lat = place.geometry?.location?.lat() || 0;
                 const lng = place.geometry?.location?.lng() || 0;
 
@@ -228,8 +227,8 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
 
                 return {
                   id: place.place_id || Math.random().toString(),
-                  name: place.name || "Unknown Place",
-                  address: place.formatted_address || "",
+                  name: place.name || 'Unknown Place',
+                  address: place.formatted_address || '',
                   lat,
                   lng,
                   isLocal,
@@ -250,7 +249,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
           setIsSearching(false);
         });
       } catch (error) {
-        console.error("Error searching places:", error);
+        console.error('Error searching places:', error);
         setSuggestions([]);
         setIsSearching(false);
       }
@@ -295,16 +294,16 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       }
 
       // Extract city from the address for suggestions
-      const addressParts = suggestion.address.split(", ");
-      let city = "";
-      let country = "";
+      const addressParts = suggestion.address.split(', ');
+      let city = '';
+      let country = '';
 
       // Try to find city and country from address parts
       if (addressParts.length >= 2) {
         // Usually the second-to-last part is the city/state
-        city = addressParts[addressParts.length - 2] || "";
+        city = addressParts[addressParts.length - 2] || '';
         // Last part is usually the country
-        country = addressParts[addressParts.length - 1] || "";
+        country = addressParts[addressParts.length - 1] || '';
       }
 
       onLocationSelect({
@@ -320,7 +319,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
 
   // Clear search
   const clearSearch = useCallback(() => {
-    setSearchQuery("");
+    setSearchQuery('');
     setSuggestions([]);
     setShowSuggestions(false);
 
@@ -341,8 +340,8 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Cleanup on unmount
@@ -354,24 +353,23 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
     };
   }, []);
 
-
   // Handle loading error
   if (loadError) {
     return (
       <div
         style={containerStyle}
-        className="flex items-center justify-center bg-red-50 rounded-lg border border-red-200"
+        className="flex items-center justify-center rounded-lg border border-red-200 bg-red-50"
       >
-        <div className="text-center text-red-600 p-4">
-          <p className="font-medium mb-2">Failed to load Google Maps</p>
-          <p className="text-sm mb-2">This could be due to:</p>
-          <ul className="text-xs text-left space-y-1">
+        <div className="p-4 text-center text-red-600">
+          <p className="mb-2 font-medium">Failed to load Google Maps</p>
+          <p className="mb-2 text-sm">This could be due to:</p>
+          <ul className="space-y-1 text-left text-xs">
             <li>• API key restrictions (check Google Cloud Console)</li>
             <li>• Domain not authorized for this API key</li>
             <li>• API key quota exceeded</li>
             <li>• Internet connection issues</li>
           </ul>
-          <p className="text-xs mt-2">Check browser console for more details</p>
+          <p className="mt-2 text-xs">Check browser console for more details</p>
         </div>
       </div>
     );
@@ -382,10 +380,10 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
     return (
       <div
         style={containerStyle}
-        className="flex items-center justify-center bg-gray-100 rounded-lg"
+        className="flex items-center justify-center rounded-lg bg-gray-100"
       >
-        <div className="text-center text-gray-500 p-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+        <div className="p-4 text-center text-gray-500">
+          <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500"></div>
           <p>Loading Google Maps...</p>
         </div>
       </div>
@@ -393,69 +391,68 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
   }
 
   return (
-    <div style={{ ...containerStyle, position: "relative" }}>
-
+    <div style={{ ...containerStyle, position: 'relative' }}>
       {/* Search Bar */}
-      <div className="absolute top-4 left-4 z-10 w-80 max-w-[calc(100%-2rem)]">
+      <div className="absolute left-4 top-4 z-10 w-80 max-w-[calc(100%-2rem)]">
         <div className="relative" ref={searchInputRef}>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 transform text-gray-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder="Search for places, addresses, or landmarks..."
-              className="w-full pl-10 pr-10 py-3 bg-white border border-gray-300 rounded-lg shadow-lg text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+              className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-10 text-base text-gray-700 placeholder-gray-400 shadow-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
               onFocus={() => searchQuery.trim() && setShowSuggestions(true)}
             />
             {searchQuery && (
               <button
                 onClick={clearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 transform text-gray-400 hover:text-gray-600"
                 type="button"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
             {isSearching && (
-              <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+              <div className="absolute right-10 top-1/2 -translate-y-1/2 transform">
+                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-blue-500"></div>
               </div>
             )}
           </div>
 
           {/* Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto z-20">
+            <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
               {suggestions.map((suggestion, index) => (
                 <button
                   key={suggestion.id}
                   type="button"
                   onClick={() => handleSuggestionSelect(suggestion)}
-                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors duration-150 ${
-                    index === 0 ? "rounded-t-lg" : ""
-                  } ${index === suggestions.length - 1 ? "rounded-b-lg" : ""}`}
+                  className={`w-full px-4 py-3 text-left transition-colors duration-150 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none ${
+                    index === 0 ? 'rounded-t-lg' : ''
+                  } ${index === suggestions.length - 1 ? 'rounded-b-lg' : ''}`}
                 >
                   <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-0.5">
+                    <div className="mt-0.5 flex-shrink-0">
                       {suggestion.isLocal ? (
                         <MapPin className="h-4 w-4 text-green-600" />
                       ) : (
                         <Globe className="h-4 w-4 text-gray-400" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="truncate text-sm font-medium text-gray-900">
                           {suggestion.name}
                         </p>
                         {suggestion.isLocal && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          <span className="inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
                             Local
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-500 truncate mt-1">
+                      <p className="mt-1 truncate text-sm text-gray-500">
                         {suggestion.address}
                       </p>
                     </div>

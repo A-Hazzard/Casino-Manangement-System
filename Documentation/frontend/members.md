@@ -1,6 +1,7 @@
 # Members Page
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Main Features](#main-features)
 - [Technical Architecture](#technical-architecture)
@@ -22,12 +23,14 @@ The Members page provides comprehensive member management for the casino system,
 **Version:** 2.0.0
 
 ### File Information
+
 - **File:** `app/members/page.tsx`
 - **URL Pattern:** `/members`
 - **Component Type:** Member Management Page
 - **Authentication:** Required
 
 ## Main Features
+
 - **Member Management:**
   - View, search, sort, and paginate member data with location information
   - Real-time member status and activity tracking
@@ -67,6 +70,7 @@ The Members page provides comprehensive member management for the casino system,
 ## Technical Architecture
 
 ### Core Components
+
 - **Main Page:** `app/members/page.tsx` - Entry point with tabbed navigation (Members List & Summary Report)
 - **Member Content:** `components/members/MembersContent.tsx` - Main content wrapper with tab management
 - **Members List Tab:** `components/members/tabs/MembersListTab.tsx` - Member listing with location and win/loss data
@@ -88,6 +92,7 @@ The Members page provides comprehensive member management for the casino system,
   - `components/sessions/SessionEventsSkeleton.tsx` - Loading skeleton for events
 
 ### State Management
+
 - **Local State:** React `useState` hooks for complex UI state
 - **Key State Properties:**
   - `members`, `filteredMembers` - Member data arrays
@@ -97,6 +102,7 @@ The Members page provides comprehensive member management for the casino system,
   - `selectedLicencee` - Licensee filtering state
 
 ### Data Flow
+
 1. **Initial Load:** Fetches members data on component mount
 2. **Search/Filter:** Filters members based on search terms and criteria
 3. **Sorting:** Sorts members based on selected columns and direction
@@ -107,6 +113,7 @@ The Members page provides comprehensive member management for the casino system,
 ### API Integration
 
 #### Member Management Endpoints
+
 - **GET `/api/members`** - Fetches member data with pagination, location info, and win/loss calculations
   - Parameters: `page`, `search`, `sortBy`, `sortOrder`, `limit`, `licencee`
   - Supported sortBy values: `name`, `playerId`, `createdAt`, `lastSession`, `locationName`, `winLoss`, `lastLogin`
@@ -120,6 +127,7 @@ The Members page provides comprehensive member management for the casino system,
   - Returns: Complete member profile with sessions
 
 #### Session Management Endpoints
+
 - **GET `/api/members/[id]/sessions`** - Fetches member sessions
   - Parameters: `page`, `limit`, `filter`
   - Returns: `{ success: true, data: { sessions: MemberSession[], pagination: PaginationData } }`
@@ -128,6 +136,7 @@ The Members page provides comprehensive member management for the casino system,
   - Returns: `{ success: true, data: { events: MachineEvent[], pagination: PaginationData, filters: FilterData } }`
 
 #### Data Processing
+
 - **Members Helper:** `lib/helpers/members.ts` - Member management utilities
   - `fetchMembers()` - Fetches member data with filtering and pagination
   - `filterAndSortMembers()` - Filters and sorts member data
@@ -139,6 +148,7 @@ The Members page provides comprehensive member management for the casino system,
 ### Key Dependencies
 
 #### Frontend Libraries
+
 - **React Hooks:** `useState`, `useEffect`, `useCallback`, `useMemo` - State management
 - **Next.js:** `useRouter`, `usePathname`, `useParams` - Navigation and routing
 - **Axios:** HTTP client for API calls
@@ -147,6 +157,7 @@ The Members page provides comprehensive member management for the casino system,
 - **Radix UI Icons:** Additional UI icons
 
 #### Type Definitions
+
 - **Member Types:** `lib/types/members.ts` - Member management types
   - `Member`, `MemberSession`, `MemberSortOption`, `MemberFilter`
 - **API Types:** `lib/types/api.ts` - API-related types
@@ -154,14 +165,17 @@ The Members page provides comprehensive member management for the casino system,
 - **Shared Types:** `@shared/types` - Core type definitions
 
 #### Utility Functions
+
 - **Date Utils:** Date formatting and manipulation utilities
 - **Currency Utils:** Currency formatting for financial data
 - **Validation Utils:** Form validation for member data
 
 ### Tabbed Interface Architecture
+
 The members page now features a tabbed layout with two main views:
 
 #### **Members List Tab**
+
 - **Purpose**: Primary member management view
 - **Columns**: Location, Full Name, Win/Loss, Joined, Details, Actions
 - **Features**: Search, sort, pagination, CRUD operations
@@ -169,13 +183,15 @@ The members page now features a tabbed layout with two main views:
 - **Financial Breakdown**: Shows Money In/Out details on hover or secondary display
 
 #### **Members Summary Tab**
-- **Purpose**: Analytics and reporting view  
+
+- **Purpose**: Analytics and reporting view
 - **Columns**: Full Name, Address, Phone, Last Login, Joined, Location, Win/Loss, Actions
 - **Features**: Date filtering, location filtering, CSV export
 - **Analytics**: Summary cards showing total members, locations, recent members
 - **Export**: CSV export with all visible data including win/loss
 
 ### Component Hierarchy
+
 ```
 MembersPage (app/members/page.tsx)
 ├── Sidebar (components/layout/Sidebar.tsx)
@@ -215,6 +231,7 @@ MachineEventsPage (app/members/[id]/[machineId]/events/page.tsx)
 ```
 
 ### Business Logic
+
 - **Member Management:** Complete member profile and session tracking with location information
 - **Win/Loss Calculations:** Real-time financial performance metrics calculated from machine sessions
   - **Positive Win/Loss**: Member lost money (displayed in green - house profit)
@@ -229,6 +246,7 @@ MachineEventsPage (app/members/[id]/[machineId]/events/page.tsx)
 - **Multi-Tab Interface:** Separate views for member management and analytics reporting
 
 ### Security Features
+
 - **Authentication:** Secure API calls with authentication headers
 - **Authorization:** Role-based access to member operations
 - **Input Validation:** Comprehensive validation for all form inputs
@@ -236,12 +254,14 @@ MachineEventsPage (app/members/[id]/[machineId]/events/page.tsx)
 - **Audit Trail:** Activity logging for member operations
 
 ### Error Handling
+
 - **API Failures:** Graceful degradation with user-friendly error messages
 - **Network Issues:** Retry logic and fallback error states
 - **Loading States:** Skeleton loaders and loading indicators
 - **Toast Notifications:** User feedback for all operations
 
 ### Performance Optimizations
+
 - **Backend Pagination:** Reduces data transfer and improves performance
 - **Memoization:** `useMemo` for expensive computations (filtering, sorting)
 - **Conditional Rendering:** Separate desktop/mobile layouts
@@ -257,26 +277,30 @@ The members page is like a **player management system** for your casino. Here's 
 #### **Member Management Section**
 
 **👥 What Members Are**
+
 - **Collection**: Queries the `members` collection with joins to `gaminglocations` and `machinesessions`
 - **Fields Used**: `_id`, `profile.firstName`, `profile.lastName`, `profile.occupation`, `createdAt`, `points`, `accountBalance`, `gamingLocation`, `lastLogin`
 - **New Calculated Fields**: `locationName` (from gaming location lookup), `winLoss`, `totalMoneyIn`, `totalMoneyOut` (from session aggregation)
 - **Simple Explanation**: These are the people who play at your casino - each member has a profile with their personal information, gaming history, location, and financial performance
 
 **🔍 How Member Search Works**
+
 - **Collection**: Filters the `members` collection
 - **Fields Used**: Searches by `memberId`, `profile.firstName`, `profile.lastName`
 - **Simple Explanation**: Like finding a specific customer in your database - you can search by their member ID or name
 
 **📊 Member Performance Tracking**
+
 - **Collection**: Aggregates data from `machinesessions` collection
 - **Fields Used**: Groups by `memberId`, calculates session counts, total handle, points earned
 - **Simple Explanation**: Shows how much each member has played, how much money they've spent, and how many points they've earned
 
 **💰 Win/Loss Calculation (New Feature)**
+
 - **Collection**: Aggregates financial data from `machinesessions.endMeters.movement`
 - **Fields Used**: `drop` (money inserted), `totalCancelledCredits` (money paid out)
 - **Calculation**: `winLoss = totalMoneyIn - totalMoneyOut`
-- **Simple Explanation**: 
+- **Simple Explanation**:
   - **Positive Win/Loss** (Green): Member lost money, house won
   - **Negative Win/Loss** (Red): Member won money, house lost
   - Shows exactly how profitable each member is for the casino
@@ -284,16 +308,19 @@ The members page is like a **player management system** for your casino. Here's 
 #### **Session Management Section**
 
 **🎮 What Sessions Are**
+
 - **Collection**: Queries the `machinesessions` collection
 - **Fields Used**: `_id`, `memberId`, `machineId`, `startTime`, `endTime`, `gamesPlayed`, `points`, `handle`
 - **Simple Explanation**: Each time a member plays on a slot machine, it creates a session - like a gaming session with start and end times
 
 **📈 Session Performance Metrics**
+
 - **Collection**: Aggregates data from `machinesessions` collection
 - **Fields Used**: `handle`, `cancelledCredits`, `jackpot`, `won`, `bet`, `points`, `gamesPlayed`, `gamesWon`
 - **Simple Explanation**: Shows how much money the member spent, won, and how many games they played during each session
 
 **🔗 Session to Machine Events**
+
 - **Collection**: Links `machinesessions` to `machineevents` using both session and machine IDs
 - **Fields Used**: `sessionId` → `currentSession` field AND `machineId` → `machine` field in events
 - **Simple Explanation**: Each session is linked to a specific machine, and you can view all the events that happened on that specific machine during that specific session
@@ -301,16 +328,19 @@ The members page is like a **player management system** for your casino. Here's 
 #### **Machine Events Section**
 
 **⚡ What Machine Events Are**
+
 - **Collection**: Queries the `machineevents` collection
 - **Fields Used**: `_id`, `eventType`, `description`, `command`, `gameName`, `date`, `sequence`
 - **Simple Explanation**: These are detailed logs of everything that happened on a slot machine - like a security camera recording of machine activity
 
 **🎯 Event Filtering System**
+
 - **Collection**: Filters `machineevents` by multiple criteria
 - **Fields Used**: `eventType` (General, Significant, Priority), `description`, `gameName`
 - **Simple Explanation**: Like filtering security footage - you can look for specific types of events, specific games, or specific descriptions
 
 **📋 Sequence Tracking**
+
 - **Collection**: Uses `sequence` array in `machineevents`
 - **Fields Used**: `sequence.description`, `sequence.logLevel`, `sequence.success`
 - **Simple Explanation**: Some events have multiple steps (sequences) - like a complex machine operation that involves several steps
@@ -318,6 +348,7 @@ The members page is like a **player management system** for your casino. Here's 
 #### **Database Queries Explained**
 
 **For Member List:**
+
 ```javascript
 // Queries the members collection
 // Filters by: search term, licensee
@@ -326,6 +357,7 @@ The members page is like a **player management system** for your casino. Here's 
 ```
 
 **For Member Sessions:**
+
 ```javascript
 // Queries the machinesessions collection
 // Filters by: memberId from URL
@@ -333,6 +365,7 @@ The members page is like a **player management system** for your casino. Here's 
 ```
 
 **For Machine Events:**
+
 ```javascript
 // Queries the machineevents collection
 // Filters by: currentSession AND machine fields (matches sessionId and machineId from URL)
@@ -342,16 +375,19 @@ The members page is like a **player management system** for your casino. Here's 
 #### **Navigation Flow**
 
 **1. Member List → Member Details:**
+
 - Click on any member in the list
 - Navigate to `/members/[memberId]`
 - Shows member profile and all their sessions
 
 **2. Member Details → Machine Events:**
+
 - Click "View Events" on any session
 - Navigate to `/members/[memberId]/[sessionId]/[machineId]/events`
 - Shows all events for that specific machine during that specific session
 
 **3. Event Filtering:**
+
 - Use dropdown filters to find specific events
 - Filter by event type, event description, or game name
 - Expand sequences to see detailed step-by-step logs
@@ -359,6 +395,7 @@ The members page is like a **player management system** for your casino. Here's 
 #### **Why This Matters for Casino Operations**
 
 **👥 Member Management Benefits:**
+
 - **Player Tracking**: Know who your regular players are and where they play
 - **Location Analytics**: Understand which locations attract the most profitable members
 - **Financial Performance**: Real-time win/loss tracking for each member
@@ -367,18 +404,21 @@ The members page is like a **player management system** for your casino. Here's 
 - **Compliance**: Maintain records for regulatory requirements
 
 **🎮 Session Tracking Benefits:**
+
 - **Player Behavior**: Understand how long members play
 - **Revenue Analysis**: Track spending patterns per member
 - **Game Preferences**: See which games members prefer
 - **Performance Metrics**: Calculate player value and retention
 
 **⚡ Machine Event Benefits:**
+
 - **Troubleshooting**: Diagnose machine issues quickly
 - **Security**: Monitor for suspicious activity
 - **Maintenance**: Track machine performance and errors
 - **Compliance**: Maintain detailed logs for regulators
 
 **📊 Operational Benefits:**
+
 - **Player Experience**: Provide personalized service based on history and location preferences
 - **Revenue Optimization**: Identify high-value players and most profitable locations
 - **Financial Analytics**: Real-time win/loss tracking for better business decisions
@@ -391,26 +431,27 @@ The members page essentially **manages your casino's player database**, tracking
 ## Current Issues & Implementation Status
 
 ### **Machine Events Data Issue**
+
 Currently, the machine events page is returning empty data:
 
 ```json
 {
-    "success": true,
-    "data": {
-        "events": [],
-        "pagination": {
-            "currentPage": 1,
-            "totalPages": 0,
-            "totalEvents": 0,
-            "hasNextPage": false,
-            "hasPrevPage": false
-        },
-        "filters": {
-            "eventTypes": [],
-            "events": [],
-            "games": []
-        }
+  "success": true,
+  "data": {
+    "events": [],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 0,
+      "totalEvents": 0,
+      "hasNextPage": false,
+      "hasPrevPage": false
+    },
+    "filters": {
+      "eventTypes": [],
+      "events": [],
+      "games": []
     }
+  }
 }
 ```
 
@@ -420,27 +461,32 @@ The machine events page should work exactly like the **Activity Log tab in the C
 ### **How Machine Events Should Work**
 
 #### **Data Source & Query Logic**
+
 - **Collection**: Queries the `machineevents` collection
 - **Query Fields**: Uses BOTH `currentSession` AND `machine` fields for precise matching
 - **Example Query**: `{ currentSession: "sessionId_from_url", machine: "machineId_from_url" }`
 - **Expected Result**: Should return all machine events that match both the specific session and machine
 
 #### **Activity Log Reference Implementation**
+
 The machine events should mirror the Activity Log functionality from `AccountingDetails.tsx`:
 
 **1. Event Display Structure:**
+
 - **Columns**: Type, Event, Event Code, Game, Date
 - **Filters**: Three dropdown filters (Event Type, Event, Game)
 - **Expandable Sequences**: Plus/minus buttons to show sequence details
 - **Table Styling**: Same colors and design as the cabinet activity log
 
 **2. Filter System:**
+
 - **Event Type Filter**: Dropdown with unique event types (General, Significant, Priority)
 - **Event Filter**: Dropdown with unique event descriptions
 - **Game Filter**: Dropdown with unique game names
 - **Real-time Filtering**: Filters should work immediately when selected
 
 **3. Sequence Details:**
+
 - **Expandable Rows**: Click plus button to expand sequence details
 - **Contained Display**: Sequence details should be contained within the cell
 - **Icon Toggle**: Plus button changes to minus when expanded
@@ -449,16 +495,19 @@ The machine events should mirror the Activity Log functionality from `Accounting
 #### **Current Implementation Problems**
 
 **1. Data Query Issue:**
+
 - **Problem**: API is returning empty events array
 - **Expected**: Should return machine events from `machineevents` collection matching both session and machine
 - **Debug Needed**: Check if both `sessionId` and `machineId` are being passed correctly to the query
 
 **2. Filter Generation Issue:**
+
 - **Problem**: All filter arrays are empty (`eventTypes: [], events: [], games: []`)
 - **Expected**: Should populate with unique values from the events data
 - **Debug Needed**: Check if aggregation pipeline is working correctly
 
 **3. Navigation Flow Issue:**
+
 - **Current Route**: `/members/[memberId]/[sessionId]/[machineId]/events`
 - **Expected**: Should use both `sessionId` and `machineId` to query `machineevents.currentSession` and `machineevents.machine` fields
 - **Debug Needed**: Verify both the `sessionId` and `machineId` are correctly extracted from the URL parameters
@@ -466,29 +515,37 @@ The machine events should mirror the Activity Log functionality from `Accounting
 #### **Required Fixes**
 
 **1. API Route Debugging:**
+
 ```javascript
 // In app/api/members/[id]/sessions/[sessionId]/[machineId]/events/route.ts
 // Add console logs to verify:
-console.log("SessionId from params:", sessionId);
-console.log("MachineId from params:", machineId);
-console.log("Query being executed:", { currentSession: sessionId, machine: machineId });
-console.log("Events found:", events.length);
+console.log('SessionId from params:', sessionId);
+console.log('MachineId from params:', machineId);
+console.log('Query being executed:', {
+  currentSession: sessionId,
+  machine: machineId,
+});
+console.log('Events found:', events.length);
 ```
 
 **2. Data Flow Verification:**
+
 - **Step 1**: Verify both `sessionId` and `machineId` are correctly passed from session to events page
 - **Step 2**: Verify API query is using correct fields (`currentSession` and `machine`)
 - **Step 3**: Verify `machineevents` collection has data matching both session and machine
 
 **3. Filter Implementation:**
+
 - **Step 1**: Ensure aggregation pipeline generates unique filter values
 - **Step 2**: Verify filter dropdowns populate with actual data
 - **Step 3**: Test real-time filtering functionality
 
 #### **Reference Implementation**
+
 The machine events should work exactly like the Activity Log in `AccountingDetails.tsx`:
 
 **Same Features:**
+
 - ✅ Three filter dropdowns (Event Type, Event, Game)
 - ✅ Expandable sequence details with plus/minus icons
 - ✅ Same table styling and colors
@@ -496,6 +553,7 @@ The machine events should work exactly like the Activity Log in `AccountingDetai
 - ✅ Pagination support
 
 **Same Data Structure:**
+
 - ✅ Event type categorization
 - ✅ Event descriptions
 - ✅ Game name tracking
@@ -503,6 +561,7 @@ The machine events should work exactly like the Activity Log in `AccountingDetai
 - ✅ Date timestamps
 
 **Expected User Experience:**
+
 1. Navigate to member details page
 2. Click "View Events" on any session
 3. Navigate to `/members/[memberId]/[sessionId]/[machineId]/events`
@@ -520,7 +579,8 @@ The machine events functionality should provide the same level of detail and fil
 **Current Implementation Analysis:**
 
 #### **Member Total Money In ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   totalMoneyIn: {
     $reduce: {
@@ -541,7 +601,8 @@ The machine events functionality should provide the same level of detail and fil
 - ❌ **NEEDS VERIFICATION** - Should confirm this represents total money inserted by member
 
 #### **Member Total Money Out ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   totalMoneyOut: {
     $reduce: {
@@ -549,7 +610,7 @@ The machine events functionality should provide the same level of detail and fil
       initialValue: 0,
       in: {
         $add: [
-          "$$value", 
+          "$$value",
           { $ifNull: ["$$this.endMeters.movement.totalCancelledCredits", 0] }
         ]
       }
@@ -562,20 +623,24 @@ The machine events functionality should provide the same level of detail and fil
 - ❌ **NEEDS VERIFICATION** - Should confirm this represents total payouts to member
 
 #### **Member Win/Loss Calculation ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  winLoss: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] }
+  winLoss: {
+    $subtract: ['$totalMoneyIn', '$totalMoneyOut'];
+  }
   ```
 - **Mathematical Formula**: `winLoss = totalMoneyIn - totalMoneyOut`
 - **Financial Guide**: No direct equivalent for member-level win/loss
-- **Business Logic**: 
+- **Business Logic**:
   - **Positive Value**: Member lost money (house profit) - shown in green
   - **Negative Value**: Member won money (house loss) - shown in red
 - ❌ **NOT IN GUIDE** - Member win/loss calculation not defined in financial metrics guide
 
 #### **Session Financial Data Source ❌**
+
 - **Current Implementation**: Uses `endMeters.movement` from `machinesessions` collection
-- **Data Source**: 
+- **Data Source**:
   ```javascript
   endMeters: {
     movement: {
@@ -592,12 +657,13 @@ The machine events functionality should provide the same level of detail and fil
 - ❌ **NOT IN GUIDE** - Session meter data structure not defined in financial metrics guide
 
 #### **Member Location Association ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Lookup gaming location
   { $lookup: {
     from: "gaminglocations",
-    localField: "gamingLocation", 
+    localField: "gamingLocation",
     foreignField: "_id",
     as: "locationInfo"
   }},
@@ -609,6 +675,7 @@ The machine events functionality should provide the same level of detail and fil
 ### Mathematical Formulas Summary
 
 #### **Member Financial Metrics (Needs Review)**
+
 ```
 Member Total Money In = Σ(session.endMeters.movement.drop) across all member sessions
 Member Total Money Out = Σ(session.endMeters.movement.totalCancelledCredits) across all member sessions
@@ -616,6 +683,7 @@ Member Win/Loss = Member Total Money In - Member Total Money Out
 ```
 
 #### **Session Financial Metrics (Needs Review)**
+
 ```
 Session Money In = session.endMeters.movement.drop
 Session Money Out = session.endMeters.movement.totalCancelledCredits
@@ -626,6 +694,7 @@ Session Games Played = session.endMeters.movement.gamesPlayed
 ```
 
 #### **Member Performance Analysis**
+
 ```
 Member Profitability = winLoss > 0 ? "Profitable" : "Losing"
 Member Value Ranking = ORDER BY ABS(winLoss) DESC
@@ -633,6 +702,7 @@ Member Activity Level = COUNT(sessions) per time period
 ```
 
 #### **Win/Loss Display Logic**
+
 ```
 Display Color = winLoss > 0 ? "green" : "red"
 Display Text = winLoss > 0 ? "House Profit" : "Member Profit"
@@ -642,12 +712,14 @@ Absolute Value = ABS(winLoss) for magnitude display
 ### Data Validation & Error Handling
 
 #### **Input Validation ✅**
+
 - **Member ID**: Validates MongoDB ObjectId format
 - **Search Terms**: Sanitizes input to prevent injection attacks
 - **Date Ranges**: Validates ISO date format for session filtering
 - **Pagination**: Validates numeric page and limit parameters
 
 #### **Data Integrity ❌**
+
 - **Session Data**: Uses `endMeters.movement` which may not align with standard meter calculations
 - **Null Handling**: Uses `$ifNull` operators but session meter structure needs verification
 - **Financial Validation**: Member win/loss calculations need verification against actual gaming outcomes
@@ -657,8 +729,8 @@ Absolute Value = ABS(winLoss) for magnitude display
 **The following calculations need to be verified against the financial metrics guide:**
 
 1. **Session Meter Data Structure**: Confirm `endMeters.movement` fields match guide specifications
-2. **Member Win/Loss Logic**: Verify calculation represents actual member gambling outcomes  
+2. **Member Win/Loss Logic**: Verify calculation represents actual member gambling outcomes
 3. **Money In/Out Definitions**: Confirm these represent actual member financial activity
 4. **Data Source Accuracy**: Verify session data accurately reflects member gambling activity
 
-**Note**: Member financial calculations appear to use session-level data not explicitly defined in the financial metrics guide and require verification for accuracy. 
+**Note**: Member financial calculations appear to use session-level data not explicitly defined in the financial metrics guide and require verification for accuracy.

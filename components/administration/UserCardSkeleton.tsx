@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UserCardSkeleton() {
   return (
-    <div className="space-y-4 mt-6">
+    <div className="mt-6 space-y-4">
       {Array.from({ length: 5 }).map((_, idx) => (
         <div
           key={idx}
-          className="bg-white rounded-lg shadow-md overflow-hidden"
+          className="overflow-hidden rounded-lg bg-white shadow-md"
         >
-          <div className="bg-blue-500 text-white p-3 flex items-center justify-between">
+          <div className="flex items-center justify-between bg-blue-500 p-3 text-white">
             <div className="flex items-baseline gap-2">
               <Skeleton className="h-5 w-16 bg-white/20" />
               <Skeleton className="h-4 w-14 bg-white/20" />
@@ -21,9 +21,9 @@ export default function UserCardSkeleton() {
             </div>
           </div>
           <div className="p-3">
-            <Skeleton className="h-4 w-40 max-w-full mb-2" />
-            <Skeleton className="h-4 w-24 max-w-full mb-3" />
-            <div className="flex justify-end gap-3 items-center mt-2">
+            <Skeleton className="mb-2 h-4 w-40 max-w-full" />
+            <Skeleton className="mb-3 h-4 w-24 max-w-full" />
+            <div className="mt-2 flex items-center justify-end gap-3">
               <Skeleton className="h-5 w-5" />
               <Skeleton className="h-5 w-5" />
               <Skeleton className="h-5 w-5" />

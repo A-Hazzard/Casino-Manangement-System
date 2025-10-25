@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { useUserStore } from "@/lib/store/userStore";
-import { fetchUserId } from "@/lib/helpers/user";
-import axios from "axios";
-import type { UserAuthPayload } from "@/shared/types/auth";
-import type { UseAuthReturn } from "@/lib/types/auth";
+import { useEffect, useState } from 'react';
+import { useUserStore } from '@/lib/store/userStore';
+import { fetchUserId } from '@/lib/helpers/user';
+import axios from 'axios';
+import type { UserAuthPayload } from '@/shared/types/auth';
+import type { UseAuthReturn } from '@/lib/types/auth';
 
 /**
  * Custom hook for authentication.
@@ -27,7 +27,7 @@ export function useAuth(): UseAuthReturn {
               const userData: UserAuthPayload = {
                 _id: response.data.user._id,
                 emailAddress: response.data.user.email,
-                username: response.data.user.username || "",
+                username: response.data.user.username || '',
                 isEnabled: response.data.user.enabled,
                 profile: response.data.user.profile || undefined,
               };
@@ -35,7 +35,7 @@ export function useAuth(): UseAuthReturn {
             }
           }
         } catch (error) {
-          console.error("Failed to initialize auth:", error);
+          console.error('Failed to initialize auth:', error);
         }
       }
       setIsLoading(false);
@@ -43,7 +43,6 @@ export function useAuth(): UseAuthReturn {
 
     initializeAuth();
   }, [user, setUser]);
-
 
   return {
     user: user as UserAuthPayload | null,

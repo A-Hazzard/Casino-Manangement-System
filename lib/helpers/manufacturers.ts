@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 export type Manufacturer = string;
 
@@ -8,10 +8,10 @@ export type Manufacturer = string;
  */
 export const fetchManufacturers = async (): Promise<Manufacturer[]> => {
   try {
-    const response = await axios.get("/api/manufacturers");
+    const response = await axios.get('/api/manufacturers');
     return response.data;
   } catch (error) {
-    console.error("Error fetching manufacturers:", error);
+    console.error('Error fetching manufacturers:', error);
     return [];
   }
 };

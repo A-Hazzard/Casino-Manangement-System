@@ -1,7 +1,7 @@
-import type { Country } from "@/lib/types/country";
-import Image from "next/image";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+import type { Country } from '@/lib/types/country';
+import Image from 'next/image';
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 type CountryTableProps = {
   countries: Country[];
@@ -15,22 +15,24 @@ export default function CountryTable({
   onDelete,
 }: CountryTableProps) {
   return (
-    <div className="overflow-x-auto hidden lg:block mt-6">
-      <table className="min-w-full bg-white rounded-lg shadow-md">
+    <div className="mt-6 hidden overflow-x-auto lg:block">
+      <table className="min-w-full rounded-lg bg-white shadow-md">
         <thead className="bg-button text-white">
           <tr>
-            <th className="py-3 px-4 text-center font-semibold text-sm">NAME</th>
-            <th className="py-3 px-4 text-center font-semibold text-sm">
+            <th className="px-4 py-3 text-center text-sm font-semibold">
+              NAME
+            </th>
+            <th className="px-4 py-3 text-center text-sm font-semibold">
               ALPHA 2
             </th>
-            <th className="py-3 px-4 text-center font-semibold text-sm">
+            <th className="px-4 py-3 text-center text-sm font-semibold">
               ALPHA 3
             </th>
-            <th className="py-3 px-4 text-center font-semibold text-sm">ISO</th>
-            <th className="py-3 px-4 text-center font-semibold text-sm">
+            <th className="px-4 py-3 text-center text-sm font-semibold">ISO</th>
+            <th className="px-4 py-3 text-center text-sm font-semibold">
               CREATED ON
             </th>
-            <th className="py-3 px-4 text-center font-semibold text-sm">
+            <th className="px-4 py-3 text-center text-sm font-semibold">
               ACTIONS
             </th>
           </tr>
@@ -38,30 +40,30 @@ export default function CountryTable({
         <tbody>
           {countries.length === 0 ? (
             <tr>
-              <td colSpan={6} className="text-center text-gray-500 py-6">
+              <td colSpan={6} className="py-6 text-center text-gray-500">
                 No countries found.
               </td>
             </tr>
           ) : (
-            countries.map((country) => (
+            countries.map(country => (
               <tr
                 key={country._id}
-                className="border-b last:border-b-0 hover:bg-gray-50 transition-colors"
+                className="border-b transition-colors last:border-b-0 hover:bg-gray-50"
               >
-                <td className="py-3 px-4 font-medium text-gray-700">
+                <td className="px-4 py-3 font-medium text-gray-700">
                   {country.name}
                 </td>
-                <td className="py-3 px-4 text-gray-700">{country.alpha2}</td>
-                <td className="py-3 px-4 text-gray-700">{country.alpha3}</td>
-                <td className="py-3 px-4 text-gray-700">
+                <td className="px-4 py-3 text-gray-700">{country.alpha2}</td>
+                <td className="px-4 py-3 text-gray-700">{country.alpha3}</td>
+                <td className="px-4 py-3 text-gray-700">
                   {country.isoNumeric}
                 </td>
-                <td className="py-3 px-4 text-gray-700">
+                <td className="px-4 py-3 text-gray-700">
                   {country.createdAt
                     ? new Date(country.createdAt).toLocaleDateString()
-                    : "-"}
+                    : '-'}
                 </td>
-                <td className="py-3 px-4 flex gap-2 items-center justify-center max-w-[120px]">
+                <td className="flex max-w-[120px] items-center justify-center gap-2 px-4 py-3">
                   <Image
                     src={editIcon}
                     alt="Edit"
@@ -75,7 +77,7 @@ export default function CountryTable({
                     alt="Delete"
                     width={20}
                     height={20}
-                    className="cursor-pointer opacity-70 hover:opacity-100 max-w-[24px] max-h-[24px]"
+                    className="max-h-[24px] max-w-[24px] cursor-pointer opacity-70 hover:opacity-100"
                     onClick={() => onDelete(country)}
                   />
                 </td>

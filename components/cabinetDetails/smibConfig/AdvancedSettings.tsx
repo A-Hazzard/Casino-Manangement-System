@@ -1,7 +1,7 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { itemVariants } from "@/lib/constants/animationVariants";
-import type { SmibConfig } from "@/shared/types/entities";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { itemVariants } from '@/lib/constants/animationVariants';
+import type { SmibConfig } from '@/shared/types/entities';
 
 type ExtendedAdvancedSettingsProps = {
   settings: { smibConfig?: Record<string, unknown> };
@@ -10,37 +10,35 @@ type ExtendedAdvancedSettingsProps = {
 const AdvancedSettings: React.FC<ExtendedAdvancedSettingsProps> = ({
   settings /*, onSettingChange, onSave, isLoading, error*/,
 }) => {
-  const net = 
-    (settings?.smibConfig &&
-      (settings.smibConfig as SmibConfig).net) ||
-    {};
+  const net =
+    (settings?.smibConfig && (settings.smibConfig as SmibConfig).net) || {};
   return (
     <>
       <motion.div
         variants={itemVariants}
         className="border-t border-border pt-6"
       >
-        <h3 className="font-medium mb-4 text-foreground">Network/WiFi</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
+        <h3 className="mb-4 font-medium text-foreground">Network/WiFi</h3>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-4">
           <div className="flex">
-            <span className="text-sm font-medium text-grayHighlight w-24">
+            <span className="w-24 text-sm font-medium text-grayHighlight">
               Name:
             </span>
-            <span className="text-sm truncate">
-              {net.netStaSSID || "Dynamic 1 - Staff Wifi"}
+            <span className="truncate text-sm">
+              {net.netStaSSID || 'Dynamic 1 - Staff Wifi'}
             </span>
           </div>
           <div className="flex">
-            <span className="text-sm font-medium text-grayHighlight w-24">
+            <span className="w-24 text-sm font-medium text-grayHighlight">
               Password:
             </span>
-            <span className="text-sm">{net.netStaPwd || "wordsapp!23"}</span>
+            <span className="text-sm">{net.netStaPwd || 'wordsapp!23'}</span>
           </div>
           <div className="flex">
-            <span className="text-sm font-medium text-grayHighlight w-24">
+            <span className="w-24 text-sm font-medium text-grayHighlight">
               Channel:
             </span>
-            <span className="text-sm">{net.netStaChan || "1"}</span>
+            <span className="text-sm">{net.netStaChan || '1'}</span>
           </div>
         </div>
       </motion.div>
@@ -49,27 +47,27 @@ const AdvancedSettings: React.FC<ExtendedAdvancedSettingsProps> = ({
         variants={itemVariants}
         className="border-t border-border pt-6"
       >
-        <h3 className="font-medium mb-4 text-foreground">MQTT</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <h3 className="mb-4 font-medium text-foreground">MQTT</h3>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
-            <h4 className="text-sm font-medium mb-2">Connection</h4>
+            <h4 className="mb-2 text-sm font-medium">Connection</h4>
             <div className="space-y-1">
               <div className="flex">
-                <span className="text-sm text-grayHighlight w-24">Host:</span>
+                <span className="w-24 text-sm text-grayHighlight">Host:</span>
                 <span className="text-sm"></span>
               </div>
               <div className="flex">
-                <span className="text-sm text-grayHighlight w-24">Port:</span>
+                <span className="w-24 text-sm text-grayHighlight">Port:</span>
                 <span className="text-sm"></span>
               </div>
               <div className="flex">
-                <span className="text-sm text-grayHighlight w-24">
+                <span className="w-24 text-sm text-grayHighlight">
                   Use TLS:
                 </span>
                 <span className="text-sm">No</span>
               </div>
               <div className="flex">
-                <span className="text-sm text-grayHighlight w-24">
+                <span className="w-24 text-sm text-grayHighlight">
                   Idle Timeout:
                 </span>
                 <span className="text-sm">30 seconds</span>
@@ -77,16 +75,16 @@ const AdvancedSettings: React.FC<ExtendedAdvancedSettingsProps> = ({
             </div>
           </div>
           <div>
-            <h4 className="text-sm font-medium mb-2">Authentication</h4>
+            <h4 className="mb-2 text-sm font-medium">Authentication</h4>
             <div className="space-y-1">
               <div className="flex">
-                <span className="text-sm text-grayHighlight w-24">
+                <span className="w-24 text-sm text-grayHighlight">
                   Username:
                 </span>
                 <span className="text-sm"></span>
               </div>
               <div className="flex">
-                <span className="text-sm text-grayHighlight w-24">
+                <span className="w-24 text-sm text-grayHighlight">
                   Password:
                 </span>
                 <span className="text-sm"></span>
@@ -100,24 +98,24 @@ const AdvancedSettings: React.FC<ExtendedAdvancedSettingsProps> = ({
         variants={itemVariants}
         className="border-t border-border pt-6"
       >
-        <h3 className="font-medium mb-4 text-foreground">COMS</h3>
+        <h3 className="mb-4 font-medium text-foreground">COMS</h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex">
-            <span className="text-sm text-grayHighlight w-24">Address:</span>
+            <span className="w-24 text-sm text-grayHighlight">Address:</span>
             <span className="text-sm">1ms</span>
           </div>
           <div className="flex">
-            <span className="text-sm text-grayHighlight w-24">
+            <span className="w-24 text-sm text-grayHighlight">
               Polling Rate:
             </span>
             <span className="text-sm">200ms</span>
           </div>
           <div className="flex">
-            <span className="text-sm text-grayHighlight w-24">RTE:</span>
+            <span className="w-24 text-sm text-grayHighlight">RTE:</span>
             <span className="text-sm">Disabled</span>
           </div>
           <div className="flex">
-            <span className="text-sm text-grayHighlight w-24">GPC:</span>
+            <span className="w-24 text-sm text-grayHighlight">GPC:</span>
             <span className="text-sm">0</span>
           </div>
         </div>
@@ -127,9 +125,9 @@ const AdvancedSettings: React.FC<ExtendedAdvancedSettingsProps> = ({
         variants={itemVariants}
         className="border-t border-border pt-6"
       >
-        <h3 className="font-medium mb-4 text-foreground">Fingerprint</h3>
+        <h3 className="mb-4 font-medium text-foreground">Fingerprint</h3>
         <div className="flex">
-          <span className="text-sm text-grayHighlight w-24">Probes:</span>
+          <span className="w-24 text-sm text-grayHighlight">Probes:</span>
           <span className="text-sm"></span>
         </div>
       </motion.div>

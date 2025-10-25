@@ -1,4 +1,4 @@
-@import "leaflet/dist/leaflet.css";
+@import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
 @tailwind components;
@@ -94,23 +94,33 @@
   }
 
   body {
-    @apply bg-background overflow-x-hidden;
+    @apply overflow-x-hidden bg-background;
   }
 
   html,
   body {
     padding: 0;
     margin: 0;
-    font-family: var(--font-montserrat), -apple-system, BlinkMacSystemFont,
-      Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans,
-      Helvetica Neue, sans-serif;
+    font-family:
+      var(--font-montserrat),
+      -apple-system,
+      BlinkMacSystemFont,
+      Segoe UI,
+      Roboto,
+      Oxygen,
+      Ubuntu,
+      Cantarell,
+      Fira Sans,
+      Droid Sans,
+      Helvetica Neue,
+      sans-serif;
     overflow-x: hidden;
   }
 }
 
 /* Add global styling for radio buttons and checkboxes */
-input[type="radio"],
-input[type="checkbox"] {
+input[type='radio'],
+input[type='checkbox'] {
   accent-color: #5119e9;
 }
 
@@ -136,11 +146,11 @@ input[type="checkbox"] {
   }
 
   .skeleton-bg {
-    @apply bg-gray-300 relative overflow-hidden rounded;
+    @apply relative overflow-hidden rounded bg-gray-300;
   }
 
   .skeleton-bg::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     transform: translateX(-100%);

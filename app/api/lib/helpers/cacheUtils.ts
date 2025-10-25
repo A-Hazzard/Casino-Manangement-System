@@ -34,12 +34,12 @@ export function getCachedData<T>(key: string): T | null {
   if (cached && isCacheValid(cached.timestamp)) {
     return cached.data as T;
   }
-  
+
   // Remove expired cache entry
   if (cached) {
     cache.delete(key);
   }
-  
+
   return null;
 }
 

@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { useEffect, useRef } from "react";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { DesktopDateTimePicker } from "@mui/x-date-pickers/DesktopDateTimePicker";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import "./pc-date-time-picker.css";
+import * as React from 'react';
+import { useEffect, useRef } from 'react';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DesktopDateTimePicker } from '@mui/x-date-pickers/DesktopDateTimePicker';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import './pc-date-time-picker.css';
 
 export type PCDateTimePickerProps = {
   date: Date | undefined;
@@ -35,7 +35,7 @@ export function PCDateTimePicker({
 
   const handleClose = (event?: unknown, reason?: string) => {
     // Don't close on backdrop click or other internal actions
-    if (reason === "backdropClick" || reason === "escapeKeyDown") {
+    if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
       return;
     }
     setOpen(false);
@@ -50,7 +50,7 @@ export function PCDateTimePicker({
 
       // Don't close if clicking inside the date picker popper
       const isClickInsideDatePicker = target.closest(
-        ".MuiPickersPopper-root, .MuiDialog-root, .MuiModal-root"
+        '.MuiPickersPopper-root, .MuiDialog-root, .MuiModal-root'
       );
 
       if (isClickInsideDatePicker) {
@@ -65,17 +65,17 @@ export function PCDateTimePicker({
 
     if (open) {
       // Use capture phase to handle clicks before they bubble
-      document.addEventListener("mousedown", handleClickOutside, true);
+      document.addEventListener('mousedown', handleClickOutside, true);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside, true);
+      document.removeEventListener('mousedown', handleClickOutside, true);
     };
   }, [open]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <div ref={containerRef} className={cn("relative", className)}>
+      <div ref={containerRef} className={cn('relative', className)}>
         <DesktopDateTimePicker
           value={date || null}
           onChange={handleDateChange}
@@ -90,25 +90,25 @@ export function PCDateTimePicker({
               InputProps: {
                 readOnly: true,
                 startAdornment: (
-                  <CalendarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
                 ),
                 sx: {
-                  cursor: disabled ? "not-allowed" : "pointer",
-                  "& .MuiInputBase-input": {
-                    cursor: disabled ? "not-allowed" : "pointer",
-                    padding: "8px 12px",
-                    fontSize: "14px",
-                    color: date ? "inherit" : "#9CA3AF",
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  '& .MuiInputBase-input': {
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    padding: '8px 12px',
+                    fontSize: '14px',
+                    color: date ? 'inherit' : '#9CA3AF',
                   },
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#D1D5DB",
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#D1D5DB',
                   },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: disabled ? "#D1D5DB" : "#9CA3AF",
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: disabled ? '#D1D5DB' : '#9CA3AF',
                   },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#3B82F6",
-                    borderWidth: "2px",
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#3B82F6',
+                    borderWidth: '2px',
                   },
                 },
               },
@@ -116,69 +116,69 @@ export function PCDateTimePicker({
             popper: {
               sx: {
                 zIndex: 9999,
-                "& .MuiPaper-root": {
+                '& .MuiPaper-root': {
                   boxShadow:
-                    "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-                  borderRadius: "8px",
+                    '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                  borderRadius: '8px',
                 },
                 // Force pointer events on all elements
-                "& *": {
-                  pointerEvents: "auto !important",
+                '& *': {
+                  pointerEvents: 'auto !important',
                 },
                 // Calendar day cells
-                "& .MuiPickersDay-root": {
-                  cursor: "pointer !important",
-                  pointerEvents: "auto !important",
-                  "&:hover": {
-                    backgroundColor: "#f3f4f6 !important",
+                '& .MuiPickersDay-root': {
+                  cursor: 'pointer !important',
+                  pointerEvents: 'auto !important',
+                  '&:hover': {
+                    backgroundColor: '#f3f4f6 !important',
                   },
                 },
                 // Month/year navigation
-                "& .MuiPickersArrowSwitcher-root button": {
-                  cursor: "pointer !important",
-                  pointerEvents: "auto !important",
-                  "&:hover": {
-                    backgroundColor: "#f3f4f6 !important",
+                '& .MuiPickersArrowSwitcher-root button': {
+                  cursor: 'pointer !important',
+                  pointerEvents: 'auto !important',
+                  '&:hover': {
+                    backgroundColor: '#f3f4f6 !important',
                   },
                 },
                 // Time picker elements
-                "& .MuiClock-root *": {
-                  cursor: "pointer !important",
-                  pointerEvents: "auto !important",
+                '& .MuiClock-root *': {
+                  cursor: 'pointer !important',
+                  pointerEvents: 'auto !important',
                 },
-                "& .MuiClock-meridiemButton": {
-                  cursor: "pointer !important",
-                  "&:hover": {
-                    backgroundColor: "#f3f4f6 !important",
+                '& .MuiClock-meridiemButton': {
+                  cursor: 'pointer !important',
+                  '&:hover': {
+                    backgroundColor: '#f3f4f6 !important',
                   },
                 },
                 // Hour and minute selectors
-                "& .MuiTimePickerToolbar-root .MuiTypography-root": {
-                  cursor: "pointer !important",
-                  pointerEvents: "auto !important",
-                  "&:hover": {
-                    backgroundColor: "#f3f4f6 !important",
-                    borderRadius: "4px !important",
+                '& .MuiTimePickerToolbar-root .MuiTypography-root': {
+                  cursor: 'pointer !important',
+                  pointerEvents: 'auto !important',
+                  '&:hover': {
+                    backgroundColor: '#f3f4f6 !important',
+                    borderRadius: '4px !important',
                   },
                 },
                 // Action buttons
-                "& .MuiPickersActionBar-root button": {
-                  cursor: "pointer !important",
-                  pointerEvents: "auto !important",
-                  "&:hover": {
-                    backgroundColor: "#f3f4f6 !important",
+                '& .MuiPickersActionBar-root button': {
+                  cursor: 'pointer !important',
+                  pointerEvents: 'auto !important',
+                  '&:hover': {
+                    backgroundColor: '#f3f4f6 !important',
                   },
                 },
                 // All buttons
-                "& button": {
-                  cursor: "pointer !important",
-                  pointerEvents: "auto !important",
-                  "&:hover": {
-                    backgroundColor: "#f3f4f6 !important",
+                '& button': {
+                  cursor: 'pointer !important',
+                  pointerEvents: 'auto !important',
+                  '&:hover': {
+                    backgroundColor: '#f3f4f6 !important',
                   },
                 },
               },
-              placement: "bottom-start",
+              placement: 'bottom-start',
             },
           }}
         />

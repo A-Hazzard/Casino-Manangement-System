@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
 
 export async function GET(_request: NextRequest) {
   try {
@@ -19,15 +19,15 @@ export async function GET(_request: NextRequest) {
       {
         $group: {
           _id: null,
-          manufacturers: { $addToSet: "$manufacturer" },
-          manufs: { $addToSet: "$manuf" },
+          manufacturers: { $addToSet: '$manufacturer' },
+          manufs: { $addToSet: '$manuf' },
         },
       },
       {
         $project: {
           _id: 0,
           allManufacturers: {
-            $setUnion: ["$manufacturers", "$manufs"],
+            $setUnion: ['$manufacturers', '$manufs'],
           },
         },
       },
@@ -38,7 +38,7 @@ export async function GET(_request: NextRequest) {
 
     // Filter out null, undefined, and empty string values
     const filteredManufacturers = uniqueManufacturers.filter(
-      (manufacturer: string) => manufacturer && manufacturer.trim() !== ""
+      (manufacturer: string) => manufacturer && manufacturer.trim() !== ''
     );
 
     // Sort alphabetically
@@ -46,9 +46,9 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json(sortedManufacturers);
   } catch (error) {
-    console.error("Error fetching manufacturers:", error);
+    console.error('Error fetching manufacturers:', error);
     return NextResponse.json(
-      { error: "Failed to fetch manufacturers" },
+      { error: 'Failed to fetch manufacturers' },
       { status: 500 }
     );
   }

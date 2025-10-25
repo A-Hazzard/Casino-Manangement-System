@@ -1,11 +1,11 @@
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-} from "@radix-ui/react-icons";
-import type { PaginationControlsProps } from "@/lib/types/components";
+} from '@radix-ui/react-icons';
+import type { PaginationControlsProps } from '@/lib/types/components';
 
 export default function PaginationControls({
   currentPage,
@@ -33,8 +33,8 @@ export default function PaginationControls({
   return (
     <>
       {/* Mobile Pagination */}
-      <div className="flex flex-col space-y-3 mt-8 sm:hidden">
-        <div className="text-xs text-gray-600 text-center">
+      <div className="mt-8 flex flex-col space-y-3 sm:hidden">
+        <div className="text-center text-xs text-gray-600">
           Page {currentPage + 1} of {totalPages}
         </div>
         <div className="flex items-center justify-center space-x-2">
@@ -66,7 +66,7 @@ export default function PaginationControls({
               max={totalPages}
               value={currentPage + 1}
               onChange={handleInputChange}
-              className="w-12 px-1 py-1 border border-gray-300 rounded text-center text-xs text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+              className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
               aria-label="Page number"
             />
             <span className="text-xs text-gray-600">of {totalPages}</span>
@@ -95,13 +95,13 @@ export default function PaginationControls({
       </div>
 
       {/* Desktop Pagination */}
-      <div className="hidden sm:flex justify-center items-center space-x-2 mt-8">
+      <div className="mt-8 hidden items-center justify-center space-x-2 sm:flex">
         <Button
           variant="outline"
           size="icon"
           onClick={() => handlePageChange(0)}
           disabled={currentPage === 0}
-          className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+          className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
           aria-label="Go to first page"
         >
           <DoubleArrowLeftIcon className="h-4 w-4" />
@@ -111,30 +111,30 @@ export default function PaginationControls({
           size="icon"
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 0}
-          className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+          className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
           aria-label="Go to previous page"
         >
           <ChevronLeftIcon className="h-4 w-4" />
         </Button>
         <div className="flex items-center gap-2">
-          <span className="text-gray-700 text-sm">Page</span>
+          <span className="text-sm text-gray-700">Page</span>
           <input
             type="number"
             min={1}
             max={totalPages}
             value={currentPage + 1}
             onChange={handleInputChange}
-            className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+            className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
             aria-label="Page number"
           />
-          <span className="text-gray-700 text-sm">of {totalPages}</span>
+          <span className="text-sm text-gray-700">of {totalPages}</span>
         </div>
         <Button
           variant="outline"
           size="icon"
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages - 1}
-          className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+          className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
           aria-label="Go to next page"
         >
           <ChevronRightIcon className="h-4 w-4" />
@@ -144,7 +144,7 @@ export default function PaginationControls({
           size="icon"
           onClick={() => handlePageChange(totalPages - 1)}
           disabled={currentPage === totalPages - 1}
-          className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+          className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
           aria-label="Go to last page"
         >
           <DoubleArrowRightIcon className="h-4 w-4" />

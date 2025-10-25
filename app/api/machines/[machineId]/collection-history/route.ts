@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
-import { v4 as uuidv4 } from "uuid";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../../lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function PATCH(
   request: NextRequest,
@@ -12,7 +12,7 @@ export async function PATCH(
     const body = await request.json();
     const { operation, entry, entryId } = body;
 
-    console.warn("Collection history API called:", {
+    console.warn('Collection history API called:', {
       machineId,
       operation,
       entry: entry
@@ -28,12 +28,12 @@ export async function PATCH(
 
     if (!machineId) {
       return NextResponse.json(
-        { success: false, error: "Machine ID is required" },
+        { success: false, error: 'Machine ID is required' },
         { status: 400 }
       );
     }
 
-    if (!operation || !["add", "update", "delete"].includes(operation)) {
+    if (!operation || !['add', 'update', 'delete'].includes(operation)) {
       return NextResponse.json(
         {
           success: false,
@@ -49,7 +49,7 @@ export async function PATCH(
     const machine = await Machine.findById(machineId);
     if (!machine) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -62,7 +62,7 @@ export async function PATCH(
     let updated = false;
 
     switch (operation) {
-      case "add":
+      case 'add':
         if (!entry) {
           return NextResponse.json(
             {
@@ -88,7 +88,7 @@ export async function PATCH(
         updated = true;
         break;
 
-      case "update":
+      case 'update':
         if (!entry || !entryId) {
           return NextResponse.json(
             {
@@ -108,7 +108,7 @@ export async function PATCH(
 
         if (entryIndex === -1) {
           return NextResponse.json(
-            { success: false, error: "Collection history entry not found" },
+            { success: false, error: 'Collection history entry not found' },
             { status: 404 }
           );
         }
@@ -125,7 +125,7 @@ export async function PATCH(
         updated = true;
         break;
 
-      case "delete":
+      case 'delete':
         if (!entryId && !entry.locationReportId) {
           return NextResponse.json(
             {
@@ -155,7 +155,7 @@ export async function PATCH(
 
         if (deleteIndex === -1) {
           return NextResponse.json(
-            { success: false, error: "Collection history entry not found" },
+            { success: false, error: 'Collection history entry not found' },
             { status: 404 }
           );
         }
@@ -168,7 +168,7 @@ export async function PATCH(
     if (updated) {
       // Save the updated machine
       await machine.save();
-      console.warn("Machine collection history updated successfully:", {
+      console.warn('Machine collection history updated successfully:', {
         machineId,
         operation,
         newHistoryCount: machine.collectionMetersHistory.length,
@@ -184,17 +184,17 @@ export async function PATCH(
       message: `Collection history ${operation} operation completed successfully`,
       data: {
         operation,
-        entryId: operation === "add" ? entry?._id : entryId,
+        entryId: operation === 'add' ? entry?._id : entryId,
         collectionHistoryCount: machine.collectionMetersHistory.length,
       },
     });
   } catch (error) {
-    console.error("Error updating machine collection history:", error);
+    console.error('Error updating machine collection history:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

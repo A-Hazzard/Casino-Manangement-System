@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../lib/middleware/db";
-import { Collections } from "../../../lib/models/collections";
-import { CollectionReport } from "../../../lib/models/collectionReport";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../../lib/middleware/db';
+import { Collections } from '../../../lib/models/collections';
+import { CollectionReport } from '../../../lib/models/collectionReport';
 import type {
   CollectionIssue,
   CollectionIssueDetails,
-} from "@/shared/types/entities";
+} from '@/shared/types/entities';
 
 /**
  * GET /api/collection-report/[reportId]/check-sas-times
@@ -22,7 +22,7 @@ export async function GET(
 
     if (!reportId) {
       return NextResponse.json(
-        { success: false, error: "Report ID is required" },
+        { success: false, error: 'Report ID is required' },
         { status: 400 }
       );
     }
@@ -34,7 +34,7 @@ export async function GET(
 
     if (!collectionReport) {
       return NextResponse.json(
-        { success: false, error: "Collection report not found" },
+        { success: false, error: 'Collection report not found' },
         { status: 404 }
       );
     }
@@ -79,19 +79,19 @@ export async function GET(
             machineName:
               collection.machineName ||
               collection.machineCustomName ||
-              "Unknown",
-            issueType: "inverted_times",
+              'Unknown',
+            issueType: 'inverted_times',
             details: {
               current: {
                 sasStartTime: sasStartTime.toISOString(),
                 sasEndTime: sasEndTime.toISOString(),
               },
               expected: {
-                sasStartTime: "Should be before sasEndTime",
-                sasEndTime: "Should be after sasStartTime",
+                sasStartTime: 'Should be before sasEndTime',
+                sasEndTime: 'Should be after sasStartTime',
               },
               explanation:
-                "SAS start time is after or equal to SAS end time, creating an invalid time range",
+                'SAS start time is after or equal to SAS end time, creating an invalid time range',
             },
           });
         }
@@ -106,8 +106,16 @@ export async function GET(
           $and: [
             {
               $or: [
-                { collectionTime: { $lt: collection.collectionTime || collection.timestamp } },
-                { timestamp: { $lt: collection.collectionTime || collection.timestamp } },
+                {
+                  collectionTime: {
+                    $lt: collection.collectionTime || collection.timestamp,
+                  },
+                },
+                {
+                  timestamp: {
+                    $lt: collection.collectionTime || collection.timestamp,
+                  },
+                },
               ],
             },
             {
@@ -125,38 +133,40 @@ export async function GET(
           const expectedPrevIn = actualPreviousCollection.metersIn || 0;
           const expectedPrevOut = actualPreviousCollection.metersOut || 0;
 
-      // Allow for minor precision differences (within 0.1)
-      const prevInDiff = Math.abs(collection.prevIn - expectedPrevIn);
-      const prevOutDiff = Math.abs(collection.prevOut - expectedPrevOut);
-      
-      if (
-        (prevInDiff > 0.1) ||
-        (prevOutDiff > 0.1) ||
-        (collection.prevIn === 0 && collection.prevOut === 0 && expectedPrevIn > 0) // Special case: both 0 when they should have values
-      ) {
-        issues.push({
-          collectionId: collection._id.toString(),
-          machineName:
-            collection.machineName ||
-            collection.machineCustomName ||
-            "Unknown",
-          issueType: "prev_meters_mismatch",
-          details: {
-            current: {
-              prevIn: collection.prevIn,
-              prevOut: collection.prevOut,
-            },
-            expected: {
-              prevIn: expectedPrevIn,
-              prevOut: expectedPrevOut,
-              previousCollectionTime: actualPreviousCollection.timestamp,
-            },
-            explanation: `Previous meters don't match the actual meters from the previous collection (${new Date(
-              actualPreviousCollection.timestamp
-            ).toLocaleDateString()})`,
-          },
-        });
-      }
+          // Allow for minor precision differences (within 0.1)
+          const prevInDiff = Math.abs(collection.prevIn - expectedPrevIn);
+          const prevOutDiff = Math.abs(collection.prevOut - expectedPrevOut);
+
+          if (
+            prevInDiff > 0.1 ||
+            prevOutDiff > 0.1 ||
+            (collection.prevIn === 0 &&
+              collection.prevOut === 0 &&
+              expectedPrevIn > 0) // Special case: both 0 when they should have values
+          ) {
+            issues.push({
+              collectionId: collection._id.toString(),
+              machineName:
+                collection.machineName ||
+                collection.machineCustomName ||
+                'Unknown',
+              issueType: 'prev_meters_mismatch',
+              details: {
+                current: {
+                  prevIn: collection.prevIn,
+                  prevOut: collection.prevOut,
+                },
+                expected: {
+                  prevIn: expectedPrevIn,
+                  prevOut: expectedPrevOut,
+                  previousCollectionTime: actualPreviousCollection.timestamp,
+                },
+                explanation: `Previous meters don't match the actual meters from the previous collection (${new Date(
+                  actualPreviousCollection.timestamp
+                ).toLocaleDateString()})`,
+              },
+            });
+          }
         } else {
           // No previous collection exists, so prevIn/prevOut should be 0
           if (collection.prevIn !== 0 || collection.prevOut !== 0) {
@@ -165,8 +175,8 @@ export async function GET(
               machineName:
                 collection.machineName ||
                 collection.machineCustomName ||
-                "Unknown",
-              issueType: "prev_meters_mismatch",
+                'Unknown',
+              issueType: 'prev_meters_mismatch',
               details: {
                 current: {
                   prevIn: collection.prevIn,
@@ -176,7 +186,8 @@ export async function GET(
                   prevIn: 0,
                   prevOut: 0,
                 },
-                explanation: "No previous collection found, but prevIn/prevOut are not zero",
+                explanation:
+                  'No previous collection found, but prevIn/prevOut are not zero',
               },
             });
           }
@@ -225,8 +236,8 @@ export async function GET(
         issues.push({
           collectionId: collection._id.toString(),
           machineName:
-            collection.machineName || collection.machineCustomName || "Unknown",
-          issueType: "prev_meters_mismatch",
+            collection.machineName || collection.machineCustomName || 'Unknown',
+          issueType: 'prev_meters_mismatch',
           details: {
             current: {
               movementMetersIn: collection.movement.metersIn,
@@ -256,39 +267,43 @@ export async function GET(
     // Check for collectionMetersHistory issues at the machine level
     // ONLY check machines that are in this report
     console.warn(
-      "🔍 Checking collectionMetersHistory issues at machine level (for machines in this report only)..."
+      '🔍 Checking collectionMetersHistory issues at machine level (for machines in this report only)...'
     );
 
     try {
       // Get unique machine IDs from collections in this report
-      const machineIdsInReport = [...new Set(collections.map(c => c.machineId))];
+      const machineIdsInReport = [
+        ...new Set(collections.map(c => c.machineId)),
+      ];
       console.warn(
         `Checking ${machineIdsInReport.length} machines from this report: ${machineIdsInReport.join(', ')}`
       );
 
       // Use raw MongoDB driver to avoid caching issues
-      const mongoose = await import("mongoose");
+      const mongoose = await import('mongoose');
       const db = mongoose.default.connection.db;
-      if (!db) throw new Error("Database connection not available");
-      
+      if (!db) throw new Error('Database connection not available');
+
       // Only fetch machines that are in this report
-      const machineObjectIds = machineIdsInReport.map(id => {
-        try {
-          return new mongoose.default.Types.ObjectId(id);
-        } catch {
-          // If it's not a valid ObjectId, return null and we'll filter it out
-          return null;
-        }
-      }).filter(Boolean);
-      
+      const machineObjectIds = machineIdsInReport
+        .map(id => {
+          try {
+            return new mongoose.default.Types.ObjectId(id);
+          } catch {
+            // If it's not a valid ObjectId, return null and we'll filter it out
+            return null;
+          }
+        })
+        .filter(Boolean);
+
       const machinesWithHistory = await db
-        .collection("machines")
+        .collection('machines')
         .find({
           $or: [
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             { _id: { $in: machineObjectIds as any } },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            { _id: { $in: machineIdsInReport as any } } // Also try as strings
+            { _id: { $in: machineIdsInReport as any } }, // Also try as strings
           ],
           collectionMetersHistory: { $exists: true, $ne: [] },
         })
@@ -319,7 +334,7 @@ export async function GET(
                 machine.custom?.name ||
                 machine.origSerialNumber ||
                 machine._id.toString(),
-              issueType: "prev_meters_mismatch",
+              issueType: 'prev_meters_mismatch',
               details: {
                 current: {
                   prevMetersIn: entry.prevMetersIn,
@@ -343,7 +358,7 @@ export async function GET(
         }
       }
     } catch (error) {
-      console.error("Error checking collectionMetersHistory:", error);
+      console.error('Error checking collectionMetersHistory:', error);
     }
 
     const result: CollectionIssueDetails = {
@@ -357,12 +372,12 @@ export async function GET(
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Error checking SAS time issues:", error);
+    console.error('Error checking SAS time issues:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

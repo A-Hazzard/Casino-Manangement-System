@@ -1,9 +1,9 @@
-import { useEffect, useCallback } from "react";
-import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
-import axios from "axios";
+import { useEffect, useCallback } from 'react';
+import { useAnalyticsDataStore } from '@/lib/store/reportsDataStore';
+import axios from 'axios';
 
 export function useDashboardAnalytics() {
-  const timePeriod = "last7days";
+  const timePeriod = 'last7days';
   const dateRange = null;
   const {
     setKpiMetrics,
@@ -29,7 +29,7 @@ export function useDashboardAnalytics() {
       try {
         const params: Record<string, unknown> = { timePeriod };
 
-        const response = await axios.get("/api/analytics/dashboard", {
+        const response = await axios.get('/api/analytics/dashboard', {
           params,
         });
 
@@ -44,12 +44,12 @@ export function useDashboardAnalytics() {
           setPerformanceTrends(performanceTrends);
           setLocations(locations);
           setTopPerformingMachines(topPerformingMachines);
-          setLastUpdated("dashboard");
+          setLastUpdated('dashboard');
         } else {
           setError();
         }
       } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
+        console.error('Failed to fetch dashboard data:', err);
         setError();
       } finally {
         setIsLoading();

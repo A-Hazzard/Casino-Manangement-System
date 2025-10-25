@@ -5,14 +5,14 @@
  */
 export const formatCurrency = (value: number): string => {
   if (isNaN(value)) {
-    return "$0";
+    return '$0';
   }
-  
+
   // Check if the value has meaningful decimal places
   const hasDecimals = value % 1 !== 0;
   const decimalPart = value % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-  
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -28,14 +28,14 @@ export const formatCurrency = (value: number): string => {
  */
 export const formatPercentage = (value: number): string => {
   if (isNaN(value)) {
-    return "0%";
+    return '0%';
   }
-  
+
   // Check if the value has meaningful decimal places
   const hasDecimals = value % 1 !== 0;
   const decimalPart = value % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-  
+
   return `${value.toFixed(hasSignificantDecimals ? 2 : 0)}%`;
 };
 
@@ -65,4 +65,4 @@ export const formatLargeNumber = (value: number): string => {
     return `${thousands.toFixed(hasSignificantDecimals ? 1 : 0)}K`;
   }
   return value.toLocaleString();
-}; 
+};

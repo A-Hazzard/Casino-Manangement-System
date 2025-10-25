@@ -1,7 +1,7 @@
-import React from "react";
-import ManagerScheduleFilters from "@/components/collectionReport/ManagerScheduleFilters";
-import ManagerScheduleTable from "@/components/collectionReport/ManagerScheduleTable";
-import type { ManagerDesktopUIProps } from "@/lib/types/componentProps";
+import React from 'react';
+import ManagerScheduleFilters from '@/components/collectionReport/ManagerScheduleFilters';
+import ManagerScheduleTable from '@/components/collectionReport/ManagerScheduleTable';
+import type { ManagerDesktopUIProps } from '@/lib/types/componentProps';
 
 const ManagerDesktopUI: React.FC<ManagerDesktopUIProps> = ({
   locations,
@@ -17,7 +17,7 @@ const ManagerDesktopUI: React.FC<ManagerDesktopUIProps> = ({
   loadingSchedulers,
 }) => {
   return (
-    <div className="hidden md:block bg-white rounded-lg shadow-md">
+    <div className="hidden rounded-lg bg-white shadow-md md:block">
       <ManagerScheduleFilters
         locations={locations}
         collectors={collectors}
@@ -30,7 +30,7 @@ const ManagerDesktopUI: React.FC<ManagerDesktopUIProps> = ({
         onReset={onResetSchedulerFilters}
         loading={loadingSchedulers} // Pass loading state to filters if it has loading indicators
       />
-      <div className="mt-4 px-4 pb-4 space-y-4">
+      <div className="mt-4 space-y-4 px-4 pb-4">
         <ManagerScheduleTable data={schedulers} loading={loadingSchedulers} />
         {/* ManagerScheduleCards was also here, but typically desktop uses table primarily */}
         {/* If cards are also needed on desktop, they can be added back here */}

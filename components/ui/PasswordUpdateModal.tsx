@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
-import { validatePasswordStrength } from "@/lib/utils/auth";
+} from '@/components/ui/dialog';
+import { CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
+import { validatePasswordStrength } from '@/lib/utils/auth';
 
 type PasswordUpdateModalProps = {
   open: boolean;
@@ -24,23 +24,23 @@ type PasswordUpdateModalProps = {
 
 const PASSWORD_REQUIREMENTS = [
   {
-    label: "8+ characters",
+    label: '8+ characters',
     test: (password: string) => password.length >= 8,
   },
   {
-    label: "Uppercase letter",
+    label: 'Uppercase letter',
     test: (password: string) => /[A-Z]/.test(password),
   },
   {
-    label: "Lowercase letter",
+    label: 'Lowercase letter',
     test: (password: string) => /[a-z]/.test(password),
   },
   {
-    label: "Number",
+    label: 'Number',
     test: (password: string) => /\d/.test(password),
   },
   {
-    label: "Special character",
+    label: 'Special character',
     test: (password: string) =>
       /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
   },
@@ -52,8 +52,8 @@ export default function PasswordUpdateModal({
   onUpdate,
   loading = false,
 }: PasswordUpdateModalProps) {
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -66,18 +66,18 @@ export default function PasswordUpdateModal({
     const newErrors: Record<string, string> = {};
 
     if (!password) {
-      newErrors.password = "Password is required";
+      newErrors.password = 'Password is required';
     } else {
       const passwordValidation = validatePasswordStrength(password);
       if (!passwordValidation.isValid) {
-        newErrors.password = passwordValidation.errors.join(", ");
+        newErrors.password = passwordValidation.errors.join(', ');
       }
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = 'Please confirm your password';
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -87,19 +87,19 @@ export default function PasswordUpdateModal({
 
     try {
       await onUpdate(password);
-      setPassword("");
-      setConfirmPassword("");
+      setPassword('');
+      setConfirmPassword('');
       onClose();
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Password update error:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Password update error:', error);
       }
     }
   };
 
   const handleClose = () => {
-    setPassword("");
-    setConfirmPassword("");
+    setPassword('');
+    setConfirmPassword('');
     setErrors({});
     onClose();
   };
@@ -122,10 +122,10 @@ export default function PasswordUpdateModal({
             <div className="relative">
               <Input
                 id="password"
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={errors.password ? "border-red-500" : ""}
+                onChange={e => setPassword(e.target.value)}
+                className={errors.password ? 'border-red-500' : ''}
                 placeholder="Enter new password"
               />
               <Button
@@ -153,10 +153,10 @@ export default function PasswordUpdateModal({
             <div className="relative">
               <Input
                 id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
+                type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={errors.confirmPassword ? "border-red-500" : ""}
+                onChange={e => setConfirmPassword(e.target.value)}
+                className={errors.confirmPassword ? 'border-red-500' : ''}
                 placeholder="Confirm new password"
               />
               <Button
@@ -180,8 +180,8 @@ export default function PasswordUpdateModal({
 
           {/* Password Requirements */}
           {password && (
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-xs font-medium text-gray-700 mb-2">
+            <div className="rounded-md bg-gray-50 p-3">
+              <p className="mb-2 text-xs font-medium text-gray-700">
                 Password Requirements:
               </p>
               <div className="space-y-1">
@@ -191,7 +191,7 @@ export default function PasswordUpdateModal({
                     <div
                       key={index}
                       className={`flex items-center gap-2 text-xs ${
-                        isMet ? "text-green-700" : "text-red-700"
+                        isMet ? 'text-green-700' : 'text-red-700'
                       }`}
                     >
                       {isMet ? (
@@ -212,7 +212,7 @@ export default function PasswordUpdateModal({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Updating..." : "Update Password"}
+              {loading ? 'Updating...' : 'Update Password'}
             </Button>
           </DialogFooter>
         </form>

@@ -3,12 +3,12 @@
  * Handles loading, error states, and data management for dashboard page
  */
 
-import { useState, useCallback, useEffect } from "react";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { loadGamingLocations } from "@/lib/helpers/dashboard";
-import { toast } from "sonner";
-import type { DashboardTotals, TopPerformingData } from "@/lib/types";
-import type { CustomizedLabelProps } from "@/lib/types/componentProps";
+import { useState, useCallback, useEffect } from 'react';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { loadGamingLocations } from '@/lib/helpers/dashboard';
+import { toast } from 'sonner';
+import type { DashboardTotals, TopPerformingData } from '@/lib/types';
+import type { CustomizedLabelProps } from '@/lib/types/componentProps';
 
 type UseDashboardDataProps = {
   selectedLicencee: string;
@@ -37,7 +37,7 @@ type UseDashboardDataReturn = {
 
 export const useDashboardData = ({
   selectedLicencee,
-}: Pick<UseDashboardDataProps, "selectedLicencee">): UseDashboardDataReturn => {
+}: Pick<UseDashboardDataProps, 'selectedLicencee'>): UseDashboardDataReturn => {
   // Get store state and actions
   const {
     loadingChartData,
@@ -67,17 +67,17 @@ export const useDashboardData = ({
       if (Array.isArray(locationsData)) {
         setGamingLocations(locationsData);
       } else {
-        if (process.env.NODE_ENV === "development") {
+        if (process.env.NODE_ENV === 'development') {
           console.error(
-            "Gaming locations data is not an array:",
+            'Gaming locations data is not an array:',
             locationsData
           );
         }
         setGamingLocations([]);
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error loading gaming locations:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading gaming locations:', error);
       }
       setGamingLocations([]);
     }
@@ -94,14 +94,14 @@ export const useDashboardData = ({
       if (metricsDataResult) {
         setMetricsData(metricsDataResult);
       } else {
-        if (process.env.NODE_ENV === "development") {
-          console.error("No metrics data received");
+        if (process.env.NODE_ENV === 'development') {
+          console.error('No metrics data received');
         }
         setMetricsData(null);
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error loading metrics data:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading metrics data:', error);
       }
       setMetricsData(null);
     } finally {
@@ -120,17 +120,17 @@ export const useDashboardData = ({
       if (Array.isArray(topPerformingResult)) {
         setTopPerformingData(topPerformingResult);
       } else {
-        if (process.env.NODE_ENV === "development") {
+        if (process.env.NODE_ENV === 'development') {
           console.error(
-            "Top performing data is not an array:",
+            'Top performing data is not an array:',
             topPerformingResult
           );
         }
         setTopPerformingData([]);
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error loading top performing data:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading top performing data:', error);
       }
       setTopPerformingData([]);
     } finally {
@@ -146,12 +146,12 @@ export const useDashboardData = ({
     return {
       x: 0,
       y: 0,
-      textAnchor: "middle" as const,
-      dominantBaseline: "central" as const,
-      fontSize: "14px",
-      fontWeight: "bold" as const,
-      fill: "#000",
-      text: "No data available",
+      textAnchor: 'middle' as const,
+      dominantBaseline: 'central' as const,
+      fontSize: '14px',
+      fontWeight: 'bold' as const,
+      fill: '#000',
+      text: 'No data available',
     };
   }, [metricsData]);
 
@@ -164,8 +164,8 @@ export const useDashboardData = ({
         loadTopPerformingData(),
       ]);
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error loading dashboard data:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading dashboard data:', error);
       }
     }
   }, [loadGamingLocationsData, loadMetricsData, loadTopPerformingData]);
@@ -177,12 +177,12 @@ export const useDashboardData = ({
 
       await loadDashboardData();
 
-      toast.success("Dashboard refreshed successfully");
+      toast.success('Dashboard refreshed successfully');
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error refreshing dashboard:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error refreshing dashboard:', error);
       }
-      toast.error("Failed to refresh dashboard");
+      toast.error('Failed to refresh dashboard');
     } finally {
       setRefreshing(false);
     }

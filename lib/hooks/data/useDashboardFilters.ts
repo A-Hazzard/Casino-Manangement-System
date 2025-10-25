@@ -3,10 +3,13 @@
  * Handles filter initialization, validation, and state management
  */
 
-import { useEffect, useCallback, useMemo } from "react";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import type { TimePeriod, dateRange } from "@/lib/types";
-import type { UseDashboardFiltersProps, UseDashboardFiltersReturn } from "@/lib/types/dashboard";
+import { useEffect, useCallback, useMemo } from 'react';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import type { TimePeriod, dateRange } from '@/lib/types';
+import type {
+  UseDashboardFiltersProps,
+  UseDashboardFiltersReturn,
+} from '@/lib/types/dashboard';
 
 export function useDashboardFilters({
   selectedLicencee,
@@ -35,18 +38,18 @@ export function useDashboardFilters({
   // Validate if current filter configuration is valid
   const isFilterValid = useMemo(() => {
     if (!activeMetricsFilter) return false;
-    
-    if (activeMetricsFilter === "Custom") {
+
+    if (activeMetricsFilter === 'Custom') {
       return Boolean(customDateRange?.startDate && customDateRange?.endDate);
     }
-    
+
     return true;
   }, [activeMetricsFilter, customDateRange]);
 
   // Reset all filters to default state
   const resetFilters = useCallback(() => {
-    setActiveMetricsFilter("");
-    setActivePieChartFilter("");
+    setActiveMetricsFilter('');
+    setActivePieChartFilter('');
     setCustomDateRange({
       startDate: new Date(new Date().setHours(0, 0, 0, 0)),
       endDate: new Date(new Date().setHours(23, 59, 59, 999)),
@@ -64,8 +67,10 @@ export function useDashboardFilters({
     activePieChartFilter,
     customDateRange,
     showDatePicker: isShowDatePicker,
-    setActiveMetricsFilter: (filter: TimePeriod | "") => setActiveMetricsFilter(filter),
-    setActivePieChartFilter: (filter: TimePeriod | "") => setActivePieChartFilter(filter),
+    setActiveMetricsFilter: (filter: TimePeriod | '') =>
+      setActiveMetricsFilter(filter),
+    setActivePieChartFilter: (filter: TimePeriod | '') =>
+      setActivePieChartFilter(filter),
     setCustomDateRange: (range: dateRange) => setCustomDateRange(range),
     setShowDatePicker: (show: boolean) => setShowDatePicker(show),
     isFilterValid,

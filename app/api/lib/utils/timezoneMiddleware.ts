@@ -5,8 +5,8 @@
  * from UTC to Trinidad local time (UTC-4).
  */
 
-import { NextResponse } from "next/server";
-import { convertResponseToTrinidadTime } from "./timezone";
+import { NextResponse } from 'next/server';
+import { convertResponseToTrinidadTime } from './timezone';
 
 /**
  * Creates a NextResponse with automatic timezone conversion for date fields

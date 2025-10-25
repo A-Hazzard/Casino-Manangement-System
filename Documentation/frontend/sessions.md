@@ -1,6 +1,7 @@
 # Sessions Page
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Main Features](#main-features)
 - [Technical Architecture](#technical-architecture)
@@ -22,12 +23,14 @@ The Sessions page provides comprehensive session management and monitoring for t
 **Version:** 2.0.0
 
 ### File Information
+
 - **File:** `app/sessions/page.tsx`
 - **URL Pattern:** `/sessions`
 - **Component Type:** Session Management Page
 - **Authentication:** Required
 
 ## Main Features
+
 - **Session Management:**
   - View, search, sort, and paginate all gaming sessions
   - Real-time session status and duration tracking
@@ -62,6 +65,7 @@ The Sessions page provides comprehensive session management and monitoring for t
 ## Technical Architecture
 
 ### Core Components
+
 - **Main Page:** `app/sessions/page.tsx` - Entry point with session listing and management
 - **Session Events:** `app/sessions/[sessionId]/[machineId]/events/page.tsx` - Detailed machine event monitoring
 - **Layout Components:**
@@ -72,6 +76,7 @@ The Sessions page provides comprehensive session management and monitoring for t
   - `components/sessions/SessionEventsSkeleton.tsx` - Loading skeleton for events
 
 ### State Management
+
 - **Local State:** React `useState` hooks for session data and UI state
 - **Key State Properties:**
   - `sessions`, `filteredSessions` - Session data arrays
@@ -81,6 +86,7 @@ The Sessions page provides comprehensive session management and monitoring for t
   - `selectedLicencee` - Licensee filtering state
 
 ### Data Flow
+
 1. **Initial Load:** Fetches sessions data on component mount
 2. **Search/Filter:** Filters sessions based on search terms and criteria
 3. **Sorting:** Sorts sessions based on selected columns and direction
@@ -91,6 +97,7 @@ The Sessions page provides comprehensive session management and monitoring for t
 ### API Integration
 
 #### Session Management Endpoints
+
 - **GET `/api/sessions`** - Fetches session data with pagination
   - Parameters: `page`, `limit`, `search`, `sortBy`, `sortOrder`
   - Returns: `{ success: true, data: { sessions: Session[], pagination: PaginationData } }`
@@ -99,6 +106,7 @@ The Sessions page provides comprehensive session management and monitoring for t
   - Returns: `{ success: true, data: { events: MachineEvent[], pagination: PaginationData, filters: FilterData } }`
 
 #### Data Processing
+
 - **Sessions Helper:** `lib/helpers/sessions.ts` - Session management utilities
   - `fetchSessions()` - Fetches session data with filtering and pagination
   - `formatSessionData()` - Formats session data for display
@@ -110,6 +118,7 @@ The Sessions page provides comprehensive session management and monitoring for t
 ### Key Dependencies
 
 #### Frontend Libraries
+
 - **React Hooks:** `useState`, `useEffect`, `useCallback`, `useMemo` - State management
 - **Next.js:** `useRouter`, `usePathname`, `useParams` - Navigation and routing
 - **Axios:** HTTP client for API calls
@@ -117,6 +126,7 @@ The Sessions page provides comprehensive session management and monitoring for t
 - **Lucide React:** Various icons for UI elements
 
 #### Type Definitions
+
 - **Session Types:** `lib/types/sessions.ts` - Session management types
   - `Session`, `SessionFilter`, `SessionSortOption`
 - **Event Types:** `lib/types/events.ts` - Machine event types
@@ -125,11 +135,13 @@ The Sessions page provides comprehensive session management and monitoring for t
   - `PaginationData`, `FilterData`
 
 #### Utility Functions
+
 - **Date Utils:** Date formatting and manipulation utilities
 - **Currency Utils:** Currency formatting for financial data
 - **Duration Utils:** Session duration calculations and formatting
 
 ### Component Hierarchy
+
 ```
 SessionsPage (app/sessions/page.tsx)
 ├── Sidebar (components/layout/Sidebar.tsx)
@@ -150,6 +162,7 @@ SessionEventsPage (app/sessions/[sessionId]/[machineId]/events/page.tsx)
 ```
 
 ### Business Logic
+
 - **Session Management:** Complete session tracking and performance monitoring
 - **Event Monitoring:** Detailed machine event logs and analysis
 - **Performance Analytics:** Session metrics and financial calculations
@@ -159,12 +172,14 @@ SessionEventsPage (app/sessions/[sessionId]/[machineId]/events/page.tsx)
 - **Navigation:** Seamless navigation between sessions and events
 
 ### Security Features
+
 - **Authentication:** Secure API calls with authentication headers
 - **Authorization:** Role-based access to session operations
 - **Data Sanitization:** Safe handling of session and event data
 - **Audit Trail:** Session access logging for security
 
 ### Error Handling
+
 - **API Failures:** Graceful degradation with user-friendly error messages
 - **Network Issues:** Retry logic and fallback error states
 - **Loading States:** Skeleton loaders and loading indicators
@@ -172,6 +187,7 @@ SessionEventsPage (app/sessions/[sessionId]/[machineId]/events/page.tsx)
 - **Navigation Errors:** Handle invalid session IDs and missing data
 
 ### Performance Optimizations
+
 - **Backend Pagination:** Reduces data transfer and improves performance
 - **Memoization:** `useMemo` for expensive computations (filtering, sorting)
 - **Conditional Rendering:** Separate desktop/mobile layouts
@@ -188,16 +204,19 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 #### **Session Management Section**
 
 **🎮 What Sessions Are**
+
 - **Collection**: Queries the `machinesessions` collection in the database
 - **Fields Used**: `_id`, `sessionId`, `memberId`, `machineId`, `startTime`, `endTime`, `gamesPlayed`, `points`, `handle`
 - **Simple Explanation**: Each time someone plays on a slot machine, it creates a session - like a gaming record with start and end times
 
 **🔍 How Session Search Works**
+
 - **Collection**: Filters the `machinesessions` collection
 - **Fields Used**: Searches by `sessionId`, `memberId`, `machineId`, member name, machine name
 - **Simple Explanation**: Like searching through gaming records - you can find sessions by player, machine, or session ID
 
 **📊 Session Performance Tracking**
+
 - **Collection**: Aggregates data from `machinesessions` collection
 - **Fields Used**: `handle`, `cancelledCredits`, `jackpot`, `won`, `bet`, `points`, `gamesPlayed`, `gamesWon`
 - **Simple Explanation**: Shows how much money was played, won, and lost during each gaming session
@@ -205,16 +224,19 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 #### **Machine Events Section**
 
 **⚡ What Machine Events Are**
+
 - **Collection**: Queries the `machineevents` collection
 - **Fields Used**: `_id`, `eventType`, `description`, `command`, `gameName`, `date`, `sequence`, `currentSession`, `machine`
 - **Simple Explanation**: These are detailed logs of everything that happened on a slot machine during a specific session
 
 **🎯 Event Filtering System**
+
 - **Collection**: Filters `machineevents` by session and machine
 - **Fields Used**: `currentSession` (matches sessionId), `machine` (matches machineId), `eventType`, `description`, `gameName`
 - **Simple Explanation**: Shows only the events that happened on a specific machine during a specific gaming session
 
 **📋 Sequence Tracking**
+
 - **Collection**: Uses `sequence` array in `machineevents`
 - **Fields Used**: `sequence.description`, `sequence.logLevel`, `sequence.success`
 - **Simple Explanation**: Some machine events have multiple steps - like a complex operation that involves several actions
@@ -222,6 +244,7 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 #### **Database Queries Explained**
 
 **For Session List:**
+
 ```javascript
 // Queries the machinesessions collection
 // Filters by: search term, date range, licensee
@@ -230,6 +253,7 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 ```
 
 **For Session Events:**
+
 ```javascript
 // Queries the machineevents collection
 // Filters by: currentSession (sessionId) AND machine (machineId)
@@ -237,6 +261,7 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 ```
 
 **For Session Analytics:**
+
 ```javascript
 // Aggregates machinesessions data
 // Groups by: date, member, machine
@@ -247,16 +272,19 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 #### **Navigation Flow**
 
 **1. Sessions List → Session Events:**
+
 - Click "View Events" on any session
 - Navigate to `/sessions/[sessionId]/[machineId]/events`
 - Shows all events for that specific machine during that session
 
 **2. Session → Member Profile:**
+
 - Click on member name in session
 - Navigate to `/members/[memberId]`
 - Shows member profile and all their sessions
 
 **3. Session → Machine Details:**
+
 - Click on machine ID in session
 - Navigate to machine-specific information
 - Shows machine performance and status
@@ -264,17 +292,20 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 #### **Event Filtering and Analysis**
 
 **1. Event Type Filtering:**
+
 - **General Events**: Normal machine operations
 - **Significant Events**: Important machine activities
 - **Priority Events**: Critical machine alerts or errors
 
 **2. Event Description Filtering:**
+
 - **Game Events**: Game-specific activities
 - **Payment Events**: Money in/out operations
 - **Error Events**: Machine malfunctions or issues
 - **Maintenance Events**: Service and maintenance activities
 
 **3. Game Name Filtering:**
+
 - Filter events by specific games played
 - Track game-specific performance
 - Identify game-related issues
@@ -282,24 +313,28 @@ The sessions page is like a **gaming activity monitor** for your casino. Here's 
 #### **Why This Matters for Casino Operations**
 
 **🎮 Session Management Benefits:**
+
 - **Player Activity**: Track all gaming sessions across all machines
 - **Revenue Analysis**: Monitor money flow and gaming patterns
 - **Performance Metrics**: Identify high-value sessions and trends
 - **Compliance**: Maintain detailed records for regulatory requirements
 
 **⚡ Machine Event Benefits:**
+
 - **Troubleshooting**: Diagnose machine issues quickly with detailed logs
 - **Security**: Monitor for suspicious activity or tampering
 - **Maintenance**: Track machine performance and predict maintenance needs
 - **Compliance**: Maintain detailed audit trails for regulators
 
 **📊 Operational Benefits:**
+
 - **Real-time Monitoring**: See what's happening across all machines
 - **Performance Analysis**: Identify patterns and optimization opportunities
 - **Issue Resolution**: Quickly identify and resolve problems
 - **Data Analytics**: Generate insights for business decisions
 
 **🔍 Analytical Capabilities:**
+
 - **Session Trends**: Identify peak gaming times and patterns
 - **Machine Performance**: Track which machines perform best
 - **Player Behavior**: Understand gaming preferences and habits
@@ -310,6 +345,7 @@ The sessions page essentially **monitors all gaming activity** in your casino, p
 ## Current Implementation Status
 
 ### **Functional Features**
+
 - ✅ Session listing with basic information
 - ✅ Search and sorting functionality
 - ✅ Pagination support
@@ -319,6 +355,7 @@ The sessions page essentially **monitors all gaming activity** in your casino, p
 - ✅ Error handling and loading states
 
 ### **Session Events Integration**
+
 - ✅ Route structure: `/sessions/[sessionId]/[machineId]/events`
 - ✅ Event filtering by type, description, and game
 - ✅ Expandable sequence details
@@ -326,6 +363,7 @@ The sessions page essentially **monitors all gaming activity** in your casino, p
 - ✅ Pagination support for events
 
 ### **Expected User Experience**
+
 1. View all gaming sessions in a searchable, sortable table
 2. Click "View Events" on any session to see detailed machine activity
 3. Navigate to `/sessions/[sessionId]/[machineId]/events`
@@ -343,8 +381,9 @@ The sessions page provides comprehensive gaming session monitoring with detailed
 **Current Implementation Analysis:**
 
 #### **Session Financial Metrics ❌**
+
 - **Current Implementation**: Uses session-level meter data from `machinesessions` collection
-- **Data Source**: 
+- **Data Source**:
   ```javascript
   // Session financial fields
   handle: Number,           // Total betting activity during session
@@ -360,7 +399,8 @@ The sessions page provides comprehensive gaming session monitoring with detailed
 - ❌ **NOT IN GUIDE** - Session financial structure not defined in financial metrics guide
 
 #### **Session Duration Calculation ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   duration = endTime - startTime (in minutes)
   ```
@@ -368,37 +408,40 @@ The sessions page provides comprehensive gaming session monitoring with detailed
 - ✅ **CONSISTENT** - Standard time calculation
 
 #### **Session Performance Metrics ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Calculated session metrics
-  winRate = gamesWon / gamesPlayed * 100
-  averageBet = bet / gamesPlayed
-  pointsPerGame = points / gamesPlayed
-  handlePerMinute = handle / duration
+  winRate = (gamesWon / gamesPlayed) * 100;
+  averageBet = bet / gamesPlayed;
+  pointsPerGame = points / gamesPlayed;
+  handlePerMinute = handle / duration;
   ```
 - **Financial Guide**: No guidance for session-level performance metrics
 - ❌ **NOT IN GUIDE** - Session performance calculations not defined in financial metrics guide
 
 #### **Session Event Association ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Links sessions to machine events
-  { $match: { 
-    currentSession: sessionId, 
-    machine: machineId 
+  { $match: {
+    currentSession: sessionId,
+    machine: machineId
   }}
   ```
 - **Business Logic**: Associates events with specific machine sessions
 - ✅ **CONSISTENT** - Standard session-event linking pattern
 
 #### **Session Search Logic ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   $or: [
     { sessionId: { $regex: searchTerm, $options: 'i' } },
     { machineId: { $regex: searchTerm, $options: 'i' } },
-    { memberId: { $regex: searchTerm, $options: 'i' } }
-  ]
+    { memberId: { $regex: searchTerm, $options: 'i' } },
+  ];
   ```
 - **Business Logic**: Case-insensitive search across session identifiers
 - ✅ **COMPREHENSIVE** - Covers all relevant searchable session fields
@@ -406,6 +449,7 @@ The sessions page provides comprehensive gaming session monitoring with detailed
 ### Mathematical Formulas Summary
 
 #### **Session Financial Metrics (Requires Verification)**
+
 ```
 Session Handle = Total betting activity during session
 Session Cancelled Credits = Credits refunded during session
@@ -415,6 +459,7 @@ Session House Edge = bet - won (casino perspective)
 ```
 
 #### **Session Performance Calculations**
+
 ```
 Session Duration = endTime - startTime (in minutes)
 Win Rate = (gamesWon / gamesPlayed) * 100
@@ -424,14 +469,16 @@ Handle Per Minute = handle / duration
 ```
 
 #### **Session Event Tracking**
+
 ```
-Session Events = FIND(machineevents WHERE 
-  currentSession = sessionId AND 
+Session Events = FIND(machineevents WHERE
+  currentSession = sessionId AND
   machine = machineId
 ) ORDER BY timestamp ASC
 ```
 
 #### **Session Aggregation by Time**
+
 ```
 Daily Sessions = GROUP BY DATE(startTime)
 Weekly Sessions = GROUP BY WEEK(startTime)
@@ -441,12 +488,14 @@ Monthly Sessions = GROUP BY MONTH(startTime)
 ### Data Validation & Error Handling
 
 #### **Input Validation ✅**
+
 - **Session ID**: Validates session identifier format
 - **Date Ranges**: Validates ISO date format for filtering
 - **Pagination**: Validates numeric page and limit parameters
 - **Search Terms**: Sanitizes input to prevent injection attacks
 
 #### **Data Integrity ❌**
+
 - **Session Metrics**: Session-level financial calculations need verification
 - **Null Handling**: Uses fallback values but session structure needs verification
 - **Time Calculations**: Duration calculations assume valid start/end times

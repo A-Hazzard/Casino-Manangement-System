@@ -1,5 +1,5 @@
-import { UserRole, PageName, TabName } from "./permissions";
-import { fetchUserWithCache, CACHE_KEYS } from "./userCache";
+import { UserRole, PageName, TabName } from './permissions';
+import { fetchUserWithCache, CACHE_KEYS } from './userCache';
 
 /**
  * Database-based permission utilities
@@ -17,11 +17,11 @@ async function getCurrentUserFromDb(): Promise<{
     const data = await fetchUserWithCache(
       CACHE_KEYS.CURRENT_USER,
       async () => {
-        const response = await fetch("/api/auth/current-user", {
-          method: "GET",
-          credentials: "include",
+        const response = await fetch('/api/auth/current-user', {
+          method: 'GET',
+          credentials: 'include',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
         });
 
@@ -47,7 +47,7 @@ async function getCurrentUserFromDb(): Promise<{
 
     return null;
   } catch (error) {
-    console.error("Error fetching user from database:", error);
+    console.error('Error fetching user from database:', error);
     return null;
   }
 }
@@ -66,47 +66,47 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
 
   // Page permissions mapping
   const pagePermissions: Record<PageName, UserRole[]> = {
-    dashboard: ["evolution admin", "admin", "manager", "location admin"],
+    dashboard: ['evolution admin', 'admin', 'manager', 'location admin'],
     machines: [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "technician",
-      "collector",
-      "collector meters",
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+      'collector',
+      'collector meters',
     ],
-    locations: ["evolution admin", "admin", "manager", "location admin"],
-    "location-details": [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "technician",
+    locations: ['evolution admin', 'admin', 'manager', 'location admin'],
+    'location-details': [
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
     ],
-    members: ["evolution admin", "admin", "manager"],
-    "member-details": ["evolution admin", "admin", "manager", "location admin"],
-    "collection-report": [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "collector",
-      "collector meters",
+    members: ['evolution admin', 'admin', 'manager'],
+    'member-details': ['evolution admin', 'admin', 'manager', 'location admin'],
+    'collection-report': [
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'collector',
+      'collector meters',
     ],
-    reports: ["evolution admin", "admin", "manager", "location admin"],
+    reports: ['evolution admin', 'admin', 'manager', 'location admin'],
     sessions: [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "technician",
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
     ],
-    administration: ["evolution admin", "admin"],
+    administration: ['evolution admin', 'admin'],
   };
 
   const allowedRoles = pagePermissions[page] || [];
-  return roles.some((role) => allowedRoles.includes(role));
+  return roles.some(role => allowedRoles.includes(role));
 }
 
 /**
@@ -127,44 +127,44 @@ export async function hasTabAccessDb(
   // Tab permissions mapping
   const tabPermissions: Record<string, Record<string, UserRole[]>> = {
     administration: {
-      users: ["evolution admin", "admin"],
-      licensees: ["evolution admin"],
-      "activity-logs": ["evolution admin"],
+      users: ['evolution admin', 'admin'],
+      licensees: ['evolution admin'],
+      'activity-logs': ['evolution admin'],
     },
-    "collection-reports": {
+    'collection-reports': {
       collection: [
-        "evolution admin",
-        "admin",
-        "manager",
-        "location admin",
-        "collector",
-        "collector meters",
+        'evolution admin',
+        'admin',
+        'manager',
+        'location admin',
+        'collector',
+        'collector meters',
       ],
-      monthly: ["evolution admin", "admin", "manager", "location admin"],
-      "manager-schedules": ["evolution admin", "admin", "manager"],
-      "collector-schedules": [
-        "evolution admin",
-        "admin",
-        "manager",
-        "location admin",
+      monthly: ['evolution admin', 'admin', 'manager', 'location admin'],
+      'manager-schedules': ['evolution admin', 'admin', 'manager'],
+      'collector-schedules': [
+        'evolution admin',
+        'admin',
+        'manager',
+        'location admin',
       ],
     },
     reports: {
       machines: [
-        "evolution admin",
-        "admin",
-        "manager",
-        "location admin",
-        "technician",
+        'evolution admin',
+        'admin',
+        'manager',
+        'location admin',
+        'technician',
       ],
-      locations: ["evolution admin", "admin", "manager", "location admin"],
+      locations: ['evolution admin', 'admin', 'manager', 'location admin'],
       meters: [
-        "evolution admin",
-        "admin",
-        "manager",
-        "location admin",
-        "collector",
-        "collector meters",
+        'evolution admin',
+        'admin',
+        'manager',
+        'location admin',
+        'collector',
+        'collector meters',
       ],
     },
   };
@@ -173,7 +173,7 @@ export async function hasTabAccessDb(
   if (!pageTabs) return false;
 
   const allowedRoles = pageTabs[tab] || [];
-  return roles.some((role) => allowedRoles.includes(role));
+  return roles.some(role => allowedRoles.includes(role));
 }
 
 /**
@@ -187,7 +187,7 @@ export async function hasAdminAccessDb(): Promise<boolean> {
   }
 
   const { roles } = userData;
-  return roles.includes("evolution admin") || roles.includes("admin");
+  return roles.includes('evolution admin') || roles.includes('admin');
 }
 
 /**
@@ -212,13 +212,13 @@ export async function getHighestPriorityRoleDb(): Promise<UserRole | null> {
   const { roles } = userData;
 
   const rolePriority: UserRole[] = [
-    "evolution admin",
-    "admin",
-    "manager",
-    "location admin",
-    "technician",
-    "collector",
-    "collector meters",
+    'evolution admin',
+    'admin',
+    'manager',
+    'location admin',
+    'technician',
+    'collector',
+    'collector meters',
   ];
 
   for (const role of rolePriority) {

@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
-import { TimePeriod } from "@/app/api/lib/types";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
+import { TimePeriod } from '@/app/api/lib/types';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { DateRange as RDPDateRange } from "react-day-picker";
+} from '@/components/ui/select';
+import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 export type ActivityLogDateFilterProps = {
   onDateRangeChange?: (dateRange: { from: Date; to: Date } | undefined) => void;
@@ -24,21 +24,22 @@ export default function ActivityLogDateFilter({
   onTimePeriodChange,
   disabled = false,
 }: ActivityLogDateFilterProps) {
-  const [activeFilter, setActiveFilter] = useState<TimePeriod>("7d");
+  const [activeFilter, setActiveFilter] = useState<TimePeriod>('7d');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const [pendingCustomDateRange, setPendingCustomDateRange] = useState<RDPDateRange>();
+  const [pendingCustomDateRange, setPendingCustomDateRange] =
+    useState<RDPDateRange>();
 
   const timeFilterButtons: { label: string; value: TimePeriod }[] = [
-    { label: "Today", value: "Today" as TimePeriod },
-    { label: "Yesterday", value: "Yesterday" as TimePeriod },
-    { label: "Last 7 Days", value: "7d" as TimePeriod },
-    { label: "Last 30 Days", value: "30d" as TimePeriod },
-    { label: "All Time", value: "All Time" as TimePeriod },
-    { label: "Custom", value: "Custom" as TimePeriod },
+    { label: 'Today', value: 'Today' as TimePeriod },
+    { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+    { label: 'Last 7 Days', value: '7d' as TimePeriod },
+    { label: 'Last 30 Days', value: '30d' as TimePeriod },
+    { label: 'All Time', value: 'All Time' as TimePeriod },
+    { label: 'Custom', value: 'Custom' as TimePeriod },
   ];
 
   const handleFilterClick = (filter: TimePeriod) => {
-    if (filter === "Custom") {
+    if (filter === 'Custom') {
       setShowCustomPicker(true);
     } else {
       setShowCustomPicker(false);
@@ -53,13 +54,13 @@ export default function ActivityLogDateFilter({
       // Convert dates to proper timezone format
       const startDate = new Date(pendingCustomDateRange.from);
       startDate.setHours(0, 0, 0, 0);
-      
+
       const endDate = new Date(pendingCustomDateRange.to);
       endDate.setHours(23, 59, 59, 999);
-      
-      setActiveFilter("Custom");
+
+      setActiveFilter('Custom');
       setShowCustomPicker(false);
-      onTimePeriodChange?.("Custom");
+      onTimePeriodChange?.('Custom');
       onDateRangeChange?.({ from: startDate, to: endDate });
     }
   };
@@ -77,22 +78,22 @@ export default function ActivityLogDateFilter({
   };
 
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div className="flex w-full flex-col gap-3">
       {/* Filter Controls */}
-      <div className="flex flex-wrap items-center gap-2 w-full">
+      <div className="flex w-full flex-wrap items-center gap-2">
         {/* Desktop Filter Buttons */}
-        <div className="hidden md:flex items-center gap-2">
-          {timeFilterButtons.map((button) => (
+        <div className="hidden items-center gap-2 md:flex">
+          {timeFilterButtons.map(button => (
             <Button
               key={button.value}
-              variant={activeFilter === button.value ? "default" : "outline"}
+              variant={activeFilter === button.value ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleFilterClick(button.value)}
               disabled={disabled}
               className={
                 activeFilter === button.value
-                  ? "bg-buttonActive text-container"
-                  : "bg-container text-grayHighlight border-buttonActive hover:bg-buttonActive hover:text-container"
+                  ? 'bg-buttonActive text-container'
+                  : 'border-buttonActive bg-container text-grayHighlight hover:bg-buttonActive hover:text-container'
               }
             >
               {button.label}
@@ -101,17 +102,17 @@ export default function ActivityLogDateFilter({
         </div>
 
         {/* Mobile Filter Dropdown */}
-        <div className="md:hidden w-full">
+        <div className="w-full md:hidden">
           <Select
             value={activeFilter}
-            onValueChange={(value) => handleFilterClick(value as TimePeriod)}
+            onValueChange={value => handleFilterClick(value as TimePeriod)}
             disabled={disabled}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select time period" />
             </SelectTrigger>
             <SelectContent>
-              {timeFilterButtons.map((button) => (
+              {timeFilterButtons.map(button => (
                 <SelectItem key={button.value} value={button.value}>
                   {button.label}
                 </SelectItem>

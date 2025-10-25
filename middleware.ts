@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
-import { getJwtSecret, getCurrentDbConnectionString } from "@/lib/utils/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import { jwtVerify } from 'jose';
+import { getJwtSecret, getCurrentDbConnectionString } from '@/lib/utils/auth';
 
-const publicPaths = ["/login", "/forgot-password", "/reset-password"];
+const publicPaths = ['/login', '/forgot-password', '/reset-password'];
 
 /**
  * Validates database context from JWT token
@@ -12,7 +12,7 @@ function validateDatabaseContext(
 ): boolean {
   if (!tokenPayload.dbContext) {
     console.warn(
-      "JWT token missing database context - forcing re-authentication"
+      'JWT token missing database context - forcing re-authentication'
     );
     return false;
   }
@@ -27,14 +27,14 @@ function validateDatabaseContext(
 
   // Check if database context has changed
   if (tokenDbContext.connectionString !== currentDbContext.connectionString) {
-    console.warn("Database context mismatch - forcing re-authentication", {
+    console.warn('Database context mismatch - forcing re-authentication', {
       tokenContext: tokenDbContext,
       currentContext: currentDbContext,
     });
     return false;
   }
 
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     console.log(`[MIDDLEWARE] Database context validation passed`);
   }
 
@@ -53,7 +53,7 @@ async function verifyAccessToken(token: string) {
     );
     return payload;
   } catch (error) {
-    console.error("JWT verification failed:", error);
+    console.error('JWT verification failed:', error);
     return null;
   }
 }
@@ -63,9 +63,9 @@ export async function middleware(request: NextRequest) {
 
   // Skip API requests & public assets
   if (
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon.ico') ||
     pathname.match(
       /\.(png|jpg|jpeg|gif|svg|ico|webp|bmp|tiff|pdf|txt|css|js|woff|woff2|ttf|eot)$/i
     )
@@ -74,11 +74,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Debug logging for infinite loop investigation
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     console.log(`[MIDDLEWARE] Processing: ${pathname}`);
   }
 
-  const token = request.cookies.get("token")?.value;
+  const token = request.cookies.get('token')?.value;
   let isAuthenticated = false;
 
   if (token) {
@@ -89,46 +89,46 @@ export async function middleware(request: NextRequest) {
         // Database context validation
         if (!validateDatabaseContext(payload)) {
           console.warn(
-            "🔴 [MIDDLEWARE] Database context mismatch - forcing re-authentication"
+            '🔴 [MIDDLEWARE] Database context mismatch - forcing re-authentication'
           );
-          console.warn("🔍 Payload dbContext:", payload.dbContext);
-          console.warn("🔍 Current DB:", getCurrentDbConnectionString());
-          return createLogoutResponse(request, "database_context_mismatch");
+          console.warn('🔍 Payload dbContext:', payload.dbContext);
+          console.warn('🔍 Current DB:', getCurrentDbConnectionString());
+          return createLogoutResponse(request, 'database_context_mismatch');
         }
 
         // Check if user is enabled
         if (!payload.isEnabled) {
-          console.warn("🔴 [MIDDLEWARE] User account is disabled");
-          return createLogoutResponse(request, "account_disabled");
+          console.warn('🔴 [MIDDLEWARE] User account is disabled');
+          return createLogoutResponse(request, 'account_disabled');
         }
 
         isAuthenticated = true;
         console.warn(
-          "✅ [MIDDLEWARE] Token validated successfully for:",
+          '✅ [MIDDLEWARE] Token validated successfully for:',
           payload.emailAddress
         );
 
-        if (process.env.NODE_ENV === "development") {
+        if (process.env.NODE_ENV === 'development') {
           console.log(
             `[MIDDLEWARE] User authenticated: ${
-              payload.emailAddress || "NO_EMAIL"
+              payload.emailAddress || 'NO_EMAIL'
             }`
           );
         }
       }
     } catch (err) {
-      console.error("JWT verification failed:", err);
-      return createLogoutResponse(request, "invalid_token");
+      console.error('JWT verification failed:', err);
+      return createLogoutResponse(request, 'invalid_token');
     }
   } else {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       console.log(`[MIDDLEWARE] No token found for ${pathname}`);
     }
   }
 
   const isPublicPath = publicPaths.includes(pathname);
 
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     console.log(
       `[MIDDLEWARE] isAuthenticated: ${isAuthenticated}, isPublicPath: ${isPublicPath}, pathname: ${pathname}`
     );
@@ -136,14 +136,14 @@ export async function middleware(request: NextRequest) {
 
   // Redirect logged-in users away from public pages
   if (isAuthenticated && isPublicPath) {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       console.log(
         `[MIDDLEWARE] Redirecting authenticated user from ${pathname} to /`
       );
     }
-    const redirectUrl = new URL("/", request.url);
+    const redirectUrl = new URL('/', request.url);
     console.warn(
-      "🔀 [MIDDLEWARE] Authenticated user on public page, redirecting to:",
+      '🔀 [MIDDLEWARE] Authenticated user on public page, redirecting to:',
       redirectUrl.toString()
     );
     return NextResponse.redirect(redirectUrl);
@@ -151,20 +151,20 @@ export async function middleware(request: NextRequest) {
 
   // Redirect unauthenticated users away from protected pages
   if (!isAuthenticated && !isPublicPath) {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       console.log(
         `[MIDDLEWARE] Redirecting unauthenticated user from ${pathname} to /login`
       );
     }
-    const redirectUrl = new URL("/login", request.url);
+    const redirectUrl = new URL('/login', request.url);
     console.warn(
-      "🔀 [MIDDLEWARE] Unauthenticated user on protected page, redirecting to:",
+      '🔀 [MIDDLEWARE] Unauthenticated user on protected page, redirecting to:',
       redirectUrl.toString()
     );
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     console.log(`[MIDDLEWARE] Allowing access to ${pathname}`);
   }
 
@@ -181,41 +181,41 @@ function createLogoutResponse(
   // For database context mismatch, redirect to clean /login without error parameter
   // This prevents the mismatch URL from persisting and causing issues
   const redirectUrl =
-    error === "database_context_mismatch"
-      ? new URL("/login", request.url)
+    error === 'database_context_mismatch'
+      ? new URL('/login', request.url)
       : new URL(`/login?error=${error}`, request.url);
 
   const response = NextResponse.redirect(redirectUrl);
 
   // Clear all authentication cookies
-  response.cookies.set("token", "", {
+  response.cookies.set('token', '', {
     expires: new Date(0),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
   });
 
-  response.cookies.set("refreshToken", "", {
+  response.cookies.set('refreshToken', '', {
     expires: new Date(0),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
   });
 
   // Clear any additional cookies that might contain user data
-  response.cookies.set("user", "", {
+  response.cookies.set('user', '', {
     expires: new Date(0),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
   });
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.|api/).*)"],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.|api/).*)'],
 };

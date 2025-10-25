@@ -1,17 +1,17 @@
-"use client";
-import React, { useEffect } from "react";
-import { useReportStore } from "@/lib/store/useReportStore";
-import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
-import { ReportConfig } from "@/lib/types/reports";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DateRangePicker } from "@/components/ui/dateRangePicker";
-import { MultiSelect } from "./MultiSelect";
-import { Label } from "@/components/ui/label";
-import { REPORT_TYPE_CONFIG } from "@/lib/constants/reportBuilder";
-import { subDays } from "date-fns";
-import { DateRange } from "react-day-picker";
-import { useGenerateCustomReport } from "@/lib/hooks/reports";
+'use client';
+import React, { useEffect } from 'react';
+import { useReportStore } from '@/lib/store/useReportStore';
+import { useAnalyticsDataStore } from '@/lib/store/reportsDataStore';
+import { ReportConfig } from '@/lib/types/reports';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DateRangePicker } from '@/components/ui/dateRangePicker';
+import { MultiSelect } from './MultiSelect';
+import { Label } from '@/components/ui/label';
+import { REPORT_TYPE_CONFIG } from '@/lib/constants/reportBuilder';
+import { subDays } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+import { useGenerateCustomReport } from '@/lib/hooks/reports';
 
 export default function ConfigureFinancialsReport() {
   const {
@@ -46,8 +46,8 @@ export default function ConfigureFinancialsReport() {
         title: config.title,
         fields: config.defaultFields,
         filters: {},
-        chartType: "table",
-        exportFormat: "pdf",
+        chartType: 'table',
+        exportFormat: 'pdf',
       });
     }
   }, [
@@ -90,12 +90,12 @@ export default function ConfigureFinancialsReport() {
         <Button
           variant="link"
           onClick={resetReportConfig}
-          className="p-0 h-auto mb-4"
+          className="mb-4 h-auto p-0"
         >
           &larr; Back to Report Types
         </Button>
         <h1 className="text-3xl font-bold">Full Financial Audit Report</h1>
-        <p className="text-gray-500 mt-2">
+        <p className="mt-2 text-gray-500">
           Generate a comprehensive financial data dump for a specific period.
         </p>
       </div>
@@ -121,16 +121,16 @@ export default function ConfigureFinancialsReport() {
           </p>
         </CardHeader>
         <CardContent>
-          {reportTypeConfig.availableFilters.includes("locations") && (
+          {reportTypeConfig.availableFilters.includes('locations') && (
             <div>
               <Label>Locations</Label>
               <MultiSelect
-                options={locations.map((l) => ({
+                options={locations.map(l => ({
                   value: l._id,
                   label: l.name,
                 }))}
                 selected={reportConfig.filters?.locationIds || []}
-                onChange={(ids) =>
+                onChange={ids =>
                   updateReportConfig({
                     filters: { ...reportConfig.filters, locationIds: ids },
                   })
@@ -157,7 +157,7 @@ export default function ConfigureFinancialsReport() {
           }}
           disabled={isLoading}
         >
-          {isLoading ? "Generating..." : "Generate Full Audit"}
+          {isLoading ? 'Generating...' : 'Generate Full Audit'}
         </Button>
       </div>
     </div>

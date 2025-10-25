@@ -1,9 +1,8 @@
-import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import PageLayout from "@/components/layout/PageLayout";
+import PageLayout from '@/components/layout/PageLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeftIcon } from '@radix-ui/react-icons';
 
 type CabinetDetailsLoadingStateProps = {
   selectedLicencee: string;
@@ -15,22 +14,22 @@ type CabinetDetailsLoadingStateProps = {
  * Specific skeleton component for Cabinet Detail page that matches the exact layout
  */
 const CabinetDetailPageSkeleton = () => (
-  <div className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
+  <div className="flex flex-1 flex-col overflow-x-hidden p-4 md:p-6">
     {/* Back button skeleton */}
-    <div className="mt-4 mb-2">
+    <div className="mb-2 mt-4">
       <Skeleton className="h-9 w-32" />
     </div>
 
     {/* Cabinet Info Header skeleton */}
-    <div className="mt-6 mb-6 relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between">
+    <div className="relative mb-6 mt-6">
+      <div className="flex flex-col justify-between md:flex-row md:items-center">
         <div className="mb-4 md:mb-0">
           {/* Cabinet name and edit button */}
-          <div className="flex items-center mb-2">
-            <Skeleton className="h-8 w-48 mr-2" />
+          <div className="mb-2 flex items-center">
+            <Skeleton className="mr-2 h-8 w-48" />
             <Skeleton className="h-8 w-8 rounded-full" />
           </div>
-          
+
           {/* Cabinet details */}
           <div className="space-y-2">
             <Skeleton className="h-4 w-64" />
@@ -40,9 +39,9 @@ const CabinetDetailPageSkeleton = () => (
         </div>
 
         {/* Online status and refresh button */}
-        <div className="mt-2 md:mt-0 flex items-center gap-2">
-          <div className="flex items-center px-3 py-1.5 rounded-lg bg-container shadow-sm border">
-            <Skeleton className="h-2.5 w-2.5 rounded-full mr-2" />
+        <div className="mt-2 flex items-center gap-2 md:mt-0">
+          <div className="flex items-center rounded-lg border bg-container px-3 py-1.5 shadow-sm">
+            <Skeleton className="mr-2 h-2.5 w-2.5 rounded-full" />
             <Skeleton className="h-4 w-16" />
           </div>
           <Skeleton className="h-9 w-20" />
@@ -51,42 +50,49 @@ const CabinetDetailPageSkeleton = () => (
     </div>
 
     {/* SMIB Configuration skeleton */}
-    <div className="mt-4 bg-container rounded-lg shadow-md shadow-purple-200">
-      <div className="px-6 py-4 flex justify-between items-center">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-5 w-5" />
+    <div className="mt-4 rounded-lg bg-container shadow-md shadow-purple-200">
+      <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-6 w-48" />
+          {/* SMIB status skeleton */}
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-2.5 w-2.5 rounded-full" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        </div>
+        <Skeleton className="h-10 w-48" />
       </div>
       <div className="px-6 pb-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 md:justify-between gap-2 md:gap-4">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:justify-between md:gap-4">
           <div className="space-y-2">
-            <Skeleton className="h-4 w-32" />
             <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-56" />
           </div>
-          <div className="md:text-right space-y-2">
+          <div className="space-y-2 md:text-right">
+            <Skeleton className="h-4 w-44" />
             <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-4 w-36" />
           </div>
         </div>
       </div>
     </div>
 
     {/* Date filtering UI skeleton */}
-    <div className="mt-4 mb-2 max-w-full">
+    <div className="mb-2 mt-4 max-w-full">
       {/* Mobile select dropdown skeleton */}
-      <div className="w-full xl:hidden mb-4">
+      <div className="mb-4 w-full xl:hidden">
         <Skeleton className="h-12 w-full md:w-48" />
       </div>
 
       {/* Desktop time period filters skeleton */}
-      <div className="hidden xl:flex flex-wrap justify-center lg:justify-end gap-2 mb-4">
+      <div className="mb-4 hidden flex-wrap justify-center gap-2 lg:justify-end xl:flex">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-8 w-20 rounded-full" />
         ))}
       </div>
 
       {/* Mobile horizontal slider skeleton */}
-      <div className="lg:hidden overflow-x-auto touch-pan-x pb-4 w-full p-2 rounded-md">
-        <div className="flex space-x-2 min-w-max px-1 pb-1">
+      <div className="w-full touch-pan-x overflow-x-auto rounded-md p-2 pb-4 lg:hidden">
+        <div className="flex min-w-max space-x-2 px-1 pb-1">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-8 w-24 rounded" />
           ))}
@@ -97,7 +103,7 @@ const CabinetDetailPageSkeleton = () => (
     {/* Accounting Details skeleton */}
     <div className="space-y-6">
       {/* Sidebar skeleton */}
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col gap-6 lg:flex-row">
         <div className="lg:w-64 lg:flex-shrink-0">
           <Card>
             <CardHeader>
@@ -123,7 +129,7 @@ const CabinetDetailPageSkeleton = () => (
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <Skeleton className="h-6 w-32 mb-2" />
+                  <Skeleton className="mb-2 h-6 w-32" />
                   <Skeleton className="h-4 w-48" />
                 </div>
                 <Skeleton className="h-8 w-16" />
@@ -131,7 +137,7 @@ const CabinetDetailPageSkeleton = () => (
             </CardHeader>
             <CardContent>
               {/* Metrics cards skeleton */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <Card key={i}>
                     <CardContent className="p-4">
@@ -150,9 +156,12 @@ const CabinetDetailPageSkeleton = () => (
 
               {/* Table skeleton */}
               <div className="space-y-3">
-                <div className="h-12 bg-gray-200 rounded animate-pulse" />
+                <div className="h-12 animate-pulse rounded bg-gray-200" />
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="h-14 bg-gray-100 rounded animate-pulse" />
+                  <div
+                    key={i}
+                    className="h-14 animate-pulse rounded bg-gray-100"
+                  />
                 ))}
               </div>
             </CardContent>
@@ -183,9 +192,7 @@ export const CabinetDetailsLoadingState = ({
     showToaster={false}
   >
     <CabinetDetailPageSkeleton />
-    {error && (
-      <div className="mt-4 text-destructive text-center">{error}</div>
-    )}
+    {error && <div className="mt-4 text-center text-destructive">{error}</div>}
   </PageLayout>
 );
 
@@ -216,12 +223,12 @@ export const CabinetDetailsErrorState = ({
     mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
     showToaster={false}
   >
-    <div className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden">
+    <div className="flex flex-1 flex-col overflow-x-hidden p-4 md:p-6">
       {/* Back button */}
-      <div className="mt-4 mb-2">
+      <div className="mb-2 mt-4">
         <Button
           variant="outline"
-          className="flex items-center bg-container border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-container transition-colors duration-300"
+          className="flex items-center border-buttonActive bg-container text-buttonActive transition-colors duration-300 hover:bg-buttonActive hover:text-container"
           size="sm"
         >
           <ArrowLeftIcon className="mr-2 h-4 w-4" />
@@ -230,14 +237,14 @@ export const CabinetDetailsErrorState = ({
       </div>
 
       {/* Error message */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex flex-1 items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-center text-destructive">
               Error Loading Cabinet Details
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
+          <CardContent className="space-y-4 text-center">
             <p className="text-muted-foreground">{error}</p>
             <Button onClick={onRetry} className="w-full">
               Retry

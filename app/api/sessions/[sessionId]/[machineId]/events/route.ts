@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { MachineEvent } from "@/app/api/lib/models/machineEvents";
-import type { PipelineStage } from "mongoose";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { MachineEvent } from '@/app/api/lib/models/machineEvents';
+import type { PipelineStage } from 'mongoose';
 
 export async function GET(
   request: NextRequest,
@@ -13,13 +13,13 @@ export async function GET(
     await connectDB();
 
     const { searchParams } = new URL(request.url);
-    const eventType = searchParams.get("eventType");
-    const event = searchParams.get("event");
-    const game = searchParams.get("game");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const filterDate = searchParams.get("filterDate");
-    const licensee = searchParams.get("licensee");
+    const eventType = searchParams.get('eventType');
+    const event = searchParams.get('event');
+    const game = searchParams.get('game');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const filterDate = searchParams.get('filterDate');
+    const licensee = searchParams.get('licensee');
 
     // Build query - match both session and machine
     const query: Record<string, unknown> = {
@@ -27,26 +27,26 @@ export async function GET(
     };
 
     // Only add session filter if sessionId is provided and valid
-    if (sessionId && sessionId !== "undefined" && sessionId !== "null") {
+    if (sessionId && sessionId !== 'undefined' && sessionId !== 'null') {
       query.currentSession = sessionId;
     }
 
     if (eventType) {
-      query.eventType = { $regex: eventType, $options: "i" };
+      query.eventType = { $regex: eventType, $options: 'i' };
     }
 
     if (event) {
-      query.description = { $regex: event, $options: "i" };
+      query.description = { $regex: event, $options: 'i' };
     }
 
     if (game) {
-      query.gameName = { $regex: game, $options: "i" };
+      query.gameName = { $regex: game, $options: 'i' };
     }
 
     // Add date filtering based on startDate and endDate parameters
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
     if (startDate && endDate) {
       query.date = {
         $gte: new Date(startDate),
@@ -70,36 +70,36 @@ export async function GET(
     // If licensee is provided, we need to filter events by licensee through machine lookup
     let events;
     let totalEvents;
-    
+
     if (licensee) {
       // Use aggregation to join with machines and filter by licensee
       const aggregationPipeline = [
         { $match: query },
         {
           $lookup: {
-            from: "machines",
-            localField: "machine",
-            foreignField: "_id",
-            as: "machineDetails",
+            from: 'machines',
+            localField: 'machine',
+            foreignField: '_id',
+            as: 'machineDetails',
           },
         },
         {
-          $unwind: "$machineDetails",
+          $unwind: '$machineDetails',
         },
         {
           $lookup: {
-            from: "gaminglocations",
-            localField: "machineDetails.gamingLocation",
-            foreignField: "_id",
-            as: "locationDetails",
+            from: 'gaminglocations',
+            localField: 'machineDetails.gamingLocation',
+            foreignField: '_id',
+            as: 'locationDetails',
           },
         },
         {
-          $unwind: "$locationDetails",
+          $unwind: '$locationDetails',
         },
         {
           $match: {
-            "locationDetails.rel.licencee": licensee,
+            'locationDetails.rel.licencee': licensee,
           },
         },
         {
@@ -107,16 +107,15 @@ export async function GET(
         },
         {
           $facet: {
-            events: [
-              { $skip: (page - 1) * limit },
-              { $limit: limit },
-            ],
-            totalCount: [{ $count: "count" }],
+            events: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+            totalCount: [{ $count: 'count' }],
           },
         },
       ];
 
-      const result = await MachineEvent.aggregate(aggregationPipeline as PipelineStage[]);
+      const result = await MachineEvent.aggregate(
+        aggregationPipeline as PipelineStage[]
+      );
       events = result[0]?.events || [];
       totalEvents = result[0]?.totalCount[0]?.count || 0;
     } else {
@@ -131,7 +130,7 @@ export async function GET(
 
     // Build filter query
     const filterQuery: Record<string, unknown> = { machine: machineId };
-    if (sessionId && sessionId !== "undefined" && sessionId !== "null") {
+    if (sessionId && sessionId !== 'undefined' && sessionId !== 'null') {
       filterQuery.currentSession = sessionId;
     }
 
@@ -158,45 +157,55 @@ export async function GET(
 
     // Get unique values for filters
     let eventTypes: string[], eventsList: string[], games: string[];
-    
+
     if (licensee) {
       // Use aggregation for licensee-filtered distinct values
       const filterAggregationPipeline = [
         { $match: filterQuery },
         {
           $lookup: {
-            from: "machines",
-            localField: "machine",
-            foreignField: "_id",
-            as: "machineDetails",
+            from: 'machines',
+            localField: 'machine',
+            foreignField: '_id',
+            as: 'machineDetails',
           },
         },
         {
-          $unwind: "$machineDetails",
+          $unwind: '$machineDetails',
         },
         {
           $lookup: {
-            from: "gaminglocations",
-            localField: "machineDetails.gamingLocation",
-            foreignField: "_id",
-            as: "locationDetails",
+            from: 'gaminglocations',
+            localField: 'machineDetails.gamingLocation',
+            foreignField: '_id',
+            as: 'locationDetails',
           },
         },
         {
-          $unwind: "$locationDetails",
+          $unwind: '$locationDetails',
         },
         {
           $match: {
-            "locationDetails.rel.licencee": licensee,
+            'locationDetails.rel.licencee': licensee,
           },
         },
       ];
 
-      const [eventTypesResult, eventsListResult, gamesResult] = await Promise.all([
-        MachineEvent.aggregate([...filterAggregationPipeline, { $group: { _id: "$eventType" } }] as PipelineStage[]),
-        MachineEvent.aggregate([...filterAggregationPipeline, { $group: { _id: "$description" } }] as PipelineStage[]),
-        MachineEvent.aggregate([...filterAggregationPipeline, { $group: { _id: "$gameName" } }] as PipelineStage[]),
-      ]);
+      const [eventTypesResult, eventsListResult, gamesResult] =
+        await Promise.all([
+          MachineEvent.aggregate([
+            ...filterAggregationPipeline,
+            { $group: { _id: '$eventType' } },
+          ] as PipelineStage[]),
+          MachineEvent.aggregate([
+            ...filterAggregationPipeline,
+            { $group: { _id: '$description' } },
+          ] as PipelineStage[]),
+          MachineEvent.aggregate([
+            ...filterAggregationPipeline,
+            { $group: { _id: '$gameName' } },
+          ] as PipelineStage[]),
+        ]);
 
       eventTypes = eventTypesResult.map(item => item._id).filter(Boolean);
       eventsList = eventsListResult.map(item => item._id).filter(Boolean);
@@ -204,9 +213,9 @@ export async function GET(
     } else {
       // No licensee filter, use simple distinct queries
       [eventTypes, eventsList, games] = await Promise.all([
-        MachineEvent.distinct("eventType", filterQuery),
-        MachineEvent.distinct("description", filterQuery),
-        MachineEvent.distinct("gameName", filterQuery),
+        MachineEvent.distinct('eventType', filterQuery),
+        MachineEvent.distinct('description', filterQuery),
+        MachineEvent.distinct('gameName', filterQuery),
       ]);
     }
 
@@ -229,9 +238,9 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error fetching session events:", error);
+    console.error('Error fetching session events:', error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }

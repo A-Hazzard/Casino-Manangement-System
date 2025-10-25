@@ -1,4 +1,4 @@
-import type { ApiError } from "@/lib/types/errors";
+import type { ApiError } from '@/lib/types/errors';
 
 export type WithErrorHandlingProps = {
   onError?: (error: ApiError) => void;
@@ -7,5 +7,3 @@ export type WithErrorHandlingProps = {
   errorTitle?: string;
   errorDescription?: string;
 };
-
-

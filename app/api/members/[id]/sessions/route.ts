@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { MachineSession } from "@/app/api/lib/models/machineSessions";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import {
   getCurrencyFromQuery,
   applyCurrencyConversionToMetrics,
   shouldApplyCurrencyConversion,
-} from "@/app/api/lib/helpers/currencyHelper";
+} from '@/app/api/lib/helpers/currencyHelper';
 
 // Helper function to calculate ISO week number
 function getWeekNumber(date: Date): number {
@@ -28,18 +28,18 @@ export async function GET(
     await connectDB();
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const filter = searchParams.get("filter") || "session";
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const filter = searchParams.get('filter') || 'session';
     const displayCurrency = getCurrencyFromQuery(searchParams);
-    const licencee = searchParams.get("licencee") || null;
+    const licencee = searchParams.get('licencee') || null;
 
     // Build query for member sessions
     const query: Record<string, unknown> = { memberId: id };
 
     // For grouped views, we need to fetch all sessions and group them on the server
     // For individual sessions, we can use pagination
-    if (filter === "session") {
+    if (filter === 'session') {
       // Get total count for pagination
       const totalSessions = await MachineSession.countDocuments(query);
 
@@ -51,9 +51,9 @@ export async function GET(
         .lean();
 
       // Process individual sessions
-      const processedSessions = sessions.map((session) => {
+      const processedSessions = sessions.map(session => {
         let duration = null;
-        let sessionLength = "N/A";
+        let sessionLength = 'N/A';
 
         if (session.startTime && session.endTime) {
           const start = new Date(session.startTime);
@@ -67,9 +67,9 @@ export async function GET(
             (durationMs % (1000 * 60 * 60)) / (1000 * 60)
           );
           const seconds = Math.floor((durationMs % (1000 * 60)) / 1000);
-          sessionLength = `${hours.toString().padStart(2, "0")}:${minutes
+          sessionLength = `${hours.toString().padStart(2, '0')}:${minutes
             .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+            .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
         // Calculate handle (total bets placed) - using movement.coinIn from financial guide
@@ -103,15 +103,15 @@ export async function GET(
           sessionId: session._id,
           machineId: session.machineId,
           time: session.startTime
-            ? new Date(session.startTime).toLocaleString("en-US", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
+            ? new Date(session.startTime).toLocaleString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
                 hour12: true,
               })
-            : "N/A",
+            : 'N/A',
           sessionLength,
           handle,
           moneyIn,
@@ -160,20 +160,20 @@ export async function GET(
       // Group by date periods (day, week, month)
       const groupedSessions = new Map();
 
-      allSessions.forEach((session) => {
+      allSessions.forEach(session => {
         if (session.startTime) {
           const sessionDate = new Date(session.startTime);
           let groupKey: string;
 
           switch (filter) {
-            case "day":
-              groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
+            case 'day':
+              groupKey = sessionDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
               });
               break;
-            case "week":
+            case 'week':
               const weekStart = new Date(sessionDate);
               const dayOfWeek = sessionDate.getDay();
               const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
@@ -184,25 +184,25 @@ export async function GET(
               const weekNumber = getWeekNumber(weekStart);
 
               groupKey = `Week ${weekNumber}, ${weekStart.toLocaleDateString(
-                "en-US",
+                'en-US',
                 {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
                 }
               )}`;
               break;
-            case "month":
-              groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "long",
-                year: "numeric",
+            case 'month':
+              groupKey = sessionDate.toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
               });
               break;
             default:
-              groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
+              groupKey = sessionDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
               });
           }
 
@@ -210,9 +210,9 @@ export async function GET(
             groupedSessions.set(groupKey, {
               _id: groupKey,
               sessionId: groupKey,
-              machineId: "N/A",
+              machineId: 'N/A',
               time: groupKey,
-              sessionLength: "N/A",
+              sessionLength: 'N/A',
               handle: 0,
               moneyIn: 0,
               moneyOut: 0,
@@ -272,7 +272,7 @@ export async function GET(
 
       // Convert grouped sessions to array and format duration
       const processedSessions = Array.from(groupedSessions.values()).map(
-        (group) => {
+        group => {
           // Format total duration as HH:MM:SS
           const hours = Math.floor(group.totalDuration / (1000 * 60 * 60));
           const minutes = Math.floor(
@@ -281,9 +281,9 @@ export async function GET(
           const seconds = Math.floor(
             (group.totalDuration % (1000 * 60)) / 1000
           );
-          const sessionLength = `${hours.toString().padStart(2, "0")}:${minutes
+          const sessionLength = `${hours.toString().padStart(2, '0')}:${minutes
             .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+            .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
           return {
             ...group,
@@ -337,11 +337,11 @@ export async function GET(
     // Process sessions based on filter type
     let processedSessions;
 
-    if (filter === "session") {
+    if (filter === 'session') {
       // Individual sessions - calculate duration and format data for each session
-      processedSessions = sessions.map((session) => {
+      processedSessions = sessions.map(session => {
         let duration = null;
-        let sessionLength = "N/A";
+        let sessionLength = 'N/A';
 
         if (session.startTime && session.endTime) {
           const start = new Date(session.startTime);
@@ -355,9 +355,9 @@ export async function GET(
             (durationMs % (1000 * 60 * 60)) / (1000 * 60)
           );
           const seconds = Math.floor((durationMs % (1000 * 60)) / 1000);
-          sessionLength = `${hours.toString().padStart(2, "0")}:${minutes
+          sessionLength = `${hours.toString().padStart(2, '0')}:${minutes
             .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+            .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
         // Calculate handle (total bets placed) - using movement.coinIn from financial guide
@@ -391,15 +391,15 @@ export async function GET(
           sessionId: session._id,
           machineId: session.machineId,
           time: session.startTime
-            ? new Date(session.startTime).toLocaleString("en-US", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
+            ? new Date(session.startTime).toLocaleString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
                 hour12: true,
               })
-            : "N/A",
+            : 'N/A',
           sessionLength,
           handle,
           moneyIn,
@@ -443,20 +443,20 @@ export async function GET(
       // Group by date periods (day, week, month)
       const groupedSessions = new Map();
 
-      sessions.forEach((session) => {
+      sessions.forEach(session => {
         if (session.startTime) {
           const sessionDate = new Date(session.startTime);
           let groupKey: string;
 
           switch (filter) {
-            case "day":
-              groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
+            case 'day':
+              groupKey = sessionDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
               });
               break;
-            case "week":
+            case 'week':
               const weekStart = new Date(sessionDate);
               const dayOfWeek = sessionDate.getDay();
               const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
@@ -467,25 +467,25 @@ export async function GET(
               const weekNumber = getWeekNumber(weekStart);
 
               groupKey = `Week ${weekNumber}, ${weekStart.toLocaleDateString(
-                "en-US",
+                'en-US',
                 {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
                 }
               )}`;
               break;
-            case "month":
-              groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "long",
-                year: "numeric",
+            case 'month':
+              groupKey = sessionDate.toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
               });
               break;
             default:
-              groupKey = sessionDate.toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
+              groupKey = sessionDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
               });
           }
 
@@ -493,9 +493,9 @@ export async function GET(
             groupedSessions.set(groupKey, {
               _id: groupKey,
               sessionId: groupKey,
-              machineId: "N/A",
+              machineId: 'N/A',
               time: groupKey,
-              sessionLength: "N/A",
+              sessionLength: 'N/A',
               handle: 0,
               moneyIn: 0,
               moneyOut: 0,
@@ -555,7 +555,7 @@ export async function GET(
 
       // Convert grouped sessions to array and format duration
       const processedSessions = Array.from(groupedSessions.values()).map(
-        (group) => {
+        group => {
           // Format total duration as HH:MM:SS
           const hours = Math.floor(group.totalDuration / (1000 * 60 * 60));
           const minutes = Math.floor(
@@ -564,9 +564,9 @@ export async function GET(
           const seconds = Math.floor(
             (group.totalDuration % (1000 * 60)) / 1000
           );
-          const sessionLength = `${hours.toString().padStart(2, "0")}:${minutes
+          const sessionLength = `${hours.toString().padStart(2, '0')}:${minutes
             .toString()
-            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+            .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
           return {
             ...group,
@@ -607,9 +607,9 @@ export async function GET(
       });
     }
   } catch (error) {
-    console.error("Error fetching member sessions:", error);
+    console.error('Error fetching member sessions:', error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }

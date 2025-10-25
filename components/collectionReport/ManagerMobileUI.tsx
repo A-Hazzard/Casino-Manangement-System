@@ -1,7 +1,7 @@
-import React from "react";
-import ManagerScheduleFilters from "@/components/collectionReport/ManagerScheduleFilters";
-import ManagerScheduleCards from "@/components/collectionReport/ManagerScheduleCards";
-import type { ManagerMobileUIProps } from "@/lib/types/componentProps";
+import React from 'react';
+import ManagerScheduleFilters from '@/components/collectionReport/ManagerScheduleFilters';
+import ManagerScheduleCards from '@/components/collectionReport/ManagerScheduleCards';
+import type { ManagerMobileUIProps } from '@/lib/types/componentProps';
 
 const ManagerMobileUI: React.FC<ManagerMobileUIProps> = ({
   locations,
@@ -18,8 +18,8 @@ const ManagerMobileUI: React.FC<ManagerMobileUIProps> = ({
 }) => {
   return (
     // Mobile container for Manager Schedule, adjust styling as needed for card appearance
-    <div className="md:hidden w-full px-4">
-      <div className="mx-auto max-w-xl bg-white p-4 rounded-lg shadow-md space-y-4">
+    <div className="w-full px-4 md:hidden">
+      <div className="mx-auto max-w-xl space-y-4 rounded-lg bg-white p-4 shadow-md">
         <ManagerScheduleFilters
           locations={locations}
           collectors={collectors}

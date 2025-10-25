@@ -1,22 +1,22 @@
-import { NextResponse } from "next/server";
-import { MongoClient } from "mongodb";
+import { NextResponse } from 'next/server';
+import { MongoClient } from 'mongodb';
 
 // Map incoming timePeriod values tostored keys
 const timeframeKeyMap: Record<string, string> = {
-  "7d": "last7Days",
-  "30d": "last30Days",
-  Today: "Today",
-  Yesterday: "Yesterday",
+  '7d': 'last7Days',
+  '30d': 'last30Days',
+  Today: 'Today',
+  Yesterday: 'Yesterday',
 };
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const userIdStr = searchParams.get("userId");
-  const timePeriod = searchParams.get("timePeriod");
+  const userIdStr = searchParams.get('userId');
+  const timePeriod = searchParams.get('timePeriod');
   if (!userIdStr || !timePeriod) {
     // console.log("Missing userId or timePeriod parameter");
     return NextResponse.json(
-      { error: "Missing userId or timePeriod parameter" },
+      { error: 'Missing userId or timePeriod parameter' },
       { status: 400 }
     );
   }
@@ -26,19 +26,19 @@ export async function GET(request: Request) {
     console.error(
       `Invalid timePeriod parameter. Expected one of: ${Object.keys(
         timeframeKeyMap
-      ).join(", ")}`
+      ).join(', ')}`
     );
     return NextResponse.json(
       {
         error: `Invalid timePeriod parameter. Expected one of: ${Object.keys(
           timeframeKeyMap
-        ).join(", ")}`,
+        ).join(', ')}`,
       },
       { status: 400 }
     );
   }
 
-  const uri = process.env.MONGO_URI || "mongodb://localhost:27017/casinoDB";
+  const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/casinoDB';
   const client = new MongoClient(uri);
 
   try {
@@ -47,25 +47,25 @@ export async function GET(request: Request) {
 
     // Query the casinoMetrics collection for this user.
     const metricsForLocations = await db
-      .collection("casinoMetrics")
+      .collection('casinoMetrics')
       .findOne(
         { userId: userIdStr },
         { projection: { _id: 0, userId: 0, lastUpdated: 0 } }
       );
 
     if (!metricsForLocations) {
-      console.error("User metrics not found");
+      console.error('User metrics not found');
       return NextResponse.json(
-        { error: "User metrics not found" },
+        { error: 'User metrics not found' },
         { status: 404 }
       );
     }
 
     return NextResponse.json(metricsForLocations, { status: 200 });
   } catch (err) {
-    console.error("Error fetching aggregated metrics:", err);
+    console.error('Error fetching aggregated metrics:', err);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   } finally {

@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { Search, Filter } from "lucide-react";
-import { SESSION_SORT_OPTIONS } from "@/lib/constants/sessions";
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import { Button } from '@/components/ui/button';
+import { Search, Filter } from 'lucide-react';
+import { SESSION_SORT_OPTIONS } from '@/lib/constants/sessions';
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 
 type SessionsFiltersProps = {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   sortBy: string;
-  sortOrder: "asc" | "desc";
+  sortOrder: 'asc' | 'desc';
   onSortChange: (field: string) => void;
 };
 
@@ -32,17 +32,17 @@ export default function SessionsFilters({
       </div>
 
       {/* Search and Filter Controls */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
             <input
               type="text"
               placeholder="Search by player name, machine ID, or session ID..."
               value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={e => onSearchChange(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -51,10 +51,10 @@ export default function SessionsFilters({
             <Filter className="h-4 w-4 text-gray-400" />
             <select
               value={sortBy}
-              onChange={(e) => onSortChange(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={e => onSortChange(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             >
-              {SESSION_SORT_OPTIONS.map((option) => (
+              {SESSION_SORT_OPTIONS.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -68,9 +68,9 @@ export default function SessionsFilters({
               onClick={() => onSortChange(sortBy)}
               className="flex items-center space-x-1"
             >
-              <span>{sortOrder === "desc" ? "↓" : "↑"}</span>
+              <span>{sortOrder === 'desc' ? '↓' : '↑'}</span>
               <span className="hidden sm:inline">
-                {sortOrder === "desc" ? "Desc" : "Asc"}
+                {sortOrder === 'desc' ? 'Desc' : 'Asc'}
               </span>
             </Button>
           </div>

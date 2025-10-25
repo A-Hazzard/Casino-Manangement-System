@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
   Clock,
   Plus,
@@ -12,7 +12,7 @@ import {
   Bell,
   Users,
   FileText,
-} from "lucide-react";
+} from 'lucide-react';
 
 // UI Components
 import {
@@ -21,18 +21,18 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -41,21 +41,21 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Store
-import { useReportsStore } from "@/lib/store/reportsStore";
+import { useReportsStore } from '@/lib/store/reportsStore';
 
 // Types
-import type { ScheduledReport } from "@/lib/types/reports";
+import type { ScheduledReport } from '@/lib/types/reports';
 
 // Gaming Day configuration as mentioned in meeting notes
 const gamingDayConfig = {
-  startTime: "06:00", // 6 AM
-  endTime: "06:00", // 6 AM next day
-  timezone: "America/New_York",
+  startTime: '06:00', // 6 AM
+  endTime: '06:00', // 6 AM next day
+  timezone: 'America/New_York',
 };
 
 // TODO: Replace with MongoDB data fetching
@@ -63,34 +63,34 @@ const sampleScheduledReports: ScheduledReport[] = [];
 
 const reportTypes = [
   {
-    id: "compliance",
-    label: "GLI Compliance Report",
-    description: "Events browser and compliance monitoring",
+    id: 'compliance',
+    label: 'GLI Compliance Report',
+    description: 'Events browser and compliance monitoring',
   },
   {
-    id: "meters",
-    label: "Meters Export",
-    description: "Raw machine meter data export",
+    id: 'meters',
+    label: 'Meters Export',
+    description: 'Raw machine meter data export',
   },
   {
-    id: "comparison",
-    label: "Performance Comparison",
-    description: "Theoretical vs actual performance",
+    id: 'comparison',
+    label: 'Performance Comparison',
+    description: 'Theoretical vs actual performance',
   },
   {
-    id: "location-evaluation",
-    label: "Location Evaluation",
-    description: "SAS machine performance tracking",
+    id: 'location-evaluation',
+    label: 'Location Evaluation',
+    description: 'SAS machine performance tracking',
   },
   {
-    id: "location-revenue",
-    label: "Location Revenue",
-    description: "Non-SAS machine revenue with graphs",
+    id: 'location-revenue',
+    label: 'Location Revenue',
+    description: 'Non-SAS machine revenue with graphs',
   },
   {
-    id: "offline-machines",
-    label: "Offline Machines",
-    description: "Monitor offline machine status",
+    id: 'offline-machines',
+    label: 'Offline Machines',
+    description: 'Monitor offline machine status',
   },
 ];
 
@@ -100,21 +100,21 @@ export default function ScheduledTab() {
     []
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("scheduled");
+  const [activeTab, setActiveTab] = useState('scheduled');
 
   // Form state for creating/editing scheduled reports
   const [formData, setFormData] = useState({
-    name: "",
-    reportType: "",
-    frequency: "daily",
-    time: "07:00",
+    name: '',
+    reportType: '',
+    frequency: 'daily',
+    time: '07:00',
     timezone: gamingDayConfig.timezone,
     dayOfWeek: 1,
     dayOfMonth: 1,
-    recipients: [""],
+    recipients: [''],
     includeCharts: true,
     includeSummary: true,
-    exportFormat: "pdf",
+    exportFormat: 'pdf',
     enabled: true,
   });
 
@@ -128,85 +128,85 @@ export default function ScheduledTab() {
 
   const handleCreateReport = () => {
     if (!formData.name || !formData.reportType) {
-      toast.error("Please fill in all required fields");
+      toast.error('Please fill in all required fields');
       return;
     }
 
     const newReport: ScheduledReport = {
-      id: `SCH${String(scheduledReports.length + 1).padStart(3, "0")}`,
+      id: `SCH${String(scheduledReports.length + 1).padStart(3, '0')}`,
       name: formData.name,
       config: {
         title: formData.name,
         reportType: formData.reportType as
-          | "machineRevenue"
-          | "locationPerformance"
-          | "customerActivity",
-        category: "operational",
+          | 'machineRevenue'
+          | 'locationPerformance'
+          | 'customerActivity',
+        category: 'operational',
         dateRange: {
           start: new Date(),
           end: new Date(),
         },
         timeGranularity:
-          formData.frequency === "daily"
-            ? "daily"
-            : formData.frequency === "weekly"
-            ? "weekly"
-            : "monthly",
+          formData.frequency === 'daily'
+            ? 'daily'
+            : formData.frequency === 'weekly'
+              ? 'weekly'
+              : 'monthly',
         filters: {},
         fields: [],
-        chartType: "table",
-        exportFormat: formData.exportFormat as "pdf" | "excel" | "csv",
+        chartType: 'table',
+        exportFormat: formData.exportFormat as 'pdf' | 'excel' | 'csv',
         includeCharts: formData.includeCharts,
         includeSummary: formData.includeSummary,
       },
       schedule: {
-        frequency: formData.frequency as "daily" | "weekly" | "monthly",
+        frequency: formData.frequency as 'daily' | 'weekly' | 'monthly',
         time: formData.time,
         timezone: formData.timezone,
         dayOfWeek:
-          formData.frequency === "weekly" ? formData.dayOfWeek : undefined,
+          formData.frequency === 'weekly' ? formData.dayOfWeek : undefined,
         dayOfMonth:
-          formData.frequency === "monthly" ? formData.dayOfMonth : undefined,
+          formData.frequency === 'monthly' ? formData.dayOfMonth : undefined,
         enabled: formData.enabled,
       },
       recipients: formData.recipients
-        .filter((email) => email.trim())
-        .map((email) => ({
+        .filter(email => email.trim())
+        .map(email => ({
           email: email.trim(),
-          role: "User",
-          deliveryMethod: "email" as const,
+          role: 'User',
+          deliveryMethod: 'email' as const,
         })),
-      lastRun: "Never", // New report hasn't run yet
+      lastRun: 'Never', // New report hasn't run yet
       nextRun: calculateNextRun(formData),
-      status: formData.enabled ? "active" : "paused",
-      createdBy: "current_user",
+      status: formData.enabled ? 'active' : 'paused',
+      createdBy: 'current_user',
       createdAt: new Date().toISOString(),
     };
 
-    setScheduledReports((prev) => [...prev, newReport]);
+    setScheduledReports(prev => [...prev, newReport]);
     setIsCreateModalOpen(false);
     resetForm();
-    toast.success("Scheduled report created successfully");
+    toast.success('Scheduled report created successfully');
   };
 
   const calculateNextRun = (data: typeof formData): string => {
     const now = new Date();
-    const [hours, minutes] = data.time.split(":").map(Number);
+    const [hours, minutes] = data.time.split(':').map(Number);
 
     const nextRun = new Date();
     nextRun.setHours(hours, minutes, 0, 0);
 
-    if (data.frequency === "daily") {
+    if (data.frequency === 'daily') {
       if (nextRun <= now) {
         nextRun.setDate(nextRun.getDate() + 1);
       }
-    } else if (data.frequency === "weekly") {
+    } else if (data.frequency === 'weekly') {
       const dayDiff = (data.dayOfWeek - nextRun.getDay() + 7) % 7;
       nextRun.setDate(nextRun.getDate() + dayDiff);
       if (nextRun <= now) {
         nextRun.setDate(nextRun.getDate() + 7);
       }
-    } else if (data.frequency === "monthly") {
+    } else if (data.frequency === 'monthly') {
       nextRun.setDate(data.dayOfMonth);
       if (nextRun <= now) {
         nextRun.setMonth(nextRun.getMonth() + 1);
@@ -218,48 +218,46 @@ export default function ScheduledTab() {
 
   const resetForm = () => {
     setFormData({
-      name: "",
-      reportType: "",
-      frequency: "daily",
-      time: "07:00",
+      name: '',
+      reportType: '',
+      frequency: 'daily',
+      time: '07:00',
       timezone: gamingDayConfig.timezone,
       dayOfWeek: 1,
       dayOfMonth: 1,
-      recipients: [""],
+      recipients: [''],
       includeCharts: true,
       includeSummary: true,
-      exportFormat: "pdf",
+      exportFormat: 'pdf',
       enabled: true,
     });
   };
 
   const handleToggleStatus = (reportId: string) => {
-    setScheduledReports((prev) =>
-      prev.map((report) =>
+    setScheduledReports(prev =>
+      prev.map(report =>
         report.id === reportId
           ? {
               ...report,
-              status: report.status === "active" ? "paused" : "active",
+              status: report.status === 'active' ? 'paused' : 'active',
               schedule: {
                 ...report.schedule,
-                enabled: report.status !== "active",
+                enabled: report.status !== 'active',
               },
             }
           : report
       )
     );
-    toast.success("Report status updated");
+    toast.success('Report status updated');
   };
 
   const handleDeleteReport = (reportId: string) => {
-    setScheduledReports((prev) =>
-      prev.filter((report) => report.id !== reportId)
-    );
-    toast.success("Scheduled report deleted");
+    setScheduledReports(prev => prev.filter(report => report.id !== reportId));
+    toast.success('Scheduled report deleted');
   };
 
   const handleRunNow = (reportId: string) => {
-    const report = scheduledReports.find((r) => r.id === reportId);
+    const report = scheduledReports.find(r => r.id === reportId);
     if (report) {
       // Simulate running the report
       toast.success(`Running "${report.name}" report now...`);
@@ -268,21 +266,21 @@ export default function ScheduledTab() {
   };
 
   const addRecipient = () => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      recipients: [...prev.recipients, ""],
+      recipients: [...prev.recipients, ''],
     }));
   };
 
   const updateRecipient = (index: number, email: string) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       recipients: prev.recipients.map((r, i) => (i === index ? email : r)),
     }));
   };
 
   const removeRecipient = (index: number) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       recipients: prev.recipients.filter((_, i) => i !== index),
     }));
@@ -290,8 +288,8 @@ export default function ScheduledTab() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
       </div>
     );
   }
@@ -300,33 +298,33 @@ export default function ScheduledTab() {
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Desktop Navigation */}
-        <TabsList className="hidden md:grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        <TabsList className="mb-6 hidden w-full grid-cols-3 rounded-lg bg-gray-100 p-2 shadow-sm md:grid">
           <TabsTrigger
             value="scheduled"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Scheduled Reports
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Execution History
           </TabsTrigger>
           <TabsTrigger
             value="gaming-day"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Gaming Day Config
           </TabsTrigger>
         </TabsList>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden mb-6">
+        <div className="mb-6 md:hidden">
           <select
             value={activeTab}
-            onChange={(e) => setActiveTab(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+            onChange={e => setActiveTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
           >
             <option value="scheduled">Scheduled Reports</option>
             <option value="history">Execution History</option>
@@ -336,7 +334,7 @@ export default function ScheduledTab() {
 
         <TabsContent value="scheduled" className="space-y-4">
           {/* Header */}
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold">
                 Automated Report Scheduling
@@ -352,7 +350,7 @@ export default function ScheduledTab() {
             >
               <DialogTrigger asChild>
                 <Button>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   Create Scheduled Report
                 </Button>
               </DialogTrigger>
@@ -372,8 +370,8 @@ export default function ScheduledTab() {
                       <Input
                         id="name"
                         value={formData.name}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
+                        onChange={e =>
+                          setFormData(prev => ({
                             ...prev,
                             name: e.target.value,
                           }))
@@ -385,8 +383,8 @@ export default function ScheduledTab() {
                       <Label htmlFor="reportType">Report Type</Label>
                       <Select
                         value={formData.reportType}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({
+                        onValueChange={value =>
+                          setFormData(prev => ({
                             ...prev,
                             reportType: value,
                           }))
@@ -396,7 +394,7 @@ export default function ScheduledTab() {
                           <SelectValue placeholder="Select report type" />
                         </SelectTrigger>
                         <SelectContent>
-                          {reportTypes.map((type) => (
+                          {reportTypes.map(type => (
                             <SelectItem key={type.id} value={type.id}>
                               <div>
                                 <div className="font-medium">{type.label}</div>
@@ -416,8 +414,8 @@ export default function ScheduledTab() {
                       <Label htmlFor="frequency">Frequency</Label>
                       <Select
                         value={formData.frequency}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({ ...prev, frequency: value }))
+                        onValueChange={value =>
+                          setFormData(prev => ({ ...prev, frequency: value }))
                         }
                       >
                         <SelectTrigger>
@@ -436,21 +434,21 @@ export default function ScheduledTab() {
                         id="time"
                         type="time"
                         value={formData.time}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
+                        onChange={e =>
+                          setFormData(prev => ({
                             ...prev,
                             time: e.target.value,
                           }))
                         }
                       />
                     </div>
-                    {formData.frequency === "weekly" && (
+                    {formData.frequency === 'weekly' && (
                       <div>
                         <Label htmlFor="dayOfWeek">Day of Week</Label>
                         <Select
                           value={formData.dayOfWeek.toString()}
-                          onValueChange={(value) =>
-                            setFormData((prev) => ({
+                          onValueChange={value =>
+                            setFormData(prev => ({
                               ...prev,
                               dayOfWeek: parseInt(value),
                             }))
@@ -471,7 +469,7 @@ export default function ScheduledTab() {
                         </Select>
                       </div>
                     )}
-                    {formData.frequency === "monthly" && (
+                    {formData.frequency === 'monthly' && (
                       <div>
                         <Label htmlFor="dayOfMonth">Day of Month</Label>
                         <Input
@@ -480,8 +478,8 @@ export default function ScheduledTab() {
                           min="1"
                           max="31"
                           value={formData.dayOfMonth}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
+                          onChange={e =>
+                            setFormData(prev => ({
                               ...prev,
                               dayOfMonth: parseInt(e.target.value),
                             }))
@@ -499,7 +497,7 @@ export default function ScheduledTab() {
                           <Input
                             type="email"
                             value={email}
-                            onChange={(e) =>
+                            onChange={e =>
                               updateRecipient(index, e.target.value)
                             }
                             placeholder="Enter email address"
@@ -522,7 +520,7 @@ export default function ScheduledTab() {
                         size="sm"
                         onClick={addRecipient}
                       >
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="mr-2 h-4 w-4" />
                         Add Recipient
                       </Button>
                     </div>
@@ -533,8 +531,8 @@ export default function ScheduledTab() {
                       <Label htmlFor="exportFormat">Export Format</Label>
                       <Select
                         value={formData.exportFormat}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({
+                        onValueChange={value =>
+                          setFormData(prev => ({
                             ...prev,
                             exportFormat: value,
                           }))
@@ -555,8 +553,8 @@ export default function ScheduledTab() {
                         <Checkbox
                           id="includeCharts"
                           checked={formData.includeCharts}
-                          onCheckedChange={(checked) =>
-                            setFormData((prev) => ({
+                          onCheckedChange={checked =>
+                            setFormData(prev => ({
                               ...prev,
                               includeCharts: !!checked,
                             }))
@@ -568,8 +566,8 @@ export default function ScheduledTab() {
                         <Checkbox
                           id="includeSummary"
                           checked={formData.includeSummary}
-                          onCheckedChange={(checked) =>
-                            setFormData((prev) => ({
+                          onCheckedChange={checked =>
+                            setFormData(prev => ({
                               ...prev,
                               includeSummary: !!checked,
                             }))
@@ -598,7 +596,7 @@ export default function ScheduledTab() {
 
           {/* Scheduled Reports List */}
           <div className="grid gap-4">
-            {scheduledReports.map((report) => (
+            {scheduledReports.map(report => (
               <Card key={report.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -608,7 +606,7 @@ export default function ScheduledTab() {
                         <CardTitle className="text-lg">{report.name}</CardTitle>
                         <CardDescription>
                           {report.schedule.frequency.charAt(0).toUpperCase() +
-                            report.schedule.frequency.slice(1)}{" "}
+                            report.schedule.frequency.slice(1)}{' '}
                           at {report.schedule.time}
                           {report.schedule.timezone &&
                             ` (${report.schedule.timezone})`}
@@ -618,11 +616,11 @@ export default function ScheduledTab() {
                     <div className="flex items-center gap-2">
                       <Badge
                         variant={
-                          report.status === "active"
-                            ? "default"
-                            : report.status === "paused"
-                            ? "secondary"
-                            : "destructive"
+                          report.status === 'active'
+                            ? 'default'
+                            : report.status === 'paused'
+                              ? 'secondary'
+                              : 'destructive'
                         }
                       >
                         {report.status}
@@ -640,7 +638,7 @@ export default function ScheduledTab() {
                           size="sm"
                           onClick={() => handleToggleStatus(report.id)}
                         >
-                          {report.status === "active" ? (
+                          {report.status === 'active' ? (
                             <Pause className="h-4 w-4" />
                           ) : (
                             <Play className="h-4 w-4" />
@@ -658,28 +656,28 @@ export default function ScheduledTab() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div>
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <h4 className="mb-2 flex items-center gap-2 font-medium">
                         <FileText className="h-4 w-4" />
                         Report Details
                       </h4>
-                      <div className="text-sm space-y-1">
+                      <div className="space-y-1 text-sm">
                         <p>Type: {report.config.reportType}</p>
                         <p>
                           Format: {report.config.exportFormat.toUpperCase()}
                         </p>
                         <p>
-                          Charts: {report.config.includeCharts ? "Yes" : "No"}
+                          Charts: {report.config.includeCharts ? 'Yes' : 'No'}
                         </p>
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <h4 className="mb-2 flex items-center gap-2 font-medium">
                         <Users className="h-4 w-4" />
                         Recipients ({report.recipients.length})
                       </h4>
-                      <div className="text-sm space-y-1">
+                      <div className="space-y-1 text-sm">
                         {report.recipients
                           .slice(0, 2)
                           .map((recipient, index: number) => (
@@ -693,16 +691,16 @@ export default function ScheduledTab() {
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <h4 className="mb-2 flex items-center gap-2 font-medium">
                         <Calendar className="h-4 w-4" />
                         Schedule Info
                       </h4>
-                      <div className="text-sm space-y-1">
+                      <div className="space-y-1 text-sm">
                         <p>
-                          Last Run:{" "}
+                          Last Run:{' '}
                           {report.lastRun
                             ? new Date(report.lastRun).toLocaleString()
-                            : "Never"}
+                            : 'Never'}
                         </p>
                         <p>
                           Next Run: {new Date(report.nextRun).toLocaleString()}
@@ -718,15 +716,15 @@ export default function ScheduledTab() {
           {scheduledReports.length === 0 && (
             <Card>
               <CardContent className="p-8 text-center">
-                <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2">
+                <Clock className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                <h3 className="mb-2 text-lg font-medium">
                   No Scheduled Reports
                 </h3>
-                <p className="text-muted-foreground mb-4">
+                <p className="mb-4 text-muted-foreground">
                   Create your first automated report to get started
                 </p>
                 <Button onClick={() => setIsCreateModalOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   Create Scheduled Report
                 </Button>
               </CardContent>
@@ -747,7 +745,7 @@ export default function ScheduledTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-center text-muted-foreground py-8">
+              <p className="py-8 text-center text-muted-foreground">
                 Execution history will be displayed here once reports start
                 running
               </p>
@@ -765,7 +763,7 @@ export default function ScheduledTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div>
                   <Label htmlFor="start-time">Gaming Day Start Time</Label>
                   <Input
@@ -775,7 +773,7 @@ export default function ScheduledTab() {
                     readOnly
                     className="mt-1"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     When the gaming day begins
                   </p>
                 </div>
@@ -788,7 +786,7 @@ export default function ScheduledTab() {
                     readOnly
                     className="mt-1"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     When the gaming day ends (next day)
                   </p>
                 </div>
@@ -800,13 +798,13 @@ export default function ScheduledTab() {
                     readOnly
                     className="mt-1"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Timezone for all scheduled reports
                   </p>
                 </div>
               </div>
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="font-medium text-blue-900 mb-2">
+              <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <h4 className="mb-2 font-medium text-blue-900">
                   Gaming Day Concept
                 </h4>
                 <p className="text-sm text-blue-800">

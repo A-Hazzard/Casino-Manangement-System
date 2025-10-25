@@ -3,8 +3,8 @@
  * Handles scroll detection and floating button visibility
  */
 
-import { useState, useEffect, useCallback } from "react";
-import type { UseDashboardScrollReturn } from "@/lib/types/dashboardScroll";
+import { useState, useEffect, useCallback } from 'react';
+import type { UseDashboardScrollReturn } from '@/lib/types/dashboardScroll';
 
 export function useDashboardScroll(
   initialThreshold: number = 200
@@ -20,8 +20,8 @@ export function useDashboardScroll(
 
   // Set up scroll event listener
   useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
   // Reset scroll state

@@ -1,4 +1,4 @@
-import type { ReportTab } from "@/lib/types";
+import type { ReportTab } from '@/lib/types';
 
 /**
  * Configuration for reports tabs
@@ -6,28 +6,28 @@ import type { ReportTab } from "@/lib/types";
  */
 export const REPORTS_TABS_CONFIG: ReportTab[] = [
   {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: "📊",
-    description: "Real-time overview of casino operations and KPIs",
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: '📊',
+    description: 'Real-time overview of casino operations and KPIs',
   },
   {
-    id: "locations",
-    label: "Locations",
-    icon: "🏢",
-    description: "Location performance analysis and comparisons",
+    id: 'locations',
+    label: 'Locations',
+    icon: '🏢',
+    description: 'Location performance analysis and comparisons',
   },
   {
-    id: "machines",
-    label: "Machines",
-    icon: "🎰",
-    description: "Individual machine performance and revenue tracking",
+    id: 'machines',
+    label: 'Machines',
+    icon: '🎰',
+    description: 'Individual machine performance and revenue tracking',
   },
   {
-    id: "meters",
-    label: "Meters",
-    icon: "📈",
-    description: "Meter readings and financial data by location",
+    id: 'meters',
+    label: 'Meters',
+    icon: '📈',
+    description: 'Meter readings and financial data by location',
   },
 ];
 

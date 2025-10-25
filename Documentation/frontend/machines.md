@@ -1,6 +1,7 @@
 # Cabinets Page
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Main Features](#main-features)
 - [Technical Architecture](#technical-architecture)
@@ -22,12 +23,14 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 **Version:** 2.0.0
 
 ### File Information
+
 - **File:** `app/cabinets/page.tsx`
 - **URL Pattern:** `/cabinets`
 - **Component Type:** Cabinet Management Page
 - **Authentication:** Required
 
 ## Main Features
+
 - **Cabinet Management:**
   - View, search, sort, add, edit, and delete cabinets.
   - Real-time cabinet status monitoring.
@@ -53,6 +56,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 ## Technical Architecture
 
 ### Core Components
+
 - **Main Page:** `app/cabinets/page.tsx` - Entry point with multi-section management
 - **Layout Components:**
   - `components/layout/Header.tsx` - Top navigation header
@@ -76,6 +80,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - `components/dashboard/DashboardDateFilters.tsx` - Date filtering
 
 ### State Management
+
 - **Global Store:** `lib/store/dashboardStore.ts` - Licensee and filter state
 - **Cabinet Actions Store:** `lib/store/cabinetActionsStore.ts` - Cabinet CRUD operations
 - **New Cabinet Store:** `lib/store/newCabinetStore.ts` - Cabinet creation state
@@ -88,6 +93,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - `activeSection` - Current section (cabinets/smib/movement/firmware)
 
 ### Data Flow
+
 1. **Initial Load:** Fetches cabinets and locations on component mount
 2. **Search/Filter:** Filters cabinets based on search terms and location
 3. **Sorting:** Sorts cabinets based on selected columns and direction
@@ -98,6 +104,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 ### API Integration
 
 #### Cabinet Management Endpoints
+
 - **GET `/api/machines/aggregation`** - Fetches aggregated cabinet data
   - Parameters: `licensee`, `timePeriod`, `startDate`, `endDate`
   - Returns: Array of cabinet objects with metrics
@@ -115,11 +122,13 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - Returns: `{ success: true }`
 
 #### Location Management Endpoints
+
 - **GET `/api/locations`** - Fetches available locations
   - Parameters: `licensee` (optional)
   - Returns: Array of location objects
 
 #### Movement Request Endpoints
+
 - **GET `/api/movement-requests`** - Fetches movement requests
   - Returns: Array of movement request objects
 - **POST `/api/movement-requests`** - Creates movement request
@@ -127,6 +136,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - Returns: `{ success: true, data: MovementRequest }`
 
 #### Data Processing
+
 - **Cabinets Helper:** `lib/helpers/cabinets.ts` - Cabinet management utilities
   - `fetchCabinets()` - Fetches cabinet data with filtering
   - `fetchCabinetById()` - Fetches individual cabinet details
@@ -143,6 +153,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 ### Key Dependencies
 
 #### Frontend Libraries
+
 - **React Hooks:** `useState`, `useEffect`, `useCallback`, `useMemo` - State management
 - **Next.js:** `usePathname`, `Image` - Navigation and image optimization
 - **Axios:** HTTP client for API calls with cancel tokens
@@ -151,6 +162,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 - **Sonner:** Toast notifications for user feedback
 
 #### Type Definitions
+
 - **Cabinet Types:** `lib/types/cabinets.ts` - Cabinet management types
   - `Cabinet`, `CabinetProps`, `CabinetSortOption`, `CabinetDetails`, `CabinetMetrics`
 - **Report Types:** `lib/types/reports.ts` - Movement request types
@@ -158,12 +170,14 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 - **Shared Types:** `@shared/types` - Core type definitions
 
 #### Utility Functions
+
 - **Auth Utils:** `lib/utils/auth.ts` - Authentication utilities
   - `getAuthHeaders()` - Gets authentication headers for API calls
 - **Date Utils:** `react-day-picker` - Date range selection
   - `DateRange` - Date range type for filtering
 
 ### Component Hierarchy
+
 ```
 CabinetsPage (app/cabinets/page.tsx)
 ├── Sidebar (components/layout/Sidebar.tsx)
@@ -189,6 +203,7 @@ CabinetsPage (app/cabinets/page.tsx)
 ```
 
 ### Business Logic
+
 - **Cabinet Management:** Complete CRUD operations for slot machines
 - **Real-time Monitoring:** Live status tracking of cabinet connectivity
 - **Performance Analytics:** Metrics aggregation and analysis
@@ -197,18 +212,21 @@ CabinetsPage (app/cabinets/page.tsx)
 - **Firmware Management:** SMIB software version control
 
 ### Security Features
+
 - **Authentication:** Secure API calls with authentication headers
 - **Authorization:** Role-based access to cabinet operations
 - **Audit Trail:** Movement request tracking and approval workflow
 - **Input Validation:** Comprehensive validation for all form inputs
 
 ### Error Handling
+
 - **API Failures:** Graceful degradation with user-friendly error messages
 - **Network Issues:** Cancel token support for request cancellation
 - **Loading States:** Skeleton loaders and loading indicators
 - **Toast Notifications:** User feedback for all operations
 
 ### Performance Optimizations
+
 - **Memoization:** `useMemo` for expensive computations (filtering, sorting)
 - **Cancel Tokens:** Prevents race conditions in API calls
 - **Conditional Rendering:** Separate desktop/mobile layouts
@@ -224,27 +242,32 @@ The cabinets page is like a **control room for managing all your slot machines**
 #### **Cabinet Management Section**
 
 **🎰 What Cabinets Are**
+
 - **Collection**: Queries the `machines` collection in the database
 - **Fields Used**: `_id`, `gamingLocation`, `game`, `Custom.name`, `lastActivity`, `assetStatus`
 - **Simple Explanation**: These are your slot machines - each cabinet is a physical slot machine that players use
 
 **📊 Cabinet Performance Metrics**
+
 - **Collection**: Aggregates data from `meters` collection
 - **Fields Used**: `coinIn`, `coinOut`, `drop`, `totalCancelledCredits`, `gross`
 - **Simple Explanation**: Shows how much money each machine is making - like a profit report for each slot machine
 
 **💰 Financial Data Flow (Recent Fix)**
+
 - **Money In**: Shows how much money players put into the machine (`drop`)
 - **Money Out (Cancelled Credits)**: Shows how much money was cancelled/refunded (`totalCancelledCredits`)
 - **Gross Revenue**: Money In minus Money Out - the actual profit
 - **Data Source**: The API calculates these from the `meters` collection and returns them as `moneyIn`, `moneyOut`, and `gross`
 
 **🔍 How Cabinet Search Works**
+
 - **Collection**: Filters the `machines` collection
 - **Fields Used**: Searches by `Custom.name`, `game`, `serialNumber`
 - **Simple Explanation**: Like finding a specific machine in a large casino - you can search by name, game type, or serial number
 
 **📍 Location Filtering**
+
 - **Collection**: Filters by `gamingLocation` field in `machines` collection
 - **Fields Used**: `gamingLocation` (references `gaminglocations._id`)
 - **Simple Explanation**: Shows only machines from a specific casino location
@@ -252,16 +275,19 @@ The cabinets page is like a **control room for managing all your slot machines**
 #### **SMIB Management Section**
 
 **🔧 What SMIB Is**
+
 - **Collection**: Uses `machines` collection with SMIB configuration
 - **Fields Used**: `smibConfig`, `smibVersion`, `smibBoard`
 - **Simple Explanation**: SMIB is the "brain" of each slot machine - it controls how the machine communicates and operates
 
 **📡 Communication Settings**
+
 - **Collection**: Updates `smibConfig` field in `machines` collection
 - **Fields Used**: `mqtt`, `net`, `coms` configuration objects
 - **Simple Explanation**: Like setting up WiFi for your slot machines - controls how they connect to your system
 
 **🔄 Firmware Management**
+
 - **Collection**: Uses `firmware` collection for SMIB software
 - **Fields Used**: `product`, `version`, `fileId`, `fileName`
 - **Simple Explanation**: Like updating the operating system on your slot machines - keeps them running the latest software
@@ -269,11 +295,13 @@ The cabinets page is like a **control room for managing all your slot machines**
 #### **Movement Requests Section**
 
 **🚚 What Movement Requests Are**
+
 - **Collection**: Uses `movementrequests` collection
 - **Fields Used**: `locationFrom`, `locationTo`, `machineId`, `status`, `createdBy`
 - **Simple Explanation**: Like moving furniture between rooms - these are requests to move slot machines between different casino locations
 
 **✅ Approval Workflow**
+
 - **Collection**: Updates `status` field in `movementrequests` collection
 - **Fields Used**: `status`, `approvedBy`, `approvedBySecond`
 - **Simple Explanation**: Like getting permission to move expensive equipment - requires approval before machines can be moved
@@ -281,6 +309,7 @@ The cabinets page is like a **control room for managing all your slot machines**
 #### **Database Queries Explained (In Plain English)**
 
 **For Cabinet List:**
+
 ```javascript
 // What the system does:
 // 1. Looks up all slot machines in the database
@@ -290,6 +319,7 @@ The cabinets page is like a **control room for managing all your slot machines**
 ```
 
 **For Cabinet Details:**
+
 ```javascript
 // What the system does:
 // 1. Finds a specific machine by its ID number
@@ -298,6 +328,7 @@ The cabinets page is like a **control room for managing all your slot machines**
 ```
 
 **For Movement Requests:**
+
 ```javascript
 // What the system does:
 // 1. Looks up all requests to move machines between locations
@@ -306,6 +337,7 @@ The cabinets page is like a **control room for managing all your slot machines**
 ```
 
 **For SMIB Configuration:**
+
 ```javascript
 // What the system does:
 // 1. Finds all machines that have SMIB controllers installed
@@ -316,15 +348,16 @@ The cabinets page is like a **control room for managing all your slot machines**
 #### **Financial Data Calculation (Recent Fix Explained)**
 
 **The Problem We Fixed:**
+
 - **Before**: The system was looking for a field called `cancelledCredits` that didn't exist in the database
 - **After**: The system now correctly uses `moneyOut` which contains the cancelled credits data
 
 **How the Money Data Works:**
+
 1. **Database Storage**: Each time a machine is read, it records:
    - `coinIn`: Money players put in
    - `drop`: Money collected from the machine
    - `totalCancelledCredits`: Money that was cancelled/refunded
-   
 2. **API Processing**: The backend adds up all these readings for the time period you select and returns:
    - `moneyIn`: Total money put into the machine
    - `moneyOut`: Total cancelled credits (money refunded)
@@ -333,6 +366,7 @@ The cabinets page is like a **control room for managing all your slot machines**
 3. **Frontend Display**: The page shows these values in the table and cards, with proper formatting and sorting
 
 **Why This Matters:**
+
 - **Accurate Financial Reporting**: You can see exactly how much each machine is making
 - **Profit Analysis**: Gross revenue shows the real profit after refunds
 - **Operational Insights**: High cancelled credits might indicate machine problems
@@ -341,24 +375,28 @@ The cabinets page is like a **control room for managing all your slot machines**
 #### **Why This Matters for Casino Operations**
 
 **🎰 Cabinet Management Benefits:**
+
 - **Real-time Monitoring**: Know which machines are working and which need attention
 - **Performance Tracking**: See which machines are making the most money
 - **Maintenance Planning**: Identify machines that need service or upgrades
 - **Financial Analysis**: Track revenue per machine and location
 
 **🔧 SMIB Management Benefits:**
+
 - **Remote Control**: Configure machines without physical access
 - **Software Updates**: Keep all machines running the latest software
 - **Communication**: Ensure machines can send data to your system
 - **Troubleshooting**: Diagnose connection and software issues remotely
 
 **🚚 Movement Management Benefits:**
+
 - **Asset Tracking**: Know where every machine is located
 - **Approval Process**: Ensure proper authorization for machine moves
 - **Audit Trail**: Track who moved what and when
 - **Location Planning**: Optimize machine placement across locations
 
 **📊 Performance Analytics Benefits:**
+
 - **Revenue Optimization**: Identify your best-performing machines
 - **Maintenance Scheduling**: Plan service based on machine usage
 - **Capacity Planning**: Know when you need more machines
@@ -373,47 +411,60 @@ The cabinets page essentially **manages your slot machine fleet** like a fleet m
 **Current Implementation Analysis:**
 
 #### **Cabinet Money In (Drop) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  moneyIn: { $sum: "$movement.drop" }
+  moneyIn: {
+    $sum: '$movement.drop';
+  }
   ```
 - **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
 - **Business Context**: Total physical cash inserted into individual cabinet
 - **Aggregation**: Sums across all meter readings for cabinet within date range
 
 #### **Cabinet Money Out (Total Cancelled Credits) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  moneyOut: { $sum: "$movement.totalCancelledCredits" }
+  moneyOut: {
+    $sum: '$movement.totalCancelledCredits';
+  }
   ```
 - **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
 - **Business Context**: Total credits cancelled/paid out from individual cabinet
 - **Aggregation**: Sums across all meter readings for cabinet within date range
 
 #### **Cabinet Gross Revenue ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+  gross: {
+    $subtract: ['$moneyIn', '$moneyOut'];
+  }
   // Where: moneyIn = Σ(movement.drop), moneyOut = Σ(movement.totalCancelledCredits)
   ```
 - **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
 - **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` per cabinet
 
 #### **Cabinet Status Calculation ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Online status
-  lastActivity: { $gte: new Date(Date.now() - 3 * 60 * 1000) }
+  lastActivity: {
+    $gte: new Date(Date.now() - 3 * 60 * 1000);
+  }
   // Asset status
-  assetStatus: "active" | "maintenance" | "offline"
+  assetStatus: 'active' | 'maintenance' | 'offline';
   ```
-- **Business Logic**: 
+- **Business Logic**:
   - **Online**: `lastActivity >= (currentTime - 3 minutes)`
   - **Status**: Based on `assetStatus` field
 - ✅ **CONSISTENT** - Standard cabinet status calculation
 
 #### **Cabinet Collection Meters ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   collectionMeters: {
     metersIn: Number,  // Not clearly defined
@@ -424,12 +475,25 @@ The cabinets page essentially **manages your slot machine fleet** like a fleet m
 - ❌ **NOT IN GUIDE** - Collection meters calculation not defined in financial metrics guide
 
 #### **Cabinet Performance Ranking ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Sort by performance metrics
-  { $sort: { gross: -1 } }      // By gross revenue
-  { $sort: { moneyIn: -1 } }    // By money in (drop)
-  { $sort: { gamesPlayed: -1 } } // By activity level
+  {
+    $sort: {
+      gross: -1;
+    }
+  } // By gross revenue
+  {
+    $sort: {
+      moneyIn: -1;
+    }
+  } // By money in (drop)
+  {
+    $sort: {
+      gamesPlayed: -1;
+    }
+  } // By activity level
   ```
 - **Financial Guide**: Uses `drop` and `gross` for ranking ✅ **MATCHES**
 - **Business Logic**: Ranks cabinets by financial performance
@@ -437,6 +501,7 @@ The cabinets page essentially **manages your slot machine fleet** like a fleet m
 ### Mathematical Formulas Summary
 
 #### **Core Cabinet Metrics**
+
 ```
 Cabinet Money In = Σ(movement.drop) for individual cabinet
 Cabinet Money Out = Σ(movement.totalCancelledCredits) for individual cabinet
@@ -444,6 +509,7 @@ Cabinet Gross Revenue = Cabinet Money In - Cabinet Money Out
 ```
 
 #### **Cabinet Status Calculations**
+
 ```
 Cabinet Online = lastActivity >= (currentTime - 3 minutes)
 Cabinet Active = assetStatus = "active" AND deletedAt IS NULL
@@ -451,6 +517,7 @@ Cabinet Performance = gross revenue ranking
 ```
 
 #### **Cabinet Performance Ranking**
+
 ```
 Top Cabinets by Revenue = ORDER BY gross DESC
 Top Cabinets by Activity = ORDER BY gamesPlayed DESC
@@ -458,14 +525,16 @@ Top Cabinets by Drop = ORDER BY moneyIn DESC
 ```
 
 #### **Collection Meters (Not in Guide)**
+
 ```
 Collection Meters In = collectionMeters.metersIn   // Definition unclear
 Collection Meters Out = collectionMeters.metersOut // Definition unclear
 ```
 
 #### **Cabinet Search Logic**
+
 ```
-Cabinet Search = FIND(machines WHERE 
+Cabinet Search = FIND(machines WHERE
   Custom.name CONTAINS searchTerm OR
   game CONTAINS searchTerm OR
   serialNumber CONTAINS searchTerm
@@ -475,12 +544,14 @@ Cabinet Search = FIND(machines WHERE
 ### Data Validation & Error Handling
 
 #### **Input Validation ✅**
+
 - **Cabinet ID**: Validates MongoDB ObjectId format
 - **Search Terms**: Sanitizes input to prevent injection attacks
 - **Date Ranges**: Validates ISO date format for filtering
 - **SMIB Config**: Validates configuration parameters
 
 #### **Data Integrity ✅**
+
 - **Null Handling**: Uses `$ifNull` operators to default missing values to 0
 - **Deleted Cabinets**: Filters out soft-deleted cabinets (`deletedAt` exists)
 - **Financial Validation**: Prevents negative financial calculations
@@ -494,4 +565,4 @@ Cabinet Search = FIND(machines WHERE
 2. **Cabinet Aggregation**: Verify cabinet-level aggregation matches standard meter calculations
 3. **Performance Metrics**: Confirm cabinet ranking algorithms use appropriate financial metrics
 
-**Note**: Most cabinet calculations align with the financial metrics guide, but collection meters require clarification. 
+**Note**: Most cabinet calculations align with the financial metrics guide, but collection meters require clarification.

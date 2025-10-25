@@ -1,22 +1,22 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Input } from "@/components/ui/input";
-import PaginationControls from "@/components/ui/PaginationControls";
-import MovementRequestsTable from "@/components/ui/movements/MovementRequestsTable";
-import MovementRequestCard from "@/components/ui/movements/MovementRequestCard";
-import { MovementRequest } from "@/lib/types/movementRequests";
-import { fetchMovementRequests } from "@/lib/helpers/movementRequests";
+import React, { useEffect, useState, useCallback } from 'react';
+import { Input } from '@/components/ui/input';
+import PaginationControls from '@/components/ui/PaginationControls';
+import MovementRequestsTable from '@/components/ui/movements/MovementRequestsTable';
+import MovementRequestCard from '@/components/ui/movements/MovementRequestCard';
+import { MovementRequest } from '@/lib/types/movementRequests';
+import { fetchMovementRequests } from '@/lib/helpers/movementRequests';
 import {
   MovementRequestsTableSkeleton,
   MovementRequestCardSkeleton,
-} from "@/components/ui/movements/MovementRequestsSkeleton";
-import { fetchAllGamingLocations } from "@/lib/helpers/locations";
-import { useMovementRequestActionsStore } from "@/lib/store/movementRequestActionsStore";
-import EditMovementRequestModal from "@/components/ui/movements/EditMovementRequestModal";
-import DeleteMovementRequestModal from "@/components/ui/movements/DeleteMovementRequestModal";
-import NewMovementRequestModal from "@/components/ui/movements/NewMovementRequestModal";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/movements/MovementRequestsSkeleton';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
+import EditMovementRequestModal from '@/components/ui/movements/EditMovementRequestModal';
+import DeleteMovementRequestModal from '@/components/ui/movements/DeleteMovementRequestModal';
+import NewMovementRequestModal from '@/components/ui/movements/NewMovementRequestModal';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -25,12 +25,15 @@ export default function MovementRequests({
 }: {
   locations: { _id: string; name: string }[];
 }) {
-  const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] = useState(false);
-  
-  const openNewMovementRequestModal = () => setIsNewMovementRequestModalOpen(true);
-  const closeNewMovementRequestModal = () => setIsNewMovementRequestModalOpen(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] =
+    useState(false);
+
+  const openNewMovementRequestModal = () =>
+    setIsNewMovementRequestModalOpen(true);
+  const closeNewMovementRequestModal = () =>
+    setIsNewMovementRequestModalOpen(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [requests, setRequests] = useState<MovementRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +47,7 @@ export default function MovementRequests({
     async function loadLocationsMap() {
       const allLocations = await fetchAllGamingLocations();
       const map: { [id: string]: string } = {};
-      allLocations.forEach((loc) => {
+      allLocations.forEach(loc => {
         map[loc.id] = loc.name;
       });
       setLocationsMap(map);
@@ -68,7 +71,7 @@ export default function MovementRequests({
     loadRequests();
   }, [loadRequests]);
 
-  const filteredRequests = requests.filter((req) => {
+  const filteredRequests = requests.filter(req => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       req.createdBy.toLowerCase().includes(searchLower) ||
@@ -76,9 +79,9 @@ export default function MovementRequests({
       req.locationTo.toLowerCase().includes(searchLower) ||
       req.cabinetIn.toLowerCase().includes(searchLower) ||
       req.status.toLowerCase().includes(searchLower);
-    const locationData = locations.find((l) => l._id === selectedLocation);
+    const locationData = locations.find(l => l._id === selectedLocation);
     const matchesLocation =
-      selectedLocation === "all" ||
+      selectedLocation === 'all' ||
       req.locationFrom === locationData?.name ||
       req.locationTo === locationData?.name;
     return matchesSearch && matchesLocation;
@@ -98,7 +101,7 @@ export default function MovementRequests({
   };
 
   return (
-    <div className="w-full max-w-full flex flex-col p-1">
+    <div className="flex w-full max-w-full flex-col p-1">
       <EditMovementRequestModal onSaved={loadRequests} />
       <DeleteMovementRequestModal onDeleted={loadRequests} />
       <NewMovementRequestModal
@@ -109,11 +112,11 @@ export default function MovementRequests({
       />
 
       {/* Mobile: Search and filters stacked */}
-      <div className="lg:hidden flex flex-col gap-4 p-4 bg-buttonActive rounded-lg shadow-sm mb-4">
+      <div className="mb-4 flex flex-col gap-4 rounded-lg bg-buttonActive p-4 shadow-sm lg:hidden">
         {/* Mobile: Create Movement Request button */}
         <Button
           onClick={openNewMovementRequestModal}
-          className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-button py-3 text-white hover:bg-buttonActive"
         >
           <Plus size={20} />
           Create Movement Request
@@ -122,18 +125,18 @@ export default function MovementRequests({
           <Input
             placeholder="Search requests..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-10 bg-white border-none rounded-md h-11 px-4 text-gray-700 placeholder-gray-400"
+            onChange={e => setSearchTerm(e.target.value)}
+            className="h-11 w-full rounded-md border-none bg-white px-4 pr-10 text-gray-700 placeholder-gray-400"
           />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         </div>
         <select
           value={selectedLocation}
-          onChange={(e) => setSelectedLocation(e.target.value)}
-          className="w-full h-11 rounded-md border-none px-3 bg-white text-gray-700"
+          onChange={e => setSelectedLocation(e.target.value)}
+          className="h-11 w-full rounded-md border-none bg-white px-3 text-gray-700"
         >
           <option value="all">All Locations</option>
-          {locations.map((location) => (
+          {locations.map(location => (
             <option key={location._id} value={location._id}>
               {location.name}
             </option>
@@ -142,14 +145,14 @@ export default function MovementRequests({
       </div>
 
       {/* Desktop: Search and filters in row */}
-      <div className="hidden lg:flex flex-col md:flex-row gap-4 items-center p-4 bg-buttonActive rounded-t-lg shadow-sm">
+      <div className="hidden flex-col items-center gap-4 rounded-t-lg bg-buttonActive p-4 shadow-sm md:flex-row lg:flex">
         {/* Desktop: Create Movement Request button */}
         <Button
           onClick={openNewMovementRequestModal}
-          className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+          className="flex-shrink-0 items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive"
         >
-          <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-            <Plus className="w-4 h-4 text-white" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white">
+            <Plus className="h-4 w-4 text-white" />
           </div>
           <span>Create Movement Request</span>
         </Button>
@@ -157,18 +160,18 @@ export default function MovementRequests({
           <Input
             placeholder="Search requests... (e.g., Creator, Location, Cabinet, Status)"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-10 bg-white border-none rounded-md h-11 px-4 text-gray-700 placeholder-gray-400"
+            onChange={e => setSearchTerm(e.target.value)}
+            className="h-11 w-full rounded-md border-none bg-white px-4 pr-10 text-gray-700 placeholder-gray-400"
           />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         </div>
         <select
           value={selectedLocation}
-          onChange={(e) => setSelectedLocation(e.target.value)}
-          className="w-full md:w-1/3 h-11 rounded-md border-none px-3 bg-white text-gray-700"
+          onChange={e => setSelectedLocation(e.target.value)}
+          className="h-11 w-full rounded-md border-none bg-white px-3 text-gray-700 md:w-1/3"
         >
           <option value="all">All Locations</option>
-          {locations.map((location) => (
+          {locations.map(location => (
             <option key={location._id} value={location._id}>
               {location.name}
             </option>
@@ -189,11 +192,11 @@ export default function MovementRequests({
         )}
       </div>
       {/* Card Area (Mobile/Tablet) */}
-      <div className="block lg:hidden mt-4 px-1 sm:px-2 md:px-4 space-y-3 sm:space-y-4 w-full max-w-full">
+      <div className="mt-4 block w-full max-w-full space-y-3 px-1 sm:space-y-4 sm:px-2 md:px-4 lg:hidden">
         {loading ? (
           <MovementRequestCardSkeleton />
         ) : paginatedRequests.length > 0 ? (
-          paginatedRequests.map((req) => (
+          paginatedRequests.map(req => (
             <MovementRequestCard
               key={req._id}
               request={req}
@@ -203,7 +206,7 @@ export default function MovementRequests({
             />
           ))
         ) : (
-          <div className="text-center text-gray-500 py-8">
+          <div className="py-8 text-center text-gray-500">
             No movement requests found matching your criteria.
           </div>
         )}

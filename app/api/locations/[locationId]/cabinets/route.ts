@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import type { GamingMachine } from "@/shared/types/entities";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../../lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import type { GamingMachine } from '@/shared/types/entities';
 type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
   collectionSettings?: {
     lastCollectionTime?: string;
@@ -10,7 +10,7 @@ type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
     lastMetersOut?: string;
   };
 };
-import { generateMongoId } from "@/lib/utils/id";
+import { generateMongoId } from '@/lib/utils/id';
 
 /**
  * POST /api/locations/[locationId]/cabinets
@@ -20,20 +20,18 @@ export async function POST(request: NextRequest) {
   try {
     // Extract locationId from URL path
     const url = request.nextUrl;
-    const locationId = url.pathname.split("/")[3]; // Extracts ID from /api/locations/[locationId]/cabinets
+    const locationId = url.pathname.split('/')[3]; // Extracts ID from /api/locations/[locationId]/cabinets
 
-    console.warn(
-      `POST request to create cabinet for location: ${locationId}`
-    );
+    console.warn(`POST request to create cabinet for location: ${locationId}`);
 
     // Location ID validation removed - _id is stored as String, not ObjectId
 
     const db = await connectDB();
 
     if (!db) {
-      console.error("Failed to connect to the database");
+      console.error('Failed to connect to the database');
       return NextResponse.json(
-        { success: false, error: "Failed to connect to the database" },
+        { success: false, error: 'Failed to connect to the database' },
         { status: 500 }
       );
     }
@@ -43,13 +41,13 @@ export async function POST(request: NextRequest) {
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     });
     if (!location) {
       console.warn(`Location not found or deleted with ID: ${locationId}`);
       return NextResponse.json(
-        { success: false, error: "Location not found or has been deleted" },
+        { success: false, error: 'Location not found or has been deleted' },
         { status: 404 }
       );
     }
@@ -68,7 +66,7 @@ export async function POST(request: NextRequest) {
       _id: machineId,
       serialNumber: data.serialNumber,
       game: data.game,
-      gameType: data.gameType || "slot", // Default to "slot" if not provided
+      gameType: data.gameType || 'slot', // Default to "slot" if not provided
       isCronosMachine: data.isCronosMachine,
       // Handle isCronosMachine vs isSasMachine logic
       isSasMachine: data.isCronosMachine ? false : true, // If Cronos, not SAS. If not given, default to SAS
@@ -76,22 +74,22 @@ export async function POST(request: NextRequest) {
       machineMembershipSettings: {
         isPointsAllowed: true,
         isFreePlayAllowed: true,
-        pointsAwardMethod: "gamesPlayed",
+        pointsAwardMethod: 'gamesPlayed',
         freePlayAmount: 200,
         freePlayCreditsTimeout: 86400,
       },
       nonRestricted: 0,
       restricted: 0,
-      sasVersion: "",
+      sasVersion: '',
       uaccount: 0,
       gameConfig: {
         accountingDenomination:
           parseFloat(data.accountingDenomination.toString()) || 0,
-        additionalId: "",
-        gameOptions: "",
-        maxBet: "",
-        payTableId: "",
-        progressiveGroup: "",
+        additionalId: '',
+        gameOptions: '',
+        maxBet: '',
+        payTableId: '',
+        progressiveGroup: '',
         theoreticalRtp: 0,
       },
       cabinetType: data.cabinetType,
@@ -101,9 +99,9 @@ export async function POST(request: NextRequest) {
       collectionTime: data.collectionSettings?.lastCollectionTime,
       previousCollectionTime: null, // Default to null for new machines
       collectionMeters: {
-        metersIn: parseFloat(data.collectionSettings?.lastMetersIn || "0") || 0,
+        metersIn: parseFloat(data.collectionSettings?.lastMetersIn || '0') || 0,
         metersOut:
-          parseFloat(data.collectionSettings?.lastMetersOut || "0") || 0,
+          parseFloat(data.collectionSettings?.lastMetersOut || '0') || 0,
       },
       // Add all missing fields with default values
       billValidator: {
@@ -118,35 +116,35 @@ export async function POST(request: NextRequest) {
       playableBalance: 0,
       custom: { name: data.serialNumber },
       balances: { cashable: 0 },
-      curProcess: { name: "", next: "" },
+      curProcess: { name: '', next: '' },
       tasks: {
         pendingHandpay: {
-          name: "",
+          name: '',
           steps: [],
           currentStepIndex: 0,
           retryAttempts: 0,
         },
       },
-      origSerialNumber: "",
-      machineId: "",
-      gamingBoard: "",
-      manuf: "",
+      origSerialNumber: '',
+      machineId: '',
+      gamingBoard: '',
+      manuf: '',
       smibBoard: data.smibBoard,
-      smibVersion: { firmware: "", version: "" },
+      smibVersion: { firmware: '', version: '' },
       smibConfig: {
         mqtt: {
           mqttSecure: 0,
           mqttQOS: 0,
-          mqttURI: "",
-          mqttSubTopic: "",
-          mqttPubTopic: "",
-          mqttCfgTopic: "",
+          mqttURI: '',
+          mqttSubTopic: '',
+          mqttPubTopic: '',
+          mqttCfgTopic: '',
           mqttIdleTimeS: 0,
         },
         net: {
           netMode: 0,
-          netStaSSID: "",
-          netStaPwd: "",
+          netStaSSID: '',
+          netStaPwd: '',
           netStaChan: 0,
         },
         coms: {
@@ -157,7 +155,7 @@ export async function POST(request: NextRequest) {
           comsGPC: 0,
         },
         ota: {
-          otaURL: "",
+          otaURL: '',
         },
       },
       sasMeters: {
@@ -192,8 +190,8 @@ export async function POST(request: NextRequest) {
       },
       operationsWhileIdle: { extendedMeters: new Date() },
       collectionMetersHistory: [],
-      manufacturer: "",
-      gameNumber: "",
+      manufacturer: '',
+      gameNumber: '',
       protocols: [],
       numberOfEnabledGames: 0,
       enabledGameNumbers: [],
@@ -201,13 +199,13 @@ export async function POST(request: NextRequest) {
       viewingAccountDenomination: [],
       isSunBoxDevice: false,
       sessionHistory: [],
-      currentSession: "",
+      currentSession: '',
       viewingAccountDenominationHistory: [],
       selectedDenomination: { drop: 0, totalCancelledCredits: 0 },
       lastBillMeterAt: new Date(),
       lastSasMeterAt: new Date(),
-      machineType: "",
-      machineStatus: "",
+      machineType: '',
+      machineStatus: '',
       lastMaintenanceDate: new Date(),
       nextMaintenanceDate: new Date(),
       maintenanceHistory: [],
@@ -227,9 +225,9 @@ export async function POST(request: NextRequest) {
       data: newMachine,
     });
   } catch (error) {
-    console.error("Error creating cabinet:", error);
+    console.error('Error creating cabinet:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to create cabinet" },
+      { success: false, error: 'Failed to create cabinet' },
       { status: 500 }
     );
   }

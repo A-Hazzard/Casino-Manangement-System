@@ -1,5 +1,5 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React from 'react';
+import { motion } from 'framer-motion';
 
 type ExtendedStatusIndicatorProps = {
   isOnline: boolean;
@@ -10,15 +10,15 @@ const StatusIndicator: React.FC<ExtendedStatusIndicatorProps> = ({
 }) => {
   return (
     <motion.div
-      className="w-full bg-container border border-border rounded-md shadow mb-4 md:hidden"
+      className="mb-4 w-full rounded-md border border-border bg-container shadow md:hidden"
       initial={{ opacity: 0, y: -5 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.1 }}
     >
       <div className="flex items-center justify-center py-3">
         <motion.div
-          className={`w-3 h-3 rounded-full mr-2 ${
-            isOnline ? "bg-button" : "bg-destructive"
+          className={`mr-2 h-3 w-3 rounded-full ${
+            isOnline ? 'bg-button' : 'bg-destructive'
           }`}
           animate={
             isOnline
@@ -31,11 +31,11 @@ const StatusIndicator: React.FC<ExtendedStatusIndicatorProps> = ({
         />
         <span
           className={(isOnline
-            ? "text-button font-bold"
-            : "text-destructive font-bold"
+            ? 'font-bold text-button'
+            : 'font-bold text-destructive'
           ).trim()}
         >
-          {isOnline ? "ONLINE" : "OFFLINE"}
+          {isOnline ? 'ONLINE' : 'OFFLINE'}
         </span>
       </div>
     </motion.div>

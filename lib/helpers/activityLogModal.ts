@@ -1,13 +1,13 @@
-import { gsap } from "gsap";
-import { format } from "date-fns";
-import { DateRange } from "react-day-picker";
-import axios from "axios";
-import type { ActivityLog } from "@/app/api/lib/types/activityLog";
+import { gsap } from 'gsap';
+import { format } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+import axios from 'axios';
+import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 
 import type {
   ActivityGroup,
   ProcessedActivityEntry,
-} from "@/lib/types/activity";
+} from '@/lib/types/activity';
 
 // Re-export frontend-specific types for convenience
 export type { ActivityGroup, ProcessedActivityEntry };
@@ -19,23 +19,23 @@ export type { ActivityGroup, ProcessedActivityEntry };
  * @returns Object with icon component and background color class
  */
 export function getActionIcon(actionType: string, entityType?: string) {
-  const isUserEntity = entityType?.toLowerCase() === "user";
+  const isUserEntity = entityType?.toLowerCase() === 'user';
 
   switch (actionType.toLowerCase()) {
-    case "create":
+    case 'create':
       return {
-        icon: isUserEntity ? "UserPlus" : "Building2",
-        bg: "bg-blue-500",
+        icon: isUserEntity ? 'UserPlus' : 'Building2',
+        bg: 'bg-blue-500',
       };
-    case "update":
-    case "edit":
-      return { icon: "Settings", bg: "bg-green-500" };
-    case "delete":
-      return { icon: "X", bg: "bg-red-500" };
-    case "payment":
-      return { icon: "IdCard", bg: "bg-purple-500" };
+    case 'update':
+    case 'edit':
+      return { icon: 'Settings', bg: 'bg-green-500' };
+    case 'delete':
+      return { icon: 'X', bg: 'bg-red-500' };
+    case 'payment':
+      return { icon: 'IdCard', bg: 'bg-purple-500' };
     default:
-      return { icon: "Settings", bg: "bg-gray-500" };
+      return { icon: 'Settings', bg: 'bg-gray-500' };
   }
 }
 
@@ -49,10 +49,10 @@ export function generateActivityDescription(
   log: ActivityLog,
   entityType?: string
 ): string {
-  const actorEmail = log.actor?.email || log.username || "Unknown User";
-  const entityName = log.entity?.name || log.resourceName || "Unknown Resource";
-  const isUserEntity = entityType?.toLowerCase() === "user";
-  const entityDisplayName = isUserEntity ? "user" : "licensee";
+  const actorEmail = log.actor?.email || log.username || 'Unknown User';
+  const entityName = log.entity?.name || log.resourceName || 'Unknown Resource';
+  const isUserEntity = entityType?.toLowerCase() === 'user';
+  const entityDisplayName = isUserEntity ? 'user' : 'licensee';
 
   if (log.changes && log.changes.length > 0) {
     if (log.changes.length === 1) {
@@ -67,16 +67,16 @@ export function generateActivityDescription(
     }
   }
 
-  switch ((log.actionType || log.action || "unknown").toLowerCase()) {
-    case "create":
+  switch ((log.actionType || log.action || 'unknown').toLowerCase()) {
+    case 'create':
       return `${actorEmail} created a new ${entityDisplayName} ${
-        isUserEntity ? "account for" : ""
+        isUserEntity ? 'account for' : ''
       } ${entityName}`;
-    case "delete":
+    case 'delete':
       return `${actorEmail} deleted the ${entityDisplayName} ${
-        isUserEntity ? "account of" : ""
+        isUserEntity ? 'account of' : ''
       } ${entityName}`;
-    case "payment":
+    case 'payment':
       return `${actorEmail} processed payment for ${entityName}`;
     default:
       return `${actorEmail} performed ${log.actionType} action on ${entityName}`;
@@ -95,7 +95,7 @@ export function groupActivitiesByDate(
 ): ActivityGroup[] {
   const groups: { [key: string]: ActivityLog[] } = {};
 
-  activities.forEach((activity) => {
+  activities.forEach(activity => {
     const date = new Date(activity.timestamp);
     const today = new Date();
     const yesterday = new Date(today);
@@ -103,11 +103,11 @@ export function groupActivitiesByDate(
 
     let dateKey: string;
     if (date.toDateString() === today.toDateString()) {
-      dateKey = "Today";
+      dateKey = 'Today';
     } else if (date.toDateString() === yesterday.toDateString()) {
-      dateKey = "Yesterday";
+      dateKey = 'Yesterday';
     } else {
-      dateKey = format(date, "EEEE d, MMMM yyyy");
+      dateKey = format(date, 'EEEE d, MMMM yyyy');
     }
 
     if (!groups[dateKey]) {
@@ -118,20 +118,20 @@ export function groupActivitiesByDate(
 
   return Object.entries(groups).map(([range, entries]) => ({
     range,
-    entries: entries.map((log) => {
+    entries: entries.map(log => {
       const { icon, bg } = getActionIcon(
-        log.actionType || log.action || "unknown",
+        log.actionType || log.action || 'unknown',
         entityType
       );
       return {
         id: log._id?.toString() || Math.random().toString(),
-        time: format(new Date(log.timestamp), "h:mm a"),
-        type: (log.actionType || log.action || "unknown").toLowerCase(),
+        time: format(new Date(log.timestamp), 'h:mm a'),
+        type: (log.actionType || log.action || 'unknown').toLowerCase(),
         icon,
         iconBg: bg,
         user: {
-          email: log.actor?.email || log.username || "Unknown User",
-          role: log.actor?.role || "User",
+          email: log.actor?.email || log.username || 'Unknown User',
+          role: log.actor?.role || 'User',
         },
         description: generateActivityDescription(log, entityType),
         originalActivity: log,
@@ -153,7 +153,7 @@ export function animateActivityModal(
     gsap.fromTo(
       modalRef.current,
       { opacity: 0, scale: 0.95 },
-      { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out" }
+      { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' }
     );
   }
 }
@@ -182,16 +182,16 @@ export async function fetchActivityLogs(params: {
       skip: ((params.currentPage - 1) * params.itemsPerPage).toString(),
     });
 
-    if (params.activeFilter === "type" && params.activityType) {
-      searchParams.append("actionType", params.activityType.toUpperCase());
+    if (params.activeFilter === 'type' && params.activityType) {
+      searchParams.append('actionType', params.activityType.toUpperCase());
     }
 
     if (params.dateRange?.from) {
-      searchParams.append("startDate", params.dateRange.from.toISOString());
+      searchParams.append('startDate', params.dateRange.from.toISOString());
     }
 
     if (params.dateRange?.to) {
-      searchParams.append("endDate", params.dateRange.to.toISOString());
+      searchParams.append('endDate', params.dateRange.to.toISOString());
     }
 
     const response = await axios.get(`/api/activity-logs?${searchParams}`);
@@ -205,15 +205,15 @@ export async function fetchActivityLogs(params: {
         ),
       };
     } else {
-      throw new Error(data.message || "Failed to fetch activity logs");
+      throw new Error(data.message || 'Failed to fetch activity logs');
     }
   } catch (err) {
-    console.error("Error fetching activities:", err);
+    console.error('Error fetching activities:', err);
     return {
       activities: [],
       totalPages: 1,
       error:
-        err instanceof Error ? err.message : "Failed to load activity logs",
+        err instanceof Error ? err.message : 'Failed to load activity logs',
     };
   }
 }
@@ -224,8 +224,8 @@ export async function fetchActivityLogs(params: {
  */
 export function getFilterButtons() {
   return [
-    { label: "Date Range", color: "bg-buttonActive text-white", key: "date" },
-    { label: "Activity Type", color: "bg-green-500 text-white", key: "type" },
+    { label: 'Date Range', color: 'bg-buttonActive text-white', key: 'date' },
+    { label: 'Activity Type', color: 'bg-green-500 text-white', key: 'type' },
   ];
 }
 
@@ -236,13 +236,13 @@ export function getFilterButtons() {
  */
 export function getActivityTypeOptions(entityType?: string) {
   const baseOptions = [
-    { value: "update", label: "Update" },
-    { value: "create", label: "Create" },
-    { value: "delete", label: "Delete" },
+    { value: 'update', label: 'Update' },
+    { value: 'create', label: 'Create' },
+    { value: 'delete', label: 'Delete' },
   ];
 
-  if (entityType?.toLowerCase() === "licensee") {
-    baseOptions.push({ value: "payment", label: "Payment" });
+  if (entityType?.toLowerCase() === 'licensee') {
+    baseOptions.push({ value: 'payment', label: 'Payment' });
   }
 
   return baseOptions;

@@ -2,7 +2,7 @@ import type {
   ExportFormat,
   ExportData,
   LegacyExportData,
-} from "@shared/types/export";
+} from '@shared/types/export';
 
 // Re-export shared types for convenience
 export type { ExportFormat, ExportData, LegacyExportData };
@@ -13,7 +13,7 @@ export type ExportJob = {
   userId: string;
   format: ExportFormat;
   data: LegacyExportData;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   createdAt: Date;
   completedAt?: Date;
   error?: string;

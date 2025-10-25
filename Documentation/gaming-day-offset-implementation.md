@@ -51,11 +51,13 @@ A **gaming day** is a business day that starts at a specific hour (the `gameDayO
 ### Example
 
 **Location: Trinidad Casino**
+
 - `gameDayOffset`: 9 (9 AM Trinidad time)
 - "Today" = 9:00 AM today → 8:59:59 AM tomorrow (Trinidad time)
 - "Yesterday" = 9:00 AM yesterday → 8:59:59 AM today (Trinidad time)
 
 **Traditional Calendar Day:**
+
 - "Today" = 12:00 AM today → 11:59:59 PM today
 
 **Why This Matters:**
@@ -126,14 +128,14 @@ Response to Frontend
 
 #### Standard Time Periods
 
-| Period | Description | Gaming Day Range Calculation |
-|--------|-------------|------------------------------|
-| **Today** | Current gaming day | `gameDayOffset` today → `gameDayOffset` tomorrow |
-| **Yesterday** | Previous gaming day | `gameDayOffset` yesterday → `gameDayOffset` today |
-| **7d** | Last 7 days | `gameDayOffset` 7 days ago → `gameDayOffset` tomorrow |
-| **30d** | Last 30 days | `gameDayOffset` 30 days ago → `gameDayOffset` tomorrow |
-| **All Time** | All historical data | Unix epoch → tomorrow |
-| **Custom** | User-defined range | Custom start at `gameDayOffset` → Custom end at `gameDayOffset` |
+| Period        | Description         | Gaming Day Range Calculation                                    |
+| ------------- | ------------------- | --------------------------------------------------------------- |
+| **Today**     | Current gaming day  | `gameDayOffset` today → `gameDayOffset` tomorrow                |
+| **Yesterday** | Previous gaming day | `gameDayOffset` yesterday → `gameDayOffset` today               |
+| **7d**        | Last 7 days         | `gameDayOffset` 7 days ago → `gameDayOffset` tomorrow           |
+| **30d**       | Last 30 days        | `gameDayOffset` 30 days ago → `gameDayOffset` tomorrow          |
+| **All Time**  | All historical data | Unix epoch → tomorrow                                           |
+| **Custom**    | User-defined range  | Custom start at `gameDayOffset` → Custom end at `gameDayOffset` |
 
 #### Timezone Conversion
 
@@ -149,6 +151,7 @@ function convertTrinidadHourToUtc(date: Date, hour: number): Date {
 ```
 
 **Example:**
+
 - Trinidad: October 1, 2025 at 9:00 AM (UTC-4)
 - UTC: October 1, 2025 at 1:00 PM (13:00)
 
@@ -158,11 +161,8 @@ function convertTrinidadHourToUtc(date: Date, hour: number): Date {
 
 ```typescript
 const locations = await GamingLocations.find({
-  $or: [
-    { deletedAt: null },
-    { deletedAt: { $lt: new Date("2020-01-01") } }
-  ],
-  ...(licencee ? { "rel.licencee": licencee } : {})
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+  ...(licencee ? { 'rel.licencee': licencee } : {}),
 }).lean();
 ```
 
@@ -186,23 +186,26 @@ const gamingDayRanges = getGamingDayRangesForLocations(
 for (const location of locations) {
   const locationId = (location._id as { toString: () => string }).toString();
   const gamingDayRange = gamingDayRanges.get(locationId);
-  
+
   if (!gamingDayRange) continue;
-  
+
   // Query meters for this location's gaming day range
-  const meters = await db.collection("meters").aggregate([
-    {
-      $match: {
-        machine: { $in: locationMachineIds },
-        readAt: {
-          $gte: gamingDayRange.rangeStart,
-          $lte: gamingDayRange.rangeEnd
-        }
-      }
-    },
-    // ... aggregation stages
-  ]).toArray();
-  
+  const meters = await db
+    .collection('meters')
+    .aggregate([
+      {
+        $match: {
+          machine: { $in: locationMachineIds },
+          readAt: {
+            $gte: gamingDayRange.rangeStart,
+            $lte: gamingDayRange.rangeEnd,
+          },
+        },
+      },
+      // ... aggregation stages
+    ])
+    .toArray();
+
   // Process and aggregate results
 }
 ```
@@ -216,6 +219,7 @@ for (const location of locations) {
 #### 1. Dashboard Totals (`/api/dashboard/totals`)
 
 **Query Parameters:**
+
 - `timePeriod`: "Today", "Yesterday", "7d", "30d", "Custom"
 - `startDate`: ISO date string (for Custom)
 - `endDate`: ISO date string (for Custom)
@@ -223,6 +227,7 @@ for (const location of locations) {
 - `currency`: Display currency (USD, TTD, GYD, BBD)
 
 **Implementation:**
+
 - Fetches all locations with their `gameDayOffset`
 - Calculates gaming day ranges for each location
 - Iterates through locations, querying meters with location-specific ranges
@@ -233,6 +238,7 @@ for (const location of locations) {
 #### 2. Location Aggregation (`/api/locationAggregation`)
 
 **Query Parameters:**
+
 - `timePeriod`: Time period filter
 - `startDate`: Custom start date
 - `endDate`: Custom end date
@@ -240,22 +246,26 @@ for (const location of locations) {
 - `selectedLocations`: Comma-separated location IDs
 
 **Implementation:**
+
 - Passes time period parameters to `getLocationsWithMetrics` helper
 - Each location gets its own gaming day range
 - Meter aggregation uses location-specific date ranges
 
 **Files:**
+
 - `app/api/locationAggregation/route.ts`
 - `app/api/lib/helpers/locationAggregation.ts`
 
 #### 3. Location Details (`/api/locations/[locationId]`)
 
 **Query Parameters:**
+
 - `timePeriod`: Time period filter
 - `startDate`: Custom start date
 - `endDate`: Custom end date
 
 **Implementation:**
+
 - Fetches location document to get `gameDayOffset`
 - Calculates gaming day range using `getGamingDayRangeForPeriod`
 - Updates `$match` stage in meter lookup pipeline
@@ -265,6 +275,7 @@ for (const location of locations) {
 #### 4. Cabinets Aggregation (`/api/machines/aggregation`)
 
 **Query Parameters:**
+
 - `timePeriod`: Time period filter
 - `startDate`: Custom start date
 - `endDate`: Custom end date
@@ -272,6 +283,7 @@ for (const location of locations) {
 - `searchTerm`: Machine search term
 
 **Implementation:**
+
 - Major refactor from single aggregation to per-location processing
 - Fetches all locations with `gameDayOffset`
 - Iterates through locations, running separate aggregations
@@ -282,11 +294,13 @@ for (const location of locations) {
 #### 5. Cabinet Details (`/api/machines/[id]`)
 
 **Query Parameters:**
+
 - `timePeriod`: Time period filter
 - `startDate`: Custom start date
 - `endDate`: Custom end date
 
 **Implementation:**
+
 - Fetches machine's location to get `gameDayOffset`
 - Replaced manual date range calculation with `getGamingDayRangeForPeriod`
 - Cleaner code with centralized gaming day logic
@@ -296,6 +310,7 @@ for (const location of locations) {
 #### 6. Collection Reports (`/api/collectionReport`)
 
 **Query Parameters:**
+
 - `timePeriod`: Time period filter
 - `startDate`: Custom start date
 - `endDate`: Custom end date
@@ -303,11 +318,13 @@ for (const location of locations) {
 - `licencee`: Licensee ID filter
 
 **Implementation:**
+
 - Modified helper to accept time period parameters
 - Builds `locationMatchCriteria` using `$or` with per-location gaming day ranges
 - Each location in the query has its own specific timestamp range
 
 **Files:**
+
 - `app/api/collectionReport/route.ts`
 - `app/api/lib/helpers/collectionReportBackend.ts`
 
@@ -318,6 +335,7 @@ for (const location of locations) {
 ### Example 1: Single Location with 9 AM Offset
 
 **Location Configuration:**
+
 ```json
 {
   "_id": "trinidad_main",
@@ -327,11 +345,13 @@ for (const location of locations) {
 ```
 
 **Frontend Request:**
+
 ```typescript
-fetch('/api/locations/trinidad_main?timePeriod=Today')
+fetch('/api/locations/trinidad_main?timePeriod=Today');
 ```
 
 **Backend Processing:**
+
 ```typescript
 // 1. Fetch location
 const location = await GamingLocations.findById('trinidad_main');
@@ -349,14 +369,15 @@ const meters = await Meters.find({
   machine: { $in: locationMachineIds },
   readAt: {
     $gte: new Date('2025-10-08T13:00:00.000Z'),
-    $lte: new Date('2025-10-09T13:00:00.000Z')
-  }
+    $lte: new Date('2025-10-09T13:00:00.000Z'),
+  },
 });
 ```
 
 ### Example 2: Multiple Locations with Different Offsets
 
 **Locations:**
+
 ```json
 [
   { "_id": "trinidad_main", "gameDayOffset": 9 },
@@ -366,11 +387,13 @@ const meters = await Meters.find({
 ```
 
 **Frontend Request:**
+
 ```typescript
-fetch('/api/dashboard/totals?timePeriod=Today')
+fetch('/api/dashboard/totals?timePeriod=Today');
 ```
 
 **Backend Processing:**
+
 ```typescript
 // 1. Fetch all locations
 const locations = await GamingLocations.find({ ... });
@@ -402,11 +425,15 @@ for (const location of locations) {
 ### Example 3: Custom Date Range
 
 **Frontend Request:**
+
 ```typescript
-fetch('/api/locations/trinidad_main?timePeriod=Custom&startDate=2025-09-01&endDate=2025-09-07')
+fetch(
+  '/api/locations/trinidad_main?timePeriod=Custom&startDate=2025-09-01&endDate=2025-09-07'
+);
 ```
 
 **Backend Processing:**
+
 ```typescript
 // 1. Parse custom dates
 const customStartDate = new Date('2025-09-01');
@@ -434,6 +461,7 @@ const gamingDayRange = getGamingDayRangeForPeriod(
 ### Manual Testing Checklist
 
 #### Dashboard Testing
+
 - [ ] Test "Today" with different `gameDayOffset` values (0, 6, 9, 12)
 - [ ] Test "Yesterday" shows previous gaming day metrics
 - [ ] Test "7d" aggregates last 7 gaming days correctly
@@ -443,28 +471,33 @@ const gamingDayRange = getGamingDayRangeForPeriod(
 - [ ] Test with single licensee mode
 
 #### Locations Page Testing
+
 - [ ] Test location list shows correct metrics per gaming day
 - [ ] Test filtering by licensee
 - [ ] Test different time periods for each location
 - [ ] Test locations with different `gameDayOffset` values
 
 #### Location Details Testing
+
 - [ ] Test single location details respects its `gameDayOffset`
 - [ ] Test custom date ranges
 - [ ] Test meter aggregation shows correct totals
 
 #### Cabinets Page Testing
+
 - [ ] Test cabinets list shows correct metrics
 - [ ] Test search functionality with gaming day filtering
 - [ ] Test locations with different offsets
 - [ ] Test pagination works correctly
 
 #### Cabinet Details Testing
+
 - [ ] Test single cabinet metrics respect location's `gameDayOffset`
 - [ ] Test custom date ranges
 - [ ] Test meter history displays correctly
 
 #### Collection Reports Testing
+
 - [ ] Test collection reports list filters by gaming day
 - [ ] Test report creation timestamps align with gaming day
 - [ ] Test filtering by location name
@@ -476,10 +509,9 @@ const gamingDayRange = getGamingDayRangeForPeriod(
 
 ```javascript
 // Check all locations and their gameDayOffset
-db.gaminglocations.find(
-  { deletedAt: null },
-  { name: 1, gameDayOffset: 1 }
-).pretty();
+db.gaminglocations
+  .find({ deletedAt: null }, { name: 1, gameDayOffset: 1 })
+  .pretty();
 ```
 
 #### Verify Meter Data Coverage
@@ -487,10 +519,10 @@ db.gaminglocations.find(
 ```javascript
 // Check meter data for specific gaming day range
 const gameDayStart = ISODate('2025-10-08T13:00:00.000Z'); // 9 AM Trinidad
-const gameDayEnd = ISODate('2025-10-09T13:00:00.000Z');   // 9 AM next day
+const gameDayEnd = ISODate('2025-10-09T13:00:00.000Z'); // 9 AM next day
 
 db.meters.count({
-  readAt: { $gte: gameDayStart, $lte: gameDayEnd }
+  readAt: { $gte: gameDayStart, $lte: gameDayEnd },
 });
 ```
 
@@ -506,17 +538,21 @@ db.meters.aggregate([
   {
     $match: {
       location: locationId,
-      readAt: { $gte: gameDayStart, $lte: gameDayEnd }
-    }
+      readAt: { $gte: gameDayStart, $lte: gameDayEnd },
+    },
   },
   {
     $group: {
       _id: null,
-      totalDrop: { $sum: "$movement.drop" },
-      totalCancelled: { $sum: "$movement.totalCancelledCredits" },
-      totalGross: { $sum: { $subtract: ["$movement.drop", "$movement.totalCancelledCredits"] } }
-    }
-  }
+      totalDrop: { $sum: '$movement.drop' },
+      totalCancelled: { $sum: '$movement.totalCancelledCredits' },
+      totalGross: {
+        $sum: {
+          $subtract: ['$movement.drop', '$movement.totalCancelledCredits'],
+        },
+      },
+    },
+  },
 ]);
 ```
 
@@ -529,43 +565,55 @@ db.meters.aggregate([
 #### Issue 1: Metrics Show Zero for "Today"
 
 **Symptoms:**
+
 - Dashboard shows $0 for all metrics
 - Location details show no data
 
 **Possible Causes:**
+
 1. Current time is before the gaming day start hour
 2. No meter data exists for the current gaming day
 3. `gameDayOffset` is configured incorrectly
 
 **Solution:**
+
 ```javascript
 // Check current time vs gaming day start
 const now = new Date();
 const trinidadNow = new Date(now.getTime() - 4 * 60 * 60 * 1000); // UTC-4
-console.log('Trinidad time:', trinidadNow.getHours() + ':' + trinidadNow.getMinutes());
+console.log(
+  'Trinidad time:',
+  trinidadNow.getHours() + ':' + trinidadNow.getMinutes()
+);
 
 // Check location's gameDayOffset
-db.gaminglocations.findOne({ _id: ObjectId('location_id') }, { gameDayOffset: 1 });
+db.gaminglocations.findOne(
+  { _id: ObjectId('location_id') },
+  { gameDayOffset: 1 }
+);
 
 // Check if meter data exists
 db.meters.count({
   location: ObjectId('location_id'),
-  readAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+  readAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
 });
 ```
 
 #### Issue 2: Different Totals Between Pages
 
 **Symptoms:**
+
 - Dashboard shows different totals than location details
 - Inconsistent metrics across pages
 
 **Possible Causes:**
+
 1. Different time periods being used
 2. Cache not cleared
 3. Gaming day offset not applied consistently
 
 **Solution:**
+
 1. Clear cache: `?clearCache=true`
 2. Verify time period matches across pages
 3. Check browser console for API requests
@@ -574,15 +622,18 @@ db.meters.count({
 #### Issue 3: Custom Date Range Not Working
 
 **Symptoms:**
+
 - Custom date range shows no data
 - Date range shows data for wrong period
 
 **Possible Causes:**
+
 1. Frontend sending dates in wrong format
 2. Gaming day offset not applied to custom dates
 3. Timezone conversion issue
 
 **Solution:**
+
 ```javascript
 // Frontend: Ensure dates are in YYYY-MM-DD format
 const startDate = '2025-09-01'; // NOT a Date object
@@ -596,16 +647,18 @@ console.log('Gaming day range:', gamingDayRange);
 #### Issue 4: TypeScript Errors After Update
 
 **Symptoms:**
+
 - `loc._id is of type 'unknown'`
 - Type errors in collection report backend
 
 **Solution:**
+
 ```typescript
 // Use proper type assertions
 locations.map((loc: Record<string, unknown>) => ({
   _id: (loc._id as { toString: () => string }).toString(),
   gameDayOffset: (loc.gameDayOffset as number) || 0,
-}))
+}));
 ```
 
 ### Debugging Tools
@@ -639,6 +692,7 @@ console.warn('Query End:', gamingDayRange.rangeEnd.toISOString());
 ### 1. Always Use Gaming Day Utility
 
 ❌ **DON'T:**
+
 ```typescript
 // Manual date calculation
 const startDate = new Date();
@@ -646,6 +700,7 @@ startDate.setHours(9, 0, 0, 0);
 ```
 
 ✅ **DO:**
+
 ```typescript
 // Use gaming day utility
 const gamingDayRange = getGamingDayRangeForPeriod('Today', gameDayOffset);
@@ -654,11 +709,13 @@ const gamingDayRange = getGamingDayRangeForPeriod('Today', gameDayOffset);
 ### 2. Handle Missing Gaming Day Offset
 
 ❌ **DON'T:**
+
 ```typescript
 const offset = location.gameDayOffset;
 ```
 
 ✅ **DO:**
+
 ```typescript
 const offset = location.gameDayOffset || 0; // Default to midnight
 ```
@@ -666,30 +723,39 @@ const offset = location.gameDayOffset || 0; // Default to midnight
 ### 3. Type Safety with Lean Queries
 
 ❌ **DON'T:**
+
 ```typescript
-locations.map(loc => ({ _id: loc._id.toString() }))
+locations.map(loc => ({ _id: loc._id.toString() }));
 // TypeScript error: loc._id is unknown
 ```
 
 ✅ **DO:**
+
 ```typescript
 locations.map((loc: Record<string, unknown>) => ({
-  _id: (loc._id as { toString: () => string }).toString()
-}))
+  _id: (loc._id as { toString: () => string }).toString(),
+}));
 ```
 
 ### 4. Always Pass Custom Dates to Utility
 
 ❌ **DON'T:**
+
 ```typescript
 // Skip custom date parameters
 getGamingDayRangeForPeriod('Custom', gameDayOffset);
 ```
 
 ✅ **DO:**
+
 ```typescript
 // Always pass custom dates for Custom period
-getGamingDayRangeForPeriod('Custom', gameDayOffset, customStartDate, customEndDate);
+getGamingDayRangeForPeriod(
+  'Custom',
+  gameDayOffset,
+  customStartDate,
+  customEndDate
+);
 ```
 
 ---
@@ -716,9 +782,8 @@ The Gaming Day Offset system provides:
 ✅ **Automatic Timezone Handling** - Trinidad time to UTC conversion  
 ✅ **Type-Safe** - Full TypeScript support with proper type definitions  
 ✅ **Well-Documented** - Comprehensive documentation for developers  
-✅ **Tested** - Ready for production use across all pages  
+✅ **Tested** - Ready for production use across all pages
 
 **Last Updated:** October 8, 2025  
 **Version:** 1.0  
 **Maintained By:** Evolution One CMS Development Team
-

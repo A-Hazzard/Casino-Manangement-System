@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
 
 type LocationAggregationResult = {
   _id: string;
@@ -22,13 +22,13 @@ type LocationAggregationResult = {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get("licencee") || "";
-    const search = searchParams.get("search")?.trim() || "";
+    const licencee = searchParams.get('licencee') || '';
+    const search = searchParams.get('search')?.trim() || '';
 
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
-        { success: false, message: "DB connection failed" },
+        { success: false, message: 'DB connection failed' },
         { status: 500 }
       );
     }
@@ -37,37 +37,37 @@ export async function GET(request: NextRequest) {
     const locationMatch: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
 
     if (search) {
-      locationMatch.name = { $regex: search, $options: "i" };
+      locationMatch.name = { $regex: search, $options: 'i' };
     }
     if (licencee) {
-      locationMatch["rel.licencee"] = licencee;
+      locationMatch['rel.licencee'] = licencee;
     }
 
     // Get all locations that match the criteria with financial data
-    const locations = await db
-      .collection("gaminglocations")
+    const locations = (await db
+      .collection('gaminglocations')
       .aggregate([
         // Stage 1: Filter locations by deletion status, search term, and licencee
         { $match: locationMatch },
         // Stage 2: Lookup machine statistics for each location
         {
           $lookup: {
-            from: "machines",
-            let: { id: "$_id" },
+            from: 'machines',
+            let: { id: '$_id' },
             pipeline: [
               // Stage 2a: Match machines for this location (excluding deleted ones)
               {
                 $match: {
-                  $expr: { $eq: ["$gamingLocation", "$$id"] },
+                  $expr: { $eq: ['$gamingLocation', '$$id'] },
                   $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
-      ],
+                    { deletedAt: null },
+                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                  ],
                 },
               },
               // Stage 2b: Group machines to calculate counts and online status
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
                       $cond: [
                         {
                           $gt: [
-                            "$lastActivity",
+                            '$lastActivity',
                             new Date(Date.now() - 3 * 60 * 1000),
                           ],
                         },
@@ -92,22 +92,22 @@ export async function GET(request: NextRequest) {
                 },
               },
             ],
-            as: "machineStats",
+            as: 'machineStats',
           },
         },
         // Stage 3: Lookup financial data from meters (last 30 days by default)
         {
           $lookup: {
-            from: "meters",
-            let: { locationId: { $toString: "$_id" } },
+            from: 'meters',
+            let: { locationId: { $toString: '$_id' } },
             pipeline: [
               // Stage 3a: Match meter records for this location within date range
               {
                 $match: {
-                  $expr: { $eq: ["$location", "$$locationId"] },
-                  createdAt: { 
-                    $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 
-                    $lte: new Date() 
+                  $expr: { $eq: ['$location', '$$locationId'] },
+                  createdAt: {
+                    $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                    $lte: new Date(),
                   },
                 },
               },
@@ -115,14 +115,14 @@ export async function GET(request: NextRequest) {
               {
                 $group: {
                   _id: null,
-                  totalMoneyIn: { $sum: { $ifNull: ["$movement.drop", 0] } },
+                  totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
                   totalMoneyOut: {
-                    $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+                    $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
                   },
                 },
               },
             ],
-            as: "financialData",
+            as: 'financialData',
           },
         },
         // Stage 4: Add computed fields for machine statistics and financial data
@@ -130,37 +130,37 @@ export async function GET(request: NextRequest) {
           $addFields: {
             totalMachines: {
               $ifNull: [
-                { $arrayElemAt: ["$machineStats.totalMachines", 0] },
+                { $arrayElemAt: ['$machineStats.totalMachines', 0] },
                 0,
               ],
             },
             onlineMachines: {
               $ifNull: [
-                { $arrayElemAt: ["$machineStats.onlineMachines", 0] },
+                { $arrayElemAt: ['$machineStats.onlineMachines', 0] },
                 0,
               ],
             },
             moneyIn: {
               $ifNull: [
-                { $arrayElemAt: ["$financialData.totalMoneyIn", 0] },
+                { $arrayElemAt: ['$financialData.totalMoneyIn', 0] },
                 0,
               ],
             },
             moneyOut: {
               $ifNull: [
-                { $arrayElemAt: ["$financialData.totalMoneyOut", 0] },
+                { $arrayElemAt: ['$financialData.totalMoneyOut', 0] },
                 0,
               ],
             },
-            isLocalServer: { $ifNull: ["$isLocalServer", false] },
-            hasSmib: { $ifNull: ["$hasSmib", false] },
-            noSMIBLocation: { $not: ["$hasSmib"] },
+            isLocalServer: { $ifNull: ['$isLocalServer', false] },
+            hasSmib: { $ifNull: ['$hasSmib', false] },
+            noSMIBLocation: { $not: ['$hasSmib'] },
           },
         },
         // Stage 5: Calculate gross revenue (money in minus money out)
         {
           $addFields: {
-            gross: { $subtract: ["$moneyIn", "$moneyOut"] },
+            gross: { $subtract: ['$moneyIn', '$moneyOut'] },
           },
         },
         // Stage 6: Project final fields for location response
@@ -184,12 +184,12 @@ export async function GET(request: NextRequest) {
           },
         },
       ])
-      .toArray() as LocationAggregationResult[];
+      .toArray()) as LocationAggregationResult[];
 
     // Transform the data to match the expected format
     const response = locations.map((loc: LocationAggregationResult) => ({
       location: loc._id.toString(),
-      locationName: loc.name || "Unknown Location",
+      locationName: loc.name || 'Unknown Location',
       country: loc.country,
       address: loc.address,
       rel: loc.rel,
@@ -207,10 +207,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("🔥 Search All Locations API Error:", error);
+    console.error('🔥 Search All Locations API Error:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
-} 
+}

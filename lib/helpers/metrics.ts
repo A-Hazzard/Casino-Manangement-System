@@ -1,7 +1,7 @@
-import { dashboardData } from "@/lib/types";
-import { TimePeriod } from "@shared/types";
-import axios from "axios";
-import { formatISODate } from "@/shared/utils/dateFormat";
+import { dashboardData } from '@/lib/types';
+import { TimePeriod } from '@shared/types';
+import axios from 'axios';
+import { formatISODate } from '@/shared/utils/dateFormat';
 
 /**
  * Fetches and aggregates metric data from the API endpoint.
@@ -41,14 +41,14 @@ export async function getMetrics(
     let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
     let normalizedStart: Date | undefined;
     let normalizedEnd: Date | undefined;
-    if (timePeriod === "Custom" && startDate && endDate) {
+    if (timePeriod === 'Custom' && startDate && endDate) {
       const sd = startDate instanceof Date ? startDate : new Date(startDate);
       const ed = endDate instanceof Date ? endDate : new Date(endDate);
       normalizedStart = sd;
       normalizedEnd = ed;
       url += `&startDate=${sd.toISOString()}&endDate=${ed.toISOString()}`;
     }
-    if (licencee && licencee !== "all") {
+    if (licencee && licencee !== 'all') {
       url += `&licencee=${licencee}`;
     }
 
@@ -69,16 +69,16 @@ export async function getMetrics(
       }>
     >(url, {
       headers: {
-        "Cache-Control": "no-cache",
+        'Cache-Control': 'no-cache',
       },
     });
     if (!Array.isArray(data) || data.length === 0) return [];
 
     // Determine if we should group by hour
-    let groupByHour = timePeriod === "Today" || timePeriod === "Yesterday";
+    let groupByHour = timePeriod === 'Today' || timePeriod === 'Yesterday';
 
     // For custom ranges, check if it spans only one day
-    if (timePeriod === "Custom" && startDate && endDate) {
+    if (timePeriod === 'Custom' && startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
       const diffInMs = end.getTime() - start.getTime();
@@ -88,10 +88,10 @@ export async function getMetrics(
 
     const rawData = data.map((doc): dashboardData => {
       const day = doc.day;
-      let time = "";
+      let time = '';
       if (groupByHour && doc.time) {
-        const [hh] = doc.time.split(":");
-        time = `${hh.padStart(2, "0")}:00`;
+        const [hh] = doc.time.split(':');
+        time = `${hh.padStart(2, '0')}:00`;
       }
       const xValue = groupByHour ? time : day;
       return {
@@ -108,7 +108,7 @@ export async function getMetrics(
     });
 
     const grouped: Record<string, dashboardData> = {};
-    rawData.forEach((item) => {
+    rawData.forEach(item => {
       const key = groupByHour ? `${item.day}_${item.time}` : item.day;
       if (!grouped[key]) {
         grouped[key] = { ...item };
@@ -120,11 +120,11 @@ export async function getMetrics(
     });
 
     const sortedData = Object.values(grouped).sort((a, b) => {
-      const dayA = a.day ?? "";
-      const dayB = b.day ?? "";
+      const dayA = a.day ?? '';
+      const dayB = b.day ?? '';
       if (dayA === dayB) {
-        const xA = a.xValue ?? "";
-        const xB = b.xValue ?? "";
+        const xA = a.xValue ?? '';
+        const xB = b.xValue ?? '';
         return xA.localeCompare(xB);
       }
       return dayA.localeCompare(dayB);
@@ -141,10 +141,10 @@ export async function getMetrics(
     return filledData;
   } catch (error: unknown) {
     // Enhanced error handling for metrics fetch
-    console.error("Failed to fetch metrics:", error);
+    console.error('Failed to fetch metrics:', error);
 
     // Handle specific error types
-    if (error && typeof error === "object" && "response" in error) {
+    if (error && typeof error === 'object' && 'response' in error) {
       const axiosError = error as {
         response?: { status?: number; statusText?: string };
       };
@@ -153,7 +153,7 @@ export async function getMetrics(
 
       if (status === 503) {
         console.warn(
-          "Metrics API temporarily unavailable (503). This may be due to server load."
+          'Metrics API temporarily unavailable (503). This may be due to server load.'
         );
         // Return empty array for 503 errors to prevent UI blocking
         return [];
@@ -165,39 +165,39 @@ export async function getMetrics(
       }
 
       if (status === 404) {
-        console.error("Metrics endpoint not found (404)");
+        console.error('Metrics endpoint not found (404)');
         return [];
       }
     }
 
     if (
       error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "ECONNABORTED"
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'ECONNABORTED'
     ) {
-      console.error("Metrics API request timed out");
+      console.error('Metrics API request timed out');
       return [];
     }
 
     if (
       (error &&
-        typeof error === "object" &&
-        "code" in error &&
-        error.code === "NETWORK_ERROR") ||
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'NETWORK_ERROR') ||
       (error &&
-        typeof error === "object" &&
-        "message" in error &&
-        typeof error.message === "string" &&
-        error.message?.includes("Network Error"))
+        typeof error === 'object' &&
+        'message' in error &&
+        typeof error.message === 'string' &&
+        error.message?.includes('Network Error'))
     ) {
-      console.error("Network error while fetching metrics");
+      console.error('Network error while fetching metrics');
       return [];
     }
 
     // Log the full error in development
-    if (process.env.NODE_ENV === "development") {
-      console.error("Full error details:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Full error details:', error);
     }
 
     return [];
@@ -221,10 +221,10 @@ function fillMissingIntervals(
   if (data.length === 0) return [];
 
   // Determine if this should be an hourly chart
-  let isHourly = timePeriod === "Today" || timePeriod === "Yesterday";
+  let isHourly = timePeriod === 'Today' || timePeriod === 'Yesterday';
 
   // For custom ranges, check if it spans only one day
-  if (timePeriod === "Custom" && startDate && endDate) {
+  if (timePeriod === 'Custom' && startDate && endDate) {
     const diffInMs = endDate.getTime() - startDate.getTime();
     const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
     isHourly = diffInDays <= 1; // Use hourly format for single day or less
@@ -236,9 +236,9 @@ function fillMissingIntervals(
     const baseDay = data[0]?.day || formatISODate(new Date());
 
     for (let hour = 0; hour < 24; hour++) {
-      const timeKey = `${hour.toString().padStart(2, "0")}:00`;
+      const timeKey = `${hour.toString().padStart(2, '0')}:00`;
       const existingData = data.find(
-        (item) => item.time === timeKey && item.day === baseDay
+        item => item.time === timeKey && item.day === baseDay
       );
 
       if (existingData) {
@@ -259,15 +259,15 @@ function fillMissingIntervals(
     let start: Date;
     let end: Date;
 
-    if (timePeriod === "Custom" && startDate && endDate) {
+    if (timePeriod === 'Custom' && startDate && endDate) {
       // For custom dates, use the original date strings directly to avoid timezone issues
       start = new Date(startDate);
       end = new Date(endDate);
-    } else if (timePeriod === "7d") {
+    } else if (timePeriod === '7d') {
       end = new Date();
       start = new Date();
       start.setDate(end.getDate() - 6);
-    } else if (timePeriod === "30d") {
+    } else if (timePeriod === '30d') {
       end = new Date();
       start = new Date();
       start.setDate(end.getDate() - 29);
@@ -281,8 +281,8 @@ function fillMissingIntervals(
     const current = new Date(start);
     while (current <= end) {
       // Use the date directly as YYYY-MM-DD format to avoid timezone conversion issues
-      const dayKey = current.toISOString().split("T")[0];
-      const existingData = data.find((item) => item.day === dayKey);
+      const dayKey = current.toISOString().split('T')[0];
+      const existingData = data.find(item => item.day === dayKey);
 
       if (existingData) {
         filledData.push(existingData);
@@ -290,7 +290,7 @@ function fillMissingIntervals(
         filledData.push({
           xValue: dayKey,
           day: dayKey,
-          time: "",
+          time: '',
           moneyIn: 0,
           moneyOut: 0,
           gross: 0,

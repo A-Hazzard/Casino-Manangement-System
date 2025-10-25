@@ -1,4 +1,8 @@
-import type { ReportsLocationData, PaginationInfo, ReportsLocationsResponse } from "@shared/types/reports";
+import type {
+  ReportsLocationData,
+  PaginationInfo,
+  ReportsLocationsResponse,
+} from '@shared/types/reports';
 
 // Re-export shared types for convenience
 export type { ReportsLocationData, PaginationInfo, ReportsLocationsResponse };
@@ -17,6 +21,6 @@ export type ReportQuery = {
 export type ReportGenerationRequest = {
   reportType: string;
   filters: ReportQuery;
-  format: "pdf" | "csv" | "excel";
+  format: 'pdf' | 'csv' | 'excel';
   userId: string;
-}; 
+};

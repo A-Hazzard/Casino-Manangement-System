@@ -1,30 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { getDatesForTimePeriod } from "@/app/api/lib/utils/dates";
-import { TimePeriod } from "@/app/api/lib/types";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
+import { TimePeriod } from '@/app/api/lib/types';
 
 export async function GET(req: NextRequest) {
   try {
     const db = await connectDB();
     if (!db) {
-      console.error("Database connection not established");
+      console.error('Database connection not established');
       return NextResponse.json(
-        { error: "Database connection not established" },
+        { error: 'Database connection not established' },
         { status: 500 }
       );
     }
 
     const { searchParams } = new URL(req.url);
-    const locationId = searchParams.get("locationId");
+    const locationId = searchParams.get('locationId');
     const timePeriod =
-      (searchParams.get("timePeriod") as TimePeriod) || "Today";
-    const licencee = searchParams.get("licencee");
-    const startDateParam = searchParams.get("startDate");
-    const endDateParam = searchParams.get("endDate");
+      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+    const licencee = searchParams.get('licencee');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
 
     if (!locationId) {
       return NextResponse.json(
-        { error: "Location ID is required" },
+        { error: 'Location ID is required' },
         { status: 400 }
       );
     }
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       const dateRange = getDatesForTimePeriod(timePeriod);
       startDate = dateRange.startDate;
       endDate = dateRange.endDate;
-      
+
       // For All Time, provide reasonable defaults if needed
       if (!startDate || !endDate) {
         const now = new Date();
@@ -62,33 +62,33 @@ export async function GET(req: NextRequest) {
       // Lookup machine details
       {
         $lookup: {
-          from: "machines",
-          localField: "machine",
-          foreignField: "_id",
-          as: "machineDetails",
+          from: 'machines',
+          localField: 'machine',
+          foreignField: '_id',
+          as: 'machineDetails',
         },
       },
       {
-        $unwind: "$machineDetails",
+        $unwind: '$machineDetails',
       },
       // Lookup location details
       {
         $lookup: {
-          from: "gaminglocations",
-          localField: "location",
-          foreignField: "_id",
-          as: "locationDetails",
+          from: 'gaminglocations',
+          localField: 'location',
+          foreignField: '_id',
+          as: 'locationDetails',
         },
       },
       {
-        $unwind: "$locationDetails",
+        $unwind: '$locationDetails',
       },
       // Filter by licencee if provided
       ...(licencee
         ? [
             {
               $match: {
-                "locationDetails.rel.licencee": licencee,
+                'locationDetails.rel.licencee': licencee,
               },
             },
           ]
@@ -96,22 +96,22 @@ export async function GET(req: NextRequest) {
       // Group by machine
       {
         $group: {
-          _id: "$machine",
-          machineName: { $first: "$machineDetails.Custom.name" },
-          serialNumber: { $first: "$machineDetails.serialNumber" },
+          _id: '$machine',
+          machineName: { $first: '$machineDetails.Custom.name' },
+          serialNumber: { $first: '$machineDetails.serialNumber' },
           revenue: {
             $sum: {
               $subtract: [
-                { $ifNull: ["$movement.drop", 0] },
-                { $ifNull: ["$movement.totalCancelledCredits", 0] },
+                { $ifNull: ['$movement.drop', 0] },
+                { $ifNull: ['$movement.totalCancelledCredits', 0] },
               ],
             },
           },
-          drop: { $sum: { $ifNull: ["$movement.drop", 0] } },
+          drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
           cancelledCredits: {
-            $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
           },
-          gamesPlayed: { $sum: { $ifNull: ["$movement.gamesPlayed", 0] } },
+          gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
         },
       },
       // Calculate hold percentage
@@ -119,8 +119,8 @@ export async function GET(req: NextRequest) {
         $addFields: {
           holdPercentage: {
             $cond: [
-              { $gt: ["$drop", 0] },
-              { $multiply: [{ $divide: ["$revenue", "$drop"] }, 100] },
+              { $gt: ['$drop', 0] },
+              { $multiply: [{ $divide: ['$revenue', '$drop'] }, 100] },
               0,
             ],
           },
@@ -138,25 +138,25 @@ export async function GET(req: NextRequest) {
       {
         $project: {
           _id: 0,
-          machineId: "$_id",
+          machineId: '$_id',
           machineName: {
             $cond: [
-              { $ne: ["$machineName", null] },
-              "$machineName",
-              { $concat: ["Machine ", "$serialNumber"] },
+              { $ne: ['$machineName', null] },
+              '$machineName',
+              { $concat: ['Machine ', '$serialNumber'] },
             ],
           },
-          revenue: "$revenue",
-          holdPercentage: { $round: ["$holdPercentage", 1] },
-          drop: "$drop",
-          cancelledCredits: "$cancelledCredits",
-          gamesPlayed: "$gamesPlayed",
+          revenue: '$revenue',
+          holdPercentage: { $round: ['$holdPercentage', 1] },
+          drop: '$drop',
+          cancelledCredits: '$cancelledCredits',
+          gamesPlayed: '$gamesPlayed',
         },
       },
     ];
 
     const topPerformers = await db
-      .collection("meters")
+      .collection('meters')
       .aggregate(pipeline)
       .toArray();
 
@@ -166,9 +166,9 @@ export async function GET(req: NextRequest) {
       topPerformer: topPerformers[0] || null,
     });
   } catch (error) {
-    console.error("Error fetching top performers:", error);
+    console.error('Error fetching top performers:', error);
     return NextResponse.json(
-      { error: "Failed to fetch top performers" },
+      { error: 'Failed to fetch top performers' },
       { status: 500 }
     );
   }

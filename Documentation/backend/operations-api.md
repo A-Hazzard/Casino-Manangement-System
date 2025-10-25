@@ -1,6 +1,5 @@
 # Operations API Documentation
 
-
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** October 15th, 2025  
 **Version:** 2.0.0
@@ -22,6 +21,7 @@
 The Operations API manages system operations including metrics tracking, reporting, scheduling, and movement requests for gaming machines and locations. This comprehensive system provides real-time monitoring, performance analysis, and operational management capabilities.
 
 ### System Architecture
+
 - **Database**: MongoDB with Mongoose ODM
 - **Authentication**: JWT-based authentication
 - **Real-time Monitoring**: Live metrics tracking across all locations
@@ -30,9 +30,11 @@ The Operations API manages system operations including metrics tracking, reporti
 ## Metrics Endpoints
 
 ### GET `/api/metrics/top-performing`
+
 **Purpose**: Retrieves top-performing metrics across the system
 
 **Query Parameters:**
+
 - `period` - Time period ('day', 'week', 'month', 'year')
 - `locationId` - Filter by location
 - `limit` - Number of results to return
@@ -53,15 +55,18 @@ The Operations API manages system operations including metrics tracking, reporti
 **Base URL:** `/api/metrics`
 
 #### GET /api/metrics/top-performing
+
 Retrieves top-performing metrics across the system.
 
 **Query Parameters:**
+
 - `period` (string): Time period ('day', 'week', 'month', 'year')
 - `locationId` (string): Filter by location
 - `limit` (number): Number of results to return
 - `metric` (string): Metric type ('revenue', 'sessions', 'machines')
 
 **Response:**
+
 ```json
 {
   "topPerformers": [
@@ -100,11 +105,12 @@ Retrieves top-performing metrics across the system.
 }
 ```
 
-
 ### GET `/api/metrics/top-performers`
+
 **Purpose**: Retrieves top performers by various criteria
 
 **Query Parameters:**
+
 - `category` - Category ('machines', 'locations', 'members')
 - `timeframe` - Time frame for analysis
 - `sortBy` - Sort criteria ('revenue', 'sessions', 'efficiency')
@@ -112,14 +118,17 @@ Retrieves top-performing metrics across the system.
 **Response Fields:**
 
 #### GET /api/metrics/top-performers
+
 Retrieves top performers by various criteria.
 
 **Query Parameters:**
+
 - `category` (string): Category ('machines', 'locations', 'members')
 - `timeframe` (string): Time frame for analysis
 - `sortBy` (string): Sort criteria ('revenue', 'sessions', 'efficiency')
 
 **Response:**
+
 ```json
 {
   "performers": [
@@ -149,11 +158,12 @@ Retrieves top performers by various criteria.
 }
 ```
 
-
 ### GET `/api/metrics/top-machines`
+
 **Purpose**: Retrieves top-performing machines
 
 **Query Parameters:**
+
 - `locationId` - Filter by location
 - `machineType` - Filter by machine type
 - `limit` - Number of results
@@ -162,15 +172,18 @@ Retrieves top performers by various criteria.
 **Response Fields:**
 
 #### GET /api/metrics/top-machines
+
 Retrieves top-performing machines.
 
 **Query Parameters:**
+
 - `locationId` (string): Filter by location
 - `machineType` (string): Filter by machine type
 - `limit` (number): Number of results
 - `period` (string): Analysis period
 
 **Response:**
+
 ```json
 {
   "machines": [
@@ -206,24 +219,28 @@ Retrieves top-performing machines.
 }
 ```
 
-
 ### GET `/api/metrics/metricsByUser`
+
 **Purpose**: Retrieves metrics filtered by user permissions
 
 **Query Parameters:**
+
 - `userId` - User ID for permission filtering
 - `includeDetails` - Include detailed metrics
 
 **Response Fields:**
 
 #### GET /api/metrics/metricsByUser
+
 Retrieves metrics filtered by user permissions.
 
 **Query Parameters:**
+
 - `userId` (string): User ID for permission filtering
 - `includeDetails` (boolean): Include detailed metrics
 
 **Response:**
+
 ```json
 {
   "userMetrics": {
@@ -254,11 +271,12 @@ Retrieves metrics filtered by user permissions.
 }
 ```
 
-
 ### GET `/api/metrics/meters`
+
 **Purpose**: Retrieves meter data for machines
 
 **Query Parameters:**
+
 - `machineId` - Machine ID
 - `startDate` - Start date for meter data
 - `endDate` - End date for meter data
@@ -267,15 +285,18 @@ Retrieves metrics filtered by user permissions.
 **Response Fields:**
 
 #### GET /api/metrics/meters
+
 Retrieves meter data for machines.
 
 **Query Parameters:**
+
 - `machineId` (string): Machine ID
 - `startDate` (string): Start date for meter data
 - `endDate` (string): End date for meter data
 - `meterType` (string): Type of meter data
 
 **Response:**
+
 ```json
 {
   "meterData": [
@@ -309,11 +330,12 @@ Retrieves meter data for machines.
 }
 ```
 
-
 ### GET `/api/metrics/hourly-trends`
+
 **Purpose**: Retrieves hourly trend data
 
 **Query Parameters:**
+
 - `locationId` - Filter by location
 - `date` - Date for trend analysis
 - `metric` - Metric to analyze
@@ -321,14 +343,17 @@ Retrieves meter data for machines.
 **Response Fields:**
 
 #### GET /api/metrics/hourly-trends
+
 Retrieves hourly trend data.
 
 **Query Parameters:**
+
 - `locationId` (string): Filter by location
 - `date` (string): Date for trend analysis
 - `metric` (string): Metric to analyze
 
 **Response:**
+
 ```json
 {
   "hourlyTrends": [
@@ -361,13 +386,14 @@ Retrieves hourly trend data.
 }
 ```
 
-
 ## Reports Endpoints
 
 ### GET `/api/reports/meters`
+
 **Purpose**: Retrieves meter reports with aggregation
 
 **Query Parameters:**
+
 - `locationId` - Filter by location
 - `startDate` - Start date
 - `endDate` - End date
@@ -380,15 +406,18 @@ Retrieves hourly trend data.
 **Base URL:** `/api/reports`
 
 #### GET /api/reports/meters
+
 Retrieves meter reports.
 
 **Query Parameters:**
+
 - `locationId` (string): Filter by location
 - `startDate` (string): Start date
 - `endDate` (string): End date
 - `groupBy` (string): Grouping ('machine', 'location', 'day')
 
 **Response:**
+
 ```json
 {
   "meterReports": [
@@ -431,11 +460,12 @@ Retrieves meter reports.
 }
 ```
 
-
 ### GET `/api/reports/machines`
+
 **Purpose**: Retrieves machine performance reports
 
 **Query Parameters:**
+
 - `locationId` - Filter by location
 - `machineType` - Filter by machine type
 - `status` - Filter by machine status
@@ -444,15 +474,18 @@ Retrieves meter reports.
 **Response Fields:**
 
 #### GET /api/reports/machines
+
 Retrieves machine performance reports.
 
 **Query Parameters:**
+
 - `locationId` (string): Filter by location
 - `machineType` (string): Filter by machine type
 - `status` (string): Filter by machine status
 - `includeMaintenance` (boolean): Include maintenance data
 
 **Response:**
+
 ```json
 {
   "machineReports": [
@@ -496,11 +529,12 @@ Retrieves machine performance reports.
 }
 ```
 
-
 ### GET `/api/reports/locations`
+
 **Purpose**: Retrieves location performance reports
 
 **Query Parameters:**
+
 - `includeMachines` - Include machine breakdown
 - `includeStaff` - Include staff information
 - `period` - Report period
@@ -508,14 +542,17 @@ Retrieves machine performance reports.
 **Response Fields:**
 
 #### GET /api/reports/locations
+
 Retrieves location performance reports.
 
 **Query Parameters:**
+
 - `includeMachines` (boolean): Include machine breakdown
 - `includeStaff` (boolean): Include staff information
 - `period` (string): Report period
 
 **Response:**
+
 ```json
 {
   "locationReports": [
@@ -561,11 +598,12 @@ Retrieves location performance reports.
 }
 ```
 
-
 ### GET `/api/reports/daily-counts`
+
 **Purpose**: Retrieves daily count reports
 
 **Query Parameters:**
+
 - `startDate` - Start date
 - `endDate` - End date
 - `locationId` - Filter by location
@@ -574,15 +612,18 @@ Retrieves location performance reports.
 **Response Fields:**
 
 #### GET /api/reports/daily-counts
+
 Retrieves daily count reports.
 
 **Query Parameters:**
+
 - `startDate` (string): Start date
 - `endDate` (string): End date
 - `locationId` (string): Filter by location
 - `countType` (string): Type of count ('sessions', 'revenue', 'machines')
 
 **Response:**
+
 ```json
 {
   "dailyCounts": [
@@ -614,13 +655,14 @@ Retrieves daily count reports.
 }
 ```
 
-
 ## Scheduler Endpoints
 
 ### GET `/api/schedulers`
+
 **Purpose**: Retrieves scheduled tasks and operations
 
 **Query Parameters:**
+
 - `active` - Filter by active status
 - `type` - Task type ('maintenance', 'collection', 'report')
 - `locationId` - Filter by location
@@ -632,14 +674,17 @@ Retrieves daily count reports.
 **Base URL:** `/api/schedulers`
 
 #### GET /api/schedulers
+
 Retrieves scheduled tasks and operations.
 
 **Query Parameters:**
+
 - `active` (boolean): Filter by active status
 - `type` (string): Task type ('maintenance', 'collection', 'report')
 - `locationId` (string): Filter by location
 
 **Response:**
+
 ```json
 {
   "schedulers": [
@@ -683,16 +728,18 @@ Retrieves scheduled tasks and operations.
 }
 ```
 
-
 ### POST `/api/schedulers`
+
 **Purpose**: Creates a new scheduled task
 
 **Request Fields:**
 
 #### POST /api/schedulers
+
 Creates a new scheduled task.
 
 **Request Body:**
+
 ```json
 {
   "name": "Weekly Maintenance Schedule",
@@ -722,13 +769,14 @@ Creates a new scheduled task.
 }
 ```
 
-
 ## Movement Requests Endpoints
 
 ### GET `/api/movement-requests`
+
 **Purpose**: Retrieves movement requests for machines
 
 **Query Parameters:**
+
 - `status` - Filter by status ('pending', 'approved', 'completed', 'cancelled')
 - `locationId` - Filter by location
 - `requestedBy` - Filter by requester
@@ -736,15 +784,19 @@ Creates a new scheduled task.
 **Response Fields:**
 
 #### PUT /api/schedulers/[id]
+
 Updates a scheduled task.
 
 **Path Parameters:**
+
 - `id` (string): Scheduler ID
 
 #### DELETE /api/schedulers/[id]
+
 Deactivates a scheduled task.
 
 **Path Parameters:**
+
 - `id` (string): Scheduler ID
 
 ### Movement Requests
@@ -752,14 +804,17 @@ Deactivates a scheduled task.
 **Base URL:** `/api/movement-requests`
 
 #### GET /api/movement-requests
+
 Retrieves movement requests for machines.
 
 **Query Parameters:**
+
 - `status` (string): Filter by status ('pending', 'approved', 'completed', 'cancelled')
 - `locationId` (string): Filter by location
 - `requestedBy` (string): Filter by requester
 
 **Response:**
+
 ```json
 {
   "movementRequests": [
@@ -803,16 +858,18 @@ Retrieves movement requests for machines.
 }
 ```
 
-
 ### POST `/api/movement-requests`
+
 **Purpose**: Creates a new movement request
 
 **Request Fields:**
 
 #### POST /api/movement-requests
+
 Creates a new movement request.
 
 **Request Body:**
+
 ```json
 {
   "machineId": "string",
@@ -830,12 +887,13 @@ Creates a new movement request.
 }
 ```
 
-
 ## Data Models
 
 ### Metrics Model
+
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: string;
   timestamp: Date;                     // Metric timestamp
@@ -865,23 +923,28 @@ Updates a movement request.
   "approvedBy": "string",
   "notes": "Approved for movement"
 }
-```
+````
 
 #### DELETE /api/movement-requests/[id]
+
 Cancels a movement request.
 
 **Path Parameters:**
+
 - `id` (string): Movement request ID
 
 #### GET /api/movement-requests/[id]
+
 Retrieves specific movement request details.
 
 **Path Parameters:**
+
 - `id` (string): Movement request ID
 
 ## Database Models
 
 ### Metrics Model
+
 ```typescript
 type Metrics = {
   _id: string;
@@ -899,13 +962,14 @@ type Metrics = {
     netWin: number;
     efficiency: number;
   };
-}
+};
 ```
 
 ### Scheduler Model
 
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: string;
   name: string;                        // Scheduler name
@@ -953,12 +1017,13 @@ type Scheduler = {
   createdAt: Date;
   updatedAt: Date;
 }
-```
+````
 
 ### MovementRequest Model
 
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: string;
   machineId: string;                   // Machine to move
@@ -1006,12 +1071,12 @@ type MovementRequest = {
   createdAt: Date;
   updatedAt: Date;
 }
-```
-
+````
 
 ## Financial Calculations
 
 ### Performance Metrics
+
 ```
 Hold Percentage = (Coin In - Coin Out) / Coin In × 100
 Net Win = Coin In - Coin Out
@@ -1020,6 +1085,7 @@ Average Session Length = Total Session Time / Number of Sessions
 ```
 
 ### Revenue Calculations
+
 ```
 Total Revenue = Sum of all machine revenues
 Location Revenue = Sum of all machine revenues at location
@@ -1028,6 +1094,7 @@ Average Daily Revenue = Total Revenue / Number of Days
 ```
 
 ### Efficiency Metrics
+
 ```
 Session Efficiency = Revenue / Number of Sessions
 Machine Efficiency = Revenue / Machine Hours
@@ -1037,18 +1104,21 @@ Staff Efficiency = Revenue / Staff Hours
 ## Business Rules
 
 ### Metrics Tracking
+
 1. **Real-time Monitoring**: Metrics updated every 15 minutes
 2. **Data Retention**: Metrics retained for 2 years
 3. **Performance Thresholds**: Alerts for performance below thresholds
 4. **Trend Analysis**: 30-day rolling averages for trend analysis
 
 ### Scheduling Rules
+
 1. **Conflict Resolution**: Automatic conflict detection and resolution
 2. **Resource Management**: Efficient resource allocation
 3. **Time Zone Support**: Multi-timezone scheduling support
 4. **Flexible Scheduling**: Support for various scheduling frequencies
 
 ### Movement Rules
+
 1. **Approval Process**: Multi-level approval process
 2. **Scheduling**: Flexible scheduling for movements
 3. **Tracking**: Real-time movement status tracking
@@ -1057,16 +1127,19 @@ Staff Efficiency = Revenue / Staff Hours
 ## Security Features
 
 ### Authentication
+
 - JWT tokens required for all endpoints
 - Role-based access control
 - Session management with proper expiration
 
 ### Authorization
+
 - Different access levels for different operations
 - Resource-level permissions
 - Location-based access restrictions
 
 ### Data Protection
+
 - Input sanitization and validation
 - SQL injection prevention
 - XSS protection
@@ -1075,16 +1148,19 @@ Staff Efficiency = Revenue / Staff Hours
 ## Performance Considerations
 
 ### Database Optimization
+
 - Proper indexing on frequently queried fields
 - Query optimization for complex aggregations
 - Connection pooling for efficient database access
 
 ### Caching Strategy
+
 - Metrics data cached for improved performance
 - Response caching with appropriate headers
 - Client-side caching strategies
 
 ### Monitoring
+
 - Performance metrics monitoring
 - Error tracking and analysis
 - Usage analytics
@@ -1093,6 +1169,7 @@ Staff Efficiency = Revenue / Staff Hours
 ## Error Handling
 
 ### HTTP Status Codes
+
 - `200`: Success
 - `400`: Bad Request (Invalid request parameters)
 - `401`: Unauthorized (Authentication required)
@@ -1103,6 +1180,7 @@ Staff Efficiency = Revenue / Staff Hours
 - `500`: Internal Server Error
 
 ### Error Response Format
+
 ```json
 {
   "success": false,
@@ -1119,24 +1197,28 @@ Staff Efficiency = Revenue / Staff Hours
 ## Features
 
 ### Metrics Tracking
+
 - **Real-time Monitoring**: Live metrics tracking across all locations
 - **Performance Analysis**: Comprehensive performance analysis and reporting
 - **Trend Analysis**: Historical trend analysis and forecasting
 - **Custom Dashboards**: Customizable dashboard metrics
 
 ### Reporting System
+
 - **Automated Reports**: Scheduled report generation and distribution
 - **Multi-format Export**: Export reports in various formats (PDF, Excel, CSV)
 - **Custom Filters**: Advanced filtering and grouping options
 - **Real-time Updates**: Live report updates and notifications
 
 ### Scheduling System
+
 - **Flexible Scheduling**: Support for various scheduling frequencies
 - **Time Zone Support**: Multi-timezone scheduling support
 - **Resource Management**: Efficient resource allocation and management
 - **Conflict Resolution**: Automatic conflict detection and resolution
 
 ### Movement Management
+
 - **Request Workflow**: Complete workflow for movement requests
 - **Approval Process**: Multi-level approval process
 - **Scheduling**: Flexible scheduling for movements
@@ -1144,15 +1226,15 @@ Staff Efficiency = Revenue / Staff Hours
 
 ## Error Codes
 
-| Code | Description |
-|------|-------------|
-| 400 | Invalid request parameters |
-| 401 | Unauthorized access |
-| 403 | Insufficient permissions |
-| 404 | Resource not found |
-| 409 | Schedule conflict |
-| 422 | Validation error |
-| 500 | Internal server error |
+| Code | Description                |
+| ---- | -------------------------- |
+| 400  | Invalid request parameters |
+| 401  | Unauthorized access        |
+| 403  | Insufficient permissions   |
+| 404  | Resource not found         |
+| 409  | Schedule conflict          |
+| 422  | Validation error           |
+| 500  | Internal server error      |
 
 ## Security Features
 
@@ -1188,65 +1270,91 @@ Staff Efficiency = Revenue / Staff Hours
 ## Usage Examples
 
 ### Creating a Movement Request
+
 ```javascript
-const response = await axios.post('/api/movement-requests', {
-  machineId: 'machine123',
-  fromLocation: {
-    locationId: 'location1',
-    area: 'Slot Floor A'
+const response = await axios.post(
+  '/api/movement-requests',
+  {
+    machineId: 'machine123',
+    fromLocation: {
+      locationId: 'location1',
+      area: 'Slot Floor A',
+    },
+    toLocation: {
+      locationId: 'location1',
+      area: 'Slot Floor B',
+    },
+    scheduledFor: '2024-01-02T02:00:00.000Z',
+    notes: 'Moving to higher traffic area',
+    estimatedDuration: 60,
   },
-  toLocation: {
-    locationId: 'location1',
-    area: 'Slot Floor B'
-  },
-  scheduledFor: '2024-01-02T02:00:00.000Z',
-  notes: 'Moving to higher traffic area',
-  estimatedDuration: 60
-}, {
-  headers: {
-    'Authorization': `Bearer ${token}`
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   }
-});
+);
 ```
 
 ### Creating a Scheduled Task
+
 ```javascript
-const response = await axios.post('/api/schedulers', {
-  name: 'Daily Collection Schedule',
-  type: 'collection',
-  schedule: {
-    frequency: 'daily',
-    time: '10:00',
-    timezone: 'America/Los_Angeles',
-    daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const response = await axios.post(
+  '/api/schedulers',
+  {
+    name: 'Daily Collection Schedule',
+    type: 'collection',
+    schedule: {
+      frequency: 'daily',
+      time: '10:00',
+      timezone: 'America/Los_Angeles',
+      daysOfWeek: [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+      ],
+    },
+    targets: {
+      locationId: 'location123',
+      collectorId: 'collector456',
+    },
   },
-  targets: {
-    locationId: 'location123',
-    collectorId: 'collector456'
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   }
-}, {
-  headers: {
-    'Authorization': `Bearer ${token}`
-  }
-});
+);
 ```
 
 ### Retrieving Top Performers
+
 ```javascript
-const response = await axios.get('/api/metrics/top-performing?period=month&limit=10&metric=revenue', {
-  headers: {
-    'Authorization': `Bearer ${token}`
+const response = await axios.get(
+  '/api/metrics/top-performing?period=month&limit=10&metric=revenue',
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   }
-});
+);
 const data = response.data;
 ```
 
 ### Generating a Report
+
 ```javascript
-const response = await axios.get('/api/reports/machines?locationId=location123&includeMaintenance=true', {
-  headers: {
-    'Authorization': `Bearer ${token}`
+const response = await axios.get(
+  '/api/reports/machines?locationId=location123&includeMaintenance=true',
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   }
-});
+);
 const report = response.data;
 ```

@@ -1,4 +1,4 @@
-import type { AggregatedLocation } from "@/shared/types/common";
+import type { AggregatedLocation } from '@/shared/types/common';
 
 export type UseLocationModalsReturn = {
   isNewLocationModalOpen: boolean;
@@ -6,9 +6,7 @@ export type UseLocationModalsReturn = {
   closeNewLocationModal: () => void;
   handleLocationClick: (locationId: string) => void;
   handleTableAction: (
-    action: "edit" | "delete",
+    action: 'edit' | 'delete',
     location: AggregatedLocation
   ) => void;
 };
-
-

@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { Button } from "@/components/ui/button";
-import { useMemberActionsStore } from "@/lib/store/memberActionsStore";
-import { useUserStore } from "@/lib/store/userStore";
-import axios from "axios";
-import { toast } from "sonner";
+import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import { Button } from '@/components/ui/button';
+import { useMemberActionsStore } from '@/lib/store/memberActionsStore';
+import { useUserStore } from '@/lib/store/userStore';
+import axios from 'axios';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -14,8 +14,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { CasinoMember as Member } from "@/shared/types/entities";
+} from '@/components/ui/dialog';
+import { CasinoMember as Member } from '@/shared/types/entities';
 
 type DeleteMemberModalProps = {
   isOpen: boolean;
@@ -37,7 +37,7 @@ export default function DeleteMemberModal({
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
-    if (!user) return "Unknown User";
+    if (!user) return 'Unknown User';
 
     // Check if user has profile with firstName and lastName
     if (user.profile?.firstName && user.profile?.lastName) {
@@ -55,17 +55,17 @@ export default function DeleteMemberModal({
     }
 
     // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== "") {
+    if (user.username && user.username.trim() !== '') {
       return user.username;
     }
 
     // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== "") {
+    if (user.emailAddress && user.emailAddress.trim() !== '') {
       return user.emailAddress;
     }
 
     // Fallback
-    return "Unknown User";
+    return 'Unknown User';
   };
 
   // Activity logging is now handled via API calls
@@ -79,10 +79,10 @@ export default function DeleteMemberModal({
     newData?: Record<string, unknown> | null
   ) => {
     try {
-      const response = await fetch("/api/activity-logs", {
-        method: "POST",
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
@@ -90,9 +90,9 @@ export default function DeleteMemberModal({
           resourceId,
           resourceName,
           details,
-          userId: user?._id || "unknown",
+          userId: user?._id || 'unknown',
           username: getUserDisplayName(),
-          userRole: "user",
+          userRole: 'user',
           previousData: previousData || null,
           newData: newData || null,
           changes: [], // Will be calculated by the API
@@ -100,10 +100,10 @@ export default function DeleteMemberModal({
       });
 
       if (!response.ok) {
-        console.error("Failed to log activity:", response.statusText);
+        console.error('Failed to log activity:', response.statusText);
       }
     } catch (error) {
-      console.error("Error logging activity:", error);
+      console.error('Error logging activity:', error);
     }
   };
 
@@ -116,7 +116,7 @@ export default function DeleteMemberModal({
           opacity: 1,
           y: 0,
           duration: 0.3,
-          ease: "power2.out",
+          ease: 'power2.out',
           overwrite: true,
         }
       );
@@ -124,7 +124,7 @@ export default function DeleteMemberModal({
       gsap.to(backdropRef.current, {
         opacity: 1,
         duration: 0.2,
-        ease: "power2.out",
+        ease: 'power2.out',
         overwrite: true,
       });
     }
@@ -135,7 +135,7 @@ export default function DeleteMemberModal({
       opacity: 0,
       y: -20,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
       onComplete: () => {
         closeDeleteModal();
         onClose();
@@ -145,13 +145,13 @@ export default function DeleteMemberModal({
     gsap.to(backdropRef.current, {
       opacity: 0,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
     });
   };
 
   const handleDelete = async () => {
     if (!selectedMember?._id) {
-      toast.error("No member selected");
+      toast.error('No member selected');
       return;
     }
 
@@ -162,28 +162,28 @@ export default function DeleteMemberModal({
       if (response.status === 200) {
         // Log the deletion activity
         await logActivity(
-          "delete",
-          "member",
+          'delete',
+          'member',
           selectedMember._id,
-          `${selectedMember.profile?.firstName || "Unknown"} ${
-            selectedMember.profile?.lastName || "Member"
+          `${selectedMember.profile?.firstName || 'Unknown'} ${
+            selectedMember.profile?.lastName || 'Member'
           }`,
-          `Deleted member: ${selectedMember.profile?.firstName || "Unknown"} ${
-            selectedMember.profile?.lastName || "Member"
+          `Deleted member: ${selectedMember.profile?.firstName || 'Unknown'} ${
+            selectedMember.profile?.lastName || 'Member'
           }`,
           selectedMember, // Previous data (the deleted member)
           null // No new data for deletion
         );
 
-        toast.success("Member deleted successfully");
+        toast.success('Member deleted successfully');
         onDelete();
         handleClose();
       } else {
-        toast.error("Failed to delete member");
+        toast.error('Failed to delete member');
       }
     } catch (error) {
-      console.error("Error deleting member:", error);
-      toast.error("Failed to delete member");
+      console.error('Error deleting member:', error);
+      toast.error('Failed to delete member');
     } finally {
       setLoading(false);
     }
@@ -196,7 +196,7 @@ export default function DeleteMemberModal({
       {/* Backdrop */}
       <div
         ref={backdropRef}
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        className="fixed inset-0 z-40 bg-black bg-opacity-50"
         onClick={handleClose}
       />
 
@@ -204,7 +204,7 @@ export default function DeleteMemberModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto"
+          className="mx-auto w-full max-w-md rounded-lg bg-white shadow-xl"
         >
           <Dialog open={isDeleteModalOpen} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-md">
@@ -217,15 +217,15 @@ export default function DeleteMemberModal({
               </DialogHeader>
 
               <div className="py-4">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-red-800 mb-2">
-                    {selectedMember?.profile?.firstName}{" "}
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                  <h3 className="mb-2 text-lg font-semibold text-red-800">
+                    {selectedMember?.profile?.firstName}{' '}
                     {selectedMember?.profile?.lastName}
                   </h3>
-                  <p className="text-red-600 text-sm">
+                  <p className="text-sm text-red-600">
                     Member ID: {selectedMember?._id}
                   </p>
-                  <p className="text-red-600 text-sm">
+                  <p className="text-sm text-red-600">
                     Email: {selectedMember?.profile?.email}
                   </p>
                 </div>
@@ -240,7 +240,7 @@ export default function DeleteMemberModal({
                   onClick={handleDelete}
                   disabled={loading}
                 >
-                  {loading ? "Deleting..." : "Delete Member"}
+                  {loading ? 'Deleting...' : 'Delete Member'}
                 </Button>
               </DialogFooter>
             </DialogContent>

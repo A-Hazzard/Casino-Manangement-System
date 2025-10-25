@@ -1,7 +1,7 @@
-import React from "react";
-import CollectorScheduleFilters from "@/components/collectionReport/CollectorScheduleFilters";
-import CollectorScheduleCards from "@/components/collectionReport/CollectorScheduleCards";
-import { CollectorScheduleMobileUIProps } from "@/lib/types/componentProps";
+import React from 'react';
+import CollectorScheduleFilters from '@/components/collectionReport/CollectorScheduleFilters';
+import CollectorScheduleCards from '@/components/collectionReport/CollectorScheduleCards';
+import { CollectorScheduleMobileUIProps } from '@/lib/types/componentProps';
 
 const CollectorMobileUI: React.FC<CollectorScheduleMobileUIProps> = ({
   selectedLocation,
@@ -17,8 +17,8 @@ const CollectorMobileUI: React.FC<CollectorScheduleMobileUIProps> = ({
   loadingCollectorSchedules,
 }) => {
   return (
-    <div className="md:hidden w-full px-4">
-      <div className="mx-auto max-w-xl bg-white p-4 rounded-lg shadow-md space-y-4">
+    <div className="w-full px-4 md:hidden">
+      <div className="mx-auto max-w-xl space-y-4 rounded-lg bg-white p-4 shadow-md">
         <CollectorScheduleFilters
           selectedLocation={selectedLocation}
           onLocationChange={onLocationChange}

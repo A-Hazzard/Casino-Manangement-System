@@ -1,13 +1,13 @@
-import { Db } from "mongodb";
-import { getDatesForTimePeriod } from "../utils/dates";
+import { Db } from 'mongodb';
+import { getDatesForTimePeriod } from '../utils/dates';
 import {
   PipelineStage,
   QueryFilter,
   TimePeriod,
   CustomDate,
-} from "@/lib/types/api";
+} from '@/lib/types/api';
 
-type ActiveTab = "locations" | "Cabinets";
+type ActiveTab = 'locations' | 'Cabinets';
 
 /**
  * Fetches the top 5 performing locations or Cabinets based on total moneyIn (drop).
@@ -25,18 +25,18 @@ export async function getTopPerformingMetrics(
   const { startDate, endDate }: CustomDate = getDatesForTimePeriod(timePeriod);
 
   const filter: QueryFilter = {};
-  
+
   // Only add date filter if we have valid dates (not "All Time")
   if (startDate && endDate) {
     filter.readAt = { $gte: startDate, $lte: endDate };
   }
 
   const aggregationQuery =
-    activeTab === "Cabinets"
+    activeTab === 'Cabinets'
       ? aggregateMetersForTop5Machines(filter)
       : aggregateMetersForTop5Locations(filter);
 
-  return db.collection("meters").aggregate(aggregationQuery).toArray();
+  return db.collection('meters').aggregate(aggregationQuery).toArray();
 }
 
 /**
@@ -50,25 +50,25 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
     { $match: filter },
     {
       $group: {
-        _id: "$location",
-        totalDrop: { $sum: "$movement.drop" },
-        totalGamesPlayed: { $sum: "$movement.gamesPlayed" },
-        totalJackpot: { $sum: "$movement.jackpot" },
+        _id: '$location',
+        totalDrop: { $sum: '$movement.drop' },
+        totalGamesPlayed: { $sum: '$movement.gamesPlayed' },
+        totalJackpot: { $sum: '$movement.jackpot' },
       },
     },
     {
       $lookup: {
-        from: "gaminglocations",
-        localField: "_id",
-        foreignField: "_id",
-        as: "locationDetails",
+        from: 'gaminglocations',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'locationDetails',
       },
     },
-    { $unwind: "$locationDetails" },
+    { $unwind: '$locationDetails' },
     {
       $project: {
         _id: 0,
-        location: "$locationDetails.name",
+        location: '$locationDetails.name',
         totalDrop: 1,
         totalGamesPlayed: 1,
         totalJackpot: 1,
@@ -77,16 +77,16 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
     { $sort: { location: 1, totalDrop: -1 } },
     {
       $group: {
-        _id: "$location",
-        totalDrop: { $first: "$totalDrop" },
-        totalGamesPlayed: { $first: "$totalGamesPlayed" },
-        totalJackpot: { $first: "$totalJackpot" },
+        _id: '$location',
+        totalDrop: { $first: '$totalDrop' },
+        totalGamesPlayed: { $first: '$totalGamesPlayed' },
+        totalJackpot: { $first: '$totalJackpot' },
       },
     },
     {
       $project: {
         _id: 0,
-        location: "$_id",
+        location: '$_id',
         totalDrop: 1,
         totalGamesPlayed: 1,
         totalJackpot: 1,
@@ -108,38 +108,38 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
     { $match: filter },
     {
       $group: {
-        _id: { machine: "$machine", location: "$location" },
-        totalCoinIn: { $sum: "$movement.coinIn" },
-        totalCoinOut: { $sum: "$movement.coinOut" },
-        totalDrop: { $sum: "$movement.drop" },
-        totalCancelledCredits: { $sum: "$movement.totalCancelledCredits" },
-        totalGamesPlayed: { $sum: "$movement.gamesPlayed" },
-        totalJackpot: { $sum: "$movement.jackpot" },
+        _id: { machine: '$machine', location: '$location' },
+        totalCoinIn: { $sum: '$movement.coinIn' },
+        totalCoinOut: { $sum: '$movement.coinOut' },
+        totalDrop: { $sum: '$movement.drop' },
+        totalCancelledCredits: { $sum: '$movement.totalCancelledCredits' },
+        totalGamesPlayed: { $sum: '$movement.gamesPlayed' },
+        totalJackpot: { $sum: '$movement.jackpot' },
       },
     },
     {
       $lookup: {
-        from: "machines",
-        localField: "_id.machine",
-        foreignField: "_id",
-        as: "machineDetails",
+        from: 'machines',
+        localField: '_id.machine',
+        foreignField: '_id',
+        as: 'machineDetails',
       },
     },
-    { $unwind: "$machineDetails" },
+    { $unwind: '$machineDetails' },
     {
       $lookup: {
-        from: "gaminglocations",
-        localField: "_id.location",
-        foreignField: "_id",
-        as: "locationDetails",
+        from: 'gaminglocations',
+        localField: '_id.location',
+        foreignField: '_id',
+        as: 'locationDetails',
       },
     },
-    { $unwind: "$locationDetails" },
+    { $unwind: '$locationDetails' },
     {
       $project: {
         _id: 0,
-        machine: "$machineDetails.serialNumber",
-        location: "$locationDetails.name",
+        machine: '$machineDetails.serialNumber',
+        location: '$locationDetails.name',
         totalCoinIn: 1,
         totalCoinOut: 1,
         totalDrop: 1,
@@ -151,20 +151,20 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
     { $sort: { location: 1, totalDrop: -1 } },
     {
       $group: {
-        _id: "$location",
-        machine: { $first: "$machine" },
-        totalCoinIn: { $first: "$totalCoinIn" },
-        totalCoinOut: { $first: "$totalCoinOut" },
-        totalDrop: { $first: "$totalDrop" },
-        totalCancelledCredits: { $first: "$totalCancelledCredits" },
-        totalGamesPlayed: { $first: "$totalGamesPlayed" },
-        totalJackpot: { $first: "$totalJackpot" },
+        _id: '$location',
+        machine: { $first: '$machine' },
+        totalCoinIn: { $first: '$totalCoinIn' },
+        totalCoinOut: { $first: '$totalCoinOut' },
+        totalDrop: { $first: '$totalDrop' },
+        totalCancelledCredits: { $first: '$totalCancelledCredits' },
+        totalGamesPlayed: { $first: '$totalGamesPlayed' },
+        totalJackpot: { $first: '$totalJackpot' },
       },
     },
     {
       $project: {
         _id: 0,
-        location: "$_id",
+        location: '$_id',
         machine: 1,
         totalCoinIn: 1,
         totalCoinOut: 1,

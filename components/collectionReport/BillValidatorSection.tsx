@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import React, { useState, useMemo } from "react";
-import { formatCurrency } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState, useMemo } from 'react';
+import { formatCurrency } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   BillValidatorTimePeriod,
   BillValidatorFormData,
   ProcessedBillData,
   BillValidatorSummary,
-} from "@/shared/types/billValidator";
-import type { BillValidatorData as DatabaseBillValidatorData } from "@/shared/types/database";
+} from '@/shared/types/billValidator';
+import type { BillValidatorData as DatabaseBillValidatorData } from '@/shared/types/database';
 
 // Flexible bill meters type that can handle both cabinet and bill validator data
 type FlexibleBillMetersData = {
@@ -46,34 +46,34 @@ type BillValidatorSectionProps = {
 
 // Standard denominations
 const STANDARD_DENOMINATIONS = [
-  { value: 1, label: "$1" },
-  { value: 2, label: "$2" },
-  { value: 5, label: "$5" },
-  { value: 10, label: "$10" },
-  { value: 20, label: "$20" },
-  { value: 50, label: "$50" },
-  { value: 100, label: "$100" },
-  { value: 200, label: "$200" },
-  { value: 500, label: "$500" },
-  { value: 1000, label: "$1000" },
-  { value: 2000, label: "$2000" },
-  { value: 5000, label: "$5000" },
+  { value: 1, label: '$1' },
+  { value: 2, label: '$2' },
+  { value: 5, label: '$5' },
+  { value: 10, label: '$10' },
+  { value: 20, label: '$20' },
+  { value: 50, label: '$50' },
+  { value: 100, label: '$100' },
+  { value: 200, label: '$200' },
+  { value: 500, label: '$500' },
+  { value: 1000, label: '$1000' },
+  { value: 2000, label: '$2000' },
+  { value: 5000, label: '$5000' },
 ];
 
 // Time period options
 const TIME_PERIOD_OPTIONS: { value: BillValidatorTimePeriod; label: string }[] =
   [
-    { value: "today", label: "Today" },
-    { value: "yesterday", label: "Yesterday" },
-    { value: "7d", label: "Last 7 days" },
-    { value: "30d", label: "Last 30 days" },
+    { value: 'today', label: 'Today' },
+    { value: 'yesterday', label: 'Yesterday' },
+    { value: '7d', label: 'Last 7 days' },
+    { value: '30d', label: 'Last 30 days' },
   ];
 
 export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
   machineId: _machineId,
   billValidator,
   billMeters,
-  timePeriod = "today",
+  timePeriod = 'today',
   onTimePeriodChange,
   onCollect,
   isCollecting = false,
@@ -100,18 +100,18 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
 
     // Map billMeters keys to denominations
     const meterMap = [
-      { key: "dollar1", value: 1, label: "$1" },
-      { key: "dollar2", value: 2, label: "$2" },
-      { key: "dollar5", value: 5, label: "$5" },
-      { key: "dollar10", value: 10, label: "$10" },
-      { key: "dollar20", value: 20, label: "$20" },
-      { key: "dollar50", value: 50, label: "$50" },
-      { key: "dollar100", value: 100, label: "$100" },
-      { key: "dollar200", value: 200, label: "$200" },
-      { key: "dollar500", value: 500, label: "$500" },
-      { key: "dollar1000", value: 1000, label: "$1000" },
-      { key: "dollar2000", value: 2000, label: "$2000" },
-      { key: "dollar5000", value: 5000, label: "$5000" },
+      { key: 'dollar1', value: 1, label: '$1' },
+      { key: 'dollar2', value: 2, label: '$2' },
+      { key: 'dollar5', value: 5, label: '$5' },
+      { key: 'dollar10', value: 10, label: '$10' },
+      { key: 'dollar20', value: 20, label: '$20' },
+      { key: 'dollar50', value: 50, label: '$50' },
+      { key: 'dollar100', value: 100, label: '$100' },
+      { key: 'dollar200', value: 200, label: '$200' },
+      { key: 'dollar500', value: 500, label: '$500' },
+      { key: 'dollar1000', value: 1000, label: '$1000' },
+      { key: 'dollar2000', value: 2000, label: '$2000' },
+      { key: 'dollar5000', value: 5000, label: '$5000' },
     ];
 
     meterMap.forEach(({ key, value, label }) => {
@@ -144,7 +144,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
     let totalQuantity = 0;
     let totalAmount = 0;
 
-    billValidator.notes.forEach((note) => {
+    billValidator.notes.forEach(note => {
       const subtotal = note.denomination * note.quantity;
       processed.push({
         denomination: note.denomination,
@@ -186,7 +186,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
   // Handle collect form input change
   const handleCollectFormChange = (denomination: number, value: string) => {
     const numValue = parseInt(value) || 0;
-    setCollectFormData((prev) => ({
+    setCollectFormData(prev => ({
       ...prev,
       [`note_${denomination}`]: numValue,
     }));
@@ -195,7 +195,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
   // Calculate collect form total
   const collectFormTotal = useMemo(() => {
     return Object.entries(collectFormData).reduce((total, [key, value]) => {
-      const denomination = parseInt(key.replace("note_", ""));
+      const denomination = parseInt(key.replace('note_', ''));
       return total + denomination * (value || 0);
     }, 0);
   }, [collectFormData]);
@@ -214,11 +214,11 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
         </CardHeader>
         <CardContent>
           {/* Time Period Selector */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {TIME_PERIOD_OPTIONS.map((option) => (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {TIME_PERIOD_OPTIONS.map(option => (
               <Button
                 key={option.value}
-                variant={timePeriod === option.value ? "default" : "outline"}
+                variant={timePeriod === option.value ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onTimePeriodChange?.(option.value)}
               >
@@ -228,7 +228,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
           </div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
             <Card>
               <CardContent className="p-4">
                 <div className="text-center">
@@ -282,42 +282,42 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
               {processedBillValidator.processed.length > 0 ? (
                 <div className="space-y-4">
                   {/* Desktop Table */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full border border-gray-200 rounded-lg">
+                  <div className="hidden overflow-x-auto lg:block">
+                    <table className="w-full rounded-lg border border-gray-200">
                       <thead>
                         <tr className="bg-blue-600 text-white">
-                          <th className="py-3 px-4 text-center rounded-tl-lg">
+                          <th className="rounded-tl-lg px-4 py-3 text-center">
                             Denomination
                           </th>
-                          <th className="py-3 px-4 text-center">Quantity</th>
-                          <th className="py-3 px-4 text-center rounded-tr-lg">
+                          <th className="px-4 py-3 text-center">Quantity</th>
+                          <th className="rounded-tr-lg px-4 py-3 text-center">
                             Subtotal
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {processedBillValidator.processed.map((bill) => (
+                        {processedBillValidator.processed.map(bill => (
                           <tr
                             key={bill.denomination}
                             className="border-b border-gray-200"
                           >
-                            <td className="py-3 px-4 text-center font-medium">
+                            <td className="px-4 py-3 text-center font-medium">
                               {bill.label}
                             </td>
-                            <td className="py-3 px-4 text-center">
+                            <td className="px-4 py-3 text-center">
                               {bill.quantity}
                             </td>
-                            <td className="py-3 px-4 text-center">
+                            <td className="px-4 py-3 text-center">
                               {formatCurrency(bill.subtotal)}
                             </td>
                           </tr>
                         ))}
                         <tr className="bg-gray-100 font-bold">
-                          <td className="py-3 px-4 rounded-bl-lg">Total</td>
-                          <td className="py-3 px-4">
+                          <td className="rounded-bl-lg px-4 py-3">Total</td>
+                          <td className="px-4 py-3">
                             {processedBillValidator.totalQuantity}
                           </td>
-                          <td className="py-3 px-4 rounded-br-lg">
+                          <td className="rounded-br-lg px-4 py-3">
                             {formatCurrency(processedBillValidator.totalAmount)}
                           </td>
                         </tr>
@@ -326,11 +326,11 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                   </div>
 
                   {/* Mobile Cards */}
-                  <div className="block lg:hidden space-y-3">
-                    {processedBillValidator.processed.map((bill) => (
+                  <div className="block space-y-3 lg:hidden">
+                    {processedBillValidator.processed.map(bill => (
                       <Card key={bill.denomination}>
                         <CardContent className="p-4">
-                          <div className="flex justify-between items-center">
+                          <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium">{bill.label}</p>
                               <p className="text-sm text-gray-600">
@@ -347,7 +347,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">
+                <p className="py-8 text-center text-gray-500">
                   No bill validator data available
                 </p>
               )}
@@ -365,32 +365,32 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
               {processedBillMeters.processed.length > 0 ? (
                 <div className="space-y-4">
                   {/* Desktop Table */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full border border-gray-200 rounded-lg">
+                  <div className="hidden overflow-x-auto lg:block">
+                    <table className="w-full rounded-lg border border-gray-200">
                       <thead>
                         <tr className="bg-green-600 text-white">
-                          <th className="py-3 px-4 text-center rounded-tl-lg">
+                          <th className="rounded-tl-lg px-4 py-3 text-center">
                             Denomination
                           </th>
-                          <th className="py-3 px-4 text-center">Quantity</th>
-                          <th className="py-3 px-4 text-center rounded-tr-lg">
+                          <th className="px-4 py-3 text-center">Quantity</th>
+                          <th className="rounded-tr-lg px-4 py-3 text-center">
                             Subtotal
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {processedBillMeters.processed.map((bill) => (
+                        {processedBillMeters.processed.map(bill => (
                           <tr
                             key={bill.denomination}
                             className="border-b border-gray-200"
                           >
-                            <td className="py-3 px-4 text-center font-medium">
+                            <td className="px-4 py-3 text-center font-medium">
                               {bill.label}
                             </td>
-                            <td className="py-3 px-4 text-center">
+                            <td className="px-4 py-3 text-center">
                               {bill.quantity}
                             </td>
-                            <td className="py-3 px-4 text-center">
+                            <td className="px-4 py-3 text-center">
                               {formatCurrency(bill.subtotal)}
                             </td>
                           </tr>
@@ -399,22 +399,22 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                         {/* Unknown Bills Row */}
                         {processedBillMeters.totalUnknown > 0 && (
                           <tr className="border-b border-gray-200 bg-yellow-50">
-                            <td className="py-3 px-4 font-medium text-yellow-800">
+                            <td className="px-4 py-3 font-medium text-yellow-800">
                               Unknown Bills
                             </td>
-                            <td className="py-3 px-4 text-yellow-800">-</td>
-                            <td className="py-3 px-4 text-yellow-800">
+                            <td className="px-4 py-3 text-yellow-800">-</td>
+                            <td className="px-4 py-3 text-yellow-800">
                               {formatCurrency(processedBillMeters.totalUnknown)}
                             </td>
                           </tr>
                         )}
 
                         <tr className="bg-gray-100 font-bold">
-                          <td className="py-3 px-4 rounded-bl-lg">Total</td>
-                          <td className="py-3 px-4">
+                          <td className="rounded-bl-lg px-4 py-3">Total</td>
+                          <td className="px-4 py-3">
                             {processedBillMeters.totalQuantity}
                           </td>
-                          <td className="py-3 px-4 rounded-br-lg">
+                          <td className="rounded-br-lg px-4 py-3">
                             {formatCurrency(
                               processedBillMeters.totalAmount +
                                 processedBillMeters.totalUnknown
@@ -426,11 +426,11 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                   </div>
 
                   {/* Mobile Cards */}
-                  <div className="block lg:hidden space-y-3">
-                    {processedBillMeters.processed.map((bill) => (
+                  <div className="block space-y-3 lg:hidden">
+                    {processedBillMeters.processed.map(bill => (
                       <Card key={bill.denomination}>
                         <CardContent className="p-4">
-                          <div className="flex justify-between items-center">
+                          <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium">{bill.label}</p>
                               <p className="text-sm text-gray-600">
@@ -449,7 +449,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                     {processedBillMeters.totalUnknown > 0 && (
                       <Card className="border-yellow-300">
                         <CardContent className="p-4">
-                          <div className="flex justify-between items-center">
+                          <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-yellow-800">
                                 Unknown Bills
@@ -465,7 +465,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">
+                <p className="py-8 text-center text-gray-500">
                   No bill meters data available
                 </p>
               )}
@@ -484,7 +484,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                 disabled={isCollecting}
                 className="w-full md:w-auto"
               >
-                {isCollecting ? "Collecting..." : "Collect Bills"}
+                {isCollecting ? 'Collecting...' : 'Collect Bills'}
               </Button>
             </div>
           ) : (
@@ -492,7 +492,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
               <h3 className="text-lg font-semibold">Collect Bills</h3>
 
               {/* Collect Form */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {STANDARD_DENOMINATIONS.slice(0, 6).map(({ value, label }) => (
                   <div key={value} className="space-y-2">
                     <Label htmlFor={`collect_${value}`}>{label}</Label>
@@ -504,9 +504,9 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                       value={
                         collectFormData[
                           `note_${value}` as keyof BillValidatorFormData
-                        ] || ""
+                        ] || ''
                       }
-                      onChange={(e) =>
+                      onChange={e =>
                         handleCollectFormChange(value, e.target.value)
                       }
                       placeholder="0"
@@ -516,8 +516,8 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
               </div>
 
               {/* Total */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
+              <div className="rounded-lg bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
                   <span className="text-lg font-semibold">
                     Total to Collect:
                   </span>
@@ -528,7 +528,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
               </div>
 
               {/* Form Actions */}
-              <div className="flex gap-2 justify-end">
+              <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -542,7 +542,7 @@ export const BillValidatorSection: React.FC<BillValidatorSectionProps> = ({
                   onClick={handleCollectSubmit}
                   disabled={isCollecting || collectFormTotal === 0}
                 >
-                  {isCollecting ? "Collecting..." : "Submit Collection"}
+                  {isCollecting ? 'Collecting...' : 'Submit Collection'}
                 </Button>
               </div>
             </div>

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import type { Licensee } from "@/lib/types/licensee";
+import { useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import type { Licensee } from '@/lib/types/licensee';
 
 type DeleteLicenseeModalProps = {
   open: boolean;
@@ -22,7 +22,7 @@ export default function DeleteLicenseeModal({
       gsap.fromTo(
         modalRef.current,
         { opacity: 0 },
-        { opacity: 1, duration: 0.3, ease: "power2.out" }
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
       );
     }
   }, [open]);
@@ -33,30 +33,30 @@ export default function DeleteLicenseeModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div
         ref={modalRef}
-        className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 relative"
+        className="relative w-full max-w-sm rounded-lg bg-white p-6 shadow-lg"
       >
         <button
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
+          className="absolute right-3 top-3 text-gray-400 hover:text-gray-700"
           onClick={onClose}
           aria-label="Close"
         >
           ×
         </button>
-        <h2 className="text-2xl font-bold mb-4 text-center">Delete Licensee</h2>
-        <p className="text-gray-700 mb-6 text-center">
-          Are you sure you want to delete{" "}
+        <h2 className="mb-4 text-center text-2xl font-bold">Delete Licensee</h2>
+        <p className="mb-6 text-center text-gray-700">
+          Are you sure you want to delete{' '}
           <span className="font-semibold">{licensee.name}</span>?
         </p>
-        <div className="flex gap-3 justify-center">
+        <div className="flex justify-center gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition"
+            className="rounded bg-gray-200 px-4 py-2 font-semibold text-gray-700 transition hover:bg-gray-300"
           >
             Cancel
           </button>
           <button
             onClick={onDelete}
-            className="px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+            className="rounded bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-700"
           >
             Delete
           </button>

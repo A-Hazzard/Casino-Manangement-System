@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import React from "react";
-import { AlertTriangle, RefreshCw, Wifi, WifiOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React from 'react';
+import { AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 type ConnectionErrorProps = {
   error?: Error | string;
   onRetry?: () => void;
@@ -35,38 +35,37 @@ export default function ConnectionError({
   error,
   onRetry,
   isRetrying = false,
-  title = "Connection Issue",
+  title = 'Connection Issue',
   description = "We're experiencing connectivity issues with our database. This might be due to network problems or server maintenance.",
   showRetryButton = true,
-  className = "",
+  className = '',
 }: ConnectionErrorProps) {
-
   const getErrorMessage = () => {
-    if (typeof error === "string") return error;
+    if (typeof error === 'string') return error;
     if (error instanceof Error) {
       // Handle specific MongoDB errors
-      if (error.message.includes("timeout")) {
-        return "The database connection timed out. This usually happens when the server is under heavy load.";
+      if (error.message.includes('timeout')) {
+        return 'The database connection timed out. This usually happens when the server is under heavy load.';
       }
-      if (error.message.includes("connection")) {
-        return "Unable to connect to the database. Please check your internet connection.";
+      if (error.message.includes('connection')) {
+        return 'Unable to connect to the database. Please check your internet connection.';
       }
-      if (error.message.includes("network")) {
-        return "Network error occurred while connecting to the database.";
+      if (error.message.includes('network')) {
+        return 'Network error occurred while connecting to the database.';
       }
       return error.message;
     }
-    return "An unexpected error occurred while connecting to the database.";
+    return 'An unexpected error occurred while connecting to the database.';
   };
 
   const getErrorIcon = () => {
     const errorMessage = getErrorMessage().toLowerCase();
-    if (errorMessage.includes("timeout")) {
+    if (errorMessage.includes('timeout')) {
       return <Wifi className="h-8 w-8 text-yellow-500" />;
     }
     if (
-      errorMessage.includes("connection") ||
-      errorMessage.includes("network")
+      errorMessage.includes('connection') ||
+      errorMessage.includes('network')
     ) {
       return <WifiOff className="h-8 w-8 text-red-500" />;
     }
@@ -76,20 +75,20 @@ export default function ConnectionError({
   return (
     <Card className={`border-orange-200 bg-orange-50 ${className}`}>
       <CardHeader className="text-center">
-        <div className="flex justify-center mb-2">{getErrorIcon()}</div>
+        <div className="mb-2 flex justify-center">{getErrorIcon()}</div>
         <CardTitle className="text-orange-800">{title}</CardTitle>
         <CardDescription className="text-orange-700">
           {description}
         </CardDescription>
       </CardHeader>
-      <CardContent className="text-center space-y-4">
-        <div className="text-sm text-red-800 bg-red-50 p-3 rounded-md max-h-96 overflow-y-auto">
-          <strong className="text-red-700">Error Details:</strong>{" "}
+      <CardContent className="space-y-4 text-center">
+        <div className="max-h-96 overflow-y-auto rounded-md bg-red-50 p-3 text-sm text-red-800">
+          <strong className="text-red-700">Error Details:</strong>{' '}
           {getErrorMessage()}
           {error instanceof Error && error.stack && (
             <div className="mt-3">
               <strong className="text-red-700">Stack Trace:</strong>
-              <pre className="mt-2 text-xs whitespace-pre-wrap font-mono bg-gray-800 text-gray-100 p-2 rounded border">
+              <pre className="mt-2 whitespace-pre-wrap rounded border bg-gray-800 p-2 font-mono text-xs text-gray-100">
                 {error.stack}
               </pre>
             </div>
@@ -119,7 +118,7 @@ export default function ConnectionError({
 
         <div className="text-xs text-orange-600">
           <p>If this problem persists, please:</p>
-          <ul className="list-disc list-inside mt-1 space-y-1">
+          <ul className="mt-1 list-inside list-disc space-y-1">
             <li>Check your internet connection</li>
             <li>Wait a few minutes and try again</li>
             <li>Contact support if the issue continues</li>
@@ -137,19 +136,19 @@ export function ConnectionErrorCompact({
   error,
   onRetry,
   isRetrying = false,
-  className = "",
-}: Omit<ConnectionErrorProps, "title" | "description" | "showRetryButton">) {
+  className = '',
+}: Omit<ConnectionErrorProps, 'title' | 'description' | 'showRetryButton'>) {
   return (
     <div
-      className={`flex items-center justify-center p-4 bg-orange-50 border border-orange-200 rounded-md ${className}`}
+      className={`flex items-center justify-center rounded-md border border-orange-200 bg-orange-50 p-4 ${className}`}
     >
       <div className="flex items-center space-x-3">
         <WifiOff className="h-5 w-5 text-orange-500" />
         <div className="text-sm text-orange-700">
-          <span className="font-medium">Connection issue:</span>{" "}
-          {typeof error === "string"
+          <span className="font-medium">Connection issue:</span>{' '}
+          {typeof error === 'string'
             ? error
-            : error?.message || "Database connection failed"}
+            : error?.message || 'Database connection failed'}
         </div>
         {onRetry && (
           <Button

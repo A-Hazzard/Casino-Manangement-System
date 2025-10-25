@@ -1,5 +1,5 @@
 // Shared machine types used across frontend and backend
-import type { TimePeriod } from "./common";
+import type { TimePeriod } from './common';
 
 // Machine data structure from API (optimized)
 export type MachineData = {
@@ -66,7 +66,7 @@ export type MachineComparison = {
   theoreticalHold: number;
   actualHold: number;
   holdDifference: number;
-  performanceRating: "excellent" | "good" | "average" | "poor";
+  performanceRating: 'excellent' | 'good' | 'average' | 'poor';
   netWin: number;
   gamesPlayed: number;
   avgBet: number;
@@ -78,8 +78,8 @@ export type MachineFilters = {
   locationFilter?: string;
   machineTypeFilter?: string;
   manufacturerFilter?: string;
-  onlineStatus?: "all" | "online" | "offline";
-  sasStatus?: "all" | "sas" | "non-sas";
+  onlineStatus?: 'all' | 'online' | 'offline';
+  sasStatus?: 'all' | 'sas' | 'non-sas';
 };
 
 // Machine API response
@@ -137,7 +137,7 @@ export type MachineEvaluation = {
     totalCancelledCredits: number;
     totalGross: number;
   };
-  performanceRating: "excellent" | "good" | "average" | "poor";
+  performanceRating: 'excellent' | 'good' | 'average' | 'poor';
   contributionPercentage: number;
   theoreticalRtp: number;
   actualRtp: number;
@@ -164,7 +164,6 @@ export type MachineEvaluationSummary = {
     performance: number;
   }[];
 };
-
 
 export type MachineEvaluationFilters = {
   manufacturer?: string;
@@ -197,44 +196,44 @@ export type MachineAnalyticsQuery = {
   machine?: string;
   startDate?: Date;
   endDate?: Date;
-  groupBy?: "day" | "week" | "month" | "location" | "machine";
+  groupBy?: 'day' | 'week' | 'month' | 'location' | 'machine';
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
+  sortOrder?: 'asc' | 'desc';
   limit?: number;
   page?: number;
 };
 
 // Machine status types
-export type MachineStatus = "online" | "offline" | "maintenance" | "error";
+export type MachineStatus = 'online' | 'offline' | 'maintenance' | 'error';
 
 // Machine type categories
 export type MachineType =
-  | "slot"
-  | "roulette"
-  | "blackjack"
-  | "poker"
-  | "bingo"
-  | "other";
+  | 'slot'
+  | 'roulette'
+  | 'blackjack'
+  | 'poker'
+  | 'bingo'
+  | 'other';
 
 // Machine manufacturer types
 export type MachineManufacturer =
-  | "IGT"
-  | "Scientific Games"
-  | "NetEnt"
-  | "Microgaming"
-  | "Playtech"
-  | "Aristocrat"
-  | "Bally"
-  | "WMS"
-  | "Konami"
-  | "Other";
+  | 'IGT'
+  | 'Scientific Games'
+  | 'NetEnt'
+  | 'Microgaming'
+  | 'Playtech'
+  | 'Aristocrat'
+  | 'Bally'
+  | 'WMS'
+  | 'Konami'
+  | 'Other';
 
 // Machine performance rating
 export type MachinePerformanceRating =
-  | "excellent"
-  | "good"
-  | "average"
-  | "poor";
+  | 'excellent'
+  | 'good'
+  | 'average'
+  | 'poor';
 
 // Machine hold analysis
 export type MachineHoldAnalysis = {

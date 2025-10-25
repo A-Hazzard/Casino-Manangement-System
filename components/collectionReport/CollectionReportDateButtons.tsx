@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
-import type { DateRange } from "@/components/ui/dateRangePicker";
-import type { CollectionReportDateFilter } from "@/lib/types/componentProps";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
+import type { DateRange } from '@/components/ui/dateRangePicker';
+import type { CollectionReportDateFilter } from '@/lib/types/componentProps';
 
 type CollectionReportDateButtonsProps = {
   activeFilter: CollectionReportDateFilter;
@@ -17,11 +17,11 @@ type CollectionReportDateButtonsProps = {
 };
 
 const FILTERS: { label: string; value: CollectionReportDateFilter }[] = [
-  { label: "Today", value: "today" },
-  { label: "Yesterday", value: "yesterday" },
-  { label: "Last 7 Days", value: "last7" },
-  { label: "Last 30 Days", value: "last30" },
-  { label: "All Time", value: "alltime" },
+  { label: 'Today', value: 'today' },
+  { label: 'Yesterday', value: 'yesterday' },
+  { label: 'Last 7 Days', value: 'last7' },
+  { label: 'Last 30 Days', value: 'last30' },
+  { label: 'All Time', value: 'alltime' },
 ];
 
 export default function CollectionReportDateButtons({
@@ -42,7 +42,7 @@ export default function CollectionReportDateButtons({
 
   const handleCustomClick = () => {
     setShowCustomPicker(true);
-    onFilterChange("custom");
+    onFilterChange('custom');
   };
 
   const handleSetLastMonth = () => {
@@ -58,10 +58,10 @@ export default function CollectionReportDateButtons({
       <div className="w-full xl:hidden">
         <select
           value={activeFilter}
-          onChange={(e) =>
+          onChange={e =>
             onFilterChange(e.target.value as CollectionReportDateFilter)
           }
-          className="w-full md:w-48 rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive md:w-48"
           disabled={disabled || isLoading}
         >
           {FILTERS.map(({ label, value }) => (
@@ -74,16 +74,16 @@ export default function CollectionReportDateButtons({
       </div>
 
       {/* xl and above: Filter buttons */}
-      <div className="hidden xl:flex flex-wrap items-center gap-2">
+      <div className="hidden flex-wrap items-center gap-2 xl:flex">
         {FILTERS.map(({ label, value }) => (
           <Button
             key={value}
             onClick={() => handlePresetClick(value)}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+            className={`rounded-md px-3 py-1 text-sm transition-colors ${
               activeFilter === value
-                ? "bg-buttonActive text-white"
-                : "bg-button text-white hover:bg-button/90"
-            } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                ? 'bg-buttonActive text-white'
+                : 'bg-button text-white hover:bg-button/90'
+            } ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
             disabled={disabled || isLoading}
           >
             {label}
@@ -91,11 +91,11 @@ export default function CollectionReportDateButtons({
         ))}
         <Button
           onClick={handleCustomClick}
-          className={`px-3 py-1 text-sm rounded-md transition-colors ${
-            activeFilter === "custom"
-              ? "bg-buttonActive text-white"
-              : "bg-button text-white hover:bg-button/90"
-          } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+          className={`rounded-md px-3 py-1 text-sm transition-colors ${
+            activeFilter === 'custom'
+              ? 'bg-buttonActive text-white'
+              : 'bg-button text-white hover:bg-button/90'
+          } ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
           disabled={disabled || isLoading}
         >
           Custom
@@ -103,7 +103,7 @@ export default function CollectionReportDateButtons({
       </div>
 
       {/* Custom Date Picker (both mobile and desktop) */}
-      {showCustomPicker && activeFilter === "custom" && (
+      {showCustomPicker && activeFilter === 'custom' && (
         <div className="mt-4 w-full">
           <ModernDateRangePicker
             value={customDateRange}

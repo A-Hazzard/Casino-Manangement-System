@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { NextRequest } from "next/server";
+import { NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
 
     // Get licencee from query params
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get("licencee");
-    const licensee = searchParams.get("licensee"); // Also check for "licensee" parameter
+    const licencee = searchParams.get('licencee');
+    const licensee = searchParams.get('licensee'); // Also check for "licensee" parameter
 
     // Define the type for matchStage
     type MatchStage = Record<string, unknown>;
@@ -19,14 +19,14 @@ export async function GET(request: NextRequest) {
     const matchStage: MatchStage = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
 
     // Add licencee filter if provided (check both parameter names)
     const finalLicencee = licencee || licensee;
     if (finalLicencee) {
-      matchStage["rel.licencee"] = finalLicencee; // Use bracket notation for nested field
+      matchStage['rel.licencee'] = finalLicencee; // Use bracket notation for nested field
     }
 
     // Aggregate locations with their country names
@@ -36,16 +36,16 @@ export async function GET(request: NextRequest) {
       // Lookup country details
       {
         $lookup: {
-          from: "countries",
-          localField: "country",
-          foreignField: "_id",
-          as: "countryDetails",
+          from: 'countries',
+          localField: 'country',
+          foreignField: '_id',
+          as: 'countryDetails',
         },
       },
       // Unwind the countryDetails array
       {
         $unwind: {
-          path: "$countryDetails",
+          path: '$countryDetails',
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         $project: {
           _id: 1,
           name: 1,
-          countryName: "$countryDetails.name",
+          countryName: '$countryDetails.name',
         },
       },
       // Sort by name
@@ -65,9 +65,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ locations }, { status: 200 });
   } catch (error) {
-    console.error("Error in GET /api/machines/locations:", error);
+    console.error('Error in GET /api/machines/locations:', error);
     return NextResponse.json(
-      { error: "Failed to fetch locations" },
+      { error: 'Failed to fetch locations' },
       { status: 500 }
     );
   }

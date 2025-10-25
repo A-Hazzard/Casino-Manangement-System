@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../../lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { Collections } from "@/app/api/lib/models/collections";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../../../lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Collections } from '@/app/api/lib/models/collections';
 
 import {
   logActivity,
   calculateChanges,
-} from "@/app/api/lib/helpers/activityLogger";
+} from '@/app/api/lib/helpers/activityLogger';
 
-import { getUserFromServer } from "../../../../lib/helpers/users";
-import { getClientIP } from "@/lib/utils/ipAddress";
+import { getUserFromServer } from '../../../../lib/helpers/users';
+import { getClientIP } from '@/lib/utils/ipAddress';
 
 /**
  * GET /api/locations/[locationId]/cabinets/[cabinetId]
@@ -30,12 +30,12 @@ export async function GET(
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     });
     if (!location) {
       return NextResponse.json(
-        { success: false, error: "Location not found or has been deleted" },
+        { success: false, error: 'Location not found or has been deleted' },
         { status: 404 }
       );
     }
@@ -46,13 +46,13 @@ export async function GET(
       gamingLocation: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     });
 
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, error: "Cabinet not found" },
+        { success: false, error: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -62,9 +62,9 @@ export async function GET(
       data: cabinet,
     });
   } catch (error) {
-    console.error("Error fetching cabinet:", error);
+    console.error('Error fetching cabinet:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch cabinet" },
+      { success: false, error: 'Failed to fetch cabinet' },
       { status: 500 }
     );
   }
@@ -88,12 +88,12 @@ export async function PUT(
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     });
     if (!location) {
       return NextResponse.json(
-        { success: false, error: "Location not found or has been deleted" },
+        { success: false, error: 'Location not found or has been deleted' },
         { status: 404 }
       );
     }
@@ -110,7 +110,7 @@ export async function PUT(
     const originalCabinet = await Machine.findById(cabinetId);
     if (!originalCabinet) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -121,10 +121,10 @@ export async function PUT(
     };
 
     // Only include fields that are provided and not empty
-    if (data.assetNumber !== undefined && data.assetNumber !== "") {
+    if (data.assetNumber !== undefined && data.assetNumber !== '') {
       updateFields.serialNumber = data.assetNumber;
     }
-    if (data.installedGame !== undefined && data.installedGame !== "") {
+    if (data.installedGame !== undefined && data.installedGame !== '') {
       updateFields.game = data.installedGame;
     }
 
@@ -133,42 +133,42 @@ export async function PUT(
     //   "Will update gameType:",
     //   data.gameType !== undefined && data.gameType !== ""
     // );
-    if (data.gameType !== undefined && data.gameType !== "") {
+    if (data.gameType !== undefined && data.gameType !== '') {
       updateFields.gameType = data.gameType;
       // console.log("Added gameType to updateFields:", updateFields.gameType);
     }
-    if (data.manufacturer !== undefined && data.manufacturer !== "") {
+    if (data.manufacturer !== undefined && data.manufacturer !== '') {
       updateFields.manufacturer = data.manufacturer;
       updateFields.manuf = data.manufacturer;
     }
 
-    if (data.smbId !== undefined && data.smbId !== "") {
+    if (data.smbId !== undefined && data.smbId !== '') {
       updateFields.relayId = data.smbId;
     }
-    if (data.status !== undefined && data.status !== "") {
+    if (data.status !== undefined && data.status !== '') {
       updateFields.assetStatus = data.status;
     }
-    if (data.cabinetType !== undefined && data.cabinetType !== "") {
+    if (data.cabinetType !== undefined && data.cabinetType !== '') {
       updateFields.cabinetType = data.cabinetType;
     }
     if (
       data.accountingDenomination !== undefined &&
-      data.accountingDenomination !== ""
+      data.accountingDenomination !== ''
     ) {
-      updateFields["gameConfig.accountingDenomination"] = Number(
+      updateFields['gameConfig.accountingDenomination'] = Number(
         data.accountingDenomination
       );
     }
     if (
       data.collectionMultiplier !== undefined &&
-      data.collectionMultiplier !== ""
+      data.collectionMultiplier !== ''
     ) {
       updateFields.collectionMultiplier = data.collectionMultiplier;
     }
     if (data.isCronosMachine !== undefined) {
       updateFields.isCronosMachine = data.isCronosMachine;
     }
-    if (data.location !== undefined && data.location !== "") {
+    if (data.location !== undefined && data.location !== '') {
       updateFields.gamingLocation = data.location;
     }
 
@@ -184,7 +184,7 @@ export async function PUT(
 
     if (!updatedMachine) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -192,7 +192,7 @@ export async function PUT(
     // If serial number was updated, also update it in Collections
     if (
       data.assetNumber !== undefined &&
-      data.assetNumber !== "" &&
+      data.assetNumber !== '' &&
       data.assetNumber !== originalCabinet.serialNumber
     ) {
       try {
@@ -206,7 +206,7 @@ export async function PUT(
         );
       } catch (collectionsError) {
         console.error(
-          "Failed to update serial number in Collections:",
+          'Failed to update serial number in Collections:',
           collectionsError
         );
         // Don't fail the entire operation if Collections update fails
@@ -216,7 +216,7 @@ export async function PUT(
     // If game name was updated, also update it in Collections
     if (
       data.installedGame !== undefined &&
-      data.installedGame !== "" &&
+      data.installedGame !== '' &&
       data.installedGame !== originalCabinet.game
     ) {
       try {
@@ -230,7 +230,7 @@ export async function PUT(
         );
       } catch (collectionsError) {
         console.error(
-          "Failed to update machine name in Collections:",
+          'Failed to update machine name in Collections:',
           collectionsError
         );
         // Don't fail the entire operation if Collections update fails
@@ -247,24 +247,24 @@ export async function PUT(
         );
 
         await logActivity({
-          action: "UPDATE",
+          action: 'UPDATE',
           details: `Updated cabinet "${
             originalCabinet.serialNumber || originalCabinet.game
           }" in location "${location.name}"`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "machine",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'machine',
             resourceId: cabinetId,
             resourceName: originalCabinet.serialNumber || originalCabinet.game,
             changes: changes,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
@@ -279,9 +279,9 @@ export async function PUT(
       data: updatedMachine,
     });
   } catch (error) {
-    console.error("Error updating cabinet:", error);
+    console.error('Error updating cabinet:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to update cabinet" },
+      { success: false, error: 'Failed to update cabinet' },
       { status: 500 }
     );
   }
@@ -305,12 +305,12 @@ export async function PATCH(
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     });
     if (!location) {
       return NextResponse.json(
-        { success: false, error: "Location not found or has been deleted" },
+        { success: false, error: 'Location not found or has been deleted' },
         { status: 404 }
       );
     }
@@ -327,7 +327,7 @@ export async function PATCH(
     const originalCabinet = await Machine.findById(cabinetId);
     if (!originalCabinet) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -365,7 +365,7 @@ export async function PATCH(
 
     if (!updatedMachine) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -380,24 +380,24 @@ export async function PATCH(
         );
 
         await logActivity({
-          action: "UPDATE",
+          action: 'UPDATE',
           details: `Updated collection settings for cabinet "${
             originalCabinet.serialNumber || originalCabinet.game
           }" in location "${location.name}"`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "machine",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'machine',
             resourceId: cabinetId,
             resourceName: originalCabinet.serialNumber || originalCabinet.game,
             changes: changes,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
@@ -406,9 +406,9 @@ export async function PATCH(
       data: updatedMachine,
     });
   } catch (error) {
-    console.error("Error updating cabinet collection settings:", error);
+    console.error('Error updating cabinet collection settings:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to update cabinet collection settings" },
+      { success: false, error: 'Failed to update cabinet collection settings' },
       { status: 500 }
     );
   }
@@ -432,12 +432,12 @@ export async function DELETE(
       _id: locationId,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     });
     if (!location) {
       return NextResponse.json(
-        { success: false, error: "Location not found or has been deleted" },
+        { success: false, error: 'Location not found or has been deleted' },
         { status: 404 }
       );
     }
@@ -446,7 +446,7 @@ export async function DELETE(
     const cabinetToDelete = await Machine.findById(cabinetId);
     if (!cabinetToDelete) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -467,58 +467,58 @@ export async function DELETE(
       try {
         const deleteChanges = [
           {
-            field: "serialNumber",
+            field: 'serialNumber',
             oldValue: cabinetToDelete.serialNumber,
             newValue: null,
           },
-          { field: "game", oldValue: cabinetToDelete.game, newValue: null },
+          { field: 'game', oldValue: cabinetToDelete.game, newValue: null },
           {
-            field: "cabinetType",
+            field: 'cabinetType',
             oldValue: cabinetToDelete.cabinetType,
             newValue: null,
           },
           {
-            field: "assetStatus",
+            field: 'assetStatus',
             oldValue: cabinetToDelete.assetStatus,
             newValue: null,
           },
           {
-            field: "gamingLocation",
+            field: 'gamingLocation',
             oldValue: cabinetToDelete.gamingLocation,
             newValue: null,
           },
         ];
 
         await logActivity({
-          action: "DELETE",
+          action: 'DELETE',
           details: `Deleted cabinet "${
             cabinetToDelete.serialNumber || cabinetToDelete.game
           }" from location "${location.name}"`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "machine",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'machine',
             resourceId: cabinetId,
             resourceName: cabinetToDelete.serialNumber || cabinetToDelete.game,
             changes: deleteChanges,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Cabinet deleted successfully",
+      message: 'Cabinet deleted successfully',
     });
   } catch (error) {
-    console.error("Error deleting cabinet:", error);
+    console.error('Error deleting cabinet:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to delete cabinet" },
+      { success: false, error: 'Failed to delete cabinet' },
       { status: 500 }
     );
   }

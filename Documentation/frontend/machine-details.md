@@ -1,6 +1,5 @@
 # Cabinet Details Page Documentation
 
-
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** October 20th, 2025  
 **Version:** 2.0.0
@@ -8,6 +7,7 @@
 ## Quick Search Guide
 
 Use **Ctrl+F** to find these key topics:
+
 - **bill validator** - How bill validator system works and tracks denominations
 - **collection settings** - How collection settings are configured and updated
 - **collection history** - How collection history is tracked and displayed
@@ -32,11 +32,13 @@ The bill validator system now uses the `acceptedBills` collection instead of the
 **Endpoint**: `GET /api/bill-validator/[machineId]`
 
 **Query Parameters**:
+
 - `timePeriod` - Filter by time period (Today, Yesterday, 7d, 30d, All Time, Custom)
 - `startDate` - Start date for custom range (ISO format)
 - `endDate` - End date for custom range (ISO format)
 
 **Response Structure**:
+
 ```typescript
 {
   success: true,
@@ -59,11 +61,13 @@ The bill validator system now uses the `acceptedBills` collection instead of the
 ### Data Structure Detection
 
 **V1 Data Structure** (Legacy):
+
 - Uses `movement` object with denomination fields
 - Filtered by `readAt` timestamp
 - Example: `movement.dollar1`, `movement.dollar5`, `movement.dollarTotal`
 
 **V2 Data Structure** (Current):
+
 - Uses `value` field with individual bill records
 - Filtered by `createdAt` timestamp
 - Example: `{ value: 5, machine: "machineId", member: "ANONYMOUS" }`
@@ -101,12 +105,14 @@ AcceptedBill {
 ### Bill Processing Logic
 
 **V1 Processing**:
+
 1. Query bills with `movement` object and filter by `readAt`
 2. Aggregate `movement` values across all bills
 3. Calculate total quantity and amount from movement object
 4. Identify unknown bills from `dollarTotalUnknown`
 
 **V2 Processing**:
+
 1. Query bills with `value` field and filter by `createdAt`
 2. Group bills by `value` (denomination)
 3. Count quantities for each denomination
@@ -149,13 +155,13 @@ CollectionSettings {
     metersIn: number;             // Money in machine when last collection started
     metersOut: number;            // Money in machine when last collection finished
   },
-  
+
   // Collection timing
   collectionTime: Date;           // Timestamp of last collection
-  
+
   // Denomination configuration
   collectorDenomination: number;  // Denomination used for collection calculations (e.g., 1.00, 0.25)
-  
+
   // Historical collection data
   collectionMetersHistory: Array<{
     _id: string;                  // Unique history entry ID
@@ -189,12 +195,12 @@ CollectionHistory {
   location: string;               // Location where collection occurred
   collector: string;              // Staff member who performed collection
   timestamp: Date;                // When collection was performed
-  
+
   // Financial Data
   metersIn: number;               // Money in machine when collection started
   metersOut: number;              // Money in machine when collection finished
   gross: number;                  // Money collected (metersIn - metersOut)
-  
+
   // SAS Meters (Slot Accounting System)
   sasMeters: {
     drop: number;                 // Total money players put in
@@ -222,8 +228,8 @@ CollectionHistory {
 
 The Cabinet Details page provides comprehensive information about individual slot machines/cabinets, including real-time status, financial metrics, and configuration settings. This page serves as the detailed view for managing specific gaming cabinets.
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 6th, 2025  
+**Author:** Aaron Hazzard - Senior Software Engineer
+**Last Updated:** October 6th, 2025
 **Version:** 2.0.0
 
 ### File Information
@@ -266,8 +272,10 @@ Collection history tracks all money collected from the machine over time, provid
 
 ### **Collection Process Flow**
 ```
+
 1. Player Gaming Session → 2. Session Ends → 3. Staff Collection → 4. Collection Recorded → 5. Report Generated
-```
+
+````
 
 ### **Collection Data Structure**
 ```typescript
@@ -277,19 +285,19 @@ Collection {
   location: "casino_main_floor",
   collector: "staff_member_123",
   timestamp: "2024-12-20 17:00:00",
-  
+
   // Financial Data
   metersIn: 800,        // Money in machine when collection started
   metersOut: 600,       // Money in machine when collection finished
   gross: 200,           // Money collected (800 - 600)
-  
+
   // SAS Meters (Slot Accounting System)
   sasMeters: {
     drop: 800,          // Total money players put in
     gamesPlayed: 25,    // Total games played
     jackpot: 100        // Current jackpot amount
   },
-  
+
   // Movement Data
   movement: {
 
@@ -297,24 +305,24 @@ Collection {
     metersOut: number;            // Money movement tracking
     gross: number;                // Net movement
   },
-  
+
   // Collection Details
   collectionTime: Date;           // When collection was performed
   notes: string;                  // Collection notes
   ramClear: boolean;              // Whether ram clear was performed
   ramClearMetersIn: number;       // Ram clear meters in
   ramClearMetersOut: number;      // Ram clear meters out
-  
+
   // Status
   isCompleted: boolean;           // Whether collection is finalized
   softMetersIn: number;           // Soft meter reading (before denomination)
   softMetersOut: number;          // Soft meter reading (before denomination)
-  
+
   // Audit Fields
   createdAt: Date;
   updatedAt: Date;
 }
-```
+````
 
 ### Collection Process Flow
 
@@ -342,7 +350,7 @@ SMIBConfig {
     comsRTE: number;              // Real-time events enabled (1 = yes, 0 = no)
     comsGPC: number;              // Game protocol configuration
   },
-  
+
   // Network Configuration
   net: {
     netMode: number;              // 1 = WiFi client mode, 0 = Ethernet
@@ -350,7 +358,7 @@ SMIBConfig {
     netStaPwd: string;            // WiFi password
     netStaChan: number;           // WiFi channel number
   },
-  
+
   // MQTT Configuration
   mqtt: {
     mqttSecure: number;           // TLS encryption (0 = off, 1 = on)
@@ -368,20 +376,22 @@ SMIBConfig {
 }
 ```
 
-
 ### SMIB Communication Modes
 
 **SAS Mode (comsMode: 0)**:
+
 - Standard SAS (Slot Accounting System) protocol
 - Real-time meter reporting
 - Standard casino communication protocol
 
 **Non-SAS Mode (comsMode: 1)**:
+
 - Custom communication protocol
 - Limited meter reporting
 - Alternative communication method
 
 **IGT Mode (comsMode: 2)**:
+
 - IGT (International Game Technology) protocol
 - Enhanced communication features
 - IGT-specific machine integration
@@ -389,11 +399,13 @@ SMIBConfig {
 ### Network Configuration
 
 **WiFi Client Mode (netMode: 1)**:
+
 - Connects to casino WiFi network
 - Requires SSID and password configuration
 - Wireless communication with management system
 
 **Ethernet Mode (netMode: 0)**:
+
 - Wired network connection
 - Direct Ethernet connection
 - More reliable than WiFi
@@ -401,6 +413,7 @@ SMIBConfig {
 ### MQTT Configuration
 
 **Message Queuing Telemetry Transport (MQTT)**:
+
 - Lightweight messaging protocol
 - Used for real-time data transmission
 - Configurable quality of service levels
@@ -413,11 +426,13 @@ SMIBConfig {
 **Purpose**: Shows financial performance over selected time periods
 
 **Data Sources**:
+
 - `meters` collection for historical data
 - `sasMeters` for SAS-enabled machines
 - Aggregated financial calculations
 
 **Calculations**:
+
 - **Money In**: Total drop from players during period
 - **Total Cancelled Credits**: Credits cancelled by players during period
 - **Gross**: Money In - Total Cancelled Credits
@@ -430,11 +445,13 @@ SMIBConfig {
 **Purpose**: Real-time machine status and current session data
 
 **Data Sources**:
+
 - Current machine state from `sasMeters`
 - Real-time `meterData` updates
 - Live session information
 
 **Metrics Displayed**:
+
 - **Coin In/Out**: Current session coin activity
 - **Total Hand Paid Cancelled Credits**: Manual credit cancellations
 - **Current Credits**: Player's current balance
@@ -445,11 +462,13 @@ SMIBConfig {
 ### Financial Variance Calculation
 
 **Formula**:
+
 ```
 Variance = Meters Gross - SAS Gross
 ```
 
 **Variance Types**:
+
 - **Positive Variance**: Meters exceed SAS (machine performing better than expected)
 - **Negative Variance**: SAS exceeds meters (machine performing worse than expected)
 - **Zero Variance**: Perfect match between meters and SAS
@@ -480,29 +499,34 @@ MachineEvent {
 ### Common Event Categories
 
 **Bill Validation Events**:
+
 - `BILL_ACCEPTED` - Bill successfully validated and accepted
 - `BILL_REJECTED` - Bill rejected by validator
 - `BILL_STACKER_FULL` - Bill storage compartment full
 
 **Game Events**:
+
 - `GAME_PLAYED` - Player started a game
 - `GAME_WON` - Player won a game
 - `GAME_LOST` - Player lost a game
 - `JACKPOT_HIT` - Jackpot was won
 
 **Machine Commands**:
+
 - `MACHINE_LOCKED` - Machine locked by staff
 - `MACHINE_UNLOCKED` - Machine unlocked by staff
 - `MACHINE_RESTART` - Machine restart command
 - `CONFIG_UPDATE` - Configuration change applied
 
 **Communication Events**:
+
 - `NETWORK_CONNECTED` - Network connection established
 - `NETWORK_DISCONNECTED` - Network connection lost
 - `MQTT_MESSAGE_SENT` - Message sent via MQTT
 - `MQTT_MESSAGE_RECEIVED` - Message received via MQTT
 
 **Error Events**:
+
 - `HARDWARE_ERROR` - Hardware malfunction detected
 - `COMMUNICATION_ERROR` - Communication failure
 - `VALIDATOR_ERROR` - Bill validator malfunction
@@ -580,22 +604,26 @@ Machine (Many) ←→ (1) Location
 ## API Endpoints
 
 ### Machine Data
+
 - `GET /api/machines/[id]` - Get specific machine data
 - `PATCH /api/machines/[id]` - Update machine configuration
 - `GET /api/machines/by-id/events` - Get machine event logs
 
 ### Bill Validator
+
 - `GET /api/bill-validator/[machineId]` - Get bill validator data with V1/V2 auto-detection
   - **Query Parameters**: `timePeriod`, `startDate`, `endDate`
   - **Response**: Unified bill validator data with denomination breakdown
   - **Data Source**: `acceptedBills` collection with automatic V1/V2 processing
 
 ### Collection Management
+
 - `GET /api/collections` - List machine collections
 - `POST /api/collections` - Create new collection record
 - `PATCH /api/collections/[id]` - Update collection record
 
 ### SMIB Configuration
+
 - `POST /api/machines/[id]/smib-config` - Update SMIB settings
 - `POST /api/machines/[id]/commands` - Send machine commands
 
@@ -604,6 +632,7 @@ Machine (Many) ←→ (1) Location
 ### Access Control
 
 ### **Collection History Display**
+
 - **Date/Time**: When collection occurred
 - **Collector**: Staff member who performed collection
 - **Amount Collected**: Gross amount taken from machine
@@ -613,9 +642,11 @@ Machine (Many) ←→ (1) Location
 ## Collection Settings - How It Works
 
 ### **What are Collection Settings?**
+
 Collection Settings allow casino staff to configure and track the collection state of individual slot machines. This includes setting the last collection time, meter readings, and denomination settings used during collections.
 
 ### **Collection Settings Data Structure**
+
 ```typescript
 CollectionSettings {
   // Current collection state
@@ -623,13 +654,13 @@ CollectionSettings {
     metersIn: 1200,      // Money in machine when last collection started
     metersOut: 800,      // Money in machine when last collection finished
   },
-  
+
   // Collection timing
   collectionTime: "2024-12-20T14:30:00Z",  // Last collection timestamp
-  
+
   // Denomination configuration
   collectorDenomination: 1.00,  // Denomination used for collection calculations
-  
+
   // Historical collection data
   collectionMetersHistory: [
     {
@@ -646,6 +677,7 @@ CollectionSettings {
 ```
 
 ### **Collection Settings Workflow**
+
 ```
 1. Staff Collection → 2. Update Settings → 3. Record Meters → 4. Set Collection Time → 5. Save Configuration
 ```
@@ -653,12 +685,14 @@ CollectionSettings {
 ### **Collection Settings Fields**
 
 #### **Last Meters In/Out**
+
 - **Purpose**: Track the exact meter readings when collections occur
 - **Usage**: Staff records these values during physical collection
 - **Data Source**: Stored in `machine.collectionMeters.metersIn/Out`
 - **Update Method**: Manual entry via Collection Settings form
 
 #### **Last Collection Time**
+
 - **Purpose**: Record when the last collection was performed
 - **Format**: ISO 8601 timestamp with date and hour
 - **Usage**: Audit trail and collection scheduling
@@ -666,17 +700,20 @@ CollectionSettings {
 - **Update Method**: Date picker + hour selector in form
 
 #### **Collector Denomination**
+
 - **Purpose**: Set the denomination used for collection calculations
 - **Usage**: Ensures consistent financial calculations across collections
 - **Data Source**: Stored in `machine.collectorDenomination`
 - **Update Method**: Number input in form (e.g., 1.00, 0.25, 5.00)
 
 ### **Collection Settings API Flow**
+
 ```
 Frontend Form → PATCH /api/cabinets/[cabinetId] → Redirect to Location Endpoint → Update Database
 ```
 
 #### **API Request Structure**
+
 ```typescript
 PATCH /api/cabinets/[cabinetId]
 {
@@ -690,37 +727,44 @@ PATCH /api/cabinets/[cabinetId]
 ```
 
 #### **Database Update Process**
+
 ```typescript
 // MongoDB update operation
-await Machine.findByIdAndUpdate(cabinetId, {
-  collectionMeters: {
-    metersIn: 1200,
-    metersOut: 800
+await Machine.findByIdAndUpdate(
+  cabinetId,
+  {
+    collectionMeters: {
+      metersIn: 1200,
+      metersOut: 800,
+    },
+    collectionTime: new Date('2024-12-20T14:30:00.000Z'),
+    collectorDenomination: 1.0,
+    updatedAt: new Date(),
   },
-  collectionTime: new Date("2024-12-20T14:30:00.000Z"),
-  collectorDenomination: 1.00,
-  updatedAt: new Date()
-}, { new: true, runValidators: true });
+  { new: true, runValidators: true }
+);
 ```
 
 ### **Collection Settings vs Collection History**
 
-| Feature | Collection Settings | Collection History |
-|---------|-------------------|-------------------|
-| **Purpose** | Current state configuration | Historical audit trail |
-| **Data** | Last collection values | All past collections |
-| **Update** | Manual form entry | Automatic during collections |
-| **Storage** | `machine.collectionMeters` | `machine.collectionMetersHistory[]` |
-| **Usage** | Setup for next collection | Financial reporting & analysis |
+| Feature     | Collection Settings         | Collection History                  |
+| ----------- | --------------------------- | ----------------------------------- |
+| **Purpose** | Current state configuration | Historical audit trail              |
+| **Data**    | Last collection values      | All past collections                |
+| **Update**  | Manual form entry           | Automatic during collections        |
+| **Storage** | `machine.collectionMeters`  | `machine.collectionMetersHistory[]` |
+| **Usage**   | Setup for next collection   | Financial reporting & analysis      |
 
 ### **Collection Settings Form Behavior**
 
 #### **View Mode**
+
 - Displays current collection settings in read-only format
 - Shows last collection time, meter readings, and denomination
 - "Edit" button to enable modification
 
 #### **Edit Mode**
+
 - All fields become editable
 - Date picker for collection date
 - Hour dropdown (00:00 to 23:00)
@@ -728,6 +772,7 @@ await Machine.findByIdAndUpdate(cabinetId, {
 - "Save" button to commit changes
 
 #### **Validation Rules**
+
 - Collection date is required
 - Meter values must be non-negative numbers
 - Denomination must be positive number
@@ -736,16 +781,19 @@ await Machine.findByIdAndUpdate(cabinetId, {
 ### **Integration with Collection Process**
 
 #### **Before Collection**
+
 1. Staff checks Collection Settings for last collection time
 2. Verifies current meter readings match expected values
 3. Uses collector denomination for calculations
 
 #### **During Collection**
+
 1. Staff records new meter readings
 2. Calculates gross amount collected
 3. Updates Collection Settings with new values
 
 #### **After Collection**
+
 1. Collection History entry is automatically created
 2. Collection Settings are updated with new meter readings
 3. Collection time is set to current timestamp
@@ -753,11 +801,12 @@ await Machine.findByIdAndUpdate(cabinetId, {
 ### **Data Sources and Flow**
 
 #### **Where Collection Settings Come From**
+
 ```typescript
 // Database Schema (machines.ts)
-collectionMeters: { 
-  metersIn: Number, 
-  metersOut: Number 
+collectionMeters: {
+  metersIn: Number,
+  metersOut: Number
 },
 collectionTime: Date,
 collectorDenomination: Number,
@@ -773,6 +822,7 @@ collectionMetersHistory: [{
 ```
 
 #### **Frontend Data Flow**
+
 ```
 1. Cabinet Details Page loads
 2. API fetches machine data from /api/machines/[id]
@@ -784,6 +834,7 @@ collectionMetersHistory: [{
 ```
 
 #### **Backend Data Flow**
+
 ```
 1. PATCH /api/cabinets/[cabinetId] receives request
 2. Redirects to /api/locations/[locationId]/cabinets/[cabinetId]
@@ -795,16 +846,19 @@ collectionMetersHistory: [{
 ### **Collection Settings Use Cases**
 
 #### **Daily Operations**
+
 - **Morning Setup**: Staff checks last collection time and meter readings
 - **Collection Planning**: Use settings to plan collection routes and timing
 - **Variance Investigation**: Compare expected vs actual meter readings
 
 #### **Financial Management**
+
 - **Audit Trail**: Complete record of when collections occurred
 - **Denomination Tracking**: Ensure consistent calculation methods
 - **Meter Reconciliation**: Verify machine meter accuracy
 
 #### **Reporting and Analytics**
+
 - **Collection Frequency**: Analyze how often machines are collected
 - **Meter Trends**: Track meter reading patterns over time
 - **Staff Performance**: Monitor collection efficiency and accuracy
@@ -812,14 +866,16 @@ collectionMetersHistory: [{
 ## Denominations and Bill Validator
 
 ### **Bill Validator System**
+
 The bill validator accepts various denominations and tracks them separately for financial accuracy.
 
 ### **Bill Validator Data Structure (V2)**
+
 ```typescript
 // Primary data source - billMeters structure
 BillMeters {
   dollar1: 0,           // $1 bills accepted
-  dollar2: 0,           // $2 bills accepted  
+  dollar2: 0,           // $2 bills accepted
   dollar5: 0,           // $5 bills accepted
   dollar10: 0,          // $10 bills accepted
   dollar20: 0,          // $20 bills accepted
@@ -841,6 +897,7 @@ BillValidator {
 ```
 
 ### **Bill Tracking During Sessions**
+
 ```typescript
 MachineSession {
   startBillMeters: {
@@ -855,6 +912,7 @@ MachineSession {
 ```
 
 ### **Denomination Analysis**
+
 - **Most Popular**: Which denominations players prefer
 - **Acceptance Rate**: Success/failure of bill validation
 - **Revenue Distribution**: How money flows through different denominations
@@ -862,9 +920,11 @@ MachineSession {
 ## SMIB Configuration
 
 ### **What is SMIB?**
+
 SMIB (Slot Machine Interface Board) is the communication interface between the slot machine and the casino management system.
 
 ### **Communication Modes**
+
 ```typescript
 SMIBConfig {
   coms: {
@@ -877,6 +937,7 @@ SMIBConfig {
 ```
 
 ### **Network Configuration**
+
 ```typescript
 SMIBConfig {
   net: {
@@ -889,6 +950,7 @@ SMIBConfig {
 ```
 
 ### **MQTT Configuration**
+
 ```typescript
 SMIBConfig {
   mqtt: {
@@ -906,6 +968,7 @@ SMIBConfig {
 ## Machine Events and Activity Log
 
 ### **Event Types Tracked**
+
 ```typescript
 MachineEvent {
   sequence: [
@@ -927,6 +990,7 @@ MachineEvent {
 ```
 
 ### **Common Event Categories**
+
 - **Bill Validation**: Bill acceptance/rejection events
 - **Game Events**: Bet placement, wins, losses
 - **Machine Commands**: Lock/unlock, restart, configuration changes
@@ -936,11 +1000,13 @@ MachineEvent {
 ## Financial Metrics and Calculations
 
 ### **Drop vs Gross**
+
 - **Drop**: Total money players put into the machine
 - **Gross**: Money collected by staff during collections
 - **Net**: Drop minus gross (money still in machine)
 
 ### **Variance Calculation**
+
 ```typescript
 Variance = Expected Collection - Actual Collection
 Expected = Previous Balance + Drop - Current Balance
@@ -948,6 +1014,7 @@ Actual = Amount Collected
 ```
 
 ### **Theoretical vs Actual RTP**
+
 - **Theoretical RTP**: Expected return-to-player percentage
 - **Actual RTP**: Real return based on actual play data
 - **Variance**: Difference between theoretical and actual
@@ -955,17 +1022,20 @@ Actual = Amount Collected
 ## Real-Time Monitoring
 
 ### **Online/Offline Status**
+
 - **Online**: Machine has communicated within last 3 minutes
 - **Offline**: No communication for more than 3 minutes
 - **Status Updates**: Real-time communication monitoring
 
 ### **Live Metrics**
+
 - **Current Credits**: Player's current credit balance
 - **Games Played**: Total games in current session
 - **Last Activity**: Timestamp of last machine action
 - **Bill Validator Status**: Current bill acceptance state
 
 ### **Alert System**
+
 - **Low Balance**: Machine running low on credits
 - **Bill Validator Full**: Bill storage needs emptying
 - **Communication Issues**: Network or protocol problems
@@ -974,18 +1044,21 @@ Actual = Amount Collected
 ## Configuration Management
 
 ### **Remote Configuration Updates**
+
 - **Communication Mode**: Switch between SAS/non-SAS/IGT
 - **Firmware Updates**: Remote SMIB firmware upgrades
 - **Network Settings**: WiFi configuration changes
 - **MQTT Settings**: Broker and topic configuration
 
 ### **Machine Control Commands**
+
 - **Restart**: Reboot the SMIB system
 - **Lock Machine**: Prevent player access
 - **Unlock Machine**: Restore player access
 - **Reset Meters**: Clear current session data
 
 ### **Batch Operations**
+
 - **Apply to All**: Apply configuration to all machines at location
 - **Location-wide Updates**: Synchronize settings across multiple machines
 - **Rollback Capability**: Revert to previous configuration if needed
@@ -993,9 +1066,10 @@ Actual = Amount Collected
 ## How Each Section Works
 
 ### **Range Metrics Tab**
+
 - **Purpose**: Shows financial performance over selected time periods
 - **Data Source**: Aggregated from `meters` collection and `sasMeters`
-- **Calculations**: 
+- **Calculations**:
   - Money In = Total drop from players
   - Total Cancelled Credits = Credits cancelled by players
   - Gross = Money In - Total Cancelled Credits
@@ -1004,6 +1078,7 @@ Actual = Amount Collected
 - **Update Frequency**: Real-time when data changes
 
 ### **Live Metrics Tab**
+
 - **Purpose**: Real-time machine status and current session data
 - **Data Source**: Current machine state from `sasMeters` and `meterData`
 - **Metrics Displayed**:
@@ -1014,6 +1089,7 @@ Actual = Amount Collected
 - **Update Frequency**: Live updates via WebSocket or polling
 
 ### **Bill Validator Tab**
+
 - **Purpose**: Unified bill validator interface that automatically detects and processes V1/V2 data structures from the `acceptedBills` collection
 - **Data Source**: `acceptedBills` collection via `/api/bill-validator/[machineId]`
 - **Functionality**:
@@ -1025,7 +1101,7 @@ Actual = Amount Collected
   - **Responsive Design**: Desktop table view and mobile card view
   - **Loading States**: Skeleton loaders for table and cards during data fetching
   - **No Data Handling**: Shows filters and appropriate messaging when no data found
-- **Data Structure**: 
+- **Data Structure**:
   - **V1**: Uses `movement` object with denomination fields (dollar1, dollar5, etc.)
   - **V2**: Uses `value` field with individual bill records
 - **Update Frequency**: Real-time when filter changes or manual refresh
@@ -1037,6 +1113,7 @@ Actual = Amount Collected
   - Mobile-responsive card design for denominations
 
 ### **Activity Log Tab**
+
 - **Purpose**: Complete audit trail of machine events and commands
 - **Data Source**: `machineEvents` collection via `/api/machines/by-id/events`
 - **Event Types**:
@@ -1048,6 +1125,7 @@ Actual = Amount Collected
 - **Update Frequency**: Real-time event streaming
 
 ### **Collection History Tab**
+
 - **Purpose**: Historical record of all money collections from the machine
 - **Data Source**: `machine.collectionMetersHistory` array
 - **Data Structure**: Each entry contains:
@@ -1058,6 +1136,7 @@ Actual = Amount Collected
 - **Update Frequency**: Updated after each collection
 
 ### **Collection Settings Tab**
+
 - **Purpose**: Configure and track current collection state
 - **Data Source**: `machine.collectionMeters`, `machine.collectionTime`, `machine.collectorDenomination`
 - **Functionality**:
@@ -1068,6 +1147,7 @@ Actual = Amount Collected
 - **Update Frequency**: Manual updates via form submission
 
 ### **Configurations Tab**
+
 - **Purpose**: Display machine configuration settings
 - **Data Source**: `machine.gameConfig` and `machine.smibConfig`
 - **Settings Displayed**:
@@ -1079,6 +1159,7 @@ Actual = Amount Collected
 ## Data Relationships
 
 ### **Machine → Sessions → Events → Collections**
+
 ```
 Machine (machines.ts)
 ├── MachineSession (machineSessions.ts) - Player gaming sessions
@@ -1093,36 +1174,41 @@ Machine (machines.ts)
 ```
 
 ### **Query Patterns**
+
 ```typescript
 // Get machine collection history
-const collections = await Collection.find({ machineId: machineId })
+const collections = await Collection.find({ machineId: machineId });
 
 // Get machine events for a session
-const events = await MachineEvent.find({ 
-  machine: machineId, 
-  currentSession: sessionId 
-})
+const events = await MachineEvent.find({
+  machine: machineId,
+  currentSession: sessionId,
+});
 
 // Get machine financial summary
 const summary = await Collection.aggregate([
   { $match: { machineId: machineId } },
-  { $group: { 
-    _id: null, 
-    totalCollected: { $sum: "$sasMeters.gross" },
-    totalDrop: { $sum: "$sasMeters.drop" }
-  }}
-])
+  {
+    $group: {
+      _id: null,
+      totalCollected: { $sum: '$sasMeters.gross' },
+      totalDrop: { $sum: '$sasMeters.drop' },
+    },
+  },
+]);
 ```
 
 ## Performance Considerations
 
 ### **Indexing Strategy**
+
 - **Machine-based queries**: Index on `machineId` and `timestamp`
 - **Session-based queries**: Index on `currentSession` and `date`
 - **Location-based queries**: Index on `location` and `timestamp`
 - **Financial queries**: Index on `metersIn`, `metersOut`, `gross`
 
 ### **Data Aggregation**
+
 - **Real-time calculations**: Use embedded documents for current state
 - **Historical analysis**: Use aggregation pipelines for complex queries
 - **Caching strategy**: Cache frequently accessed metrics
@@ -1131,30 +1217,32 @@ const summary = await Collection.aggregate([
 ## Security and Compliance
 
 ### **Access Control**
+
 - **User Permissions**: Role-based access to machine controls
 - **Audit Logging**: Track all configuration changes
 - **Secure Communication**: Encrypted MQTT and network traffic
 - **Token Validation**: Secure authentication for remote commands
 
-
 ### Compliance Requirements
 
 ### **Compliance Requirements**
+
 - **Financial Accuracy**: Precise tracking of all money movements
 - **Audit Trail**: Complete history of all machine activities
 - **Regulatory Reporting**: Automated generation of compliance reports
 - **Data Integrity**: Validation of all financial calculations
 
-
 ## Performance Considerations
 
 ### Optimization Strategies
+
 - **Efficient Queries**: Optimized database queries with proper indexing
 - **Real-time Updates**: Minimal data transfer for live monitoring
 - **Caching**: Cached machine data for faster access
 - **Event Streaming**: Efficient event log processing
 
 ### Database Indexing
+
 - **Machine-based queries**: Index on `machineId` and `timestamp`
 - **Event-based queries**: Index on `machine` and `createdAt`
 - **Location-based queries**: Index on `location` and `timestamp`
@@ -1165,18 +1253,22 @@ const summary = await Collection.aggregate([
 ### Common Issues and Solutions
 
 **Issue: Machine shows offline status**
+
 - **Cause**: Network connectivity problems or SMIB communication failure
 - **Solution**: Check network settings, WiFi connection, and MQTT configuration
 
 **Issue: Bill validator not accepting bills**
+
 - **Cause**: Validator full, hardware error, or configuration issue
 - **Solution**: Check bill storage capacity, validate hardware status, review validator settings
 
 **Issue: Collection settings not updating**
+
 - **Cause**: Form validation errors or database connection issues
 - **Solution**: Verify all required fields are filled, check network connection
 
 **Issue: Activity log not showing recent events**
+
 - **Cause**: Event logging disabled or communication failure
 - **Solution**: Check SMIB communication settings, verify event logging is enabled
 
@@ -1185,12 +1277,14 @@ const summary = await Collection.aggregate([
 ## Troubleshooting
 
 ### **Common Issues**
+
 - **Communication Failures**: Check network connectivity and MQTT settings
 - **Configuration Errors**: Verify parameter ranges and format
 - **Financial Discrepancies**: Review collection procedures and meter readings
 - **Performance Issues**: Check database indexes and query optimization
 
 ### **Debug Tools**
+
 - **Event Logs**: Detailed machine activity records
 - **Network Diagnostics**: Connectivity and protocol testing
 - **Financial Reconciliation**: Compare expected vs actual amounts
@@ -1198,24 +1292,25 @@ const summary = await Collection.aggregate([
 
 ## Future Enhancements
 
-
 ### Planned Features
 
 ### **Planned Features**
+
 - **Predictive Analytics**: Machine performance forecasting
 - **Automated Collections**: Smart collection scheduling
 - **Advanced Reporting**: Enhanced financial and operational insights
 - **Mobile Integration**: Mobile app for machine monitoring
 
-
 ### Integration Opportunities
+
 - **Accounting Systems**: Direct financial data export
 - **Security Systems**: Integration with casino surveillance
 - **Player Management**: Enhanced player tracking and rewards
 - **Regulatory Systems**: Automated compliance reporting
 
 ### **Integration Opportunities**
+
 - **Accounting Systems**: Direct financial data export
 - **Security Systems**: Integration with casino surveillance
 - **Player Management**: Enhanced player tracking and rewards
-- **Regulatory Systems**: Automated compliance reporting 
+- **Regulatory Systems**: Automated compliance reporting

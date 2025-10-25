@@ -31,17 +31,19 @@ The currency conversion system allows users to view financial data in different 
 ## Exchange Rates
 
 ### Fixed Rates (Base: USD)
+
 - **USD**: 1.0 (base currency)
 - **TTD**: 6.75 (1 USD = 6.75 TTD)
 - **GYD**: 209.5 (1 USD = 209.5 GYD)
 - **BBD**: 2.0 (1 USD = 2.0 BBD)
 
 ### Licensee Currency Mapping
+
 ```typescript
 const LICENSEE_CURRENCY_MAP = {
-  "65e822e5a0741f08c709272a": "TTD", // TTG Licensee
-  "65e822e5a0741f08c709272b": "GYD", // Cabana Licensee
-  "65e822e5a0741f08c709272c": "BBD", // Barbados Licensee
+  '65e822e5a0741f08c709272a': 'TTD', // TTG Licensee
+  '65e822e5a0741f08c709272b': 'GYD', // Cabana Licensee
+  '65e822e5a0741f08c709272c': 'BBD', // Barbados Licensee
 };
 ```
 
@@ -50,12 +52,14 @@ const LICENSEE_CURRENCY_MAP = {
 ### When Currency Conversion Applies
 
 Currency conversion is only applied when:
+
 - "All Licensee" is selected (`licenseeId` is null, undefined, or "all")
 - The user has selected a display currency other than USD
 
 ### When Currency Conversion Does NOT Apply
 
 Currency conversion is NOT applied when:
+
 - A specific licensee is selected
 - The selected licensee has a default currency mapping
 - The display currency matches the licensee's default currency
@@ -138,12 +142,8 @@ The currency selector appears in the header when "All Licensee" is selected:
 ```tsx
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 
-const { 
-  displayCurrency, 
-  setDisplayCurrency, 
-  isAllLicensee, 
-  formatAmount 
-} = useCurrency();
+const { displayCurrency, setDisplayCurrency, isAllLicensee, formatAmount } =
+  useCurrency();
 ```
 
 ### Formatting Amounts
@@ -154,7 +154,9 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
 // Conditional formatting
-{shouldShowCurrency() ? formatAmount(amount) : formatCurrency(amount)}
+{
+  shouldShowCurrency() ? formatAmount(amount) : formatCurrency(amount);
+}
 ```
 
 ### Currency Display Component
@@ -162,12 +164,12 @@ const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 ```tsx
 import { CurrencyDisplay } from '@/components/ui/CurrencyDisplay';
 
-<CurrencyDisplay 
-  amount={1000} 
-  currency="TTD" 
+<CurrencyDisplay
+  amount={1000}
+  currency="TTD"
   showSymbol={true}
   showCode={false}
-/>
+/>;
 ```
 
 ## Data Flow
@@ -182,6 +184,7 @@ import { CurrencyDisplay } from '@/components/ui/CurrencyDisplay';
 ### Test File: `lib/helpers/__tests__/currencyConversion.test.ts`
 
 Tests cover:
+
 - Exchange rate retrieval
 - Currency conversion calculations
 - Licensee currency mapping
@@ -249,6 +252,7 @@ interface DashBoardStore {
 ### Debug Information
 
 Enable debug logging by setting `NODE_ENV=development` to see:
+
 - Currency conversion calculations
 - API request parameters
 - State changes in currency context

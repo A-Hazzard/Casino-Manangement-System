@@ -1,11 +1,11 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 import {
   KpiMetric,
   CasinoLocation,
   GamingMachine,
   LogisticsEntry,
   ChartDataPoint,
-} from "@/lib/types/reports";
+} from '@/lib/types/reports';
 
 type AnalyticsDataStore = {
   // Dashboard data
@@ -81,7 +81,7 @@ type AnalyticsDataStore = {
     machines: Record<string, ChartDataPoint[]>;
   };
   setChartData: (
-    section: "dashboard" | "locations" | "machines",
+    section: 'dashboard' | 'locations' | 'machines',
     data: ChartDataPoint[] | Record<string, ChartDataPoint[]>
   ) => void;
 
@@ -93,59 +93,59 @@ type AnalyticsDataStore = {
     logistics: Date | null;
   };
   setLastUpdated: (
-    section: "dashboard" | "locations" | "machines" | "logistics"
+    section: 'dashboard' | 'locations' | 'machines' | 'logistics'
   ) => void;
 
   // Cache management
   clearCache: () => void;
   clearSectionData: (
-    section: "dashboard" | "locations" | "machines" | "logistics"
+    section: 'dashboard' | 'locations' | 'machines' | 'logistics'
   ) => void;
 };
 
-export const useAnalyticsDataStore = create<AnalyticsDataStore>((set) => ({
+export const useAnalyticsDataStore = create<AnalyticsDataStore>(set => ({
   // Dashboard data
   kpiMetrics: [],
-  setKpiMetrics: (metrics) => set({ kpiMetrics: metrics }),
+  setKpiMetrics: metrics => set({ kpiMetrics: metrics }),
 
   performanceTrends: [],
-  setPerformanceTrends: (trends) => set({ performanceTrends: trends }),
+  setPerformanceTrends: trends => set({ performanceTrends: trends }),
 
   topPerformingMachines: [],
-  setTopPerformingMachines: (machines) =>
+  setTopPerformingMachines: machines =>
     set({ topPerformingMachines: machines }),
 
   // Location data
   locations: [],
-  setLocations: (locations) => set({ locations }),
+  setLocations: locations => set({ locations }),
 
   selectedLocations: [],
-  setSelectedLocations: (locations) => set({ selectedLocations: locations }),
+  setSelectedLocations: locations => set({ selectedLocations: locations }),
 
   locationComparisons: [],
-  setLocationComparisons: (comparisons) =>
+  setLocationComparisons: comparisons =>
     set({ locationComparisons: comparisons }),
 
   // Machine data
   machines: [],
-  setMachines: (machines) => set({ machines }),
+  setMachines: machines => set({ machines }),
 
   selectedMachines: [],
-  setSelectedMachines: (machines) => set({ selectedMachines: machines }),
+  setSelectedMachines: machines => set({ selectedMachines: machines }),
 
   machineComparisons: [],
-  setMachineComparisons: (comparisons) =>
+  setMachineComparisons: comparisons =>
     set({ machineComparisons: comparisons }),
 
   machineContributionData: null,
-  setMachineContributionData: (data) => set({ machineContributionData: data }),
+  setMachineContributionData: data => set({ machineContributionData: data }),
 
   // Logistics data
   logisticsEntries: [],
-  setLogisticsEntries: (entries) => set({ logisticsEntries: entries }),
+  setLogisticsEntries: entries => set({ logisticsEntries: entries }),
 
   filteredLogisticsEntries: [],
-  setFilteredLogisticsEntries: (entries) =>
+  setFilteredLogisticsEntries: entries =>
     set({ filteredLogisticsEntries: entries }),
 
   // Chart data
@@ -155,7 +155,7 @@ export const useAnalyticsDataStore = create<AnalyticsDataStore>((set) => ({
     machines: {},
   },
   setChartData: (section, data) =>
-    set((state) => ({
+    set(state => ({
       chartData: {
         ...state.chartData,
         [section]: data,
@@ -169,8 +169,8 @@ export const useAnalyticsDataStore = create<AnalyticsDataStore>((set) => ({
     machines: null,
     logistics: null,
   },
-  setLastUpdated: (section) =>
-    set((state) => ({
+  setLastUpdated: section =>
+    set(state => ({
       lastUpdated: {
         ...state.lastUpdated,
         [section]: new Date(),
@@ -205,10 +205,10 @@ export const useAnalyticsDataStore = create<AnalyticsDataStore>((set) => ({
       },
     }),
 
-  clearSectionData: (section) =>
-    set((state) => {
+  clearSectionData: section =>
+    set(state => {
       switch (section) {
-        case "dashboard":
+        case 'dashboard':
           return {
             kpiMetrics: [],
             performanceTrends: [],
@@ -222,7 +222,7 @@ export const useAnalyticsDataStore = create<AnalyticsDataStore>((set) => ({
               dashboard: null,
             },
           };
-        case "locations":
+        case 'locations':
           return {
             selectedLocations: [],
             locationComparisons: [],
@@ -235,7 +235,7 @@ export const useAnalyticsDataStore = create<AnalyticsDataStore>((set) => ({
               locations: null,
             },
           };
-        case "machines":
+        case 'machines':
           return {
             selectedMachines: [],
             machineComparisons: [],
@@ -249,7 +249,7 @@ export const useAnalyticsDataStore = create<AnalyticsDataStore>((set) => ({
               machines: null,
             },
           };
-        case "logistics":
+        case 'logistics':
           return {
             logisticsEntries: [],
             filteredLogisticsEntries: [],

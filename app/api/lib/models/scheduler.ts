@@ -1,5 +1,5 @@
-import mongoose, { Schema } from "mongoose";
-import type { IScheduler } from "@/lib/types/api";
+import mongoose, { Schema } from 'mongoose';
+import type { IScheduler } from '@/lib/types/api';
 
 // Define the Mongoose schema
 const SchedulerSchema: Schema = new Schema(
@@ -15,8 +15,8 @@ const SchedulerSchema: Schema = new Schema(
     endTime: { type: Date, required: true },
     status: {
       type: String,
-      enum: ["pending", "completed", "canceled"], // Use enum validator
-      default: "pending", // Set a default status
+      enum: ['pending', 'completed', 'canceled'], // Use enum validator
+      default: 'pending', // Set a default status
       required: true,
     },
   },
@@ -26,4 +26,4 @@ const SchedulerSchema: Schema = new Schema(
 // Create and export the Mongoose model
 // Check if the model already exists to prevent overwriting
 export default mongoose.models.Scheduler ||
-  mongoose.model<IScheduler>("Scheduler", SchedulerSchema, "schedulers");
+  mongoose.model<IScheduler>('Scheduler', SchedulerSchema, 'schedulers');

@@ -3,12 +3,12 @@
  * Handles machine stats fetching and state management for locations page
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { fetchMachineStats } from "@/lib/helpers/machineStats";
+import { useState, useEffect, useCallback } from 'react';
+import { fetchMachineStats } from '@/lib/helpers/machineStats';
 import type {
   MachineStats,
   UseLocationMachineStatsReturn,
-} from "@/lib/types/locationMachineStats";
+} from '@/lib/types/locationMachineStats';
 
 export function useLocationMachineStats(): UseLocationMachineStatsReturn {
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null);
@@ -21,11 +21,11 @@ export function useLocationMachineStats(): UseLocationMachineStatsReturn {
     setError(null);
 
     try {
-      const stats = await fetchMachineStats("all");
+      const stats = await fetchMachineStats('all');
       setMachineStats(stats);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch machine stats";
+        err instanceof Error ? err.message : 'Failed to fetch machine stats';
       setError(errorMessage);
       setMachineStats({
         totalMachines: 0,
@@ -49,7 +49,7 @@ export function useLocationMachineStats(): UseLocationMachineStatsReturn {
     const loadMachineStats = async () => {
       setMachineStatsLoading(true);
       try {
-        const stats = await fetchMachineStats("all");
+        const stats = await fetchMachineStats('all');
         if (!aborted) {
           setMachineStats(stats);
         }

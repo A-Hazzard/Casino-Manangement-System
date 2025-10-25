@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import { LocationActionsState } from "@/lib/types/location";
+import { create } from 'zustand';
+import { LocationActionsState } from '@/lib/types/location';
 
 // This is a store for location actions (edit/delete)
 
@@ -26,13 +26,13 @@ const dummyState: LocationActionsState = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<LocationActionsState>((set) => ({
+  return create<LocationActionsState>(set => ({
     selectedLocation: {},
     isEditModalOpen: false,
     isDeleteModalOpen: false,
-    openEditModal: (location) =>
+    openEditModal: location =>
       set({ selectedLocation: location, isEditModalOpen: true }),
-    openDeleteModal: (location) =>
+    openDeleteModal: location =>
       set({ selectedLocation: location, isDeleteModalOpen: true }),
     closeEditModal: () => set({ isEditModalOpen: false }),
     closeDeleteModal: () => set({ isDeleteModalOpen: false }),
@@ -52,4 +52,4 @@ const getClientStore = () => {
 
 // Use this store only on client side
 export const useLocationActionsStore =
-  typeof window !== "undefined" ? getClientStore() : create(() => dummyState);
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

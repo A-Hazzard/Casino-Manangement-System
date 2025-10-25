@@ -1,6 +1,6 @@
-import React from "react";
-import type { AggregatedLocation } from "@/lib/types/location";
-import type { LocationFilter, LocationSortOption } from "@/lib/types/location";
+import React from 'react';
+import type { AggregatedLocation } from '@/lib/types/location';
+import type { LocationFilter, LocationSortOption } from '@/lib/types/location';
 
 /**
  * Filter locations based on selected filters
@@ -11,11 +11,11 @@ export function filterLocations(
 ): AggregatedLocation[] {
   if (selectedFilters.length === 0) return locations;
 
-  return locations.filter((loc) => {
-    return selectedFilters.some((filter) => {
-      if (filter === "LocalServersOnly" && loc.isLocalServer) return true;
-      if (filter === "SMIBLocationsOnly" && !loc.noSMIBLocation) return true;
-      if (filter === "NoSMIBLocation" && loc.noSMIBLocation === true)
+  return locations.filter(loc => {
+    return selectedFilters.some(filter => {
+      if (filter === 'LocalServersOnly' && loc.isLocalServer) return true;
+      if (filter === 'SMIBLocationsOnly' && !loc.noSMIBLocation) return true;
+      if (filter === 'NoSMIBLocation' && loc.noSMIBLocation === true)
         return true;
       return false;
     });
@@ -28,18 +28,18 @@ export function filterLocations(
 export function sortLocations(
   locations: AggregatedLocation[],
   sortOption: LocationSortOption,
-  sortOrder: "asc" | "desc"
+  sortOrder: 'asc' | 'desc'
 ): AggregatedLocation[] {
   return [...locations].sort((a, b) => {
     const valA = a[sortOption] ?? 0;
     const valB = b[sortOption] ?? 0;
 
-    if (typeof valA === "string" && typeof valB === "string") {
-      return sortOrder === "asc"
+    if (typeof valA === 'string' && typeof valB === 'string') {
+      return sortOrder === 'asc'
         ? valA.localeCompare(valB)
         : valB.localeCompare(valA);
-    } else if (typeof valA === "number" && typeof valB === "number") {
-      return sortOrder === "asc" ? valA - valB : valB - valA;
+    } else if (typeof valA === 'number' && typeof valB === 'number') {
+      return sortOrder === 'asc' ? valA - valB : valB - valA;
     } else {
       // Fallback for mixed types or other types
       return 0;

@@ -54,7 +54,11 @@ export type CurrencyContextType = {
   displayCurrency: CurrencyCode;
   setDisplayCurrency: (currency: CurrencyCode) => void;
   formatAmount: (amount: number, currency?: CurrencyCode) => string;
-  convertAmount: (amount: number, from: CurrencyCode, to: CurrencyCode) => number;
+  convertAmount: (
+    amount: number,
+    from: CurrencyCode,
+    to: CurrencyCode
+  ) => number;
   isAllLicensee: boolean;
   shouldApplyConversion: boolean;
 };

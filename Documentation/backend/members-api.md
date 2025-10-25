@@ -1,12 +1,13 @@
 # Members API Documentation
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
+**Author:** Aaron Hazzard - Senior Software Engineer
 
 **Last Updated:** October 20th, 2025
 
 ## Quick Search Guide
 
 Use **Ctrl+F** to find these key topics:
+
 - **member creation** - What happens when you create a new member
 - **member search** - How member search and filtering works
 - **session tracking** - How gaming sessions are tracked and calculated
@@ -30,6 +31,7 @@ The Members API manages member profiles, gaming session tracking, and financial 
    - Sets default PIN and gaming location
 
 2. **Member Model Fields**:
+
 ```typescript
 Member {
   _id: string;                    // Username (used as unique identifier)
@@ -58,7 +60,7 @@ Member {
   accountLocked: boolean;         // Whether account is locked
   createdAt: Date;                // Account creation timestamp
   updatedAt: Date;                // Last modification timestamp
-  
+
   // Calculated Fields (from session data)
   winLoss?: number;               // Total win/loss (calculated from sessions)
   totalMoneyIn?: number;          // Total money inserted (calculated)
@@ -88,6 +90,7 @@ Member {
    - **Date Filter**: `createdAt`, `lastLogin`
 
 3. **Search Query Structure**:
+
 ```javascript
 // MongoDB search query
 {
@@ -112,6 +115,7 @@ Member {
    - Calculates session duration and performance
 
 2. **Machine Session Model Fields**:
+
 ```typescript
 MachineSession {
   _id: string;                    // Unique session identifier
@@ -121,7 +125,7 @@ MachineSession {
   startTime: Date;                // Session start timestamp
   endTime?: Date;                 // Session end timestamp
   duration?: number;              // Session duration in minutes
-  
+
   // Game Statistics
   gamesPlayed: number;            // Total games played
   gamesWon: number;              // Games won
@@ -129,7 +133,7 @@ MachineSession {
   bet: number;                    // Total bet amount
   won: number;                    // Total won amount
   jackpot: number;                // Jackpot amount won
-  
+
   // Meter Data
   startMeters: {                  // Meter readings at session start
     coinIn: number;               // Coin in meter
@@ -168,10 +172,11 @@ MachineSession {
    - Calculates net win/loss (money in - money out)
 
 2. **Win/Loss Calculation Formula**:
+
 ```javascript
 // MongoDB aggregation pipeline for win/loss calculation
 
-**Last Updated:** October 20th, 2025  
+**Last Updated:** October 20th, 2025
 **Version:** 2.0.0
 
 ## Table of Contents
@@ -205,11 +210,13 @@ The Members API provides comprehensive member management functionality for the E
 ## Base URLs
 
 ```
+
 /api/members
 /api/members/[id]
 /api/members/[id]/sessions
 /api/members/[id]/sessions/[machineId]/events
-```
+
+````
 
 ## Endpoints
 
@@ -270,9 +277,10 @@ Retrieves a paginated list of members with search and filtering capabilities, in
     }
   }
 }
-```
+````
 
 **Used By:**
+
 - `/members` page - Member listing and management
 - Member search functionality
 - Member table components
@@ -280,9 +288,11 @@ Retrieves a paginated list of members with search and filtering capabilities, in
 ---
 
 ### GET /api/members/summary
+
 Retrieves a paginated summary of members with additional filtering options, including win/loss calculations and location information.
 
 **Query Parameters:**
+
 - `licencee` (string, optional): Filter by licensee ID
 - `dateFilter` (string, default: "all"): Date filter (all, yesterday, week, month, custom)
 - `startDate` (string, optional): Start date for custom date filtering (ISO format)
@@ -294,6 +304,7 @@ Retrieves a paginated summary of members with additional filtering options, incl
 - `filterBy` (string, default: "createdAt"): Date field to filter by (createdAt, lastLogin)
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -309,7 +320,7 @@ Retrieves a paginated summary of members with additional filtering options, incl
         "locationName": "Downtown Casino",
         "gamingLocation": "location_id_123",
         "winLoss": -125.75,
-        "totalMoneyIn": 500.00,
+        "totalMoneyIn": 500.0,
         "totalMoneyOut": 625.75
       }
     ],
@@ -331,6 +342,7 @@ Retrieves a paginated summary of members with additional filtering options, incl
 ```
 
 **Used By:**
+
 - `/members` page - Members Summary tab
 - Member analytics and reporting
 - CSV export functionality
@@ -338,9 +350,11 @@ Retrieves a paginated summary of members with additional filtering options, incl
 ---
 
 ### POST /api/members
+
 Creates a new member account.
 
 **Request Body:**
+
 ```json
 {
   "profile": {
@@ -359,6 +373,7 @@ Creates a new member account.
 ```
 
 **Response (Success - 201):**
+
 ```json
 {
   "_id": "johndoe",
@@ -387,6 +402,7 @@ Creates a new member account.
 ```
 
 **Response (Error - 400):**
+
 ```json
 {
   "error": "First name, last name, and username are required"
@@ -394,6 +410,7 @@ Creates a new member account.
 ```
 
 **Response (Error - 400):**
+
 ```json
 {
   "error": "Username already exists"
@@ -401,18 +418,22 @@ Creates a new member account.
 ```
 
 **Used By:**
+
 - `/members` page - Add new member functionality
 - Member creation forms
 
 ---
 
 ### GET /api/members/[id]
+
 Retrieves detailed information for a specific member.
 
 **Path Parameters:**
+
 - `id` (string): Member ID or username
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -435,7 +456,7 @@ Retrieves detailed information for a specific member.
       "username": "johndoe",
       "phoneNumber": "+1234567890",
       "points": 1500,
-      "uaccount": 250.50,
+      "uaccount": 250.5,
       "gamingLocation": "default",
       "loggedIn": false,
       "accountLocked": false,
@@ -447,18 +468,22 @@ Retrieves detailed information for a specific member.
 ```
 
 **Used By:**
+
 - `/members/[id]` page - Member details view
 - Member profile components
 
 ---
 
 ### GET /api/members/[id]/sessions
+
 Retrieves session history for a specific member with grouping options.
 
 **Path Parameters:**
+
 - `id` (string): Member ID or username
 
 **Query Parameters:**
+
 - `page` (number, default: 1): Page number for pagination
 - `limit` (number, default: 10): Number of sessions per page
 - `filter` (string, optional): Grouping filter (session, day, week, month)
@@ -467,6 +492,7 @@ Retrieves session history for a specific member with grouping options.
 - `endDate` (string, optional): End date for filtering
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -482,9 +508,9 @@ Retrieves session history for a specific member with grouping options.
         "duration": 120,
         "gamesPlayed": 50,
         "points": 100,
-        "handle": 500.00,
-        "won": 75.00,
-        "bet": 25.00,
+        "handle": 500.0,
+        "won": 75.0,
+        "bet": 25.0,
         "gamesWon": 5,
         "jackpot": 0,
         "cancelledCredits": 0
@@ -502,6 +528,7 @@ Retrieves session history for a specific member with grouping options.
 ```
 
 **Used By:**
+
 - `/members/[id]` page - Member session history
 - Session grouping functionality (day/week/month views)
 - Export functionality
@@ -509,18 +536,22 @@ Retrieves session history for a specific member with grouping options.
 ---
 
 ### GET /api/members/[id]/sessions/[machineId]/events
+
 Retrieves detailed events for a specific member session on a specific machine.
 
 **Path Parameters:**
+
 - `id` (string): Member ID or username
 - `machineId` (string): Machine ID
 - `sessionId` (string): Session ID
 
 **Query Parameters:**
+
 - `page` (number, default: 1): Page number for pagination
 - `limit` (number, default: 50): Number of events per page
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -532,8 +563,8 @@ Retrieves detailed events for a specific member session on a specific machine.
         "timestamp": "2024-01-01T10:05:00.000Z",
         "data": {
           "gameId": "game_123",
-          "bet": 1.00,
-          "win": 2.50,
+          "bet": 1.0,
+          "win": 2.5,
           "multiplier": 2.5
         }
       }
@@ -550,12 +581,14 @@ Retrieves detailed events for a specific member session on a specific machine.
 ```
 
 **Used By:**
+
 - `/members/[id]/sessions/[sessionId]/[machineId]/events` page
 - Session event details view
 
 ## Database Models
 
 ### Member Model
+
 ```typescript
 type Member = {
   _id: string; // Username
@@ -588,10 +621,11 @@ type Member = {
   accountLocked: boolean;
   createdAt: Date;
   updatedAt: Date;
-}
+};
 ```
 
 ### Machine Session Model
+
 ```typescript
 type MachineSession = {
   _id: string;
@@ -618,20 +652,23 @@ type MachineSession = {
   bet: number;
   won: number;
   duration?: number;
-}
+};
 ```
 
 ## Win/Loss Calculation Logic
 
 ### Financial Metrics Calculation
+
 The Members API calculates win/loss data by aggregating machine session data using MongoDB aggregation pipelines:
 
 **Data Source:** `machinesessions` collection
 **Key Fields Used:**
+
 - `endMeters.movement.drop` - Total money inserted by member (Money In)
 - `endMeters.movement.totalCancelledCredits` - Total money paid out to member (Money Out)
 
 **Calculation Formula:**
+
 ```javascript
 // MongoDB aggregation pipeline
 {
@@ -640,9 +677,9 @@ The Members API calculates win/loss data by aggregating machine session data usi
       $reduce: {
         input: "$sessions",
         initialValue: 0,
-        in: { 
+        in: {
           $add: [
-            "$$value", 
+            "$$value",
             { $ifNull: [{ $toDouble: "$$this.endMeters.movement.drop" }, 0] }
           ]
         }
@@ -652,9 +689,9 @@ The Members API calculates win/loss data by aggregating machine session data usi
       $reduce: {
         input: "$sessions",
         initialValue: 0,
-        in: { 
+        in: {
           $add: [
-            "$$value", 
+            "$$value",
             { $ifNull: [{ $toDouble: "$$this.endMeters.movement.totalCancelledCredits" }, 0] }
           ]
         }
@@ -665,13 +702,13 @@ The Members API calculates win/loss data by aggregating machine session data usi
 }
 ```
 
-
 3. **Win/Loss Interpretation**:
    - **Positive winLoss**: Member lost money (house profit)
    - **Negative winLoss**: Member won money (house loss)
    - **Zero winLoss**: Break-even session
 
 4. **Financial Metrics Example**:
+
 ```javascript
 // Example calculation
 // Session 1: Money In = $100, Money Out = $80, Win/Loss = $20 (member lost)
@@ -696,6 +733,7 @@ The Members API calculates win/loss data by aggregating machine session data usi
    - **Monthly Groups**: Sessions grouped by month
 
 3. **Session History Model Fields**:
+
 ```typescript
 SessionHistoryEntry {
   _id: string;                    // Session identifier
@@ -723,75 +761,88 @@ SessionHistoryEntry {
 **Base URL:** `/api/members`
 
 #### GET /api/members
+
 **What it does**: Retrieves paginated list of members with search and filtering
 **Database Operations**:
+
 - Queries `members` collection with search criteria
 - Applies licensee and location filters
 - Calculates win/loss from session data
 - Returns paginated results
-**Query Parameters**: `search`, `page`, `limit`, `sortBy`, `sortOrder`, `licencee`
-**Response Fields**: Array of `Member` objects with calculated financial metrics
-**Used By**: Member listing page, member search functionality
+  **Query Parameters**: `search`, `page`, `limit`, `sortBy`, `sortOrder`, `licencee`
+  **Response Fields**: Array of `Member` objects with calculated financial metrics
+  **Used By**: Member listing page, member search functionality
 
 #### GET /api/members/summary
+
 **What it does**: Retrieves member summary with additional filtering options
 **Database Operations**:
+
 - Queries `members` collection with enhanced filters
 - Applies date range filtering
 - Calculates summary statistics
 - Returns paginated results with summary data
-**Query Parameters**: `licencee`, `dateFilter`, `startDate`, `endDate`, `search`, `location`
-**Response Fields**: Member summary with aggregated statistics
-**Used By**: Member analytics, CSV export functionality
+  **Query Parameters**: `licencee`, `dateFilter`, `startDate`, `endDate`, `search`, `location`
+  **Response Fields**: Member summary with aggregated statistics
+  **Used By**: Member analytics, CSV export functionality
 
 #### POST /api/members
+
 **What it does**: Creates a new member account
 **Database Operations**:
+
 - Validates input data
 - Checks username uniqueness
 - Creates new `Member` document
 - Logs creation activity
-**Request Fields**: `profile`, `username`, `phoneNumber`, `points`, `uaccount`, `pin`
-**Response Fields**: Created `Member` object with default values
-**Used By**: Member creation forms, member registration
+  **Request Fields**: `profile`, `username`, `phoneNumber`, `points`, `uaccount`, `pin`
+  **Response Fields**: Created `Member` object with default values
+  **Used By**: Member creation forms, member registration
 
 #### GET /api/members/[id]
+
 **What it does**: Retrieves detailed information for a specific member
 **Database Operations**:
+
 - Queries `members` collection by ID or username
 - Returns complete member profile data
 - Includes current account status
-**Path Parameters**: `id` - Member ID or username
-**Response Fields**: Complete `Member` object with all profile data
-**Used By**: Member details page, member profile components
+  **Path Parameters**: `id` - Member ID or username
+  **Response Fields**: Complete `Member` object with all profile data
+  **Used By**: Member details page, member profile components
 
 ### Session Management
 
 #### GET /api/members/[id]/sessions
+
 **What it does**: Retrieves session history for a specific member
 **Database Operations**:
+
 - Queries `machinesessions` collection by member ID
 - Applies date range and grouping filters
 - Calculates session statistics
 - Returns paginated results
-**Query Parameters**: `page`, `limit`, `filter`, `export`, `startDate`, `endDate`
-**Response Fields**: Array of session objects with statistics
-**Used By**: Member session history, session grouping functionality
+  **Query Parameters**: `page`, `limit`, `filter`, `export`, `startDate`, `endDate`
+  **Response Fields**: Array of session objects with statistics
+  **Used By**: Member session history, session grouping functionality
 
 #### GET /api/members/[id]/sessions/[machineId]/events
+
 **What it does**: Retrieves detailed events for a specific member session
 **Database Operations**:
+
 - Queries session events by member, machine, and session ID
 - Returns detailed event data with pagination
 - Includes game play details and timestamps
-**Path Parameters**: `id`, `machineId`, `sessionId`
-**Query Parameters**: `page`, `limit`
-**Response Fields**: Array of session events with detailed data
-**Used By**: Session event details view, debugging
+  **Path Parameters**: `id`, `machineId`, `sessionId`
+  **Query Parameters**: `page`, `limit`
+  **Response Fields**: Array of session events with detailed data
+  **Used By**: Session event details view, debugging
 
 ## Financial Calculations Summary
 
 ### Member Financial Metrics
+
 ```javascript
 // Total Money In Calculation
 totalMoneyIn = Σ(session.endMeters.movement.drop) across all member sessions
@@ -810,6 +861,7 @@ winRate = (session.gamesWon / session.gamesPlayed) * 100
 ```
 
 ### Session Aggregation Formulas
+
 ```javascript
 // Daily Session Aggregation
 dailySessions = GROUP BY DATE(startTime) sessions
@@ -829,9 +881,10 @@ memberWinRate = (sessions with positive winLoss) / total sessions
 ## Search and Filtering System
 
 ### Search Implementation
+
 ```javascript
 // Text Search Logic
-memberSearch = FIND(members WHERE 
+memberSearch = FIND(members WHERE
   profile.firstName CONTAINS searchTerm OR
   profile.lastName CONTAINS searchTerm OR
   username CONTAINS searchTerm
@@ -852,12 +905,14 @@ licenseeFilter = FIND(members WHERE gamingLocation IN (
 ## Performance Considerations
 
 ### Database Optimization
+
 - **Indexing**: Proper indexes on `memberId`, `machineId`, `startTime`, `gamingLocation`
 - **Aggregation Pipelines**: Efficient MongoDB aggregation for financial calculations
 - **Query Optimization**: Optimized queries with proper filtering
 - **Caching**: Response caching for frequently accessed member data
 
 ### API Performance
+
 - **Pagination**: Efficient pagination for large member datasets
 - **Response Compression**: Compressed responses for large session data
 - **Rate Limiting**: Protection against excessive API usage
@@ -866,12 +921,14 @@ licenseeFilter = FIND(members WHERE gamingLocation IN (
 ## Security Features
 
 ### Access Control
+
 - **Authentication**: JWT token required for all endpoints
 - **Authorization**: Role-based access to member data
 - **Data Filtering**: Results filtered by user permissions and licensee
 - **Audit Logging**: All member operations logged for compliance
 
 ### Data Protection
+
 - **Input Validation**: Comprehensive validation of all member data
 - **SQL Injection Prevention**: Parameterized queries throughout
 - **Rate Limiting**: Protection against API abuse
@@ -880,12 +937,14 @@ licenseeFilter = FIND(members WHERE gamingLocation IN (
 ## Error Handling
 
 ### Common Error Scenarios
+
 - **Invalid Member Data**: Malformed member information
 - **Duplicate Username**: Username already exists
 - **Missing Required Fields**: Required member data not provided
 - **Member Not Found**: Member ID doesn't exist
 
 ### Error Response Format
+
 ```json
 {
   "success": false,
@@ -895,23 +954,28 @@ licenseeFilter = FIND(members WHERE gamingLocation IN (
 ```
 
 **Win/Loss Interpretation:**
+
 - **Positive winLoss**: Member lost money (house won)
 - **Negative winLoss**: Member won money (house lost)
 - **Zero winLoss**: Break-even session
 
 **Performance Considerations:**
+
 - Calculations are performed at query time using MongoDB aggregation
 - Results are not stored to maintain data consistency
 - Aggregation pipelines are optimized with proper indexing on `memberId` and session fields
 
 ### Location Data Integration
+
 Member location information is populated via MongoDB `$lookup` operations:
 
 **Source Collections:**
+
 - `members.gamingLocation` → `gaminglocations._id`
 - Populates `locationName` field with human-readable location name
 
 **Licensee Filtering:**
+
 - Filters members by `gaminglocations.rel.licencee` field
 - Ensures multi-tenant data isolation
 - Applied via aggregation pipeline matching
@@ -919,6 +983,7 @@ Member location information is populated via MongoDB `$lookup` operations:
 ## Features
 
 ### Search and Filtering
+
 - **Text Search**: Search by first name, last name, or member ID
 - **Pagination**: Efficient pagination with configurable limits
 - **Sorting**: Multiple sort options including:
@@ -934,25 +999,27 @@ Member location information is populated via MongoDB `$lookup` operations:
 - **Licensee Filtering**: Multi-tenant isolation by licensee
 
 ### Session Grouping
+
 - **Individual Sessions**: View each session separately
 - **Daily Groups**: Group sessions by day (e.g., "Jun 12th")
 - **Weekly Groups**: Group sessions by week
 - **Monthly Groups**: Group sessions by month (1-4 weeks)
 
 ### Data Export
+
 - **CSV Export**: Export member data and session history
 - **Full Data Fetch**: Retrieve all data for export purposes
 - **Filtered Export**: Export data based on current filters
 
 ## Error Codes
 
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request (Invalid input) |
-| 404 | Not Found (Member not found) |
-| 500 | Internal Server Error |
+| Status Code | Description                  |
+| ----------- | ---------------------------- |
+| 200         | Success                      |
+| 201         | Created                      |
+| 400         | Bad Request (Invalid input)  |
+| 404         | Not Found (Member not found) |
+| 500         | Internal Server Error        |
 
 ## Dependencies
 
@@ -968,7 +1035,8 @@ Member location information is populated via MongoDB `$lookup` operations:
 **Current Implementation Analysis:**
 
 ##### **Member Total Money In (Session Data) ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   totalMoneyIn: {
     $reduce: {
@@ -989,7 +1057,8 @@ Member location information is populated via MongoDB `$lookup` operations:
 - ❌ **NOT IN GUIDE** - Session-level meter data structure not defined in financial metrics guide
 
 ##### **Member Total Money Out (Session Data) ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   totalMoneyOut: {
     $reduce: {
@@ -1010,19 +1079,23 @@ Member location information is populated via MongoDB `$lookup` operations:
 - ❌ **NOT IN GUIDE** - Session-level meter data structure not defined in financial metrics guide
 
 ##### **Member Win/Loss Calculation ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  winLoss: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] }
+  winLoss: {
+    $subtract: ['$totalMoneyIn', '$totalMoneyOut'];
+  }
   ```
 - **Mathematical Formula**: `winLoss = totalMoneyIn - totalMoneyOut`
 - **Financial Guide**: No direct equivalent for member-level win/loss
-- **Business Logic**: 
+- **Business Logic**:
   - **Positive Value**: Member lost money (house profit)
   - **Negative Value**: Member won money (house loss)
 - ❌ **NOT IN GUIDE** - Member win/loss calculation not defined in financial metrics guide
 
 ##### **Session Data Aggregation ❌**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Lookup sessions for each member
   { $lookup: {
@@ -1037,13 +1110,14 @@ Member location information is populated via MongoDB `$lookup` operations:
 - ❌ **NOT IN GUIDE** - Session aggregation pattern not defined in financial metrics guide
 
 ##### **Member Location Association ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Lookup gaming location
   { $lookup: {
     from: "gaminglocations",
     localField: "gamingLocation",
-    foreignField: "_id", 
+    foreignField: "_id",
     as: "locationInfo"
   }},
   locationName: { $arrayElemAt: ["$locationInfo.name", 0] }
@@ -1054,13 +1128,15 @@ Member location information is populated via MongoDB `$lookup` operations:
 ### Mathematical Formulas Summary
 
 #### **Member Financial Metrics (Requires Verification)**
+
 ```
 Member Total Money In = Σ(session.endMeters.movement.drop) across all member sessions
-Member Total Money Out = Σ(session.endMeters.movement.totalCancelledCredits) across all member sessions  
+Member Total Money Out = Σ(session.endMeters.movement.totalCancelledCredits) across all member sessions
 Member Win/Loss = Member Total Money In - Member Total Money Out
 ```
 
 #### **Session Financial Structure (Not in Guide)**
+
 ```
 Session Start Meters = session.startMeters.movement.*
 Session End Meters = session.endMeters.movement.*
@@ -1068,6 +1144,7 @@ Session Financial Delta = endMeters - startMeters
 ```
 
 #### **Member Performance Analysis**
+
 ```
 Member Activity Level = COUNT(sessions) per time period
 Member Average Session Value = totalMoneyIn / sessionCount
@@ -1076,8 +1153,9 @@ Member Location Preference = PRIMARY gamingLocation
 ```
 
 #### **Search and Filter Logic**
+
 ```
-Member Search = FIND(members WHERE 
+Member Search = FIND(members WHERE
   profile.firstName CONTAINS searchTerm OR
   profile.lastName CONTAINS searchTerm OR
   _id CONTAINS searchTerm
@@ -1101,12 +1179,14 @@ Date Filter = FIND(sessions WHERE startTime BETWEEN startDate AND endDate)
 ## Performance Considerations
 
 ### Query Optimization
+
 - **Indexed Fields**: Proper indexing on frequently queried fields
 - **Projection**: Selective field retrieval to reduce data transfer
 - **Aggregation Pipeline**: Efficient data processing and joining
 - **Pagination**: Limit result sets for better performance
 
 ### Caching Strategy
+
 - **Session Data**: Cache frequently accessed session data
 - **Machine Names**: Cache machine name lookups
 - **Location Data**: Cache location and licensee information

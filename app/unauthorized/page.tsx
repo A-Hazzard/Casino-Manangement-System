@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useUserStore } from "@/lib/store/userStore";
-import { getRoleDisplayName } from "@/lib/utils/permissions";
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useUserStore } from '@/lib/store/userStore';
+import { getRoleDisplayName } from '@/lib/utils/permissions';
 import {
   getDefaultRedirectPathFromRoles,
   getRedirectDestinationNameFromRoles,
-} from "@/lib/utils/roleBasedRedirect";
+} from '@/lib/utils/roleBasedRedirect';
 
 /**
  * Unauthorized Access Page
@@ -27,11 +27,11 @@ export default function UnauthorizedPage() {
     return () => clearTimeout(timer);
   }, [router, user]);
 
-  const userRole = user?.roles ? getRoleDisplayName(user.roles) : "User";
+  const userRole = user?.roles ? getRoleDisplayName(user.roles) : 'User';
   const userName =
     user?.profile?.firstName && user?.profile?.lastName
       ? `${user.profile.firstName} ${user.profile.lastName}`
-      : user?.username || "User";
+      : user?.username || 'User';
 
   const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
   const redirectDestination = getRedirectDestinationNameFromRoles(
@@ -39,10 +39,10 @@ export default function UnauthorizedPage() {
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
         <div className="mb-6">
-          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
             <svg
               className="h-8 w-8 text-red-600"
               fill="none"
@@ -59,13 +59,13 @@ export default function UnauthorizedPage() {
           </div>
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+        <h1 className="mb-4 text-2xl font-bold text-gray-900">Access Denied</h1>
 
-        <p className="text-gray-600 mb-6">
+        <p className="mb-6 text-gray-600">
           You don&apos;t have permission to access this page.
         </p>
 
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+        <div className="mb-6 rounded-lg bg-gray-50 p-4">
           <p className="text-sm text-gray-700">
             <strong>User:</strong> {userName}
           </p>
@@ -77,20 +77,20 @@ export default function UnauthorizedPage() {
         <div className="space-y-3">
           <button
             onClick={() => router.push(redirectPath)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+            className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700"
           >
             Go to {redirectDestination}
           </button>
 
           <button
             onClick={() => router.back()}
-            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors"
+            className="w-full rounded-md bg-gray-200 px-4 py-2 font-medium text-gray-800 transition-colors hover:bg-gray-300"
           >
             Go Back
           </button>
         </div>
 
-        <p className="text-xs text-gray-500 mt-4">
+        <p className="mt-4 text-xs text-gray-500">
           You will be automatically redirected to {redirectDestination} in 5
           seconds.
         </p>

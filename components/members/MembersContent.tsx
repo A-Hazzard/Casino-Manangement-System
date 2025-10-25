@@ -1,35 +1,38 @@
-"use client";
+'use client';
 
-import React, { Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Toaster } from "sonner";
+import React, { Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Toaster } from 'sonner';
 
 // Layout components
-import PageLayout from "@/components/layout/PageLayout";
+import PageLayout from '@/components/layout/PageLayout';
 
 // Store
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 // Hooks
-import { useMembersNavigation } from "@/lib/hooks/navigation";
-import { useMembersTabContent } from "@/lib/hooks/data";
+import { useMembersNavigation } from '@/lib/hooks/navigation';
+import { useMembersTabContent } from '@/lib/hooks/data';
 
 // Components
-import MembersNavigation from "@/components/members/common/MembersNavigation";
-import { MembersListTabSkeleton, MembersSummaryTabSkeleton } from "@/components/ui/skeletons/MembersSkeletons";
+import MembersNavigation from '@/components/members/common/MembersNavigation';
+import {
+  MembersListTabSkeleton,
+  MembersSummaryTabSkeleton,
+} from '@/components/ui/skeletons/MembersSkeletons';
 
 // Tab Components
-import MembersListTab from "@/components/members/tabs/MembersListTab";
-import MembersSummaryTab from "@/components/members/tabs/MembersSummaryTab";
+import MembersListTab from '@/components/members/tabs/MembersListTab';
+import MembersSummaryTab from '@/components/members/tabs/MembersSummaryTab';
 
 // Constants
 import {
   MEMBERS_TABS_CONFIG,
   MEMBERS_ANIMATIONS,
-} from "@/lib/constants/members";
+} from '@/lib/constants/members';
 
 // Types
-import type { MembersView } from "@/shared/types/entities";
+import type { MembersView } from '@/shared/types/entities';
 
 /**
  * Main content component for the members page
@@ -37,18 +40,19 @@ import type { MembersView } from "@/shared/types/entities";
  */
 export default function MembersContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
-  
+
   // All authenticated users have access to members
   const hasAccess = true;
   const availableTabs = MEMBERS_TABS_CONFIG;
   const accessDeniedMessage = null;
 
-  const { activeTab, handleTabClick } = useMembersNavigation(MEMBERS_TABS_CONFIG);
+  const { activeTab, handleTabClick } =
+    useMembersNavigation(MEMBERS_TABS_CONFIG);
 
   // Tab content rendering
   const tabComponents: Record<MembersView, React.ReactElement> = {
     members: <MembersListTab />,
-    "summary-report": <MembersSummaryTab />,
+    'summary-report': <MembersSummaryTab />,
   };
 
   const { getTabAnimationProps, currentTabComponent } = useMembersTabContent({
@@ -61,7 +65,6 @@ export default function MembersContent() {
   if (!hasAccess) {
     return (
       <>
-
         <PageLayout
           headerProps={{
             selectedLicencee,
@@ -71,13 +74,14 @@ export default function MembersContent() {
           hideLicenceeFilter={true}
           showToaster={false}
         >
-          <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex min-h-[400px] items-center justify-center">
             <div className="text-center">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              <h2 className="mb-2 text-xl font-semibold text-gray-900">
                 Access Restricted
               </h2>
               <p className="text-gray-600">
-                {accessDeniedMessage || "You don't have permission to access member data."}
+                {accessDeniedMessage ||
+                  "You don't have permission to access member data."}
               </p>
             </div>
           </div>
@@ -93,9 +97,15 @@ export default function MembersContent() {
     return (
       <AnimatePresence mode="wait">
         <motion.div {...getTabAnimationProps()}>
-          <Suspense fallback={
-            activeTab === "members" ? <MembersListTabSkeleton /> : <MembersSummaryTabSkeleton />
-          }>
+          <Suspense
+            fallback={
+              activeTab === 'members' ? (
+                <MembersListTabSkeleton />
+              ) : (
+                <MembersSummaryTabSkeleton />
+              )
+            }
+          >
             {currentTabComponent}
           </Suspense>
         </motion.div>

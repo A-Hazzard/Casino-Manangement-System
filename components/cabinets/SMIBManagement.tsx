@@ -1,24 +1,24 @@
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { CustomSelect } from "@/components/ui/custom-select";
-import { Checkbox } from "@/components/ui/checkbox";
-import Chip from "@/components/ui/common/Chip";
-import { motion, AnimatePresence } from "framer-motion";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import Image from "next/image";
-import type { SmibLocation } from "@/shared/types/entities";
+import React, { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { CustomSelect } from '@/components/ui/custom-select';
+import { Checkbox } from '@/components/ui/checkbox';
+import Chip from '@/components/ui/common/Chip';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import Image from 'next/image';
+import type { SmibLocation } from '@/shared/types/entities';
 
 // Import SVG icons for pre-rendering
-import editIcon from "@/public/editIcon.svg";
+import editIcon from '@/public/editIcon.svg';
 
 // TODO: Replace with MongoDB data fetching
 
 const MOCK_LOCATIONS: SmibLocation[] = [];
 
 export default function SMIBManagement() {
-  const [search, setSearch] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("");
+  const [search, setSearch] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedSMIBs, setSelectedSMIBs] = useState<
     Array<{ id: string; label: string }>
   >([]);
@@ -27,24 +27,24 @@ export default function SMIBManagement() {
   const shiftCards = selectedSMIBs.length >= 3;
 
   const handleRemoveSMIB = (id: string) => {
-    setSelectedSMIBs(selectedSMIBs.filter((s) => s.id !== id));
+    setSelectedSMIBs(selectedSMIBs.filter(s => s.id !== id));
   };
 
   const currentSelectedLocationName =
-    "No locations available - MongoDB implementation pending";
+    'No locations available - MongoDB implementation pending';
 
   return (
-    <div className="w-full max-w-full min-h-[80vh] flex flex-col gap-6 text-gray-700">
+    <div className="flex min-h-[80vh] w-full max-w-full flex-col gap-6 text-gray-700">
       {/* Top Purple Bar */}
-      <div className="bg-buttonActive p-4 rounded-lg flex flex-col lg:flex-row gap-4 items-center">
+      <div className="flex flex-col items-center gap-4 rounded-lg bg-buttonActive p-4 lg:flex-row">
         <div className="relative w-full lg:w-2/3">
           <Input
             placeholder="Search machines..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pr-10 bg-white border-none rounded-md h-11 px-4 text-gray-700 placeholder-gray-400"
+            onChange={e => setSearch(e.target.value)}
+            className="h-11 w-full rounded-md border-none bg-white px-4 pr-10 text-gray-700 placeholder-gray-400"
           />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         </div>
         <CustomSelect
           value={selectedLocation}
@@ -59,8 +59,8 @@ export default function SMIBManagement() {
           }
           placeholder={
             MOCK_LOCATIONS.length === 0
-              ? "No locations available - MongoDB implementation pending"
-              : "Select Location"
+              ? 'No locations available - MongoDB implementation pending'
+              : 'Select Location'
           }
           disabled={MOCK_LOCATIONS.length === 0}
           className="w-full lg:w-1/3"
@@ -70,24 +70,24 @@ export default function SMIBManagement() {
       </div>
 
       {/* Buttons and SMIB Selection Row */}
-      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between w-full">
+      <div className="flex w-full flex-col items-center justify-between gap-4 lg:flex-row">
         {/* Button Group */}
-        <div className="flex gap-2 flex-wrap justify-center lg:justify-start w-full lg:w-auto">
+        <div className="flex w-full flex-wrap justify-center gap-2 lg:w-auto lg:justify-start">
           <Button
             variant="outline"
-            className="bg-white border-button text-button hover:bg-button/10"
+            className="border-button bg-white text-button hover:bg-button/10"
           >
             SEARCH SMIB
           </Button>
           <Button
             variant="outline"
-            className="bg-white border-button text-button hover:bg-button/10"
+            className="border-button bg-white text-button hover:bg-button/10"
           >
             ADD SMIB
           </Button>
           <Button
             variant="outline"
-            className="bg-white border-button text-button hover:bg-button/10"
+            className="border-button bg-white text-button hover:bg-button/10"
           >
             REMOVE SMIB
           </Button>
@@ -102,12 +102,12 @@ export default function SMIBManagement() {
       </div>
 
       {/* Apply All Checkbox - Centered */}
-      <div className="flex items-center justify-center gap-2 my-2 w-full">
+      <div className="my-2 flex w-full items-center justify-center gap-2">
         <Checkbox
           checked={applyAll}
-          onCheckedChange={(v) => setApplyAll(!!v)}
+          onCheckedChange={v => setApplyAll(!!v)}
           id="applyAllSmibs"
-          className="border-gray-400 data-[state=checked]:bg-buttonActive data-[state=checked]:border-buttonActive focus:ring-buttonActive"
+          className="border-gray-400 focus:ring-buttonActive data-[state=checked]:border-buttonActive data-[state=checked]:bg-buttonActive"
         />
         <label htmlFor="applyAllSmibs" className="text-sm text-gray-600">
           Apply to all SMIBs at this location ({currentSelectedLocationName})
@@ -115,13 +115,13 @@ export default function SMIBManagement() {
       </div>
 
       {/* Selected SMIBs */}
-      <div className="flex flex-wrap gap-2 min-h-[40px] items-center bg-gray-100 p-3 rounded-lg">
+      <div className="flex min-h-[40px] flex-wrap items-center gap-2 rounded-lg bg-gray-100 p-3">
         {selectedSMIBs.length === 0 ? (
           <span className="text-gray-500">
             No SMIBs selected. Add SMIBs using the controls above.
           </span>
         ) : (
-          selectedSMIBs.map((smib) => (
+          selectedSMIBs.map(smib => (
             <Chip
               key={smib.id}
               label={smib.label}
@@ -133,13 +133,13 @@ export default function SMIBManagement() {
       </div>
 
       {/* Cards Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+      <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left column: Network/WIFI, Coms, Fingerprint/Probes */}
         <div className="flex flex-col gap-6">
           {/* Network/WIFI Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-gray-700">
+          <div className="rounded-lg bg-white p-6 shadow-md">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-700">
                 Network / WIFI
               </h3>
               <Image
@@ -147,80 +147,80 @@ export default function SMIBManagement() {
                 alt="Edit"
                 width={20}
                 height={20}
-                className="w-5 h-5 cursor-pointer"
+                className="h-5 w-5 cursor-pointer"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+            <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-2">
               <label className="text-sm text-gray-600">Name</label>
               <Input
                 placeholder="Enter network name"
-                className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+                className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
               />
               <label className="text-sm text-gray-600">Password</label>
               <Input
                 placeholder="Enter password"
                 type="password"
-                className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+                className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
               />
               <label className="text-sm text-gray-600">Channel</label>
               <Input
                 placeholder="Enter channel"
-                className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+                className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
               />
             </div>
-            <Button className="mt-4 bg-button hover:bg-button/90 text-white w-full sm:w-auto">
+            <Button className="mt-4 w-full bg-button text-white hover:bg-button/90 sm:w-auto">
               UPDATE
             </Button>
           </div>
           {/* Coms Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-gray-700">Coms</h3>
+          <div className="rounded-lg bg-white p-6 shadow-md">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-700">Coms</h3>
               <Image
                 src={editIcon}
                 alt="Edit"
                 width={20}
                 height={20}
-                className="w-5 h-5 cursor-pointer"
+                className="h-5 w-5 cursor-pointer"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+            <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-2">
               <label className="text-sm text-gray-600">Mode</label>
               <Input
                 placeholder="Enter mode"
-                className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+                className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
               />
               <label className="text-sm text-gray-600">Address</label>
               <Input
                 placeholder="Enter address"
-                className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+                className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
               />
               <label className="text-sm text-gray-600">Rate</label>
               <Input
                 placeholder="Enter rate"
-                className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+                className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
               />
               <label className="text-sm text-gray-600">RTE</label>
               <Input
                 placeholder="Enter RTE"
-                className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+                className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
               />
               <label className="text-sm text-gray-600">GPC</label>
               <Input
                 placeholder="Enter GPC"
-                className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+                className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
               />
             </div>
-            <Button className="mt-4 bg-button hover:bg-button/90 text-white w-full sm:w-auto">
+            <Button className="mt-4 w-full bg-button text-white hover:bg-button/90 sm:w-auto">
               UPDATE
             </Button>
           </div>
           {/* Fingerprint/Probes Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="font-bold text-lg mb-4 text-gray-700">
+          <div className="rounded-lg bg-white p-6 shadow-md">
+            <h3 className="mb-4 text-lg font-bold text-gray-700">
               Fingerprint
             </h3>
-            <div className="text-gray-500 text-sm">Probes:</div>
+            <div className="text-sm text-gray-500">Probes:</div>
           </div>
           {/* Animate MQTT cards below Coms if shiftCards is true */}
           <AnimatePresence>
@@ -228,9 +228,9 @@ export default function SMIBManagement() {
               <motion.div
                 key="mqtt-cards-shifted"
                 initial={{ opacity: 0, y: 20, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: "auto" }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, y: 20, height: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="flex flex-col gap-6"
               >
                 <MQTTCards />
@@ -240,7 +240,7 @@ export default function SMIBManagement() {
         </div>
 
         {/* Right column: MQTT cards (if not shifted) */}
-        <div className={`flex-col gap-6 ${shiftCards ? "hidden" : "flex"}`}>
+        <div className={`flex-col gap-6 ${shiftCards ? 'hidden' : 'flex'}`}>
           <MQTTCards />
         </div>
       </div>
@@ -252,12 +252,12 @@ function MQTTCards() {
   return (
     <>
       {/* MQTT Card */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="font-bold text-lg mb-4 text-gray-700">MQTT</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+      <div className="rounded-lg bg-white p-6 shadow-md">
+        <h3 className="mb-4 text-lg font-bold text-gray-700">MQTT</h3>
+        <div className="grid grid-cols-1 gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
           <div>
             <span className="font-semibold text-gray-600">Connection</span>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="mt-1 text-xs text-gray-500">
               Host:
               <br />
               Port:
@@ -269,7 +269,7 @@ function MQTTCards() {
           </div>
           <div>
             <span className="font-semibold text-gray-600">Authentication</span>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="mt-1 text-xs text-gray-500">
               Username:
               <br />
               Password:
@@ -277,7 +277,7 @@ function MQTTCards() {
           </div>
           <div className="sm:col-span-2">
             <span className="font-semibold text-gray-600">Topics</span>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="mt-1 text-xs text-gray-500">
               Server: syskey/server
               <br />
               Configuration: smib/config
@@ -288,26 +288,26 @@ function MQTTCards() {
         </div>
       </div>
       {/* MQTT Topics Card */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="font-bold text-lg mb-4 text-gray-700">MQTT Topics</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+      <div className="rounded-lg bg-white p-6 shadow-md">
+        <h3 className="mb-4 text-lg font-bold text-gray-700">MQTT Topics</h3>
+        <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-2">
           <label className="text-sm text-gray-600">Mqtt Pub Topic</label>
           <Input
             placeholder="Enter Mqtt Pub Topic"
-            className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+            className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
           />
           <label className="text-sm text-gray-600">Mqtt Config Topic</label>
           <Input
             placeholder="Enter Mqtt Config Topic"
-            className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+            className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
           />
           <label className="text-sm text-gray-600">Mqtt URL</label>
           <Input
             placeholder="Enter Mqtt URL"
-            className="sm:col-start-2 placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive"
+            className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
           />
         </div>
-        <Button className="mt-4 bg-button hover:bg-button/90 text-white w-full sm:w-auto">
+        <Button className="mt-4 w-full bg-button text-white hover:bg-button/90 sm:w-auto">
           UPDATE
         </Button>
       </div>

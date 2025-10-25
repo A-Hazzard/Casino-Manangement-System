@@ -1,5 +1,5 @@
-import { ReportConfig } from "@/lib/types/reports";
-import { isWithinInterval } from "date-fns";
+import { ReportConfig } from '@/lib/types/reports';
+import { isWithinInterval } from 'date-fns';
 
 type Reportable = Record<string, unknown>;
 
@@ -58,7 +58,7 @@ function applyFilters(config: ReportConfig): GamingMachine[] {
         end: new Date(),
       };
 
-  filteredMachines = filteredMachines.filter((m) => {
+  filteredMachines = filteredMachines.filter(m => {
     const machineDate = new Date(m.lastActivity);
     return isWithinInterval(machineDate, dateRange);
   });
@@ -66,7 +66,7 @@ function applyFilters(config: ReportConfig): GamingMachine[] {
   // Filter by location
   if (config.filters.locationIds && config.filters.locationIds.length > 0) {
     const locationSet = new Set(config.filters.locationIds);
-    filteredMachines = filteredMachines.filter((m) =>
+    filteredMachines = filteredMachines.filter(m =>
       locationSet.has(m.locationId)
     );
   }
@@ -74,7 +74,7 @@ function applyFilters(config: ReportConfig): GamingMachine[] {
   // Filter by manufacturer
   if (config.filters.manufacturers && config.filters.manufacturers.length > 0) {
     const manufacturerSet = new Set(config.filters.manufacturers);
-    filteredMachines = filteredMachines.filter((m) =>
+    filteredMachines = filteredMachines.filter(m =>
       manufacturerSet.has(m.manufacturer)
     );
   }
@@ -90,45 +90,45 @@ function createReportableRow(
   const row: Reportable = {};
   for (const fieldId of fields) {
     switch (fieldId) {
-      case "locationName":
-        row[fieldId] = location?.name || "N/A";
+      case 'locationName':
+        row[fieldId] = location?.name || 'N/A';
         break;
-      case "locationRegion":
-        row[fieldId] = location?.region || "N/A";
+      case 'locationRegion':
+        row[fieldId] = location?.region || 'N/A';
         break;
-      case "machineGameTitle":
+      case 'machineGameTitle':
         row[fieldId] = machine.gameTitle;
         break;
-      case "machineManufacturer":
+      case 'machineManufacturer':
         row[fieldId] = machine.manufacturer;
         break;
-      case "totalHandle":
+      case 'totalHandle':
         row[fieldId] = machine.drop || 0;
         break;
-      case "totalWin":
+      case 'totalWin':
         row[fieldId] =
           (machine.drop || 0) - (machine.totalCancelledCredits || 0);
         break;
-      case "actualHold":
+      case 'actualHold':
         row[fieldId] =
           (machine.drop || 0) > 0
             ? ((machine.drop || 0) - (machine.totalCancelledCredits || 0)) /
               (machine.drop || 0)
             : 0;
         break;
-      case "gamesPlayed":
+      case 'gamesPlayed':
         row[fieldId] = machine.gamesPlayed;
         break;
-      case "averageWager":
+      case 'averageWager':
         row[fieldId] =
           machine.gamesPlayed > 0
             ? (machine.coinIn || 0) / machine.gamesPlayed
             : 0;
         break;
-      case "jackpot":
+      case 'jackpot':
         row[fieldId] = machine.jackpot || 0;
         break;
-      case "date":
+      case 'date':
         row[fieldId] = machine.lastActivity;
         break;
     }
@@ -139,7 +139,7 @@ function createReportableRow(
 export function generateReportData(config: ReportConfig): ReportData {
   const filteredMachines = applyFilters(config);
 
-  const tableData: Reportable[] = filteredMachines.map((machine) => {
+  const tableData: Reportable[] = filteredMachines.map(machine => {
     // TODO: Replace with actual location lookup from MongoDB
     const location = undefined; // await findLocationById(machine.locationId);
     return createReportableRow(machine, location, config.fields);
@@ -149,13 +149,13 @@ export function generateReportData(config: ReportConfig): ReportData {
     totalRecords: filteredMachines.length,
     dateGenerated: new Date().toISOString(),
     keyMetrics: [
-      { label: "Total Machines Analyzed", value: filteredMachines.length },
+      { label: 'Total Machines Analyzed', value: filteredMachines.length },
       {
-        label: "Total Handle",
+        label: 'Total Handle',
         value: filteredMachines.reduce((sum, m) => sum + m.coinIn, 0),
       },
       {
-        label: "Total Win",
+        label: 'Total Win',
         value: filteredMachines.reduce(
           (sum, m) => sum + (m.coinIn - m.coinOut),
           0
@@ -168,16 +168,16 @@ export function generateReportData(config: ReportConfig): ReportData {
     config,
     summary,
     tableData,
-    chartData: tableData.map((row) => ({
-      label: String(row.machineGameTitle || row.locationName || "Unknown"),
+    chartData: tableData.map(row => ({
+      label: String(row.machineGameTitle || row.locationName || 'Unknown'),
       value: Number(row.totalWin || 0),
     })),
     metadata: {
-      generatedBy: "System",
+      generatedBy: 'System',
       generatedAt: new Date().toISOString(),
       executionTime: 0,
       dataSourceLastUpdated: new Date().toISOString(),
-      reportVersion: "1.0.0",
+      reportVersion: '1.0.0',
       totalDataPoints: tableData.length,
     },
   };

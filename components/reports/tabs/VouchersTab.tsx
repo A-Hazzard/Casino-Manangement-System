@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Receipt,
   TrendingUp,
@@ -16,7 +16,7 @@ import {
   Download,
   Filter,
   Search,
-} from "lucide-react";
+} from 'lucide-react';
 
 // UI Components
 import {
@@ -25,22 +25,21 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Store
-import { useReportsStore } from "@/lib/store/reportsStore";
+import { useReportsStore } from '@/lib/store/reportsStore';
 
 // Utils
-import { exportData } from "@/lib/utils/exportUtils";
-import { getFinancialColorClass } from "@/lib/utils/financialColors";
+import { exportData } from '@/lib/utils/exportUtils';
+import { getFinancialColorClass } from '@/lib/utils/financialColors';
 
 // Types
-import type { VoucherMetrics } from "@/lib/types/reports";
-
+import type { VoucherMetrics } from '@/lib/types/reports';
 
 export default function VouchersTab() {
   const {
@@ -51,9 +50,9 @@ export default function VouchersTab() {
     selectedDateRange,
   } = useReportsStore();
 
-  const [activeSubTab, setActiveSubTab] = useState("overview");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [activeSubTab, setActiveSubTab] = useState('overview');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
     // TODO: Implement actual API call to fetch voucher metrics from MongoDB
@@ -73,54 +72,54 @@ export default function VouchersTab() {
   const handleExportData = async () => {
     try {
       const voucherExportData = {
-        title: "Voucher Management Report",
-        subtitle: "Voucher issuance, redemption, and fraud analysis",
+        title: 'Voucher Management Report',
+        subtitle: 'Voucher issuance, redemption, and fraud analysis',
         headers: [
-          "Location",
-          "Vouchers Issued",
-          "Vouchers Redeemed",
-          "Total Value",
-          "Redemption Rate",
+          'Location',
+          'Vouchers Issued',
+          'Vouchers Redeemed',
+          'Total Value',
+          'Redemption Rate',
         ],
         data: [], // TODO: Replace with actual voucher location data from MongoDB
         summary: [
           {
-            label: "Total Vouchers Issued",
+            label: 'Total Vouchers Issued',
             value: metrics.totalVouchersIssued.toLocaleString(),
           },
           {
-            label: "Total Vouchers Redeemed",
+            label: 'Total Vouchers Redeemed',
             value: metrics.totalVouchersRedeemed.toLocaleString(),
           },
           {
-            label: "Total Value",
+            label: 'Total Value',
             value: `$${metrics.totalVoucherValue.toLocaleString()}`,
           },
           {
-            label: "Redemption Rate",
+            label: 'Redemption Rate',
             value: `${metrics.redemptionRate.toFixed(1)}%`,
           },
           {
-            label: "Avg. Voucher Value",
+            label: 'Avg. Voucher Value',
             value: `$${metrics.averageVoucherValue.toFixed(2)}`,
           },
         ],
         metadata: {
-          generatedBy: "Evolution1 CMS - Vouchers Export",
+          generatedBy: 'Evolution1 CMS - Vouchers Export',
           generatedAt: new Date().toISOString(),
           dateRange: selectedDateRange
             ? `${selectedDateRange.start?.toDateString()} - ${selectedDateRange.end?.toDateString()}`
-            : "All time",
+            : 'All time',
         },
       };
 
       await exportData(voucherExportData);
-      toast.success("Voucher management data exported successfully");
+      toast.success('Voucher management data exported successfully');
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      console.error("Failed to export voucher data:", errorMessage);
-      toast.error("Failed to export voucher data");
+        error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Failed to export voucher data:', errorMessage);
+      toast.error('Failed to export voucher data');
     }
   };
 
@@ -136,73 +135,73 @@ export default function VouchersTab() {
     averageVoucherValue: 0,
     expiredVouchers: 0,
     fraudulentVouchers: 0,
-    vouchersByLocation: []
+    vouchersByLocation: [],
   };
 
   const kpiCards = [
     {
-      title: "Total Vouchers Issued",
+      title: 'Total Vouchers Issued',
       value: metrics.totalVouchersIssued.toLocaleString(),
-      change: "+12.5%",
-      trend: "up" as const,
+      change: '+12.5%',
+      trend: 'up' as const,
       icon: Receipt,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
     },
     {
-      title: "Total Vouchers Redeemed",
+      title: 'Total Vouchers Redeemed',
       value: metrics.totalVouchersRedeemed.toLocaleString(),
-      change: "+10.8%",
-      trend: "up" as const,
+      change: '+10.8%',
+      trend: 'up' as const,
       icon: CheckCircle,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
     },
     {
-      title: "Total Value",
+      title: 'Total Value',
       value: `$${metrics.totalVoucherValue.toLocaleString()}`,
-      change: "+18.3%",
-      trend: "up" as const,
+      change: '+18.3%',
+      trend: 'up' as const,
       icon: DollarSign,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
     },
     {
-      title: "Redemption Rate",
+      title: 'Redemption Rate',
       value: `${metrics.redemptionRate.toFixed(1)}%`,
-      change: "-1.2%",
-      trend: "down" as const,
+      change: '-1.2%',
+      trend: 'down' as const,
       icon: Percent,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
     },
     {
-      title: "Avg. Voucher Value",
+      title: 'Avg. Voucher Value',
       value: `$${metrics.averageVoucherValue.toFixed(2)}`,
-      change: "+5.7%",
-      trend: "up" as const,
+      change: '+5.7%',
+      trend: 'up' as const,
       icon: TrendingUp,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
     },
   ];
 
   const alertCards = [
     {
-      title: "Expired Vouchers",
+      title: 'Expired Vouchers',
       value: metrics.expiredVouchers.toLocaleString(),
       icon: Clock,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50",
-      severity: "medium",
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50',
+      severity: 'medium',
     },
     {
-      title: "Fraudulent Vouchers",
+      title: 'Fraudulent Vouchers',
       value: metrics.fraudulentVouchers.toLocaleString(),
       icon: AlertTriangle,
-      color: "text-red-600",
-      bgColor: "bg-red-50",
-      severity: "high",
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      severity: 'high',
     },
   ];
 
@@ -210,17 +209,17 @@ export default function VouchersTab() {
     return (
       <div className="space-y-6">
         {/* Loading skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className="h-32 bg-gray-200 rounded-lg animate-pulse"
+              className="h-32 animate-pulse rounded-lg bg-gray-200"
             />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-64 bg-gray-200 rounded-lg animate-pulse" />
-          <div className="h-64 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
         </div>
       </div>
     );
@@ -234,7 +233,7 @@ export default function VouchersTab() {
       className="space-y-6"
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
             Voucher Management
@@ -249,21 +248,21 @@ export default function VouchersTab() {
             size="sm"
             className="flex items-center gap-2"
           >
-            <Filter className="w-4 h-4" />
+            <Filter className="h-4 w-4" />
             Filters
           </Button>
           <Button
             onClick={handleExportData}
             className="flex items-center gap-2"
           >
-            <Download className="w-4 h-4" />
+            <Download className="h-4 w-4" />
             Export Data
           </Button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
         {kpiCards.map((kpi, index) => (
           <motion.div
             key={kpi.title}
@@ -271,24 +270,24 @@ export default function VouchersTab() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="transition-shadow hover:shadow-md">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
-                    <kpi.icon className={`w-6 h-6 ${kpi.color}`} />
+                  <div className={`rounded-lg p-2 ${kpi.bgColor}`}>
+                    <kpi.icon className={`h-6 w-6 ${kpi.color}`} />
                   </div>
                   <Badge
-                    variant={kpi.trend === "up" ? "default" : "destructive"}
+                    variant={kpi.trend === 'up' ? 'default' : 'destructive'}
                     className="text-xs"
                   >
                     {kpi.change}
                   </Badge>
                 </div>
                 <div className="mt-4">
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 break-words">
+                  <p className="break-words text-lg font-bold text-gray-900 sm:text-xl lg:text-2xl">
                     {kpi.value}
                   </p>
-                  <p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
+                  <p className="mt-1 break-words text-xs text-gray-600 sm:text-sm">
                     {kpi.title}
                   </p>
                 </div>
@@ -299,7 +298,7 @@ export default function VouchersTab() {
       </div>
 
       {/* Alert Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {alertCards.map((alert, index) => (
           <motion.div
             key={alert.title}
@@ -309,19 +308,19 @@ export default function VouchersTab() {
           >
             <Card
               className={`border-l-4 ${
-                alert.severity === "high"
-                  ? "border-l-red-500"
-                  : "border-l-yellow-500"
-              } hover:shadow-md transition-shadow`}
+                alert.severity === 'high'
+                  ? 'border-l-red-500'
+                  : 'border-l-yellow-500'
+              } transition-shadow hover:shadow-md`}
             >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className={`p-2 rounded-lg ${alert.bgColor}`}>
-                    <alert.icon className={`w-6 h-6 ${alert.color}`} />
+                  <div className={`rounded-lg p-2 ${alert.bgColor}`}>
+                    <alert.icon className={`h-6 w-6 ${alert.color}`} />
                   </div>
                   <Badge
                     variant={
-                      alert.severity === "high" ? "destructive" : "secondary"
+                      alert.severity === 'high' ? 'destructive' : 'secondary'
                     }
                     className="text-xs"
                   >
@@ -329,10 +328,10 @@ export default function VouchersTab() {
                   </Badge>
                 </div>
                 <div className="mt-4">
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 break-words">
+                  <p className="break-words text-lg font-bold text-gray-900 sm:text-xl lg:text-2xl">
                     {alert.value}
                   </p>
-                  <p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
+                  <p className="mt-1 break-words text-xs text-gray-600 sm:text-sm">
                     {alert.title}
                   </p>
                 </div>
@@ -349,39 +348,39 @@ export default function VouchersTab() {
         className="space-y-4"
       >
         {/* Desktop Navigation */}
-        <TabsList className="hidden md:grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        <TabsList className="mb-6 hidden w-full grid-cols-4 rounded-lg bg-gray-100 p-2 shadow-sm md:grid">
           <TabsTrigger
             value="overview"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Overview
           </TabsTrigger>
           <TabsTrigger
             value="locations"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             By Location
           </TabsTrigger>
           <TabsTrigger
             value="activity"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Recent Activity
           </TabsTrigger>
           <TabsTrigger
             value="fraud"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Fraud Detection
           </TabsTrigger>
         </TabsList>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden mb-6">
+        <div className="mb-6 md:hidden">
           <select
             value={activeSubTab}
-            onChange={(e) => setActiveSubTab(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+            onChange={e => setActiveSubTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
           >
             <option value="overview">Overview</option>
             <option value="locations">By Location</option>
@@ -391,12 +390,12 @@ export default function VouchersTab() {
         </div>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Voucher Types Distribution */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Receipt className="w-5 h-5" />
+                  <Receipt className="h-5 w-5" />
                   Voucher Types Distribution
                 </CardTitle>
                 <CardDescription>
@@ -407,30 +406,30 @@ export default function VouchersTab() {
                 <div className="space-y-4">
                   {[
                     {
-                      type: "Cashout Vouchers",
+                      type: 'Cashout Vouchers',
                       count: 18456,
                       percentage: 71.4,
                       value: 892345.2,
                     },
                     {
-                      type: "Promotional Vouchers",
+                      type: 'Promotional Vouchers',
                       count: 5234,
                       percentage: 20.3,
                       value: 234567.8,
                     },
                     {
-                      type: "Comp Vouchers",
+                      type: 'Comp Vouchers',
                       count: 1456,
                       percentage: 5.6,
                       value: 87654.3,
                     },
                     {
-                      type: "Jackpot Vouchers",
+                      type: 'Jackpot Vouchers',
                       count: 694,
                       percentage: 2.7,
                       value: 70000.2,
                     },
-                  ].map((item) => (
+                  ].map(item => (
                     <div key={item.type} className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{item.type}</span>
@@ -438,9 +437,9 @@ export default function VouchersTab() {
                           {item.count.toLocaleString()} ({item.percentage}%)
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 w-full rounded-full bg-gray-200">
                         <div
-                          className="bg-buttonActive h-2 rounded-full transition-all duration-300"
+                          className="h-2 rounded-full bg-buttonActive transition-all duration-300"
                           style={{ width: `${item.percentage}%` }}
                         />
                       </div>
@@ -457,7 +456,7 @@ export default function VouchersTab() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
+                  <Clock className="h-5 w-5" />
                   Hourly Activity Pattern
                 </CardTitle>
                 <CardDescription>
@@ -468,30 +467,30 @@ export default function VouchersTab() {
                 <div className="space-y-4">
                   {[
                     {
-                      hour: "6AM - 12PM",
+                      hour: '6AM - 12PM',
                       issued: 2456,
                       redeemed: 2123,
                       percentage: 15,
                     },
                     {
-                      hour: "12PM - 6PM",
+                      hour: '12PM - 6PM',
                       issued: 8456,
                       redeemed: 7892,
                       percentage: 45,
                     },
                     {
-                      hour: "6PM - 12AM",
+                      hour: '6PM - 12AM',
                       issued: 12345,
                       redeemed: 11234,
                       percentage: 35,
                     },
                     {
-                      hour: "12AM - 6AM",
+                      hour: '12AM - 6AM',
                       issued: 2583,
                       redeemed: 2007,
                       percentage: 5,
                     },
-                  ].map((period) => (
+                  ].map(period => (
                     <div key={period.hour} className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{period.hour}</span>
@@ -499,9 +498,9 @@ export default function VouchersTab() {
                           {period.issued} issued / {period.redeemed} redeemed
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 w-full rounded-full bg-gray-200">
                         <div
-                          className="bg-buttonActive h-2 rounded-full transition-all duration-300"
+                          className="h-2 rounded-full bg-buttonActive transition-all duration-300"
                           style={{ width: `${period.percentage}%` }}
                         />
                       </div>
@@ -517,7 +516,7 @@ export default function VouchersTab() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
+                <MapPin className="h-5 w-5" />
                 Voucher Activity by Location
               </CardTitle>
               <CardDescription>
@@ -529,52 +528,60 @@ export default function VouchersTab() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-center p-3 font-semibold">Location</th>
-                      <th className="text-right p-3 font-semibold">Issued</th>
-                      <th className="text-right p-3 font-semibold">Redeemed</th>
-                      <th className="text-right p-3 font-semibold">Rate</th>
-                      <th className="text-right p-3 font-semibold">
+                      <th className="p-3 text-center font-semibold">
+                        Location
+                      </th>
+                      <th className="p-3 text-right font-semibold">Issued</th>
+                      <th className="p-3 text-right font-semibold">Redeemed</th>
+                      <th className="p-3 text-right font-semibold">Rate</th>
+                      <th className="p-3 text-right font-semibold">
                         Total Value
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {metrics.vouchersByLocation.map((location: VoucherMetrics["vouchersByLocation"][number]) => {
-                      const redemptionRate =
-                        (location.redeemed / location.issued) * 100;
-                      return (
-                        <tr
-                          key={location.locationId}
-                          className="border-b hover:bg-gray-50"
-                        >
-                          <td className="p-3 font-medium">
-                            {location.locationName}
-                          </td>
-                          <td className="p-3 text-right">
-                            {location.issued.toLocaleString()}
-                          </td>
-                          <td className="p-3 text-right">
-                            {location.redeemed.toLocaleString()}
-                          </td>
-                          <td className="p-3 text-right">
-                            <Badge
-                              variant={
-                                redemptionRate > 90
-                                  ? "default"
-                                  : redemptionRate > 80
-                                  ? "secondary"
-                                  : "destructive"
-                              }
+                    {metrics.vouchersByLocation.map(
+                      (
+                        location: VoucherMetrics['vouchersByLocation'][number]
+                      ) => {
+                        const redemptionRate =
+                          (location.redeemed / location.issued) * 100;
+                        return (
+                          <tr
+                            key={location.locationId}
+                            className="border-b hover:bg-gray-50"
+                          >
+                            <td className="p-3 font-medium">
+                              {location.locationName}
+                            </td>
+                            <td className="p-3 text-right">
+                              {location.issued.toLocaleString()}
+                            </td>
+                            <td className="p-3 text-right">
+                              {location.redeemed.toLocaleString()}
+                            </td>
+                            <td className="p-3 text-right">
+                              <Badge
+                                variant={
+                                  redemptionRate > 90
+                                    ? 'default'
+                                    : redemptionRate > 80
+                                      ? 'secondary'
+                                      : 'destructive'
+                                }
+                              >
+                                {redemptionRate.toFixed(1)}%
+                              </Badge>
+                            </td>
+                            <td
+                              className={`p-3 text-right font-semibold ${getFinancialColorClass(location.value)}`}
                             >
-                              {redemptionRate.toFixed(1)}%
-                            </Badge>
-                          </td>
-                          <td className={`p-3 text-right font-semibold ${getFinancialColorClass(location.value)}`}>
-                            ${location.value.toLocaleString()}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                              ${location.value.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      }
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -586,7 +593,7 @@ export default function VouchersTab() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
+                <Clock className="h-5 w-5" />
                 Recent Voucher Activity
               </CardTitle>
               <CardDescription>
@@ -597,18 +604,18 @@ export default function VouchersTab() {
               <div className="space-y-4">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
                     <Input
                       placeholder="Search by voucher ID or location..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={e => setSearchTerm(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                   <select
                     value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md bg-white"
+                    onChange={e => setFilterStatus(e.target.value)}
+                    className="rounded-md border border-gray-300 bg-white px-3 py-2"
                   >
                     <option value="all">All Status</option>
                     <option value="issued">Issued</option>
@@ -620,8 +627,9 @@ export default function VouchersTab() {
 
                 <div className="space-y-3">
                   {/* TODO: Replace with actual voucher activity data from MongoDB */}
-                  <div className="text-center py-8 text-muted-foreground">
-                    No voucher activity data available - MongoDB implementation pending
+                  <div className="py-8 text-center text-muted-foreground">
+                    No voucher activity data available - MongoDB implementation
+                    pending
                   </div>
                 </div>
               </div>
@@ -633,7 +641,7 @@ export default function VouchersTab() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" />
+                <AlertTriangle className="h-5 w-5" />
                 Fraud Detection Alerts
               </CardTitle>
               <CardDescription>
@@ -643,7 +651,7 @@ export default function VouchersTab() {
             <CardContent>
               <div className="space-y-4">
                 {/* TODO: Replace with actual fraud alert data from MongoDB */}
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="py-8 text-center text-muted-foreground">
                   No fraud alerts available - MongoDB implementation pending
                 </div>
                 {/* {[].map((alert) => (

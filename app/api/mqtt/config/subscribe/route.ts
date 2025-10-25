@@ -1,5 +1,5 @@
-import { NextRequest } from "next/server";
-import { mqttService } from "@/lib/services/mqttService";
+import { mqttService } from '@/lib/services/mqttService';
+import { NextRequest } from 'next/server';
 
 /**
  * GET /api/mqtt/config/subscribe
@@ -7,7 +7,7 @@ import { mqttService } from "@/lib/services/mqttService";
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const relayId = searchParams.get("relayId");
+  const relayId = searchParams.get('relayId');
 
   console.log(
     `🔍 [API] SSE Subscribe request received for relayId: ${relayId}`
@@ -16,21 +16,21 @@ export async function GET(request: NextRequest) {
   if (!relayId) {
     console.log(`❌ [API] Missing relayId in SSE request`);
     return new Response(
-      JSON.stringify({ error: "relayId query parameter is required" }),
+      JSON.stringify({ error: 'relayId query parameter is required' }),
       {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   }
 
   // Set up SSE headers
   const headers = new Headers({
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Cache-Control",
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control',
   });
 
   // Create readable stream for SSE
@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
     start(controller) {
       // Send initial connection message
       const initialMessage = {
-        type: "connected",
+        type: 'connected',
         relayId,
         timestamp: new Date().toISOString(),
-        message: "Connected to MQTT config stream",
+        message: 'Connected to MQTT config stream',
       };
 
       controller.enqueue(`data: ${JSON.stringify(initialMessage)}\n\n`);
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
         try {
           const sseMessage = {
-            type: "config_update",
+            type: 'config_update',
             relayId: message.rly || relayId,
             component: message.comp,
             data: message,
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
           );
           controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
         } catch (error) {
-          console.error("❌ [API] Error processing config message:", error);
+          console.error('❌ [API] Error processing config message:', error);
         }
       };
 
@@ -84,10 +84,10 @@ export async function GET(request: NextRequest) {
             `✅ [SSE] Successfully subscribed to config for relayId: ${relayId}`
           );
         })
-        .catch((error) => {
-          console.error("❌ [SSE] Failed to subscribe to config:", error);
+        .catch(error => {
+          console.error('❌ [SSE] Failed to subscribe to config:', error);
           const errorMessage = {
-            type: "error",
+            type: 'error',
             relayId,
             error: error.message,
             timestamp: new Date().toISOString(),
@@ -96,13 +96,13 @@ export async function GET(request: NextRequest) {
         });
 
       // Handle client disconnect
-      request.signal.addEventListener("abort", () => {
+      request.signal.addEventListener('abort', () => {
         console.log(`Client disconnected for relayId: ${relayId}`);
         mqttService.unsubscribeCallback(relayId, handleConfigMessage);
         controller.close();
       });
 
-      // Send keep-alive messages every 30 seconds
+      // Send keep-alive/heartbeat messages every 5 seconds to maintain connection
       const keepAliveInterval = setInterval(() => {
         if (request.signal.aborted) {
           clearInterval(keepAliveInterval);
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
         }
 
         const keepAliveMessage = {
-          type: "keepalive",
+          type: 'heartbeat',
           relayId,
           timestamp: new Date().toISOString(),
         };
@@ -118,13 +118,13 @@ export async function GET(request: NextRequest) {
         try {
           controller.enqueue(`data: ${JSON.stringify(keepAliveMessage)}\n\n`);
         } catch (error) {
-          console.error("Error sending keep-alive:", error);
+          console.error('Error sending keep-alive:', error);
           clearInterval(keepAliveInterval);
         }
-      }, 30000);
+      }, 5000);
 
       // Clean up interval on abort
-      request.signal.addEventListener("abort", () => {
+      request.signal.addEventListener('abort', () => {
         clearInterval(keepAliveInterval);
       });
     },

@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import React from "react";
+import React from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils/formatting";
-import type { ActivityLog } from "@/app/api/lib/types/activityLog";
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { formatDate } from '@/lib/utils/formatting';
+import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 
 type ActivityLogDescriptionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   log: ActivityLog | null;
-  searchMode: "username" | "email" | "description";
+  searchMode: 'username' | 'email' | 'description';
 };
 
 const ActivityLogDescriptionDialog: React.FC<
@@ -26,55 +26,55 @@ const ActivityLogDescriptionDialog: React.FC<
   // Get action badge variant
   const getActionBadgeVariant = (action: string) => {
     switch (action) {
-      case "create":
-        return "default";
-      case "update":
-        return "secondary";
-      case "delete":
-        return "destructive";
-      case "view":
-        return "outline";
+      case 'create':
+        return 'default';
+      case 'update':
+        return 'secondary';
+      case 'delete':
+        return 'destructive';
+      case 'view':
+        return 'outline';
       default:
-        return "outline";
+        return 'outline';
     }
   };
 
   // Get resource badge variant
   const getResourceBadgeVariant = (resource: string) => {
     switch (resource) {
-      case "user":
-        return "default";
-      case "machine":
-        return "secondary";
-      case "location":
-        return "outline";
-      case "collection":
-        return "destructive";
-      case "licensee":
-        return "default";
-      case "member":
-        return "secondary";
-      case "session":
-        return "outline";
+      case 'user':
+        return 'default';
+      case 'machine':
+        return 'secondary';
+      case 'location':
+        return 'outline';
+      case 'collection':
+        return 'destructive';
+      case 'licensee':
+        return 'default';
+      case 'member':
+        return 'secondary';
+      case 'session':
+        return 'outline';
       default:
-        return "outline";
+        return 'outline';
     }
   };
 
-  const description = log.description || log.details || "No description";
+  const description = log.description || log.details || 'No description';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Badge variant={getActionBadgeVariant(log.action || "unknown")}>
-              {(log.action || "unknown").toUpperCase()}
+            <Badge variant={getActionBadgeVariant(log.action || 'unknown')}>
+              {(log.action || 'unknown').toUpperCase()}
             </Badge>
-            <Badge variant={getResourceBadgeVariant(log.resource || "unknown")}>
-              {log.resource || "unknown"}
+            <Badge variant={getResourceBadgeVariant(log.resource || 'unknown')}>
+              {log.resource || 'unknown'}
             </Badge>
-            <span className="text-sm text-gray-500 font-normal">
+            <span className="text-sm font-normal text-gray-500">
               {formatDate(log.timestamp)}
             </span>
           </DialogTitle>
@@ -83,11 +83,11 @@ const ActivityLogDescriptionDialog: React.FC<
         <div className="space-y-4">
           {/* User Information */}
           <div className="border-b pb-3">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">User</h4>
+            <h4 className="mb-2 text-sm font-medium text-gray-700">User</h4>
             <div className="text-sm">
-              {searchMode === "email" ? (
+              {searchMode === 'email' ? (
                 <>
-                  <div className="font-medium">{log.actor?.email || "N/A"}</div>
+                  <div className="font-medium">{log.actor?.email || 'N/A'}</div>
                   {log.username && (
                     <div className="text-gray-500">{log.username}</div>
                   )}
@@ -105,14 +105,14 @@ const ActivityLogDescriptionDialog: React.FC<
 
           {/* Resource Information */}
           <div className="border-b pb-3">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Resource</h4>
-            <div className="text-sm space-y-1">
+            <h4 className="mb-2 text-sm font-medium text-gray-700">Resource</h4>
+            <div className="space-y-1 text-sm">
               <div>
                 <span className="text-gray-500">ID:</span> {log.resourceId}
               </div>
               {log.resourceName && (
                 <div>
-                  <span className="text-gray-500">Name:</span>{" "}
+                  <span className="text-gray-500">Name:</span>{' '}
                   {log.resourceName}
                 </div>
               )}
@@ -121,10 +121,10 @@ const ActivityLogDescriptionDialog: React.FC<
 
           {/* Description */}
           <div className="border-b pb-3">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">
+            <h4 className="mb-2 text-sm font-medium text-gray-700">
               Description
             </h4>
-            <div className="text-sm text-gray-900 whitespace-pre-wrap break-words bg-gray-50 p-3 rounded-md">
+            <div className="whitespace-pre-wrap break-words rounded-md bg-gray-50 p-3 text-sm text-gray-900">
               {description}
             </div>
           </div>
@@ -132,28 +132,28 @@ const ActivityLogDescriptionDialog: React.FC<
           {/* Changes (if available) */}
           {log.changes && log.changes.length > 0 && (
             <div className="border-b pb-3">
-              <h4 className="font-medium text-sm text-gray-700 mb-2">
+              <h4 className="mb-2 text-sm font-medium text-gray-700">
                 Changes
               </h4>
               <div className="space-y-2">
                 {log.changes.map((change, index) => (
                   <div
                     key={index}
-                    className="text-sm bg-blue-50 p-3 rounded-md"
+                    className="rounded-md bg-blue-50 p-3 text-sm"
                   >
-                    <div className="font-medium text-blue-900 mb-1">
+                    <div className="mb-1 font-medium text-blue-900">
                       {change.field}
                     </div>
                     <div className="text-blue-800">
-                      <span className="text-gray-600">From:</span>{" "}
-                      <span className="font-mono bg-red-100 px-1 rounded">
-                        {String(change.oldValue || "empty")}
+                      <span className="text-gray-600">From:</span>{' '}
+                      <span className="rounded bg-red-100 px-1 font-mono">
+                        {String(change.oldValue || 'empty')}
                       </span>
                     </div>
                     <div className="text-blue-800">
-                      <span className="text-gray-600">To:</span>{" "}
-                      <span className="font-mono bg-green-100 px-1 rounded">
-                        {String(change.newValue || "empty")}
+                      <span className="text-gray-600">To:</span>{' '}
+                      <span className="rounded bg-green-100 px-1 font-mono">
+                        {String(change.newValue || 'empty')}
                       </span>
                     </div>
                   </div>
@@ -164,13 +164,13 @@ const ActivityLogDescriptionDialog: React.FC<
 
           {/* Technical Details */}
           <div>
-            <h4 className="font-medium text-sm text-gray-700 mb-2">
+            <h4 className="mb-2 text-sm font-medium text-gray-700">
               Technical Details
             </h4>
-            <div className="text-sm space-y-1 text-gray-600">
+            <div className="space-y-1 text-sm text-gray-600">
               <div>
-                <span className="text-gray-500">IP Address:</span>{" "}
-                {log.ipAddress || "N/A"}
+                <span className="text-gray-500">IP Address:</span>{' '}
+                {log.ipAddress || 'N/A'}
               </div>
               <div>
                 <span className="text-gray-500">User ID:</span> {log.userId}

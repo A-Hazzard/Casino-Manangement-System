@@ -1,6 +1,5 @@
 # Cabinets API Documentation
 
-
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** October 20th, 2025  
 **Version:** 2.0.0
@@ -21,6 +20,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 **Important:** All date filtering now respects each location's gaming day offset. See [Gaming Day Offset System](./gaming-day-offset-system.md) for details on how gaming days work and how they affect time-based queries.
 
 ### System Architecture
+
 - **Database**: MongoDB with Mongoose ODM
 - **Authentication**: JWT-based authentication
 - **Data Transformation**: Automatic field mapping between frontend and database
@@ -29,48 +29,53 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ## Core Cabinet Operations
 
 ### GET `/api/machines/[id]`
+
 **Purpose**: Fetch individual cabinet details with field transformation
 
 **Response Fields:**
+
 ```json
 {
   "success": true,
   "data": {
-    "assetNumber": "string",        // from serialNumber
-    "installedGame": "string",      // from game
-    "locationId": "string",         // from gamingLocation
-    "smbId": "string",              // from relayId
-    "status": "string",             // from assetStatus
-    "isCronosMachine": false,       // default value
+    "assetNumber": "string", // from serialNumber
+    "installedGame": "string", // from game
+    "locationId": "string", // from gamingLocation
+    "smbId": "string", // from relayId
+    "status": "string", // from assetStatus
+    "isCronosMachine": false, // default value
     "sasMeters": {
-      "drop": 1000,                 // Money inserted
-      "coinIn": 5000,              // Total bets placed
-      "jackpot": 250,              // Jackpot payouts
-      "gamesPlayed": 150           // Games played
+      "drop": 1000, // Money inserted
+      "coinIn": 5000, // Total bets placed
+      "jackpot": 250, // Jackpot payouts
+      "gamesPlayed": 150 // Games played
     },
     "smibConfig": {
-      "version": "1.0.0",          // SMIB firmware version
-      "settings": {}               // SMIB configuration
+      "version": "1.0.0", // SMIB firmware version
+      "settings": {} // SMIB configuration
     }
   }
 }
 ```
 
 ### PUT `/api/locations/[locationId]/cabinets/[cabinetId]`
+
 **Purpose**: Update cabinet information with field transformation
 
 **Request Fields:**
+
 ```json
 {
-  "assetNumber": "GM001",          // Maps to serialNumber
-  "installedGame": "Slot Game",    // Maps to game
-  "locationId": "loc123",          // Maps to gamingLocation
-  "smbId": "smib456",             // Maps to relayId
-  "status": "active"              // Maps to assetStatus
+  "assetNumber": "GM001", // Maps to serialNumber
+  "installedGame": "Slot Game", // Maps to game
+  "locationId": "loc123", // Maps to gamingLocation
+  "smbId": "smib456", // Maps to relayId
+  "status": "active" // Maps to assetStatus
 }
 ```
 
 **Field Mapping:**
+
 - `assetNumber` → `serialNumber`
 - `installedGame` → `game`
 - `locationId` → `gamingLocation`
@@ -78,9 +83,11 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 - `status` → `assetStatus`
 
 ### DELETE `/api/locations/[locationId]/cabinets/[cabinetId]`
+
 **Purpose**: Soft delete cabinet (sets `deletedAt` timestamp)
 
 **Implementation:**
+
 - Sets `deletedAt: new Date()` instead of permanent deletion
 - Preserves data for audit and recovery purposes
 - Filters deleted cabinets from all queries
@@ -88,15 +95,18 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ## Aggregation & Metrics
 
 ### GET `/api/machines/aggregation`
+
 **Purpose**: Fetch aggregated cabinet data with filtering
 
 **Query Parameters:**
+
 - `licensee` - Filter by licensee
 - `timePeriod` - Date range filter
 - `page` - Pagination page number
 - `limit` - Items per page
 
 **Response Fields:**
+
 ```json
 {
   "success": true,
@@ -125,15 +135,18 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ```
 
 ### GET `/api/machines/by-id/events`
+
 **Purpose**: Fetch machine events for activity log
 
 **Query Parameters:**
+
 - `id` - Machine ID
 - `timePeriod` - Date filter (Today, Yesterday, 7d, 30d, All Time)
 - `page` - Page number for pagination
 - `limit` - Items per page
 
 **Response Fields:**
+
 ```json
 {
   "success": true,
@@ -162,15 +175,18 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ```
 
 ### GET `/api/machines/by-id/collection-history`
+
 **Purpose**: Fetch collection meters history
 
 **Query Parameters:**
+
 - `id` - Machine ID
 - `timePeriod` - Date filter
 - `page` - Page number
 - `limit` - Items per page
 
 **Response Fields:**
+
 ```json
 {
   "success": true,
@@ -198,14 +214,17 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ```
 
 ### GET `/api/bill-validator/[machineId]`
+
 **Purpose**: Fetch bill validator data with automatic V1/V2 data structure detection
 
 **Query Parameters:**
+
 - `timePeriod` - Filter by time period (Today, Yesterday, 7d, 30d, All Time, Custom)
 - `startDate` - Start date for custom range (ISO format)
 - `endDate` - End date for custom range (ISO format)
 
 **Response Fields:**
+
 ```json
 {
   "success": true,
@@ -220,7 +239,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
       },
       {
         "denomination": 5,
-        "label": "$5", 
+        "label": "$5",
         "quantity": 80,
         "subtotal": 400
       },
@@ -240,6 +259,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ```
 
 **Data Processing:**
+
 - **V1 Detection**: Bills with `movement` object, filtered by `readAt`
 - **V2 Detection**: Bills with `value` field, filtered by `createdAt`
 - **Automatic Processing**: API detects data structure and processes accordingly
@@ -248,8 +268,10 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ## Data Models
 
 ### Machine Schema
+
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: String,                    // Machine identifier
   serialNumber: String,           // Asset number (maps to assetNumber)
@@ -269,7 +291,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
     settings: Object              // SMIB configuration
   },
 
-**Last Updated**: October 3rd, 2025  
+**Last Updated**: October 3rd, 2025
 **Status**: ✅ Fully Functional - All Issues Resolved
 
 ## Overview
@@ -293,7 +315,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ##### **GET `/api/machines/[id]`**
 - **Purpose**: Fetch individual cabinet details
 - **Data Transformation**: Maps database fields to frontend expectations
-- **Response Format**: 
+- **Response Format**:
   ```json
   {
     "success": true,
@@ -307,9 +329,10 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
       // ... other fields
     }
   }
-  ```
+````
 
 ##### **PUT `/api/locations/[locationId]/cabinets/[cabinetId]`**
+
 - **Purpose**: Update cabinet information
 - **Data Transformation**: Maps frontend fields back to database format
 - **Request Format**: Accepts `CabinetFormData` with transformed field names
@@ -321,6 +344,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
   - `status` → `assetStatus`
 
 ##### **DELETE `/api/locations/[locationId]/cabinets/[cabinetId]`**
+
 - **Purpose**: Soft delete cabinet (sets `deletedAt` timestamp)
 - **Implementation**: Marks record as deleted without permanent removal
 - **Response**: Success confirmation with soft delete status
@@ -328,12 +352,14 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 #### **Aggregation & Metrics**
 
 ##### **GET `/api/machines/aggregation`**
+
 - **Purpose**: Fetch aggregated cabinet data with filtering
 - **Features**: Licensee filtering, date range filtering, pagination
 - **Data Consistency**: Properly filters deleted cabinets
 - **Response Format**: Array of cabinet objects with metrics
 
 ##### **GET `/api/machines/by-id/events`**
+
 - **Purpose**: Fetch machine events for activity log
 - **Features**: Event type filtering, date filtering, pagination
 - **Query Parameters**:
@@ -343,6 +369,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
   - `limit`: Items per page
 
 ##### **GET `/api/machines/by-id/collection-history`**
+
 - **Purpose**: Fetch collection meters history
 - **Features**: Date filtering, sorting, pagination
 - **Query Parameters**:
@@ -367,6 +394,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 ### 📊 **Data Models**
 
 #### **Machine Schema** (`app/api/lib/models/machines.ts`)
+
 ```typescript
 {
   _id: String,                    // Machine identifier
@@ -385,10 +413,11 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 }
 ```
 
-
 ### Machine Event Schema
+
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: ObjectId,
   eventType: String,              // Type of event (General, Significant, Priority)
@@ -404,9 +433,10 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
   date: Date,                      // Event timestamp
   sequence: Array                  // Optional sequence data
 }
-```
+````
 
 #### **Accepted Bill Schema** (`app/api/lib/models/acceptedBills.ts`)
+
 ```typescript
 {
   _id: String,                     // Unique bill record identifier
@@ -414,7 +444,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
   value: Number,                   // V2: Bill denomination value
   machine: String,                 // V2: Machine ID reference
   member: String,                  // V2: Member (typically "ANONYMOUS")
-  
+
   // V1 fields (legacy structure)
   location: String,                // V1: Location ID reference
   readAt: Date,                    // V1: Bill read timestamp
@@ -438,18 +468,20 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 }
 ```
 
-
 ## Data Transformation
 
 ### Frontend to Database Mapping
+
 **Update Operations (PUT):**
 
 ### 🔄 **Data Transformation**
 
 #### **Frontend to Database Mapping**
+
 The API automatically transforms field names between frontend and database formats:
 
 **Update Operations (PUT)**:
+
 ```typescript
 // Frontend sends
 {
@@ -463,7 +495,7 @@ The API automatically transforms field names between frontend and database forma
 // API transforms to
 {
   "serialNumber": "GM001",
-  "game": "Slot Game", 
+  "game": "Slot Game",
   "gamingLocation": "loc123",
 
   "relayId": "smb456",
@@ -473,11 +505,12 @@ The API automatically transforms field names between frontend and database forma
 }
 ```
 
-
 ### Database to Frontend Mapping
+
 **Retrieve Operations (GET):**
 
 **Database to Frontend Mapping (GET)**:
+
 ```typescript
 // Database returns
 {
@@ -495,7 +528,7 @@ The API automatically transforms field names between frontend and database forma
 {
   "assetNumber": "GM001",
   "installedGame": "Slot Game",
-  "locationId": "loc123", 
+  "locationId": "loc123",
 
   "smbId": "smb456",
 
@@ -505,10 +538,10 @@ The API automatically transforms field names between frontend and database forma
 }
 ```
 
-
 ## Financial Calculations
 
 ### Machine Performance Metrics
+
 ```
 Gross Revenue = SAS Drop - SAS Cancelled Credits
 Handle = SAS Coin In (total bets placed)
@@ -517,6 +550,7 @@ Games Played = SAS Games Played
 ```
 
 ### Collection Calculations
+
 ```
 Collection Drop = Current Meters In - Previous Meters In
 Collection Gross = Collection Drop - Collection Cancelled Credits
@@ -526,16 +560,19 @@ Movement = Current Reading - Previous Reading
 ## Security & Validation
 
 ### Authentication
+
 - JWT tokens required for all endpoints
 - Proper user role validation
 - Rate limiting on API calls
 
 ### Input Validation
+
 - Type safety with TypeScript
 - Data sanitization and validation
 - SQL injection prevention
 
 ### Error Handling
+
 - Graceful degradation with proper error responses
 - Clear user-friendly error messages
 - Comprehensive error logging
@@ -543,11 +580,13 @@ Movement = Current Reading - Previous Reading
 ## Performance Optimizations
 
 ### Database Queries
+
 - Proper database indexes for performance
 - Efficient MongoDB aggregation pipelines
 - Server-side pagination for large datasets
 
 ### Caching Strategy
+
 - Response caching with appropriate headers
 - Client-side caching strategies
 - Query optimization for frequently accessed data
@@ -555,6 +594,7 @@ Movement = Current Reading - Previous Reading
 ## Error Handling
 
 ### HTTP Status Codes
+
 - `200`: Success
 - `201`: Created
 - `400`: Bad Request (validation errors)
@@ -567,16 +607,19 @@ Movement = Current Reading - Previous Reading
 ### 🛡️ **Security & Validation**
 
 #### **Authentication**
+
 - **JWT Tokens**: Secure authentication required for all endpoints
 - **Authorization**: Proper user role validation
 - **Rate Limiting**: API call frequency restrictions
 
 #### **Input Validation**
+
 - **Type Safety**: Full TypeScript implementation
 - **Data Sanitization**: Input cleaning and validation
 - **SQL Injection Prevention**: Parameterized queries
 
 #### **Error Handling**
+
 - **Graceful Degradation**: Proper error responses
 - **User Feedback**: Clear error messages
 - **Logging**: Comprehensive error logging
@@ -584,11 +627,13 @@ Movement = Current Reading - Previous Reading
 ### 📈 **Performance Optimizations**
 
 #### **Database Queries**
+
 - **Indexing**: Proper database indexes for performance
 - **Aggregation Pipelines**: Efficient MongoDB aggregation
 - **Pagination**: Server-side pagination for large datasets
 
 #### **Caching Strategy**
+
 - **Response Caching**: Appropriate cache headers
 - **Data Caching**: Client-side caching strategies
 - **Query Optimization**: Efficient database queries
@@ -596,6 +641,7 @@ Movement = Current Reading - Previous Reading
 ### 🔍 **Error Handling**
 
 #### **HTTP Status Codes**
+
 - **200**: Success
 - **201**: Created
 - **400**: Bad Request (validation errors)
@@ -604,6 +650,7 @@ Movement = Current Reading - Previous Reading
 - **500**: Internal Server Error
 
 #### **Error Response Format**
+
 ```json
 {
   "success": false,
@@ -612,7 +659,6 @@ Movement = Current Reading - Previous Reading
 }
 ```
 
-
 ## API Usage Examples
 
 ### Fetch Cabinet Details
@@ -620,50 +666,55 @@ Movement = Current Reading - Previous Reading
 ### 📝 **API Usage Examples**
 
 #### **Fetch Cabinet Details**
+
 ```typescript
 const response = await fetch('/api/machines/cabinet123');
 const cabinet = await response.json();
 // Returns transformed data with frontend field names
 ```
 
-
 ### Update Cabinet
 
 #### **Update Cabinet**
+
 ```typescript
 const updateData = {
-  assetNumber: "GM002",
-  installedGame: "New Game",
-  status: "maintenance"
+  assetNumber: 'GM002',
+  installedGame: 'New Game',
+  status: 'maintenance',
 };
 
 const response = await fetch('/api/locations/loc123/cabinets/cabinet123', {
   method: 'PUT',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(updateData)
+  body: JSON.stringify(updateData),
 });
 ```
-
 
 ### Fetch Activity Log
 
 #### **Fetch Activity Log**
+
 ```typescript
-const response = await fetch('/api/machines/by-id/events?id=cabinet123&timePeriod=Today');
+const response = await fetch(
+  '/api/machines/by-id/events?id=cabinet123&timePeriod=Today'
+);
 const events = await response.json();
 ```
 
 #### **Fetch Bill Validator Data**
+
 ```typescript
 // Get bill validator data for last 7 days
 const response = await fetch('/api/bill-validator/machine123?timePeriod=7d');
 const billData = await response.json();
 
 // Get bill validator data for custom date range
-const response = await fetch('/api/bill-validator/machine123?timePeriod=Custom&startDate=2025-01-01&endDate=2025-01-31');
+const response = await fetch(
+  '/api/bill-validator/machine123?timePeriod=Custom&startDate=2025-01-01&endDate=2025-01-31'
+);
 const customBillData = await response.json();
 ```
-
 
 ---
 
@@ -672,12 +723,14 @@ const customBillData = await response.json();
 ### 🧪 **Testing & Validation**
 
 #### **Manual Testing**
+
 - ✅ **All Endpoints**: Functional with proper responses
 - ✅ **Data Transformation**: Field mapping works correctly
 - ✅ **Error Handling**: Proper error responses
 - ✅ **Authentication**: Secure access control
 
 #### **Build Validation**
+
 - ✅ **TypeScript**: No type errors
 - ✅ **ESLint**: All linting rules passing
 - ✅ **Build Process**: Clean builds with no errors
@@ -685,12 +738,14 @@ const customBillData = await response.json();
 ## Future Enhancements
 
 ### **Planned Features**
+
 - **Real-time Updates**: WebSocket integration
 - **Advanced Filtering**: Complex query support
 - **Bulk Operations**: Multiple cabinet updates
 - **Audit Logging**: Complete change tracking
 
 ### **Performance Improvements**
+
 - **GraphQL**: Alternative to REST for complex queries
 - **Redis Caching**: Enhanced caching layer
 - **Database Optimization**: Query performance improvements

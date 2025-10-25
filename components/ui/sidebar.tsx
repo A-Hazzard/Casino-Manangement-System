@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, {
   createContext,
@@ -6,8 +6,8 @@ import React, {
   useEffect,
   useMemo,
   useState,
-} from "react";
-import { cn } from "@/lib/utils";
+} from 'react';
+import { cn } from '@/lib/utils';
 
 type SidebarContextValue = {
   isOpen: boolean;
@@ -27,17 +27,17 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const stored =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem("sidebar-collapsed")
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('sidebar-collapsed')
           : null;
       // Default to collapsed (true) if no value is stored, otherwise use stored value
       if (stored != null) {
-        setCollapsed(stored === "true");
+        setCollapsed(stored === 'true');
       } else {
         // If no stored value exists, default to collapsed and save it
         setCollapsed(true);
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem("sidebar-collapsed", "true");
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('sidebar-collapsed', 'true');
         }
       }
     } catch {
@@ -48,8 +48,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("sidebar-collapsed", String(collapsed));
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('sidebar-collapsed', String(collapsed));
       }
     } catch {
       // ignore
@@ -60,9 +60,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     () => ({
       isOpen,
       setIsOpen,
-      toggle: () => setIsOpen((prev) => !prev),
+      toggle: () => setIsOpen(prev => !prev),
       collapsed,
-      toggleCollapsed: () => setCollapsed((prev) => !prev),
+      toggleCollapsed: () => setCollapsed(prev => !prev),
     }),
     [isOpen, collapsed]
   );
@@ -75,7 +75,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 export function useSidebar() {
   const ctx = useContext(SidebarContext);
   if (!ctx) {
-    throw new Error("useSidebar must be used within a SidebarProvider");
+    throw new Error('useSidebar must be used within a SidebarProvider');
   }
   return ctx;
 }
@@ -89,11 +89,11 @@ export function SidebarTrigger({
   return (
     <button
       {...props}
-      onClick={(e) => {
+      onClick={e => {
         props.onClick?.(e);
         toggle();
       }}
-      className={cn("inline-flex items-center justify-center", className)}
+      className={cn('inline-flex items-center justify-center', className)}
     >
       {children}
     </button>
@@ -111,9 +111,9 @@ export function SidebarInset({
   return (
     <div
       className={cn(
-        "transition-all duration-200 min-h-screen",
+        'min-h-screen transition-all duration-200',
         // Use responsive padding that matches sidebar widths
-        collapsed ? "md:pl-2" : "md:pl-32", // 80px and 192px respectively
+        collapsed ? 'md:pl-2' : 'md:pl-32', // 80px and 192px respectively
         className
       )}
     >
@@ -127,10 +127,10 @@ export function SidebarOverlay() {
   return (
     <div
       className={cn(
-        "fixed inset-0 bg-black/50 z-[80] md:hidden transition-opacity",
+        'fixed inset-0 z-[80] bg-black/50 transition-opacity md:hidden',
         isOpen
-          ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none"
+          ? 'pointer-events-auto opacity-100'
+          : 'pointer-events-none opacity-0'
       )}
       onClick={() => setIsOpen(false)}
     />
@@ -142,11 +142,11 @@ export function SidebarContainer({ children }: { children: React.ReactNode }) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 h-full bg-container shadow-md overflow-hidden",
-        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+        'fixed left-0 top-0 h-full overflow-hidden bg-container shadow-md',
+        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         // Use exact widths that match CSS variables: 5rem (80px) and 12rem (192px)
-        collapsed ? "w-72 md:w-20" : "w-72 md:w-52", // 288px mobile, 80px/192px desktop
-        "z-[90] transition-all duration-200"
+        collapsed ? 'w-72 md:w-20' : 'w-72 md:w-52', // 288px mobile, 80px/192px desktop
+        'z-[90] transition-all duration-200'
       )}
     >
       {children}

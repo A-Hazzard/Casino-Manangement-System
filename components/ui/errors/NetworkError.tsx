@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { WifiOff, RefreshCw, AlertTriangle } from "lucide-react";
-import { motion } from "framer-motion";
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
+import { motion } from 'framer-motion';
 type NetworkErrorProps = {
   title?: string;
   message?: string;
@@ -18,30 +18,30 @@ type NetworkErrorProps = {
  * Displays when there are API failures, network issues, or server errors
  */
 export default function NetworkError({
-  title = "Connection Error",
-  message = "Unable to connect to the server. Please check your internet connection and try again.",
+  title = 'Connection Error',
+  message = 'Unable to connect to the server. Please check your internet connection and try again.',
   onRetry,
   showRetry = true,
   isRetrying = false,
   errorDetails,
 }: NetworkErrorProps) {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center p-6">
+    <div className="flex min-h-[60vh] items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-center max-w-md mx-auto"
+        className="mx-auto max-w-md text-center"
       >
         {/* Icon */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
           className="mb-6"
         >
-          <div className="w-24 h-24 mx-auto bg-orange-50 rounded-full flex items-center justify-center">
-            <WifiOff className="w-12 h-12 text-orange-500" />
+          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-orange-50">
+            <WifiOff className="h-12 w-12 text-orange-500" />
           </div>
         </motion.div>
 
@@ -50,7 +50,7 @@ export default function NetworkError({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-2xl font-bold text-gray-900 mb-3"
+          className="mb-3 text-2xl font-bold text-gray-900"
         >
           {title}
         </motion.h1>
@@ -60,7 +60,7 @@ export default function NetworkError({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-gray-600 mb-8 leading-relaxed"
+          className="mb-8 leading-relaxed text-gray-600"
         >
           {message}
         </motion.p>
@@ -71,15 +71,15 @@ export default function NetworkError({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.45 }}
-            className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200"
+            className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4"
           >
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-orange-500" />
               <div className="text-left">
-                <p className="text-sm font-medium text-gray-700 mb-1">
+                <p className="mb-1 text-sm font-medium text-gray-700">
                   Error Details:
                 </p>
-                <p className="text-xs text-gray-600 font-mono break-all">
+                <p className="break-all font-mono text-xs text-gray-600">
                   {errorDetails}
                 </p>
               </div>
@@ -100,9 +100,9 @@ export default function NetworkError({
               className="flex items-center gap-2 bg-button hover:bg-buttonActive disabled:opacity-50"
             >
               <RefreshCw
-                className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`}
+                className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`}
               />
-              {isRetrying ? "Retrying..." : "Try Again"}
+              {isRetrying ? 'Retrying...' : 'Try Again'}
             </Button>
           </motion.div>
         )}
@@ -115,7 +115,7 @@ export default function NetworkError({
           className="mt-8 text-sm text-gray-500"
         >
           <p className="mb-2">If the problem persists:</p>
-          <ul className="text-left max-w-xs mx-auto space-y-1">
+          <ul className="mx-auto max-w-xs space-y-1 text-left">
             <li>• Check your internet connection</li>
             <li>• Refresh the page</li>
             <li>• Contact support if the issue continues</li>

@@ -1,6 +1,6 @@
-import { useEffect, useCallback, useMemo } from "react";
-import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
-import axios from "axios";
+import { useEffect, useCallback, useMemo } from 'react';
+import { useAnalyticsDataStore } from '@/lib/store/reportsDataStore';
+import axios from 'axios';
 
 export function useMachinesAnalytics() {
   const { setMachines, setMachineComparisons, setLastUpdated, machines } =
@@ -31,15 +31,15 @@ export function useMachinesAnalytics() {
       setIsLoading();
       setError();
       try {
-        const response = await axios.get("/api/analytics/machines");
+        const response = await axios.get('/api/analytics/machines');
         if (response.data?.success) {
           setMachines(response.data?.data || []);
-          setLastUpdated("machines");
+          setLastUpdated('machines');
         } else {
           setError();
         }
       } catch (err) {
-        console.error("Failed to fetch machines data:", err);
+        console.error('Failed to fetch machines data:', err);
         setError();
       } finally {
         setIsLoading();
@@ -58,8 +58,8 @@ export function useMachinesAnalytics() {
 
       // Here you could add a loading state specific to the comparison
       try {
-        const response = await axios.get("/api/analytics/machines", {
-          params: { machineIds: selectedMachineIds.join(",") },
+        const response = await axios.get('/api/analytics/machines', {
+          params: { machineIds: selectedMachineIds.join(',') },
         });
         if (response.data.success) {
           // The API returns a single object if one ID is passed, so we ensure it's always an array
@@ -71,7 +71,7 @@ export function useMachinesAnalytics() {
           setError();
         }
       } catch (err) {
-        console.error("Failed to fetch machine comparison data:", err);
+        console.error('Failed to fetch machine comparison data:', err);
         setError();
       }
     };

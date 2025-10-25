@@ -1,17 +1,17 @@
-import { gsap } from "gsap";
-import { toast } from "sonner";
-import axios from "axios";
+import { gsap } from 'gsap';
+import { toast } from 'sonner';
+import axios from 'axios';
 import type {
   CollectionDocument,
   CollectionReportMachineEntry,
-} from "@/lib/types/collections";
+} from '@/lib/types/collections';
 import type {
   CollectionReportMachineSummary,
   CreateCollectionReportPayload,
-} from "@/lib/types/api";
-import { validateCollectionReportPayload } from "@/lib/utils/validation";
-import { createCollectionReport } from "@/lib/helpers/collectionReport";
-import { validateRamClearMeters } from "@/lib/utils/ramClearValidation";
+} from '@/lib/types/api';
+import { validateCollectionReportPayload } from '@/lib/utils/validation';
+import { createCollectionReport } from '@/lib/helpers/collectionReport';
+import { validateRamClearMeters } from '@/lib/utils/ramClearValidation';
 
 /**
  * Fetches in-progress collections for a collector
@@ -35,7 +35,7 @@ export async function fetchInProgressCollections(
 export async function addMachineCollection(
   data: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
-  const res = await axios.post("/api/collections", data);
+  const res = await axios.post('/api/collections', data);
   return res.data;
 }
 
@@ -66,14 +66,14 @@ export function animateModal(
     gsap.fromTo(
       modalRef.current,
       { opacity: 0, scale: 0.95 },
-      { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out" }
+      { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' }
     );
   } else if (!show && modalRef.current) {
     gsap.to(modalRef.current, {
       opacity: 0,
       scale: 0.95,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
       onComplete,
     });
   }
@@ -103,37 +103,37 @@ export function validateMachineEntry(
 ): { isValid: boolean; error?: string; warnings?: string[] } {
   // In edit mode, we only need selectedMachineId, not machineForDataEntry
   if (!selectedMachineId) {
-    return { isValid: false, error: "Please select a machine first." };
+    return { isValid: false, error: 'Please select a machine first.' };
   }
 
   // In normal mode (not edit), we need both selectedMachineId and machineForDataEntry
   if (!isEditMode && !machineForDataEntry) {
-    return { isValid: false, error: "Please select a machine first." };
+    return { isValid: false, error: 'Please select a machine first.' };
   }
 
   if (
-    currentMetersIn.trim() === "" ||
+    currentMetersIn.trim() === '' ||
     !/^-?\d*\.?\d*$/.test(currentMetersIn.trim())
   ) {
-    return { isValid: false, error: "Meters In must be a valid number." };
+    return { isValid: false, error: 'Meters In must be a valid number.' };
   }
 
   if (
-    currentMetersOut.trim() === "" ||
+    currentMetersOut.trim() === '' ||
     !/^-?\d*\.?\d*$/.test(currentMetersOut.trim())
   ) {
-    return { isValid: false, error: "Meters Out must be a valid number." };
+    return { isValid: false, error: 'Meters Out must be a valid number.' };
   }
 
   if (!userId) {
-    return { isValid: false, error: "User not found." };
+    return { isValid: false, error: 'User not found.' };
   }
 
   const metersIn = Number(currentMetersIn);
   const metersOut = Number(currentMetersOut);
 
   if (isNaN(metersIn) || isNaN(metersOut)) {
-    return { isValid: false, error: "Invalid meter values" };
+    return { isValid: false, error: 'Invalid meter values' };
   }
 
   // RAM Clear validation if parameters are provided
@@ -151,7 +151,7 @@ export function validateMachineEntry(
     if (!ramClearValidation.isValid) {
       return {
         isValid: false,
-        error: ramClearValidation.errors.join(", "),
+        error: ramClearValidation.errors.join(', '),
         warnings: ramClearValidation.warnings,
       };
     }
@@ -190,7 +190,7 @@ export function createMachineEntryData(params: {
   const metersOut = Number(params.currentMetersOut);
 
   return {
-    _id: "", // Will be set by the database
+    _id: '', // Will be set by the database
     machineId: params.selectedMachineId,
     machineName: params.machineForDataEntry.name,
     machineCustomName: params.selectedMachineId,
@@ -209,7 +209,7 @@ export function createMachineEntryData(params: {
     isCompleted: false,
     collector: params.userId,
     location: params.selectedLocationName,
-    locationReportId: params.selectedLocationId || "",
+    locationReportId: params.selectedLocationId || '',
     createdAt: new Date(),
     updatedAt: new Date(),
     __v: 0,
@@ -220,8 +220,8 @@ export function createMachineEntryData(params: {
       gross: 0,
       gamesPlayed: 0,
       jackpot: 0,
-      sasStartTime: "",
-      sasEndTime: "",
+      sasStartTime: '',
+      sasEndTime: '',
     },
     movement: {
       metersIn,
@@ -250,8 +250,8 @@ export function validateFinancialFields(financials: {
 }): boolean {
   // Only amount to collect and balance correction are required
   return Boolean(
-    financials.amountToCollect.trim() !== "" &&
-      financials.balanceCorrection.trim() !== ""
+    financials.amountToCollect.trim() !== '' &&
+      financials.balanceCorrection.trim() !== ''
   );
 }
 
@@ -283,7 +283,7 @@ export function createCollectionReportPayload(
   selectedLocationId: string
 ): CreateCollectionReportPayload & {
   machines: Array<
-    Omit<CollectionReportMachineEntry, "internalId" | "serialNumber">
+    Omit<CollectionReportMachineEntry, 'internalId' | 'serialNumber'>
   >;
 } {
   const machineEntry = {
@@ -299,16 +299,16 @@ export function createCollectionReportPayload(
     useCustomTime: true,
     selectedDate:
       entry.timestamp instanceof Date
-        ? entry.timestamp.toISOString().split("T")[0]
-        : new Date(entry.timestamp).toISOString().split("T")[0],
+        ? entry.timestamp.toISOString().split('T')[0]
+        : new Date(entry.timestamp).toISOString().split('T')[0],
     timeHH:
       entry.timestamp instanceof Date
-        ? String(entry.timestamp.getHours()).padStart(2, "0")
-        : String(new Date(entry.timestamp).getHours()).padStart(2, "0"),
+        ? String(entry.timestamp.getHours()).padStart(2, '0')
+        : String(new Date(entry.timestamp).getHours()).padStart(2, '0'),
     timeMM:
       entry.timestamp instanceof Date
-        ? String(entry.timestamp.getMinutes()).padStart(2, "0")
-        : String(new Date(entry.timestamp).getMinutes()).padStart(2, "0"),
+        ? String(entry.timestamp.getMinutes()).padStart(2, '0')
+        : String(new Date(entry.timestamp).getMinutes()).padStart(2, '0'),
   };
 
   return {
@@ -321,10 +321,10 @@ export function createCollectionReportPayload(
     partnerProfit: 0,
     taxes: Number(financials.taxes) || 0,
     advance: Number(financials.advance) || 0,
-    collectorName: userEmail || "N/A",
+    collectorName: userEmail || 'N/A',
     locationName: selectedLocationName,
-    locationReportId: selectedLocationId || "",
-    location: selectedLocationId || "",
+    locationReportId: selectedLocationId || '',
+    location: selectedLocationId || '',
     totalDrop: 0,
     totalCancelled: 0,
     totalGross: 0,
@@ -369,7 +369,7 @@ export async function processMultipleReports(
   totalCount: number;
   successfulIds: string[];
 }> {
-  const reportCreationPromises = collectedMachineEntries.map((entry) => {
+  const reportCreationPromises = collectedMachineEntries.map(entry => {
     const payload = createCollectionReportPayload(
       entry,
       financials,
@@ -381,7 +381,7 @@ export async function processMultipleReports(
     const validation = validateCollectionReportPayload(payload);
     if (!validation.isValid) {
       console.error(
-        "Validation failed for machine:",
+        'Validation failed for machine:',
         entry.machineName,
         validation.errors
       );
@@ -393,9 +393,9 @@ export async function processMultipleReports(
     return createCollectionReport(payload);
   });
 
-  toast.loading("Creating reports...", { id: "create-reports-toast" });
+  toast.loading('Creating reports...', { id: 'create-reports-toast' });
   const results = await Promise.allSettled(reportCreationPromises);
-  toast.dismiss("create-reports-toast");
+  toast.dismiss('create-reports-toast');
 
   let successCount = 0;
   const successfulIds: string[] = [];
@@ -403,7 +403,7 @@ export async function processMultipleReports(
   results.forEach((result, index) => {
     const machineName =
       collectedMachineEntries[index]?.machineName || `Entry ${index + 1}`;
-    if (result.status === "fulfilled") {
+    if (result.status === 'fulfilled') {
       toast.success(`Report for ${machineName} created successfully!`);
       successCount++;
       successfulIds.push(collectedMachineEntries[index]._id);
@@ -413,8 +413,8 @@ export async function processMultipleReports(
         message?: string;
       };
       const errorMessages = errorReason?.errors
-        ? errorReason.errors.join(", ")
-        : errorReason?.message || "Unknown error";
+        ? errorReason.errors.join(', ')
+        : errorReason?.message || 'Unknown error';
       toast.error(
         `Failed to create report for ${machineName}: ${errorMessages}`
       );
@@ -455,7 +455,7 @@ export function createCollectionDocumentPayload(params: {
   const metersOut = Number(params.currentMetersOut);
 
   return {
-    _id: "", // Will be set by the database
+    _id: '', // Will be set by the database
     machineId: params.selectedMachineId,
     machineName: params.machineForDataEntry.name,
     machineCustomName: params.selectedMachineId,
@@ -474,7 +474,7 @@ export function createCollectionDocumentPayload(params: {
     isCompleted: false,
     collector: params.userId,
     location: params.selectedLocationName,
-    locationReportId: params.selectedLocationId || "",
+    locationReportId: params.selectedLocationId || '',
     createdAt: new Date(),
     updatedAt: new Date(),
     __v: 0,
@@ -485,8 +485,8 @@ export function createCollectionDocumentPayload(params: {
       gross: 0,
       gamesPlayed: 0,
       jackpot: 0,
-      sasStartTime: "",
-      sasEndTime: "",
+      sasStartTime: '',
+      sasEndTime: '',
     },
     movement: {
       metersIn,

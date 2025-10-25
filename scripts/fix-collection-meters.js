@@ -5,24 +5,24 @@
  * metersIn/Out values, ensuring that prevIn/prevOut values are correct for new reports.
  */
 
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 const MONGODB_URI =
   process.env.MONGO_URI ||
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function fixCollectionMeters() {
-  console.log("🔧 Starting Collection Meters Fix...\n");
+  console.log('🔧 Starting Collection Meters Fix...\n');
 
   const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
-    console.log("✅ Connected to MongoDB\n");
+    console.log('✅ Connected to MongoDB\n');
 
     const db = client.db();
-    const machinesCollection = db.collection("machines");
-    const collectionsCollection = db.collection("collections");
+    const machinesCollection = db.collection('machines');
+    const collectionsCollection = db.collection('collections');
 
     // Get all machines
     const machines = await machinesCollection.find({}).toArray();
@@ -79,8 +79,8 @@ async function fixCollectionMeters() {
           { _id: machine._id },
           {
             $set: {
-              "collectionMeters.metersIn": expectedMetersIn,
-              "collectionMeters.metersOut": expectedMetersOut,
+              'collectionMeters.metersIn': expectedMetersIn,
+              'collectionMeters.metersOut': expectedMetersOut,
               updatedAt: new Date(),
             },
           }
@@ -94,21 +94,21 @@ async function fixCollectionMeters() {
       }
     }
 
-    console.log("\n" + "=".repeat(80));
-    console.log("📊 FIX SUMMARY");
-    console.log("=".repeat(80));
+    console.log('\n' + '='.repeat(80));
+    console.log('📊 FIX SUMMARY');
+    console.log('='.repeat(80));
     console.log(`✅ Machines FIXED: ${fixedCount}`);
     console.log(`✅ Machines already correct (skipped): ${skippedCount}`);
     console.log(
       `⚠️  Machines with no collections (skipped): ${noCollectionsCount}`
     );
     console.log(`📊 Total machines processed: ${machines.length}`);
-    console.log("=".repeat(80));
+    console.log('='.repeat(80));
   } catch (error) {
-    console.error("❌ Error during fix:", error);
+    console.error('❌ Error during fix:', error);
   } finally {
     await client.close();
-    console.log("\n✅ MongoDB connection closed");
+    console.log('\n✅ MongoDB connection closed');
   }
 }
 

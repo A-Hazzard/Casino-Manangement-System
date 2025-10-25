@@ -4,9 +4,9 @@ export default function StatCardSkeleton({ count = 3 }: { count?: number }) {
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={index}
-          className="flex-1 px-4 py-6 bg-container shadow-md rounded-lg"
+          className="flex-1 rounded-lg bg-container px-4 py-6 shadow-md"
         >
-          <div className="h-6 w-1/3 mx-auto skeleton-bg"></div>
+          <div className="skeleton-bg mx-auto h-6 w-1/3"></div>
         </div>
       ))}
     </>
@@ -15,9 +15,9 @@ export default function StatCardSkeleton({ count = 3 }: { count?: number }) {
 
 export function ChartSkeleton() {
   return (
-    <div className="bg-container p-6 rounded-lg shadow-md flex-1">
+    <div className="flex-1 rounded-lg bg-container p-6 shadow-md">
       {/* Single responsive skeleton div for the chart area */}
-      <div className="w-full h-[320px] skeleton-bg rounded-md"></div>
+      <div className="skeleton-bg h-[320px] w-full rounded-md"></div>
     </div>
   );
 }

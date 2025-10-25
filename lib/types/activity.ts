@@ -1,4 +1,4 @@
-import type { ActivityLog } from "@/app/api/lib/types/activityLog";
+import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 
 // Frontend-specific activity types
 export type ActivityGroup = {

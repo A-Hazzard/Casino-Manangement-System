@@ -3,41 +3,41 @@
  * Handles the offline machines tab with offline machine management
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from 'react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Monitor,
   Download,
   RefreshCw,
   ChevronUp,
   ChevronDown,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
-import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
-import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import { MachinesOfflineSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
+} from '@/components/ui/select';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import { MachinesOfflineSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
 // Removed duplicate import - using MachineData from lib/types/machinesOfflineTab instead
-import { Pencil2Icon } from "@radix-ui/react-icons";
-import { Trash2 } from "lucide-react";
-import StatusIcon from "@/components/ui/common/StatusIcon";
-import { getFinancialColorClass } from "@/lib/utils/financialColors";
+import { Pencil2Icon } from '@radix-ui/react-icons';
+import { Trash2 } from 'lucide-react';
+import StatusIcon from '@/components/ui/common/StatusIcon';
+import { getFinancialColorClass } from '@/lib/utils/financialColors';
 
 // Sortable table header component for offline machines
 const SortableOfflineHeader = ({
@@ -48,27 +48,27 @@ const SortableOfflineHeader = ({
 }: {
   children: React.ReactNode;
   sortKey: keyof MachineData;
-  currentSort: { key: keyof MachineData; direction: "asc" | "desc" };
+  currentSort: { key: keyof MachineData; direction: 'asc' | 'desc' };
   onSort: (key: keyof MachineData) => void;
 }) => {
   const isActive = currentSort.key === sortKey;
 
   return (
     <th
-      className="text-center p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+      className="cursor-pointer select-none p-3 text-center font-medium text-gray-700 transition-colors hover:bg-gray-100"
       onClick={() => onSort(sortKey)}
     >
       <div className="flex items-center gap-1">
         {children}
         {isActive ? (
-          currentSort.direction === "asc" ? (
-            <ChevronUp className="w-4 h-4" />
+          currentSort.direction === 'asc' ? (
+            <ChevronUp className="h-4 w-4" />
           ) : (
-            <ChevronDown className="w-4 h-4" />
+            <ChevronDown className="h-4 w-4" />
           )
         ) : (
-          <div className="w-4 h-4 opacity-30">
-            <ChevronUp className="w-4 h-4" />
+          <div className="h-4 w-4 opacity-30">
+            <ChevronUp className="h-4 w-4" />
           </div>
         )}
       </div>
@@ -79,7 +79,7 @@ const SortableOfflineHeader = ({
 import type {
   MachinesOfflineTabProps,
   MachineData,
-} from "@/lib/types/machinesOfflineTab";
+} from '@/lib/types/machinesOfflineTab';
 
 export const MachinesOfflineTab = ({
   offlineMachines,
@@ -95,10 +95,10 @@ export const MachinesOfflineTab = ({
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   // Filter states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [selectedOfflineDuration, setSelectedOfflineDuration] =
-    useState<string>("all");
+    useState<string>('all');
 
   // Handle edit action
   const handleEdit = useCallback(
@@ -112,7 +112,7 @@ export const MachinesOfflineTab = ({
         gameType: machine.machineType,
         isCronosMachine: false,
         cabinetType: machine.machineType,
-        assetStatus: machine.isOnline ? "active" : "inactive",
+        assetStatus: machine.isOnline ? 'active' : 'inactive',
         manufacturer: machine.manufacturer,
         gamingLocation: machine.locationName,
         accountingDenomination: 1,
@@ -129,7 +129,7 @@ export const MachinesOfflineTab = ({
         gamesWon: machine.gamesWon || 0,
         handle: machine.coinIn,
         custom: {
-          name: machine.serialNumber || machine.machineId || "Unknown",
+          name: machine.serialNumber || machine.machineId || 'Unknown',
         },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -151,7 +151,7 @@ export const MachinesOfflineTab = ({
         gameType: machine.machineType,
         isCronosMachine: false,
         cabinetType: machine.machineType,
-        assetStatus: machine.isOnline ? "active" : "inactive",
+        assetStatus: machine.isOnline ? 'active' : 'inactive',
         manufacturer: machine.manufacturer,
         gamingLocation: machine.locationName,
         accountingDenomination: 1,
@@ -168,7 +168,7 @@ export const MachinesOfflineTab = ({
         gamesWon: machine.gamesWon || 0,
         handle: machine.coinIn,
         custom: {
-          name: machine.serialNumber || machine.machineId || "Unknown",
+          name: machine.serialNumber || machine.machineId || 'Unknown',
         },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -185,7 +185,7 @@ export const MachinesOfflineTab = ({
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
-        (machine) =>
+        machine =>
           machine.machineId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           machine.gameTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           machine.locationName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -193,16 +193,16 @@ export const MachinesOfflineTab = ({
     }
 
     // Filter by location
-    if (selectedLocation !== "all") {
+    if (selectedLocation !== 'all') {
       filtered = filtered.filter(
-        (machine) => machine.locationId === selectedLocation
+        machine => machine.locationId === selectedLocation
       );
     }
 
     // Filter by offline duration
-    if (selectedOfflineDuration !== "all") {
+    if (selectedOfflineDuration !== 'all') {
       const now = new Date();
-      filtered = filtered.filter((machine) => {
+      filtered = filtered.filter(machine => {
         if (!machine.lastActivity) return false;
 
         const lastOnlineDate = new Date(machine.lastActivity);
@@ -210,13 +210,13 @@ export const MachinesOfflineTab = ({
           (now.getTime() - lastOnlineDate.getTime()) / (1000 * 60 * 60);
 
         switch (selectedOfflineDuration) {
-          case "1h":
+          case '1h':
             return hoursOffline >= 1;
-          case "4h":
+          case '4h':
             return hoursOffline >= 4;
-          case "24h":
+          case '24h':
             return hoursOffline >= 24;
-          case "7d":
+          case '7d':
             return hoursOffline >= 168; // 7 days
           default:
             return true;
@@ -232,7 +232,7 @@ export const MachinesOfflineTab = ({
     if (offlineMachines.length === 0) return null;
 
     const totalOffline = offlineMachines.length;
-    const criticalOffline = offlineMachines.filter((machine) => {
+    const criticalOffline = offlineMachines.filter(machine => {
       if (!machine.lastActivity) return true;
       const now = new Date();
       const lastOnlineDate = new Date(machine.lastActivity);
@@ -241,7 +241,7 @@ export const MachinesOfflineTab = ({
       return hoursOffline >= 24; // Critical if offline for 24+ hours
     }).length;
 
-    const recentOffline = offlineMachines.filter((machine) => {
+    const recentOffline = offlineMachines.filter(machine => {
       if (!machine.lastActivity) return false;
       const now = new Date();
       const lastOnlineDate = new Date(machine.lastActivity);
@@ -265,7 +265,7 @@ export const MachinesOfflineTab = ({
     <div className="space-y-4">
       {/* Offline Summary Cards */}
       {offlineSummary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -332,14 +332,14 @@ export const MachinesOfflineTab = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {/* Search Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <Input
                 placeholder="Search offline machines..."
                 value={searchTerm}
-                onChange={(event) => {
+                onChange={event => {
                   const newSearchTerm = event.target.value;
                   setSearchTerm(newSearchTerm);
                 }}
@@ -364,7 +364,7 @@ export const MachinesOfflineTab = ({
               <label className="text-sm font-medium">Offline Duration</label>
               <Select
                 value={selectedOfflineDuration}
-                onValueChange={(value) => {
+                onValueChange={value => {
                   setSelectedOfflineDuration(value);
                 }}
               >
@@ -385,11 +385,11 @@ export const MachinesOfflineTab = ({
           {/* Action Buttons */}
           <div className="flex gap-2">
             <Button onClick={onRefresh} disabled={offlineLoading}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
             <Button onClick={onExport} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="mr-2 h-4 w-4" />
               Export Data
             </Button>
           </div>
@@ -408,7 +408,7 @@ export const MachinesOfflineTab = ({
           {offlineLoading ? (
             <MachinesOfflineSkeleton />
           ) : filteredOfflineMachines.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="py-8 text-center text-gray-500">
               No offline machines found matching your criteria.
             </div>
           ) : (
@@ -444,7 +444,7 @@ export const MachinesOfflineTab = ({
                     >
                       Last Online
                     </SortableOfflineHeader>
-                    <th className="text-center p-3 font-medium text-gray-700">
+                    <th className="p-3 text-center font-medium text-gray-700">
                       Offline Duration
                     </th>
                     <SortableOfflineHeader
@@ -461,16 +461,16 @@ export const MachinesOfflineTab = ({
                     >
                       Net Win
                     </SortableOfflineHeader>
-                    <th className="text-center p-3 font-medium text-gray-700">
+                    <th className="p-3 text-center font-medium text-gray-700">
                       Status
                     </th>
-                    <th className="text-center p-3 font-medium text-gray-700">
+                    <th className="p-3 text-center font-medium text-gray-700">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredOfflineMachines.map((machine) => {
+                  {filteredOfflineMachines.map(machine => {
                     const now = new Date();
                     const lastOnlineDate = machine.lastActivity
                       ? new Date(machine.lastActivity)
@@ -486,39 +486,39 @@ export const MachinesOfflineTab = ({
                         className="border-b hover:bg-gray-50"
                       >
                         <td className="p-3 text-center">
-                          {machine.machineId || "N/A"}
+                          {machine.machineId || 'N/A'}
                         </td>
                         <td className="p-3 text-center">
-                          {machine.gameTitle || "N/A"}
+                          {machine.gameTitle || 'N/A'}
                         </td>
                         <td className="p-3 text-center">
-                          {machine.locationName || "N/A"}
+                          {machine.locationName || 'N/A'}
                         </td>
                         <td className="p-3 text-center">
                           {lastOnlineDate
                             ? lastOnlineDate.toLocaleString()
-                            : "Never"}
+                            : 'Never'}
                         </td>
                         <td className="p-3 text-center">
                           <Badge
                             variant="outline"
                             className={
                               hoursOffline >= 168
-                                ? "text-red-600 border-red-600" // 7+ days
+                                ? 'border-red-600 text-red-600' // 7+ days
                                 : hoursOffline >= 24
-                                ? "text-orange-600 border-orange-600" // 24+ hours
-                                : hoursOffline >= 4
-                                ? "text-yellow-600 border-yellow-600" // 4+ hours
-                                : "text-green-600 border-green-600" // Less than 4 hours
+                                  ? 'border-orange-600 text-orange-600' // 24+ hours
+                                  : hoursOffline >= 4
+                                    ? 'border-yellow-600 text-yellow-600' // 4+ hours
+                                    : 'border-green-600 text-green-600' // Less than 4 hours
                             }
                           >
                             {hoursOffline >= 168
                               ? `${Math.floor(hoursOffline / 24)}d`
                               : hoursOffline >= 24
-                              ? `${Math.floor(hoursOffline)}h`
-                              : hoursOffline >= 1
-                              ? `${Math.floor(hoursOffline * 60)}m`
-                              : "Just now"}
+                                ? `${Math.floor(hoursOffline)}h`
+                                : hoursOffline >= 1
+                                  ? `${Math.floor(hoursOffline * 60)}m`
+                                  : 'Just now'}
                           </Badge>
                         </td>
                         <td className="p-3 text-center">
@@ -543,7 +543,7 @@ export const MachinesOfflineTab = ({
                           <StatusIcon isOnline={false} />
                         </td>
                         <td className="p-3 text-center">
-                          <div className="flex gap-2 justify-center">
+                          <div className="flex justify-center gap-2">
                             <Button
                               size="sm"
                               variant="outline"
@@ -570,14 +570,14 @@ export const MachinesOfflineTab = ({
 
           {/* Pagination */}
           {offlinePagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
+            <div className="mt-4 flex items-center justify-between">
               <div className="text-sm text-gray-500">
-                Showing{" "}
-                {(offlinePagination.page - 1) * offlinePagination.limit + 1} to{" "}
+                Showing{' '}
+                {(offlinePagination.page - 1) * offlinePagination.limit + 1} to{' '}
                 {Math.min(
                   offlinePagination.page * offlinePagination.limit,
                   offlinePagination.totalCount
-                )}{" "}
+                )}{' '}
                 of {offlinePagination.totalCount} results
               </div>
               <div className="flex gap-2">

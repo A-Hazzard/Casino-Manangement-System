@@ -1,31 +1,31 @@
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 const MONGODB_URI =
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function debugFixApi() {
   const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
-    console.log("🔍 Connected to MongoDB");
+    console.log('🔍 Connected to MongoDB');
 
-    const db = client.db("sas-prod-local");
-    const machinesCollection = db.collection("machines");
-    const collectionsCollection = db.collection("collections");
+    const db = client.db('sas-prod-local');
+    const machinesCollection = db.collection('machines');
+    const collectionsCollection = db.collection('collections');
 
     // Get machine 1309
-    const machineId = "5769366190e560cdab9b8e51";
+    const machineId = '5769366190e560cdab9b8e51';
 
-    console.log("\n1. Getting machine document...");
+    console.log('\n1. Getting machine document...');
     const machine = await machinesCollection.findOne({ _id: machineId });
     if (!machine) {
-      console.log("❌ Machine not found");
+      console.log('❌ Machine not found');
       return;
     }
     console.log(`✅ Found machine: ${machine.serialNumber}`);
 
-    console.log("\n2. Getting collections for this machine...");
+    console.log('\n2. Getting collections for this machine...');
     const machineCollections = await collectionsCollection
       .find({
         machineId: machineId,
@@ -35,7 +35,7 @@ async function debugFixApi() {
       .toArray();
     console.log(`✅ Found ${machineCollections.length} collections`);
 
-    console.log("\n3. Rebuilding history...");
+    console.log('\n3. Rebuilding history...');
     const newHistory = machineCollections.map((collection, index) => {
       let prevIn = 0;
       let prevOut = 0;
@@ -57,14 +57,14 @@ async function debugFixApi() {
       };
     });
 
-    console.log("✅ Rebuilt history:");
+    console.log('✅ Rebuilt history:');
     newHistory.slice(0, 3).forEach((entry, index) => {
       console.log(
         `  Entry ${index + 1}: prevIn=${entry.prevIn}, prevOut=${entry.prevOut}`
       );
     });
 
-    console.log("\n4. Updating machine document...");
+    console.log('\n4. Updating machine document...');
     const mostRecentCollection =
       machineCollections[machineCollections.length - 1];
     const updateResult = await machinesCollection.updateOne(
@@ -81,22 +81,22 @@ async function debugFixApi() {
                   machineCollections[machineCollections.length - 2].timestamp
                 )
               : undefined,
-          "collectionMeters.metersIn": mostRecentCollection?.metersIn || 0,
-          "collectionMeters.metersOut": mostRecentCollection?.metersOut || 0,
+          'collectionMeters.metersIn': mostRecentCollection?.metersIn || 0,
+          'collectionMeters.metersOut': mostRecentCollection?.metersOut || 0,
           updatedAt: new Date(),
         },
       }
     );
 
-    console.log("✅ Update result:", updateResult);
+    console.log('✅ Update result:', updateResult);
 
-    console.log("\n5. Verifying update...");
+    console.log('\n5. Verifying update...');
     const updatedMachine = await machinesCollection.findOne({ _id: machineId });
     if (
       updatedMachine.collectionMetersHistory &&
       updatedMachine.collectionMetersHistory.length > 0
     ) {
-      console.log("✅ Updated machine history:");
+      console.log('✅ Updated machine history:');
       updatedMachine.collectionMetersHistory
         .slice(0, 3)
         .forEach((entry, index) => {
@@ -108,7 +108,7 @@ async function debugFixApi() {
         });
     }
   } catch (error) {
-    console.error("❌ Error:", error.message || error);
+    console.error('❌ Error:', error.message || error);
   } finally {
     await client.close();
   }

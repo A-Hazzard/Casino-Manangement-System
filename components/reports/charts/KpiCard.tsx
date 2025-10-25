@@ -1,5 +1,5 @@
-import { KpiMetric } from "@/lib/types/reports";
-import { formatCurrency } from "@/lib/utils/currency";
+import { KpiMetric } from '@/lib/types/reports';
+import { formatCurrency } from '@/lib/utils/currency';
 
 // Helper functions for formatting
 const formatPercentage = (value: number): string => {
@@ -14,8 +14,8 @@ const formatLargeNumber = (value: number): string => {
   }
   return value.toString();
 };
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 type KpiCardProps = {
   metric: KpiMetric;
@@ -25,27 +25,27 @@ type KpiCardProps = {
 export default function KpiCard({ metric, isLoading = false }: KpiCardProps) {
   if (isLoading) {
     return (
-      <Card className="bg-container border border-gray-200 shadow-sm">
+      <Card className="border border-gray-200 bg-container shadow-sm">
         <CardHeader className="pb-2">
-          <div className="h-4 bg-gray-300 rounded skeleton-bg w-24"></div>
+          <div className="skeleton-bg h-4 w-24 rounded bg-gray-300"></div>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <div className="h-8 bg-gray-300 rounded skeleton-bg w-32"></div>
-            <div className="h-4 bg-gray-300 rounded skeleton-bg w-20"></div>
+            <div className="skeleton-bg h-8 w-32 rounded bg-gray-300"></div>
+            <div className="skeleton-bg h-4 w-20 rounded bg-gray-300"></div>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const formatValue = (value: number, format: KpiMetric["format"]) => {
+  const formatValue = (value: number, format: KpiMetric['format']) => {
     switch (format) {
-      case "currency":
+      case 'currency':
         return formatCurrency(value);
-      case "percentage":
+      case 'percentage':
         return formatPercentage(value);
-      case "number":
+      case 'number':
         return formatLargeNumber(value);
       default:
         return value.toString();
@@ -54,28 +54,28 @@ export default function KpiCard({ metric, isLoading = false }: KpiCardProps) {
 
   const getTrendIcon = () => {
     switch (metric.trend) {
-      case "up":
-        return <TrendingUp className="w-4 h-4 text-greenHighlight" />;
-      case "down":
-        return <TrendingDown className="w-4 h-4 text-pinkHighlight" />;
+      case 'up':
+        return <TrendingUp className="h-4 w-4 text-greenHighlight" />;
+      case 'down':
+        return <TrendingDown className="h-4 w-4 text-pinkHighlight" />;
       default:
-        return <Minus className="w-4 h-4 text-grayHighlight" />;
+        return <Minus className="h-4 w-4 text-grayHighlight" />;
     }
   };
 
   const getTrendColor = () => {
     switch (metric.trend) {
-      case "up":
-        return "text-greenHighlight";
-      case "down":
-        return "text-pinkHighlight";
+      case 'up':
+        return 'text-greenHighlight';
+      case 'down':
+        return 'text-pinkHighlight';
       default:
-        return "text-grayHighlight";
+        return 'text-grayHighlight';
     }
   };
 
   return (
-    <Card className="bg-container border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+    <Card className="border border-gray-200 bg-container shadow-sm transition-shadow hover:shadow-md">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-grayHighlight">
           {metric.label}
@@ -83,8 +83,8 @@ export default function KpiCard({ metric, isLoading = false }: KpiCardProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 break-words">
-            {typeof metric.value === "number"
+          <div className="break-words text-lg font-bold text-gray-900 sm:text-xl lg:text-2xl">
+            {typeof metric.value === 'number'
               ? formatValue(metric.value, metric.format)
               : metric.value}
           </div>

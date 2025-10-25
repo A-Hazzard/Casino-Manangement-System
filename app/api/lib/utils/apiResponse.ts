@@ -1,12 +1,12 @@
 // Standardized API response utilities
 
-import { NextResponse } from "next/server";
-import type { 
-  ApiResponse, 
-  ApiErrorResponse, 
-  PaginatedApiResponse, 
-  ValidationErrorResponse 
-} from "@/shared/types/api";
+import { NextResponse } from 'next/server';
+import type {
+  ApiResponse,
+  ApiErrorResponse,
+  PaginatedApiResponse,
+  ValidationErrorResponse,
+} from '@/shared/types/api';
 
 /**
  * Creates a standardized success response
@@ -90,7 +90,7 @@ export function createValidationErrorResponse(
   return NextResponse.json(
     {
       success: false,
-      error: "Validation failed",
+      error: 'Validation failed',
       validationErrors,
       timestamp: new Date().toISOString(),
     },
@@ -102,82 +102,55 @@ export function createValidationErrorResponse(
  * Creates a standardized not found response
  */
 export function createNotFoundResponse(
-  resource: string = "Resource"
+  resource: string = 'Resource'
 ): NextResponse<ApiErrorResponse> {
-  return createErrorResponse(
-    `${resource} not found`,
-    404,
-    "NOT_FOUND"
-  );
+  return createErrorResponse(`${resource} not found`, 404, 'NOT_FOUND');
 }
 
 /**
  * Creates a standardized unauthorized response
  */
 export function createUnauthorizedResponse(
-  message: string = "Unauthorized access"
+  message: string = 'Unauthorized access'
 ): NextResponse<ApiErrorResponse> {
-  return createErrorResponse(
-    message,
-    401,
-    "UNAUTHORIZED"
-  );
+  return createErrorResponse(message, 401, 'UNAUTHORIZED');
 }
 
 /**
  * Creates a standardized forbidden response
  */
 export function createForbiddenResponse(
-  message: string = "Forbidden access"
+  message: string = 'Forbidden access'
 ): NextResponse<ApiErrorResponse> {
-  return createErrorResponse(
-    message,
-    403,
-    "FORBIDDEN"
-  );
+  return createErrorResponse(message, 403, 'FORBIDDEN');
 }
 
 /**
  * Creates a standardized server error response
  */
 export function createServerErrorResponse(
-  message: string = "Internal server error",
+  message: string = 'Internal server error',
   details?: Record<string, unknown>
 ): NextResponse<ApiErrorResponse> {
-  return createErrorResponse(
-    message,
-    500,
-    "INTERNAL_SERVER_ERROR",
-    details
-  );
+  return createErrorResponse(message, 500, 'INTERNAL_SERVER_ERROR', details);
 }
 
 /**
  * Creates a standardized bad request response
  */
 export function createBadRequestResponse(
-  message: string = "Bad request",
+  message: string = 'Bad request',
   details?: Record<string, unknown>
 ): NextResponse<ApiErrorResponse> {
-  return createErrorResponse(
-    message,
-    400,
-    "BAD_REQUEST",
-    details
-  );
+  return createErrorResponse(message, 400, 'BAD_REQUEST', details);
 }
 
 /**
  * Creates a standardized conflict response
  */
 export function createConflictResponse(
-  message: string = "Conflict",
+  message: string = 'Conflict',
   details?: Record<string, unknown>
 ): NextResponse<ApiErrorResponse> {
-  return createErrorResponse(
-    message,
-    409,
-    "CONFLICT",
-    details
-  );
+  return createErrorResponse(message, 409, 'CONFLICT', details);
 }

@@ -1,6 +1,6 @@
 # Evolution One Casino Management System - Application Context
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
+**Author:** Aaron Hazzard - Senior Software Engineer
 
 **Last Updated:** October 10th, 2025
 
@@ -11,6 +11,7 @@ The Evolution One Casino Management System (CMS) is a comprehensive casino manag
 ## Core Architecture
 
 ### Technology Stack
+
 - **Frontend:** Next.js 15.3.0 with TypeScript, React, Tailwind CSS
 - **Backend:** Next.js API Routes with MongoDB
 - **Database:** MongoDB with Mongoose ODM
@@ -21,6 +22,7 @@ The Evolution One Casino Management System (CMS) is a comprehensive casino manag
 - **Type System:** Comprehensive TypeScript with centralized shared types
 
 ### Project Structure
+
 ```
 evolution-one-cms/
 ├── app/                          # Next.js App Router
@@ -48,11 +50,13 @@ evolution-one-cms/
 ## Core Business Logic
 
 ### Casino Machine Financial Flow
+
 The system tracks the complete financial lifecycle of slot machines:
 
 1. **Member Gaming Session** → **Machine Events** → **Meter Readings** → **Collections** → **Collection Reports**
 
 ### Key Financial Metrics
+
 Based on `Documentation/financial-metrics-guide.md`:
 
 - **Drop (Money In):** Physical cash inserted into machines (`movement.drop`)
@@ -63,6 +67,7 @@ Based on `Documentation/financial-metrics-guide.md`:
 - **Games Played:** Total games played (`movement.gamesPlayed`)
 
 ### Financial Calculations
+
 ```typescript
 // Primary calculation (Movement Delta Method)
 // Used across all financial APIs - sums movement fields from meters
@@ -76,13 +81,14 @@ const actualHold = 1 - actualRtp;
 
 // IMPORTANT: All calculations use Movement Delta Method
 // - Sum movement.drop for money in
-// - Sum movement.totalCancelledCredits for money out  
+// - Sum movement.totalCancelledCredits for money out
 // - NEVER use first/last cumulative approach
 ```
 
 ## Database Relationships
 
 ### Core Entity Hierarchy
+
 ```
 Licencee → GamingLocation → Machine → MachineSession → MachineEvent
                 ↓              ↓
@@ -102,6 +108,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 7. **Machine → Meters:** Real-time meter readings
 
 ### Critical Fields for Collections
+
 - **`locationReportId`:** Links collections to collection reports
 - **`collectionMeters`:** Previous collection tracking in machines
 - **`collectionTime`:** SAS time period calculation
@@ -110,6 +117,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 ## Collection and Collection Report System
 
 ### Collection Creation Process
+
 1. **SAS Metrics Calculation (Backend Only):**
    - Query meters collection by machine (serialNumber | customName | machineId)
    - Calculate drop, totalCancelledCredits, gross from movement objects
@@ -127,6 +135,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
    - Update collectionMetersHistory with proper timestamps
 
 ### Collection Report Creation
+
 - Aggregates multiple collections by location
 - Calculates totals: totalDrop, totalGross, totalCancelled
 - Tracks variance between expected and actual collections
@@ -136,6 +145,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 - **Confirmation Dialogs**: User confirmation for report creation and editing operations
 
 ### SAS Time Validation System
+
 - **Pre-Creation Validation**: Prevents creation of reports with invalid SAS times
 - **Smart Detection Logic**: Detects various SAS time anomalies:
   - Inverted times (start >= end)
@@ -148,6 +158,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 ## Engineering Guidelines
 
 ### TypeScript Discipline
+
 - All types in `shared/types/`, `lib/types/`, or `types/` directories
 - **Single Source of Truth**: Types consolidated in `shared/types/` to eliminate duplication
 - Prefer `type` over `interface` for consistency
@@ -156,24 +167,28 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 - **Type Consolidation**: Systematic reduction of duplicate type files across frontend/backend
 
 ### Code Organization
+
 - Keep page components lean, offload logic to helpers
 - API logic in `lib/helpers/` or feature directories
 - Shared utilities in `lib/utils/`
 - Context providers in `lib/contexts/`
 
 ### Build and Quality
+
 - Use `pnpm` exclusively for package management
 - Always run `pnpm build` after changes
 - Never ignore ESLint violations
 - Follow established code style
 
 ### Loading States and Skeleton Loaders - CRITICAL REQUIREMENTS
+
 - **MANDATORY: Every page and component with async data MUST use specific skeleton loaders**
 - **NEVER use generic loading states** like "Loading...", "Loading Data", or generic spinners
 - **EVERY skeleton loader MUST exactly match the layout and structure of the actual content**
 - **Skeleton loaders MUST be page/component-specific** - no generic reusable skeletons for different content types
 
 #### Skeleton Loader Requirements:
+
 1. **Content-Specific Skeletons:** Each page must have its own skeleton that matches the exact layout of the real content
 2. **Visual Accuracy:** Exact dimensions and spacing as the real content, proper visual hierarchy, all interactive elements represented
 3. **Implementation Standards:** Use Shadcn Skeleton component, create dedicated skeleton files in `components/ui/skeletons/`
@@ -181,6 +196,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 5. **Mobile-Specific Requirements:** Every page and section must have mobile-specific loaders that match mobile layouts
 
 ### Security
+
 - JWT tokens with `jose` library and HTTP-only cookies
 - OWASP standards compliance
 - Never expose sensitive data client-side
@@ -193,6 +209,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 ## Key Features
 
 ### Gaming Day Offset System ⭐ CRITICAL
+
 **See: `.cursor/gaming-day-offset-rules.md` for complete documentation**
 
 - **Purpose**: Align financial reporting with actual business operations
@@ -204,6 +221,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 - **When NOT Applied**: Collection reports, activity logs, custom date ranges with times
 
 #### Critical Rules:
+
 1. **Meter Data = Gaming Day Offset**: All financial metrics use gaming day boundaries
 2. **Event Data = Local Time**: Collection reports and activity logs use calendar days
 3. **Custom Dates = User's Exact Times**: No gaming day adjustment for user-specified times
@@ -211,23 +229,27 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 5. **Convert Local to UTC**: Add 4 hours to local time for database queries
 
 ### Multi-Tenant Architecture
+
 - Each licensee has isolated data
 - All queries filter by `rel.licencee`
 - No cross-tenant data access
 - Licensee name to ObjectId mapping system for API compatibility
 
 ### Soft Delete System
+
 - `deletedAt` field for all major entities
 - Active records: `deletedAt: null` or `deletedAt < 1970-01-01`
 - Deleted records: `deletedAt >= 1970-01-01`
 
 ### Currency System
+
 - Zustand-based currency management
 - Support for USD, TTD, GYD, BBD
 - Real-time exchange rate fetching
 - Automatic currency conversion in financial displays
 
 ### Activity Logging
+
 - Comprehensive audit trail
 - User action tracking
 - Resource-based filtering
@@ -236,6 +258,7 @@ Licencee → GamingLocation → Machine → MachineSession → MachineEvent
 ## API Patterns
 
 ### Standard Endpoint Structure
+
 ```typescript
 // GET endpoints with filtering
 export async function GET(req: NextRequest) {
@@ -257,6 +280,7 @@ export async function POST(req: NextRequest) {
 ```
 
 ### Error Handling
+
 - Consistent error response format
 - Proper HTTP status codes
 - Detailed error logging
@@ -265,11 +289,13 @@ export async function POST(req: NextRequest) {
 ## Performance Considerations
 
 ### Database Indexing
+
 - Optimized indexes for common query patterns
 - Compound indexes for multi-field queries
 - Soft delete filtering with indexes
 
 ### Frontend Optimization
+
 - Memoization with `useMemo` and `useCallback`
 - Code splitting and lazy loading
 - Efficient data fetching patterns
@@ -278,12 +304,14 @@ export async function POST(req: NextRequest) {
 ## Compliance and Auditing
 
 ### Financial Compliance
+
 - All financial metrics traceable to source data
 - Movement calculations with clear timestamps
 - Audit trails for all collection activities
 - Data integrity validation
 
 ### Regulatory Requirements
+
 - Complete audit trails
 - Financial report generation
 - Movement tracking for compliance
@@ -292,6 +320,7 @@ export async function POST(req: NextRequest) {
 ## Common Patterns
 
 ### Data Fetching
+
 ```typescript
 // Standard data fetching pattern
 const fetchData = async () => {
@@ -306,6 +335,7 @@ const fetchData = async () => {
 ```
 
 ### State Management
+
 ```typescript
 // Zustand store pattern
 export const useStore = create<State>()(
@@ -319,16 +349,17 @@ export const useStore = create<State>()(
 ```
 
 ### Component Structure
+
 ```typescript
 // Standard component pattern
 export default function Component() {
   const [state, setState] = useState();
   const { data } = useStore();
-  
+
   useEffect(() => {
     // side effects
   }, []);
-  
+
   return (
     <div>
       {/* component JSX */}
@@ -375,12 +406,14 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 ## Troubleshooting
 
 ### Common Issues
+
 1. **Build Failures:** Check for unused imports, type errors
 2. **API Errors:** Verify database connections, validate input
 3. **Performance Issues:** Check database indexes, optimize queries
 4. **Type Errors:** Ensure proper type definitions and imports
 
 ### Debugging Tools
+
 - MongoDB Compass for database inspection
 - Browser DevTools for frontend debugging
 - API testing with curl or Postman
@@ -389,12 +422,14 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 ## Future Considerations
 
 ### Planned Enhancements
+
 - Real-time data synchronization
 - Advanced analytics and reporting
 - Mobile app development
 - Enhanced security features
 
 ### Technical Debt
+
 - ✅ **Type System Consolidation**: In progress - reducing 25+ type files to 8-10 core files
 - ✅ **Authentication System**: Complete implementation with RBAC
 - ✅ **Build Optimization**: Clean TypeScript compilation and ESLint
@@ -402,10 +437,10 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Error Handling Consistency**: Standardize error responses across all APIs
 - **Test Coverage**: Enhance automated testing coverage
 
-
 ## Recent System Updates (October 2025)
 
 ### Collection Report Creation & SAS Time System - Production Ready ✅
+
 **Last Updated:** October 10th, 2025
 
 - **SAS Time Calculation Fix**: Removed incorrect frontend SAS time calculation that was overriding backend logic
@@ -419,6 +454,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Mobile Modal Enhancements**: Fixed display issues and improved mobile collection workflow
 
 ### Gaming Day Offset & Date Filtering System - Production Ready ✅
+
 **Last Updated:** October 10th, 2025
 
 - **Complete Gaming Day Offset Implementation**: All financial APIs use gaming day boundaries
@@ -428,11 +464,12 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **API Consistency**: Standardized date filtering across all endpoints
 - **Collection Reports**: Use local time filtering (not gaming day offset)
 - **Bill Validator**: Gaming day offset for predefined periods, local time for custom
-- **Search by ID**: Added _id search capability across locations, machines, and cabinets pages
+- **Search by ID**: Added \_id search capability across locations, machines, and cabinets pages
 - **Licensee Mapping**: Name to ObjectId conversion system for multi-tenant API compatibility
 - **Comprehensive Documentation**: `.cursor/gaming-day-offset-rules.md` with implementation guide
 
 ### Custom Date Range & Time Inputs - Production Ready ✅
+
 **Last Updated:** October 10th, 2025
 
 - **Modern Date Range Picker**: Shadcn UI-based date range picker with optional time inputs
@@ -445,6 +482,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **User Experience**: Immediate feedback when dates are selected, smooth transitions
 
 ### Financial Metrics System - Verified & Documented ✅
+
 **Last Updated**: October 10th, 2025
 
 - **Movement Delta Method**: Standard calculation method across all APIs
@@ -468,6 +506,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 ## Recent System Updates (October 2025)
 
 ### Authentication & Authorization System - Complete Implementation
+
 - **JWT-Based Authentication**: Secure token-based authentication with access and refresh tokens
 - **Role-Based Access Control (RBAC)**: Comprehensive permission system with casino hierarchy
   - **Super Admin**: Full system access and management capabilities
@@ -482,6 +521,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Account Security**: Failed login attempt tracking, account locking, and security monitoring
 
 ### Type System Consolidation - In Progress
+
 - **Centralized Types**: All authentication types consolidated in `shared/types/auth.ts`
 - **Eliminated Duplicates**: Removed duplicate type definitions across frontend/backend
 - **Standardized Imports**: Consistent type imports from shared locations
@@ -490,6 +530,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Build Optimization**: Reduced bundle size and improved compilation performance
 
 ### API & Data Management Enhancements
+
 - **Real MongoDB Integration**: All APIs now use actual database queries instead of mock data
 - **Activity Logging**: Comprehensive `logActivity` function with standardized parameters
 - **Error Handling**: Consistent error response formats across all endpoints
@@ -497,6 +538,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Performance Optimization**: Efficient database queries with proper indexing
 
 ### Collection Report System - Complete Implementation
+
 - **Multi-Platform Collection Interface**: Desktop and mobile-optimized collection report creation
 - **Mobile-First Design**: Complete mobile collection modal with slide-up animations and touch-optimized workflow
 - **Location-Based Machine Selection**: Select location → view machines → add to collection list
@@ -508,6 +550,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **SAS Metrics Integration**: Accurate meter calculations and financial reporting
 
 ### Mobile Collection Modal System
+
 - **Responsive Design**: Tailwind CSS-based mobile detection without JavaScript
 - **Slide-up List Panel**: Animated list view for managing collected machines
 - **Touch-Optimized Interface**: Large buttons, proper spacing, mobile-friendly inputs
@@ -516,6 +559,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Modern Date/Time Picker**: Shadcn UI components for professional date selection
 
 ### Cabinet Management Enhancements
+
 - **Manufacturer Field Integration**: Dynamic manufacturer selection from existing machine data
 - **SMIB Board Validation**: Comprehensive validation for SMIB board serial numbers
 - **Serial Number Auto-Capitalization**: Automatic uppercase conversion for serial numbers
@@ -525,6 +569,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Movement Requests**: Cabinet relocation workflow with approval system
 
 ### API and Data Management
+
 - **Manufacturers API**: Dynamic manufacturer fetching from machines collection
 - **Countries Integration**: Country selection with proper ID storage
 - **Geolocation Support**: Automatic lat/long detection for location creation
@@ -533,6 +578,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Error Handling**: Graceful error handling with user feedback
 
 ### Skeleton Loading System - Production Ready
+
 - **Content-Specific Skeletons**: Each page has unique skeleton loaders matching exact layouts
 - **Mobile-Responsive Skeletons**: Separate mobile and desktop skeleton implementations
 - **Component-Specific Loaders**: Dedicated skeletons for modals, tables, cards, and forms
@@ -540,6 +586,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Performance Optimized**: Efficient skeleton rendering without layout shifts
 
 ### Financial System Enhancements
+
 - **Default Value Management**: Smart defaults for optional financial fields
 - **Required Field Validation**: Clear indication of required vs optional fields
 - **Currency Support**: Multi-currency support with real-time conversion
@@ -547,6 +594,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Audit Trail**: Complete financial transaction logging
 
 ### Security and Validation
+
 - **Input Sanitization**: All user inputs properly validated and sanitized
 - **Backend Validation**: Server-side validation for all API endpoints
 - **Type Safety**: Comprehensive TypeScript coverage preventing runtime errors
@@ -556,14 +604,16 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 ## Current System Status (October 10th, 2025)
 
 ### Build System Status ✅
+
 - **TypeScript Compilation**: ✅ Clean (no errors)
-- **ESLint**: ✅ Clean (no warnings)  
+- **ESLint**: ✅ Clean (no warnings)
 - **Type Check**: ✅ Passing with strict mode
 - **Production Build**: ✅ Optimized and working (compiled in ~26s)
 - **Type Safety**: ✅ Comprehensive coverage across all components
 - **Bundle Size**: ✅ Optimized with code splitting
 
 ### Gaming Day Offset System ✅
+
 - **Implementation**: ✅ Complete across all financial APIs
 - **Documentation**: ✅ Comprehensive rules file in `.cursor/gaming-day-offset-rules.md`
 - **Testing**: ✅ Verified with MongoDB comparison scripts
@@ -571,7 +621,8 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Exception Handling**: ✅ Collection reports use local time correctly
 - **Edge Cases**: ✅ Handles offset = 0, missing offsets, custom dates
 
-### Financial Metrics System ✅  
+### Financial Metrics System ✅
+
 - **Calculation Method**: ✅ Movement Delta Method standardized
 - **API Consistency**: ✅ All endpoints return matching values
 - **SAS GROSS**: ✅ Fixed to use correct movement delta calculation
@@ -580,6 +631,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Documentation**: ✅ Complete implementation guides
 
 ### UI/UX System ✅
+
 - **Date Range Picker**: ✅ Working with optional time inputs
 - **Pagination**: ✅ Functional on all table views
 - **Skeleton Loaders**: ✅ Content-specific loaders for all pages
@@ -588,6 +640,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Loading States**: ✅ No generic spinners, all content-specific
 
 ### Authentication System Status ✅
+
 - **JWT Implementation**: ✅ Complete with secure token handling
 - **Role-Based Access**: ✅ All pages protected with proper permissions
 - **Session Management**: ✅ Automatic logout and token refresh
@@ -597,6 +650,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 ## Current Development Priorities (October 2025)
 
 ### Completed ✅
+
 1. ✅ **Gaming Day Offset System**: Complete implementation with comprehensive documentation
 2. ✅ **Financial Metrics Accuracy**: All APIs return consistent, verified values
 3. ✅ **Date Filtering System**: Proper timezone handling across all endpoints
@@ -608,18 +662,21 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 9. ✅ **Type Safety**: All TypeScript errors resolved with proper type definitions
 
 ### High Priority
+
 1. **Performance Optimization**: Optimize MongoDB aggregation queries for large datasets
 2. **Real-time Updates**: Implement WebSocket or polling for live data updates
 3. **Advanced Analytics**: Enhanced reporting and data visualization features
 4. **Mobile App Development**: Native mobile application for collection operations
 
 ### Medium Priority
+
 1. **Test Coverage**: Increase automated testing coverage for critical paths
 2. **Error Monitoring**: Implement comprehensive error tracking (e.g., Sentry)
 3. **Performance Monitoring**: Add performance tracking and analytics
 4. **Documentation**: Keep all documentation current with system changes
 
-### Low Priority  
+### Low Priority
+
 1. **Type System Consolidation**: Further reduce duplicate type files
 2. **Code Cleanup**: Remove unused code and optimize bundle size
 3. **Accessibility**: Enhance ARIA labels and keyboard navigation
@@ -628,11 +685,13 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 ## Key Documentation Files
 
 ### Architecture & Guidelines
+
 - **`.cursor/application-context.md`** (this file): Complete system overview and current status
 - **`.cursor/rules/nextjs-rules.mdc`**: Engineering rules and best practices
 - **`.cursor/gaming-day-offset-rules.md`**: Gaming day offset implementation guide
 
 ### Feature Documentation
+
 - **`Documentation/financial-metrics-guide.md`**: Financial calculations and metrics
 - **`Documentation/backend/sas-gross-calculation-system.md`**: SAS GROSS implementation
 - **`Documentation/backend/gaming-day-offset-system.md`**: Gaming day offset details
@@ -641,6 +700,7 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **`Documentation/frontend/database-relationships.md`**: Database schema relationships
 
 ### Best Practices
+
 - **Always check `.cursor/gaming-day-offset-rules.md`** before implementing date filtering
 - **Refer to engineering rules** in `.cursor/rules/nextjs-rules.mdc` for code standards
 - **Use Movement Delta Method** for all financial calculations (sum of movement fields)

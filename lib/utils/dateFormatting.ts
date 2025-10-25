@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format } from 'date-fns';
 
 /**
  * Formats a profile object with nested address and identification
@@ -9,43 +9,43 @@ function formatProfileObject(profile: Record<string, unknown>): string {
   const parts = [];
 
   // Handle basic profile fields
-  if (profile.firstName && profile.firstName !== "")
+  if (profile.firstName && profile.firstName !== '')
     parts.push(`First: ${profile.firstName}`);
-  if (profile.lastName && profile.lastName !== "")
+  if (profile.lastName && profile.lastName !== '')
     parts.push(`Last: ${profile.lastName}`);
-  if (profile.middleName && profile.middleName !== "")
+  if (profile.middleName && profile.middleName !== '')
     parts.push(`Middle: ${profile.middleName}`);
-  if (profile.gender && profile.gender !== "")
+  if (profile.gender && profile.gender !== '')
     parts.push(`Gender: ${profile.gender}`);
-  if (profile.email && profile.email !== "")
+  if (profile.email && profile.email !== '')
     parts.push(`Email: ${profile.email}`);
 
   // Handle nested address object
-  if (profile.address && typeof profile.address === "object") {
+  if (profile.address && typeof profile.address === 'object') {
     const address = profile.address as Record<string, unknown>;
     const addressParts = [];
-    if (address.street && address.street !== "")
+    if (address.street && address.street !== '')
       addressParts.push(`Street: ${address.street}`);
-    if (address.town && address.town !== "")
+    if (address.town && address.town !== '')
       addressParts.push(`Town: ${address.town}`);
-    if (address.country && address.country !== "")
+    if (address.country && address.country !== '')
       addressParts.push(`Country: ${address.country}`);
     if (addressParts.length > 0)
-      parts.push(`Address: ${addressParts.join(", ")}`);
+      parts.push(`Address: ${addressParts.join(', ')}`);
   }
 
   // Handle nested identification object
-  if (profile.identification && typeof profile.identification === "object") {
+  if (profile.identification && typeof profile.identification === 'object') {
     const identification = profile.identification as Record<string, unknown>;
     const idParts = [];
-    if (identification.idType && identification.idType !== "")
+    if (identification.idType && identification.idType !== '')
       idParts.push(`Type: ${identification.idType}`);
-    if (identification.idNumber && identification.idNumber !== "")
+    if (identification.idNumber && identification.idNumber !== '')
       idParts.push(`Number: ${identification.idNumber}`);
-    if (idParts.length > 0) parts.push(`ID: ${idParts.join(", ")}`);
+    if (idParts.length > 0) parts.push(`ID: ${idParts.join(', ')}`);
   }
 
-  return parts.length > 0 ? parts.join("; ") : "Empty profile";
+  return parts.length > 0 ? parts.join('; ') : 'Empty profile';
 }
 
 /**
@@ -57,19 +57,19 @@ function formatResourcePermissionsObject(
   permissions: Record<string, unknown>
 ): string {
   const locationData =
-    permissions["gaming-locations"] || permissions["locations"];
-  if (locationData && typeof locationData === "object") {
+    permissions['gaming-locations'] || permissions['locations'];
+  if (locationData && typeof locationData === 'object') {
     const locationObj = locationData as {
       entity?: string;
       resources?: string[];
     };
     const resources = locationObj.resources || [];
-    const entity = locationObj.entity || "unknown";
+    const entity = locationObj.entity || 'unknown';
     return resources.length > 0
       ? `${resources.length} ${entity} resources`
       : `No ${entity} resources`;
   }
-  return "No permissions";
+  return 'No permissions';
 }
 
 /**
@@ -78,12 +78,12 @@ function formatResourcePermissionsObject(
  * @returns Formatted date string or fallback
  */
 export function formatDate(date: Date | string | undefined): string {
-  if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
+  if (!date) return '-';
+  const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
 }
 
@@ -104,26 +104,26 @@ export function getNext30DaysDate(): Date {
  * @returns Formatted string representation
  */
 export function formatValue(value: unknown, fieldName?: string): string {
-  if (value === null || value === undefined) return "Not set";
-  if (typeof value === "string" && value.trim() === "") return "Empty";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (value === null || value === undefined) return 'Not set';
+  if (typeof value === 'string' && value.trim() === '') return 'Empty';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
 
   // Special handling for complex field types
-  if (fieldName === "profile" && typeof value === "object" && value !== null) {
+  if (fieldName === 'profile' && typeof value === 'object' && value !== null) {
     return formatProfileObject(value as Record<string, unknown>);
   }
 
   if (
-    fieldName === "resourcePermissions" &&
-    typeof value === "object" &&
+    fieldName === 'resourcePermissions' &&
+    typeof value === 'object' &&
     value !== null
   ) {
     return formatResourcePermissionsObject(value as Record<string, unknown>);
   }
 
   // Check if the value is a date string (ISO format or Date object)
-  if (typeof value === "string" || value instanceof Date) {
-    const dateValue = typeof value === "string" ? value : value.toISOString();
+  if (typeof value === 'string' || value instanceof Date) {
+    const dateValue = typeof value === 'string' ? value : value.toISOString();
 
     // Check if it's a valid ISO date string with time
     const isoDateTimeRegex =
@@ -134,13 +134,13 @@ export function formatValue(value: unknown, fieldName?: string): string {
         if (!isNaN(date.getTime())) {
           // For date-only fields, show just the date
           const dateOnlyFields = [
-            "startDate",
-            "expiryDate",
-            "endDate",
-            "dateOfBirth",
+            'startDate',
+            'expiryDate',
+            'endDate',
+            'dateOfBirth',
           ];
           if (fieldName && dateOnlyFields.includes(fieldName)) {
-            return format(date, "MMMM d, yyyy");
+            return format(date, 'MMMM d, yyyy');
           }
           // For timestamp fields, show date and time
           return format(date, "MMMM d, yyyy 'at' h:mm a");
@@ -152,12 +152,12 @@ export function formatValue(value: unknown, fieldName?: string): string {
 
     // Check if it's a simple date string (YYYY-MM-DD)
     const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (typeof value === "string" && simpleDateRegex.test(value)) {
+    if (typeof value === 'string' && simpleDateRegex.test(value)) {
       try {
-        const date = new Date(value + "T00:00:00");
+        const date = new Date(value + 'T00:00:00');
         if (!isNaN(date.getTime())) {
           // Format as readable date only
-          return format(date, "MMMM d, yyyy");
+          return format(date, 'MMMM d, yyyy');
         }
       } catch {
         // Fall through to handle as regular string
@@ -165,7 +165,7 @@ export function formatValue(value: unknown, fieldName?: string): string {
     }
 
     // Check if it's a timestamp number (milliseconds since epoch)
-    if (typeof value === "string" && /^\d{13}$/.test(value)) {
+    if (typeof value === 'string' && /^\d{13}$/.test(value)) {
       try {
         const date = new Date(parseInt(value));
         if (!isNaN(date.getTime())) {
@@ -179,127 +179,127 @@ export function formatValue(value: unknown, fieldName?: string): string {
 
   // For arrays, show count and content if small
   if (Array.isArray(value)) {
-    if (value.length === 0) return "Empty array";
+    if (value.length === 0) return 'Empty array';
     if (value.length <= 3) {
       return value
-        .map((item) => (typeof item === "object" ? "[Object]" : String(item)))
-        .join(", ");
+        .map(item => (typeof item === 'object' ? '[Object]' : String(item)))
+        .join(', ');
     }
     return `${value.length} items`;
   }
 
   // For objects, show formatted JSON or specific object properties
-  if (typeof value === "object" && value !== null) {
+  if (typeof value === 'object' && value !== null) {
     // Handle specific object types with meaningful display
-    if (value && typeof value === "object") {
+    if (value && typeof value === 'object') {
       const keys = Object.keys(value);
-      if (keys.length === 0) return "Empty object";
+      if (keys.length === 0) return 'Empty object';
 
       // Check if it's a profile object (has profile-like properties)
       if (
-        "firstName" in value ||
-        "lastName" in value ||
-        "gender" in value ||
-        "middleName" in value
+        'firstName' in value ||
+        'lastName' in value ||
+        'gender' in value ||
+        'middleName' in value
       ) {
         const profile = value as Record<string, unknown>;
         const parts = [];
 
         // Handle basic profile fields
-        if (profile.firstName && profile.firstName !== "")
+        if (profile.firstName && profile.firstName !== '')
           parts.push(`First: ${profile.firstName}`);
-        if (profile.lastName && profile.lastName !== "")
+        if (profile.lastName && profile.lastName !== '')
           parts.push(`Last: ${profile.lastName}`);
-        if (profile.middleName && profile.middleName !== "")
+        if (profile.middleName && profile.middleName !== '')
           parts.push(`Middle: ${profile.middleName}`);
-        if (profile.gender && profile.gender !== "")
+        if (profile.gender && profile.gender !== '')
           parts.push(`Gender: ${profile.gender}`);
-        if (profile.email && profile.email !== "")
+        if (profile.email && profile.email !== '')
           parts.push(`Email: ${profile.email}`);
 
         // Handle nested address object
-        if (profile.address && typeof profile.address === "object") {
+        if (profile.address && typeof profile.address === 'object') {
           const address = profile.address as Record<string, unknown>;
           const addressParts = [];
-          if (address.street && address.street !== "")
+          if (address.street && address.street !== '')
             addressParts.push(`Street: ${address.street}`);
-          if (address.town && address.town !== "")
+          if (address.town && address.town !== '')
             addressParts.push(`Town: ${address.town}`);
-          if (address.country && address.country !== "")
+          if (address.country && address.country !== '')
             addressParts.push(`Country: ${address.country}`);
           if (addressParts.length > 0)
-            parts.push(`Address: ${addressParts.join(", ")}`);
+            parts.push(`Address: ${addressParts.join(', ')}`);
         }
 
         // Handle nested identification object
         if (
           profile.identification &&
-          typeof profile.identification === "object"
+          typeof profile.identification === 'object'
         ) {
           const identification = profile.identification as Record<
             string,
             unknown
           >;
           const idParts = [];
-          if (identification.idType && identification.idType !== "")
+          if (identification.idType && identification.idType !== '')
             idParts.push(`Type: ${identification.idType}`);
-          if (identification.idNumber && identification.idNumber !== "")
+          if (identification.idNumber && identification.idNumber !== '')
             idParts.push(`Number: ${identification.idNumber}`);
-          if (idParts.length > 0) parts.push(`ID: ${idParts.join(", ")}`);
+          if (idParts.length > 0) parts.push(`ID: ${idParts.join(', ')}`);
         }
 
-        return parts.length > 0 ? parts.join("; ") : "Empty profile";
+        return parts.length > 0 ? parts.join('; ') : 'Empty profile';
       }
 
       // Check if it's a resourcePermissions object
-      if ("gaming-locations" in value || "locations" in value) {
+      if ('gaming-locations' in value || 'locations' in value) {
         const permissions = value as Record<string, unknown>;
         const locationData =
-          permissions["gaming-locations"] || permissions["locations"];
-        if (locationData && typeof locationData === "object") {
+          permissions['gaming-locations'] || permissions['locations'];
+        if (locationData && typeof locationData === 'object') {
           const locationObj = locationData as {
             entity?: string;
             resources?: string[];
           };
           const resources = locationObj.resources || [];
-          const entity = locationObj.entity || "unknown";
+          const entity = locationObj.entity || 'unknown';
           return resources.length > 0
             ? `${resources.length} ${entity} resources`
             : `No ${entity} resources`;
         }
-        return "No permissions";
+        return 'No permissions';
       }
 
       // Check if it's an address object
-      if ("street" in value || "city" in value || "country" in value) {
+      if ('street' in value || 'city' in value || 'country' in value) {
         const address = value as Record<string, unknown>;
         const parts = [];
-        if (address.street && address.street !== "")
+        if (address.street && address.street !== '')
           parts.push(`Street: ${address.street}`);
-        if (address.city && address.city !== "")
+        if (address.city && address.city !== '')
           parts.push(`City: ${address.city}`);
-        if (address.country && address.country !== "")
+        if (address.country && address.country !== '')
           parts.push(`Country: ${address.country}`);
-        return parts.length > 0 ? parts.join(", ") : "Empty address";
+        return parts.length > 0 ? parts.join(', ') : 'Empty address';
       }
 
       // Check if it's an identification object
-      if ("idType" in value || "idNumber" in value) {
+      if ('idType' in value || 'idNumber' in value) {
         const identification = value as Record<string, unknown>;
         const parts = [];
-        if (identification.idType && identification.idType !== "")
+        if (identification.idType && identification.idType !== '')
           parts.push(`Type: ${identification.idType}`);
-        if (identification.idNumber && identification.idNumber !== "")
+        if (identification.idNumber && identification.idNumber !== '')
           parts.push(`Number: ${identification.idNumber}`);
-        return parts.length > 0 ? parts.join(", ") : "Empty identification";
+        return parts.length > 0 ? parts.join(', ') : 'Empty identification';
       }
 
       // For other objects, try to show meaningful properties
       if (keys.length <= 5) {
         const entries = Object.entries(value)
-          .filter(([_, v]) => v !== null && v !== undefined && v !== "")
+          .filter(([_, v]) => v !== null && v !== undefined && v !== '')
           .map(([k, v]) => {
-            if (typeof v === "object" && v !== null) {
+            if (typeof v === 'object' && v !== null) {
               // For nested objects, show a summary
               const nestedKeys = Object.keys(v);
               if (nestedKeys.length === 0) return `${k}: empty`;
@@ -309,7 +309,7 @@ export function formatValue(value: unknown, fieldName?: string): string {
             return `${k}: ${v}`;
           })
           .slice(0, 3); // Show max 3 properties
-        return entries.length > 0 ? entries.join(", ") : "Empty object";
+        return entries.length > 0 ? entries.join(', ') : 'Empty object';
       }
 
       // For complex objects, show a summary
@@ -324,7 +324,7 @@ export function formatValue(value: unknown, fieldName?: string): string {
       }
       return jsonStr;
     } catch {
-      return "[Complex Object]";
+      return '[Complex Object]';
     }
   }
 

@@ -1,7 +1,7 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { Pencil2Icon } from "@radix-ui/react-icons";
-import { Skeleton } from "@/components/ui/skeleton";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Pencil2Icon } from '@radix-ui/react-icons';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type ExtendedCabinetInfoHeaderProps = {
   title: string;
@@ -16,38 +16,38 @@ const CabinetInfoHeader: React.FC<ExtendedCabinetInfoHeaderProps> = ({
 }) => {
   return (
     <motion.div
-      className="mt-6 mb-6 relative"
+      className="relative mb-6 mt-6"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex flex-col md:flex-row md:items-start justify-between w-full">
-        <div className="md:w-3/4 mb-4 md:mb-0">
-          <h1 className="text-2xl font-bold flex items-center">
+      <div className="flex w-full flex-col justify-between md:flex-row md:items-start">
+        <div className="mb-4 md:mb-0 md:w-3/4">
+          <h1 className="flex items-center text-2xl font-bold">
             Name: {title}
             <motion.button
               className="ml-2 p-1"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
-              <Pencil2Icon className="w-5 h-5 text-button" />
+              <Pencil2Icon className="h-5 w-5 text-button" />
             </motion.button>
           </h1>
 
-          <p className="text-grayHighlight mt-2">
-            Manufacturer:{" "}
+          <p className="mt-2 text-grayHighlight">
+            Manufacturer:{' '}
             {isLoading ? (
-              <Skeleton className="h-4 w-32 inline-block" />
+              <Skeleton className="inline-block h-4 w-32" />
             ) : (
-              "Some Manufacturer"
+              'Some Manufacturer'
             )}
           </p>
-          <p className="text-grayHighlight mt-1">
-            Game Type:{" "}
+          <p className="mt-1 text-grayHighlight">
+            Game Type:{' '}
             {isLoading ? (
-              <Skeleton className="h-4 w-24 inline-block" />
+              <Skeleton className="inline-block h-4 w-24" />
             ) : (
-              "None"
+              'None'
             )}
           </p>
           <p className="mt-1">
@@ -57,10 +57,10 @@ const CabinetInfoHeader: React.FC<ExtendedCabinetInfoHeaderProps> = ({
 
         {/* Online status for desktop */}
         {isOnline !== undefined && (
-          <div className="hidden md:flex items-center justify-end md:w-1/4 md:pr-4">
+          <div className="hidden items-center justify-end md:flex md:w-1/4 md:pr-4">
             <motion.div
-              className={`w-3 h-3 rounded-full mr-2 ${
-                isOnline ? "bg-button" : "bg-destructive"
+              className={`mr-2 h-3 w-3 rounded-full ${
+                isOnline ? 'bg-button' : 'bg-destructive'
               }`}
               animate={
                 isOnline
@@ -73,11 +73,11 @@ const CabinetInfoHeader: React.FC<ExtendedCabinetInfoHeaderProps> = ({
             />
             <span
               className={(isOnline
-                ? "text-button font-bold"
-                : "text-destructive font-bold"
+                ? 'font-bold text-button'
+                : 'font-bold text-destructive'
               ).trim()}
             >
-              {isOnline ? "ONLINE" : "OFFLINE"}
+              {isOnline ? 'ONLINE' : 'OFFLINE'}
             </span>
           </div>
         )}

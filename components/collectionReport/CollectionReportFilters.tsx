@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import React, { useRef, useEffect } from "react";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
+import React, { useRef, useEffect } from 'react';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 
-import { CustomSelect } from "@/components/ui/custom-select";
+import { CustomSelect } from '@/components/ui/custom-select';
 
-import { gsap } from "gsap";
-import type { CollectionReportFiltersProps } from "@/lib/types/components";
+import { gsap } from 'gsap';
+import type { CollectionReportFiltersProps } from '@/lib/types/components';
 
 export default function CollectionReportFilters({
   locations,
@@ -24,7 +24,7 @@ export default function CollectionReportFilters({
   onClearFilters,
   isSearching,
 }: CollectionReportFiltersProps) {
-  console.warn("[COLLECTION REPORT FILTERS] Component rendered with:");
+  console.warn('[COLLECTION REPORT FILTERS] Component rendered with:');
   console.warn(`  - selectedLocation: "${selectedLocation}"`);
   console.warn(`  - locations count: ${locations.length}`);
   console.warn(`  - search: "${search}"`);
@@ -38,11 +38,11 @@ export default function CollectionReportFilters({
     if (isSearching && filterRef.current) {
       gsap.fromTo(
         filterRef.current,
-        { backgroundColor: "#6a11cb" },
+        { backgroundColor: '#6a11cb' },
         {
-          backgroundColor: "#5119e9",
+          backgroundColor: '#5119e9',
           duration: 0.5,
-          ease: "power2.out",
+          ease: 'power2.out',
         }
       );
     }
@@ -57,7 +57,7 @@ export default function CollectionReportFilters({
         {
           scale: 1,
           duration: 0.3,
-          ease: "back.out(1.7)",
+          ease: 'back.out(1.7)',
         }
       );
     }
@@ -72,14 +72,14 @@ export default function CollectionReportFilters({
         {
           scale: 1,
           duration: 0.3,
-          ease: "back.out(1.7)",
+          ease: 'back.out(1.7)',
         }
       );
     }
   }, [showUncollectedOnly]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       onSearchSubmit();
     }
   };
@@ -87,38 +87,38 @@ export default function CollectionReportFilters({
   return (
     <div
       ref={filterRef}
-      className="p-4 w-full border border-gray-200 bg-white lg:bg-buttonActive flex flex-col gap-y-3 lg:gap-y-4"
+      className="flex w-full flex-col gap-y-3 border border-gray-200 bg-white p-4 lg:gap-y-4 lg:bg-buttonActive"
     >
       {/* Top row - Search, Location, and Clear Button (only on lg and above) */}
-      <div className="flex flex-col lg:flex-row lg:items-center gap-y-3 lg:gap-4">
+      <div className="flex flex-col gap-y-3 lg:flex-row lg:items-center lg:gap-4">
         {/* Search Input */}
         <div className="relative w-full lg:w-[320px] lg:min-w-[280px]">
           <input
             type="text"
             placeholder="Search Collector or Location..."
-            className="w-full px-4 py-2 rounded-md border border-black text-sm pr-10 bg-white"
+            className="w-full rounded-md border border-black bg-white px-4 py-2 pr-10 text-sm"
             value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={e => onSearchChange(e.target.value)}
             onKeyPress={handleKeyPress}
           />
           <button
             onClick={onSearchSubmit}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
           >
-            <MagnifyingGlassIcon className="w-5 h-5 text-black" />
+            <MagnifyingGlassIcon className="h-5 w-5 text-black" />
           </button>
         </div>
 
         {/* Location Select Dropdown */}
         <CustomSelect
           value={selectedLocation}
-          onValueChange={(value) => {
-            console.warn("[LOCATION SELECT] Value changed to:", value);
+          onValueChange={value => {
+            console.warn('[LOCATION SELECT] Value changed to:', value);
             onLocationChange(value);
           }}
           options={[
-            { value: "all", label: "Select Location" },
-            ...locations.map((loc) => ({
+            { value: 'all', label: 'Select Location' },
+            ...locations.map(loc => ({
               value: loc._id,
               label: loc.name,
             })),
@@ -131,27 +131,27 @@ export default function CollectionReportFilters({
         />
 
         {/* Clear Filters Button - only visible on lg and above */}
-        <div className="hidden lg:flex items-center gap-4">
+        <div className="hidden items-center gap-4 lg:flex">
           <Button
             variant="outline"
             onClick={onClearFilters}
-            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 whitespace-nowrap"
+            className="whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
           >
             Clear Filters
           </Button>
 
           {/* Uncollected Only Checkbox - positioned to the right of Clear Filters on lg and above */}
           <div ref={checkboxRef} className="flex items-center">
-            <label className="flex items-center gap-2 font-medium text-white cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-2 font-medium text-white">
               <Checkbox
                 id="uncollected-only"
                 checked={showUncollectedOnly}
-                onCheckedChange={(checked) =>
+                onCheckedChange={checked =>
                   onShowUncollectedOnlyChange(!!checked)
                 }
-                className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+                className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
               />
-              <span className="text-sm font-medium whitespace-nowrap">
+              <span className="whitespace-nowrap text-sm font-medium">
                 SHOW UNCOLLECTED ONLY
               </span>
             </label>
@@ -160,38 +160,38 @@ export default function CollectionReportFilters({
       </div>
 
       {/* Bottom row - Checkboxes and Clear Button (for mobile and tablet) */}
-      <div className="flex flex-col lg:hidden gap-y-3">
+      <div className="flex flex-col gap-y-3 lg:hidden">
         {/* Uncollected Only Checkbox - only visible on mobile and tablet */}
-        <div ref={checkboxRef} className="flex items-center w-full">
-          <label className="flex items-center gap-2 font-medium text-black cursor-pointer">
+        <div ref={checkboxRef} className="flex w-full items-center">
+          <label className="flex cursor-pointer items-center gap-2 font-medium text-black">
             <Checkbox
               id="uncollected-only-mobile"
               checked={showUncollectedOnly}
-              onCheckedChange={(checked) =>
+              onCheckedChange={checked =>
                 onShowUncollectedOnlyChange(!!checked)
               }
-              className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+              className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
             />
-            <span className="text-sm font-medium whitespace-nowrap">
+            <span className="whitespace-nowrap text-sm font-medium">
               SHOW UNCOLLECTED ONLY
             </span>
           </label>
         </div>
 
         {/* SMIB Filter Checkboxes */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center space-x-2">
             <Checkbox
               id="smibFilter"
-              checked={selectedFilters.includes("SMIBLocationsOnly")}
-              onCheckedChange={(checked) =>
-                onFilterChange("SMIBLocationsOnly", !!checked)
+              checked={selectedFilters.includes('SMIBLocationsOnly')}
+              onCheckedChange={checked =>
+                onFilterChange('SMIBLocationsOnly', !!checked)
               }
-              className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+              className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
             />
             <label
               htmlFor="smibFilter"
-              className="text-black lg:text-white text-sm font-medium whitespace-nowrap cursor-pointer"
+              className="cursor-pointer whitespace-nowrap text-sm font-medium text-black lg:text-white"
             >
               SMIB
             </label>
@@ -200,15 +200,15 @@ export default function CollectionReportFilters({
           <div className="flex items-center space-x-2">
             <Checkbox
               id="noSmibFilter"
-              checked={selectedFilters.includes("NoSMIBLocation")}
-              onCheckedChange={(checked) =>
-                onFilterChange("NoSMIBLocation", !!checked)
+              checked={selectedFilters.includes('NoSMIBLocation')}
+              onCheckedChange={checked =>
+                onFilterChange('NoSMIBLocation', !!checked)
               }
-              className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+              className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
             />
             <label
               htmlFor="noSmibFilter"
-              className="text-black lg:text-white text-sm font-medium whitespace-nowrap cursor-pointer"
+              className="cursor-pointer whitespace-nowrap text-sm font-medium text-black lg:text-white"
             >
               No SMIB
             </label>
@@ -217,15 +217,15 @@ export default function CollectionReportFilters({
           <div className="flex items-center space-x-2">
             <Checkbox
               id="localServerFilter"
-              checked={selectedFilters.includes("LocalServersOnly")}
-              onCheckedChange={(checked) =>
-                onFilterChange("LocalServersOnly", !!checked)
+              checked={selectedFilters.includes('LocalServersOnly')}
+              onCheckedChange={checked =>
+                onFilterChange('LocalServersOnly', !!checked)
               }
-              className="bg-white data-[state=checked]:bg-buttonActive border border-buttonActive"
+              className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
             />
             <label
               htmlFor="localServerFilter"
-              className="text-black lg:text-white text-sm font-medium whitespace-nowrap cursor-pointer"
+              className="cursor-pointer whitespace-nowrap text-sm font-medium text-black lg:text-white"
             >
               Local Server
             </label>
@@ -233,11 +233,11 @@ export default function CollectionReportFilters({
         </div>
 
         {/* Clear Filters Button - only visible on xl and below lg */}
-        <div className="flex lg:hidden items-center w-full">
+        <div className="flex w-full items-center lg:hidden">
           <Button
             variant="outline"
             onClick={onClearFilters}
-            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900 whitespace-nowrap w-full"
+            className="w-full whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
           >
             Clear Filters
           </Button>

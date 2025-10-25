@@ -1,15 +1,15 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify } from 'jose';
 import type {
   JwtPayload,
   RefreshTokenPayload,
   SessionData,
-} from "@/shared/types/auth";
+} from '@/shared/types/auth';
 
 // Environment configuration
 export function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error("JWT_SECRET is not defined in environment variables.");
+    throw new Error('JWT_SECRET is not defined in environment variables.');
   }
   return secret;
 }
@@ -18,7 +18,7 @@ export function getRefreshTokenSecret(): string {
   const secret = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
   if (!secret) {
     throw new Error(
-      "REFRESH_TOKEN_SECRET or JWT_SECRET is not defined in environment variables."
+      'REFRESH_TOKEN_SECRET or JWT_SECRET is not defined in environment variables.'
     );
   }
   return secret;
@@ -28,7 +28,7 @@ export function getCurrentDbConnectionString(): string {
   const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
   if (!mongoUri) {
     throw new Error(
-      "MONGODB_URI or MONGO_URI is not defined in environment variables."
+      'MONGODB_URI or MONGO_URI is not defined in environment variables.'
     );
   }
   return mongoUri;
@@ -36,7 +36,7 @@ export function getCurrentDbConnectionString(): string {
 
 // Token generation and verification
 export async function generateAccessToken(
-  payload: Omit<JwtPayload, "iat" | "exp" | "jti">
+  payload: Omit<JwtPayload, 'iat' | 'exp' | 'jti'>
 ): Promise<string> {
   const secret = getJwtSecret();
   // Use sessionId from payload if provided, otherwise generate new one
@@ -55,9 +55,9 @@ export async function generateAccessToken(
   };
 
   return new SignJWT(tokenPayload)
-    .setProtectedHeader({ alg: "HS256" })
+    .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime('7d')
     .sign(new TextEncoder().encode(secret));
 }
 
@@ -70,15 +70,15 @@ export async function generateRefreshToken(
   const payload: RefreshTokenPayload = {
     userId,
     sessionId,
-    type: "refresh",
+    type: 'refresh',
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days
   };
 
   return new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
+    .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime('7d')
     .sign(new TextEncoder().encode(secret));
 }
 
@@ -93,7 +93,7 @@ export async function verifyAccessToken(
     );
     return payload as JwtPayload;
   } catch (error) {
-    console.error("Access token verification failed:", error);
+    console.error('Access token verification failed:', error);
     return null;
   }
 }
@@ -109,7 +109,7 @@ export async function verifyRefreshToken(
     );
     return payload as RefreshTokenPayload;
   } catch (error) {
-    console.error("Refresh token verification failed:", error);
+    console.error('Refresh token verification failed:', error);
     return null;
   }
 }
@@ -155,8 +155,8 @@ export function updateSessionAccess(session: SessionData): SessionData {
 // Security utilities
 export function generateSecureToken(length: number = 32): string {
   const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -170,23 +170,23 @@ export function validatePasswordStrength(password: string): {
   const errors: string[] = [];
 
   if (password.length < 8) {
-    errors.push("Password must be at least 8 characters long");
+    errors.push('Password must be at least 8 characters long');
   }
 
   if (!/[A-Z]/.test(password)) {
-    errors.push("Password must contain at least one uppercase letter");
+    errors.push('Password must contain at least one uppercase letter');
   }
 
   if (!/[a-z]/.test(password)) {
-    errors.push("Password must contain at least one lowercase letter");
+    errors.push('Password must contain at least one lowercase letter');
   }
 
   if (!/\d/.test(password)) {
-    errors.push("Password must contain at least one number");
+    errors.push('Password must contain at least one number');
   }
 
   if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-    errors.push("Password must contain at least one special character");
+    errors.push('Password must contain at least one special character');
   }
 
   return {
@@ -263,37 +263,37 @@ export function getFriendlyErrorMessage(
   errorMsg: string,
   isUrlError: boolean = false
 ): string {
-  if (!errorMsg) return "An unexpected error occurred. Please try again.";
+  if (!errorMsg) return 'An unexpected error occurred. Please try again.';
   if (isUrlError) {
     switch (errorMsg) {
-      case "server_config":
-        return "Server configuration error. Please contact support.";
-      case "invalid_token":
-      case "token_expired":
-        return "Your session has expired. Please log in again.";
-      case "database_context_mismatch":
-        return "Database context has changed. Please log in again.";
-      case "unauthorized":
-        return "You are not authorized to access this resource.";
+      case 'server_config':
+        return 'Server configuration error. Please contact support.';
+      case 'invalid_token':
+      case 'token_expired':
+        return 'Your session has expired. Please log in again.';
+      case 'database_context_mismatch':
+        return 'Database context has changed. Please log in again.';
+      case 'unauthorized':
+        return 'You are not authorized to access this resource.';
       default:
-        return "An unexpected error occurred. Please try again.";
+        return 'An unexpected error occurred. Please try again.';
     }
   }
-  if (errorMsg.includes("401"))
-    return "Your session has expired or you are not authorized. Please log in again.";
-  if (errorMsg.includes("403"))
-    return "You are not authorized to access this resource.";
-  if (errorMsg.includes("500"))
-    return "A server error occurred. Please try again later.";
-  if (errorMsg.toLowerCase().includes("network"))
-    return "Unable to connect. Please check your internet connection.";
-  if (errorMsg.toLowerCase().includes("credential"))
-    return "Invalid email or password. Please try again.";
-  if (errorMsg.toLowerCase().includes("user not found"))
-    return "No account found with this email address.";
-  if (errorMsg.toLowerCase().includes("invalid"))
-    return "Invalid email or password. Please try again.";
-  return "An error occurred. Please try again.";
+  if (errorMsg.includes('401'))
+    return 'Your session has expired or you are not authorized. Please log in again.';
+  if (errorMsg.includes('403'))
+    return 'You are not authorized to access this resource.';
+  if (errorMsg.includes('500'))
+    return 'A server error occurred. Please try again later.';
+  if (errorMsg.toLowerCase().includes('network'))
+    return 'Unable to connect. Please check your internet connection.';
+  if (errorMsg.toLowerCase().includes('credential'))
+    return 'Invalid email or password. Please try again.';
+  if (errorMsg.toLowerCase().includes('user not found'))
+    return 'No account found with this email address.';
+  if (errorMsg.toLowerCase().includes('invalid'))
+    return 'Invalid email or password. Please try again.';
+  return 'An error occurred. Please try again.';
 }
 
 /**
@@ -302,9 +302,9 @@ export function getFriendlyErrorMessage(
 export function hasErrorMessage(error: unknown): error is { message: string } {
   return (
     error !== null &&
-    typeof error === "object" &&
-    "message" in error &&
-    typeof (error as { message: unknown }).message === "string"
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
   );
 }
 
@@ -312,15 +312,15 @@ export function hasErrorMessage(error: unknown): error is { message: string } {
  * Get authentication token from cookies (client-side)
  */
 export function getAuthToken(): string | null {
-  if (typeof document === "undefined") return null;
+  if (typeof document === 'undefined') return null;
 
-  const cookies = document.cookie.split(";");
-  const tokenCookie = cookies.find((cookie) =>
-    cookie.trim().startsWith("token=")
+  const cookies = document.cookie.split(';');
+  const tokenCookie = cookies.find(cookie =>
+    cookie.trim().startsWith('token=')
   );
 
   if (tokenCookie) {
-    return tokenCookie.split("=")[1];
+    return tokenCookie.split('=')[1];
   }
 
   return null;

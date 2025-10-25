@@ -3,13 +3,17 @@
  * Only applies when "All Licensee" is selected
  */
 
-import type { CurrencyCode, FinancialDataWithCurrency, CurrencyMetadata } from '@/shared/types/currency';
-import { 
-  shouldApplyConversion, 
-  convertToUSD, 
-  convertFromUSD, 
+import type {
+  CurrencyCode,
+  FinancialDataWithCurrency,
+  CurrencyMetadata,
+} from '@/shared/types/currency';
+import {
+  shouldApplyConversion,
+  convertToUSD,
+  convertFromUSD,
   getLicenseeCurrency,
-  getExchangeRates 
+  getExchangeRates,
 } from './rates';
 
 /**
@@ -26,21 +30,44 @@ export function convertFinancialData<T extends Record<string, unknown>>(
 
   const licenseeCurrency = getLicenseeCurrency(licensee);
   const exchangeRate = getExchangeRates()[displayCurrency];
-  
+
   const convertedData = { ...data } as T;
-  
+
   // Convert financial fields
   const financialFields = [
-    'coinIn', 'coinOut', 'totalCancelledCredits', 'totalHandPaidCancelledCredits',
-    'totalWonCredits', 'drop', 'jackpot', 'currentCredits', 'moneyIn', 'moneyOut', 'gross',
-    'totalDrop', 'totalGross', 'revenue', 'handle', 'winLoss', 'totalRevenue', 'totalHandle',
-    'totalWin', 'totalJackpot', 'totalPlays', 'avgRevenue', 'avgDrop', 'avgCancelledCredits'
+    'coinIn',
+    'coinOut',
+    'totalCancelledCredits',
+    'totalHandPaidCancelledCredits',
+    'totalWonCredits',
+    'drop',
+    'jackpot',
+    'currentCredits',
+    'moneyIn',
+    'moneyOut',
+    'gross',
+    'totalDrop',
+    'totalGross',
+    'revenue',
+    'handle',
+    'winLoss',
+    'totalRevenue',
+    'totalHandle',
+    'totalWin',
+    'totalJackpot',
+    'totalPlays',
+    'avgRevenue',
+    'avgDrop',
+    'avgCancelledCredits',
   ];
 
   financialFields.forEach(field => {
     if (typeof data[field] === 'number') {
       const usdValue = convertToUSD(data[field] as number, licensee);
-      (convertedData as Record<string, unknown>)[field] = convertFromUSD(usdValue, displayCurrency);
+      (convertedData as Record<string, unknown>)[field] = convertFromUSD(
+        usdValue,
+        displayCurrency
+      );
     }
   });
 
@@ -50,8 +77,8 @@ export function convertFinancialData<T extends Record<string, unknown>>(
       originalCurrency: licenseeCurrency,
       displayCurrency,
       exchangeRate,
-      converted: true
-    }
+      converted: true,
+    },
   };
 }
 
@@ -67,7 +94,9 @@ export function convertFinancialDataArray<T extends Record<string, unknown>>(
     return data.map(item => ({ ...item, currencyMeta: undefined }));
   }
 
-  return data.map(item => convertFinancialData(item, licensee, displayCurrency));
+  return data.map(item =>
+    convertFinancialData(item, licensee, displayCurrency)
+  );
 }
 
 /**
@@ -84,30 +113,55 @@ export function convertMeterData<T extends Record<string, unknown>>(
 
   const licenseeCurrency = getLicenseeCurrency(licensee);
   const exchangeRate = getExchangeRates()[displayCurrency];
-  
+
   const convertedData = { ...meterData } as T;
-  
+
   // Convert top-level financial fields
   const topLevelFields = [
-    'coinIn', 'coinOut', 'totalCancelledCredits', 'totalHandPaidCancelledCredits',
-    'totalWonCredits', 'drop', 'jackpot', 'currentCredits', 'gamesPlayed', 'gamesWon'
+    'coinIn',
+    'coinOut',
+    'totalCancelledCredits',
+    'totalHandPaidCancelledCredits',
+    'totalWonCredits',
+    'drop',
+    'jackpot',
+    'currentCredits',
+    'gamesPlayed',
+    'gamesWon',
   ];
 
   topLevelFields.forEach(field => {
     if (typeof meterData[field] === 'number') {
       const usdValue = convertToUSD(meterData[field] as number, licensee);
-      (convertedData as Record<string, unknown>)[field] = convertFromUSD(usdValue, displayCurrency);
+      (convertedData as Record<string, unknown>)[field] = convertFromUSD(
+        usdValue,
+        displayCurrency
+      );
     }
   });
 
   // Convert movement object fields
-  if ((meterData as Record<string, unknown>).movement && typeof (meterData as Record<string, unknown>).movement === 'object') {
-    const movement = (meterData as Record<string, unknown>).movement as Record<string, unknown>;
+  if (
+    (meterData as Record<string, unknown>).movement &&
+    typeof (meterData as Record<string, unknown>).movement === 'object'
+  ) {
+    const movement = (meterData as Record<string, unknown>).movement as Record<
+      string,
+      unknown
+    >;
     const convertedMovement = { ...movement };
-    
+
     const movementFields = [
-      'coinIn', 'coinOut', 'totalCancelledCredits', 'totalHandPaidCancelledCredits',
-      'totalWonCredits', 'drop', 'jackpot', 'currentCredits', 'gamesPlayed', 'gamesWon'
+      'coinIn',
+      'coinOut',
+      'totalCancelledCredits',
+      'totalHandPaidCancelledCredits',
+      'totalWonCredits',
+      'drop',
+      'jackpot',
+      'currentCredits',
+      'gamesPlayed',
+      'gamesWon',
     ];
 
     movementFields.forEach(field => {
@@ -121,21 +175,33 @@ export function convertMeterData<T extends Record<string, unknown>>(
   }
 
   // Convert viewingAccountDenomination fields
-  if ((meterData as Record<string, unknown>).viewingAccountDenomination && typeof (meterData as Record<string, unknown>).viewingAccountDenomination === 'object') {
-    const viewingAccount = (meterData as Record<string, unknown>).viewingAccountDenomination as Record<string, unknown>;
+  if (
+    (meterData as Record<string, unknown>).viewingAccountDenomination &&
+    typeof (meterData as Record<string, unknown>).viewingAccountDenomination ===
+      'object'
+  ) {
+    const viewingAccount = (meterData as Record<string, unknown>)
+      .viewingAccountDenomination as Record<string, unknown>;
     const convertedViewingAccount = { ...viewingAccount };
-    
+
     if (typeof viewingAccount.drop === 'number') {
       const usdValue = convertToUSD(viewingAccount.drop, licensee);
       convertedViewingAccount.drop = convertFromUSD(usdValue, displayCurrency);
     }
-    
+
     if (typeof viewingAccount.totalCancelledCredits === 'number') {
-      const usdValue = convertToUSD(viewingAccount.totalCancelledCredits, licensee);
-      convertedViewingAccount.totalCancelledCredits = convertFromUSD(usdValue, displayCurrency);
+      const usdValue = convertToUSD(
+        viewingAccount.totalCancelledCredits,
+        licensee
+      );
+      convertedViewingAccount.totalCancelledCredits = convertFromUSD(
+        usdValue,
+        displayCurrency
+      );
     }
 
-    (convertedData as Record<string, unknown>).viewingAccountDenomination = convertedViewingAccount;
+    (convertedData as Record<string, unknown>).viewingAccountDenomination =
+      convertedViewingAccount;
   }
 
   return {
@@ -144,8 +210,8 @@ export function convertMeterData<T extends Record<string, unknown>>(
       originalCurrency: licenseeCurrency,
       displayCurrency,
       exchangeRate,
-      converted: true
-    }
+      converted: true,
+    },
   };
 }
 
@@ -163,20 +229,37 @@ export function convertAggregatedData<T extends Record<string, unknown>>(
 
   const licenseeCurrency = getLicenseeCurrency(licensee);
   const exchangeRate = getExchangeRates()[displayCurrency];
-  
+
   const convertedData = { ...aggregatedData } as T;
-  
+
   // Convert aggregated financial fields
   const aggregatedFields = [
-    'totalDrop', 'totalCancelledCredits', 'totalGross', 'totalRevenue', 'totalHandle',
-    'totalWin', 'totalJackpot', 'totalPlays', 'avgRevenue', 'avgDrop', 'avgCancelledCredits',
-    'moneyIn', 'moneyOut', 'gross', 'revenue', 'drop', 'cancelledCredits'
+    'totalDrop',
+    'totalCancelledCredits',
+    'totalGross',
+    'totalRevenue',
+    'totalHandle',
+    'totalWin',
+    'totalJackpot',
+    'totalPlays',
+    'avgRevenue',
+    'avgDrop',
+    'avgCancelledCredits',
+    'moneyIn',
+    'moneyOut',
+    'gross',
+    'revenue',
+    'drop',
+    'cancelledCredits',
   ];
 
   aggregatedFields.forEach(field => {
     if (typeof aggregatedData[field] === 'number') {
       const usdValue = convertToUSD(aggregatedData[field] as number, licensee);
-      (convertedData as Record<string, unknown>)[field] = convertFromUSD(usdValue, displayCurrency);
+      (convertedData as Record<string, unknown>)[field] = convertFromUSD(
+        usdValue,
+        displayCurrency
+      );
     }
   });
 
@@ -186,8 +269,8 @@ export function convertAggregatedData<T extends Record<string, unknown>>(
       originalCurrency: licenseeCurrency,
       displayCurrency,
       exchangeRate,
-      converted: true
-    }
+      converted: true,
+    },
   };
 }
 
@@ -205,19 +288,30 @@ export function convertDashboardTotals<T extends Record<string, unknown>>(
 
   const licenseeCurrency = getLicenseeCurrency(licensee);
   const exchangeRate = getExchangeRates()[displayCurrency];
-  
+
   const convertedData = { ...totalsData };
-  
+
   // Convert dashboard total fields
   const dashboardFields = [
-    'totalDrop', 'totalCancelledCredits', 'totalGross', 'totalRevenue',
-    'moneyIn', 'moneyOut', 'gross', 'revenue', 'drop', 'cancelledCredits'
+    'totalDrop',
+    'totalCancelledCredits',
+    'totalGross',
+    'totalRevenue',
+    'moneyIn',
+    'moneyOut',
+    'gross',
+    'revenue',
+    'drop',
+    'cancelledCredits',
   ];
 
   dashboardFields.forEach(field => {
     if (typeof totalsData[field] === 'number') {
       const usdValue = convertToUSD(totalsData[field] as number, licensee);
-      (convertedData as Record<string, unknown>)[field] = convertFromUSD(usdValue, displayCurrency);
+      (convertedData as Record<string, unknown>)[field] = convertFromUSD(
+        usdValue,
+        displayCurrency
+      );
     }
   });
 
@@ -227,8 +321,8 @@ export function convertDashboardTotals<T extends Record<string, unknown>>(
       originalCurrency: licenseeCurrency,
       displayCurrency,
       exchangeRate,
-      converted: true
-    }
+      converted: true,
+    },
   };
 }
 
@@ -253,14 +347,16 @@ export function addCurrencyMetadata<T>(
       originalCurrency: licenseeCurrency,
       displayCurrency,
       exchangeRate,
-      converted: true
-    }
+      converted: true,
+    },
   };
 }
 
 /**
  * Check if currency conversion should be applied based on licensee
  */
-export function shouldApplyCurrencyConversion(licensee: string | null | undefined): boolean {
+export function shouldApplyCurrencyConversion(
+  licensee: string | null | undefined
+): boolean {
   return shouldApplyConversion(licensee);
 }

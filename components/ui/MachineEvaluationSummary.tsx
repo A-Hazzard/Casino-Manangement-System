@@ -1,14 +1,14 @@
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type MachineEvaluationSummaryProps = {
   percOfTopMachines: number;
   percOfTopMachCoinIn: number;
 };
 
-export function MachineEvaluationSummary({ 
-  percOfTopMachines, 
-  percOfTopMachCoinIn 
+export function MachineEvaluationSummary({
+  percOfTopMachines,
+  percOfTopMachCoinIn,
 }: MachineEvaluationSummaryProps) {
   return (
     <Card>
@@ -20,7 +20,8 @@ export function MachineEvaluationSummary({
       <CardContent>
         <div className="text-center">
           <h5 className="text-base font-medium text-gray-700">
-            {percOfTopMachines.toFixed(1)}% of the machines contribute to {percOfTopMachCoinIn.toFixed(1)}% of the Total Handle
+            {percOfTopMachines.toFixed(1)}% of the machines contribute to{' '}
+            {percOfTopMachCoinIn.toFixed(1)}% of the Total Handle
           </h5>
         </div>
       </CardContent>

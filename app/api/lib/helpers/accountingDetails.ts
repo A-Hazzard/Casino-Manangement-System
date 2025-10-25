@@ -1,27 +1,27 @@
-import { AcceptedBill } from "../models/acceptedBills";
-import { MachineEvent } from "../models/machineEvents";
-import { Machine } from "../models/machines";
+import { AcceptedBill } from '../models/acceptedBills';
+import { MachineEvent } from '../models/machineEvents';
+import { Machine } from '../models/machines';
 import type {
   AcceptedBill as AcceptedBillType,
   MachineEvent as MachineEventType,
-} from "@/lib/types/api";
-import { CollectionReportData } from "@/lib/types/api";
-import { CollectionReport } from "../models/collectionReport";
+} from '@/lib/types/api';
+import { CollectionReportData } from '@/lib/types/api';
+import { CollectionReport } from '../models/collectionReport';
 
 /**
  * Formats a number with smart decimal handling
  */
 const formatSmartDecimal = (value: number): string => {
-  if (isNaN(value)) return "0";
+  if (isNaN(value)) return '0';
   const hasDecimals = value % 1 !== 0;
   const decimalPart = value % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
   return value.toFixed(hasSignificantDecimals ? 2 : 0);
 };
-import { Collections } from "../models/collections";
-import type { CollectionMetersHistoryEntry } from "@/shared/types";
-import { getDatesForTimePeriod } from "../utils/dates";
-import type { TimePeriod } from "@/shared/types/common";
+import { Collections } from '../models/collections';
+import type { CollectionMetersHistoryEntry } from '@/shared/types';
+import { getDatesForTimePeriod } from '../utils/dates';
+import type { TimePeriod } from '@/shared/types/common';
 
 /**
  * Fetches accepted bills for a given machine ID.
@@ -38,7 +38,7 @@ export async function getAcceptedBillsByMachine(
     const query: Record<string, unknown> = { machine: machineId };
 
     // Apply date filtering if timePeriod is provided
-    if (timePeriod && timePeriod !== "All Time") {
+    if (timePeriod && timePeriod !== 'All Time') {
       const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
       if (dateRange.startDate && dateRange.endDate) {
         query.createdAt = {
@@ -55,7 +55,7 @@ export async function getAcceptedBillsByMachine(
     return result;
   } catch (error) {
     console.error(
-      "[API] getAcceptedBillsByMachine: error fetching data",
+      '[API] getAcceptedBillsByMachine: error fetching data',
       error
     );
     return [];
@@ -75,9 +75,9 @@ export async function getMachineEventsByMachine(
 ): Promise<MachineEventType[]> {
   try {
     // Check if MachineEvent model is properly initialized
-    if (!MachineEvent || typeof MachineEvent.find !== "function") {
+    if (!MachineEvent || typeof MachineEvent.find !== 'function') {
       console.error(
-        "[API] getMachineEventsByMachine: MachineEvent model is not properly initialized"
+        '[API] getMachineEventsByMachine: MachineEvent model is not properly initialized'
       );
       // Return empty array instead of mock data
       return [];
@@ -86,7 +86,7 @@ export async function getMachineEventsByMachine(
     const query: Record<string, unknown> = { machine: machineId };
 
     // Apply date filtering if timePeriod is provided
-    if (timePeriod && timePeriod !== "All Time") {
+    if (timePeriod && timePeriod !== 'All Time') {
       const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
       if (dateRange.startDate && dateRange.endDate) {
         query.timestamp = {
@@ -108,7 +108,7 @@ export async function getMachineEventsByMachine(
     return result;
   } catch (error) {
     console.error(
-      "[API] getMachineEventsByMachine: error fetching data",
+      '[API] getMachineEventsByMachine: error fetching data',
       error
     );
     return [];
@@ -140,10 +140,10 @@ export async function getCollectionMetersHistoryByMachine(
       []) as CollectionMetersHistoryEntry[];
 
     // Apply date filtering if timePeriod is provided
-    if (timePeriod && timePeriod !== "All Time") {
+    if (timePeriod && timePeriod !== 'All Time') {
       const dateRange = getDatesForTimePeriod(timePeriod as TimePeriod);
       if (dateRange.startDate && dateRange.endDate) {
-        result = result.filter((entry) => {
+        result = result.filter(entry => {
           const entryDate = new Date(entry.timestamp);
           return (
             entryDate >= dateRange.startDate! && entryDate <= dateRange.endDate!
@@ -155,7 +155,7 @@ export async function getCollectionMetersHistoryByMachine(
     return result;
   } catch (error) {
     console.error(
-      "[API] getCollectionMetersHistoryByMachine: error fetching data",
+      '[API] getCollectionMetersHistoryByMachine: error fetching data',
       error
     );
     return [];
@@ -206,35 +206,35 @@ export async function getCollectionReportById(
     },
     {
       $lookup: {
-        from: "machines",
-        localField: "sasMeters.machine",
-        foreignField: "_id",
-        as: "machineDetails",
+        from: 'machines',
+        localField: 'sasMeters.machine',
+        foreignField: '_id',
+        as: 'machineDetails',
       },
     },
     {
       $addFields: {
-        "sasMeters.machine": {
+        'sasMeters.machine': {
           $let: {
             vars: {
-              machine: { $arrayElemAt: ["$machineDetails", 0] },
+              machine: { $arrayElemAt: ['$machineDetails', 0] },
             },
             in: {
               $cond: {
-                if: { $ne: ["$$machine", null] },
+                if: { $ne: ['$$machine', null] },
                 then: {
                   $cond: {
-                    if: { $ne: ["$$machine.serialNumber", null] },
-                    then: "$$machine.serialNumber",
+                    if: { $ne: ['$$machine.serialNumber', null] },
+                    then: '$$machine.serialNumber',
                     else: {
                       $cond: {
-                        if: { $ne: ["$$machine.custom.name", null] },
-                        then: "$$machine.custom.name",
+                        if: { $ne: ['$$machine.custom.name', null] },
+                        then: '$$machine.custom.name',
                         else: {
                           $cond: {
-                            if: { $ne: ["$$machine.machineId", null] },
-                            then: "$$machine.machineId",
-                            else: "$$machine._id",
+                            if: { $ne: ['$$machine.machineId', null] },
+                            then: '$$machine.machineId',
+                            else: '$$machine._id',
                           },
                         },
                       },
@@ -244,21 +244,21 @@ export async function getCollectionReportById(
                 else: {
                   // Fallback to collection fields if no machine found
                   $cond: {
-                    if: { $ne: ["$machineCustomName", null] },
-                    then: "$machineCustomName",
+                    if: { $ne: ['$machineCustomName', null] },
+                    then: '$machineCustomName',
                     else: {
                       $cond: {
-                        if: { $ne: ["$serialNumber", null] },
-                        then: "$serialNumber",
+                        if: { $ne: ['$serialNumber', null] },
+                        then: '$serialNumber',
                         else: {
                           $cond: {
-                            if: { $ne: ["$machineName", null] },
-                            then: "$machineName",
+                            if: { $ne: ['$machineName', null] },
+                            then: '$machineName',
                             else: {
                               $cond: {
-                                if: { $ne: ["$machineId", null] },
-                                then: "$machineId",
-                                else: "$sasMeters.machine",
+                                if: { $ne: ['$machineId', null] },
+                                then: '$machineId',
+                                else: '$sasMeters.machine',
                               },
                             },
                           },
@@ -308,13 +308,13 @@ export async function getCollectionReportById(
         gamingLocation: report.location,
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date("2020-01-01") } },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
         ],
       });
       totalMachinesForLocation = totalMachinesCount;
     }
   } catch (error) {
-    console.warn("Could not count total machines for location:", error);
+    console.warn('Could not count total machines for location:', error);
     // Keep the fallback value
   }
 
@@ -329,15 +329,15 @@ export async function getCollectionReportById(
     amountToCollect: report.amountToCollect || 0,
     machinesNumber: `${collections.length}/${totalMachinesForLocation}`,
     collectedAmount: report.amountCollected || 0,
-    reasonForShortage: report.reasonShortagePayment || "-",
+    reasonForShortage: report.reasonShortagePayment || '-',
     taxes: report.taxes || 0,
     advance: report.advance || 0,
     previousBalanceOwed: report.previousBalance || 0,
     balanceCorrection: report.balanceCorrection || 0,
     currentBalanceOwed: report.currentBalance || 0,
-    correctionReason: report.balanceCorrectionReas || "-",
-    variance: report.variance || "-",
-    varianceReason: report.varianceReason || "-",
+    correctionReason: report.balanceCorrectionReas || '-',
+    variance: report.variance || '-',
+    varianceReason: report.varianceReason || '-',
   };
 
   // Calculate SAS-specific metrics from sasMeters data
@@ -366,7 +366,7 @@ export async function getCollectionReportById(
     locationName: report.locationName,
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toISOString()
-      : "-",
+      : '-',
     machineMetrics: await Promise.all(
       collections.map(async (collection, idx: number) => {
         // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
@@ -374,7 +374,7 @@ export async function getCollectionReportById(
         const isValidString = (
           str: string | undefined | null
         ): string | null => {
-          return str && typeof str === "string" && str.trim() !== ""
+          return str && typeof str === 'string' && str.trim() !== ''
             ? str.trim()
             : null;
         };
@@ -399,7 +399,7 @@ export async function getCollectionReportById(
           collection.sasMeters?.sasStartTime &&
           collection.sasMeters?.sasEndTime
         ) {
-          const { Meters } = await import("@/app/api/lib/models/meters");
+          const { Meters } = await import('@/app/api/lib/models/meters');
 
           const meters = await Meters.find({
             machine: collection.machineId,
@@ -445,11 +445,11 @@ export async function getCollectionReportById(
           !collection.sasMeters ||
           collection.sasMeters.gross === undefined ||
           collection.sasMeters.gross === null
-            ? "No SAS Data"
+            ? 'No SAS Data'
             : meterGross - sasGross;
 
         // Debug logging for SAS times
-        console.warn("🔍 SAS Times Debug:", {
+        console.warn('🔍 SAS Times Debug:', {
           machineId: machineDisplayName,
           sasMeters: collection.sasMeters,
           sasStartTime: collection.sasMeters?.sasStartTime,
@@ -468,11 +468,11 @@ export async function getCollectionReportById(
           metersGross: meterGross,
           sasGross: formatSmartDecimal(sasGross),
           variation:
-            typeof variation === "string"
+            typeof variation === 'string'
               ? variation
               : formatSmartDecimal(variation),
-          sasStartTime: collection.sasMeters?.sasStartTime || "-",
-          sasEndTime: collection.sasMeters?.sasEndTime || "-",
+          sasStartTime: collection.sasMeters?.sasStartTime || '-',
+          sasEndTime: collection.sasMeters?.sasEndTime || '-',
           hasIssue: false,
           ramClear: collection.ramClear || false,
         };

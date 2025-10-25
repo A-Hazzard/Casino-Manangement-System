@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useMemberActionsStore } from "@/lib/store/memberActionsStore";
-import { Label } from "@/components/ui/label";
-import axios from "axios";
-import { toast } from "sonner";
-import { useUserStore } from "@/lib/store/userStore";
+import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useMemberActionsStore } from '@/lib/store/memberActionsStore';
+import { Label } from '@/components/ui/label';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { useUserStore } from '@/lib/store/userStore';
 import {
   Dialog,
   DialogContent,
@@ -16,13 +16,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { CasinoMember as Member } from "@/shared/types/entities";
+} from '@/components/ui/dialog';
+import { CasinoMember as Member } from '@/shared/types/entities';
 import {
   detectChanges,
   filterMeaningfulChanges,
   getChangesSummary,
-} from "@/lib/utils/changeDetection";
+} from '@/lib/utils/changeDetection';
 
 type EditMemberModalProps = {
   isOpen: boolean;
@@ -44,7 +44,7 @@ export default function EditMemberModal({
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
-    if (!user) return "Unknown User";
+    if (!user) return 'Unknown User';
 
     // Check if user has profile with firstName and lastName
     if (user.profile?.firstName && user.profile?.lastName) {
@@ -62,17 +62,17 @@ export default function EditMemberModal({
     }
 
     // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== "") {
+    if (user.username && user.username.trim() !== '') {
       return user.username;
     }
 
     // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== "") {
+    if (user.emailAddress && user.emailAddress.trim() !== '') {
       return user.emailAddress;
     }
 
     // Fallback
-    return "Unknown User";
+    return 'Unknown User';
   };
 
   // Activity logging is now handled via API calls
@@ -87,10 +87,10 @@ export default function EditMemberModal({
     changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
   ) => {
     try {
-      const response = await fetch("/api/activity-logs", {
-        method: "POST",
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
@@ -98,9 +98,9 @@ export default function EditMemberModal({
           resourceId,
           resourceName,
           details,
-          userId: user?._id || "unknown",
+          userId: user?._id || 'unknown',
           username: getUserDisplayName(),
-          userRole: "user",
+          userRole: 'user',
           previousData: previousData || null,
           newData: newData || null,
           changes: changes || [], // Use provided changes or empty array
@@ -108,20 +108,20 @@ export default function EditMemberModal({
       });
 
       if (!response.ok) {
-        console.error("Failed to log activity:", response.statusText);
+        console.error('Failed to log activity:', response.statusText);
       }
     } catch (error) {
-      console.error("Error logging activity:", error);
+      console.error('Error logging activity:', error);
     }
   };
 
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phoneNumber: "",
-    occupation: "",
-    address: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    occupation: '',
+    address: '',
     points: 0,
     uaccount: 0,
   });
@@ -130,12 +130,12 @@ export default function EditMemberModal({
   useEffect(() => {
     if (selectedMember && selectedMember.profile) {
       setFormData({
-        firstName: selectedMember.profile.firstName || "",
-        lastName: selectedMember.profile.lastName || "",
-        email: selectedMember.profile.email || "",
-        phoneNumber: selectedMember.phoneNumber || "",
-        occupation: selectedMember.profile.occupation || "",
-        address: selectedMember.profile.address || "",
+        firstName: selectedMember.profile.firstName || '',
+        lastName: selectedMember.profile.lastName || '',
+        email: selectedMember.profile.email || '',
+        phoneNumber: selectedMember.phoneNumber || '',
+        occupation: selectedMember.profile.occupation || '',
+        address: selectedMember.profile.address || '',
         points: selectedMember.points || 0,
         uaccount: selectedMember.uaccount || 0,
       });
@@ -151,7 +151,7 @@ export default function EditMemberModal({
           opacity: 1,
           y: 0,
           duration: 0.3,
-          ease: "power2.out",
+          ease: 'power2.out',
           overwrite: true,
         }
       );
@@ -159,7 +159,7 @@ export default function EditMemberModal({
       gsap.to(backdropRef.current, {
         opacity: 1,
         duration: 0.2,
-        ease: "power2.out",
+        ease: 'power2.out',
         overwrite: true,
       });
     }
@@ -170,7 +170,7 @@ export default function EditMemberModal({
       opacity: 0,
       y: -20,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
       onComplete: () => {
         closeEditModal();
         onClose();
@@ -180,13 +180,13 @@ export default function EditMemberModal({
     gsap.to(backdropRef.current, {
       opacity: 0,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
     });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [name]: value,
     }));
@@ -194,7 +194,7 @@ export default function EditMemberModal({
 
   const handleSubmit = async () => {
     if (!selectedMember?._id) {
-      toast.error("No member selected");
+      toast.error('No member selected');
       return;
     }
 
@@ -217,7 +217,7 @@ export default function EditMemberModal({
 
     // Only proceed if there are actual changes
     if (meaningfulChanges.length === 0) {
-      toast.info("No changes detected");
+      toast.info('No changes detected');
       return;
     }
 
@@ -232,16 +232,16 @@ export default function EditMemberModal({
         // Log the update activity with proper change tracking
         const changesSummary = getChangesSummary(meaningfulChanges);
         await logActivity(
-          "update",
-          "member",
+          'update',
+          'member',
           selectedMember._id,
-          `${selectedMember.profile?.firstName || "Unknown"} ${
-            selectedMember.profile?.lastName || "Member"
+          `${selectedMember.profile?.firstName || 'Unknown'} ${
+            selectedMember.profile?.lastName || 'Member'
           }`,
           `Updated member: ${changesSummary}`,
           selectedMember, // Previous data
           response.data, // New data
-          meaningfulChanges.map((change) => ({
+          meaningfulChanges.map(change => ({
             field: change.field,
             oldValue: change.oldValue,
             newValue: change.newValue,
@@ -252,11 +252,11 @@ export default function EditMemberModal({
         onMemberUpdated();
         handleClose();
       } else {
-        toast.error("Failed to update member");
+        toast.error('Failed to update member');
       }
     } catch (error) {
-      console.error("Error updating member:", error);
-      toast.error("Failed to update member");
+      console.error('Error updating member:', error);
+      toast.error('Failed to update member');
     } finally {
       setLoading(false);
     }
@@ -269,7 +269,7 @@ export default function EditMemberModal({
       {/* Backdrop */}
       <div
         ref={backdropRef}
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        className="fixed inset-0 z-40 bg-black bg-opacity-50"
         onClick={handleClose}
       />
 
@@ -277,7 +277,7 @@ export default function EditMemberModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto"
+          className="mx-auto w-full max-w-md rounded-lg bg-white shadow-xl"
         >
           <Dialog open={isEditModalOpen} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-md">
@@ -388,7 +388,7 @@ export default function EditMemberModal({
                   Cancel
                 </Button>
                 <Button onClick={handleSubmit} disabled={loading}>
-                  {loading ? "Updating..." : "Update Member"}
+                  {loading ? 'Updating...' : 'Update Member'}
                 </Button>
               </DialogFooter>
             </DialogContent>

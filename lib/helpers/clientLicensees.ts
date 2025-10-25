@@ -3,17 +3,17 @@
  * These functions make API calls instead of directly accessing the database
  */
 
-import type { Licensee } from "@/lib/types/licensee";
+import type { Licensee } from '@/lib/types/licensee';
 
 /**
  * Fetches all licensees via API call
  */
 export async function fetchLicensees(): Promise<Licensee[]> {
   try {
-    const response = await fetch("/api/licensees", {
-      method: "GET",
+    const response = await fetch('/api/licensees', {
+      method: 'GET',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
 
@@ -24,7 +24,7 @@ export async function fetchLicensees(): Promise<Licensee[]> {
     const data = await response.json();
     return data.licensees || [];
   } catch (error) {
-    console.error("Failed to fetch licensees:", error);
+    console.error('Failed to fetch licensees:', error);
     return [];
   }
 }
@@ -40,10 +40,10 @@ export async function createLicensee(data: {
   expiryDate?: string;
 }): Promise<{ success: boolean; licensee?: Licensee; message?: string }> {
   try {
-    const response = await fetch("/api/licensees", {
-      method: "POST",
+    const response = await fetch('/api/licensees', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
     });
@@ -51,13 +51,16 @@ export async function createLicensee(data: {
     const result = await response.json();
 
     if (!response.ok) {
-      return { success: false, message: result.message || "Failed to create licensee" };
+      return {
+        success: false,
+        message: result.message || 'Failed to create licensee',
+      };
     }
 
     return { success: true, licensee: result.licensee };
   } catch (error) {
-    console.error("Failed to create licensee:", error);
-    return { success: false, message: "Network error occurred" };
+    console.error('Failed to create licensee:', error);
+    return { success: false, message: 'Network error occurred' };
   }
 }
 
@@ -76,10 +79,10 @@ export async function updateLicensee(data: {
   prevExpiryDate?: string;
 }): Promise<{ success: boolean; licensee?: Licensee; message?: string }> {
   try {
-    const response = await fetch("/api/licensees", {
-      method: "PUT",
+    const response = await fetch('/api/licensees', {
+      method: 'PUT',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
     });
@@ -87,25 +90,30 @@ export async function updateLicensee(data: {
     const result = await response.json();
 
     if (!response.ok) {
-      return { success: false, message: result.message || "Failed to update licensee" };
+      return {
+        success: false,
+        message: result.message || 'Failed to update licensee',
+      };
     }
 
     return { success: true, licensee: result.licensee };
   } catch (error) {
-    console.error("Failed to update licensee:", error);
-    return { success: false, message: "Network error occurred" };
+    console.error('Failed to update licensee:', error);
+    return { success: false, message: 'Network error occurred' };
   }
 }
 
 /**
  * Deletes a licensee via API call
  */
-export async function deleteLicensee(_id: string): Promise<{ success: boolean; message?: string }> {
+export async function deleteLicensee(
+  _id: string
+): Promise<{ success: boolean; message?: string }> {
   try {
-    const response = await fetch("/api/licensees", {
-      method: "DELETE",
+    const response = await fetch('/api/licensees', {
+      method: 'DELETE',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({ _id }),
     });
@@ -113,12 +121,15 @@ export async function deleteLicensee(_id: string): Promise<{ success: boolean; m
     const result = await response.json();
 
     if (!response.ok) {
-      return { success: false, message: result.message || "Failed to delete licensee" };
+      return {
+        success: false,
+        message: result.message || 'Failed to delete licensee',
+      };
     }
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete licensee:", error);
-    return { success: false, message: "Network error occurred" };
+    console.error('Failed to delete licensee:', error);
+    return { success: false, message: 'Network error occurred' };
   }
 }

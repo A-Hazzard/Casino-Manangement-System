@@ -3,8 +3,8 @@
  * Handles navigation to session events and related pages
  */
 
-import { useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 type UseSessionsNavigationReturn = {
   navigateToSessionEvents: (sessionId: string, machineId: string) => void;

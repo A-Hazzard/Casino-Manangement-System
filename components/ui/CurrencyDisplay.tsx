@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -16,37 +16,35 @@ interface CurrencyDisplayProps {
 /**
  * Component for displaying currency amounts with proper formatting
  */
-export function CurrencyDisplay({ 
-  amount, 
-  currency, 
-  showSymbol: _showSymbol = true, 
+export function CurrencyDisplay({
+  amount,
+  currency,
+  showSymbol: _showSymbol = true,
   showCode = false,
-  className = "",
-  precision = 2
+  className = '',
+  precision = 2,
 }: CurrencyDisplayProps) {
-  const { formatAmount, getCurrencyInfo, shouldShowCurrency } = useCurrencyFormat();
+  const { formatAmount, getCurrencyInfo, shouldShowCurrency } =
+    useCurrencyFormat();
 
   // Don't show currency formatting if not in "All Licensee" mode
   if (!shouldShowCurrency()) {
-    return (
-      <span className={className}>
-        {amount.toFixed(precision)}
-      </span>
-    );
+    return <span className={className}>{amount.toFixed(precision)}</span>;
   }
 
   const currencyInfo = getCurrencyInfo();
   const targetCurrency = currency || currencyInfo.code;
-  
+
   const formattedAmount = formatAmount(amount, targetCurrency);
-  
+
   return (
-    <span className={className} title={`${amount.toFixed(precision)} ${targetCurrency}`}>
+    <span
+      className={className}
+      title={`${amount.toFixed(precision)} ${targetCurrency}`}
+    >
       {formattedAmount}
       {showCode && (
-        <span className="ml-1 text-xs text-gray-500">
-          {targetCurrency}
-        </span>
+        <span className="ml-1 text-xs text-gray-500">{targetCurrency}</span>
       )}
     </span>
   );

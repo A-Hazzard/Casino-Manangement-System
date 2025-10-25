@@ -1,13 +1,13 @@
-import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const DashboardDateFiltersSkeleton = () => {
   return (
-    <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center">
       {/* Time Filter Buttons */}
       <div className="flex flex-wrap gap-2">
         {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton key={index} className="h-10 w-20 lg:w-24 rounded-md" />
+          <Skeleton key={index} className="h-10 w-20 rounded-md lg:w-24" />
         ))}
       </div>
 

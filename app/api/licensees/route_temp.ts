@@ -1,7 +1,7 @@
-import { NextRequest } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { Licencee } from "@/app/api/lib/models/licencee";
-import { generateMongoId } from "@/lib/utils/id";
+import { NextRequest } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { generateMongoId } from '@/lib/utils/id';
 
 export async function GET() {
   await connectDB();
@@ -11,15 +11,15 @@ export async function GET() {
     const licensees = await Licencee.aggregate([
       {
         $lookup: {
-          from: "countries",
-          localField: "country",
-          foreignField: "_id",
-          as: "countryDetails",
+          from: 'countries',
+          localField: 'country',
+          foreignField: '_id',
+          as: 'countryDetails',
         },
       },
       {
         $unwind: {
-          path: "$countryDetails",
+          path: '$countryDetails',
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -29,10 +29,10 @@ export async function GET() {
           name: 1,
           description: 1,
           country: 1,
-          countryName: "$countryDetails.name",
+          countryName: '$countryDetails.name',
           startDate: 1,
           expiryDate: 1,
-          lastEdited: { $ifNull: ["$lastEdited", "$updatedAt"] },
+          lastEdited: { $ifNull: ['$lastEdited', '$updatedAt'] },
           createdAt: 1,
           updatedAt: 1,
           geoCoords: 1,
@@ -45,9 +45,9 @@ export async function GET() {
 
     return new Response(JSON.stringify({ licensees }), { status: 200 });
   } catch (error) {
-    console.error("Error fetching licensees:", error);
+    console.error('Error fetching licensees:', error);
     return new Response(
-      JSON.stringify({ success: false, message: "Failed to fetch licensees" }),
+      JSON.stringify({ success: false, message: 'Failed to fetch licensees' }),
       { status: 500 }
     );
   }
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Name and country are required",
+        message: 'Name and country are required',
       }),
       { status: 400 }
     );
@@ -109,7 +109,7 @@ export async function PUT(request: NextRequest) {
     return new Response(
       JSON.stringify({
         success: false,
-        message: "ID, name and country are required",
+        message: 'ID, name and country are required',
       }),
       { status: 400 }
     );
@@ -136,7 +136,7 @@ export async function PUT(request: NextRequest) {
 
     if (!updated) {
       return new Response(
-        JSON.stringify({ success: false, message: "Licensee not found" }),
+        JSON.stringify({ success: false, message: 'Licensee not found' }),
         { status: 404 }
       );
     }
@@ -160,7 +160,7 @@ export async function DELETE(request: NextRequest) {
 
   if (!_id) {
     return new Response(
-      JSON.stringify({ success: false, message: "Licensee ID is required" }),
+      JSON.stringify({ success: false, message: 'Licensee ID is required' }),
       { status: 400 }
     );
   }
@@ -174,7 +174,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!deleted) {
       return new Response(
-        JSON.stringify({ success: false, message: "Licensee not found" }),
+        JSON.stringify({ success: false, message: 'Licensee not found' }),
         { status: 404 }
       );
     }

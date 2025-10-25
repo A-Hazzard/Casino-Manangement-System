@@ -1,22 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { MachineEvent } from "@/app/api/lib/models/machineEvents";
-import { Machine } from "@/app/api/lib/models/machines";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { MachineEvent } from '@/app/api/lib/models/machineEvents';
+import { Machine } from '@/app/api/lib/models/machines';
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
     const { searchParams } = new URL(request.url);
-    const machineId = searchParams.get("id");
-    const eventType = searchParams.get("eventType");
-    const event = searchParams.get("event");
-    const game = searchParams.get("game");
-    const timePeriod = searchParams.get("timePeriod");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const page = parseInt(searchParams.get("page") || "1");
-    const requestedLimit = parseInt(searchParams.get("limit") || "20");
+    const machineId = searchParams.get('id');
+    const eventType = searchParams.get('eventType');
+    const event = searchParams.get('event');
+    const game = searchParams.get('game');
+    const timePeriod = searchParams.get('timePeriod');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const page = parseInt(searchParams.get('page') || '1');
+    const requestedLimit = parseInt(searchParams.get('limit') || '20');
     const limit =
       Number.isFinite(requestedLimit) && requestedLimit > 0
         ? Math.min(requestedLimit, 20)
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     if (!machineId) {
       return NextResponse.json(
-        { error: "Machine ID is required" },
+        { error: 'Machine ID is required' },
         { status: 400 }
       );
     }
@@ -34,15 +34,15 @@ export async function GET(request: NextRequest) {
 
     // Add other filters to the query
     if (eventType) {
-      baseQuery["eventType"] = { $regex: eventType, $options: "i" } as unknown;
+      baseQuery['eventType'] = { $regex: eventType, $options: 'i' } as unknown;
     }
 
     if (event) {
-      baseQuery["description"] = { $regex: event, $options: "i" } as unknown;
+      baseQuery['description'] = { $regex: event, $options: 'i' } as unknown;
     }
 
     if (game) {
-      baseQuery["gameName"] = { $regex: game, $options: "i" } as unknown;
+      baseQuery['gameName'] = { $regex: game, $options: 'i' } as unknown;
     }
 
     // Apply date filtering if provided
@@ -55,31 +55,35 @@ export async function GET(request: NextRequest) {
       dateFilterEnd = new Date(endDate);
     }
     // Handle predefined time periods
-    else if (timePeriod && timePeriod !== "All Time") {
+    else if (timePeriod && timePeriod !== 'All Time') {
       // Use the same timezone-aware approach as the main API
-      const tz = "America/Port_of_Spain";
+      const tz = 'America/Port_of_Spain';
       const now = new Date();
 
       switch (timePeriod) {
-        case "Today":
+        case 'Today':
           dateFilterStart = new Date(
-            now.toLocaleDateString("en-CA", { timeZone: tz }) + "T00:00:00.000Z"
+            now.toLocaleDateString('en-CA', { timeZone: tz }) + 'T00:00:00.000Z'
           );
-          dateFilterEnd = new Date(dateFilterStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+          dateFilterEnd = new Date(
+            dateFilterStart.getTime() + 24 * 60 * 60 * 1000 - 1
+          );
           break;
-        case "Yesterday":
+        case 'Yesterday':
           const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
           dateFilterStart = new Date(
-            yesterday.toLocaleDateString("en-CA", { timeZone: tz }) +
-              "T00:00:00.000Z"
+            yesterday.toLocaleDateString('en-CA', { timeZone: tz }) +
+              'T00:00:00.000Z'
           );
-          dateFilterEnd = new Date(dateFilterStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+          dateFilterEnd = new Date(
+            dateFilterStart.getTime() + 24 * 60 * 60 * 1000 - 1
+          );
           break;
-        case "7d":
+        case '7d':
           dateFilterEnd = now;
           dateFilterStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           break;
-        case "30d":
+        case '30d':
           dateFilterEnd = now;
           dateFilterStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           break;
@@ -91,7 +95,10 @@ export async function GET(request: NextRequest) {
 
     // Only add date filter if we have valid start and end dates
     if (dateFilterStart && dateFilterEnd) {
-      baseQuery["date"] = { $gte: dateFilterStart, $lte: dateFilterEnd } as unknown;
+      baseQuery['date'] = {
+        $gte: dateFilterStart,
+        $lte: dateFilterEnd,
+      } as unknown;
     }
 
     // Try to find events with the base query
@@ -105,7 +112,7 @@ export async function GET(request: NextRequest) {
     if (events.length === 0) {
       // Get machine document for alternative identifiers
       const machineDoc = (await Machine.findOne({ _id: machineId })
-        .select("machineId relayId serialNumber")
+        .select('machineId relayId serialNumber')
         .lean()) as {
         machineId?: string;
         relayId?: string;
@@ -118,7 +125,7 @@ export async function GET(request: NextRequest) {
           { machineId: machineDoc.machineId },
           { relay: machineDoc.relayId },
           { cabinetId: machineDoc.serialNumber },
-        ].filter((q) => Object.values(q)[0]); // Only include non-null values
+        ].filter(q => Object.values(q)[0]); // Only include non-null values
 
         // Try each alternative query with the same filters
         for (const altQuery of alternativeQueries) {
@@ -158,9 +165,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching machine events:", error);
+    console.error('Error fetching machine events:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

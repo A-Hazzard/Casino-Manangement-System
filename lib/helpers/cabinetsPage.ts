@@ -2,9 +2,9 @@
  * Cabinets page helper functions for managing section changes, filtering, and data loading
  */
 
-import type { CabinetSection } from "@/lib/constants/cabinets";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import type { CabinetSection } from '@/lib/constants/cabinets';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 /**
  * Gets the active section from URL search parameters
@@ -14,11 +14,11 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 export function getActiveSectionFromURL(
   searchParams: URLSearchParams
 ): CabinetSection {
-  const section = searchParams.get("section");
-  if (section === "movement-requests") return "movement";
-  if (section === "smib-firmware") return "firmware";
-  if (section === "smib") return "smib";
-  return "cabinets";
+  const section = searchParams.get('section');
+  if (section === 'movement-requests') return 'movement';
+  if (section === 'smib-firmware') return 'firmware';
+  if (section === 'smib') return 'smib';
+  return 'cabinets';
 }
 
 /**
@@ -36,14 +36,14 @@ export function handleSectionChange(
 ) {
   // Update URL based on section
   const params = new URLSearchParams(searchParams.toString());
-  if (section === "cabinets") {
-    params.delete("section"); // Default section, no param needed
-  } else if (section === "movement") {
-    params.set("section", "movement-requests");
-  } else if (section === "firmware") {
-    params.set("section", "smib-firmware");
-  } else if (section === "smib") {
-    params.set("section", "smib");
+  if (section === 'cabinets') {
+    params.delete('section'); // Default section, no param needed
+  } else if (section === 'movement') {
+    params.set('section', 'movement-requests');
+  } else if (section === 'firmware') {
+    params.set('section', 'smib-firmware');
+  } else if (section === 'smib') {
+    params.set('section', 'smib');
   }
 
   const newURL = params.toString()
@@ -57,8 +57,8 @@ export function handleSectionChange(
  */
 function sortMachinesAlphabetically(machines: Cabinet[]) {
   return machines.sort((a, b) => {
-    const nameA = (a.assetNumber || a.smbId || a.serialNumber || "").toString();
-    const nameB = (b.assetNumber || b.smbId || b.serialNumber || "").toString();
+    const nameA = (a.assetNumber || a.smbId || a.serialNumber || '').toString();
+    const nameB = (b.assetNumber || b.smbId || b.serialNumber || '').toString();
 
     // Extract the base name and number parts
     const matchA = nameA.match(/^(.+?)(\d+)?$/);
@@ -100,15 +100,15 @@ export function filterCabinets(
   let filtered = [...cabinets];
 
   // Filter by location if a specific location is selected
-  if (selectedLocation !== "all") {
-    filtered = filtered.filter((cab) => cab.locationId === selectedLocation);
+  if (selectedLocation !== 'all') {
+    filtered = filtered.filter(cab => cab.locationId === selectedLocation);
   }
 
   // Filter by search term
   if (search.trim()) {
     const searchLower = search.toLowerCase();
     filtered = filtered.filter(
-      (cab) =>
+      cab =>
         cab.assetNumber?.toLowerCase().includes(searchLower) ||
         cab.smbId?.toLowerCase().includes(searchLower) ||
         cab.locationName?.toLowerCase().includes(searchLower) ||

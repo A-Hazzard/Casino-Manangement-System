@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import * as React from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export type SimpleDateTimePickerProps = {
   date: Date | undefined;
@@ -36,11 +36,11 @@ export function SimpleDateTimePicker({
     };
 
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
 
@@ -64,13 +64,13 @@ export function SimpleDateTimePicker({
   };
 
   const formatDate = (date: Date | undefined) => {
-    if (!date) return "Pick a date and time";
-    return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
+    if (!date) return 'Pick a date and time';
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
       hour12: true,
     });
   };
@@ -80,8 +80,8 @@ export function SimpleDateTimePicker({
       <Button
         variant="outline"
         className={cn(
-          "w-full md:w-[280px] justify-start text-left font-normal overflow-hidden",
-          !date && "text-muted-foreground"
+          'w-full justify-start overflow-hidden text-left font-normal md:w-[280px]',
+          !date && 'text-muted-foreground'
         )}
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
@@ -91,7 +91,7 @@ export function SimpleDateTimePicker({
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 z-[70] mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+        <div className="absolute left-0 top-full z-[70] mt-1 rounded-md border border-gray-200 bg-white shadow-lg">
           <DatePicker
             selected={tempDate || date || new Date()}
             onChange={handleDateChange}
@@ -103,7 +103,7 @@ export function SimpleDateTimePicker({
             disabled={disabled}
           />
 
-          <div className="flex justify-end gap-2 p-3 border-t border-gray-200">
+          <div className="flex justify-end gap-2 border-t border-gray-200 p-3">
             <Button
               variant="outline"
               size="sm"

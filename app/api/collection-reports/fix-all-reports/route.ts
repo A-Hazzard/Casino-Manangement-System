@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { getUserIdFromServer, getUserById } from "../../lib/helpers/users";
-import { CollectionReport } from "../../lib/models/collectionReport";
-import { Collections } from "../../lib/models/collections";
-import { Machine } from "../../lib/models/machines";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { getUserIdFromServer, getUserById } from '../../lib/helpers/users';
+import { CollectionReport } from '../../lib/models/collectionReport';
+import { Collections } from '../../lib/models/collections';
+import { Machine } from '../../lib/models/machines';
 
 // Type for machine document with collectionMetersHistory
 type MachineWithHistory = {
@@ -29,28 +29,28 @@ type MachineWithHistory = {
 export async function POST(_request: NextRequest) {
   try {
     await connectDB();
-    console.warn("🔧 Starting fix all reports...");
+    console.warn('🔧 Starting fix all reports...');
 
     // Check authentication (skip in development)
-    if (process.env.NODE_ENV === "development") {
-      console.warn("🔧 Skipping authentication in development mode");
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🔧 Skipping authentication in development mode');
     } else {
       const userId = await getUserIdFromServer();
       if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
       const user = await getUserById(userId);
       if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
       if (
-        !user.roles?.includes("admin") &&
-        !user.roles?.includes("evolution admin")
+        !user.roles?.includes('admin') &&
+        !user.roles?.includes('evolution admin')
       ) {
         return NextResponse.json(
-          { error: "Insufficient permissions" },
+          { error: 'Insufficient permissions' },
           { status: 403 }
         );
       }
@@ -89,7 +89,7 @@ export async function POST(_request: NextRequest) {
       for (const collection of collections) {
         // Check prevIn/prevOut using correct logic
         const machine = await Machine.findById(collection.machineId).lean();
-        
+
         if (machine) {
           // Find the actual previous collection to get correct prevIn/prevOut values
           const actualPreviousCollection = await Collections.findOne({
@@ -97,8 +97,16 @@ export async function POST(_request: NextRequest) {
             $and: [
               {
                 $or: [
-                  { collectionTime: { $lt: collection.collectionTime || collection.timestamp } },
-                  { timestamp: { $lt: collection.collectionTime || collection.timestamp } },
+                  {
+                    collectionTime: {
+                      $lt: collection.collectionTime || collection.timestamp,
+                    },
+                  },
+                  {
+                    timestamp: {
+                      $lt: collection.collectionTime || collection.timestamp,
+                    },
+                  },
                 ],
               },
               {
@@ -113,11 +121,11 @@ export async function POST(_request: NextRequest) {
           if (actualPreviousCollection) {
             const expectedPrevIn = actualPreviousCollection.metersIn || 0;
             const expectedPrevOut = actualPreviousCollection.metersOut || 0;
-            
+
             // Allow for minor precision differences (within 0.1)
             const prevInDiff = Math.abs(collection.prevIn - expectedPrevIn);
             const prevOutDiff = Math.abs(collection.prevOut - expectedPrevOut);
-            
+
             if (prevInDiff > 0.1 || prevOutDiff > 0.1) {
               hasIssues = true;
               break;
@@ -134,7 +142,7 @@ export async function POST(_request: NextRequest) {
 
       // Check machine history issues
       if (!hasIssues) {
-        const machineIds = [...new Set(collections.map((c) => c.machineId))];
+        const machineIds = [...new Set(collections.map(c => c.machineId))];
         for (const machineId of machineIds) {
           const machine = (await Machine.findById(
             machineId
@@ -189,30 +197,32 @@ export async function POST(_request: NextRequest) {
           if (machine && machine.collectionMetersHistory) {
             const history = machine.collectionMetersHistory;
             const historyToKeep = [];
-            
+
             for (let i = 0; i < history.length; i++) {
               const entry = history[i];
-              
+
               // Check if the report referenced by this history entry exists
               if (entry.locationReportId) {
                 const reportExists = await CollectionReport.findOne({
                   locationReportId: entry.locationReportId,
                 }).lean();
-                
+
                 if (!reportExists) {
-                  console.warn(`Removing orphaned history entry for non-existent report: ${entry.locationReportId}`);
+                  console.warn(
+                    `Removing orphaned history entry for non-existent report: ${entry.locationReportId}`
+                  );
                   issuesFixedForReport++;
                   continue; // Skip this entry
                 }
               }
-              
+
               historyToKeep.push(entry);
             }
-            
+
             // Remove duplicate entries (same timestamp and locationReportId)
             const seenEntries = new Map();
             const finalHistory = [];
-            
+
             for (const entry of historyToKeep) {
               const key = `${entry.timestamp}-${entry.locationReportId}`;
               if (!seenEntries.has(key)) {
@@ -223,7 +233,7 @@ export async function POST(_request: NextRequest) {
                 issuesFixedForReport++;
               }
             }
-            
+
             // Update the machine with the cleaned history
             if (finalHistory.length !== history.length) {
               await Machine.findByIdAndUpdate(collection.machineId, {
@@ -231,9 +241,11 @@ export async function POST(_request: NextRequest) {
                   collectionMetersHistory: finalHistory,
                 },
               });
-              console.warn(`Cleaned machine ${collection.machineId} history: ${history.length} -> ${finalHistory.length} entries`);
+              console.warn(
+                `Cleaned machine ${collection.machineId} history: ${history.length} -> ${finalHistory.length} entries`
+              );
             }
-            
+
             // Fix incorrect prevMeters values
             for (let i = 1; i < finalHistory.length; i++) {
               const entry = finalHistory[i];
@@ -259,8 +271,10 @@ export async function POST(_request: NextRequest) {
           }
 
           // Fix collection prevIn/prevOut issues using correct logic
-          const machineForFix = await Machine.findById(collection.machineId).lean();
-          
+          const machineForFix = await Machine.findById(
+            collection.machineId
+          ).lean();
+
           if (machineForFix) {
             // Find the actual previous collection to get correct prevIn/prevOut values
             const actualPreviousCollection = await Collections.findOne({
@@ -268,8 +282,16 @@ export async function POST(_request: NextRequest) {
               $and: [
                 {
                   $or: [
-                    { collectionTime: { $lt: collection.collectionTime || collection.timestamp } },
-                    { timestamp: { $lt: collection.collectionTime || collection.timestamp } },
+                    {
+                      collectionTime: {
+                        $lt: collection.collectionTime || collection.timestamp,
+                      },
+                    },
+                    {
+                      timestamp: {
+                        $lt: collection.collectionTime || collection.timestamp,
+                      },
+                    },
                   ],
                 },
                 {
@@ -284,11 +306,13 @@ export async function POST(_request: NextRequest) {
             if (actualPreviousCollection) {
               const expectedPrevIn = actualPreviousCollection.metersIn || 0;
               const expectedPrevOut = actualPreviousCollection.metersOut || 0;
-              
+
               // Allow for minor precision differences (within 0.1)
               const prevInDiff = Math.abs(collection.prevIn - expectedPrevIn);
-              const prevOutDiff = Math.abs(collection.prevOut - expectedPrevOut);
-              
+              const prevOutDiff = Math.abs(
+                collection.prevOut - expectedPrevOut
+              );
+
               if (prevInDiff > 0.1 || prevOutDiff > 0.1) {
                 await Collections.findByIdAndUpdate(collection._id, {
                   $set: {
@@ -336,7 +360,7 @@ export async function POST(_request: NextRequest) {
 
         if (duplicateReports.length > 0) {
           // Find the report with the most collections (most accurate)
-          let bestReport: typeof report | typeof duplicateReports[0] = report;
+          let bestReport: typeof report | (typeof duplicateReports)[0] = report;
           let maxCollections = collections.length;
 
           for (const duplicate of duplicateReports) {
@@ -352,13 +376,17 @@ export async function POST(_request: NextRequest) {
           }
 
           // Delete all other duplicate reports
-          const reportsToDelete = duplicateReports.filter(r => r._id.toString() !== bestReport._id.toString());
-          
+          const reportsToDelete = duplicateReports.filter(
+            r => r._id.toString() !== bestReport._id.toString()
+          );
+
           for (const reportToDelete of reportsToDelete) {
             // Delete the report and its collections
             await CollectionReport.findByIdAndDelete(reportToDelete._id);
-            await Collections.deleteMany({ locationReportId: reportToDelete.locationReportId });
-            
+            await Collections.deleteMany({
+              locationReportId: reportToDelete.locationReportId,
+            });
+
             // Revert machine collectionMeters to the previous collection's meters
             const collectionsToRevert = await Collections.find({
               locationReportId: reportToDelete.locationReportId,
@@ -370,12 +398,25 @@ export async function POST(_request: NextRequest) {
                 $and: [
                   {
                     $or: [
-                      { collectionTime: { $lt: collection.collectionTime || collection.timestamp } },
-                      { timestamp: { $lt: collection.collectionTime || collection.timestamp } },
+                      {
+                        collectionTime: {
+                          $lt:
+                            collection.collectionTime || collection.timestamp,
+                        },
+                      },
+                      {
+                        timestamp: {
+                          $lt:
+                            collection.collectionTime || collection.timestamp,
+                        },
+                      },
                     ],
                   },
                   {
-                    $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+                    $or: [
+                      { deletedAt: { $exists: false } },
+                      { deletedAt: null },
+                    ],
                   },
                   { isCompleted: true },
                 ],
@@ -386,15 +427,19 @@ export async function POST(_request: NextRequest) {
               if (previousCollection) {
                 await Machine.findByIdAndUpdate(collection.machineId, {
                   $set: {
-                    "collectionMeters.metersIn": previousCollection.metersIn || 0,
-                    "collectionMeters.metersOut": previousCollection.metersOut || 0,
+                    'collectionMeters.metersIn':
+                      previousCollection.metersIn || 0,
+                    'collectionMeters.metersOut':
+                      previousCollection.metersOut || 0,
                   },
                 });
               }
             }
 
             issuesFixedForReport++;
-            console.warn(`   🗑️ Deleted duplicate report ${reportToDelete._id}`);
+            console.warn(
+              `   🗑️ Deleted duplicate report ${reportToDelete._id}`
+            );
           }
         }
 
@@ -404,7 +449,7 @@ export async function POST(_request: NextRequest) {
           fixResults.totalIssuesFixed += issuesFixedForReport;
           fixResults.details.push({
             reportId,
-            reportName: report.location || "Unknown",
+            reportName: report.location || 'Unknown',
             issuesFixed: issuesFixedForReport,
           });
           console.warn(
@@ -415,7 +460,7 @@ export async function POST(_request: NextRequest) {
         console.error(`   ❌ Error fixing report ${reportId}:`, error);
         fixResults.errors.push({
           reportId,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
@@ -433,12 +478,12 @@ export async function POST(_request: NextRequest) {
       results: fixResults,
     });
   } catch (error) {
-    console.error("Error fixing all reports:", error);
+    console.error('Error fixing all reports:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

@@ -3,9 +3,9 @@
  * Extracts complex sorting logic from the Locations page
  */
 
-import { useState, useEffect, useMemo } from "react";
-import { AggregatedLocation } from "@/shared/types/common";
-import { LocationFilter, LocationSortOption } from "@/lib/types/location";
+import { useState, useEffect, useMemo } from 'react';
+import { AggregatedLocation } from '@/shared/types/common';
+import { LocationFilter, LocationSortOption } from '@/lib/types/location';
 
 type UseLocationSortingProps = {
   locationData: AggregatedLocation[];
@@ -16,13 +16,13 @@ type UseLocationSortingReturn = {
   filtered: AggregatedLocation[];
   sortedData: AggregatedLocation[];
   currentPage: number;
-  sortOrder: "asc" | "desc";
+  sortOrder: 'asc' | 'desc';
   sortOption: LocationSortOption;
   sortedLocations: AggregatedLocation[];
   paginatedLocations: AggregatedLocation[];
   totalPages: number;
   setCurrentPage: (page: number) => void;
-  setSortOrder: (order: "asc" | "desc") => void;
+  setSortOrder: (order: 'asc' | 'desc') => void;
   setSortOption: (option: LocationSortOption) => void;
   handleSort: (option: LocationSortOption) => void;
   handleColumnSort: (option: LocationSortOption) => void;
@@ -34,18 +34,18 @@ export function useLocationSorting({
   selectedFilters,
 }: UseLocationSortingProps): UseLocationSortingReturn {
   const [currentPage, setCurrentPage] = useState(0);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [sortOption, setSortOption] = useState<LocationSortOption>("moneyIn");
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortOption, setSortOption] = useState<LocationSortOption>('moneyIn');
 
   // Memoized filtered data to prevent unnecessary recalculations
   const filtered = useMemo(() => {
-    const result = locationData.filter((loc) => {
+    const result = locationData.filter(loc => {
       // Filter by selected filters only (search is now handled by backend)
       if (selectedFilters.length === 0) return true;
-      return selectedFilters.some((filter) => {
-        if (filter === "LocalServersOnly" && loc.isLocalServer) return true;
-        if (filter === "SMIBLocationsOnly" && !loc.noSMIBLocation) return true;
-        if (filter === "NoSMIBLocation" && loc.noSMIBLocation === true)
+      return selectedFilters.some(filter => {
+        if (filter === 'LocalServersOnly' && loc.isLocalServer) return true;
+        if (filter === 'SMIBLocationsOnly' && !loc.noSMIBLocation) return true;
+        if (filter === 'NoSMIBLocation' && loc.noSMIBLocation === true)
           return true;
         return false;
       });
@@ -59,12 +59,12 @@ export function useLocationSorting({
       const valA = a[sortOption] ?? 0;
       const valB = b[sortOption] ?? 0;
 
-      if (typeof valA === "string" && typeof valB === "string") {
-        return sortOrder === "asc"
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return sortOrder === 'asc'
           ? valA.localeCompare(valB)
           : valB.localeCompare(valA);
-      } else if (typeof valA === "number" && typeof valB === "number") {
-        return sortOrder === "asc" ? valA - valB : valB - valA;
+      } else if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
       } else {
         // Fallback for mixed types or other types
         return 0;
@@ -73,7 +73,7 @@ export function useLocationSorting({
   }, [filtered, sortOrder, sortOption]);
 
   const handleSortToggle = () => {
-    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
+    setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
   };
 
   const handleColumnSort = (column: LocationSortOption) => {
@@ -81,7 +81,7 @@ export function useLocationSorting({
       handleSortToggle();
     } else {
       setSortOption(column);
-      setSortOrder("desc");
+      setSortOrder('desc');
     }
   };
 

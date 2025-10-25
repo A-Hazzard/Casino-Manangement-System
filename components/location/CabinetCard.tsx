@@ -1,7 +1,7 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { formatCurrency } from "@/lib/utils/formatting";
-import { GamingMachine as CabinetDetail } from "@/shared/types/entities";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { formatCurrency } from '@/lib/utils/formatting';
+import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 
 type ExtendedCabinetCardProps = {
   cabinet: CabinetDetail;
@@ -35,34 +35,39 @@ const CabinetCard: React.FC<ExtendedCabinetCardProps> = ({
       animate="visible"
       whileHover={{ scale: 1.03 }}
       transition={{ duration: 0.3 }}
-      className={`bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
-        isSelected ? "ring-2 ring-buttonActive" : ""
+      className={`cursor-pointer overflow-hidden rounded-lg bg-white shadow-sm transition-shadow hover:shadow-md ${
+        isSelected ? 'ring-2 ring-buttonActive' : ''
       }`}
-      onClick={() => onClick(cabinet._id, cabinet.locationId || "")}
+      onClick={() => onClick(cabinet._id, cabinet.locationId || '')}
     >
       <div className="p-4">
-        <div className="flex justify-between items-start mb-3">
+        <div className="mb-3 flex items-start justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-800">
-              {cabinet.assetNumber || (cabinet as Record<string, unknown>).serialNumber as string || (cabinet as Record<string, unknown>).origSerialNumber as string || (cabinet as Record<string, unknown>).machineId as string || "No ID"}
+              {cabinet.assetNumber ||
+                ((cabinet as Record<string, unknown>).serialNumber as string) ||
+                ((cabinet as Record<string, unknown>)
+                  .origSerialNumber as string) ||
+                ((cabinet as Record<string, unknown>).machineId as string) ||
+                'No ID'}
             </h3>
             <p className="text-xs text-gray-500">
-              {cabinet.installedGame || cabinet.game || "No Game"}
+              {cabinet.installedGame || cabinet.game || 'No Game'}
             </p>
           </div>
           {/* Status indicator - kept for consistency, logic based on lastActivity */}
           <div
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
+            className={`rounded-full px-2 py-1 text-xs font-medium ${
               isOnline
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
             }`}
           >
-            {isOnline ? "Online" : "Offline"}
+            {isOnline ? 'Online' : 'Offline'}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
+        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2">
           <div>
             <p className="text-xs text-gray-500">Money In</p>
             <p className="font-medium">

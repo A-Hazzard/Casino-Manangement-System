@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import { NextRequest, NextResponse } from 'next/server';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { UpdateLocationData } from "@/lib/types/location";
-import { apiLogger } from "@/app/api/lib/utils/logger";
-import { generateMongoId } from "@/lib/utils/id";
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { UpdateLocationData } from '@/lib/types/location';
+import { apiLogger } from '@/app/api/lib/utils/logger';
+import { generateMongoId } from '@/lib/utils/id';
 
 import {
   logActivity,
   calculateChanges,
-} from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "../lib/helpers/users";
-import { getClientIP } from "@/lib/utils/ipAddress";
-import { Countries } from "@/app/api/lib/models/countries";
+} from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '../lib/helpers/users';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { Countries } from '@/app/api/lib/models/countries';
 
 export async function GET(request: Request) {
   const context = apiLogger.createContext(
     request as NextRequest,
-    "/api/locations"
+    '/api/locations'
   );
   apiLogger.startLogging();
 
@@ -26,19 +26,19 @@ export async function GET(request: Request) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get("licencee");
-    const minimal = searchParams.get("minimal") === "1";
+    const licencee = searchParams.get('licencee');
+    const minimal = searchParams.get('minimal') === '1';
 
     // Build query filter
     const queryFilter: Record<string, unknown> = {};
-    if (licencee && licencee !== "all") {
-      queryFilter["rel.licencee"] = licencee;
+    if (licencee && licencee !== 'all') {
+      queryFilter['rel.licencee'] = licencee;
     }
 
     // Exclude deleted locations
     queryFilter.$or = [
       { deletedAt: null },
-      { deletedAt: { $lt: new Date("2020-01-01") } },
+      { deletedAt: { $lt: new Date('2020-01-01') } },
     ];
 
     // Fetch locations. If minimal is requested, project minimal fields only.
@@ -57,8 +57,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ locations: locationsToReturn }, { status: 200 });
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred.";
-    apiLogger.logError(context, "Failed to fetch locations", errorMessage);
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    apiLogger.logError(context, 'Failed to fetch locations', errorMessage);
     return NextResponse.json({ success: false, message: errorMessage });
   }
 }
@@ -91,50 +91,50 @@ export async function POST(request: Request) {
     if (!name) {
       // console.log("Validation failed: Location name is required");
       return NextResponse.json(
-        { success: false, message: "Location name is required" },
+        { success: false, message: 'Location name is required' },
         { status: 400 }
       );
     }
 
     // Additional backend validations mirroring frontend
     if (
-      typeof profitShare === "number" &&
+      typeof profitShare === 'number' &&
       (profitShare < 0 || profitShare > 100)
     ) {
       return NextResponse.json(
-        { success: false, message: "Profit share must be between 0 and 100" },
+        { success: false, message: 'Profit share must be between 0 and 100' },
         { status: 400 }
       );
     }
     if (
-      typeof gameDayOffset === "number" &&
+      typeof gameDayOffset === 'number' &&
       (gameDayOffset < 0 || gameDayOffset > 23)
     ) {
       return NextResponse.json(
         {
           success: false,
-          message: "Day start time (gameDayOffset) must be between 0 and 23",
+          message: 'Day start time (gameDayOffset) must be between 0 and 23',
         },
         { status: 400 }
       );
     }
-    if (country && typeof country !== "string") {
+    if (country && typeof country !== 'string') {
       return NextResponse.json(
-        { success: false, message: "Country must be a country ID string" },
+        { success: false, message: 'Country must be a country ID string' },
         { status: 400 }
       );
     }
 
     // If a country ID is provided, verify it exists (country is optional)
     // console.log("Validating country:", country);
-    if (country && typeof country === "string" && country.trim().length > 0) {
+    if (country && typeof country === 'string' && country.trim().length > 0) {
       // console.log("Looking up country with ID:", country);
       const countryDoc = await Countries.findById(country).lean();
       // console.log("Country found:", !!countryDoc);
       if (!countryDoc) {
         // console.log("Validation failed: Invalid country ID");
         return NextResponse.json(
-          { success: false, message: "Invalid country ID" },
+          { success: false, message: 'Invalid country ID' },
           { status: 400 }
         );
       }
@@ -147,11 +147,11 @@ export async function POST(request: Request) {
       name,
       country,
       address: {
-        street: address?.street || "",
-        city: address?.city || "",
+        street: address?.street || '',
+        city: address?.city || '',
       },
       rel: {
-        licencee: rel?.licencee || "",
+        licencee: rel?.licencee || '',
       },
       profitShare: profitShare || 50,
       gameDayOffset: gameDayOffset || 8,
@@ -189,92 +189,92 @@ export async function POST(request: Request) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const createChanges = [
-          { field: "name", oldValue: null, newValue: name },
-          { field: "country", oldValue: null, newValue: country },
+          { field: 'name', oldValue: null, newValue: name },
+          { field: 'country', oldValue: null, newValue: country },
 
           {
-            field: "address.street",
+            field: 'address.street',
             oldValue: null,
-            newValue: address?.street || "",
+            newValue: address?.street || '',
           },
           {
-            field: "address.city",
+            field: 'address.city',
             oldValue: null,
-            newValue: address?.city || "",
+            newValue: address?.city || '',
           },
           {
-            field: "rel.licencee",
+            field: 'rel.licencee',
             oldValue: null,
-            newValue: rel?.licencee || "",
+            newValue: rel?.licencee || '',
           },
-          { field: "profitShare", oldValue: null, newValue: profitShare || 50 },
+          { field: 'profitShare', oldValue: null, newValue: profitShare || 50 },
           {
-            field: "isLocalServer",
+            field: 'isLocalServer',
             oldValue: null,
             newValue: isLocalServer || false,
           },
           {
-            field: "geoCoords.latitude",
+            field: 'geoCoords.latitude',
             oldValue: null,
             newValue: geoCoords?.latitude || 0,
           },
           {
-            field: "geoCoords.longitude",
+            field: 'geoCoords.longitude',
             oldValue: null,
             newValue: geoCoords?.longitude || 0,
           },
 
           {
-            field: "address.street",
+            field: 'address.street',
             oldValue: null,
-            newValue: address?.street || "",
+            newValue: address?.street || '',
           },
           {
-            field: "address.city",
+            field: 'address.city',
             oldValue: null,
-            newValue: address?.city || "",
+            newValue: address?.city || '',
           },
           {
-            field: "rel.licencee",
+            field: 'rel.licencee',
             oldValue: null,
-            newValue: rel?.licencee || "",
+            newValue: rel?.licencee || '',
           },
-          { field: "profitShare", oldValue: null, newValue: profitShare || 50 },
+          { field: 'profitShare', oldValue: null, newValue: profitShare || 50 },
           {
-            field: "isLocalServer",
+            field: 'isLocalServer',
             oldValue: null,
             newValue: isLocalServer || false,
           },
           {
-            field: "geoCoords.latitude",
+            field: 'geoCoords.latitude',
             oldValue: null,
             newValue: geoCoords?.latitude || 0,
           },
           {
-            field: "geoCoords.longitude",
+            field: 'geoCoords.longitude',
             oldValue: null,
             newValue: geoCoords?.longitude || 0,
           },
         ];
 
         await logActivity({
-          action: "CREATE",
+          action: 'CREATE',
           details: `Created new location "${name}" in ${country}`,
           ipAddress: getClientIP(request as NextRequest) || undefined,
           userAgent:
-            (request as NextRequest).headers.get("user-agent") || undefined,
+            (request as NextRequest).headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "location",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'location',
             resourceId: locationId,
             resourceName: name,
             changes: createChanges,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
@@ -284,8 +284,8 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error("API Error in POST /api/locations:", errorMessage);
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    console.error('API Error in POST /api/locations:', errorMessage);
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
@@ -313,7 +313,7 @@ export async function PUT(request: Request) {
 
     if (!locationName) {
       return NextResponse.json(
-        { success: false, message: "Location ID is required" },
+        { success: false, message: 'Location ID is required' },
         { status: 400 }
       );
     }
@@ -324,13 +324,13 @@ export async function PUT(request: Request) {
         _id: locationName,
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date("2020-01-01") } },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
         ],
       });
 
       if (!location) {
         return NextResponse.json(
-          { success: false, message: "Location not found" },
+          { success: false, message: 'Location not found' },
           { status: 404 }
         );
       }
@@ -338,50 +338,50 @@ export async function PUT(request: Request) {
       const locationId = location._id.toString();
 
       // Backend validations mirroring frontend for provided fields
-      if (name !== undefined && typeof name !== "string") {
+      if (name !== undefined && typeof name !== 'string') {
         return NextResponse.json(
-          { success: false, message: "Location name must be a string" },
+          { success: false, message: 'Location name must be a string' },
           { status: 400 }
         );
       }
-      if (country !== undefined && typeof country !== "string") {
+      if (country !== undefined && typeof country !== 'string') {
         return NextResponse.json(
-          { success: false, message: "Country must be a country ID string" },
+          { success: false, message: 'Country must be a country ID string' },
           { status: 400 }
         );
       }
       if (
         profitShare !== undefined &&
-        (typeof profitShare !== "number" ||
+        (typeof profitShare !== 'number' ||
           profitShare < 0 ||
           profitShare > 100)
       ) {
         return NextResponse.json(
-          { success: false, message: "Profit share must be between 0 and 100" },
+          { success: false, message: 'Profit share must be between 0 and 100' },
           { status: 400 }
         );
       }
       if (
         gameDayOffset !== undefined &&
-        (typeof gameDayOffset !== "number" ||
+        (typeof gameDayOffset !== 'number' ||
           gameDayOffset < 0 ||
           gameDayOffset > 23)
       ) {
         return NextResponse.json(
           {
             success: false,
-            message: "Day start time (gameDayOffset) must be between 0 and 23",
+            message: 'Day start time (gameDayOffset) must be between 0 and 23',
           },
           { status: 400 }
         );
       }
 
       // Verify country exists when updating (country is optional)
-      if (country && typeof country === "string" && country.trim().length > 0) {
+      if (country && typeof country === 'string' && country.trim().length > 0) {
         const countryDoc = await Countries.findById(country).lean();
         if (!countryDoc) {
           return NextResponse.json(
-            { success: false, message: "Invalid country ID" },
+            { success: false, message: 'Invalid country ID' },
             { status: 400 }
           );
         }
@@ -408,18 +408,18 @@ export async function PUT(request: Request) {
       }
 
       // Handle primitive types with explicit checks to handle zero values
-      if (typeof profitShare === "number") updateData.profitShare = profitShare;
-      if (typeof gameDayOffset === "number")
+      if (typeof profitShare === 'number') updateData.profitShare = profitShare;
+      if (typeof gameDayOffset === 'number')
         updateData.gameDayOffset = gameDayOffset;
-      if (typeof isLocalServer === "boolean")
+      if (typeof isLocalServer === 'boolean')
         updateData.isLocalServer = isLocalServer;
 
       // Handle nested geoCoords object
       if (geoCoords) {
         updateData.geoCoords = {};
-        if (typeof geoCoords.latitude === "number")
+        if (typeof geoCoords.latitude === 'number')
           updateData.geoCoords.latitude = geoCoords.latitude;
-        if (typeof geoCoords.longitude === "number")
+        if (typeof geoCoords.longitude === 'number')
           updateData.geoCoords.longitude = geoCoords.longitude;
       }
 
@@ -427,7 +427,7 @@ export async function PUT(request: Request) {
       if (billValidatorOptions) {
         updateData.billValidatorOptions = Object.fromEntries(
           Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
-        ) as UpdateLocationData["billValidatorOptions"];
+        ) as UpdateLocationData['billValidatorOptions'];
 
         updateData.billValidatorOptions = billValidatorOptions;
       }
@@ -446,7 +446,7 @@ export async function PUT(request: Request) {
 
       if (result.modifiedCount === 0) {
         return NextResponse.json(
-          { success: false, message: "No changes were made to the location" },
+          { success: false, message: 'No changes were made to the location' },
           { status: 400 }
         );
       }
@@ -458,44 +458,44 @@ export async function PUT(request: Request) {
           const changes = calculateChanges(originalLocation, updateData);
 
           await logActivity({
-            action: "UPDATE",
+            action: 'UPDATE',
             details: `Updated location "${location.name}"`,
             ipAddress: getClientIP(request as NextRequest) || undefined,
             userAgent:
-              (request as NextRequest).headers.get("user-agent") || undefined,
+              (request as NextRequest).headers.get('user-agent') || undefined,
             metadata: {
               userId: currentUser._id as string,
               userEmail: currentUser.emailAddress as string,
-              userRole: (currentUser.roles as string[])?.[0] || "user",
-              resource: "location",
+              userRole: (currentUser.roles as string[])?.[0] || 'user',
+              resource: 'location',
               resourceId: locationId,
               resourceName: location.name,
               changes: changes,
             },
           });
         } catch (logError) {
-          console.error("Failed to log activity:", logError);
+          console.error('Failed to log activity:', logError);
         }
       }
 
       return NextResponse.json(
         {
           success: true,
-          message: "Location updated successfully",
+          message: 'Location updated successfully',
           locationId,
         },
         { status: 200 }
       );
     } catch (dbError) {
-      console.error("Database error:", dbError);
+      console.error('Database error:', dbError);
       return NextResponse.json(
-        { success: false, message: "Database operation failed" },
+        { success: false, message: 'Database operation failed' },
         { status: 500 }
       );
     }
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred.";
+      error instanceof Error ? error.message : 'An unknown error occurred.';
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
@@ -507,11 +507,11 @@ export async function DELETE(request: Request) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+    const id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json(
-        { success: false, message: "Location ID is required" },
+        { success: false, message: 'Location ID is required' },
         { status: 400 }
       );
     }
@@ -520,7 +520,7 @@ export async function DELETE(request: Request) {
     const locationToDelete = await GamingLocations.findById(id);
     if (!locationToDelete) {
       return NextResponse.json(
-        { success: false, message: "Location not found" },
+        { success: false, message: 'Location not found' },
         { status: 404 }
       );
     }
@@ -537,120 +537,120 @@ export async function DELETE(request: Request) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const deleteChanges = [
-          { field: "name", oldValue: locationToDelete.name, newValue: null },
+          { field: 'name', oldValue: locationToDelete.name, newValue: null },
 
           {
-            field: "country",
+            field: 'country',
             oldValue: locationToDelete.country,
             newValue: null,
           },
           {
-            field: "address.street",
-            oldValue: locationToDelete.address?.street || "",
+            field: 'address.street',
+            oldValue: locationToDelete.address?.street || '',
             newValue: null,
           },
           {
-            field: "address.city",
-            oldValue: locationToDelete.address?.city || "",
+            field: 'address.city',
+            oldValue: locationToDelete.address?.city || '',
             newValue: null,
           },
           {
-            field: "rel.licencee",
-            oldValue: locationToDelete.rel?.licencee || "",
+            field: 'rel.licencee',
+            oldValue: locationToDelete.rel?.licencee || '',
             newValue: null,
           },
           {
-            field: "profitShare",
+            field: 'profitShare',
             oldValue: locationToDelete.profitShare,
             newValue: null,
           },
           {
-            field: "isLocalServer",
+            field: 'isLocalServer',
             oldValue: locationToDelete.isLocalServer,
             newValue: null,
           },
           {
-            field: "geoCoords.latitude",
+            field: 'geoCoords.latitude',
             oldValue: locationToDelete.geoCoords?.latitude || 0,
             newValue: null,
           },
           {
-            field: "geoCoords.longitude",
+            field: 'geoCoords.longitude',
             oldValue: locationToDelete.geoCoords?.longitude || 0,
             newValue: null,
           },
 
           {
-            field: "country",
+            field: 'country',
             oldValue: locationToDelete.country,
             newValue: null,
           },
           {
-            field: "address.street",
-            oldValue: locationToDelete.address?.street || "",
+            field: 'address.street',
+            oldValue: locationToDelete.address?.street || '',
             newValue: null,
           },
           {
-            field: "address.city",
-            oldValue: locationToDelete.address?.city || "",
+            field: 'address.city',
+            oldValue: locationToDelete.address?.city || '',
             newValue: null,
           },
           {
-            field: "rel.licencee",
-            oldValue: locationToDelete.rel?.licencee || "",
+            field: 'rel.licencee',
+            oldValue: locationToDelete.rel?.licencee || '',
             newValue: null,
           },
           {
-            field: "profitShare",
+            field: 'profitShare',
             oldValue: locationToDelete.profitShare,
             newValue: null,
           },
           {
-            field: "isLocalServer",
+            field: 'isLocalServer',
             oldValue: locationToDelete.isLocalServer,
             newValue: null,
           },
           {
-            field: "geoCoords.latitude",
+            field: 'geoCoords.latitude',
             oldValue: locationToDelete.geoCoords?.latitude || 0,
             newValue: null,
           },
           {
-            field: "geoCoords.longitude",
+            field: 'geoCoords.longitude',
             oldValue: locationToDelete.geoCoords?.longitude || 0,
             newValue: null,
           },
         ];
 
         await logActivity({
-          action: "DELETE",
+          action: 'DELETE',
           details: `Deleted location "${locationToDelete.name}"`,
           ipAddress: getClientIP(request as NextRequest) || undefined,
           userAgent:
-            (request as NextRequest).headers.get("user-agent") || undefined,
+            (request as NextRequest).headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "location",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'location',
             resourceId: id,
             resourceName: locationToDelete.name,
             changes: deleteChanges,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
     return NextResponse.json(
-      { success: true, message: "Location deleted successfully" },
+      { success: true, message: 'Location deleted successfully' },
       { status: 200 }
     );
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error("API Error in DELETE /api/locations:", errorMessage);
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    console.error('API Error in DELETE /api/locations:', errorMessage);
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }

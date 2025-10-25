@@ -40,12 +40,14 @@ This guide covers all financial metrics used in the Evolution One Casino Managem
 This document provides a comprehensive guide to the financial metrics used in the Evolution One Casino Management System. These metrics drive all financial calculations, reporting, and business intelligence features throughout the system.
 
 ### Key Principles
+
 - **Accuracy**: All calculations follow standard casino industry practices
 - **Transparency**: Clear formulas and data sources for all metrics
 - **Compliance**: Metrics support regulatory reporting requirements
 - **Real-time**: Live calculations for operational decision making
 
 ### System Integration
+
 - **Dashboard Analytics**: Real-time financial performance monitoring
 - **Collection System**: Automated collection and reporting calculations
 - **Location Management**: Location-specific financial tracking
@@ -61,6 +63,7 @@ This document provides a comprehensive guide to the financial metrics used in th
 - **Purpose**: Tracks actual cash flow into machines
 
 ### Money Out (Total Cancelled Credits)
+
 - **Definition**: Amount of money removed from machines through manual payouts
 
 - **Definition**: The total amount of money physically inserted into slot machines by players
@@ -69,38 +72,39 @@ This document provides a comprehensive guide to the financial metrics used in th
 - **Purpose**: Tracks actual cash flow into machines
 
 ### Money Out (Total Cancelled Credits)
+
 - **Definition**: The amount of money removed from machines through manual payouts
 - **Data Source**: `movement.totalCancelledCredits` field in meter readings
 - **UI Usage**: Displayed in Financial Metrics Cards and Location Tables
 - **Purpose**: Tracks manual payouts processed by casino staff
 
 ### Gross Revenue
+
 - **Definition**: Net earnings after payouts (Money In - Money Out)
 - **Calculation**: `gross = moneyIn - moneyOut`
 - **UI Usage**: Primary financial metric in all reports and dashboards
 - **Purpose**: Shows actual profit from machine operations
 
 ### Jackpot
+
 - **Definition**: Total jackpot amounts paid out by machines
 - **Data Source**: `movement.jackpot` field in meter readings
 - **UI Usage**: Displayed in Location Tables and Machine Performance
 - **Purpose**: Tracks large payouts and jackpot activity
 
 ### Handle (Coin In)
+
 - **Definition**: Total value of bets placed in machines
 - **Data Source**: `movement.coinIn` field in meter readings
 - **UI Usage**: Used in Machine Evaluation and Performance Analysis
 - **Purpose**: Represents total wagering activity
 
-
-
 ### Average Wager Per Game
+
 - **Definition**: Average bet amount per game played
 - **Calculation**: `handle / gamesPlayed`
 - **UI Usage**: Machine performance metrics and evaluation
 - **Purpose**: Shows player betting patterns
-
-
 
 ## Financial Calculations
 
@@ -113,6 +117,7 @@ Gross = Money In - Money Out
 ```
 
 Where:
+
 - **Money In** = `movement.drop` (total money physically inserted)
 - **Money Out** = `movement.totalCancelledCredits` (manual payouts)
 
@@ -120,6 +125,7 @@ Where:
 
 **Current Implementation:** Movement Delta Method
 **Formula:**
+
 ```
 SAS GROSS = Sum(movement.drop) - Sum(movement.totalCancelledCredits)
 ```
@@ -129,13 +135,15 @@ SAS GROSS = Sum(movement.drop) - Sum(movement.totalCancelledCredits)
 **Accuracy:** High - accounts for all meter readings in period
 
 **Implementation Across Pages:**
+
 - ✅ **Collection Report Details**: Queries meters for SAS time period
 - ✅ **Cabinets Page**: Uses MongoDB aggregation pipeline
-- ✅ **Location Details**: Uses MongoDB aggregation pipeline  
+- ✅ **Location Details**: Uses MongoDB aggregation pipeline
 - ✅ **Dashboard**: Aggregates across all locations
 - ✅ **Collection Reports**: Recalculates SAS GROSS on-the-fly
 
 **Deprecated Method:** First/Last Cumulative Method (no longer used)
+
 - Only used 2 data points (first and last meter readings)
 - Missed intermediate changes and corrections
 - Only worked with cumulative data (coinIn/coinOut fields)
@@ -143,15 +151,18 @@ SAS GROSS = Sum(movement.drop) - Sum(movement.totalCancelledCredits)
 ### Machine Performance Calculations
 
 #### Average Wager Per Game
+
 ```
 Average Wager = Handle / Games Played
 ```
 
 Where:
+
 - **Handle** = `movement.coinIn` (total bets placed)
 - **Games Played** = `movement.gamesPlayed` (total games)
 
 #### Location Aggregation
+
 ```
 
 Location Money In = Sum of all machine drops at location
@@ -162,6 +173,7 @@ Location Gross = Location Money In - Location Money Out
 ### Collection System Calculations
 
 #### Meter Movement Calculations
+
 ```
 Collection Drop = Current Meters In - Previous Meters In
 Collection Cancelled = Current Meters Out - Previous Meters Out
@@ -169,23 +181,28 @@ Collection Gross = Collection Drop - Collection Cancelled
 ```
 
 #### RAM Clear Meter Calculations
+
 When machine memory resets (rollover/reset):
+
 ```
 Collection Drop = (RAM Clear metersIn - Previous metersIn) + Current metersIn
 Collection Cancelled = (RAM Clear metersOut - Previous metersOut) + Current metersOut
 ```
 
 #### Amount to Collect Calculation
+
 ```
 Amount to Collect = Total Gross - Variance - Advance - Partner Profit + Previous Balance
 ```
 
 #### Partner Profit Calculation
+
 ```
 Partner Profit = Floor((Total Gross - Variance - Advance) × Profit Share % ÷ 100) - Taxes
 ```
 
 #### Balance Management
+
 ```
 New Balance = Previous Balance + Amount to Collect - Amount Collected + Balance Correction
 Balance Correction = Amount Collected (default, but editable)
@@ -194,6 +211,7 @@ Balance Correction = Amount Collected (default, but editable)
 ### Dashboard Calculations
 
 #### Financial Metrics Cards
+
 ```
 Total Money In = Sum of movement.drop across all locations
 Total Money Out = Sum of movement.totalCancelledCredits across all locations
@@ -201,6 +219,7 @@ Total Gross = Total Money In - Total Money Out
 ```
 
 #### Location Performance
+
 ```
 Location Revenue = Location Gross × (100 - Profit Share %) ÷ 100
 Partner Revenue = Location Gross × Profit Share % ÷ 100
@@ -209,21 +228,25 @@ Partner Revenue = Location Gross × Profit Share % ÷ 100
 ## Data Sources and Implementation
 
 ### Meter Readings (movement field)
+
 - **Source**: `meters` collection
 - **Fields**: `movement.drop`, `movement.totalCancelledCredits`, `movement.jackpot`, `movement.coinIn`, `movement.gamesPlayed`
 - **Purpose**: Raw meter data from slot machines
 
 ### Collection Data
+
 - **Source**: `collections` and `collectionReports` collections
 - **Fields**: `totalDrop`, `totalCancelled`, `totalGross`, `amountToCollect`, `partnerProfit`
 - **Purpose**: Processed collection calculations
 
 ### Location Data
+
 - **Source**: `gaminglocations` collection
 - **Fields**: `profitShare`, `collectionBalance`, `previousCollectionTime`
 - **Purpose**: Location-specific configuration and balances
 
 ### Machine Data
+
 - **Source**: `machines` collection
 - **Fields**: `collectionMeters.metersIn`, `collectionMeters.metersOut`, `collectionMetersHistory`
 - **Purpose**: Machine-specific collection history
@@ -231,6 +254,7 @@ Partner Revenue = Location Gross × Profit Share % ÷ 100
 ## Calculation Examples
 
 ### Example 1: Basic Machine Collection
+
 ```
 Machine Previous Meters In: 1,000
 Machine Current Meters In: 1,500
@@ -243,6 +267,7 @@ Machine Gross = 500 - 50 = 450
 ```
 
 ### Example 2: Location Profit Sharing
+
 ```
 Location Total Gross: 10,000
 Location Profit Share: 50%
@@ -256,6 +281,7 @@ Amount to Collect = 10,000 - 0 - 100 - 4,750 + 500 = 5,650
 ```
 
 ### Example 3: RAM Clear Scenario
+
 ```
 Machine Previous Meters In: 1,000
 Machine RAM Clear Meters In: 1,200
@@ -267,18 +293,21 @@ Collection Drop = (1,200 - 1,000) + 300 = 200 + 300 = 500
 ## Business Context
 
 ### Revenue Recognition
+
 - **Money In**: Recognized when physically inserted into machines
 - **Money Out**: Recognized when manually paid out to players
 - **Gross Revenue**: Net revenue after all payouts
 - **Partner Profit**: Location's share based on profit sharing agreement
 
 ### Collection Process
+
 - **Meter Readings**: Physical meter readings from machines
 - **Movement Calculation**: Difference between current and previous readings
 - **Amount Calculation**: Based on profit sharing and balance management
 - **Collection Entry**: Recording actual cash collected
 
 ### Balance Management
+
 - **Previous Balance**: Outstanding amount from previous collections
 - **Current Balance**: Updated balance after each collection
 - **Balance Correction**: Manual adjustments for discrepancies
@@ -287,12 +316,14 @@ Collection Drop = (1,200 - 1,000) + 300 = 200 + 300 = 500
 ## Performance Considerations
 
 ### Database Aggregation
+
 - **Location Aggregation**: Efficient grouping by location
 - **Time Period Filtering**: Optimized date range queries
 - **Machine Filtering**: Efficient machine-specific queries
 - **Indexing**: Proper indexes on frequently queried fields
 
 ### Real-time Calculations
+
 - **Dashboard Updates**: Live calculation of totals
 - **Collection Updates**: Real-time balance updates
 - **Variance Detection**: Immediate variance calculations
@@ -301,12 +332,14 @@ Collection Drop = (1,200 - 1,000) + 300 = 200 + 300 = 500
 ## Compliance and Reporting
 
 ### Regulatory Requirements
+
 - **Financial Accuracy**: Precise tracking of all money movements
 - **Audit Trail**: Complete history of all financial transactions
 - **Data Retention**: Proper archival of historical data
 - **Reporting**: Automated generation of compliance reports
 
 ### Data Integrity
+
 - **Validation Rules**: All financial inputs validated
 - **Constraint Checks**: Database constraints prevent invalid data
 - **Rollback Capability**: Ability to reverse changes if needed
@@ -315,14 +348,15 @@ Collection Drop = (1,200 - 1,000) + 300 = 200 + 300 = 500
 Location Total Gross = Σ(Machine Gross) for all machines at location
 Location Total Drop = Σ(Machine Money In) for all machines at location
 Location Total Money Out = Σ(Machine Money Out) for all machines at location
-```
+
+````
 
 ## UI Implementation
 
 ### Financial Metrics Cards
 The main dashboard displays three core metrics:
 - **Money In**: Total cash inserted into machines
-- **Money Out**: Total manual payouts from machines  
+- **Money Out**: Total manual payouts from machines
 - **Gross**: Net revenue (Money In - Money Out)
 
 ### Location Tables
@@ -356,7 +390,7 @@ type UIFinancialFields = {
     jackpot: number;                 // Jackpot payouts
     gamesPlayed: number;             // Total games played
   };
-  
+
   // Machine embedded data (fallback)
   sasMeters: {
     drop: number;                    // Money In fallback
@@ -366,17 +400,18 @@ type UIFinancialFields = {
     gamesPlayed: number;             // Games played fallback
   };
 }
-```
+````
 
 ### Collection Meters (for Collection Reports)
+
 ```typescript
 // Collection-specific fields
 type CollectionFields = {
   collectionMeters: {
-    metersIn: number;                // Money in machine at collection start
-    metersOut: number;               // Money in machine at collection end
+    metersIn: number; // Money in machine at collection start
+    metersOut: number; // Money in machine at collection end
   };
-}
+};
 ```
 
 ## API Implementation Standards
@@ -408,7 +443,7 @@ const grossFallback = moneyInFallback - moneyOutFallback;
 // ✅ CORRECT - Use readAt for meter date queries
 const metersQuery = {
   machine: machineId,
-  readAt: { $gte: startDate, $lte: endDate }
+  readAt: { $gte: startDate, $lte: endDate },
 };
 ```
 
@@ -419,6 +454,7 @@ const metersQuery = {
 **Scenario**: Main Casino location for one day
 
 **Input Data**:
+
 - Money In (Drop): $15,000
 - Money Out (Cancelled Credits): $500
 - Handle (Coin In): $50,000
@@ -426,6 +462,7 @@ const metersQuery = {
 - Jackpot: $1,000
 
 **Calculations**:
+
 ```
 Gross Revenue = Money In - Money Out
 Gross Revenue = $15,000 - $500 = $14,500
@@ -438,6 +475,7 @@ Average Wager = $50,000 / 2,500 = $20.00 per game
 ```
 
 **Results**:
+
 - **Gross Revenue**: $14,500
 - **Hold Percentage**: 29%
 - **Average Wager**: $20.00
@@ -447,12 +485,14 @@ Average Wager = $50,000 / 2,500 = $20.00 per game
 **Scenario**: Collecting from Machine A over 7 days
 
 **Meter Readings**:
+
 - Previous metersIn: 1,000
 - Current metersIn: 1,500
 - Previous metersOut: 200
 - Current metersOut: 300
 
 **Calculations**:
+
 ```
 Collection Drop = Current metersIn - Previous metersIn
 Collection Drop = 1,500 - 1,000 = 500
@@ -468,6 +508,7 @@ Amount to Collect = 500 / 2 = 250
 ```
 
 **Results**:
+
 - **Collection Drop**: $500
 - **Collection Cancelled**: $100
 - **Collection Gross**: $400
@@ -478,21 +519,25 @@ Amount to Collect = 500 / 2 = 250
 **Scenario**: Three locations for monthly reporting
 
 **Location A**:
+
 - Money In: $45,000
 - Money Out: $1,500
 - Handle: $150,000
 
 **Location B**:
+
 - Money In: $32,000
 - Money Out: $800
 - Handle: $120,000
 
 **Location C**:
+
 - Money In: $28,000
 - Money Out: $1,200
 - Handle: $100,000
 
 **Aggregated Calculations**:
+
 ```
 Total Money In = 45,000 + 32,000 + 28,000 = $105,000
 Total Money Out = 1,500 + 800 + 1,200 = $3,500
@@ -506,6 +551,7 @@ Overall Hold Percentage = (101,500 / 370,000) × 100 = 27.43%
 ```
 
 **Results**:
+
 - **Total Money In**: $105,000
 - **Total Money Out**: $3,500
 - **Total Gross Revenue**: $101,500
@@ -514,19 +560,23 @@ Overall Hold Percentage = (101,500 / 370,000) × 100 = 27.43%
 ## Business Context
 
 ### Financial Reporting
+
 These metrics support comprehensive financial reporting including:
+
 - **Daily Operations**: Real-time performance monitoring
 - **Monthly Reports**: Comprehensive financial analysis
 - **Regulatory Compliance**: Automated compliance reporting
 - **Business Intelligence**: Data-driven decision making
 
 ### Operational Benefits
+
 - **Performance Tracking**: Monitor machine and location performance
 - **Revenue Optimization**: Identify high-performing machines and locations
 - **Cost Management**: Track operational costs and efficiency
 - **Compliance**: Meet regulatory reporting requirements
 
 ### System Integration
+
 - **Dashboard Analytics**: Real-time financial performance display
 - **Collection Management**: Automated collection calculations
 - **Location Management**: Location-specific financial tracking

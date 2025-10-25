@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { fetchLicensees } from "@/lib/helpers/clientLicensees";
+import { useEffect, useState } from 'react';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 
 export function LicenceeSelector() {
   const {
@@ -24,7 +24,7 @@ export function LicenceeSelector() {
         const licenseesData = await fetchLicensees();
         setLicensees(licenseesData);
       } catch (error) {
-        console.error("Failed to fetch licensees:", error);
+        console.error('Failed to fetch licensees:', error);
         setLicensees([]);
       } finally {
         setLoading(false);
@@ -37,17 +37,17 @@ export function LicenceeSelector() {
   return (
     <div className="flex w-full items-center justify-between gap-4 sm:w-auto">
       <select
-        className={`px-4 py-2 rounded-full text-sm bg-buttonActive text-white ${
+        className={`rounded-full bg-buttonActive px-4 py-2 text-sm text-white ${
           loadingChartData || refreshing || loading
-            ? "opacity-50 cursor-not-allowed"
-            : ""
+            ? 'cursor-not-allowed opacity-50'
+            : ''
         }`}
         value={selectedLicencee}
-        onChange={(e) => setSelectedLicencee(e.target.value)}
+        onChange={e => setSelectedLicencee(e.target.value)}
         disabled={loadingChartData || refreshing || loading}
       >
         <option value="">All Licensees</option>
-        {licensees.map((licensee) => (
+        {licensees.map(licensee => (
           <option key={licensee._id} value={licensee._id}>
             {licensee.name}
           </option>

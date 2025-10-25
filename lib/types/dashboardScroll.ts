@@ -4,5 +4,3 @@ export type UseDashboardScrollReturn = {
   setScrollThreshold: (threshold: number) => void;
   resetScrollState: () => void;
 };
-
-

@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { formatDistanceToNow } from "date-fns";
-import { DownloadIcon, TrashIcon } from "@radix-ui/react-icons";
-import { useFirmwareActionsStore } from "@/lib/store/firmwareActionsStore";
-import type { Firmware } from "@/lib/types/firmware";
+import { useEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { formatDistanceToNow } from 'date-fns';
+import { DownloadIcon, TrashIcon } from '@radix-ui/react-icons';
+import { useFirmwareActionsStore } from '@/lib/store/firmwareActionsStore';
+import type { Firmware } from '@/lib/types/firmware';
 
 type SMIBFirmwareTableProps = {
   firmwares: Firmware[];
@@ -30,7 +30,7 @@ export default function SMIBFirmwareTable({
     ) {
       prevFirmwaresRef.current = [...firmwares];
 
-      const rows = tableRef.current?.querySelectorAll("tbody tr");
+      const rows = tableRef.current?.querySelectorAll('tbody tr');
       if (rows && rows.length > 0) {
         gsap.fromTo(
           rows,
@@ -40,7 +40,7 @@ export default function SMIBFirmwareTable({
             y: 0,
             stagger: 0.05,
             duration: 0.4,
-            ease: "power2.out",
+            ease: 'power2.out',
           }
         );
       }
@@ -50,19 +50,19 @@ export default function SMIBFirmwareTable({
   if (loading) {
     return (
       <div className="overflow-x-auto">
-        <table className="table-fixed w-full border-collapse text-center">
+        <table className="w-full table-fixed border-collapse text-center">
           <thead className="bg-button text-white">
             <tr>
-              <th className="p-3 border border-border border-t-0 text-sm">
+              <th className="border border-t-0 border-border p-3 text-sm">
                 PRODUCT
               </th>
-              <th className="p-3 border border-border border-t-0 text-sm">
+              <th className="border border-t-0 border-border p-3 text-sm">
                 VERSION
               </th>
-              <th className="p-3 border border-border border-t-0 text-sm">
+              <th className="border border-t-0 border-border p-3 text-sm">
                 DATE ADDED
               </th>
-              <th className="p-3 border border-border border-t-0 text-sm">
+              <th className="border border-t-0 border-border p-3 text-sm">
                 ACTIONS
               </th>
             </tr>
@@ -70,17 +70,17 @@ export default function SMIBFirmwareTable({
           <tbody>
             {[...Array(3)].map((_, i) => (
               <tr key={i}>
-                <td className="p-3 bg-container border border-border">
-                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                <td className="border border-border bg-container p-3">
+                  <div className="h-4 animate-pulse rounded bg-gray-200"></div>
                 </td>
-                <td className="p-3 bg-container border border-border">
-                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                <td className="border border-border bg-container p-3">
+                  <div className="h-4 animate-pulse rounded bg-gray-200"></div>
                 </td>
-                <td className="p-3 bg-container border border-border">
-                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                <td className="border border-border bg-container p-3">
+                  <div className="h-4 animate-pulse rounded bg-gray-200"></div>
                 </td>
-                <td className="p-3 bg-container border border-border">
-                  <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+                <td className="border border-border bg-container p-3">
+                  <div className="h-8 animate-pulse rounded bg-gray-200"></div>
                 </td>
               </tr>
             ))}
@@ -92,14 +92,14 @@ export default function SMIBFirmwareTable({
 
   if (firmwares.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-md">
-        <div className="text-gray-500 text-lg mb-2">No Firmware Available</div>
-        <div className="text-gray-400 text-sm text-center">
+      <div className="flex flex-col items-center justify-center rounded-lg bg-white p-8 shadow-md">
+        <div className="mb-2 text-lg text-gray-500">No Firmware Available</div>
+        <div className="text-center text-sm text-gray-400">
           Upload your first firmware version to get started.
         </div>
         <button
           onClick={onRefresh}
-          className="mt-4 px-4 py-2 bg-button text-white rounded-md hover:bg-buttonActive"
+          className="mt-4 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive"
         >
           Refresh
         </button>
@@ -111,62 +111,62 @@ export default function SMIBFirmwareTable({
     <div className="overflow-x-auto">
       <table
         ref={tableRef}
-        className="table-fixed w-full border-collapse text-center"
+        className="w-full table-fixed border-collapse text-center"
       >
         <thead className="bg-button text-white">
           <tr>
-            <th className="p-3 border border-border border-t-0 text-sm">
+            <th className="border border-t-0 border-border p-3 text-sm">
               PRODUCT
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm">
+            <th className="border border-t-0 border-border p-3 text-sm">
               VERSION
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm">
+            <th className="border border-t-0 border-border p-3 text-sm">
               DATE ADDED
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm">
+            <th className="border border-t-0 border-border p-3 text-sm">
               ACTIONS
             </th>
           </tr>
         </thead>
         <tbody>
-          {firmwares.map((firmware) => (
+          {firmwares.map(firmware => (
             <tr key={firmware._id} className="hover:bg-grayHighlight/10">
-              <td className="p-3 bg-container border border-border text-sm text-left hover:bg-grayHighlight/20">
+              <td className="border border-border bg-container p-3 text-left text-sm hover:bg-grayHighlight/20">
                 <div className="font-medium text-button">
                   {firmware.product}
                 </div>
                 {firmware.versionDetails && (
-                  <div className="text-xs text-grayHighlight mt-1">
+                  <div className="mt-1 text-xs text-grayHighlight">
                     {firmware.versionDetails}
                   </div>
                 )}
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
+              <td className="border border-border bg-container p-3 text-sm hover:bg-grayHighlight/20">
                 <span className="font-semibold text-buttonActive">
                   {firmware.version}
                 </span>
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20">
+              <td className="border border-border bg-container p-3 text-sm hover:bg-grayHighlight/20">
                 {formatDistanceToNow(new Date(firmware.createdAt), {
                   addSuffix: true,
                 })}
               </td>
-              <td className="p-3 bg-container border border-border text-sm">
+              <td className="border border-border bg-container p-3 text-sm">
                 <div className="flex items-center justify-center space-x-3">
                   <button
                     onClick={() => openDownloadModal(firmware)}
-                    className="text-green-500 hover:text-green-700 transition-colors"
+                    className="text-green-500 transition-colors hover:text-green-700"
                     title="Download Firmware"
                   >
-                    <DownloadIcon className="w-5 h-5" />
+                    <DownloadIcon className="h-5 w-5" />
                   </button>
                   <button
                     onClick={() => openDeleteModal(firmware)}
-                    className="text-red-500 hover:text-red-700 transition-colors"
+                    className="text-red-500 transition-colors hover:text-red-700"
                     title="Delete Firmware"
                   >
-                    <TrashIcon className="w-5 h-5" />
+                    <TrashIcon className="h-5 w-5" />
                   </button>
                 </div>
               </td>

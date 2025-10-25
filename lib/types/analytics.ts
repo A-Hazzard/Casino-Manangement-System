@@ -15,7 +15,7 @@ export type LocationMetricsResponse = {
   locationId: string;
   locationName: string;
   metrics: AggregatedMetrics;
-  performance: "excellent" | "good" | "average" | "poor";
+  performance: 'excellent' | 'good' | 'average' | 'poor';
 };
 
 export type MachineMetricsResponse = {
@@ -23,7 +23,7 @@ export type MachineMetricsResponse = {
   machineName: string;
   locationName: string;
   metrics: AggregatedMetrics;
-  status: "online" | "offline" | "maintenance";
+  status: 'online' | 'offline' | 'maintenance';
 };
 
 // ApiResponse type is defined in shared/types/common.ts

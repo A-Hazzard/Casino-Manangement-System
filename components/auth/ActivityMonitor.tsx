@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useActivityMonitor } from "@/lib/hooks/useActivityMonitor";
+import { useActivityMonitor } from '@/lib/hooks/useActivityMonitor';
 
 /**
  * Client component that monitors user activity and refreshes authentication token
@@ -12,4 +12,3 @@ export default function ActivityMonitor() {
 
   return null; // This component renders nothing, it just monitors activity
 }
-

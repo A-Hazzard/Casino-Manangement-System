@@ -1,11 +1,11 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 import {
   ReportConfig,
   ReportData,
   ReportStep,
   ReportType,
-} from "@/lib/types/reports";
-import { CasinoLocation, GamingMachine } from "@/lib/types/reports";
+} from '@/lib/types/reports';
+import { CasinoLocation, GamingMachine } from '@/lib/types/reports';
 
 type ReportStore = {
   // Step Management
@@ -39,9 +39,9 @@ type ReportStore = {
 
 const initialState = {
   currentStep: {
-    id: "selectType",
-    name: "Select Report Type",
-    status: "pending" as const,
+    id: 'selectType',
+    name: 'Select Report Type',
+    status: 'pending' as const,
     progress: 0,
   } as ReportStep,
   reportType: null,
@@ -53,37 +53,37 @@ const initialState = {
   availableMachines: [],
 };
 
-export const useReportStore = create<ReportStore>((set) => ({
+export const useReportStore = create<ReportStore>(set => ({
   ...initialState,
 
   // Step Management
-  setStep: (step) => set({ currentStep: step }),
+  setStep: step => set({ currentStep: step }),
 
   // Report Configuration
-  setReportType: (type) =>
+  setReportType: type =>
     set({
       reportType: type,
       currentStep: {
-        id: "configure",
-        name: "Configure Report",
-        status: "pending" as const,
+        id: 'configure',
+        name: 'Configure Report',
+        status: 'pending' as const,
         progress: 25,
       },
       reportConfig: {},
       reportData: null,
     }),
-  updateReportConfig: (updates) =>
-    set((state) => ({
+  updateReportConfig: updates =>
+    set(state => ({
       reportConfig: { ...state.reportConfig, ...updates },
     })),
   resetReportConfig: () => set({ ...initialState }),
 
   // Available Items
-  setAvailableLocations: (locations) => set({ availableLocations: locations }),
-  setAvailableMachines: (machines) => set({ availableMachines: machines }),
+  setAvailableLocations: locations => set({ availableLocations: locations }),
+  setAvailableMachines: machines => set({ availableMachines: machines }),
 
   // Generated Report
-  setReportData: (data) => set({ reportData: data }),
-  setIsGenerating: (isGenerating) => set({ isGenerating }),
-  setError: (error) => set({ error }),
+  setReportData: data => set({ reportData: data }),
+  setIsGenerating: isGenerating => set({ isGenerating }),
+  setError: error => set({ error }),
 }));

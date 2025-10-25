@@ -2,7 +2,7 @@
  * MongoDB connection monitoring and health check utilities
  */
 
-import { Db } from "mongodb";
+import { Db } from 'mongodb';
 
 type ConnectionStats = {
   totalConnections: number;
@@ -75,7 +75,7 @@ class ConnectionMonitor {
       return true;
     } catch (error) {
       this.stats.isHealthy = false;
-      console.error(" Database health check failed:", error);
+      console.error(' Database health check failed:', error);
       return false;
     }
   }
@@ -95,19 +95,19 @@ class ConnectionMonitor {
 
     if (this.stats.averageLatency > 5000) {
       recommendations.push(
-        "Consider optimizing database queries - average latency is high"
+        'Consider optimizing database queries - average latency is high'
       );
     }
 
     if (this.stats.averageLatency > 10000) {
       recommendations.push(
-        "Database performance is critically slow - check indexes and query optimization"
+        'Database performance is critically slow - check indexes and query optimization'
       );
     }
 
     if (!this.stats.isHealthy) {
       recommendations.push(
-        "Database connection is unhealthy - check network and server status"
+        'Database connection is unhealthy - check network and server status'
       );
     }
 

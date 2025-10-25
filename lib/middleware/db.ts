@@ -1,8 +1,8 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGO_URI;
-if (typeof window === "undefined" && !MONGODB_URI) {
-  throw new Error("MONGO_URI not set in environment variables");
+if (typeof window === 'undefined' && !MONGODB_URI) {
+  throw new Error('MONGO_URI not set in environment variables');
 }
 
 const mongooseCache: {
@@ -20,12 +20,12 @@ const mongooseCache: {
  */
 export async function connectDB() {
   // Only run on server-side
-  if (typeof window !== "undefined") {
-    throw new Error("connectDB can only be called on the server-side");
+  if (typeof window !== 'undefined') {
+    throw new Error('connectDB can only be called on the server-side');
   }
 
   if (!MONGODB_URI) {
-    throw new Error("MONGO_URI not set in environment variables");
+    throw new Error('MONGO_URI not set in environment variables');
   }
 
   if (mongooseCache.conn) {
@@ -33,7 +33,7 @@ export async function connectDB() {
   }
 
   if (!mongooseCache.promise) {
-    console.warn("Connecting to MongoDB", MONGODB_URI);
+    console.warn('Connecting to MongoDB', MONGODB_URI);
     mongooseCache.promise = mongoose
       .connect(MONGODB_URI, {
         bufferCommands: false,
@@ -51,22 +51,22 @@ export async function connectDB() {
         // Timeout settings
         waitQueueTimeoutMS: 5000, // Wait 5s for connection from pool
       })
-      .then((mongooseInstance) => {
+      .then(mongooseInstance => {
         return mongooseInstance.connection;
       })
-      .catch((err) => {
+      .catch(err => {
         mongooseCache.promise = null;
         // Log connection errors but don't throw to prevent app crashes
-        if (err.name === "MongooseServerSelectionError") {
+        if (err.name === 'MongooseServerSelectionError') {
           console.warn(
-            "🔧 MongoDB server selection timeout - database may be unavailable"
+            '🔧 MongoDB server selection timeout - database may be unavailable'
           );
-        } else if (err.name === "MongooseTimeoutError") {
+        } else if (err.name === 'MongooseTimeoutError') {
           console.warn(
-            "⏰ MongoDB connection timeout - database may be slow or unavailable"
+            '⏰ MongoDB connection timeout - database may be slow or unavailable'
           );
         } else {
-          console.warn("⚠️ MongoDB connection error:", err.message);
+          console.warn('⚠️ MongoDB connection error:', err.message);
         }
         throw err;
       });

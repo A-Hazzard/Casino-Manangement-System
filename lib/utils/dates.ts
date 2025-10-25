@@ -1,4 +1,4 @@
-import { CustomDate, TimePeriod } from "@/shared/types/common";
+import { CustomDate, TimePeriod } from '@/shared/types/common';
 
 /**
  * Calculates the start and end dates for a specified time period based on a given timezone.
@@ -7,16 +7,14 @@ import { CustomDate, TimePeriod } from "@/shared/types/common";
  * @param timePeriod - Specifies the period for date calculation. Acceptable values: 'Today', 'Yesterday', '7d', '30d', 'All Time'.
  * @returns An object containing the calculated start and end dates, or undefined dates for 'All Time'.
  */
-export const getDatesForTimePeriod = (
-  timePeriod: TimePeriod
-): CustomDate => {
+export const getDatesForTimePeriod = (timePeriod: TimePeriod): CustomDate => {
   let startDate: Date | undefined;
   let endDate: Date | undefined;
 
   // Use UTC dates directly (matching the working MongoDB shell queries)
 
   switch (timePeriod) {
-    case "Today":
+    case 'Today':
       // Define today's range in UTC (midnight to 23:59:59)
       startDate = new Date();
       startDate.setUTCHours(0, 0, 0, 0);
@@ -25,7 +23,7 @@ export const getDatesForTimePeriod = (
       endDate.setUTCHours(23, 59, 59, 999);
       break;
 
-    case "Yesterday":
+    case 'Yesterday':
       // Define yesterday's range in UTC (midnight to 23:59:59)
       startDate = new Date();
       startDate.setUTCDate(startDate.getUTCDate() - 1);
@@ -36,8 +34,8 @@ export const getDatesForTimePeriod = (
       endDate.setUTCHours(23, 59, 59, 999);
       break;
 
-    case "7d":
-    case "last7days":
+    case '7d':
+    case 'last7days':
       // Define 7-day range in UTC (including today, so go back 6 days)
       startDate = new Date();
       startDate.setUTCDate(startDate.getUTCDate() - 6);
@@ -47,8 +45,8 @@ export const getDatesForTimePeriod = (
       endDate.setUTCHours(23, 59, 59, 999);
       break;
 
-    case "30d":
-    case "last30days":
+    case '30d':
+    case 'last30days':
       // Define 30-day range in UTC (including today, so go back 29 days)
       startDate = new Date();
       startDate.setUTCDate(startDate.getUTCDate() - 29);
@@ -58,7 +56,7 @@ export const getDatesForTimePeriod = (
       endDate.setUTCHours(23, 59, 59, 999);
       break;
 
-    case "All Time":
+    case 'All Time':
       // For All Time, return undefined dates to fetch all records
       startDate = undefined;
       endDate = undefined;

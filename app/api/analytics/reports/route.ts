@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
-import { ReportConfig } from "@/lib/types/reports";
-import { generateReportData } from "../../lib/helpers/reports";
-import { z } from "zod";
+import { NextResponse } from 'next/server';
+import { ReportConfig } from '@/lib/types/reports';
+import { generateReportData } from '../../lib/helpers/reports';
+import { z } from 'zod';
 
 // Zod schema for validation
 const reportConfigSchema = z.object({
   title: z.string(),
   reportType: z.enum([
-    "locationPerformance",
-    "machineRevenue",
-    "fullFinancials",
+    'locationPerformance',
+    'machineRevenue',
+    'fullFinancials',
   ]),
   dateRange: z.object({
     start: z.string().datetime(),
@@ -20,7 +20,7 @@ const reportConfigSchema = z.object({
     manufacturers: z.array(z.string()).optional(),
   }),
   fields: z.array(z.string()),
-  chartType: z.enum(["bar", "line", "table"]),
+  chartType: z.enum(['bar', 'line', 'table']),
 });
 
 export async function POST(request: Request) {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     if (!validationResult.success) {
       return NextResponse.json(
         {
-          error: "Invalid report configuration",
+          error: 'Invalid report configuration',
           details: validationResult.error.flatten(),
         },
         { status: 400 }
@@ -43,18 +43,18 @@ export async function POST(request: Request) {
     const config: ReportConfig = {
       title: validatedData.title,
       reportType: validatedData.reportType,
-      category: "operational",
+      category: 'operational',
       dateRange: {
         start: new Date(validatedData.dateRange.start),
         end: new Date(validatedData.dateRange.end),
       },
-      timeGranularity: "daily",
+      timeGranularity: 'daily',
       fields: validatedData.fields,
       filters: {
         ...validatedData.filters,
       },
       chartType: validatedData.chartType,
-      exportFormat: "pdf",
+      exportFormat: 'pdf',
       includeCharts: true,
       includeSummary: true,
     };
@@ -63,16 +63,16 @@ export async function POST(request: Request) {
 
     if (!reportData) {
       return NextResponse.json(
-        { error: "Failed to generate report data" },
+        { error: 'Failed to generate report data' },
         { status: 500 }
       );
     }
 
     return NextResponse.json(reportData);
   } catch (error) {
-    console.error("Error generating report:", error);
+    console.error('Error generating report:', error);
     return NextResponse.json(
-      { error: "An internal error occurred while generating the report" },
+      { error: 'An internal error occurred while generating the report' },
       { status: 500 }
     );
   }

@@ -171,7 +171,7 @@ export function generateQuery(
   const baseQuery =
     MONGO_QUERIES[type][query as keyof (typeof MONGO_QUERIES)[typeof type]];
 
-  if (typeof baseQuery === "function" && params) {
+  if (typeof baseQuery === 'function' && params) {
     return (baseQuery as (...args: unknown[]) => string)(params);
   }
 

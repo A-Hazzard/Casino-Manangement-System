@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, ArrowLeft, Home } from "lucide-react";
-import { motion } from "framer-motion";
-import { useRouter, usePathname } from "next/navigation";
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, ArrowLeft, Home } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useRouter, usePathname } from 'next/navigation';
 type NotFoundErrorProps = {
   title?: string;
   message?: string;
@@ -23,9 +23,9 @@ type NotFoundErrorProps = {
  * Automatically determines context-aware navigation based on current route
  */
 export default function NotFoundError({
-  title = "Resource Not Found",
-  message = "The requested resource could not be found.",
-  resourceType = "resource",
+  title = 'Resource Not Found',
+  message = 'The requested resource could not be found.',
+  resourceType = 'resource',
   onRetry,
   onGoBack,
   showRetry = true,
@@ -48,58 +48,58 @@ export default function NotFoundError({
     }
 
     // Determine based on current path
-    if (pathname.includes("/cabinets/")) {
+    if (pathname.includes('/cabinets/')) {
       return {
-        text: "Back to Cabinets",
-        href: "/cabinets",
+        text: 'Back to Cabinets',
+        href: '/cabinets',
         isDashboard: false,
       };
     }
 
-    if (pathname.includes("/locations/")) {
+    if (pathname.includes('/locations/')) {
       return {
-        text: "Back to Locations",
-        href: "/locations",
+        text: 'Back to Locations',
+        href: '/locations',
         isDashboard: false,
       };
     }
 
-    if (pathname.includes("/members/")) {
+    if (pathname.includes('/members/')) {
       return {
-        text: "Back to Members",
-        href: "/members",
+        text: 'Back to Members',
+        href: '/members',
         isDashboard: false,
       };
     }
 
-    if (pathname.includes("/sessions/")) {
+    if (pathname.includes('/sessions/')) {
       return {
-        text: "Back to Sessions",
-        href: "/sessions",
+        text: 'Back to Sessions',
+        href: '/sessions',
         isDashboard: false,
       };
     }
 
-    if (pathname.includes("/collection-report/report/")) {
+    if (pathname.includes('/collection-report/report/')) {
       return {
-        text: "Back to Collection Reports",
-        href: "/collection-reports",
+        text: 'Back to Collection Reports',
+        href: '/collection-reports',
         isDashboard: false,
       };
     }
 
-    if (pathname.includes("/reports/")) {
+    if (pathname.includes('/reports/')) {
       return {
-        text: "Back to Reports",
-        href: "/reports",
+        text: 'Back to Reports',
+        href: '/reports',
         isDashboard: false,
       };
     }
 
     // Default to dashboard for unknown routes
     return {
-      text: "Go to Dashboard",
-      href: "/",
+      text: 'Go to Dashboard',
+      href: '/',
       isDashboard: true,
     };
   };
@@ -115,12 +115,12 @@ export default function NotFoundError({
   };
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center p-6">
+    <div className="flex min-h-[60vh] items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-center max-w-lg mx-auto"
+        className="mx-auto max-w-lg text-center"
       >
         {/* Large 404 Number */}
         <motion.div
@@ -128,13 +128,13 @@ export default function NotFoundError({
           animate={{ scale: 1, rotate: 0 }}
           transition={{
             delay: 0.2,
-            type: "spring",
+            type: 'spring',
             stiffness: 200,
             damping: 15,
           }}
           className="mb-6"
         >
-          <h1 className="text-8xl font-bold text-buttonActive mb-2">404</h1>
+          <h1 className="mb-2 text-8xl font-bold text-buttonActive">404</h1>
         </motion.div>
 
         {/* Title */}
@@ -142,7 +142,7 @@ export default function NotFoundError({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-3xl font-bold text-gray-800 mb-4"
+          className="mb-4 text-3xl font-bold text-gray-800"
         >
           {title}
         </motion.h2>
@@ -152,7 +152,7 @@ export default function NotFoundError({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-gray-600 mb-8 leading-relaxed text-lg"
+          className="mb-8 text-lg leading-relaxed text-gray-600"
         >
           {message}
         </motion.p>
@@ -162,21 +162,21 @@ export default function NotFoundError({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
+          className="flex flex-col justify-center gap-4 sm:flex-row"
         >
           {showGoBack && (
             <Button
               onClick={handleNavigation}
               className={`flex items-center gap-2 px-6 py-3 ${
                 navigation.isDashboard
-                  ? "bg-buttonActive hover:bg-buttonActive/90"
-                  : "bg-button hover:bg-buttonActive"
+                  ? 'bg-buttonActive hover:bg-buttonActive/90'
+                  : 'bg-button hover:bg-buttonActive'
               }`}
             >
               {navigation.isDashboard ? (
-                <Home className="w-5 h-5" />
+                <Home className="h-5 w-5" />
               ) : (
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="h-5 w-5" />
               )}
               {navigation.text}
             </Button>
@@ -186,9 +186,9 @@ export default function NotFoundError({
             <Button
               onClick={onRetry}
               variant="outline"
-              className="flex items-center gap-2 px-6 py-3 border-2"
+              className="flex items-center gap-2 border-2 px-6 py-3"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className="h-5 w-5" />
               Try Again
             </Button>
           )}
@@ -204,7 +204,7 @@ export default function NotFoundError({
           <p className="mb-3">
             If this {resourceType} should exist, please check:
           </p>
-          <ul className="text-left max-w-sm mx-auto space-y-1">
+          <ul className="mx-auto max-w-sm space-y-1 text-left">
             <li>• The URL is correct</li>
             <li>• You have permission to access it</li>
             <li>• The {resourceType} hasn&apos;t been deleted</li>

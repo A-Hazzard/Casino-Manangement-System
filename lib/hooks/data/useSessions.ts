@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
-import axios from "axios";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { buildSessionsQueryParams } from "@/lib/helpers/sessions";
-import { SESSIONS_PAGINATION } from "@/lib/constants/sessions";
-import type { Session, PaginationData } from "@/lib/types/sessions";
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
+import axios from 'axios';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { buildSessionsQueryParams } from '@/lib/helpers/sessions';
+import { SESSIONS_PAGINATION } from '@/lib/constants/sessions';
+import type { Session, PaginationData } from '@/lib/types/sessions';
 
 /**
  * Custom hook for managing sessions data and state
@@ -14,9 +14,9 @@ export function useSessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("startTime");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('startTime');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
 
@@ -35,28 +35,28 @@ export function useSessions() {
       let startDate: Date | undefined;
       let endDate: Date | undefined;
 
-      if (activeMetricsFilter === "Custom" && customDateRange) {
+      if (activeMetricsFilter === 'Custom' && customDateRange) {
         startDate = customDateRange.startDate;
         endDate = customDateRange.endDate;
       } else {
         // Handle other filter types
         const now = new Date();
         switch (activeMetricsFilter) {
-          case "Today":
+          case 'Today':
             startDate = new Date(now.setHours(0, 0, 0, 0));
             endDate = new Date(now.setHours(23, 59, 59, 999));
             break;
-          case "Yesterday":
+          case 'Yesterday':
             const yesterday = new Date(now);
             yesterday.setDate(yesterday.getDate() - 1);
             startDate = new Date(yesterday.setHours(0, 0, 0, 0));
             endDate = new Date(yesterday.setHours(23, 59, 59, 999));
             break;
-          case "last7days":
+          case 'last7days':
             startDate = new Date(now.setDate(now.getDate() - 7));
             endDate = new Date();
             break;
-          case "last30days":
+          case 'last30days':
             startDate = new Date(now.setDate(now.getDate() - 30));
             endDate = new Date();
             break;
@@ -69,7 +69,7 @@ export function useSessions() {
         search: searchTerm,
         sortBy,
         sortOrder,
-        licensee: selectedLicencee === "all" ? undefined : selectedLicencee,
+        licensee: selectedLicencee === 'all' ? undefined : selectedLicencee,
         startDate,
         endDate,
       });
@@ -82,7 +82,7 @@ export function useSessions() {
       setPagination(data.pagination || null);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch sessions";
+        err instanceof Error ? err.message : 'Failed to fetch sessions';
       setError(errorMessage);
       toast.error(errorMessage);
       setSessions([]);
@@ -115,11 +115,11 @@ export function useSessions() {
     (field: string) => {
       if (field === sortBy) {
         // Toggle sort order if same field
-        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
       } else {
         // Set new field with default desc order
         setSortBy(field);
-        setSortOrder("desc");
+        setSortOrder('desc');
       }
       setCurrentPage(1); // Reset to first page
     },

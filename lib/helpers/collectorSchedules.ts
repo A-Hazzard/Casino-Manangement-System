@@ -1,5 +1,5 @@
-import { CollectorSchedule } from "@/lib/types/components";
-import axios from "axios";
+import { CollectorSchedule } from '@/lib/types/components';
+import axios from 'axios';
 
 export async function fetchCollectorSchedules(
   licencee?: string,
@@ -10,22 +10,22 @@ export async function fetchCollectorSchedules(
   endDate?: string
 ): Promise<CollectorSchedule[]> {
   try {
-    const baseUrl = "/api/schedulers";
+    const baseUrl = '/api/schedulers';
     const params = new URLSearchParams();
 
-    if (licencee && licencee !== "all") params.append("licencee", licencee);
-    if (location && location !== "all") params.append("location", location);
-    if (collector && collector !== "all") params.append("collector", collector);
-    if (status && status !== "all") params.append("status", status);
-    if (startDate) params.append("startDate", startDate);
-    if (endDate) params.append("endDate", endDate);
+    if (licencee && licencee !== 'all') params.append('licencee', licencee);
+    if (location && location !== 'all') params.append('location', location);
+    if (collector && collector !== 'all') params.append('collector', collector);
+    if (status && status !== 'all') params.append('status', status);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
 
-    const url = `${baseUrl}${params.toString() ? `?${params.toString()}` : ""}`;
+    const url = `${baseUrl}${params.toString() ? `?${params.toString()}` : ''}`;
     const response = await axios.get(url);
     const data = response.data;
     return data;
   } catch (error) {
-    console.error("Error fetching collector schedules:", error);
+    console.error('Error fetching collector schedules:', error);
     return [];
   }
 }
@@ -47,22 +47,22 @@ export async function fetchCollectorSchedulesWithFilters(
     const { licencee, location, collector, status, startDate, endDate } =
       options;
 
-    const baseUrl = "/api/schedulers";
+    const baseUrl = '/api/schedulers';
     const params = new URLSearchParams();
 
-    if (licencee && licencee !== "all") params.append("licencee", licencee);
-    if (location && location !== "all") params.append("location", location);
-    if (collector && collector !== "all") params.append("collector", collector);
-    if (status && status !== "all") params.append("status", status);
-    if (startDate) params.append("startDate", startDate);
-    if (endDate) params.append("endDate", endDate);
+    if (licencee && licencee !== 'all') params.append('licencee', licencee);
+    if (location && location !== 'all') params.append('location', location);
+    if (collector && collector !== 'all') params.append('collector', collector);
+    if (status && status !== 'all') params.append('status', status);
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
 
-    const url = `${baseUrl}${params.toString() ? `?${params.toString()}` : ""}`;
+    const url = `${baseUrl}${params.toString() ? `?${params.toString()}` : ''}`;
     const response = await axios.get(url);
     const data = response.data;
     return data;
   } catch (error) {
-    console.error("Error fetching collector schedules with filters:", error);
+    console.error('Error fetching collector schedules with filters:', error);
     return [];
   }
 }
@@ -91,7 +91,7 @@ export async function fetchAndFormatCollectorSchedules(
     const uniqueCollectors = Array.from(
       new Set(
         data
-          .map((schedule) => schedule.collector)
+          .map(schedule => schedule.collector)
           .filter((collector): collector is string => collector !== undefined)
       )
     ).sort();
@@ -101,7 +101,7 @@ export async function fetchAndFormatCollectorSchedules(
       collectors: uniqueCollectors,
     };
   } catch (error) {
-    console.error("Error fetching and formatting collector schedules:", error);
+    console.error('Error fetching and formatting collector schedules:', error);
     return {
       collectorSchedules: [],
       collectors: [],

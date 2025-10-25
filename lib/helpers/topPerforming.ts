@@ -1,8 +1,8 @@
-import axios from "axios";
-import { TopPerformingData } from "@/lib/types";
-import { colorPalette } from "@/lib/constants/uiConstants";
+import axios from 'axios';
+import { TopPerformingData } from '@/lib/types';
+import { colorPalette } from '@/lib/constants/uiConstants';
 
-type ActiveTab = "locations" | "Cabinets";
+type ActiveTab = 'locations' | 'Cabinets';
 
 /**
  * Fetches top-performing locations or Cabinets and assigns colors dynamically.
@@ -17,7 +17,7 @@ export async function fetchTopPerformingData(
 ): Promise<TopPerformingData[]> {
   try {
     const params = { activeTab, timePeriod };
-    const headers = { "Content-Type": "application/json" };
+    const headers = { 'Content-Type': 'application/json' };
     const response = await axios.get(`/api/metrics/top-performing`, {
       params,
       headers,
@@ -33,7 +33,7 @@ export async function fetchTopPerformingData(
     }));
   } catch (error) {
     // Error handling for top-performing data fetch
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       console.error(`Failed to fetch top-performing ${activeTab}:`, error);
     }
     return [];

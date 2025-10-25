@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useCallback } from "react";
-import axios from "axios";
+import { useEffect, useRef, useCallback } from 'react';
+import axios from 'axios';
 
 /**
  * Hook to monitor user activity and refresh authentication token
  * Prevents session expiration while user is actively using the application
- * 
+ *
  * @param enabled - Whether to enable activity monitoring (default: true)
  * @param refreshInterval - Interval to check for activity and refresh token (default: 5 minutes)
  */
@@ -25,21 +25,24 @@ export function useActivityMonitor(
   // Refresh authentication token if user has been active
   const refreshToken = useCallback(async () => {
     const timeSinceLastActivity = Date.now() - lastActivityRef.current;
-    
+
     // Only refresh if user was active in the last 5 minutes
     if (timeSinceLastActivity < refreshInterval) {
       try {
-        const response = await axios.post("/api/auth/refresh-token");
+        const response = await axios.post('/api/auth/refresh-token');
         if (response.data?.success) {
-          if (process.env.NODE_ENV === "development") {
-            console.warn("Token refreshed due to user activity");
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Token refreshed due to user activity');
           }
         }
       } catch (error) {
         // Silently fail - don't log out user, just skip this refresh
         // The middleware will handle actual token expiration
-        if (process.env.NODE_ENV === "development") {
-          console.warn("Token refresh skipped (will retry next interval):", error);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'Token refresh skipped (will retry next interval):',
+            error
+          );
         }
       }
     }
@@ -50,12 +53,12 @@ export function useActivityMonitor(
 
     // Activity event listeners
     const activityEvents = [
-      "mousedown",
-      "mousemove",
-      "keypress",
-      "scroll",
-      "touchstart",
-      "click",
+      'mousedown',
+      'mousemove',
+      'keypress',
+      'scroll',
+      'touchstart',
+      'click',
     ];
 
     // Throttle activity updates to avoid excessive calls
@@ -70,8 +73,10 @@ export function useActivityMonitor(
     };
 
     // Add event listeners
-    activityEvents.forEach((event) => {
-      window.addEventListener(event, throttledUpdateActivity, { passive: true });
+    activityEvents.forEach(event => {
+      window.addEventListener(event, throttledUpdateActivity, {
+        passive: true,
+      });
     });
 
     // Set up periodic token refresh check
@@ -79,7 +84,7 @@ export function useActivityMonitor(
 
     // Cleanup
     return () => {
-      activityEvents.forEach((event) => {
+      activityEvents.forEach(event => {
         window.removeEventListener(event, throttledUpdateActivity);
       });
 
@@ -95,4 +100,3 @@ export function useActivityMonitor(
 
   return { lastActivity: lastActivityRef.current };
 }
-

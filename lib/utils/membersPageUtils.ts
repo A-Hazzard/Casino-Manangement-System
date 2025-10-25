@@ -1,6 +1,18 @@
-import type { CasinoMember as Member } from "@/shared/types/entities";
+import type { CasinoMember as Member } from '@/shared/types/entities';
 // TODO: Move MemberSortOption to shared types
-type MemberSortOption = "name" | "playerId" | "points" | "sessions" | "totalHandle" | "totalWon" | "totalLost" | "lastSession" | "status" | "locationName" | "winLoss" | "lastLogin";
+type MemberSortOption =
+  | 'name'
+  | 'playerId'
+  | 'points'
+  | 'sessions'
+  | 'totalHandle'
+  | 'totalWon'
+  | 'totalLost'
+  | 'lastSession'
+  | 'status'
+  | 'locationName'
+  | 'winLoss'
+  | 'lastLogin';
 
 /**
  * Sort members based on sort option and order
@@ -8,22 +20,22 @@ type MemberSortOption = "name" | "playerId" | "points" | "sessions" | "totalHand
 export function sortMembers(
   members: Member[],
   sortOption: MemberSortOption,
-  sortOrder: "asc" | "desc"
+  sortOrder: 'asc' | 'desc'
 ): Member[] {
   return [...members].sort((a, b) => {
     let aValue: string | number;
     let bValue: string | number;
 
     switch (sortOption) {
-      case "name":
+      case 'name':
         aValue = `${a.profile.firstName} ${a.profile.lastName}`.toLowerCase();
         bValue = `${b.profile.firstName} ${b.profile.lastName}`.toLowerCase();
         break;
-      case "playerId":
+      case 'playerId':
         aValue = a._id;
         bValue = b._id;
         break;
-      case "lastSession":
+      case 'lastSession':
         aValue = new Date(a.createdAt).getTime();
         bValue = new Date(b.createdAt).getTime();
         break;
@@ -32,19 +44,19 @@ export function sortMembers(
         bValue = b._id;
     }
 
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      return sortOrder === "asc"
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortOrder === 'asc'
         ? aValue.localeCompare(bValue)
         : bValue.localeCompare(aValue);
     }
 
-    return sortOrder === "asc"
+    return sortOrder === 'asc'
       ? aValue < bValue
         ? -1
         : 1
       : bValue < aValue
-      ? -1
-      : 1;
+        ? -1
+        : 1;
   });
 }
 
@@ -115,8 +127,8 @@ export function getMemberDisplayName(member: Member): string {
  * Get member initials
  */
 export function getMemberInitials(member: Member): string {
-  const firstName = member.profile.firstName || "";
-  const lastName = member.profile.lastName || "";
+  const firstName = member.profile.firstName || '';
+  const lastName = member.profile.lastName || '';
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
@@ -124,11 +136,11 @@ export function getMemberInitials(member: Member): string {
  * Format date for display
  */
 export function formatDate(date: Date | string): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   }).format(dateObj);
 }
 
@@ -136,13 +148,13 @@ export function formatDate(date: Date | string): string {
  * Format date and time for display
  */
 export function formatDateTime(date: Date | string): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(dateObj);
 }
 
@@ -171,17 +183,17 @@ export function validateMemberData(member: Partial<Member>): {
   const errors: string[] = [];
 
   if (!member.profile?.firstName?.trim()) {
-    errors.push("First name is required");
+    errors.push('First name is required');
   }
 
   if (!member.profile?.lastName?.trim()) {
-    errors.push("Last name is required");
+    errors.push('Last name is required');
   }
 
   if (!member.profile?.email?.trim()) {
-    errors.push("Email is required");
+    errors.push('Email is required');
   } else if (!isValidEmail(member.profile.email)) {
-    errors.push("Invalid email format");
+    errors.push('Invalid email format');
   }
 
   return {
@@ -197,5 +209,3 @@ export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
-
-

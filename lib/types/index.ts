@@ -3,23 +3,23 @@ import type {
   ParamsType,
   CustomDate,
   TimePeriod,
-} from "@shared/types";
-import { Alert, ReportView } from "./reports";
+} from '@shared/types';
+import { Alert, ReportView } from './reports';
 
 export type { QueryFilter };
 export type { ParamsType };
 export type { CustomDate };
 export type { TimePeriod };
 
-export * from "@/shared/types/entities";
+export * from '@/shared/types/entities';
 
-export type { LoginRequestBody, AuthResult } from "@/shared/types/auth";
+export type { LoginRequestBody, AuthResult } from '@/shared/types/auth';
 
 // Dashboard types
 export type {
   UseDashboardFiltersProps,
   UseDashboardFiltersReturn,
-} from "./dashboard";
+} from './dashboard';
 
 // Dashboard types
 export type dashboardData = {
@@ -51,7 +51,7 @@ export type ActiveFilters = {
   last30days: boolean;
   Custom: boolean;
 };
-export type ActiveTab = "locations" | "Cabinets";
+export type ActiveTab = 'locations' | 'Cabinets';
 export type dateRange = { startDate: Date; endDate: Date };
 export type Location = {
   _id: string;
@@ -181,7 +181,7 @@ export type ReportField = {
 export type ReportFieldCategory = string;
 
 export type ReportType =
-  | "locationPerformance"
-  | "machineRevenue"
-  | "fullFinancials"
-  | "customerActivity";
+  | 'locationPerformance'
+  | 'machineRevenue'
+  | 'fullFinancials'
+  | 'customerActivity';

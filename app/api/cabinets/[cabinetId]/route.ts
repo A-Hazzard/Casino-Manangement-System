@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function GET(
     const cabinet = await Machine.findById(cabinetId);
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, message: "Cabinet not found" },
+        { success: false, message: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -23,7 +23,7 @@ export async function GET(
     const locationId = cabinet.gamingLocation;
     if (!locationId) {
       return NextResponse.json(
-        { success: false, message: "Cabinet has no associated location" },
+        { success: false, message: 'Cabinet has no associated location' },
         { status: 400 }
       );
     }
@@ -38,9 +38,9 @@ export async function GET(
 
     return NextResponse.redirect(newUrl);
   } catch (error) {
-    console.error("Error in cabinet endpoint:", error);
+    console.error('Error in cabinet endpoint:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -58,7 +58,7 @@ export async function PUT(
     const cabinet = await Machine.findById(cabinetId);
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, message: "Cabinet not found" },
+        { success: false, message: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -67,7 +67,7 @@ export async function PUT(
     const locationId = cabinet.gamingLocation;
     if (!locationId) {
       return NextResponse.json(
-        { success: false, message: "Cabinet has no associated location" },
+        { success: false, message: 'Cabinet has no associated location' },
         { status: 400 }
       );
     }
@@ -81,9 +81,9 @@ export async function PUT(
 
     return NextResponse.redirect(newUrl);
   } catch (error) {
-    console.error("Error in cabinet endpoint:", error);
+    console.error('Error in cabinet endpoint:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -101,7 +101,7 @@ export async function PATCH(
     const cabinet = await Machine.findById(cabinetId);
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, message: "Cabinet not found" },
+        { success: false, message: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -110,7 +110,7 @@ export async function PATCH(
     const locationId = cabinet.gamingLocation;
     if (!locationId) {
       return NextResponse.json(
-        { success: false, message: "Cabinet has no associated location" },
+        { success: false, message: 'Cabinet has no associated location' },
         { status: 400 }
       );
     }
@@ -124,9 +124,9 @@ export async function PATCH(
 
     return NextResponse.redirect(newUrl);
   } catch (error) {
-    console.error("Error in cabinet endpoint:", error);
+    console.error('Error in cabinet endpoint:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -144,7 +144,7 @@ export async function DELETE(
     const cabinet = await Machine.findById(cabinetId);
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, message: "Cabinet not found" },
+        { success: false, message: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -153,7 +153,7 @@ export async function DELETE(
     const locationId = cabinet.gamingLocation;
     if (!locationId) {
       return NextResponse.json(
-        { success: false, message: "Cabinet has no associated location" },
+        { success: false, message: 'Cabinet has no associated location' },
         { status: 400 }
       );
     }
@@ -167,9 +167,9 @@ export async function DELETE(
 
     return NextResponse.redirect(newUrl);
   } catch (error) {
-    console.error("Error in cabinet endpoint:", error);
+    console.error('Error in cabinet endpoint:', error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }

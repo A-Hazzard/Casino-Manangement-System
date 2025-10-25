@@ -3,14 +3,14 @@
  * Extracts complex data fetching logic from the Locations page
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { useDebounce } from "@/lib/utils/hooks";
+import { useState, useEffect, useCallback } from 'react';
+import { useDebounce } from '@/lib/utils/hooks';
 import {
   fetchAggregatedLocationsData,
   searchAllLocations,
-} from "@/lib/helpers/locations";
-import { AggregatedLocation, TimePeriod } from "@/shared/types/common";
-import { LocationFilter } from "@/lib/types/location";
+} from '@/lib/helpers/locations';
+import { AggregatedLocation, TimePeriod } from '@/shared/types/common';
+import { LocationFilter } from '@/lib/types/location';
 
 type UseLocationDataProps = {
   selectedLicencee: string;
@@ -52,7 +52,7 @@ export function useLocationData({
       // If there's a search term, use the search function to get ALL locations
       if (debouncedSearchTerm.trim()) {
         setSearchLoading(true);
-        const effectiveLicencee = selectedLicencee || "";
+        const effectiveLicencee = selectedLicencee || '';
         const searchData = await searchAllLocations(
           debouncedSearchTerm,
           effectiveLicencee
@@ -64,14 +64,14 @@ export function useLocationData({
 
       // Otherwise, use the normal fetchLocationsData for metrics-based data
       const filterString = selectedFilters.length
-        ? selectedFilters.join(",")
-        : "";
+        ? selectedFilters.join(',')
+        : '';
 
       let dateRangeForFetch = undefined;
-      const effectiveFilter = activeMetricsFilter || "Today";
+      const effectiveFilter = activeMetricsFilter || 'Today';
 
       if (
-        effectiveFilter === "Custom" &&
+        effectiveFilter === 'Custom' &&
         customDateRange?.startDate &&
         customDateRange?.endDate
       ) {
@@ -82,10 +82,10 @@ export function useLocationData({
       }
 
       // Use empty string as fallback if selectedLicencee is empty
-      const effectiveLicencee = selectedLicencee || "";
+      const effectiveLicencee = selectedLicencee || '';
 
       const data = await fetchAggregatedLocationsData(
-        (activeMetricsFilter || "Today") as TimePeriod,
+        (activeMetricsFilter || 'Today') as TimePeriod,
         effectiveLicencee,
         filterString,
         dateRangeForFetch
@@ -94,7 +94,7 @@ export function useLocationData({
       setLocationData(data);
     } catch (err) {
       setLocationData([]);
-      setError(err instanceof Error ? err.message : "Failed to load locations");
+      setError(err instanceof Error ? err.message : 'Failed to load locations');
     } finally {
       setLoading(false);
     }
@@ -121,9 +121,9 @@ export function useLocationData({
       }
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [fetchData]);
 

@@ -1,5 +1,5 @@
-import mqtt from "mqtt";
-import type { SmibConfig } from "@/shared/types/entities";
+import type { SmibConfig } from '@/shared/types/entities';
+import mqtt from 'mqtt';
 
 type MQTTConfig = {
   mqttURI: string;
@@ -19,10 +19,10 @@ class MQTTService {
 
   constructor() {
     this.config = {
-      mqttURI: process.env.MQTT_URI || "mqtt://localhost:1883",
-      mqttPubTopic: process.env.MQTT_PUB_TOPIC || "sas/relay/",
-      mqttCfgTopic: process.env.MQTT_CFG_TOPIC || "smib/config",
-      mqttGliTopic: process.env.MQTT_GLI_TOPIC || "sas/gli/server/",
+      mqttURI: process.env.MQTT_URI || 'mqtt://localhost:1883',
+      mqttPubTopic: process.env.MQTT_PUB_TOPIC || 'sas/relay/',
+      mqttCfgTopic: process.env.MQTT_CFG_TOPIC || 'smib/config',
+      mqttGliTopic: process.env.MQTT_GLI_TOPIC || 'sas/gli/server/',
     };
   }
 
@@ -38,77 +38,67 @@ class MQTTService {
     try {
       // Connect using the standard mqtt.js pattern with explicit protocol
       this.client = mqtt.connect(this.config.mqttURI, {
-        protocol: "mqtt",
+        protocol: 'mqtt',
         port: 1883,
+        keepalive: 60, // Send MQTT ping every 60 seconds to keep connection alive
+        reconnectPeriod: 5000, // Reconnect after 5 seconds if disconnected
+        connectTimeout: 30000, // Wait 30 seconds for initial connection
       });
 
       // Set up event handlers
-      this.client.on("connect", () => {
-        console.log("✅ MQTT connected successfully");
-        console.log(`🔍 [MQTT] Connected to broker: ${this.config.mqttURI}`);
+      this.client.on('connect', () => {
+        console.log('✅ MQTT connected successfully');
         this.isConnected = true;
         // Subscribe to config topic if not already subscribed
         this.ensureConfigSubscription();
       });
 
-      this.client.on("error", (error) => {
-        console.error("❌ MQTT connection error:", error);
+      this.client.on('error', error => {
+        // Only log connection errors, not every connection attempt
+        console.error('❌ MQTT connection error:', error.message);
         this.isConnected = false;
       });
 
-      this.client.on("close", () => {
-        console.log("🔌 MQTT disconnected");
+      this.client.on('close', () => {
+        console.log('🔌 MQTT disconnected');
         this.isConnected = false;
         this.isSubscribedToConfig = false;
       });
 
       // Set up message routing for config responses
-      this.client.on("message", (topic, message) => {
-        console.log(`🔍 [MQTT] Received message on topic: ${topic}`);
-        console.log(`🔍 [MQTT] Raw message: ${message.toString()}`);
+      this.client.on('message', (topic, message) => {
+        // Only log message details if it's a config topic
+        if (topic.includes('config') || topic.includes('server')) {
+          console.log(`🔍 [MQTT] Received config message on topic: ${topic}`);
+        }
 
         // Listen for messages on server topics where SMIB devices publish responses
-        if (topic === "smib/config" || topic === "sas/server") {
+        if (topic === 'smib/config' || topic === 'sas/server') {
           try {
             const payload = JSON.parse(message.toString());
             const relayId = payload.rly;
 
+            // Reduced logging for payload parsing
             console.log(
-              `🔍 [MQTT] Parsed payload:`,
-              JSON.stringify(payload, null, 2)
-            );
-            console.log(`🔍 [MQTT] Extracted relayId: ${relayId}`);
-            console.log(
-              `🔍 [MQTT] Available callbacks for relayIds:`,
-              Array.from(this.configCallbacks.keys())
+              `🔍 [MQTT] Received config response for relayId: ${relayId}`
             );
 
             if (relayId && this.configCallbacks.has(relayId)) {
               const callbacks = this.configCallbacks.get(relayId);
               console.log(
-                `✅ [MQTT] Found ${
-                  callbacks?.length || 0
-                } callbacks for relayId: ${relayId}`
+                `✅ [MQTT] Executing ${callbacks?.length || 0} callbacks for relayId: ${relayId}`
               );
               if (callbacks) {
-                callbacks.forEach((callback, index) => {
-                  console.log(
-                    `📡 [MQTT] Calling callback ${
-                      index + 1
-                    } for relayId: ${relayId}`
-                  );
+                callbacks.forEach(callback => {
                   callback(payload);
                 });
               }
-            } else {
-              console.log(
-                `❌ [MQTT] No callbacks found for relayId: ${relayId}`
-              );
             }
+            // Note: No callbacks found is normal when SMIB is not connected
           } catch (error) {
-            console.error("❌ [MQTT] Error parsing server message:", error);
+            console.error('❌ [MQTT] Error parsing server message:', error);
             console.error(
-              "❌ [MQTT] Raw message that failed to parse:",
+              '❌ [MQTT] Raw message that failed to parse:',
               message.toString()
             );
           }
@@ -122,21 +112,27 @@ class MQTTService {
       // Wait for connection
       await new Promise<void>((resolve, reject) => {
         if (!this.client) {
-          reject(new Error("MQTT client not initialized"));
+          reject(new Error('MQTT client not initialized'));
           return;
         }
 
-        this.client.once("connect", () => resolve());
-        this.client.once("error", reject);
+        // If already connected, resolve immediately
+        if (this.client.connected) {
+          console.log('✅ MQTT client already connected');
+          resolve();
+          return;
+        }
+
+        this.client.once('connect', () => resolve());
+        this.client.once('error', reject);
 
         // Timeout after 10 seconds
         setTimeout(() => {
-          reject(new Error("MQTT connection timeout"));
+          reject(new Error('MQTT connection timeout'));
         }, 10000);
       });
-      console.log("END OF CONNECT FUNCTION");
     } catch (error) {
-      console.error("❌ Failed to connect to MQTT:", error);
+      console.error('❌ Failed to connect to MQTT:', error);
       throw error;
     }
   }
@@ -153,14 +149,14 @@ class MQTTService {
     }
 
     if (!this.client || !this.isConnected) {
-      throw new Error("MQTT client not connected");
+      throw new Error('MQTT client not connected');
     }
 
     const topic = `sas/relay/${cabinetId}`;
     const payload = JSON.stringify({
       command,
       timestamp: new Date().toISOString(),
-      action: command.toLowerCase().replace(/\s+/g, "_"),
+      action: command.toLowerCase().replace(/\s+/g, '_'),
     });
 
     console.log(`📡 Sending machine control command via MQTT:`, {
@@ -171,16 +167,16 @@ class MQTTService {
 
     return new Promise<void>((resolve, reject) => {
       if (!this.client) {
-        reject(new Error("MQTT client not available"));
+        reject(new Error('MQTT client not available'));
         return;
       }
 
-      this.client.publish(topic, payload, (error) => {
+      this.client.publish(topic, payload, error => {
         if (error) {
-          console.error("❌ Failed to publish machine control command:", error);
+          console.error('❌ Failed to publish machine control command:', error);
           reject(error);
         } else {
-          console.log("✅ Machine control command published successfully");
+          console.log('✅ Machine control command published successfully');
           resolve();
         }
       });
@@ -199,7 +195,7 @@ class MQTTService {
     }
 
     if (!this.client) {
-      throw new Error("MQTT client not available");
+      throw new Error('MQTT client not available');
     }
 
     try {
@@ -207,16 +203,16 @@ class MQTTService {
         cabinetId,
         smibConfig,
         timestamp: new Date().toISOString(),
-        action: "update_config",
+        action: 'update_config',
       };
 
       const topic = `sas/relay/${cabinetId}`;
       const payload = JSON.stringify(message);
 
       await new Promise<void>((resolve, reject) => {
-        this.client!.publish(topic, payload, (error) => {
+        this.client!.publish(topic, payload, error => {
           if (error) {
-            console.error("❌ Failed to publish MQTT message:", error);
+            console.error('❌ Failed to publish MQTT message:', error);
             reject(error);
           } else {
             console.log(`✅ SMIB config update sent via MQTT to ${topic}`);
@@ -225,7 +221,7 @@ class MQTTService {
         });
       });
     } catch (error) {
-      console.error("❌ Error sending SMIB config update:", error);
+      console.error('❌ Error sending SMIB config update:', error);
       throw error;
     }
   }
@@ -277,16 +273,15 @@ class MQTTService {
     }
 
     if (!this.client) {
-      throw new Error("MQTT client not available");
+      throw new Error('MQTT client not available');
     }
 
     return new Promise<void>((resolve, reject) => {
-      this.client!.subscribe(topic, (error) => {
+      this.client!.subscribe(topic, error => {
         if (error) {
           console.error(`❌ Failed to subscribe to topic ${topic}:`, error);
           reject(error);
         } else {
-          console.log(`✅ Subscribed to topic: ${topic}`);
           resolve();
         }
       });
@@ -298,7 +293,7 @@ class MQTTService {
    */
   onMessage(callback: (topic: string, message: Buffer) => void): void {
     if (this.client) {
-      this.client.on("message", callback);
+      this.client.on('message', callback);
     }
   }
 
@@ -306,33 +301,16 @@ class MQTTService {
    * Ensure subscription to config topics
    */
   private async ensureConfigSubscription(): Promise<void> {
-    console.log(
-      `🔍 [MQTT] Config subscription check: isSubscribed=${
-        this.isSubscribedToConfig
-      }, client=${!!this.client}, connected=${this.isConnected}`
-    );
-
     if (!this.isSubscribedToConfig && this.client && this.isConnected) {
       try {
-        // Subscribe to both server topics where SMIB devices publish responses
-        console.log(
-          `🔍 [MQTT] Subscribing to server topics: smib/config and sas/server`
-        );
-        // await this.subscribe("sas/gy/server");
-        // await this.subscribe("sas/server");
-        await this.subscribe("smib/config");
+        // Subscribe to config topic
+        await this.subscribe('smib/config');
 
         this.isSubscribedToConfig = true;
-        console.log(
-          `✅ Subscribed to server topics: smib/config and sas/server`
-        );
+        console.log(`✅ MQTT subscribed to config topics`);
       } catch (error) {
-        console.error("❌ Failed to subscribe to server topics:", error);
+        console.error('❌ Failed to subscribe to server topics:', error);
       }
-    } else {
-      console.log(
-        `🔍 [MQTT] Skipping config subscription - already subscribed or not ready`
-      );
     }
   }
 
@@ -355,15 +333,8 @@ class MQTTService {
     }
     this.configCallbacks.get(relayId)!.push(callback);
 
+    // Reduced logging for callback registration
     console.log(`📡 Registered config callback for relayId: ${relayId}`);
-    console.log(
-      `🔍 [MQTT] Total callbacks registered: ${this.configCallbacks.size}`
-    );
-    console.log(
-      `🔍 [MQTT] Callbacks for ${relayId}: ${
-        this.configCallbacks.get(relayId)?.length || 0
-      }`
-    );
   }
 
   /**
@@ -390,28 +361,25 @@ class MQTTService {
     console.log(`📡 Registered config callback for relayId: ${relayId}`);
 
     // Wait a moment to ensure callback is registered
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // CORRECTED: Publish to sas/relay/[relayId] to request from specific SMIB
     const topic = `sas/relay/${relayId}`;
     const payload = JSON.stringify({
-      typ: "cfg",
+      typ: 'cfg',
       comp: component,
     });
 
-    console.log(
-      `📡 [MQTT] Requesting config for ${component} from relayId: ${relayId}`
-    );
-    console.log(`📡 [MQTT] Publishing to topic: ${topic}`);
-    console.log(`📡 [MQTT] Payload: ${payload}`);
+    // Reduced logging for config requests
+    console.log(`📡 [MQTT] Requesting ${component} config for ${relayId}`);
 
     return new Promise<void>((resolve, reject) => {
       if (!this.client) {
-        reject(new Error("MQTT client not available"));
+        reject(new Error('MQTT client not available'));
         return;
       }
 
-      this.client.publish(topic, payload, (error) => {
+      this.client.publish(topic, payload, error => {
         if (error) {
           console.error(`❌ Failed to request config for ${component}:`, error);
           reject(error);
@@ -463,29 +431,26 @@ class MQTTService {
   async requestConfig(relayId: string, component: string): Promise<void> {
     if (!this.client || !this.isConnected) {
       await this.connect();
-      console.log("✅ MQTT client connected");
+      console.log('✅ MQTT client connected');
     }
 
     // CORRECTED: Publish to sas/relay/[relayId] to request from specific SMIB
     const topic = `sas/relay/${relayId}`;
     const payload = JSON.stringify({
-      typ: "cfg",
+      typ: 'cfg',
       comp: component,
     });
 
-    console.log(
-      `📡 [MQTT] Requesting config for ${component} from relayId: ${relayId}`
-    );
-    console.log(`📡 [MQTT] Publishing to topic: ${topic}`);
-    console.log(`📡 [MQTT] Payload: ${payload}`);
+    // Reduced logging for config requests
+    console.log(`📡 [MQTT] Requesting ${component} config for ${relayId}`);
 
     return new Promise<void>((resolve, reject) => {
       if (!this.client) {
-        reject(new Error("MQTT client not available"));
+        reject(new Error('MQTT client not available'));
         return;
       }
 
-      this.client.publish(topic, payload, (error) => {
+      this.client.publish(topic, payload, error => {
         if (error) {
           console.error(`❌ Failed to request config for ${component}:`, error);
           reject(error);
@@ -508,20 +473,23 @@ class MQTTService {
     const topic = `sas/relay/${relayId}`;
     const payload = JSON.stringify(config);
 
-    console.log(`📡 Publishing config update to relayId: ${relayId}`);
+    console.warn(`📡 [MQTT] Publishing config update to relayId: ${relayId}`);
+    console.warn(`📡 [MQTT] Topic: ${topic}`);
+    console.warn(`📡 [MQTT] Payload:`, config);
 
     return new Promise<void>((resolve, reject) => {
       if (!this.client) {
-        reject(new Error("MQTT client not available"));
+        reject(new Error('MQTT client not available'));
         return;
       }
 
-      this.client.publish(topic, payload, (error) => {
+      this.client.publish(topic, payload, error => {
         if (error) {
           console.error(`❌ Failed to publish config update:`, error);
           reject(error);
         } else {
-          console.log(`✅ Config update published to ${topic}`);
+          console.warn(`✅ [MQTT] Config update published to ${topic}`);
+          console.warn(`✅ [MQTT] Payload sent:`, payload);
           resolve();
         }
       });
@@ -551,12 +519,12 @@ class MQTTService {
           const payload = JSON.parse(message.toString());
           callback(payload);
         } catch (error) {
-          console.error("❌ Error parsing server data message:", error);
+          console.error('❌ Error parsing server data message:', error);
         }
       }
     };
 
-    this.client?.on("message", messageHandler);
+    this.client?.on('message', messageHandler);
 
     console.log(
       `📡 Subscribed to server data for relayId: ${relayId} on topic: ${topic}`
@@ -571,7 +539,7 @@ class MQTTService {
       this.client.end();
       this.client = null;
       this.isConnected = false;
-      console.log("🔌 MQTT disconnected");
+      console.log('🔌 MQTT disconnected');
     }
   }
 

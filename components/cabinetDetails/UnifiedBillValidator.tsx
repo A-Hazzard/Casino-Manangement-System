@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { formatCurrency } from "@/lib/utils";
-import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
-import { type DateRange } from "@/components/ui/dateRangePicker";
-import { Banknote, RefreshCw } from "lucide-react";
-import axios from "axios";
-import { toast } from "sonner";
-import { useCabinetUIStore } from "@/lib/store/cabinetUIStore";
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { formatCurrency } from '@/lib/utils';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
+import { type DateRange } from '@/components/ui/dateRangePicker';
+import { Banknote, RefreshCw } from 'lucide-react';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { useCabinetUIStore } from '@/lib/store/cabinetUIStore';
 
 type BillValidatorData = {
-  version: "v1" | "v2" | "none";
+  version: 'v1' | 'v2' | 'none';
   denominations: Array<{
     denomination: number;
     label: string;
@@ -29,7 +29,7 @@ type BillValidatorData = {
   totalUnknownAmount?: number;
 };
 
-type TimePeriod = "Today" | "Yesterday" | "7d" | "30d" | "All Time" | "Custom";
+type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
 
 type UnifiedBillValidatorProps = {
   machineId: string;
@@ -82,18 +82,18 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
   // Debug: Log when timePeriod prop changes
   useEffect(() => {
     console.warn(
-      "[DEBUG] UnifiedBillValidator timePeriod prop changed to:",
+      '[DEBUG] UnifiedBillValidator timePeriod prop changed to:',
       timePeriod
     );
   }, [timePeriod]);
 
   const timeFrames = [
-    { time: "Today", value: "Today" as TimePeriod },
-    { time: "Yesterday", value: "Yesterday" as TimePeriod },
-    { time: "7d", value: "7d" as TimePeriod },
-    { time: "30d", value: "30d" as TimePeriod },
-    { time: "All Time", value: "All Time" as TimePeriod },
-    { time: "Custom", value: "Custom" as TimePeriod },
+    { time: 'Today', value: 'Today' as TimePeriod },
+    { time: 'Yesterday', value: 'Yesterday' as TimePeriod },
+    { time: '7d', value: '7d' as TimePeriod },
+    { time: '30d', value: '30d' as TimePeriod },
+    { time: 'All Time', value: 'All Time' as TimePeriod },
+    { time: 'Custom', value: 'Custom' as TimePeriod },
   ];
 
   const fetchBillValidatorData = useCallback(async () => {
@@ -102,18 +102,18 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      params.append("timePeriod", timePeriod);
+      params.append('timePeriod', timePeriod);
 
       if (
-        timePeriod === "Custom" &&
+        timePeriod === 'Custom' &&
         customDateRange?.from &&
         customDateRange?.to
       ) {
         // Send the full ISO string with time components to preserve the exact date/time
         const startDate = customDateRange.from.toISOString();
         const endDate = customDateRange.to.toISOString();
-        params.append("startDate", startDate);
-        params.append("endDate", endDate);
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
       }
 
       const response = await axios.get(
@@ -123,11 +123,11 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
       if (response.data.success) {
         setData(response.data.data);
       } else {
-        throw new Error("Failed to fetch bill validator data");
+        throw new Error('Failed to fetch bill validator data');
       }
     } catch (error) {
-      console.error("Error fetching bill validator data:", error);
-      toast.error("Failed to load bill validator data");
+      console.error('Error fetching bill validator data:', error);
+      toast.error('Failed to load bill validator data');
       setData(null);
     } finally {
       setLoading(false);
@@ -141,14 +141,14 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
   const handleApplyCustomRange = () => {
     if (pendingCustomDateRange?.from && pendingCustomDateRange?.to) {
       console.warn(
-        "[DEBUG] Applying custom date range:",
+        '[DEBUG] Applying custom date range:',
         pendingCustomDateRange
       );
       setCustomDateRange(pendingCustomDateRange);
       console.warn("[DEBUG] Calling onTimePeriodChange('Custom')");
-      onTimePeriodChange("Custom"); // Update the parent component's time period state
+      onTimePeriodChange('Custom'); // Update the parent component's time period state
       setShowCustomPicker(false);
-      console.warn("[DEBUG] Custom date range applied, picker hidden");
+      console.warn('[DEBUG] Custom date range applied, picker hidden');
     }
   };
 
@@ -165,13 +165,13 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
   };
 
   const handleTimePeriodChange = (value: string) => {
-    console.warn("[DEBUG] handleTimePeriodChange called with:", value);
-    console.warn("[DEBUG] Current customDateRange:", customDateRange);
+    console.warn('[DEBUG] handleTimePeriodChange called with:', value);
+    console.warn('[DEBUG] Current customDateRange:', customDateRange);
 
-    if (value === "Custom") {
+    if (value === 'Custom') {
       // Only set default dates if no custom range is already set
       if (!customDateRange?.from || !customDateRange?.to) {
-        console.warn("[DEBUG] No existing custom range, setting defaults");
+        console.warn('[DEBUG] No existing custom range, setting defaults');
         // Set default date range based on gameDayOffset
         const today = new Date();
         const tomorrow = new Date(today);
@@ -185,14 +185,14 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
         const endDate = new Date(tomorrow);
         endDate.setHours(gameDayOffset, 0, 0, 0);
 
-        console.warn("[DEBUG] Setting default dates:", {
+        console.warn('[DEBUG] Setting default dates:', {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
         });
         setPendingCustomDateRange({ from: startDate, to: endDate });
       } else {
         console.warn(
-          "[DEBUG] Preserving existing custom range:",
+          '[DEBUG] Preserving existing custom range:',
           customDateRange
         );
         // Preserve the existing custom range
@@ -201,7 +201,7 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
       setShowCustomPicker(true);
     } else {
       console.warn(
-        "[DEBUG] Switching to non-custom period, clearing custom range"
+        '[DEBUG] Switching to non-custom period, clearing custom range'
       );
       setShowCustomPicker(false);
       setCustomDateRange(undefined);
@@ -217,10 +217,10 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
     return <BillValidatorSkeleton />;
   }
 
-  if (!data || data.version === "none") {
+  if (!data || data.version === 'none') {
     return (
-      <div className="w-full max-w-4xl mx-auto">
-        <div className="mb-6 flex justify-between items-center">
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="mb-6 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Bill Validator</h3>
           <Button
             onClick={handleRefresh}
@@ -229,18 +229,18 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
             size="sm"
           >
             <RefreshCw
-              className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
+              className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
             />
             Refresh
           </Button>
         </div>
 
         {/* Filter Buttons - Always visible */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {timeFrames.map((frame) => (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {timeFrames.map(frame => (
             <Button
               key={frame.value}
-              variant={timePeriod === frame.value ? "default" : "outline"}
+              variant={timePeriod === frame.value ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleTimePeriodChange(frame.value)}
             >
@@ -263,9 +263,9 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
           </div>
         )}
 
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <Banknote className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No Bill Data Found</h3>
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+          <Banknote className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+          <h3 className="mb-2 text-lg font-medium">No Bill Data Found</h3>
           <p className="text-muted-foreground">
             No bill validator data was found for the selected time period. Try
             selecting a different date range.
@@ -276,12 +276,12 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="mx-auto w-full max-w-4xl">
       {/* Header with filters */}
-      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div className="flex items-center gap-4">
           <h3 className="text-lg font-semibold">Bill Validator</h3>
-          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+          <span className="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800">
             {data.version.toUpperCase()}
           </span>
         </div>
@@ -294,7 +294,7 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
             size="sm"
           >
             <RefreshCw
-              className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
+              className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
             />
             Refresh
           </Button>
@@ -302,17 +302,17 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
       </div>
 
       {/* Filter Buttons */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {timeFrames.map((frame) => (
+      <div className="mb-6 flex flex-wrap gap-2">
+        {timeFrames.map(frame => (
           <Button
             key={frame.value}
-            variant={timePeriod === frame.value ? "default" : "outline"}
+            variant={timePeriod === frame.value ? 'default' : 'outline'}
             size="sm"
             onClick={() => handleTimePeriodChange(frame.value)}
             style={{
               backgroundColor:
-                timePeriod === frame.value ? "#3b82f6" : undefined,
-              color: timePeriod === frame.value ? "white" : undefined,
+                timePeriod === frame.value ? '#3b82f6' : undefined,
+              color: timePeriod === frame.value ? 'white' : undefined,
             }}
           >
             {frame.time}
@@ -338,23 +338,23 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
       {loading && (
         <div className="space-y-6">
           {/* Bill Validator Table Skeleton */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             {/* Desktop Table Skeleton */}
-            <div className="hidden lg:block overflow-x-auto">
+            <div className="hidden overflow-x-auto lg:block">
               <div className="p-4">
-                <div className="h-12 bg-gray-50 rounded mb-2" />
+                <div className="mb-2 h-12 rounded bg-gray-50" />
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="h-14 bg-gray-100 rounded mb-2" />
+                  <div key={i} className="mb-2 h-14 rounded bg-gray-100" />
                 ))}
               </div>
             </div>
 
             {/* Mobile Cards Skeleton */}
-            <div className="lg:hidden p-4 space-y-3">
+            <div className="space-y-3 p-4 lg:hidden">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Card key={i}>
                   <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
+                    <div className="flex items-center justify-between">
                       <Skeleton className="h-4 w-16" />
                       <Skeleton className="h-4 w-12" />
                       <Skeleton className="h-4 w-20" />
@@ -366,7 +366,7 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
 
             {/* Totals Footer Skeleton */}
             <div className="border-t-2 border-gray-300 bg-gray-50 p-4">
-              <div className="flex justify-between items-center font-semibold">
+              <div className="flex items-center justify-between font-semibold">
                 <Skeleton className="h-5 w-16" />
                 <Skeleton className="h-5 w-12" />
                 <Skeleton className="h-5 w-24" />
@@ -380,7 +380,7 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
       {!loading && data && (
         <div className="space-y-6">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Current Balance Card - HIDDEN */}
             {/* <motion.div
               className="bg-blue-50 border border-blue-200 rounded-lg p-4"
@@ -399,13 +399,13 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
             {/* Show unknown bills for V1 data */}
             {data.unknownBills > 0 && (
               <motion.div
-                className="bg-yellow-50 border border-yellow-200 rounded-lg p-4"
+                className="rounded-lg border border-yellow-200 bg-yellow-50 p-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.1 }}
               >
                 <div className="text-center">
-                  <p className="text-sm text-yellow-600 mb-1">Unknown Bills</p>
+                  <p className="mb-1 text-sm text-yellow-600">Unknown Bills</p>
                   <p className="text-2xl font-bold text-yellow-800">
                     {formatCurrency(data.unknownBills)}
                   </p>
@@ -416,23 +416,23 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
 
           {/* Bill Validator Table */}
           <motion.div
-            className="bg-white rounded-lg border border-gray-200 shadow-sm"
+            className="rounded-lg border border-gray-200 bg-white shadow-sm"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.3 }}
           >
             {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
+            <div className="hidden overflow-x-auto lg:block">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="py-3 px-4 text-left font-semibold text-gray-700">
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
                       Denomination
                     </th>
-                    <th className="py-3 px-4 text-center font-semibold text-gray-700">
+                    <th className="px-4 py-3 text-center font-semibold text-gray-700">
                       Quantity
                     </th>
-                    <th className="py-3 px-4 text-right font-semibold text-gray-700">
+                    <th className="px-4 py-3 text-right font-semibold text-gray-700">
                       Subtotal
                     </th>
                   </tr>
@@ -447,11 +447,11 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.05 }}
                       >
-                        <td className="py-3 px-4 font-medium">{item.label}</td>
-                        <td className="py-3 px-4 text-center">
+                        <td className="px-4 py-3 font-medium">{item.label}</td>
+                        <td className="px-4 py-3 text-center">
                           {item.quantity.toLocaleString()}
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="px-4 py-3 text-right">
                           {shouldShowCurrency()
                             ? formatAmount(item.subtotal)
                             : formatCurrency(item.subtotal)}
@@ -462,16 +462,16 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
 
                   {/* Total Row */}
                   <motion.tr
-                    className="bg-gray-50 font-semibold border-t-2 border-gray-300"
+                    className="border-t-2 border-gray-300 bg-gray-50 font-semibold"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3, delay: 0.5 }}
                   >
-                    <td className="py-3 px-4">Total</td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="px-4 py-3">Total</td>
+                    <td className="px-4 py-3 text-center">
                       {data.totalQuantity.toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       {shouldShowCurrency()
                         ? formatAmount(data.totalAmount)
                         : formatCurrency(data.totalAmount)}
@@ -479,24 +479,24 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
                   </motion.tr>
 
                   {/* V2 Additional Rows */}
-                  {data.version === "v2" &&
+                  {data.version === 'v2' &&
                     (data.totalKnownAmount !== undefined ||
                       data.totalUnknownAmount !== undefined) && (
                       <>
                         {data.totalKnownAmount !== undefined && (
                           <motion.tr
-                            className="bg-green-50 font-semibold border-t border-green-200"
+                            className="border-t border-green-200 bg-green-50 font-semibold"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 0.3, delay: 0.6 }}
                           >
-                            <td className="py-3 px-4 text-green-700">
+                            <td className="px-4 py-3 text-green-700">
                               Total Known
                             </td>
-                            <td className="py-3 px-4 text-center text-green-700">
+                            <td className="px-4 py-3 text-center text-green-700">
                               -
                             </td>
-                            <td className="py-3 px-4 text-right text-green-700 font-bold">
+                            <td className="px-4 py-3 text-right font-bold text-green-700">
                               {formatCurrency(data.totalKnownAmount)}
                             </td>
                           </motion.tr>
@@ -505,18 +505,18 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
                         {data.totalUnknownAmount !== undefined &&
                           data.totalUnknownAmount > 0 && (
                             <motion.tr
-                              className="bg-yellow-50 font-semibold border-t border-yellow-200"
+                              className="border-t border-yellow-200 bg-yellow-50 font-semibold"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ duration: 0.3, delay: 0.7 }}
                             >
-                              <td className="py-3 px-4 text-yellow-700">
+                              <td className="px-4 py-3 text-yellow-700">
                                 Total Unknown
                               </td>
-                              <td className="py-3 px-4 text-center text-yellow-700">
+                              <td className="px-4 py-3 text-center text-yellow-700">
                                 -
                               </td>
-                              <td className="py-3 px-4 text-right text-yellow-700 font-bold">
+                              <td className="px-4 py-3 text-right font-bold text-yellow-700">
                                 {formatCurrency(data.totalUnknownAmount)}
                               </td>
                             </motion.tr>
@@ -524,18 +524,18 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
 
                         {/* Grand Total Row */}
                         <motion.tr
-                          className="bg-blue-100 font-bold border-t-2 border-blue-300"
+                          className="border-t-2 border-blue-300 bg-blue-100 font-bold"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ duration: 0.3, delay: 0.8 }}
                         >
-                          <td className="py-3 px-4 text-blue-800">
+                          <td className="px-4 py-3 text-blue-800">
                             Grand Total
                           </td>
-                          <td className="py-3 px-4 text-center text-blue-800">
+                          <td className="px-4 py-3 text-center text-blue-800">
                             {data.totalQuantity.toLocaleString()}
                           </td>
-                          <td className="py-3 px-4 text-right text-blue-800">
+                          <td className="px-4 py-3 text-right text-blue-800">
                             {formatCurrency(
                               (data.totalKnownAmount || 0) +
                                 (data.totalUnknownAmount || 0)
@@ -549,16 +549,16 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
             </div>
 
             {/* Mobile Cards View */}
-            <div className="block lg:hidden p-4 space-y-3">
+            <div className="block space-y-3 p-4 lg:hidden">
               {data.denominations.map((item, index) => (
                 <motion.div
                   key={item.denomination}
-                  className="bg-gray-50 rounded-lg p-4"
+                  className="rounded-lg bg-gray-50 p-4"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                 >
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">{item.label} Bills</p>
                       <p className="text-sm text-gray-600">
@@ -576,12 +576,12 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
 
               {/* Total Summary */}
               <motion.div
-                className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                className="rounded-lg border border-gray-200 bg-gray-50 p-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.5 }}
               >
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <p className="font-semibold">Total</p>
                   <div className="text-right">
                     <p className="font-semibold">
@@ -595,18 +595,18 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
               </motion.div>
 
               {/* V2 Additional Totals for Mobile */}
-              {data.version === "v2" &&
+              {data.version === 'v2' &&
                 (data.totalKnownAmount !== undefined ||
                   data.totalUnknownAmount !== undefined) && (
                   <div className="space-y-3">
                     {data.totalKnownAmount !== undefined && (
                       <motion.div
-                        className="bg-green-50 border border-green-200 rounded-lg p-4"
+                        className="rounded-lg border border-green-200 bg-green-50 p-4"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.6 }}
                       >
-                        <div className="flex justify-between items-center">
+                        <div className="flex items-center justify-between">
                           <p className="font-semibold text-green-700">
                             Total Known
                           </p>
@@ -620,12 +620,12 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
                     {data.totalUnknownAmount !== undefined &&
                       data.totalUnknownAmount > 0 && (
                         <motion.div
-                          className="bg-yellow-50 border border-yellow-200 rounded-lg p-4"
+                          className="rounded-lg border border-yellow-200 bg-yellow-50 p-4"
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3, delay: 0.7 }}
                         >
-                          <div className="flex justify-between items-center">
+                          <div className="flex items-center justify-between">
                             <p className="font-semibold text-yellow-700">
                               Total Unknown
                             </p>
@@ -638,12 +638,12 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
 
                     {/* Grand Total for Mobile */}
                     <motion.div
-                      className="bg-blue-100 border border-blue-300 rounded-lg p-4"
+                      className="rounded-lg border border-blue-300 bg-blue-100 p-4"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: 0.8 }}
                     >
-                      <div className="flex justify-between items-center">
+                      <div className="flex items-center justify-between">
                         <p className="font-bold text-blue-800">Grand Total</p>
                         <div className="text-right">
                           <p className="font-semibold text-blue-700">
@@ -669,37 +669,37 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
 };
 
 const BillValidatorSkeleton = () => (
-  <div className="w-full max-w-4xl mx-auto">
-    <div className="mb-6 flex justify-between items-center">
-      <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
-      <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+  <div className="mx-auto w-full max-w-4xl">
+    <div className="mb-6 flex items-center justify-between">
+      <div className="h-6 w-32 animate-pulse rounded bg-gray-200"></div>
+      <div className="h-8 w-20 animate-pulse rounded bg-gray-200"></div>
     </div>
 
-    <div className="flex flex-wrap gap-2 mb-6">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
+    <div className="mb-6 flex flex-wrap gap-2">
+      {[1, 2, 3, 4, 5, 6].map(i => (
         <div
           key={i}
-          className="h-8 w-16 bg-gray-200 rounded animate-pulse"
+          className="h-8 w-16 animate-pulse rounded bg-gray-200"
         ></div>
       ))}
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      {[1, 2].map((i) => (
-        <div key={i} className="bg-gray-100 rounded-lg p-4">
-          <div className="h-4 w-20 bg-gray-200 rounded mb-2 animate-pulse"></div>
-          <div className="h-8 w-24 bg-gray-200 rounded animate-pulse"></div>
+    <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      {[1, 2].map(i => (
+        <div key={i} className="rounded-lg bg-gray-100 p-4">
+          <div className="mb-2 h-4 w-20 animate-pulse rounded bg-gray-200"></div>
+          <div className="h-8 w-24 animate-pulse rounded bg-gray-200"></div>
         </div>
       ))}
     </div>
 
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="rounded-lg border border-gray-200 bg-white p-6">
       <div className="space-y-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex justify-between items-center">
-            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
-            <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
-            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="flex items-center justify-between">
+            <div className="h-4 w-20 animate-pulse rounded bg-gray-200"></div>
+            <div className="h-4 w-16 animate-pulse rounded bg-gray-200"></div>
+            <div className="h-4 w-20 animate-pulse rounded bg-gray-200"></div>
           </div>
         ))}
       </div>

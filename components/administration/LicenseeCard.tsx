@@ -1,15 +1,15 @@
-import type { Licensee } from "@/lib/types/licensee";
-import Image from "next/image";
+import type { Licensee } from '@/lib/types/licensee';
+import Image from 'next/image';
 import {
   isLicenseePaid,
   formatLicenseeDate,
   canChangePaymentStatus,
-} from "@/lib/utils/licensee";
-import { useState, useEffect, useRef } from "react";
-import { ChevronDownIcon } from "@radix-ui/react-icons";
-import creditCardIcon from "@/public/creditCardIcon.svg";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+} from '@/lib/utils/licensee';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
+import creditCardIcon from '@/public/creditCardIcon.svg';
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 type LicenseeCardProps = {
   licensee: Licensee;
@@ -37,46 +37,46 @@ export default function LicenseeCard({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
   return (
     <div
       ref={cardRef}
-      className="bg-white rounded-lg shadow-md overflow-hidden"
+      className="overflow-hidden rounded-lg bg-white shadow-md"
     >
-      <div className="bg-blue-500 text-white p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="flex flex-col gap-2 bg-blue-500 p-3 text-white sm:flex-row sm:items-center sm:justify-between">
         <div
-          className="font-bold text-base sm:text-lg truncate"
+          className="truncate text-base font-bold sm:text-lg"
           title={licensee.name}
         >
           {licensee.name}
         </div>
       </div>
       <div className="p-3">
-        <div className="space-y-2 mb-3">
+        <div className="mb-3 space-y-2">
           {licensee.description && (
             <div className="text-sm text-gray-600">
-              <span className="font-semibold">Description:</span>{" "}
+              <span className="font-semibold">Description:</span>{' '}
               {licensee.description}
             </div>
           )}
           <div className="text-sm text-gray-600">
-            <span className="font-semibold">Country:</span>{" "}
+            <span className="font-semibold">Country:</span>{' '}
             {licensee.countryName || licensee.country}
           </div>
           <div className="text-sm text-gray-600">
-            <span className="font-semibold">Valid From:</span>{" "}
+            <span className="font-semibold">Valid From:</span>{' '}
             {formatLicenseeDate(licensee.startDate)}
           </div>
           <div className="text-sm text-gray-600">
-            <span className="font-semibold">Expires:</span>{" "}
+            <span className="font-semibold">Expires:</span>{' '}
             {formatLicenseeDate(licensee.expiryDate)}
           </div>
-          <div className="text-sm text-gray-600 flex items-center justify-between">
+          <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
               <span className="font-semibold">Payment Status:</span>
             </span>
@@ -84,24 +84,24 @@ export default function LicenseeCard({
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+                  className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                     isPaid
-                      ? "bg-green-100 text-green-800 hover:bg-green-200"
-                      : "bg-red-100 text-red-800 hover:bg-red-200"
+                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                      : 'bg-red-100 text-red-800 hover:bg-red-200'
                   }`}
                 >
-                  {isPaid ? "Paid" : "Unpaid"}
+                  {isPaid ? 'Paid' : 'Unpaid'}
                   <ChevronDownIcon
-                    className={`w-3 h-3 transition-transform ${
-                      dropdownOpen ? "rotate-180" : ""
+                    className={`h-3 w-3 transition-transform ${
+                      dropdownOpen ? 'rotate-180' : ''
                     }`}
                   />
                 </button>
                 {dropdownOpen && (
-                  <div className="absolute top-full right-0 mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg min-w-[80px]">
+                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[80px] rounded-md border border-gray-200 bg-white shadow-lg">
                     <button
-                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 ${
-                        !isPaid ? "text-red-600 font-medium" : "text-gray-700"
+                      className={`block w-full px-3 py-2 text-left text-xs hover:bg-gray-100 ${
+                        !isPaid ? 'font-medium text-red-600' : 'text-gray-700'
                       }`}
                       onClick={() => {
                         if (isPaid) {
@@ -114,8 +114,8 @@ export default function LicenseeCard({
                       Unpaid
                     </button>
                     <button
-                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 ${
-                        isPaid ? "text-green-600 font-medium" : "text-gray-700"
+                      className={`block w-full px-3 py-2 text-left text-xs hover:bg-gray-100 ${
+                        isPaid ? 'font-medium text-green-600' : 'text-gray-700'
                       }`}
                       onClick={() => {
                         if (!isPaid) {
@@ -132,20 +132,20 @@ export default function LicenseeCard({
               </div>
             ) : (
               <span
-                className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
                   isPaid
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
                 }`}
-                style={{ minWidth: 70, textAlign: "center" }}
+                style={{ minWidth: 70, textAlign: 'center' }}
               >
-                {isPaid ? "Paid" : "Unpaid"}
+                {isPaid ? 'Paid' : 'Unpaid'}
               </span>
             )}
           </div>
           {licensee.lastEdited && (
             <div className="text-sm text-gray-600">
-              <span className="font-semibold">Last Edited:</span>{" "}
+              <span className="font-semibold">Last Edited:</span>{' '}
               {formatLicenseeDate(licensee.lastEdited)}
             </div>
           )}

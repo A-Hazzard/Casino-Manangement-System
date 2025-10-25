@@ -1,25 +1,26 @@
- import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { getGamingDayRangesForLocations } from "@/lib/utils/gamingDayRange";
-import { TimePeriod } from "@/app/api/lib/types";
-import { shouldApplyCurrencyConversion } from "@/lib/helpers/currencyConversion";
-import type { CurrencyCode } from "@/shared/types/currency";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
+import { TimePeriod } from '@/app/api/lib/types';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 // Removed auto-index creation to avoid conflicts and extra latency
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const timePeriod = (searchParams.get("timePeriod") as TimePeriod) || "7d";
-    const licencee = searchParams.get("licencee") || undefined;
-    const displayCurrency = (searchParams.get("currency") as CurrencyCode) || "USD";
-    const searchTerm = searchParams.get("search")?.trim() || "";
+    const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
+    const licencee = searchParams.get('licencee') || undefined;
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const searchTerm = searchParams.get('search')?.trim() || '';
 
-    const showAllLocations = searchParams.get("showAllLocations") === "true";
+    const showAllLocations = searchParams.get('showAllLocations') === 'true';
 
     // Pagination parameters
-    const page = parseInt(searchParams.get("page") || "1");
-    const requestedLimit = parseInt(searchParams.get("limit") || "10");
+    const page = parseInt(searchParams.get('page') || '1');
+    const requestedLimit = parseInt(searchParams.get('limit') || '10');
 
     // When showAllLocations is true, return all locations for client-side pagination
     // Otherwise, use server-side pagination with limit
@@ -28,12 +29,12 @@ export async function GET(req: NextRequest) {
 
     // Parse custom dates for Custom time period
     let customStartDate: Date | undefined, customEndDate: Date | undefined;
-    if (timePeriod === "Custom") {
-      const customStart = searchParams.get("startDate");
-      const customEnd = searchParams.get("endDate");
+    if (timePeriod === 'Custom') {
+      const customStart = searchParams.get('startDate');
+      const customEnd = searchParams.get('endDate');
       if (!customStart || !customEnd) {
         return NextResponse.json(
-          { error: "Missing startDate or endDate" },
+          { error: 'Missing startDate or endDate' },
           { status: 400 }
         );
       }
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
-        { error: "DB connection failed" },
+        { error: 'DB connection failed' },
         { status: 500 }
       );
     }
@@ -58,20 +59,20 @@ export async function GET(req: NextRequest) {
     const locationMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
 
-    if (licencee && licencee !== "all") {
-      locationMatchStage["rel.licencee"] = licencee;
+    if (licencee && licencee !== 'all') {
+      locationMatchStage['rel.licencee'] = licencee;
     }
 
     // Add search filter for location name or _id
     if (searchTerm) {
-      locationMatchStage["$and"] = [
+      locationMatchStage['$and'] = [
         {
           $or: [
-            { name: { $regex: searchTerm, $options: "i" } },
+            { name: { $regex: searchTerm, $options: 'i' } },
             { _id: searchTerm }, // Exact match for _id
           ],
         },
@@ -80,9 +81,9 @@ export async function GET(req: NextRequest) {
 
     // Fetch all locations with their gameDayOffset
     const locations = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .find(locationMatchStage, {
-        projection: { _id: 1, name: 1, gameDayOffset: 1, isLocalServer: 1 }
+        projection: { _id: 1, name: 1, gameDayOffset: 1, isLocalServer: 1 },
       })
       .toArray();
 
@@ -102,48 +103,47 @@ export async function GET(req: NextRequest) {
 
     // Process each location individually with its gaming day range
     const locationResults = [];
-    
+
     for (const location of locations) {
       const locationId = location._id.toString();
       const gamingDayRange = gamingDayRanges.get(locationId);
-      
+
       if (!gamingDayRange) continue;
 
       // Processing location with its gaming day range
 
       // Get machines for this location
       const machines = await db
-        .collection("machines")
+        .collection('machines')
         .find({
           gamingLocation: locationId,
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date("2020-01-01") } }
-          ]
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
         })
         .toArray();
 
-
       // Calculate financial metrics for this location using its gaming day range
       const metrics = await db
-        .collection("meters")
+        .collection('meters')
         .aggregate([
           {
             $match: {
               location: locationId,
               readAt: {
                 $gte: gamingDayRange.rangeStart,
-                $lte: gamingDayRange.rangeEnd
-              }
-            }
+                $lte: gamingDayRange.rangeEnd,
+              },
+            },
           },
           {
             $group: {
               _id: null,
-              moneyIn: { $sum: "$movement.drop" },
-              moneyOut: { $sum: "$movement.totalCancelledCredits" }
-            }
-          }
+              moneyIn: { $sum: '$movement.drop' },
+              moneyOut: { $sum: '$movement.totalCancelledCredits' },
+            },
+          },
         ])
         .toArray();
 
@@ -157,13 +157,18 @@ export async function GET(req: NextRequest) {
         const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
         return m.lastActivity > threeMinutesAgo;
       }).length;
-      
+
       const sasMachines = machines.filter(m => m.isSasMachine === true).length;
       const nonSasMachines = totalMachines - sasMachines;
 
       // Apply showAllLocations filter
       // If showAllLocations is false, skip locations with no data
-      if (!showAllLocations && totalMachines === 0 && locationMetrics.moneyIn === 0 && locationMetrics.moneyOut === 0) {
+      if (
+        !showAllLocations &&
+        totalMachines === 0 &&
+        locationMetrics.moneyIn === 0 &&
+        locationMetrics.moneyOut === 0
+      ) {
         continue;
       }
 
@@ -186,8 +191,8 @@ export async function GET(req: NextRequest) {
           assetNumber: m.assetNumber,
           serialNumber: m.serialNumber,
           isSasMachine: m.isSasMachine,
-          lastActivity: m.lastActivity
-        }))
+          lastActivity: m.lastActivity,
+        })),
       });
     }
 
@@ -200,47 +205,58 @@ export async function GET(req: NextRequest) {
 
     // Processed all locations with pagination
 
-    const result = [{
-      metadata: [{ totalCount }],
-      data: paginatedResults
-    }];
+    const result = [
+      {
+        metadata: [{ totalCount }],
+        data: paginatedResults,
+      },
+    ];
 
     // Extract results
     const paginatedData = result[0]?.data || [];
     const totalPages = Math.ceil(totalCount / limit);
 
     // Data processed successfully
-    
+
     // Data ready for response
 
     // Request completed
 
     // Apply currency conversion if needed
     let convertedData = paginatedData;
-    
+
     if (shouldApplyCurrencyConversion(licencee)) {
       // Applying currency conversion for All Licensee mode
       // For "All Licensee" mode, we need to implement the same logic as dashboard totals
       // This is a simplified version - in production, you'd want to refactor this into a shared function
       // Import convertFromUSD properly
       const { convertFromUSD } = await import('@/lib/helpers/rates');
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       convertedData = paginatedData.map((location: any) => {
         // Convert financial fields from USD to display currency
         const convertedLocation = { ...location };
-        
+
         // Convert the financial fields that exist in our new structure
         if (typeof location.moneyIn === 'number') {
-          convertedLocation.moneyIn = convertFromUSD(location.moneyIn, displayCurrency);
+          convertedLocation.moneyIn = convertFromUSD(
+            location.moneyIn,
+            displayCurrency
+          );
         }
         if (typeof location.moneyOut === 'number') {
-          convertedLocation.moneyOut = convertFromUSD(location.moneyOut, displayCurrency);
+          convertedLocation.moneyOut = convertFromUSD(
+            location.moneyOut,
+            displayCurrency
+          );
         }
         if (typeof location.gross === 'number') {
-          convertedLocation.gross = convertFromUSD(location.gross, displayCurrency);
+          convertedLocation.gross = convertFromUSD(
+            location.gross,
+            displayCurrency
+          );
         }
-        
+
         return convertedLocation;
       });
     }
@@ -256,66 +272,77 @@ export async function GET(req: NextRequest) {
         hasPrevPage: page > 1,
       },
       currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licencee)
+      converted: shouldApplyCurrencyConversion(licencee),
     };
 
     return NextResponse.json(response);
   } catch (err: unknown) {
-    console.error("Error in reports locations route:", err);
-    
+    console.error('Error in reports locations route:', err);
+
     // Handle specific MongoDB connection errors
     if (err instanceof Error) {
       const errorMessage = err.message.toLowerCase();
-      
+
       // MongoDB connection timeout
-      if (errorMessage.includes("mongonetworktimeouterror") || 
-          (errorMessage.includes("connection") && errorMessage.includes("timed out"))) {
+      if (
+        errorMessage.includes('mongonetworktimeouterror') ||
+        (errorMessage.includes('connection') &&
+          errorMessage.includes('timed out'))
+      ) {
         return NextResponse.json(
-          { 
-            error: "Database connection timeout",
-            message: "The database is currently experiencing high load. Please try again in a few moments.",
-            type: "CONNECTION_TIMEOUT",
-            retryable: true
+          {
+            error: 'Database connection timeout',
+            message:
+              'The database is currently experiencing high load. Please try again in a few moments.',
+            type: 'CONNECTION_TIMEOUT',
+            retryable: true,
           },
           { status: 503 }
         );
       }
-      
+
       // MongoDB server selection error
-      if (errorMessage.includes("mongoserverselectionerror") || 
-          errorMessage.includes("server selection")) {
+      if (
+        errorMessage.includes('mongoserverselectionerror') ||
+        errorMessage.includes('server selection')
+      ) {
         return NextResponse.json(
-          { 
-            error: "Database server unavailable",
-            message: "Unable to connect to the database server. Please try again later.",
-            type: "SERVER_UNAVAILABLE",
-            retryable: true
+          {
+            error: 'Database server unavailable',
+            message:
+              'Unable to connect to the database server. Please try again later.',
+            type: 'SERVER_UNAVAILABLE',
+            retryable: true,
           },
           { status: 503 }
         );
       }
-      
+
       // Generic MongoDB connection error
-      if (errorMessage.includes("mongodb") || errorMessage.includes("connection")) {
+      if (
+        errorMessage.includes('mongodb') ||
+        errorMessage.includes('connection')
+      ) {
         return NextResponse.json(
-          { 
-            error: "Database connection failed",
-            message: "Unable to establish connection to the database. Please try again.",
-            type: "CONNECTION_ERROR",
-            retryable: true
+          {
+            error: 'Database connection failed',
+            message:
+              'Unable to establish connection to the database. Please try again.',
+            type: 'CONNECTION_ERROR',
+            retryable: true,
           },
           { status: 503 }
         );
       }
     }
-    
+
     // Generic server error
     return NextResponse.json(
-      { 
-        error: "Internal server error",
-        message: "An unexpected error occurred while processing your request.",
-        type: "INTERNAL_ERROR",
-        retryable: false
+      {
+        error: 'Internal server error',
+        message: 'An unexpected error occurred while processing your request.',
+        type: 'INTERNAL_ERROR',
+        retryable: false,
       },
       { status: 500 }
     );

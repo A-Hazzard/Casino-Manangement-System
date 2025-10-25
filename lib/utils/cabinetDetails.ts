@@ -1,5 +1,5 @@
-import { GamingMachine } from "@/shared/types/entities";
-import { TimePeriod } from "../types/api";
+import { GamingMachine } from '@/shared/types/entities';
+import { TimePeriod } from '../types/api';
 
 type ExtendedCabinetDetail = GamingMachine & {
   lastCommunication?: string | Date;
@@ -55,10 +55,10 @@ export function isCabinetOnline(
  */
 export function getTimePeriodFilters(): { label: string; value: TimePeriod }[] {
   return [
-    { label: "Today", value: "Today" as TimePeriod },
-    { label: "Yesterday", value: "Yesterday" as TimePeriod },
-    { label: "Last 7 days", value: "7d" as TimePeriod },
-    { label: "30 days", value: "30d" as TimePeriod },
-    { label: "Custom", value: "Custom" as TimePeriod },
+    { label: 'Today', value: 'Today' as TimePeriod },
+    { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+    { label: 'Last 7 days', value: '7d' as TimePeriod },
+    { label: '30 days', value: '30d' as TimePeriod },
+    { label: 'Custom', value: 'Custom' as TimePeriod },
   ];
 }

@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -16,18 +16,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowUpDown, Activity } from "lucide-react";
-import { formatDate } from "@/lib/utils/formatting";
-import ActivityLogsSearchBar from "./ActivityLogsSearchBar";
-import ActivityLogCard from "./ActivityLogCard";
-import ActivityLogCardSkeleton from "./ActivityLogCardSkeleton";
-import ActivityLogDescriptionDialog from "./ActivityLogDescriptionDialog";
-import { DatePicker } from "@/components/ui/date-picker";
-import type { ActivityLog } from "@/app/api/lib/types/activityLog";
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowUpDown, Activity } from 'lucide-react';
+import { formatDate } from '@/lib/utils/formatting';
+import ActivityLogsSearchBar from './ActivityLogsSearchBar';
+import ActivityLogCard from './ActivityLogCard';
+import ActivityLogCardSkeleton from './ActivityLogCardSkeleton';
+import ActivityLogDescriptionDialog from './ActivityLogDescriptionDialog';
+import { DatePicker } from '@/components/ui/date-picker';
+import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 
 type ActivityLogsTableProps = {
   className?: string;
@@ -43,19 +43,19 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
   const [hasPrevPage, setHasPrevPage] = useState(false);
 
   // Filter states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [searchMode, setSearchMode] = useState<
-    "username" | "email" | "description"
-  >("username");
+    'username' | 'email' | 'description'
+  >('username');
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
-  const [actionFilter, setActionFilter] = useState("all");
-  const [resourceFilter, setResourceFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState('all');
+  const [resourceFilter, setResourceFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
 
   // Sort states
-  const [sortBy, setSortBy] = useState("timestamp");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState('timestamp');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Dialog states
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
@@ -76,36 +76,36 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: "50",
+        limit: '50',
         sortBy,
         sortOrder,
       });
 
       if (debouncedSearchTerm) {
-        if (searchMode === "username") {
-          params.append("username", debouncedSearchTerm);
-        } else if (searchMode === "email") {
-          params.append("email", debouncedSearchTerm);
+        if (searchMode === 'username') {
+          params.append('username', debouncedSearchTerm);
+        } else if (searchMode === 'email') {
+          params.append('email', debouncedSearchTerm);
         } else {
-          params.append("search", debouncedSearchTerm);
+          params.append('search', debouncedSearchTerm);
         }
       }
-      if (actionFilter && actionFilter !== "all")
-        params.append("action", actionFilter);
-      if (resourceFilter && resourceFilter !== "all")
-        params.append("resource", resourceFilter);
+      if (actionFilter && actionFilter !== 'all')
+        params.append('action', actionFilter);
+      if (resourceFilter && resourceFilter !== 'all')
+        params.append('resource', resourceFilter);
       if (dateFilter) {
         // Set start of the selected day
         const selectedDate = new Date(dateFilter);
         selectedDate.setHours(0, 0, 0, 0);
-        params.append("startDate", selectedDate.toISOString());
+        params.append('startDate', selectedDate.toISOString());
 
         // Set end of the selected day
         const endDate = new Date(dateFilter);
         endDate.setHours(23, 59, 59, 999);
-        params.append("endDate", endDate.toISOString());
+        params.append('endDate', endDate.toISOString());
 
-        console.warn("Date filter applied:", {
+        console.warn('Date filter applied:', {
           original: dateFilter.toISOString(),
           startDate: selectedDate.toISOString(),
           endDate: endDate.toISOString(),
@@ -124,7 +124,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
         setHasPrevPage(data.data.pagination.hasPrevPage);
       }
     } catch (error) {
-      console.error("Error fetching activity logs:", error);
+      console.error('Error fetching activity logs:', error);
     } finally {
       setLoading(false);
     }
@@ -146,61 +146,61 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
   // Handle sort
   const handleSort = (column: string) => {
     if (sortBy === column) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(column);
-      setSortOrder("desc");
+      setSortOrder('desc');
     }
   };
 
   // Get action badge styling with enhanced colors and icons
   const getActionBadgeStyle = (action: string) => {
     switch (action.toLowerCase()) {
-      case "create":
-        return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-semibold";
-      case "update":
-        return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 font-semibold";
-      case "delete":
-        return "bg-red-100 text-red-800 border-red-200 hover:bg-red-200 font-semibold";
-      case "view":
-        return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 font-semibold";
-      case "login":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 font-semibold";
-      case "logout":
-        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-semibold";
+      case 'create':
+        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-semibold';
+      case 'update':
+        return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 font-semibold';
+      case 'delete':
+        return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200 font-semibold';
+      case 'view':
+        return 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 font-semibold';
+      case 'login':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 font-semibold';
+      case 'logout':
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-semibold';
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-semibold";
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-semibold';
     }
   };
 
   // Get resource badge styling with enhanced colors
   const getResourceBadgeStyle = (resource: string) => {
     switch (resource.toLowerCase()) {
-      case "user":
-        return "bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 font-medium";
-      case "machine":
-      case "cabinet":
-        return "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 font-medium";
-      case "location":
-        return "bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-200 font-medium";
-      case "collection":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 font-medium";
-      case "member":
-        return "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200 font-medium";
-      case "licensee":
-        return "bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200 font-medium";
-      case "session":
-        return "bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200 font-medium";
+      case 'user':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 font-medium';
+      case 'machine':
+      case 'cabinet':
+        return 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 font-medium';
+      case 'location':
+        return 'bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-200 font-medium';
+      case 'collection':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 font-medium';
+      case 'member':
+        return 'bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200 font-medium';
+      case 'licensee':
+        return 'bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200 font-medium';
+      case 'session':
+        return 'bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200 font-medium';
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-medium";
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 font-medium';
     }
   };
 
   // Clear filters
   const clearFilters = () => {
-    setSearchTerm("");
-    setActionFilter("all");
-    setResourceFilter("all");
+    setSearchTerm('');
+    setActionFilter('all');
+    setResourceFilter('all');
     setDateFilter(undefined);
     setCurrentPage(1);
   };
@@ -238,7 +238,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
           />
 
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 mt-4">
+          <div className="mb-6 mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             <Select value={actionFilter} onValueChange={setActionFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Action" />
@@ -281,7 +281,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
           </div>
 
           {/* Desktop Table View */}
-          <div className="hidden lg:block border rounded-lg">
+          <div className="hidden rounded-lg border lg:block">
             {loading ? (
               <div className="space-y-2 p-4">
                 {Array.from({ length: 10 }).map((_, i) => (
@@ -296,7 +296,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                       <TableHead>
                         <Button
                           variant="ghost"
-                          onClick={() => handleSort("timestamp")}
+                          onClick={() => handleSort('timestamp')}
                           className="h-auto p-0 font-semibold"
                         >
                           Timestamp
@@ -306,7 +306,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                       <TableHead centered>
                         <Button
                           variant="ghost"
-                          onClick={() => handleSort("username")}
+                          onClick={() => handleSort('username')}
                           className="h-auto p-0 font-semibold"
                         >
                           User
@@ -316,7 +316,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                       <TableHead centered>
                         <Button
                           variant="ghost"
-                          onClick={() => handleSort("action")}
+                          onClick={() => handleSort('action')}
                           className="h-auto p-0 font-semibold"
                         >
                           Action
@@ -326,7 +326,7 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                       <TableHead centered>
                         <Button
                           variant="ghost"
-                          onClick={() => handleSort("resource")}
+                          onClick={() => handleSort('resource')}
                           className="h-auto p-0 font-semibold"
                         >
                           Resource
@@ -341,17 +341,17 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                   </TableHeader>
                   <TableBody>
                     {logs && logs.length > 0 ? (
-                      logs.map((log) => (
+                      logs.map(log => (
                         <TableRow key={log._id}>
                           <TableCell className="font-mono text-sm">
                             {formatDate(log.timestamp)}
                           </TableCell>
                           <TableCell centered>
                             <div>
-                              {searchMode === "email" ? (
+                              {searchMode === 'email' ? (
                                 <>
                                   <div className="font-medium">
-                                    {log.actor?.email || "N/A"}
+                                    {log.actor?.email || 'N/A'}
                                   </div>
                                   {log.username && (
                                     <div className="text-sm text-gray-500">
@@ -376,34 +376,34 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                           <TableCell centered>
                             <Badge
                               className={getActionBadgeStyle(
-                                log.action || "unknown"
+                                log.action || 'unknown'
                               )}
                             >
-                              {(log.action || "unknown").toUpperCase()}
+                              {(log.action || 'unknown').toUpperCase()}
                             </Badge>
                           </TableCell>
                           <TableCell centered>
                             <Badge
                               className={getResourceBadgeStyle(
-                                log.resource || "unknown"
+                                log.resource || 'unknown'
                               )}
                             >
-                              {log.resource || "unknown"}
+                              {log.resource || 'unknown'}
                             </Badge>
                           </TableCell>
                           <TableCell className="min-w-0 max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl">
                             <button
                               onClick={() => handleDescriptionClick(log)}
-                              className="w-full text-left hover:text-blue-600 hover:underline cursor-pointer transition-colors text-sm break-words whitespace-normal"
+                              className="w-full cursor-pointer whitespace-normal break-words text-left text-sm transition-colors hover:text-blue-600 hover:underline"
                               title="Click to view full description"
                             >
                               <div className="flex items-start gap-1">
-                                <span className="flex-1 min-w-0 break-words">
+                                <span className="min-w-0 flex-1 break-words">
                                   {log.description ||
                                     log.details ||
-                                    "No description"}
+                                    'No description'}
                                 </span>
-                                <span className="text-blue-500 text-xs flex-shrink-0 mt-0.5">
+                                <span className="mt-0.5 flex-shrink-0 text-xs text-blue-500">
                                   📋
                                 </span>
                               </div>
@@ -412,17 +412,17 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                           <TableCell centered className="font-mono text-sm">
                             <div className="flex flex-col items-center">
                               <span className="text-gray-800">
-                                {log.ipAddress || "N/A"}
+                                {log.ipAddress || 'N/A'}
                               </span>
                               {log.ipAddress &&
-                                log.ipAddress.includes("(Local)") && (
-                                  <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded mt-1">
+                                log.ipAddress.includes('(Local)') && (
+                                  <span className="mt-1 rounded bg-blue-50 px-2 py-1 text-xs text-blue-600">
                                     Local Network
                                   </span>
                                 )}
                               {log.ipAddress &&
-                                log.ipAddress.includes("(Public)") && (
-                                  <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded mt-1">
+                                log.ipAddress.includes('(Public)') && (
+                                  <span className="mt-1 rounded bg-green-50 px-2 py-1 text-xs text-green-600">
                                     Public IP
                                   </span>
                                 )}
@@ -432,9 +432,9 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={6} className="py-8 text-center">
                           <div className="text-gray-500">
-                            <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                            <Activity className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                             <p className="text-lg font-medium">
                               No activity logs found
                             </p>
@@ -452,13 +452,13 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
           </div>
 
           {/* Mobile/Tablet Card View */}
-          <div className="lg:hidden space-y-4 px-1">
+          <div className="space-y-4 px-1 lg:hidden">
             {loading ? (
               Array.from({ length: 10 }).map((_, i) => (
                 <ActivityLogCardSkeleton key={i} />
               ))
             ) : logs && logs.length > 0 ? (
-              logs.map((log) => (
+              logs.map(log => (
                 <ActivityLogCard
                   key={log._id}
                   log={log}
@@ -467,8 +467,8 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
                 />
               ))
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="py-8 text-center text-gray-500">
+                <Activity className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                 <p className="text-lg font-medium">No activity logs found</p>
                 <p className="text-sm">
                   Try adjusting your search or filter criteria
@@ -479,9 +479,9 @@ const ActivityLogsTable: React.FC<ActivityLogsTableProps> = ({ className }) => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
+            <div className="mt-4 flex items-center justify-between">
               <div className="text-sm text-gray-500">
-                Showing {(currentPage - 1) * 50 + 1} to{" "}
+                Showing {(currentPage - 1) * 50 + 1} to{' '}
                 {Math.min(currentPage * 50, totalCount)} of {totalCount} logs
               </div>
               <div className="flex items-center gap-2">

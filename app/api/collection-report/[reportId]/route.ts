@@ -1,13 +1,13 @@
-import { NextResponse, NextRequest } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { getCollectionReportById } from "@/app/api/lib/helpers/accountingDetails";
-import { CollectionReport } from "@/app/api/lib/models/collectionReport";
-import { Collections } from "@/app/api/lib/models/collections";
-import { Machine } from "@/app/api/lib/models/machines";
-import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "../../lib/helpers/users";
-import { getClientIP } from "@/lib/utils/ipAddress";
-import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import { NextResponse, NextRequest } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { getCollectionReportById } from '@/app/api/lib/helpers/accountingDetails';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { Collections } from '@/app/api/lib/models/collections';
+import { Machine } from '@/app/api/lib/models/machines';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '../../lib/helpers/users';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import type { CreateCollectionReportPayload } from '@/lib/types/api';
 
 /**
  * API route handler for fetching a collection report by reportId.
@@ -17,11 +17,11 @@ import type { CreateCollectionReportPayload } from "@/lib/types/api";
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     await connectDB();
-    const reportId = request.nextUrl.pathname.split("/").pop();
+    const reportId = request.nextUrl.pathname.split('/').pop();
 
     if (!reportId) {
       return NextResponse.json(
-        { message: "Report ID is required" },
+        { message: 'Report ID is required' },
         { status: 400 }
       );
     }
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const reportData = await getCollectionReportById(reportId);
     if (!reportData) {
       return NextResponse.json(
-        { message: "Collection Report not found" },
+        { message: 'Collection Report not found' },
         { status: 404 }
       );
     }
@@ -46,9 +46,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(reportData);
   } catch (error) {
-    console.error("Error fetching collection report details:", error);
+    console.error('Error fetching collection report details:', error);
     const message =
-      error instanceof Error ? error.message : "Internal server error";
+      error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ message }, { status: 500 });
   }
 }
@@ -61,11 +61,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
   try {
     await connectDB();
-    const reportId = request.nextUrl.pathname.split("/").pop();
+    const reportId = request.nextUrl.pathname.split('/').pop();
 
     if (!reportId) {
       return NextResponse.json(
-        { message: "Report ID is required" },
+        { message: 'Report ID is required' },
         { status: 400 }
       );
     }
@@ -78,7 +78,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const existingReport = await CollectionReport.findOne({ _id: reportId });
     if (!existingReport) {
       return NextResponse.json(
-        { message: "Collection Report not found" },
+        { message: 'Collection Report not found' },
         { status: 404 }
       );
     }
@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
     if (!updatedReport) {
       return NextResponse.json(
-        { message: "Failed to update collection report" },
+        { message: 'Failed to update collection report' },
         { status: 500 }
       );
     }
@@ -148,7 +148,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           // If this is the latest report, update the gaming location
           if (latestReport && latestReport._id.toString() === reportId) {
             const GamingLocations = (
-              await import("@/app/api/lib/models/gaminglocations")
+              await import('@/app/api/lib/models/gaminglocations')
             ).GamingLocations;
             await GamingLocations.findByIdAndUpdate(updatedReport.location, {
               previousCollectionTime: newTimestamp,
@@ -162,7 +162,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         );
       } catch (error) {
         console.error(
-          "Error updating related data after timestamp change:",
+          'Error updating related data after timestamp change:',
           error
         );
         // Don't fail the request, just log the error
@@ -173,37 +173,37 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        const updateChanges = Object.keys(body).map((key) => ({
+        const updateChanges = Object.keys(body).map(key => ({
           field: key,
           oldValue: existingReport[key as keyof typeof existingReport],
           newValue: body[key as keyof typeof body],
         }));
 
         await logActivity({
-          action: "UPDATE",
+          action: 'UPDATE',
           details: `Updated collection report for ${existingReport.locationName}`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "collection",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'collection',
             resourceId: reportId,
             resourceName: `${existingReport.locationName} - ${existingReport.collectorName}`,
             changes: updateChanges,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
     return NextResponse.json({ success: true, data: updatedReport });
   } catch (error) {
-    console.error("Error updating collection report:", error);
+    console.error('Error updating collection report:', error);
     const message =
-      error instanceof Error ? error.message : "Internal server error";
+      error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ message }, { status: 500 });
   }
 }
@@ -217,11 +217,11 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
     await connectDB();
-    const reportId = request.nextUrl.pathname.split("/").pop();
+    const reportId = request.nextUrl.pathname.split('/').pop();
 
     if (!reportId) {
       return NextResponse.json(
-        { message: "Report ID is required" },
+        { message: 'Report ID is required' },
         { status: 400 }
       );
     }
@@ -230,7 +230,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const existingReport = await CollectionReport.findById(reportId);
     if (!existingReport) {
       return NextResponse.json(
-        { message: "Collection Report not found" },
+        { message: 'Collection Report not found' },
         { status: 404 }
       );
     }
@@ -245,7 +245,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     try {
       // Try to remove by ObjectId first (new format)
       let updateResult = await Machine.updateMany(
-        { "collectionMetersHistory.locationReportId": reportId },
+        { 'collectionMetersHistory.locationReportId': reportId },
         {
           $pull: {
             collectionMetersHistory: {
@@ -261,7 +261,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       // If no matches found with ObjectId, try with string _id (old format)
       if (updateResult.modifiedCount === 0) {
         updateResult = await Machine.updateMany(
-          { "collectionMetersHistory._id": reportId },
+          { 'collectionMetersHistory._id': reportId },
           {
             $pull: {
               collectionMetersHistory: {
@@ -296,8 +296,16 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
             $and: [
               {
                 $or: [
-                  { collectionTime: { $lt: collection.collectionTime || collection.timestamp } },
-                  { timestamp: { $lt: collection.collectionTime || collection.timestamp } },
+                  {
+                    collectionTime: {
+                      $lt: collection.collectionTime || collection.timestamp,
+                    },
+                  },
+                  {
+                    timestamp: {
+                      $lt: collection.collectionTime || collection.timestamp,
+                    },
+                  },
                 ],
               },
               {
@@ -317,7 +325,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
             // Use the actual previous collection's metersIn/metersOut
             revertToMetersIn = actualPreviousCollection.metersIn || 0;
             revertToMetersOut = actualPreviousCollection.metersOut || 0;
-            
+
             console.warn(
               `Found actual previous collection for machine ${collection.machineId}:`,
               {
@@ -336,8 +344,8 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
           await Machine.findByIdAndUpdate(collection.machineId, {
             $set: {
-              "collectionMeters.metersIn": revertToMetersIn,
-              "collectionMeters.metersOut": revertToMetersOut,
+              'collectionMeters.metersIn': revertToMetersIn,
+              'collectionMeters.metersOut': revertToMetersOut,
               updatedAt: new Date(),
             },
           });
@@ -366,22 +374,22 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     if (currentUser && currentUser.emailAddress) {
       try {
         await logActivity({
-          action: "DELETE",
+          action: 'DELETE',
           details: `Deleted collection report for ${existingReport.locationName} with ${associatedCollections.length} associated collections. Collection meters reverted to previous values for all affected machines.`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "collection",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'collection',
             resourceId: reportId,
             resourceName: `${existingReport.locationName} - ${existingReport.collectorName}`,
             changes: [],
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
@@ -390,9 +398,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       message: `Collection report and ${associatedCollections.length} associated collections deleted successfully. Collection meters reverted to previous values.`,
     });
   } catch (error) {
-    console.error("Error deleting collection report:", error);
+    console.error('Error deleting collection report:', error);
     const message =
-      error instanceof Error ? error.message : "Internal server error";
+      error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ message }, { status: 500 });
   }
 }

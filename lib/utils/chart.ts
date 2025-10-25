@@ -2,7 +2,7 @@
  * Chart utility functions for rendering and calculating chart data
  */
 
-import { CustomizedLabelProps } from "@/lib/types/componentProps";
+import { CustomizedLabelProps } from '@/lib/types/componentProps';
 
 const RADIAN = Math.PI / 180;
 
@@ -20,11 +20,11 @@ export function calculatePieChartLabelData(props: CustomizedLabelProps) {
   return {
     x,
     y,
-    textAnchor: "middle" as const,
-    dominantBaseline: "central" as const,
-    fontSize: props.percent < 0.1 ? "12px" : "14px",
-    fontWeight: "bold" as const,
-    fill: "white",
+    textAnchor: 'middle' as const,
+    dominantBaseline: 'central' as const,
+    fontSize: props.percent < 0.1 ? '12px' : '14px',
+    fontWeight: 'bold' as const,
+    fill: 'white',
     text: `${(props.percent * 100).toFixed(0)}%`,
   };
 }

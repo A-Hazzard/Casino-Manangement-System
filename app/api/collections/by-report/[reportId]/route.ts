@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { Collections } from "@/app/api/lib/models/collections";
-import { CollectionReport } from "@/app/api/lib/models/collectionReport";
-import type { CollectionDocument } from "@/lib/types/collections";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Collections } from '@/app/api/lib/models/collections';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import type { CollectionDocument } from '@/lib/types/collections';
 
 /**
  * GET /api/collections/by-report/[reportId]
@@ -21,7 +21,7 @@ export async function GET(
 
     if (!reportId) {
       return NextResponse.json(
-        { error: "Report ID is required" },
+        { error: 'Report ID is required' },
         { status: 400 }
       );
     }
@@ -33,7 +33,7 @@ export async function GET(
 
     if (!collectionReport) {
       return NextResponse.json(
-        { error: "Collection report not found" },
+        { error: 'Collection report not found' },
         { status: 404 }
       );
     }
@@ -52,9 +52,9 @@ export async function GET(
 
     return NextResponse.json(collections);
   } catch (error) {
-    console.error(" Error fetching collections by report ID:", error);
+    console.error(' Error fetching collections by report ID:', error);
     return NextResponse.json(
-      { error: "Failed to fetch collections" },
+      { error: 'Failed to fetch collections' },
       { status: 500 }
     );
   }

@@ -3,11 +3,11 @@
  * Handles cabinet CRUD operations and modal management
  */
 
-import { useCallback } from "react";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
-import { ActionButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
+import { useCallback } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
+import { ActionButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
 type CabinetActionsProps = {
   activeSection: string;
   selectedLocation: string;
@@ -30,7 +30,7 @@ export const CabinetActions = ({
   // Handle new cabinet creation
   const handleNewCabinet = useCallback(() => {
     const locationId =
-      selectedLocation !== "all" ? selectedLocation : undefined;
+      selectedLocation !== 'all' ? selectedLocation : undefined;
     openCabinetModal(locationId);
   }, [selectedLocation, openCabinetModal]);
 
@@ -41,19 +41,19 @@ export const CabinetActions = ({
 
   // Render desktop header action buttons
   const renderDesktopActions = () => {
-    if (activeSection === "cabinets") {
+    if (activeSection === 'cabinets') {
       return (
-        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+        <div className="hidden flex-shrink-0 items-center gap-3 md:flex">
           {loading ? (
             <ActionButtonSkeleton width="w-36" showIcon={true} />
           ) : (
             <Button
               onClick={handleNewCabinet}
-              className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+              className="flex-shrink-0 items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive"
               title="Add Cabinet"
             >
-              <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                <Plus className="w-4 h-4 text-white" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white">
+                <Plus className="h-4 w-4 text-white" />
               </div>
               <span>Add Cabinet</span>
             </Button>
@@ -62,18 +62,18 @@ export const CabinetActions = ({
       );
     }
 
-    if (activeSection === "movement") {
+    if (activeSection === 'movement') {
       return (
-        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+        <div className="hidden flex-shrink-0 items-center gap-3 md:flex">
           {loading ? (
             <ActionButtonSkeleton width="w-48" showIcon={true} />
           ) : (
             <Button
               onClick={handleNewMovementRequest}
-              className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+              className="flex-shrink-0 items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive"
             >
-              <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                <Plus className="w-4 h-4 text-white" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white">
+                <Plus className="h-4 w-4 text-white" />
               </div>
               <span>Create Movement Request</span>
             </Button>
@@ -87,15 +87,15 @@ export const CabinetActions = ({
 
   // Render mobile action buttons
   const renderMobileActions = () => {
-    if (activeSection === "cabinets") {
+    if (activeSection === 'cabinets') {
       return (
-        <div className="md:hidden mt-4 w-full">
+        <div className="mt-4 w-full md:hidden">
           {loading ? (
             <ActionButtonSkeleton width="w-full" showIcon={true} />
           ) : (
             <Button
               onClick={handleNewCabinet}
-              className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-button py-3 text-white hover:bg-buttonActive"
               title="Add Cabinet"
             >
               <Plus size={20} />
@@ -106,15 +106,15 @@ export const CabinetActions = ({
       );
     }
 
-    if (activeSection === "movement") {
+    if (activeSection === 'movement') {
       return (
-        <div className="md:hidden mt-4 w-full">
+        <div className="mt-4 w-full md:hidden">
           {loading ? (
             <ActionButtonSkeleton width="w-full" showIcon={true} />
           ) : (
             <Button
               onClick={handleNewMovementRequest}
-              className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-button py-3 text-white hover:bg-buttonActive"
             >
               <Plus size={20} />
               Create Movement Request

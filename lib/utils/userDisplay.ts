@@ -1,4 +1,4 @@
-import type { UserAuthPayload } from "@/shared/types/auth";
+import type { UserAuthPayload } from '@/shared/types/auth';
 
 /**
  * Gets the display name for a user based on their profile information
@@ -8,7 +8,7 @@ import type { UserAuthPayload } from "@/shared/types/auth";
  * @returns The display name for the user
  */
 export function getUserDisplayName(user: UserAuthPayload | null): string {
-  if (!user) return "Unknown User";
+  if (!user) return 'Unknown User';
 
   // Try firstName + lastName first
   const firstName = user.profile?.firstName?.trim();
@@ -36,5 +36,5 @@ export function getUserDisplayName(user: UserAuthPayload | null): string {
     return user.emailAddress.trim();
   }
 
-  return "Unknown User";
+  return 'Unknown User';
 }

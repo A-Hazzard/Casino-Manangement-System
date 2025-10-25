@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 type OnlineOfflineIndicatorProps = {
   showTitle?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 };
 
 export default function OnlineOfflineIndicator({
   showTitle = false,
-  size = "md",
+  size = 'md',
   className,
 }: OnlineOfflineIndicatorProps) {
   const [loading, setLoading] = useState(true);
@@ -29,7 +29,7 @@ export default function OnlineOfflineIndicator({
     offlineMachines: 0,
   });
 
-  const selectedLicencee = useDashBoardStore((state) => state.selectedLicencee);
+  const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
 
   useEffect(() => {
     const fetchMachineStats = async () => {
@@ -37,7 +37,7 @@ export default function OnlineOfflineIndicator({
       setError(null);
       try {
         const response = await axios.get(
-          `/api/analytics/machines/stats?licensee=${selectedLicencee || "all"}`
+          `/api/analytics/machines/stats?licensee=${selectedLicencee || 'all'}`
         );
         const data = response.data;
         setStats({
@@ -46,8 +46,8 @@ export default function OnlineOfflineIndicator({
           offlineMachines: data.offlineMachines || 0,
         });
       } catch (err) {
-        console.error("Error fetching machine stats:", err);
-        setError("Failed to load machine status");
+        console.error('Error fetching machine stats:', err);
+        setError('Failed to load machine status');
       } finally {
         setLoading(false);
       }
@@ -61,13 +61,13 @@ export default function OnlineOfflineIndicator({
 
   if (loading) {
     return (
-      <div className={cn("flex items-center gap-2", className)}>
+      <div className={cn('flex items-center gap-2', className)}>
         <Skeleton
           className={cn(
-            size === "sm" && "h-2 w-2",
-            size === "md" && "h-3 w-3",
-            size === "lg" && "h-4 w-4",
-            "rounded-full"
+            size === 'sm' && 'h-2 w-2',
+            size === 'md' && 'h-3 w-3',
+            size === 'lg' && 'h-4 w-4',
+            'rounded-full'
           )}
         />
         {showTitle && <Skeleton className="h-4 w-24" />}
@@ -78,14 +78,14 @@ export default function OnlineOfflineIndicator({
   if (error) {
     return (
       <div
-        className={cn("flex items-center gap-2 text-destructive", className)}
+        className={cn('flex items-center gap-2 text-destructive', className)}
       >
         <div
           className={cn(
-            size === "sm" && "h-2 w-2",
-            size === "md" && "h-3 w-3",
-            size === "lg" && "h-4 w-4",
-            "rounded-full bg-destructive"
+            size === 'sm' && 'h-2 w-2',
+            size === 'md' && 'h-3 w-3',
+            size === 'lg' && 'h-4 w-4',
+            'rounded-full bg-destructive'
           )}
         />
         {showTitle && (
@@ -100,23 +100,23 @@ export default function OnlineOfflineIndicator({
   const someOnline = onlineMachines > 0;
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn('flex items-center gap-2', className)}>
       <div
         className={cn(
-          size === "sm" && "h-2 w-2",
-          size === "md" && "h-3 w-3",
-          size === "lg" && "h-4 w-4",
-          "rounded-full",
-          allOffline && "bg-destructive",
-          someOnline && "bg-success animate-pulse",
-          !allOffline && !someOnline && "bg-muted"
+          size === 'sm' && 'h-2 w-2',
+          size === 'md' && 'h-3 w-3',
+          size === 'lg' && 'h-4 w-4',
+          'rounded-full',
+          allOffline && 'bg-destructive',
+          someOnline && 'bg-success animate-pulse',
+          !allOffline && !someOnline && 'bg-muted'
         )}
       />
       {showTitle && (
         <span className="text-sm font-medium">
-          {allOffline && "All Offline"}
+          {allOffline && 'All Offline'}
           {someOnline && `${onlineMachines} Online`}
-          {!allOffline && !someOnline && "No Machines"}
+          {!allOffline && !someOnline && 'No Machines'}
         </span>
       )}
     </div>

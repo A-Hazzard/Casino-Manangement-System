@@ -1,21 +1,21 @@
-import { useRef, useEffect } from "react";
-import type { Blob, RGBAColor } from "@/lib/types/components";
+import { useRef, useEffect } from 'react';
+import type { Blob, RGBAColor } from '@/lib/types/components';
 
 const BlobConfig = {
   transparency: 0.04, // just a whisper of color
   colors: [
-    "#0AB40B",
-    "#5119E9",
-    "#A8A8A8",
-    "#ECF0F9",
-    "#707070",
-    "#FFA203",
-    "#F6B37F",
-    "#5A69E7",
-    "#4EA7FF",
-    "#94F394",
-    "#96E3D4",
-    "#F9687D",
+    '#0AB40B',
+    '#5119E9',
+    '#A8A8A8',
+    '#ECF0F9',
+    '#707070',
+    '#FFA203',
+    '#F6B37F',
+    '#5A69E7',
+    '#4EA7FF',
+    '#94F394',
+    '#96E3D4',
+    '#F9687D',
   ],
 };
 
@@ -34,7 +34,7 @@ function hexToRgba(hex: string, alpha: number): RGBAColor {
   return { r, g, b, a: alpha };
 }
 
-const colorPool: RGBAColor[] = BlobConfig.colors.map((hex) =>
+const colorPool: RGBAColor[] = BlobConfig.colors.map(hex =>
   hexToRgba(hex, BlobConfig.transparency)
 );
 
@@ -43,14 +43,14 @@ export default function LiquidGradient() {
 
   useEffect(() => {
     const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext('2d')!;
 
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
     resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener('resize', resizeCanvas);
 
     const blobs: Blob[] = Array.from({ length: 14 }, (_, i) => {
       const color = colorPool[i % colorPool.length];
@@ -65,22 +65,22 @@ export default function LiquidGradient() {
     });
 
     const applyPostBlur = () => {
-      const tempCanvas = document.createElement("canvas");
+      const tempCanvas = document.createElement('canvas');
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
-      const tempCtx = tempCanvas.getContext("2d")!;
+      const tempCtx = tempCanvas.getContext('2d')!;
       tempCtx.drawImage(canvas, 0, 0);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.filter = "blur(40px) saturate(140%)";
+      ctx.filter = 'blur(40px) saturate(140%)';
       ctx.drawImage(tempCanvas, 0, 0);
-      ctx.filter = "none";
+      ctx.filter = 'none';
     };
 
     let animationId: number;
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.globalCompositeOperation = "lighter";
+      ctx.globalCompositeOperation = 'lighter';
 
       blobs.forEach((b1, i) => {
         let ax = 0;
@@ -117,7 +117,7 @@ export default function LiquidGradient() {
         if (b1.y < 0 || b1.y > canvas.height) b1.vy *= -EDGE_REPULSION;
       });
 
-      blobs.forEach((blob) => {
+      blobs.forEach(blob => {
         const gradient = ctx.createRadialGradient(
           blob.x,
           blob.y,
@@ -148,7 +148,7 @@ export default function LiquidGradient() {
     animate();
     return () => {
       cancelAnimationFrame(animationId);
-      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener('resize', resizeCanvas);
     };
   }, []);
 
@@ -156,13 +156,13 @@ export default function LiquidGradient() {
     <canvas
       ref={canvasRef}
       style={{
-        position: "fixed",
+        position: 'fixed',
         top: 0,
         left: 0,
-        width: "100vw",
-        height: "100vh",
+        width: '100vw',
+        height: '100vh',
         zIndex: -1,
-        backgroundColor: "hsl(var(--background))",
+        backgroundColor: 'hsl(var(--background))',
       }}
     />
   );

@@ -1,33 +1,33 @@
-"use client";
+'use client';
 
-import PageLayout from "@/components/layout/PageLayout";
-import MobileLayout from "@/components/layout/MobileLayout";
-import PcLayout from "@/components/layout/PcLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import PageErrorBoundary from "@/components/ui/errors/PageErrorBoundary";
+import PageLayout from '@/components/layout/PageLayout';
+import MobileLayout from '@/components/layout/MobileLayout';
+import PcLayout from '@/components/layout/PcLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import PageErrorBoundary from '@/components/ui/errors/PageErrorBoundary';
 
-import { useCallback, useEffect, useRef } from "react";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { TimePeriod } from "@/shared/types/common";
-import { useCurrency } from "@/lib/contexts/CurrencyContext";
-import { FloatingRefreshButton } from "@/components/ui/FloatingRefreshButton";
-import { PieChartLabelRenderer } from "@/components/ui/PieChartLabelRenderer";
+import { useCallback, useEffect, useRef } from 'react';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { TimePeriod } from '@/shared/types/common';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import { FloatingRefreshButton } from '@/components/ui/FloatingRefreshButton';
+import { PieChartLabelRenderer } from '@/components/ui/PieChartLabelRenderer';
 
 import {
   loadGamingLocations,
   fetchMetricsData,
   fetchTopPerformingDataHelper,
-} from "@/lib/helpers/dashboard";
-import { CustomizedLabelProps } from "@/lib/types/componentProps";
-import { DashboardTotals, TopPerformingData } from "@/lib/types";
+} from '@/lib/helpers/dashboard';
+import { CustomizedLabelProps } from '@/lib/types/componentProps';
+import { DashboardTotals, TopPerformingData } from '@/lib/types';
 
 // Custom hooks
 import {
   useDashboardFilters,
   useDashboardRefresh,
   useDashboardScroll,
-} from "@/lib/hooks/data";
-import { useGlobalErrorHandler } from "@/lib/hooks/data/useGlobalErrorHandler";
+} from '@/lib/hooks/data';
+import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 
 /**
  * Dashboard Page Component
@@ -114,7 +114,7 @@ function DashboardContent() {
       // Wrap API calls with error handling
       await stableHandleApiCallWithRetry(
         () => loadGamingLocations(setGamingLocations, selectedLicencee),
-        "Dashboard Locations"
+        'Dashboard Locations'
       );
 
       if (activeMetricsFilter) {
@@ -130,7 +130,7 @@ function DashboardContent() {
               setShowDatePicker,
               displayCurrency
             ),
-          "Dashboard Metrics"
+          'Dashboard Metrics'
         );
       }
 
@@ -154,12 +154,12 @@ function DashboardContent() {
         () =>
           fetchTopPerformingDataHelper(
             activeTab,
-            (activePieChartFilter || "Today") as TimePeriod,
+            (activePieChartFilter || 'Today') as TimePeriod,
             (data: TopPerformingData[]) =>
               setTopPerformingData(data as unknown as TopPerformingData),
             setLoadingTopPerforming
           ),
-        "Dashboard Top Performing Data"
+        'Dashboard Top Performing Data'
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -183,7 +183,7 @@ function DashboardContent() {
               setShowDatePicker,
               displayCurrency
             ),
-          "Dashboard Custom Metrics"
+          'Dashboard Custom Metrics'
         );
 
         setLoadingChartData(false);
@@ -244,7 +244,7 @@ function DashboardContent() {
           refreshing={refreshing}
           pieChartSortIsOpen={pieChartSortIsOpen}
           activeMetricsFilter={activeMetricsFilter as TimePeriod}
-          activePieChartFilter={(activePieChartFilter || "Today") as TimePeriod}
+          activePieChartFilter={(activePieChartFilter || 'Today') as TimePeriod}
           topPerformingData={topPerformingData}
           setLoadingChartData={setLoadingChartData}
           setRefreshing={() => {}}
@@ -278,7 +278,7 @@ function DashboardContent() {
           refreshing={refreshing}
           pieChartSortIsOpen={pieChartSortIsOpen}
           activeMetricsFilter={activeMetricsFilter as TimePeriod}
-          activePieChartFilter={(activePieChartFilter || "Today") as TimePeriod}
+          activePieChartFilter={(activePieChartFilter || 'Today') as TimePeriod}
           topPerformingData={topPerformingData}
           setLoadingChartData={setLoadingChartData}
           setRefreshing={() => {}}

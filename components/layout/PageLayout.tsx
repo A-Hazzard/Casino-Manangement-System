@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { ReactNode } from "react";
-import { Toaster } from "sonner";
-import Header from "@/components/layout/Header";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { ReactNode } from 'react';
+import { Toaster } from 'sonner';
+import Header from '@/components/layout/Header';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 type PageLayoutProps = {
   children: ReactNode;
@@ -19,7 +19,7 @@ type PageLayoutProps = {
   };
   mainClassName?: string;
   showToaster?: boolean;
-  toasterPosition?: "top-right" | "top-left" | "bottom-right" | "bottom-left";
+  toasterPosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
   toasterRichColors?: boolean;
 };
 
@@ -30,14 +30,14 @@ type PageLayoutProps = {
  */
 export default function PageLayout({
   children,
-  pageTitle = "",
+  pageTitle = '',
   hideOptions = false,
   hideLicenceeFilter = false,
   showHeader = true,
   headerProps,
-  mainClassName = "flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4",
+  mainClassName = 'flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4',
   showToaster = true,
-  toasterPosition = "top-right",
+  toasterPosition = 'top-right',
   toasterRichColors = false,
 }: PageLayoutProps) {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
@@ -52,7 +52,10 @@ export default function PageLayout({
 
   return (
     <>
-      <div className="w-full max-w-full min-h-screen bg-background flex overflow-hidden md:w-11/12 md:ml-20 transition-all duration-300" suppressHydrationWarning>
+      <div
+        className="flex min-h-screen w-full max-w-full overflow-hidden bg-background transition-all duration-300 md:ml-20 md:w-11/12"
+        suppressHydrationWarning
+      >
         <main className={mainClassName} suppressHydrationWarning>
           {showHeader && (
             <Header

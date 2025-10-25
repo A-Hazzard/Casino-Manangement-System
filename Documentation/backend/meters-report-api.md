@@ -1,4 +1,3 @@
-
 # Meters Report API
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
@@ -35,6 +34,7 @@ The system now uses a sophisticated gaming day offset system that ensures accura
 ### Example: Gaming Day with 9 AM Offset
 
 If a location has a `gameDayOffset` of 9:
+
 - **"Today"** = 9:00 AM today to 8:59:59 AM tomorrow (Trinidad time)
 - **"Yesterday"** = 9:00 AM yesterday to 8:59:59 AM today (Trinidad time)
 - **Custom range** = Custom start/end dates adjusted to gaming day boundaries
@@ -48,6 +48,7 @@ This ensures that financial metrics and meter readings are calculated based on t
 **Purpose:** Get financial metrics for dashboard display
 
 **Query Parameters:**
+
 - `timePeriod` - "Today", "Yesterday", "7d", "30d", "Custom"
 - `startDate` - Custom start date (ISO format)
 - `endDate` - Custom end date (ISO format)
@@ -55,41 +56,43 @@ This ensures that financial metrics and meter readings are calculated based on t
 - `locationIds` - Comma-separated location IDs
 
 **Response:**
+
 ```json
 {
   "summary": {
-    "totalMoneyIn": 50000,           // Total drop across all locations
-    "totalMoneyOut": 5000,           // Total cancelled credits
-    "totalGross": 45000,             // Net revenue (moneyIn - moneyOut)
-    "totalMachines": 150,            // Total machines
-    "onlineMachines": 145,           // Online machines
-    "averageGrossPerMachine": 300    // Average gross per machine
+    "totalMoneyIn": 50000, // Total drop across all locations
+    "totalMoneyOut": 5000, // Total cancelled credits
+    "totalGross": 45000, // Net revenue (moneyIn - moneyOut)
+    "totalMachines": 150, // Total machines
+    "onlineMachines": 145, // Online machines
+    "averageGrossPerMachine": 300 // Average gross per machine
   },
   "locationData": [
     {
       "locationId": "location_001",
       "locationName": "Downtown Casino",
-      "moneyIn": 25000,              // Location drop
-      "moneyOut": 2500,              // Location cancelled credits
-      "gross": 22500,                // Location gross revenue
-      "totalMachines": 75,           // Total machines at location
-      "onlineMachines": 72,          // Online machines at location
-      "hasSasMachines": true,        // Has SAS-enabled machines
-      "hasNonSasMachines": false,    // Has non-SAS machines
-      "isLocalServer": true          // Uses local server
+      "moneyIn": 25000, // Location drop
+      "moneyOut": 2500, // Location cancelled credits
+      "gross": 22500, // Location gross revenue
+      "totalMachines": 75, // Total machines at location
+      "onlineMachines": 72, // Online machines at location
+      "hasSasMachines": true, // Has SAS-enabled machines
+      "hasNonSasMachines": false, // Has non-SAS machines
+      "isLocalServer": true // Uses local server
     }
   ],
   "chartData": [
     {
-      "day": "2025-01-15",           // Date
-      "time": "10:00",               // Time (for hourly data)
-      "moneyIn": 5000,               // Drop for period
-      "moneyOut": 500,               // Cancelled for period
-      "gross": 4500,                 // Gross for period
-      "location": "location_001",    // Location ID
-      "geoCoords": {                 // GPS coordinates
+      "day": "2025-01-15", // Date
+      "time": "10:00", // Time (for hourly data)
+      "moneyIn": 5000, // Drop for period
+      "moneyOut": 500, // Cancelled for period
+      "gross": 4500, // Gross for period
+      "location": "location_001", // Location ID
+      "geoCoords": {
+        // GPS coordinates
         "latitude": 40.7128,
-        "longitude": -74.0060
+        "longitude": -74.006
       }
     }
   ]
@@ -103,6 +106,7 @@ This ensures that financial metrics and meter readings are calculated based on t
 **Purpose:** Get location-specific meter data and performance metrics
 
 **Query Parameters:**
+
 - `timePeriod` - Time period filter
 - `startDate` - Custom start date
 - `endDate` - Custom end date
@@ -110,32 +114,34 @@ This ensures that financial metrics and meter readings are calculated based on t
 - `includeMachines` - Include individual machine data
 
 **Response:**
+
 ```json
 {
   "locations": [
     {
       "locationId": "location_001",
       "locationName": "Downtown Casino",
-      "totalDrop": 25000,            // Total drop
-      "totalCancelled": 2500,        // Total cancelled credits
-      "totalGross": 22500,           // Net revenue
-      "totalMachines": 75,           // Total machines
-      "onlineMachines": 72,          // Online machines
-      "sasMachines": 70,             // SAS-enabled machines
-      "nonSasMachines": 5,           // Non-SAS machines
+      "totalDrop": 25000, // Total drop
+      "totalCancelled": 2500, // Total cancelled credits
+      "totalGross": 22500, // Net revenue
+      "totalMachines": 75, // Total machines
+      "onlineMachines": 72, // Online machines
+      "sasMachines": 70, // SAS-enabled machines
+      "nonSasMachines": 5, // Non-SAS machines
       "hasSasMachines": true,
       "hasNonSasMachines": true,
       "isLocalServer": true,
-      "machines": [                  // Individual machine data (if requested)
+      "machines": [
+        // Individual machine data (if requested)
         {
           "machineId": "machine_001",
           "serialNumber": "SN123456",
           "game": "Slot Game Pro",
-          "moneyIn": 1000,           // Machine drop
-          "moneyOut": 100,           // Machine cancelled credits
-          "gross": 900,              // Machine gross
-          "isOnline": true,          // Online status
-          "hasSas": true,            // SAS enabled
+          "moneyIn": 1000, // Machine drop
+          "moneyOut": 100, // Machine cancelled credits
+          "gross": 900, // Machine gross
+          "isOnline": true, // Online status
+          "hasSas": true, // SAS enabled
           "lastActivity": "2025-01-15T09:45:00Z"
         }
       ]
@@ -151,6 +157,7 @@ This ensures that financial metrics and meter readings are calculated based on t
 **Purpose:** Get machine-specific performance metrics
 
 **Query Parameters:**
+
 - `timePeriod` - Time period filter
 - `startDate` - Custom start date
 - `endDate` - Custom end date
@@ -159,6 +166,7 @@ This ensures that financial metrics and meter readings are calculated based on t
 - `onlineOnly` - Filter for online machines only
 
 **Response:**
+
 ```json
 {
   "machines": [
@@ -168,14 +176,14 @@ This ensures that financial metrics and meter readings are calculated based on t
       "game": "Slot Game Pro",
       "locationId": "location_001",
       "locationName": "Downtown Casino",
-      "moneyIn": 1000,               // Machine drop
-      "moneyOut": 100,               // Machine cancelled credits
-      "gross": 900,                  // Machine gross revenue
-      "jackpot": 500,                // Jackpot amount
-      "gamesPlayed": 1000,           // Total games played
-      "averageWager": 1.0,           // Average wager per game
-      "isOnline": true,              // Online status
-      "hasSas": true,                // SAS enabled
+      "moneyIn": 1000, // Machine drop
+      "moneyOut": 100, // Machine cancelled credits
+      "gross": 900, // Machine gross revenue
+      "jackpot": 500, // Jackpot amount
+      "gamesPlayed": 1000, // Total games played
+      "averageWager": 1.0, // Average wager per game
+      "isOnline": true, // Online status
+      "hasSas": true, // SAS enabled
       "lastActivity": "2025-01-15T09:45:00Z",
       "collectionTime": "2025-01-14T10:30:00Z"
     }
@@ -190,6 +198,7 @@ This ensures that financial metrics and meter readings are calculated based on t
 **Purpose:** Get aggregated meter data with custom grouping
 
 **Query Parameters:**
+
 - `groupBy` - "location", "machine", "day", "hour"
 - `timePeriod` - Time period filter
 - `startDate` - Custom start date
@@ -198,17 +207,18 @@ This ensures that financial metrics and meter readings are calculated based on t
 - `machineIds` - Machine filter
 
 **Response:**
+
 ```json
 {
   "aggregatedData": [
     {
-      "group": "location_001",       // Group identifier
+      "group": "location_001", // Group identifier
       "groupName": "Downtown Casino", // Group display name
-      "totalDrop": 25000,            // Aggregated drop
-      "totalCancelled": 2500,        // Aggregated cancelled credits
-      "totalGross": 22500,           // Aggregated gross
-      "machineCount": 75,            // Number of machines
-      "period": "2025-01-15"         // Time period
+      "totalDrop": 25000, // Aggregated drop
+      "totalCancelled": 2500, // Aggregated cancelled credits
+      "totalGross": 22500, // Aggregated gross
+      "machineCount": 75, // Number of machines
+      "period": "2025-01-15" // Time period
     }
   ]
 }
@@ -227,6 +237,7 @@ This ensures that financial metrics and meter readings are calculated based on t
 ### Custom Date Range
 
 When using custom date range:
+
 - **startDate**: ISO 8601 format (e.g., "2025-01-01T00:00:00.000Z")
 - **endDate**: ISO 8601 format (e.g., "2025-01-31T23:59:59.999Z")
 - **Timezone**: All dates converted to UTC for processing
@@ -235,10 +246,12 @@ When using custom date range:
 ### Chart Data Formatting
 
 **Single Day Custom Range:**
+
 - Data grouped by hour (hourly format)
 - Time format: "HH:00" (e.g., "10:00", "14:00")
 
 **Multi-Day Custom Range:**
+
 - Data grouped by day (daily format)
 - Date format: "YYYY-MM-DD" (e.g., "2025-01-15")
 
@@ -272,29 +285,31 @@ Average Wager = Handle / Games Played
 ### Meter Reading
 
 **Database Fields:**
+
 ```typescript
 {
-  _id: string;                       // Unique meter reading ID
-  machine: string;                   // Machine reference
-  location: string;                  // Location reference
-  locationSession: string;           // Location session reference
-  readAt: Date;                      // Reading timestamp
+  _id: string; // Unique meter reading ID
+  machine: string; // Machine reference
+  location: string; // Location reference
+  locationSession: string; // Location session reference
+  readAt: Date; // Reading timestamp
   movement: {
-    drop: number;                    // Money in (drop)
-    totalCancelledCredits: number;   // Money out (cancelled credits)
+    drop: number; // Money in (drop)
+    totalCancelledCredits: number; // Money out (cancelled credits)
     totalHandPaidCancelledCredits: number; // Hand-paid cancelled credits
-    totalWonCredits: number;         // Total won credits
-    jackpot: number;                 // Jackpot amount
-    coinIn: number;                  // Total coin in (handle)
-    coinOut: number;                 // Total coin out
-    currentCredits: number;          // Current credits
-    gamesPlayed: number;             // Games played
-    gamesWon: number;                // Games won
-  };
-  geoCoords: {                       // GPS coordinates
+    totalWonCredits: number; // Total won credits
+    jackpot: number; // Jackpot amount
+    coinIn: number; // Total coin in (handle)
+    coinOut: number; // Total coin out
+    currentCredits: number; // Current credits
+    gamesPlayed: number; // Games played
+    gamesWon: number; // Games won
+  }
+  geoCoords: {
+    // GPS coordinates
     latitude: number;
     longitude: number;
-  };
+  }
   createdAt: Date;
   updatedAt: Date;
 }
@@ -312,7 +327,7 @@ Average Wager = Handle / Games Played
 
 ### Error Response Format
 
-```json
+````json
 {
   "error": "Invalid time period",
   "code": "INVALID_TIME_PERIOD",
@@ -324,7 +339,7 @@ Average Wager = Handle / Games Played
 
 # Meters Report API Documentation
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
+**Author:** Aaron Hazzard - Senior Software Engineer
 **Date:** October 29, 2025
 
 ## Overview
@@ -349,7 +364,7 @@ type MetersReportParams = {
   search?: string;                // Search term for machine ID, location name, serial number, or custom name
   licencee?: string;              // Filter by licensee ID
 }
-```
+````
 
 ## Response Structure
 
@@ -373,38 +388,38 @@ type MetersReportResponse = {
     hasNextPage: boolean;
     hasPrevPage: boolean;
   };
-}
+};
 
 type MetersReportData = {
-  machineId: string;              // Machine identifier
-  metersIn: number;               // Coin In (total bets placed)
-  metersOut: number;              // Coin Out (automatic payouts)
-  jackpot: number;                // Jackpot payouts
-  billIn: number;                 // Drop (physical money inserted)
-  voucherOut: number;             // Net cancelled credits
-  attPaidCredits: number;         // Hand paid cancelled credits
-  gamesPlayed: number;            // Total games played
-  location: string;               // Location name
-  createdAt: string;              // Last activity timestamp
-}
+  machineId: string; // Machine identifier
+  metersIn: number; // Coin In (total bets placed)
+  metersOut: number; // Coin Out (automatic payouts)
+  jackpot: number; // Jackpot payouts
+  billIn: number; // Drop (physical money inserted)
+  voucherOut: number; // Net cancelled credits
+  attPaidCredits: number; // Hand paid cancelled credits
+  gamesPlayed: number; // Total games played
+  location: string; // Location name
+  createdAt: string; // Last activity timestamp
+};
 ```
 
 ## Column Calculations & Field Mappings
 
 The meters report uses **specific field mappings** that differ from other financial reports in the system:
 
-| **Column** | **Display Name** | **Data Source** | **Calculation** | **Casino Context** |
-|------------|------------------|-----------------|-----------------|-------------------|
-| **Machine ID** | "Machine ID" | `machine.serialNumber \|\| machine.custom.name \|\| machine._id` | Direct field lookup | Unique machine identifier |
-| **Location** | "Location" | Location name via `gamingLocation` lookup | Gaming location name resolution | Physical location of machine |
-| **Meters In** | "Meters In" | `machine.sasMeters.coinIn` | Direct field (validated ≥ 0) | **Total bets placed by players** |
-| **Money Won** | "Money Won" | `machine.sasMeters.totalWonCredits` | Direct field (validated ≥ 0) | **Total winnings paid to players** |
-| **Jackpot** | "Jackpot" | `machine.sasMeters.jackpot` | Direct field (validated ≥ 0) | **Special jackpot payouts** |
-| **Bill In** | "Bill In" | `machine.sasMeters.drop` | Direct field (validated ≥ 0) | **Physical cash inserted into machine** |
-| **Voucher Out** | "Voucher Out" | `machine.sasMeters.totalCancelledCredits - machine.sasMeters.totalHandPaidCancelledCredits` | Calculated difference (validated ≥ 0) | **Net cancelled credits (excluding hand-paid)** |
-| **Hand Paid Cancelled Credits** | "Hand Paid Cancelled Credits" | `machine.sasMeters.totalHandPaidCancelledCredits` | Direct field (validated ≥ 0) | **Manual attendant payouts** |
-| **Games Played** | "Games Played" | `machine.sasMeters.gamesPlayed` | Direct field (validated ≥ 0) | **Total number of games played** |
-| **Date** | "Date" | `machine.lastActivity` | Formatted date display | **Last machine activity timestamp** |
+| **Column**                      | **Display Name**              | **Data Source**                                                                             | **Calculation**                       | **Casino Context**                              |
+| ------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------- |
+| **Machine ID**                  | "Machine ID"                  | `machine.serialNumber \|\| machine.custom.name \|\| machine._id`                            | Direct field lookup                   | Unique machine identifier                       |
+| **Location**                    | "Location"                    | Location name via `gamingLocation` lookup                                                   | Gaming location name resolution       | Physical location of machine                    |
+| **Meters In**                   | "Meters In"                   | `machine.sasMeters.coinIn`                                                                  | Direct field (validated ≥ 0)          | **Total bets placed by players**                |
+| **Money Won**                   | "Money Won"                   | `machine.sasMeters.totalWonCredits`                                                         | Direct field (validated ≥ 0)          | **Total winnings paid to players**              |
+| **Jackpot**                     | "Jackpot"                     | `machine.sasMeters.jackpot`                                                                 | Direct field (validated ≥ 0)          | **Special jackpot payouts**                     |
+| **Bill In**                     | "Bill In"                     | `machine.sasMeters.drop`                                                                    | Direct field (validated ≥ 0)          | **Physical cash inserted into machine**         |
+| **Voucher Out**                 | "Voucher Out"                 | `machine.sasMeters.totalCancelledCredits - machine.sasMeters.totalHandPaidCancelledCredits` | Calculated difference (validated ≥ 0) | **Net cancelled credits (excluding hand-paid)** |
+| **Hand Paid Cancelled Credits** | "Hand Paid Cancelled Credits" | `machine.sasMeters.totalHandPaidCancelledCredits`                                           | Direct field (validated ≥ 0)          | **Manual attendant payouts**                    |
+| **Games Played**                | "Games Played"                | `machine.sasMeters.gamesPlayed`                                                             | Direct field (validated ≥ 0)          | **Total number of games played**                |
+| **Date**                        | "Date"                        | `machine.lastActivity`                                                                      | Formatted date display                | **Last machine activity timestamp**             |
 
 ## Important Field Mapping Notes
 
@@ -429,6 +444,7 @@ The meters report uses **different field mappings** compared to other financial 
 The API uses **different data sources** based on the date range:
 
 #### For Recent Data (Today/Yesterday):
+
 1. **Machines Collection** (`sasMeters` field):
    - `coinIn` → Meters In (total bets placed)
    - `totalWonCredits` → Money Won (total winnings paid to players)
@@ -439,6 +455,7 @@ The API uses **different data sources** based on the date range:
    - `gamesPlayed` → Games Played
 
 #### For Historical Data (7 days, 30 days, custom ranges):
+
 1. **Meters Collection** (per specification with Trinidad UTC-4 timezone):
    - Gets **latest meter reading** within gaming day range using specification-compliant approach
    - Uses `createdAt` field with `$gte` and `$lt` operators for date range filtering
@@ -465,6 +482,7 @@ The API uses **different data sources** based on the date range:
      - `gamesPlayed` → Games Played (total games as of cutoff)
 
 #### Common Data Sources:
+
 2. **Gaming Locations Collection**:
    - Location name resolution via `gamingLocation` field
 
@@ -480,9 +498,8 @@ The API uses **different data sources** based on the date range:
 
 ```typescript
 // Machine ID priority resolution
-const machineId = machine.serialNumber || 
-                  machine.custom?.name || 
-                  machine._id.toString();
+const machineId =
+  machine.serialNumber || machine.custom?.name || machine._id.toString();
 
 // Validation function for all numeric values
 const validateMeter = (value: unknown): number => {
@@ -498,7 +515,7 @@ if (isRecentData) {
   const sasMeters = machine.sasMeters || {};
   const metersData = {
     metersIn: validateMeter(sasMeters.coinIn),
-            metersOut: validateMeter(sasMeters.totalWonCredits),
+    metersOut: validateMeter(sasMeters.totalWonCredits),
     jackpot: validateMeter(sasMeters.jackpot),
     billIn: validateMeter(sasMeters.drop),
     handPaidCredits: validateMeter(sasMeters.totalHandPaidCancelledCredits),
@@ -528,60 +545,67 @@ const voucherOut = validateMeter(totalCancelledCredits - handPaidCredits);
 **Current Implementation Analysis:**
 
 ##### **Meters In (Coin In) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   - Recent: `machine.sasMeters.coinIn`
   - Historical: `latestMeterReading.coinIn` (top-level field)
-- **Financial Guide**: 
+- **Financial Guide**:
   - Recent: `machine.sasMeters.coinIn`
   - Historical: `latestMeterData.coinIn`
 - ✅ **MATCHES** - Uses correct data sources per guide specifications
 
 ##### **Money Won (Total Won Credits) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   - Recent: `machine.sasMeters.totalWonCredits`
   - Historical: `latestMeterReading.totalWonCredits`
-- **Financial Guide**: 
+- **Financial Guide**:
   - Recent: `machine.sasMeters.totalWonCredits`
   - Historical: `latestMeterData.totalWonCredits`
 - ✅ **MATCHES** - Correct field usage per guide
 
 ##### **Bill In (Drop) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   - Recent: `machine.sasMeters.drop`
   - Historical: `latestMeterReading.drop` (top-level field)
-- **Financial Guide**: 
+- **Financial Guide**:
   - Recent: `machine.sasMeters.drop`
   - Historical: `latestMeterData.drop`
 - ✅ **MATCHES** - Uses correct drop fields per guide
 
 ##### **Voucher Out Calculation ✅**
+
 - **Current Implementation**: `totalCancelledCredits - totalHandPaidCancelledCredits`
 - **Financial Guide**: `totalCancelledCredits - totalHandPaidCancelledCredits`
 - ✅ **MATCHES** - Correct calculation per guide
 
 ##### **Hand Paid Cancelled Credits ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   - Recent: `machine.sasMeters.totalHandPaidCancelledCredits`
   - Historical: `latestMeterReading.totalHandPaidCancelledCredits`
-- **Financial Guide**: 
+- **Financial Guide**:
   - Recent: `machine.sasMeters.totalHandPaidCancelledCredits`
   - Historical: `latestMeterData.totalHandPaidCancelledCredits`
 - ✅ **MATCHES** - Direct field access per guide
 
 ##### **Jackpot ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   - Recent: `machine.sasMeters.jackpot`
   - Historical: `latestMeterReading.jackpot`
-- **Financial Guide**: 
+- **Financial Guide**:
   - Recent: `machine.sasMeters.jackpot`
   - Historical: `latestMeterData.jackpot`
 - ✅ **MATCHES** - Correct jackpot field usage
 
 ##### **Games Played ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   - Recent: `machine.sasMeters.gamesPlayed`
   - Historical: `latestMeterReading.gamesPlayed`
-- **Financial Guide**: 
+- **Financial Guide**:
   - Recent: `machine.sasMeters.gamesPlayed`
   - Historical: `latestMeterData.gamesPlayed`
 - ✅ **MATCHES** - Correct games played field
@@ -589,16 +613,19 @@ const voucherOut = validateMeter(totalCancelledCredits - handPaidCredits);
 #### Data Source Strategy Analysis
 
 ##### **Recent Data Strategy ✅**
+
 - **Current Implementation**: Uses `machine.sasMeters` for Today/Yesterday
 - **Financial Guide**: "For Recent Data (Today/Yesterday): use machine.sasMeters"
 - ✅ **MATCHES** - Follows guide's data source strategy
 
 ##### **Historical Data Strategy ✅**
+
 - **Current Implementation**: Uses latest reading from `meters` collection top-level fields
 - **Financial Guide**: "For Historical Data: use meters collection top-level fields"
 - ✅ **MATCHES** - Correct historical data approach
 
 ##### **Gaming Day Logic ✅**
+
 - **Current Implementation**: Uses `gameDayOffset` with 24-hour gaming day calculation
 - **Business Logic**: Gaming day starts at location's `gameDayOffset` hour (e.g., 11 AM)
 - **Date Range**: `startDate at gameDayOffset` to `endDate + 1 day at gameDayOffset`
@@ -607,19 +634,25 @@ const voucherOut = validateMeter(totalCancelledCredits - handPaidCredits);
 #### Mathematical Formulas
 
 ##### **Voucher Out Calculation**
+
 ```
 voucherOut = totalCancelledCredits - totalHandPaidCancelledCredits
 ```
+
 **Where:**
+
 - `totalCancelledCredits` = All credits removed from machine
 - `totalHandPaidCancelledCredits` = Manual attendant payouts
 - **Result**: Net automatic voucher/ticket payouts (excludes manual intervention)
 
 ##### **Data Validation Formula**
+
 ```
 validatedValue = max(0, Number(rawValue) || 0)
 ```
+
 **Where:**
+
 - `rawValue` = Raw meter reading from database
 - **Result**: Non-negative number (prevents negative financial values)
 
@@ -630,40 +663,40 @@ For historical data, the API uses MongoDB aggregation to get the latest meter re
 ```javascript
 // Get latest meter reading for each machine before the end date
 const metersAggregation = await db
-  .collection("meters")
+  .collection('meters')
   .aggregate([
     {
       $match: {
         machine: { $in: machineIds },
-        readAt: { $lte: endDate }  // Filter by readAt field
-      }
+        readAt: { $lte: endDate }, // Filter by readAt field
+      },
     },
     {
-      $sort: { machine: 1, readAt: -1 }  // Sort by readAt descending
+      $sort: { machine: 1, readAt: -1 }, // Sort by readAt descending
     },
     {
       $group: {
-        _id: "$machine",
-        latestMeter: { $first: "$$ROOT" }  // Get the latest reading
-      }
+        _id: '$machine',
+        latestMeter: { $first: '$$ROOT' }, // Get the latest reading
+      },
     },
     {
-      $replaceRoot: { newRoot: "$latestMeter" }
+      $replaceRoot: { newRoot: '$latestMeter' },
     },
     {
       $project: {
         machine: 1,
-        coinIn: 1,        // Top-level field, not movement.coinIn
-        coinOut: 1,       // Top-level field, not movement.coinOut
+        coinIn: 1, // Top-level field, not movement.coinIn
+        coinOut: 1, // Top-level field, not movement.coinOut
         totalCancelledCredits: 1,
         totalHandPaidCancelledCredits: 1,
-        drop: 1,          // Top-level field, not movement.drop
+        drop: 1, // Top-level field, not movement.drop
         jackpot: 1,
         gamesPlayed: 1,
         readAt: 1,
-        createdAt: 1
-      }
-    }
+        createdAt: 1,
+      },
+    },
   ])
   .toArray();
 ```
@@ -672,7 +705,7 @@ const metersAggregation = await db
 
 ### Understanding the Meter Fields
 
-1. **Coin In (Meters In)**: 
+1. **Coin In (Meters In)**:
    - Represents the total value of all bets placed by players
    - Electronic tracking of wager activity
    - Used for calculating theoretical hold percentages
@@ -711,13 +744,13 @@ const metersAggregation = await db
 
 ```typescript
 const params = new URLSearchParams({
-  locations: "loc1,loc2,loc3",
-  startDate: "2025-02-01T00:00:00.000Z",
-  endDate: "2025-02-26T23:59:59.999Z",
-  page: "1",
-  limit: "10",
-  search: "machine123",
-  licencee: "licensee_id"
+  locations: 'loc1,loc2,loc3',
+  startDate: '2025-02-01T00:00:00.000Z',
+  endDate: '2025-02-26T23:59:59.999Z',
+  page: '1',
+  limit: '10',
+  search: 'machine123',
+  licencee: 'licensee_id',
 });
 
 const response = await fetch(`/api/reports/meters?${params}`);
@@ -764,20 +797,22 @@ const data = await response.json();
 
 ## Performance Considerations
 
-
 ### Database Optimization
+
 - **Indexing**: Proper indexes on machine, location, and readAt fields
 - **Aggregation**: Efficient MongoDB aggregation pipelines
 - **Caching**: Frequently accessed metrics cached
 - **Pagination**: Large datasets paginated
 
 ### Query Optimization
+
 - **Time-based Queries**: Optimized date range queries
 - **Location Filtering**: Efficient location-based filtering
 - **Machine Filtering**: Optimized machine-specific queries
 - **Aggregation**: Efficient data aggregation for metrics
 
 ### Response Optimization
+
 - **Data Compression**: Large responses compressed
 - **Field Selection**: Only required fields returned
 - **Pagination**: Large result sets paginated
@@ -786,18 +821,21 @@ const data = await response.json();
 ## Business Logic
 
 ### Meter Data Processing
+
 - **Real-time Updates**: Meter data updated in real-time
 - **Historical Data**: Complete historical meter data preserved
 - **Data Validation**: All meter readings validated
 - **Error Handling**: Graceful handling of invalid data
 
 ### Financial Calculations
+
 - **Accuracy**: Precise financial calculations
 - **Consistency**: Consistent calculations across all endpoints
 - **Performance**: Optimized calculation performance
 - **Audit Trail**: Complete audit trail of calculations
 
 ### Time Zone Handling
+
 - **UTC Storage**: All data stored in UTC
 - **Local Display**: Data displayed in local timezone
 - **Conversion**: Automatic timezone conversion
@@ -825,6 +863,7 @@ metersSchema.index({ machine: 1, createdAt: -1 });
 ### Common Scenarios
 
 1. **Missing Locations Parameter**:
+
    ```json
    {
      "error": "Locations parameter is required",
@@ -833,6 +872,7 @@ metersSchema.index({ machine: 1, createdAt: -1 });
    ```
 
 2. **No Data Found**:
+
    ```json
    {
      "data": [],
@@ -885,7 +925,9 @@ metersSchema.index({ machine: 1, createdAt: -1 });
 
 ```typescript
 // Request timing and data volume logging
-console.log(`Meters report: ${machinesData.length} machines, ${metersData.length} meter readings processed`);
+console.log(
+  `Meters report: ${machinesData.length} machines, ${metersData.length} meter readings processed`
+);
 console.log(`Query completed in ${duration}ms`);
 ```
 
@@ -893,10 +935,10 @@ console.log(`Query completed in ${duration}ms`);
 
 ```typescript
 // Comprehensive error logging
-console.error("❌ Meters Report API Error:", {
+console.error('❌ Meters Report API Error:', {
   error: error.message,
   params: { locations, startDate, endDate, page, limit },
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 });
 ```
 

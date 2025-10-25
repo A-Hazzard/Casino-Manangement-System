@@ -1,36 +1,35 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
-import gsap from "gsap";
-import axios from "axios";
-import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
-import "leaflet/dist/leaflet.css";
-import { MapPreviewProps } from "@/lib/types/componentProps";
-import { Location } from "@/lib/types";
-import MapSkeleton from "@/components/ui/MapSkeleton";
-import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, DollarSign, TrendingUp, Search } from "lucide-react";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import gsap from 'gsap';
+import axios from 'axios';
+import { EnterFullScreenIcon, ExitFullScreenIcon } from '@radix-ui/react-icons';
+import 'leaflet/dist/leaflet.css';
+import { MapPreviewProps } from '@/lib/types/componentProps';
+import { Location } from '@/lib/types';
+import MapSkeleton from '@/components/ui/MapSkeleton';
+import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, DollarSign, TrendingUp, Search } from 'lucide-react';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
-import { Skeleton } from "@/components/ui/skeleton";
-import { getMapCenterByLicensee } from "@/lib/utils/location";
+import { Skeleton } from '@/components/ui/skeleton';
+import { getMapCenterByLicensee } from '@/lib/utils/location';
 
 // Dynamically import react-leaflet components (SSR disabled)
 const MapContainer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.MapContainer),
+  () => import('react-leaflet').then(mod => mod.MapContainer),
   { ssr: false }
 );
 const TileLayer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.TileLayer),
+  () => import('react-leaflet').then(mod => mod.TileLayer),
   { ssr: false }
 );
-const Marker = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Marker),
-  { ssr: false }
-);
-const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), {
+  ssr: false,
+});
+const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), {
   ssr: false,
 });
 
@@ -50,12 +49,14 @@ const getValidLongitude = (geo: {
 };
 
 // Helper function to get location stats from locationAggregation data
-const getLocationStats = (location: Location, locationAggregates: Record<string, unknown>[]) => {
+const getLocationStats = (
+  location: Location,
+  locationAggregates: Record<string, unknown>[]
+) => {
   // Try to find matching data in locationAggregates
   const stats = Array.isArray(locationAggregates)
-    ? locationAggregates.find((d) => d.location === location._id)
+    ? locationAggregates.find(d => d.location === location._id)
     : undefined;
-
 
   return {
     moneyIn: stats?.moneyIn ?? 0,
@@ -68,18 +69,18 @@ const getLocationStats = (location: Location, locationAggregates: Record<string,
 
 // Helper function to get performance color based on gross revenue
 const getPerformanceColor = (gross: number) => {
-  if (gross >= 100000) return "text-green-600";
-  if (gross >= 50000) return "text-blue-600";
-  if (gross >= 10000) return "text-yellow-600";
-  return "text-red-600";
+  if (gross >= 100000) return 'text-green-600';
+  if (gross >= 50000) return 'text-blue-600';
+  if (gross >= 10000) return 'text-yellow-600';
+  return 'text-red-600';
 };
 
 // Helper function to get performance label
 const getPerformanceLabel = (gross: number) => {
-  if (gross >= 100000) return "excellent";
-  if (gross >= 50000) return "good";
-  if (gross >= 10000) return "average";
-  return "poor";
+  if (gross >= 100000) return 'excellent';
+  if (gross >= 50000) return 'good';
+  if (gross >= 10000) return 'average';
+  return 'poor';
 };
 
 // Component for location popup content with loading states
@@ -100,8 +101,8 @@ const LocationPopupContent = ({
 
   return (
     <div className="min-w-[280px] p-2">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-lg">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-lg font-bold">
           {location.name || location.locationName}
         </h3>
         {isFinancialDataLoading ? (
@@ -109,11 +110,11 @@ const LocationPopupContent = ({
         ) : (
           <Badge
             variant={
-              performance === "excellent"
-                ? "default"
-                : performance === "good"
-                ? "secondary"
-                : "outline"
+              performance === 'excellent'
+                ? 'default'
+                : performance === 'good'
+                  ? 'secondary'
+                  : 'outline'
             }
             className={performanceColor}
           >
@@ -145,8 +146,11 @@ const LocationPopupContent = ({
             ) : (
               <span className="font-medium">
                 {(stats.moneyIn as number) > 0
-                  ? (((stats.gross as number) / (stats.moneyIn as number)) * 100).toFixed(1)
-                  : "0.0"}
+                  ? (
+                      ((stats.gross as number) / (stats.moneyIn as number)) *
+                      100
+                    ).toFixed(1)
+                  : '0.0'}
                 %
               </span>
             )}
@@ -172,25 +176,27 @@ const LocationPopupContent = ({
             <Skeleton className="h-4 w-12" />
           ) : (
             <div className="font-medium">
-              {(stats.onlineMachines as number)}/{(stats.totalMachines as number)}
+              {stats.onlineMachines as number}/{stats.totalMachines as number}
             </div>
           )}
           <div className="text-xs text-muted-foreground">Machines Online</div>
         </div>
       </div>
 
-      <div className="mt-3 pt-2 border-t">
+      <div className="mt-3 border-t pt-2">
         <div className="flex items-center justify-between text-xs">
           {isFinancialDataLoading ? (
             <Skeleton className="h-3 w-24" />
           ) : (
             <span className="font-medium text-gray-500">
-              {(stats.totalMachines as number) > 0 ? "Active Location" : "No Machines"}
+              {(stats.totalMachines as number) > 0
+                ? 'Active Location'
+                : 'No Machines'}
             </span>
           )}
           <button
             onClick={() => onViewDetails(location._id)}
-            className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+            className="rounded bg-blue-600 px-2 py-1 text-xs text-white transition-colors hover:bg-blue-700"
           >
             View Details
           </button>
@@ -204,13 +210,13 @@ export default function MapPreview(props: MapPreviewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [locationAggregates, setLocationAggregates] = useState<Record<string, unknown>[]>(
-    props.locationAggregates || []
-  );
+  const [locationAggregates, setLocationAggregates] = useState<
+    Record<string, unknown>[]
+  >(props.locationAggregates || []);
   const [aggLoading, setAggLoading] = useState<boolean>(
     props.aggLoading ?? true
   );
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Location[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
@@ -225,11 +231,11 @@ export default function MapPreview(props: MapPreviewProps) {
 
   // Initialize Leaflet on client side
   useEffect(() => {
-    import("leaflet").then((L) => {
+    import('leaflet').then(L => {
       L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "/leaflet/marker-icon.png",
-        iconUrl: "/leaflet/marker-icon-image.png",
-        shadowUrl: "/leaflet/marker-shadow.png",
+        iconRetinaUrl: '/leaflet/marker-icon.png',
+        iconUrl: '/leaflet/marker-icon-image.png',
+        shadowUrl: '/leaflet/marker-shadow.png',
       });
       // Force iconUrl to be set on every render
       L.Marker.prototype.options.icon = new L.Icon.Default();
@@ -264,17 +270,17 @@ export default function MapPreview(props: MapPreviewProps) {
       setAggLoading(true);
       try {
         const params = new URLSearchParams();
-        if (activeMetricsFilter === "Today") {
-          params.append("timePeriod", "Today");
-        } else if (activeMetricsFilter === "Yesterday") {
-          params.append("timePeriod", "Yesterday");
-        } else if (activeMetricsFilter === "7d") {
-          params.append("timePeriod", "7d");
-        } else if (activeMetricsFilter === "30d") {
-          params.append("timePeriod", "30d");
-        } else if (activeMetricsFilter === "All Time") {
-          params.append("timePeriod", "All Time");
-        } else if (activeMetricsFilter === "Custom" && customDateRange) {
+        if (activeMetricsFilter === 'Today') {
+          params.append('timePeriod', 'Today');
+        } else if (activeMetricsFilter === 'Yesterday') {
+          params.append('timePeriod', 'Yesterday');
+        } else if (activeMetricsFilter === '7d') {
+          params.append('timePeriod', '7d');
+        } else if (activeMetricsFilter === '30d') {
+          params.append('timePeriod', '30d');
+        } else if (activeMetricsFilter === 'All Time') {
+          params.append('timePeriod', 'All Time');
+        } else if (activeMetricsFilter === 'Custom' && customDateRange) {
           if (customDateRange.startDate && customDateRange.endDate) {
             const sd =
               customDateRange.startDate instanceof Date
@@ -284,8 +290,8 @@ export default function MapPreview(props: MapPreviewProps) {
               customDateRange.endDate instanceof Date
                 ? customDateRange.endDate
                 : new Date(customDateRange.endDate as unknown as string);
-            params.append("startDate", sd.toISOString());
-            params.append("endDate", ed.toISOString());
+            params.append('startDate', sd.toISOString());
+            params.append('endDate', ed.toISOString());
           } else {
             // No valid timePeriod, skip the request
             return;
@@ -295,7 +301,7 @@ export default function MapPreview(props: MapPreviewProps) {
           return;
         }
         if (selectedLicencee) {
-          params.append("licencee", selectedLicencee);
+          params.append('licencee', selectedLicencee);
         }
         const response = await axios.get(
           `/api/locationAggregation?${params.toString()}`
@@ -324,7 +330,7 @@ export default function MapPreview(props: MapPreviewProps) {
       gsap.fromTo(
         modalRef.current,
         { opacity: 0, scale: 0.5 },
-        { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(1.7)" }
+        { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(1.7)' }
       );
     }
   }, [isModalOpen]);
@@ -335,7 +341,7 @@ export default function MapPreview(props: MapPreviewProps) {
         opacity: 0,
         scale: 0.5,
         duration: 0.2,
-        ease: "power2.in",
+        ease: 'power2.in',
         onComplete: () => setIsModalOpen(false),
       });
     }
@@ -343,7 +349,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
   // Filter valid locations with coordinates
   const validLocations =
-    props.gamingLocations?.filter((location) => {
+    props.gamingLocations?.filter(location => {
       if (!location.geoCoords) {
         return false;
       }
@@ -359,7 +365,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
   // Get locations without coordinates for user notification
   const locationsWithoutCoords =
-    props.gamingLocations?.filter((location) => {
+    props.gamingLocations?.filter(location => {
       if (!location.geoCoords) return true;
 
       const validLongitude = getValidLongitude(location.geoCoords);
@@ -381,8 +387,8 @@ export default function MapPreview(props: MapPreviewProps) {
     }
 
     // Search through ALL locations, not just those with valid coordinates
-    const filtered = (props.gamingLocations || []).filter((location) => {
-      const locationName = location.name || location.locationName || "";
+    const filtered = (props.gamingLocations || []).filter(location => {
+      const locationName = location.name || location.locationName || '';
       return locationName.toLowerCase().includes(query.toLowerCase());
     });
 
@@ -396,7 +402,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
     // Check if location has valid coordinates
     if (!location.geoCoords) {
-      setSearchQuery(location.name || location.locationName || "");
+      setSearchQuery(location.name || location.locationName || '');
       setShowSearchResults(false);
       return;
     }
@@ -405,11 +411,15 @@ export default function MapPreview(props: MapPreviewProps) {
     const lon = getValidLongitude(location.geoCoords);
 
     if (lat && lon && lat !== 0 && lon !== 0) {
-      (mapRef.current as { setView: (coords: [number, number], zoom: number) => void }).setView([lat, lon], 15);
-      setSearchQuery(location.name || location.locationName || "");
+      (
+        mapRef.current as {
+          setView: (coords: [number, number], zoom: number) => void;
+        }
+      ).setView([lat, lon], 15);
+      setSearchQuery(location.name || location.locationName || '');
       setShowSearchResults(false);
     } else {
-      setSearchQuery(location.name || location.locationName || "");
+      setSearchQuery(location.name || location.locationName || '');
       setShowSearchResults(false);
     }
   };
@@ -417,7 +427,9 @@ export default function MapPreview(props: MapPreviewProps) {
   // Handle map instance
   const handleMapCreated = (map: unknown) => {
     if (map) {
-      mapRef.current = map as { setView: (coords: [number, number], zoom: number) => void };
+      mapRef.current = map as {
+        setView: (coords: [number, number], zoom: number) => void;
+      };
     }
   };
 
@@ -427,19 +439,21 @@ export default function MapPreview(props: MapPreviewProps) {
   }
 
   // Debug logging for gaming locations data
-  if (process.env.NODE_ENV === "development") {
-    console.warn(`MapPreview - gamingLocations: ${JSON.stringify({
-      count: validLocations.length,
-      locations: validLocations.map((loc) => ({
-        id: loc._id,
-        name: loc.name || loc.locationName,
-        geoCoords: loc.geoCoords,
-        hasValidCoords:
-          loc.geoCoords &&
-          loc.geoCoords.latitude !== 0 &&
-          (loc.geoCoords.longitude !== 0 || loc.geoCoords.longtitude !== 0),
-      })),
-    })}`);
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(
+      `MapPreview - gamingLocations: ${JSON.stringify({
+        count: validLocations.length,
+        locations: validLocations.map(loc => ({
+          id: loc._id,
+          name: loc.name || loc.locationName,
+          geoCoords: loc.geoCoords,
+          hasValidCoords:
+            loc.geoCoords &&
+            loc.geoCoords.latitude !== 0 &&
+            (loc.geoCoords.longitude !== 0 || loc.geoCoords.longtitude !== 0),
+        })),
+      })}`
+    );
   }
 
   // Handle navigation to location details
@@ -474,37 +488,37 @@ export default function MapPreview(props: MapPreviewProps) {
   return (
     <>
       {/* Small Map Preview */}
-      <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Map Preview</h3>
+      <div className="relative w-full rounded-lg bg-container p-4 shadow-md">
+        <h3 className="mb-3 text-sm font-medium text-gray-700">Map Preview</h3>
 
         {/* Notification for locations without coordinates */}
         {locationsWithoutCoords.length > 0 && (
-          <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div className="mb-3 rounded-md border border-yellow-200 bg-yellow-50 p-2">
             <div className="flex items-center gap-2 text-sm text-yellow-800">
               <MapPin className="h-4 w-4" />
               <span>
                 <strong>{locationsWithoutCoords.length}</strong> location
-                {locationsWithoutCoords.length !== 1 ? "s" : ""}
-                {locationsWithoutCoords.length === 1 ? " has" : " have"} no
+                {locationsWithoutCoords.length !== 1 ? 's' : ''}
+                {locationsWithoutCoords.length === 1 ? ' has' : ' have'} no
                 coordinates and can&apos;t be displayed on the map
               </span>
             </div>
             {locationsWithoutCoords.length <= 3 && (
               <div className="mt-1 text-xs text-yellow-700">
-                Missing:{" "}
+                Missing:{' '}
                 {locationsWithoutCoords
-                  .map((loc) => loc.name || loc.locationName)
-                  .join(", ")}
+                  .map(loc => loc.name || loc.locationName)
+                  .join(', ')}
               </div>
             )}
           </div>
         )}
 
         <button
-          className="absolute top-8 right-5 z-[30] p-2 bg-white rounded-full shadow-lg hover:scale-110 transition-all duration-200 ease-in-out"
+          className="absolute right-5 top-8 z-[30] rounded-full bg-white p-2 shadow-lg transition-all duration-200 ease-in-out hover:scale-110"
           onClick={() => setIsModalOpen(true)}
         >
-          <EnterFullScreenIcon className="w-5 h-5" />
+          <EnterFullScreenIcon className="h-5 w-5" />
         </button>
         <MapContainer
           center={userDefaultCenter} // Always use licensee-based center
@@ -517,9 +531,9 @@ export default function MapPreview(props: MapPreviewProps) {
           />
 
           {/* Render valid markers */}
-          {validLocations.map((location) => {
+          {validLocations.map(location => {
             const locationName =
-              location.name || location.locationName || "Unknown Location";
+              location.name || location.locationName || 'Unknown Location';
             return renderMarker(
               location.geoCoords!.latitude!,
               location.geoCoords!,
@@ -533,45 +547,45 @@ export default function MapPreview(props: MapPreviewProps) {
 
       {/* Modal for Expanded Map */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-md z-[9999]">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-md">
           <div
             ref={modalRef}
-            className="relative bg-white rounded-lg shadow-lg w-[90vw] max-w-5xl p-4"
+            className="relative w-[90vw] max-w-5xl rounded-lg bg-white p-4 shadow-lg"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
                 <MapPin className="h-5 w-5" />
                 Casino Locations Map
               </h3>
               <button
-                className="p-2 bg-gray-200 rounded-full shadow-md hover:scale-110 transition-all duration-200 ease-in-out"
+                className="rounded-full bg-gray-200 p-2 shadow-md transition-all duration-200 ease-in-out hover:scale-110"
                 onClick={closeModal}
               >
-                <ExitFullScreenIcon className="w-5 h-5" />
+                <ExitFullScreenIcon className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="mb-4 text-sm text-muted-foreground">
               Interactive map showing casino location performance metrics
             </p>
 
             {/* Notification for locations without coordinates in modal */}
             {locationsWithoutCoords.length > 0 && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-3">
                 <div className="flex items-center gap-2 text-sm text-yellow-800">
                   <MapPin className="h-4 w-4" />
                   <span>
                     <strong>{locationsWithoutCoords.length}</strong> location
-                    {locationsWithoutCoords.length !== 1 ? "s" : ""}
-                    {locationsWithoutCoords.length === 1 ? " has" : " have"} no
+                    {locationsWithoutCoords.length !== 1 ? 's' : ''}
+                    {locationsWithoutCoords.length === 1 ? ' has' : ' have'} no
                     coordinates and can&apos;t be displayed on the map
                   </span>
                 </div>
                 {locationsWithoutCoords.length <= 5 && (
                   <div className="mt-1 text-xs text-yellow-700">
-                    Missing:{" "}
+                    Missing:{' '}
                     {locationsWithoutCoords
-                      .map((loc) => loc.name || loc.locationName)
-                      .join(", ")}
+                      .map(loc => loc.name || loc.locationName)
+                      .join(', ')}
                   </div>
                 )}
               </div>
@@ -579,28 +593,28 @@ export default function MapPreview(props: MapPreviewProps) {
             {/* Flex row: sidebar + map */}
             <div className="flex gap-4">
               {/* Sidebar */}
-              <div className="w-72 flex flex-col">
+              <div className="flex w-72 flex-col">
                 <div className="relative mb-4">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
                     <input
                       type="text"
                       placeholder="Search locations..."
                       value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={e => handleSearch(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
                 {/* Dropdown always below input */}
                 {showSearchResults && (
-                  <div className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="max-h-60 overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
                     {searchResults.length > 0 ? (
-                      searchResults.map((location) => {
+                      searchResults.map(location => {
                         const locationName =
                           location.name ||
                           location.locationName ||
-                          "Unknown Location";
+                          'Unknown Location';
                         const hasValidCoords =
                           location.geoCoords &&
                           location.geoCoords.latitude !== 0 &&
@@ -611,24 +625,24 @@ export default function MapPreview(props: MapPreviewProps) {
                           <button
                             key={location._id}
                             onClick={() => zoomToLocation(location)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b border-gray-200 last:border-b-0 flex items-center gap-2"
+                            className="flex w-full items-center gap-2 border-b border-gray-200 px-4 py-2 text-left last:border-b-0 hover:bg-gray-100"
                           >
                             <MapPin
                               className={`h-4 w-4 ${
                                 hasValidCoords
-                                  ? "text-gray-400"
-                                  : "text-yellow-500"
+                                  ? 'text-gray-400'
+                                  : 'text-yellow-500'
                               }`}
                             />
                             <span
                               className={
-                                hasValidCoords ? "" : "text-yellow-600"
+                                hasValidCoords ? '' : 'text-yellow-600'
                               }
                             >
                               {locationName}
                             </span>
                             {!hasValidCoords && (
-                              <span className="ml-auto text-xs text-yellow-600 bg-yellow-100 px-1 rounded">
+                              <span className="ml-auto rounded bg-yellow-100 px-1 text-xs text-yellow-600">
                                 No map
                               </span>
                             )}
@@ -644,7 +658,7 @@ export default function MapPreview(props: MapPreviewProps) {
                 )}
               </div>
               {/* Map */}
-              <div className="flex-1 relative z-0">
+              <div className="relative z-0 flex-1">
                 <MapContainer
                   center={userDefaultCenter} // Always use licensee-based center
                   zoom={10}
@@ -655,11 +669,11 @@ export default function MapPreview(props: MapPreviewProps) {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   />
-                  {validLocations.map((location) => {
+                  {validLocations.map(location => {
                     const locationName =
                       location.name ||
                       location.locationName ||
-                      "Unknown Location";
+                      'Unknown Location';
                     return renderMarker(
                       location.geoCoords!.latitude!,
                       location.geoCoords!,
@@ -672,19 +686,19 @@ export default function MapPreview(props: MapPreviewProps) {
                 {/* Map Legend */}
                 <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div className="h-3 w-3 rounded-full bg-green-500"></div>
                     <span>Excellent Performance</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <div className="h-3 w-3 rounded-full bg-blue-500"></div>
                     <span>Good Performance</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
                     <span>Average Performance</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <div className="h-3 w-3 rounded-full bg-red-500"></div>
                     <span>Poor Performance</span>
                   </div>
                 </div>

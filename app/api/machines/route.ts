@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
-import { Collections } from "@/app/api/lib/models/collections";
-import type { GamingMachine } from "@/shared/types/entities";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Collections } from '@/app/api/lib/models/collections';
+import type { GamingMachine } from '@/shared/types/entities';
 // TODO: Move these to shared types or create new ones
-type NewMachineData = Omit<GamingMachine, "_id" | "createdAt" | "updatedAt"> & {
+type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
   collectionSettings?: {
     lastCollectionTime?: string;
     lastMetersIn?: string;
@@ -14,21 +14,21 @@ type NewMachineData = Omit<GamingMachine, "_id" | "createdAt" | "updatedAt"> & {
 type MachineUpdateData = Partial<GamingMachine>;
 // TODO: Import date utilities when implementing date filtering
 // import { getDatesForTimePeriod } from "../lib/utils/dates";
-import { Meters } from "../lib/models/meters";
-import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
-import { generateMongoId } from "@/lib/utils/id";
+import { Meters } from '../lib/models/meters';
+import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
+import { generateMongoId } from '@/lib/utils/id';
 
 import {
   logActivity,
   calculateChanges,
-} from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "../lib/helpers/users";
-import { getClientIP } from "@/lib/utils/ipAddress";
+} from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '../lib/helpers/users';
+import { getClientIP } from '@/lib/utils/ipAddress';
 
 // Validation helpers mirroring frontend rules
 function validateSerialNumber(value: unknown): string | null {
-  if (typeof value !== "string" || value.trim().length < 3) {
-    return "Serial number must be at least 3 characters long";
+  if (typeof value !== 'string' || value.trim().length < 3) {
+    return 'Serial number must be at least 3 characters long';
   }
   return null;
 }
@@ -38,23 +38,23 @@ function normalizeSerialNumber(value: string): string {
 }
 
 function validateSmibBoard(value: unknown): string | null {
-  if (value === undefined || value === null || value === "") {
+  if (value === undefined || value === null || value === '') {
     // Optional field – no error when empty
     return null;
   }
-  if (typeof value !== "string") {
-    return "SMIB Board must be a string";
+  if (typeof value !== 'string') {
+    return 'SMIB Board must be a string';
   }
   const v = value.toLowerCase();
   if (v.length !== 12) {
-    return "SMIB Board must be exactly 12 characters long";
+    return 'SMIB Board must be exactly 12 characters long';
   }
   if (!/^[0-9a-f]+$/.test(v)) {
-    return "SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)";
+    return 'SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)';
   }
   const lastChar = v.charAt(11);
-  if (!["0", "4", "8", "c"].includes(lastChar)) {
-    return "SMIB Board must end with 0, 4, 8, or c";
+  if (!['0', '4', '8', 'c'].includes(lastChar)) {
+    return 'SMIB Board must end with 0, 4, 8, or c';
   }
   return null;
 }
@@ -67,16 +67,16 @@ function normalizeSmibBoard(value: string | undefined): string | undefined {
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
-    const id = request.nextUrl.searchParams.get("id");
-    const locationId = request.nextUrl.searchParams.get("locationId");
-    const timePeriod = request.nextUrl.searchParams.get("timePeriod");
+    const id = request.nextUrl.searchParams.get('id');
+    const locationId = request.nextUrl.searchParams.get('locationId');
+    const timePeriod = request.nextUrl.searchParams.get('timePeriod');
 
     // Support both single machine fetch (id) and location-based fetch (locationId)
     if (!id && !locationId) {
       return NextResponse.json(
         {
           success: false,
-          error: "Either Cabinet ID or Location ID is required",
+          error: 'Either Cabinet ID or Location ID is required',
         },
         { status: 400 }
       );
@@ -88,13 +88,13 @@ export async function GET(request: NextRequest) {
         gamingLocation: locationId,
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date("2020-01-01") } },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
         ],
       }).sort({ serialNumber: 1 });
 
       return NextResponse.json({
         success: true,
-        data: machines.map((machine) =>
+        data: machines.map(machine =>
           convertResponseToTrinidadTime(machine.toObject())
         ),
       });
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Cabinet ID is required for single machine fetch",
+          error: 'Cabinet ID is required for single machine fetch',
         },
         { status: 400 }
       );
@@ -116,13 +116,13 @@ export async function GET(request: NextRequest) {
       _id: id,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     });
 
     if (!machine) {
       return NextResponse.json(
-        { success: false, error: "Cabinet not found" },
+        { success: false, error: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     // This approach calculates all time periods in a single efficient query
     let meterData;
 
-    if (timePeriod && timePeriod !== "All Time") {
+    if (timePeriod && timePeriod !== 'All Time') {
       // Use $facet to calculate specific time period efficiently
       const facetAggregation = await Meters.aggregate([
         // Stage 1: Filter meter records to only this specific machine
@@ -140,8 +140,8 @@ export async function GET(request: NextRequest) {
         // Stage 2: Set up timezone and current time for calculations
         {
           $set: {
-            tz: "America/Port_of_Spain",
-            now: "$$NOW",
+            tz: 'America/Port_of_Spain',
+            now: '$$NOW',
           },
         },
 
@@ -149,22 +149,22 @@ export async function GET(request: NextRequest) {
         {
           $set: {
             todayStart: {
-              $dateTrunc: { date: "$now", unit: "day", timezone: "$tz" },
+              $dateTrunc: { date: '$now', unit: 'day', timezone: '$tz' },
             },
             tomorrowStart: {
               $dateAdd: {
                 startDate: {
-                  $dateTrunc: { date: "$now", unit: "day", timezone: "$tz" },
+                  $dateTrunc: { date: '$now', unit: 'day', timezone: '$tz' },
                 },
-                unit: "day",
+                unit: 'day',
                 amount: 1,
               },
             },
             last7Start: {
-              $dateSubtract: { startDate: "$now", unit: "day", amount: 7 },
+              $dateSubtract: { startDate: '$now', unit: 'day', amount: 7 },
             },
             last30Start: {
-              $dateSubtract: { startDate: "$now", unit: "day", amount: 30 },
+              $dateSubtract: { startDate: '$now', unit: 'day', amount: 30 },
             },
           },
         },
@@ -174,14 +174,14 @@ export async function GET(request: NextRequest) {
           $facet: {
             [timePeriod]: (() => {
               switch (timePeriod) {
-                case "Today":
+                case 'Today':
                   return [
                     {
                       $match: {
                         $expr: {
                           $and: [
-                            { $gte: ["$createdAt", "$todayStart"] },
-                            { $lt: ["$createdAt", "$tomorrowStart"] },
+                            { $gte: ['$createdAt', '$todayStart'] },
+                            { $lt: ['$createdAt', '$tomorrowStart'] },
                           ],
                         },
                       },
@@ -189,19 +189,19 @@ export async function GET(request: NextRequest) {
                     {
                       $group: {
                         _id: null,
-                        drop: { $sum: "$movement.drop" },
+                        drop: { $sum: '$movement.drop' },
                         totalCancelledCredits: {
-                          $sum: "$movement.totalCancelledCredits",
+                          $sum: '$movement.totalCancelledCredits',
                         },
-                        jackpot: { $sum: "$movement.jackpot" },
-                        coinIn: { $sum: "$movement.coinIn" },
-                        coinOut: { $sum: "$movement.coinOut" },
-                        gamesPlayed: { $sum: "$movement.gamesPlayed" },
-                        gamesWon: { $sum: "$movement.gamesWon" },
+                        jackpot: { $sum: '$movement.jackpot' },
+                        coinIn: { $sum: '$movement.coinIn' },
+                        coinOut: { $sum: '$movement.coinOut' },
+                        gamesPlayed: { $sum: '$movement.gamesPlayed' },
+                        gamesWon: { $sum: '$movement.gamesWon' },
                       },
                     },
                   ];
-                case "Yesterday":
+                case 'Yesterday':
                   return [
                     {
                       $match: {
@@ -209,17 +209,17 @@ export async function GET(request: NextRequest) {
                           $and: [
                             {
                               $gte: [
-                                "$createdAt",
+                                '$createdAt',
                                 {
                                   $dateSubtract: {
-                                    startDate: "$todayStart",
-                                    unit: "day",
+                                    startDate: '$todayStart',
+                                    unit: 'day',
                                     amount: 1,
                                   },
                                 },
                               ],
                             },
-                            { $lt: ["$createdAt", "$todayStart"] },
+                            { $lt: ['$createdAt', '$todayStart'] },
                           ],
                         },
                       },
@@ -227,26 +227,26 @@ export async function GET(request: NextRequest) {
                     {
                       $group: {
                         _id: null,
-                        drop: { $sum: "$movement.drop" },
+                        drop: { $sum: '$movement.drop' },
                         totalCancelledCredits: {
-                          $sum: "$movement.totalCancelledCredits",
+                          $sum: '$movement.totalCancelledCredits',
                         },
-                        jackpot: { $sum: "$movement.jackpot" },
-                        coinIn: { $sum: "$movement.coinIn" },
-                        coinOut: { $sum: "$movement.coinOut" },
-                        gamesPlayed: { $sum: "$movement.gamesPlayed" },
-                        gamesWon: { $sum: "$movement.gamesWon" },
+                        jackpot: { $sum: '$movement.jackpot' },
+                        coinIn: { $sum: '$movement.coinIn' },
+                        coinOut: { $sum: '$movement.coinOut' },
+                        gamesPlayed: { $sum: '$movement.gamesPlayed' },
+                        gamesWon: { $sum: '$movement.gamesWon' },
                       },
                     },
                   ];
-                case "7d":
+                case '7d':
                   return [
                     {
                       $match: {
                         $expr: {
                           $and: [
-                            { $gte: ["$createdAt", "$last7Start"] },
-                            { $lt: ["$createdAt", "$now"] },
+                            { $gte: ['$createdAt', '$last7Start'] },
+                            { $lt: ['$createdAt', '$now'] },
                           ],
                         },
                       },
@@ -254,26 +254,26 @@ export async function GET(request: NextRequest) {
                     {
                       $group: {
                         _id: null,
-                        drop: { $sum: "$movement.drop" },
+                        drop: { $sum: '$movement.drop' },
                         totalCancelledCredits: {
-                          $sum: "$movement.totalCancelledCredits",
+                          $sum: '$movement.totalCancelledCredits',
                         },
-                        jackpot: { $sum: "$movement.jackpot" },
-                        coinIn: { $sum: "$movement.coinIn" },
-                        coinOut: { $sum: "$movement.coinOut" },
-                        gamesPlayed: { $sum: "$movement.gamesPlayed" },
-                        gamesWon: { $sum: "$movement.gamesWon" },
+                        jackpot: { $sum: '$movement.jackpot' },
+                        coinIn: { $sum: '$movement.coinIn' },
+                        coinOut: { $sum: '$movement.coinOut' },
+                        gamesPlayed: { $sum: '$movement.gamesPlayed' },
+                        gamesWon: { $sum: '$movement.gamesWon' },
                       },
                     },
                   ];
-                case "30d":
+                case '30d':
                   return [
                     {
                       $match: {
                         $expr: {
                           $and: [
-                            { $gte: ["$createdAt", "$last30Start"] },
-                            { $lt: ["$createdAt", "$now"] },
+                            { $gte: ['$createdAt', '$last30Start'] },
+                            { $lt: ['$createdAt', '$now'] },
                           ],
                         },
                       },
@@ -281,15 +281,15 @@ export async function GET(request: NextRequest) {
                     {
                       $group: {
                         _id: null,
-                        drop: { $sum: "$movement.drop" },
+                        drop: { $sum: '$movement.drop' },
                         totalCancelledCredits: {
-                          $sum: "$movement.totalCancelledCredits",
+                          $sum: '$movement.totalCancelledCredits',
                         },
-                        jackpot: { $sum: "$movement.jackpot" },
-                        coinIn: { $sum: "$movement.coinIn" },
-                        coinOut: { $sum: "$movement.coinOut" },
-                        gamesPlayed: { $sum: "$movement.gamesPlayed" },
-                        gamesWon: { $sum: "$movement.gamesWon" },
+                        jackpot: { $sum: '$movement.jackpot' },
+                        coinIn: { $sum: '$movement.coinIn' },
+                        coinOut: { $sum: '$movement.coinOut' },
+                        gamesPlayed: { $sum: '$movement.gamesPlayed' },
+                        gamesWon: { $sum: '$movement.gamesWon' },
                       },
                     },
                   ];
@@ -344,13 +344,13 @@ export async function GET(request: NextRequest) {
           $group: {
             _id: null,
             // Financial metrics as per financial-metrics-guide.md
-            drop: { $sum: "$movement.drop" }, // Money In (Handle)
-            totalCancelledCredits: { $sum: "$movement.totalCancelledCredits" }, // Money Out
-            jackpot: { $sum: "$movement.jackpot" },
-            coinIn: { $sum: "$movement.coinIn" },
-            coinOut: { $sum: "$movement.coinOut" },
-            gamesPlayed: { $sum: "$movement.gamesPlayed" },
-            gamesWon: { $sum: "$movement.gamesWon" },
+            drop: { $sum: '$movement.drop' }, // Money In (Handle)
+            totalCancelledCredits: { $sum: '$movement.totalCancelledCredits' }, // Money Out
+            jackpot: { $sum: '$movement.jackpot' },
+            coinIn: { $sum: '$movement.coinIn' },
+            coinOut: { $sum: '$movement.coinOut' },
+            gamesPlayed: { $sum: '$movement.gamesPlayed' },
+            gamesWon: { $sum: '$movement.gamesWon' },
           },
         },
       ]);
@@ -380,9 +380,9 @@ export async function GET(request: NextRequest) {
       data: convertResponseToTrinidadTime(machine.toObject()),
     });
   } catch (error) {
-    console.error("Error fetching machine:", error);
+    console.error('Error fetching machine:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch machine" },
+      { success: false, error: 'Failed to fetch machine' },
       { status: 500 }
     );
   }
@@ -393,9 +393,9 @@ export async function POST(request: NextRequest) {
     const db = await connectDB();
 
     if (!db) {
-      console.error("Failed to connect to the database");
+      console.error('Failed to connect to the database');
       return NextResponse.json(
-        { success: false, error: "Failed to connect to the database" },
+        { success: false, error: 'Failed to connect to the database' },
         { status: 500 }
       );
     }
@@ -420,12 +420,12 @@ export async function POST(request: NextRequest) {
 
     // Normalize fields
     data.serialNumber = normalizeSerialNumber(data.serialNumber);
-    data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? "";
+    data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? '';
 
     // Check if we have a location ID
     if (!data.gamingLocation) {
       return NextResponse.json(
-        { success: false, error: "Location ID is required" },
+        { success: false, error: 'Location ID is required' },
         { status: 400 }
       );
     }
@@ -439,7 +439,7 @@ export async function POST(request: NextRequest) {
       _id: machineId,
       serialNumber: data.serialNumber,
       game: data.game,
-      gameType: data.gameType || "slot", // Default to "slot" if not provided
+      gameType: data.gameType || 'slot', // Default to "slot" if not provided
       isCronosMachine: data.isCronosMachine,
       // Handle isCronosMachine vs isSasMachine logic
       isSasMachine: data.isCronosMachine ? false : true, // If Cronos, not SAS. If not given, default to SAS
@@ -447,22 +447,22 @@ export async function POST(request: NextRequest) {
       machineMembershipSettings: {
         isPointsAllowed: true,
         isFreePlayAllowed: true,
-        pointsAwardMethod: "gamesPlayed",
+        pointsAwardMethod: 'gamesPlayed',
         freePlayAmount: 200,
         freePlayCreditsTimeout: 86400,
       },
       nonRestricted: 0,
       restricted: 0,
-      sasVersion: "",
+      sasVersion: '',
       uaccount: 0,
       gameConfig: {
         accountingDenomination:
           parseFloat(data.accountingDenomination.toString()) || 0,
-        additionalId: "",
-        gameOptions: "",
-        maxBet: "",
-        payTableId: "",
-        progressiveGroup: "",
+        additionalId: '',
+        gameOptions: '',
+        maxBet: '',
+        payTableId: '',
+        progressiveGroup: '',
         theoreticalRtp: 0,
       },
       cabinetType: data.cabinetType,
@@ -472,9 +472,9 @@ export async function POST(request: NextRequest) {
       collectionTime: data.collectionSettings?.lastCollectionTime,
       previousCollectionTime: null, // Default to null for new machines
       collectionMeters: {
-        metersIn: parseFloat(data.collectionSettings?.lastMetersIn || "0") || 0,
+        metersIn: parseFloat(data.collectionSettings?.lastMetersIn || '0') || 0,
         metersOut:
-          parseFloat(data.collectionSettings?.lastMetersOut || "0") || 0,
+          parseFloat(data.collectionSettings?.lastMetersOut || '0') || 0,
       },
       // Add all missing fields with default values
       billValidator: {
@@ -489,36 +489,36 @@ export async function POST(request: NextRequest) {
       playableBalance: 0,
       custom: { name: data.serialNumber },
       balances: { cashable: 0 },
-      curProcess: { name: "", next: "" },
+      curProcess: { name: '', next: '' },
       tasks: {
         pendingHandpay: {
-          name: "",
+          name: '',
           steps: [],
           currentStepIndex: 0,
           retryAttempts: 0,
         },
       },
-      origSerialNumber: "",
-      machineId: "",
-      gamingBoard: "",
+      origSerialNumber: '',
+      machineId: '',
+      gamingBoard: '',
 
-      manuf: data.manufacturer || "",
+      manuf: data.manufacturer || '',
       smibBoard: data.smibBoard,
-      smibVersion: { firmware: "", version: "" },
+      smibVersion: { firmware: '', version: '' },
       smibConfig: {
         mqtt: {
           mqttSecure: 0,
           mqttQOS: 0,
-          mqttURI: "",
-          mqttSubTopic: "",
-          mqttPubTopic: "",
-          mqttCfgTopic: "",
+          mqttURI: '',
+          mqttSubTopic: '',
+          mqttPubTopic: '',
+          mqttCfgTopic: '',
           mqttIdleTimeS: 0,
         },
         net: {
           netMode: 0,
-          netStaSSID: "",
-          netStaPwd: "",
+          netStaSSID: '',
+          netStaPwd: '',
           netStaChan: 0,
         },
         coms: {
@@ -529,7 +529,7 @@ export async function POST(request: NextRequest) {
           comsGPC: 0,
         },
         ota: {
-          otaURL: "",
+          otaURL: '',
         },
       },
       sasMeters: {
@@ -565,8 +565,8 @@ export async function POST(request: NextRequest) {
       operationsWhileIdle: { extendedMeters: new Date() },
       collectionMetersHistory: [],
 
-      manufacturer: data.manufacturer || "",
-      gameNumber: "",
+      manufacturer: data.manufacturer || '',
+      gameNumber: '',
       protocols: [],
       numberOfEnabledGames: 0,
       enabledGameNumbers: [],
@@ -574,13 +574,13 @@ export async function POST(request: NextRequest) {
       viewingAccountDenomination: [],
       isSunBoxDevice: false,
       sessionHistory: [],
-      currentSession: "",
+      currentSession: '',
       viewingAccountDenominationHistory: [],
       selectedDenomination: { drop: 0, totalCancelledCredits: 0 },
       lastBillMeterAt: new Date(),
       lastSasMeterAt: new Date(),
-      machineType: "",
-      machineStatus: "",
+      machineType: '',
+      machineStatus: '',
       lastMaintenanceDate: new Date(),
       nextMaintenanceDate: new Date(),
       maintenanceHistory: [],
@@ -600,83 +600,83 @@ export async function POST(request: NextRequest) {
       try {
         const createChanges = [
           {
-            field: "serialNumber",
+            field: 'serialNumber',
             oldValue: null,
             newValue: data.serialNumber,
           },
-          { field: "game", oldValue: null, newValue: data.game },
+          { field: 'game', oldValue: null, newValue: data.game },
           {
-            field: "gameType",
+            field: 'gameType',
             oldValue: null,
-            newValue: data.gameType || "slot",
+            newValue: data.gameType || 'slot',
           },
           {
-            field: "isCronosMachine",
+            field: 'isCronosMachine',
             oldValue: null,
             newValue: data.isCronosMachine,
           },
-          { field: "cabinetType", oldValue: null, newValue: data.cabinetType },
-          { field: "assetStatus", oldValue: null, newValue: data.assetStatus },
+          { field: 'cabinetType', oldValue: null, newValue: data.cabinetType },
+          { field: 'assetStatus', oldValue: null, newValue: data.assetStatus },
           {
-            field: "gamingLocation",
+            field: 'gamingLocation',
             oldValue: null,
             newValue: data.gamingLocation,
           },
-          { field: "smibBoard", oldValue: null, newValue: data.smibBoard },
+          { field: 'smibBoard', oldValue: null, newValue: data.smibBoard },
           {
-            field: "accountingDenomination",
+            field: 'accountingDenomination',
             oldValue: null,
             newValue: data.accountingDenomination,
           },
 
           {
-            field: "serialNumber",
+            field: 'serialNumber',
             oldValue: null,
             newValue: data.serialNumber,
           },
-          { field: "game", oldValue: null, newValue: data.game },
+          { field: 'game', oldValue: null, newValue: data.game },
           {
-            field: "gameType",
+            field: 'gameType',
             oldValue: null,
-            newValue: data.gameType || "slot",
+            newValue: data.gameType || 'slot',
           },
           {
-            field: "isCronosMachine",
+            field: 'isCronosMachine',
             oldValue: null,
             newValue: data.isCronosMachine,
           },
-          { field: "cabinetType", oldValue: null, newValue: data.cabinetType },
-          { field: "assetStatus", oldValue: null, newValue: data.assetStatus },
+          { field: 'cabinetType', oldValue: null, newValue: data.cabinetType },
+          { field: 'assetStatus', oldValue: null, newValue: data.assetStatus },
           {
-            field: "gamingLocation",
+            field: 'gamingLocation',
             oldValue: null,
             newValue: data.gamingLocation,
           },
-          { field: "smibBoard", oldValue: null, newValue: data.smibBoard },
+          { field: 'smibBoard', oldValue: null, newValue: data.smibBoard },
           {
-            field: "accountingDenomination",
+            field: 'accountingDenomination',
             oldValue: null,
             newValue: data.accountingDenomination,
           },
         ];
 
         await logActivity({
-          action: "CREATE",
+          action: 'CREATE',
           details: `Created new machine "${data.serialNumber}" with game "${data.game}"`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "machine",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'machine',
             resourceId: machineId,
             resourceName: data.serialNumber,
             changes: createChanges,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
@@ -685,9 +685,9 @@ export async function POST(request: NextRequest) {
       data: convertResponseToTrinidadTime(newMachine),
     });
   } catch (error) {
-    console.error("Failed to create new machine:", error);
+    console.error('Failed to create new machine:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to create new machine" },
+      { success: false, error: 'Failed to create new machine' },
       { status: 500 }
     );
   }
@@ -696,11 +696,11 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     await connectDB();
-    const id = request.nextUrl.searchParams.get("id");
+    const id = request.nextUrl.searchParams.get('id');
 
     if (!id) {
       return NextResponse.json(
-        { success: false, error: "Cabinet ID is required" },
+        { success: false, error: 'Cabinet ID is required' },
         { status: 400 }
       );
     }
@@ -729,14 +729,14 @@ export async function PUT(request: NextRequest) {
           { status: 400 }
         );
       }
-      data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? "";
+      data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? '';
     }
 
     // Get original machine data for change tracking
     const originalMachine = await Machine.findById(id);
     if (!originalMachine) {
       return NextResponse.json(
-        { success: false, error: "Cabinet not found" },
+        { success: false, error: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -749,7 +749,7 @@ export async function PUT(request: NextRequest) {
     // If serial number was updated, also update it in Collections
     if (
       data.serialNumber !== undefined &&
-      data.serialNumber !== "" &&
+      data.serialNumber !== '' &&
       data.serialNumber !== originalMachine.serialNumber
     ) {
       try {
@@ -763,7 +763,7 @@ export async function PUT(request: NextRequest) {
         );
       } catch (collectionsError) {
         console.error(
-          "Failed to update serial number in Collections:",
+          'Failed to update serial number in Collections:',
           collectionsError
         );
         // Don't fail the entire operation if Collections update fails
@@ -773,7 +773,7 @@ export async function PUT(request: NextRequest) {
     // If game name was updated, also update it in Collections
     if (
       data.game !== undefined &&
-      data.game !== "" &&
+      data.game !== '' &&
       data.game !== originalMachine.game
     ) {
       try {
@@ -787,7 +787,7 @@ export async function PUT(request: NextRequest) {
         );
       } catch (collectionsError) {
         console.error(
-          "Failed to update machine name in Collections:",
+          'Failed to update machine name in Collections:',
           collectionsError
         );
         // Don't fail the entire operation if Collections update fails
@@ -801,24 +801,24 @@ export async function PUT(request: NextRequest) {
         const changes = calculateChanges(originalMachine.toObject(), data);
 
         await logActivity({
-          action: "UPDATE",
+          action: 'UPDATE',
           details: `Updated machine "${
             originalMachine.serialNumber || originalMachine.game
           }"`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "machine",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'machine',
             resourceId: id,
             resourceName: originalMachine.serialNumber || originalMachine.game,
             changes: changes,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
@@ -827,9 +827,9 @@ export async function PUT(request: NextRequest) {
       data: convertResponseToTrinidadTime(updatedMachine),
     });
   } catch (error) {
-    console.error("Error updating machine:", error);
+    console.error('Error updating machine:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to update machine" },
+      { success: false, error: 'Failed to update machine' },
       { status: 500 }
     );
   }
@@ -838,11 +838,11 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     await connectDB();
-    const id = request.nextUrl.searchParams.get("id");
+    const id = request.nextUrl.searchParams.get('id');
 
     if (!id) {
       return NextResponse.json(
-        { success: false, error: "Cabinet ID is required" },
+        { success: false, error: 'Cabinet ID is required' },
         { status: 400 }
       );
     }
@@ -853,7 +853,7 @@ export async function DELETE(request: NextRequest) {
     const machineToDelete = await Machine.findById(id);
     if (!machineToDelete) {
       return NextResponse.json(
-        { success: false, error: "Cabinet not found" },
+        { success: false, error: 'Cabinet not found' },
         { status: 404 }
       );
     }
@@ -871,110 +871,110 @@ export async function DELETE(request: NextRequest) {
       try {
         const deleteChanges = [
           {
-            field: "serialNumber",
+            field: 'serialNumber',
             oldValue: machineToDelete.serialNumber,
             newValue: null,
           },
-          { field: "game", oldValue: machineToDelete.game, newValue: null },
+          { field: 'game', oldValue: machineToDelete.game, newValue: null },
           {
-            field: "gameType",
+            field: 'gameType',
             oldValue: machineToDelete.gameType,
             newValue: null,
           },
           {
-            field: "isCronosMachine",
+            field: 'isCronosMachine',
             oldValue: machineToDelete.isCronosMachine,
             newValue: null,
           },
           {
-            field: "cabinetType",
+            field: 'cabinetType',
             oldValue: machineToDelete.cabinetType,
             newValue: null,
           },
           {
-            field: "assetStatus",
+            field: 'assetStatus',
             oldValue: machineToDelete.assetStatus,
             newValue: null,
           },
           {
-            field: "gamingLocation",
+            field: 'gamingLocation',
             oldValue: machineToDelete.gamingLocation,
             newValue: null,
           },
           {
-            field: "smibBoard",
+            field: 'smibBoard',
             oldValue: machineToDelete.smibBoard,
             newValue: null,
           },
 
           {
-            field: "serialNumber",
+            field: 'serialNumber',
             oldValue: machineToDelete.serialNumber,
             newValue: null,
           },
-          { field: "game", oldValue: machineToDelete.game, newValue: null },
+          { field: 'game', oldValue: machineToDelete.game, newValue: null },
           {
-            field: "gameType",
+            field: 'gameType',
             oldValue: machineToDelete.gameType,
             newValue: null,
           },
           {
-            field: "isCronosMachine",
+            field: 'isCronosMachine',
             oldValue: machineToDelete.isCronosMachine,
             newValue: null,
           },
           {
-            field: "cabinetType",
+            field: 'cabinetType',
             oldValue: machineToDelete.cabinetType,
             newValue: null,
           },
           {
-            field: "assetStatus",
+            field: 'assetStatus',
             oldValue: machineToDelete.assetStatus,
             newValue: null,
           },
           {
-            field: "gamingLocation",
+            field: 'gamingLocation',
             oldValue: machineToDelete.gamingLocation,
             newValue: null,
           },
           {
-            field: "smibBoard",
+            field: 'smibBoard',
             oldValue: machineToDelete.smibBoard,
             newValue: null,
           },
         ];
 
         await logActivity({
-          action: "DELETE",
+          action: 'DELETE',
           details: `Deleted machine "${
             machineToDelete.serialNumber || machineToDelete.game
           }"`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "machine",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'machine',
             resourceId: id,
             resourceName: machineToDelete.serialNumber || machineToDelete.game,
             changes: deleteChanges,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Cabinet deleted successfully",
+      message: 'Cabinet deleted successfully',
     });
   } catch (error) {
-    console.error("Error deleting cabinet:", error);
+    console.error('Error deleting cabinet:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to delete cabinet" },
+      { success: false, error: 'Failed to delete cabinet' },
       { status: 500 }
     );
   }

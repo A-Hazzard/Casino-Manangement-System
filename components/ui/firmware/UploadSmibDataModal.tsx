@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import axios from "axios";
+import React, { useState, useRef } from 'react';
+import axios from 'axios';
 import {
   Dialog,
   DialogContent,
@@ -7,12 +7,12 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { UploadIcon } from "@radix-ui/react-icons"; // Using UploadIcon for the button
-import type { UploadSmibDataModalProps } from "@/lib/types/components";
-import { useUserStore } from "@/lib/store/userStore";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { UploadIcon } from '@radix-ui/react-icons'; // Using UploadIcon for the button
+import type { UploadSmibDataModalProps } from '@/lib/types/components';
+import { useUserStore } from '@/lib/store/userStore';
 
 const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
   isOpen,
@@ -21,12 +21,12 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
 }) => {
   const { user } = useUserStore();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [comments, setComments] = useState("");
+  const [comments, setComments] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
-    if (!user) return "Unknown User";
+    if (!user) return 'Unknown User';
 
     // Check if user has profile with firstName and lastName
     if (user.profile?.firstName && user.profile?.lastName) {
@@ -44,17 +44,17 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
     }
 
     // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== "") {
+    if (user.username && user.username.trim() !== '') {
       return user.username;
     }
 
     // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== "") {
+    if (user.emailAddress && user.emailAddress.trim() !== '') {
       return user.emailAddress;
     }
 
     // Fallback
-    return "Unknown User";
+    return 'Unknown User';
   };
 
   // Activity logging is now handled via API calls
@@ -68,10 +68,10 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
     newData?: Record<string, unknown> | null
   ) => {
     try {
-      const response = await fetch("/api/activity-logs", {
-        method: "POST",
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
@@ -79,9 +79,9 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
           resourceId,
           resourceName,
           details,
-          userId: user?._id || "unknown",
+          userId: user?._id || 'unknown',
           username: getUserDisplayName(),
-          userRole: "user",
+          userRole: 'user',
           previousData: previousData || null,
           newData: newData || null,
           changes: [], // Will be calculated by the API
@@ -89,10 +89,10 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
       });
 
       if (!response.ok) {
-        console.error("Failed to log activity:", response.statusText);
+        console.error('Failed to log activity:', response.statusText);
       }
     } catch (error) {
-      console.error("Error logging activity:", error);
+      console.error('Error logging activity:', error);
     }
   };
 
@@ -111,19 +111,19 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
 
     try {
       const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("comments", comments);
+      formData.append('file', selectedFile);
+      formData.append('comments', comments);
 
       const response = await axios.post(
-        "/api/firmware/upload-smib-data",
+        '/api/firmware/upload-smib-data',
         formData
       );
 
       // Log the SMIB data upload activity
       await logActivity(
-        "create",
-        "firmware",
-        response.data?.id || "unknown",
+        'create',
+        'firmware',
+        response.data?.id || 'unknown',
         `SMIB Data Upload: ${selectedFile.name}`,
         `Uploaded SMIB data file: ${selectedFile.name} (${(
           selectedFile.size / 1024
@@ -140,24 +140,24 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
       // Close modal and clear form on success
       onClose();
       setSelectedFile(null);
-      setComments("");
+      setComments('');
 
       // Optional: Show success message
-      if (typeof window !== "undefined") {
-        alert("SMIB data uploaded successfully!");
+      if (typeof window !== 'undefined') {
+        alert('SMIB data uploaded successfully!');
       }
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error('Upload error:', error);
       // Optional: Show error message
-      if (typeof window !== "undefined") {
-        alert("Upload failed. Please try again.");
+      if (typeof window !== 'undefined') {
+        alert('Upload failed. Please try again.');
       }
     }
   };
 
   const clearForm = () => {
     setSelectedFile(null);
-    setComments("");
+    setComments('');
   };
 
   const handleModalClose = () => {
@@ -167,22 +167,22 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleModalClose}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden bg-white">
-        <DialogHeader className="p-6 border-b border-gray-200">
+      <DialogContent className="max-w-lg overflow-hidden bg-white p-0">
+        <DialogHeader className="border-b border-gray-200 p-6">
           <DialogTitle className="text-2xl font-bold text-gray-800">
             Upload CSV with SMIBs data
           </DialogTitle>
         </DialogHeader>
 
-        <div className="p-6 flex flex-col gap-6">
+        <div className="flex flex-col gap-6 p-6">
           <div>
             <Button
               variant="outline"
               onClick={handleChooseFileClick}
-              className="w-full justify-start text-left border-gray-300 text-gray-700 hover:bg-gray-100 focus:ring-buttonActive focus:border-buttonActive"
+              className="w-full justify-start border-gray-300 text-left text-gray-700 hover:bg-gray-100 focus:border-buttonActive focus:ring-buttonActive"
             >
               <UploadIcon className="mr-2 h-5 w-5 text-gray-600" />
-              {selectedFile ? selectedFile.name : "Choose File..."}
+              {selectedFile ? selectedFile.name : 'Choose File...'}
             </Button>
             <input
               type="file"
@@ -192,8 +192,8 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
               accept=".csv"
             />
             {selectedFile && (
-              <p className="text-xs text-gray-500 mt-1">
-                Type: {selectedFile.type}, Size:{" "}
+              <p className="mt-1 text-xs text-gray-500">
+                Type: {selectedFile.type}, Size:{' '}
                 {(selectedFile.size / 1024).toFixed(2)} KB
               </p>
             )}
@@ -202,7 +202,7 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
           <div>
             <label
               htmlFor="techCommentsUpload"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="mb-1 block text-sm font-medium text-gray-700"
             >
               Technician Comments
             </label>
@@ -210,13 +210,13 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
               id="techCommentsUpload"
               placeholder="Add any comments related to this upload..."
               value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              className="min-h-[100px] border-gray-300 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive"
+              onChange={e => setComments(e.target.value)}
+              className="min-h-[100px] border-gray-300 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
             />
           </div>
         </div>
 
-        <DialogFooter className="p-6 border-t border-gray-200">
+        <DialogFooter className="border-t border-gray-200 p-6">
           <DialogClose asChild>
             <Button
               variant="outline"
@@ -229,7 +229,7 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
           <Button
             onClick={handleUpload}
             disabled={!selectedFile}
-            className="bg-button hover:bg-button/90 text-white"
+            className="bg-button text-white hover:bg-button/90"
           >
             Save
           </Button>

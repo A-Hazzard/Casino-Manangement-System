@@ -1,13 +1,13 @@
-import type { Licensee } from "@/lib/types/licensee";
-import type { ActivityLogData } from "@/lib/types/hooks";
+import type { Licensee } from '@/lib/types/licensee';
+import type { ActivityLogData } from '@/lib/types/hooks';
 
 export type GamingLocationsResource = {
-  entity: "gaming-locations";
+  entity: 'gaming-locations';
   resources: string[];
 };
 
 export type ResourcePermissions = {
-  "gaming-locations"?: GamingLocationsResource;
+  'gaming-locations'?: GamingLocationsResource;
   // Add other resource types as needed
 };
 

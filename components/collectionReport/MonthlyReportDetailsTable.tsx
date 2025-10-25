@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   Table,
   TableBody,
@@ -6,8 +6,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import type { MonthlyReportDetailsRow } from "@/lib/types/componentProps";
+} from '@/components/ui/table';
+import type { MonthlyReportDetailsRow } from '@/lib/types/componentProps';
 
 type Row = MonthlyReportDetailsRow;
 
@@ -19,15 +19,17 @@ export default function MonthlyReportDetailsTable({
   details,
 }: ExtendedMonthlyReportDetailsTableProps) {
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow mt-0">
+    <div className="mt-0 overflow-x-auto rounded-lg bg-white shadow">
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            <TableHead className="text-white font-semibold">LOCATION</TableHead>
-            <TableHead className="text-white font-semibold">DROP</TableHead>
-            <TableHead className="text-white font-semibold">WIN</TableHead>
-            <TableHead className="text-white font-semibold">GROSS</TableHead>
-            <TableHead className="text-white font-semibold">SAS GROSS</TableHead>
+            <TableHead className="font-semibold text-white">LOCATION</TableHead>
+            <TableHead className="font-semibold text-white">DROP</TableHead>
+            <TableHead className="font-semibold text-white">WIN</TableHead>
+            <TableHead className="font-semibold text-white">GROSS</TableHead>
+            <TableHead className="font-semibold text-white">
+              SAS GROSS
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

@@ -4,7 +4,7 @@ import type {
   RelationshipInfo,
   GeoCoordinates,
   AggregatedLocation,
-} from "@shared/types";
+} from '@shared/types';
 
 // Re-export shared location types
 export type { Address, RelationshipInfo, GeoCoordinates, AggregatedLocation };
@@ -48,18 +48,18 @@ export type LocationTableItem = {
 };
 
 export type LocationSortOption =
-  | "locationName"
-  | "moneyIn"
-  | "moneyOut"
-  | "gross"
-  | "totalMachines"
-  | "onlineMachines";
+  | 'locationName'
+  | 'moneyIn'
+  | 'moneyOut'
+  | 'gross'
+  | 'totalMachines'
+  | 'onlineMachines';
 
 export type LocationFilter =
-  | "NoSMIBLocation"
-  | "SMIBLocationsOnly"
-  | "LocalServersOnly"
-  | ""
+  | 'NoSMIBLocation'
+  | 'SMIBLocationsOnly'
+  | 'LocalServersOnly'
+  | ''
   | null;
 
 // Re-evaluating to clear cache
@@ -123,17 +123,17 @@ import {
   DateRangeFilter,
   MongoDBQueryValue,
   RegexFilter,
-} from "./mongo";
+} from './mongo';
 
 export type LocationMatchStage = {
   name?: RegexFilter;
-  "rel.licencee"?: string;
+  'rel.licencee'?: string;
   deletedAt?: ArrayFilter;
   [key: string]: MongoDBQueryValue | undefined;
 };
 
 export type MetricsMatchStage = {
-  "rel.licencee"?: string;
+  'rel.licencee'?: string;
   timePeriod?: string;
   createdAt?: DateRangeFilter;
   [key: string]: MongoDBQueryValue | undefined;
@@ -141,7 +141,7 @@ export type MetricsMatchStage = {
 
 export type MeterMatchStage = {
   readAt: DateRangeFilter;
-  "rel.licencee"?: string;
+  'rel.licencee'?: string;
   [key: string]: MongoDBQueryValue | undefined;
 };
 
@@ -196,7 +196,7 @@ export type LocationDateRange = {
   endDate: Date | undefined;
 };
 
-import { ObjectId } from "mongodb";
+import { ObjectId } from 'mongodb';
 
 export type GamingLocation = {
   _id: ObjectId;
@@ -249,8 +249,8 @@ export type LocationTableProps = {
   locations: AggregatedLocation[];
   onSort: (column: LocationSortOption) => void;
   sortOption: LocationSortOption;
-  sortOrder: "asc" | "desc";
+  sortOrder: 'asc' | 'desc';
   onLocationClick: (id: string) => void;
-  onAction: (action: "edit" | "delete", location: AggregatedLocation) => void;
+  onAction: (action: 'edit' | 'delete', location: AggregatedLocation) => void;
   formatCurrency: (amount: number) => string;
 };

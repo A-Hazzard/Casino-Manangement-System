@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   Table,
   TableBody,
@@ -6,9 +6,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import type { SchedulerTableRow } from "@/lib/types/componentProps";
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import type { SchedulerTableRow } from '@/lib/types/componentProps';
 
 type Props = {
   data: SchedulerTableRow[];
@@ -18,18 +18,18 @@ type Props = {
 export default function ManagerScheduleTable({ data, loading }: Props) {
   if (loading) {
     return (
-      <div className="hidden md:flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-buttonActive"></div>
+      <div className="hidden items-center justify-center py-8 md:flex">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-4 border-t-4 border-buttonActive"></div>
       </div>
     );
   }
 
   if (data.length === 0) {
     return (
-      <div className="hidden md:flex justify-center items-center py-8">
-        <div className="bg-white rounded-lg shadow-md p-8 flex flex-col items-center w-full max-w-md mx-auto">
-          <div className="text-gray-500 text-lg mb-2">No Data Available</div>
-          <div className="text-gray-400 text-sm text-center">
+      <div className="hidden items-center justify-center py-8 md:flex">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center rounded-lg bg-white p-8 shadow-md">
+          <div className="mb-2 text-lg text-gray-500">No Data Available</div>
+          <div className="text-center text-sm text-gray-400">
             No scheduled visits found.
           </div>
         </div>
@@ -38,20 +38,26 @@ export default function ManagerScheduleTable({ data, loading }: Props) {
   }
 
   return (
-    <div className="hidden md:block overflow-x-auto bg-white rounded-lg shadow w-full min-w-0 max-w-[90vw]">
+    <div className="hidden w-full min-w-0 max-w-[90vw] overflow-x-auto rounded-lg bg-white shadow md:block">
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            <TableHead className="text-white font-semibold">COLLECTOR</TableHead>
-            <TableHead className="text-white font-semibold">LOCATION</TableHead>
-            <TableHead className="text-white font-semibold">MANAGER</TableHead>
-            <TableHead className="text-white font-semibold">VISIT TIME</TableHead>
-            <TableHead className="text-white font-semibold">CREATED AT</TableHead>
-            <TableHead className="text-white font-semibold">STATUS</TableHead>
+            <TableHead className="font-semibold text-white">
+              COLLECTOR
+            </TableHead>
+            <TableHead className="font-semibold text-white">LOCATION</TableHead>
+            <TableHead className="font-semibold text-white">MANAGER</TableHead>
+            <TableHead className="font-semibold text-white">
+              VISIT TIME
+            </TableHead>
+            <TableHead className="font-semibold text-white">
+              CREATED AT
+            </TableHead>
+            <TableHead className="font-semibold text-white">STATUS</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((row) => (
+          {data.map(row => (
             <TableRow key={row.id} className="hover:bg-gray-50">
               <TableCell className="font-medium">{row.collector}</TableCell>
               <TableCell>{row.location}</TableCell>
@@ -61,18 +67,18 @@ export default function ManagerScheduleTable({ data, loading }: Props) {
               <TableCell>
                 <Badge
                   variant={
-                    row.status === "pending"
-                      ? "secondary"
-                      : row.status === "completed"
-                      ? "default"
-                      : "destructive"
+                    row.status === 'pending'
+                      ? 'secondary'
+                      : row.status === 'completed'
+                        ? 'default'
+                        : 'destructive'
                   }
                   className={
-                    row.status === "pending"
-                      ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                      : row.status === "completed"
-                      ? "bg-green-100 text-green-800 hover:bg-green-200"
-                      : "bg-red-100 text-red-800 hover:bg-red-200"
+                    row.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                      : row.status === 'completed'
+                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                        : 'bg-red-100 text-red-800 hover:bg-red-200'
                   }
                 >
                   {row.status}

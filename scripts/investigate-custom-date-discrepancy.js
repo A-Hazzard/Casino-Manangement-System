@@ -11,35 +11,35 @@
  * Expected value: ~13483
  */
 
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 // Configuration
 const MONGODB_URI =
   process.env.MONGO_URI ||
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
-const MACHINE_SERIAL = "1309";
-const CUSTOM_START = "2025-10-01T08:00:00";
-const CUSTOM_END = "2025-10-15T08:00:00";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
+const MACHINE_SERIAL = '1309';
+const CUSTOM_START = '2025-10-01T08:00:00';
+const CUSTOM_END = '2025-10-15T08:00:00';
 
 async function investigateDiscrepancy() {
   let client;
 
   try {
-    console.log("🔍 Investigating Custom Date Filter Discrepancy");
-    console.log("=".repeat(60));
+    console.log('🔍 Investigating Custom Date Filter Discrepancy');
+    console.log('='.repeat(60));
     console.log(`Machine Serial: ${MACHINE_SERIAL}`);
     console.log(`Custom Range: ${CUSTOM_START} to ${CUSTOM_END}`);
-    console.log("");
+    console.log('');
 
     client = new MongoClient(MONGODB_URI);
     await client.connect();
-    console.log("✅ Connected to MongoDB");
+    console.log('✅ Connected to MongoDB');
 
     const db = client.db();
 
     // Step 1: Find the machine
-    console.log("\n📋 Step 1: Finding Machine");
-    const machine = await db.collection("machines").findOne({
+    console.log('\n📋 Step 1: Finding Machine');
+    const machine = await db.collection('machines').findOne({
       $or: [
         { serialNumber: MACHINE_SERIAL },
         { origSerialNumber: MACHINE_SERIAL },
@@ -47,23 +47,23 @@ async function investigateDiscrepancy() {
     });
 
     if (!machine) {
-      console.log("❌ Machine not found!");
+      console.log('❌ Machine not found!');
       return;
     }
 
     console.log(`✅ Found machine: ${machine._id}`);
     console.log(`   Serial Number: ${machine.serialNumber}`);
     console.log(`   Location: ${machine.gamingLocation}`);
-    console.log(`   Game Day Offset: ${machine.gameDayOffset || "Not set"}`);
+    console.log(`   Game Day Offset: ${machine.gameDayOffset || 'Not set'}`);
 
     // Step 2: Get location details
-    console.log("\n📋 Step 2: Getting Location Details");
-    const location = await db.collection("gaminglocations").findOne({
+    console.log('\n📋 Step 2: Getting Location Details');
+    const location = await db.collection('gaminglocations').findOne({
       _id: machine.gamingLocation,
     });
 
     if (!location) {
-      console.log("❌ Location not found!");
+      console.log('❌ Location not found!');
       return;
     }
 
@@ -72,13 +72,13 @@ async function investigateDiscrepancy() {
     console.log(`   Game Day Offset: ${gameDayOffset}`);
 
     // Step 3: Calculate date ranges
-    console.log("\n📋 Step 3: Calculating Date Ranges");
+    console.log('\n📋 Step 3: Calculating Date Ranges');
 
     // User's custom dates (Trinidad time)
     const userStartDate = new Date(CUSTOM_START);
     const userEndDate = new Date(CUSTOM_END);
 
-    console.log("User Input (Trinidad Time):");
+    console.log('User Input (Trinidad Time):');
     console.log(`   Start: ${userStartDate.toISOString()}`);
     console.log(`   End: ${userEndDate.toISOString()}`);
 
@@ -86,7 +86,7 @@ async function investigateDiscrepancy() {
     const utcStart = new Date(userStartDate.getTime() + 4 * 60 * 60 * 1000);
     const utcEnd = new Date(userEndDate.getTime() + 4 * 60 * 60 * 1000);
 
-    console.log("\nDatabase Query (UTC):");
+    console.log('\nDatabase Query (UTC):');
     console.log(`   Start: ${utcStart.toISOString()}`);
     console.log(`   End: ${utcEnd.toISOString()}`);
 
@@ -99,12 +99,12 @@ async function investigateDiscrepancy() {
     gamingDayEnd.setUTCHours(gameDayOffset - -4, 0, 0, 0);
     gamingDayEnd.setMilliseconds(gamingDayEnd.getMilliseconds() - 1);
 
-    console.log("\nGaming Day Offset Calculation (WRONG for custom):");
+    console.log('\nGaming Day Offset Calculation (WRONG for custom):');
     console.log(`   Start: ${gamingDayStart.toISOString()}`);
     console.log(`   End: ${gamingDayEnd.toISOString()}`);
 
     // Step 4: Query meters with correct custom date range
-    console.log("\n📋 Step 4: Querying Meters with Custom Date Range");
+    console.log('\n📋 Step 4: Querying Meters with Custom Date Range');
 
     const metersPipeline = [
       {
@@ -119,20 +119,20 @@ async function investigateDiscrepancy() {
       {
         $group: {
           _id: null,
-          moneyIn: { $sum: "$movement.drop" },
-          moneyOut: { $sum: "$movement.totalCancelledCredits" },
-          jackpot: { $sum: "$movement.jackpot" },
-          coinIn: { $last: "$coinIn" },
-          coinOut: { $last: "$coinOut" },
-          gamesPlayed: { $last: "$gamesPlayed" },
-          gamesWon: { $last: "$gamesWon" },
+          moneyIn: { $sum: '$movement.drop' },
+          moneyOut: { $sum: '$movement.totalCancelledCredits' },
+          jackpot: { $sum: '$movement.jackpot' },
+          coinIn: { $last: '$coinIn' },
+          coinOut: { $last: '$coinOut' },
+          gamesPlayed: { $last: '$gamesPlayed' },
+          gamesWon: { $last: '$gamesWon' },
           meterCount: { $sum: 1 },
         },
       },
     ];
 
     const metersResult = await db
-      .collection("meters")
+      .collection('meters')
       .aggregate(metersPipeline)
       .toArray();
     const correctMetrics = metersResult[0] || {
@@ -148,7 +148,7 @@ async function investigateDiscrepancy() {
 
     const correctGross = correctMetrics.moneyIn - correctMetrics.moneyOut;
 
-    console.log("✅ Correct Metrics (Custom Date Range):");
+    console.log('✅ Correct Metrics (Custom Date Range):');
     console.log(`   Money In: ${correctMetrics.moneyIn}`);
     console.log(`   Money Out: ${correctMetrics.moneyOut}`);
     console.log(`   Gross: ${correctGross}`);
@@ -157,7 +157,7 @@ async function investigateDiscrepancy() {
     console.log(`   Meter Count: ${correctMetrics.meterCount}`);
 
     // Step 5: Query meters with gaming day offset (WRONG)
-    console.log("\n📋 Step 5: Querying Meters with Gaming Day Offset (WRONG)");
+    console.log('\n📋 Step 5: Querying Meters with Gaming Day Offset (WRONG)');
 
     const gamingDayPipeline = [
       {
@@ -172,20 +172,20 @@ async function investigateDiscrepancy() {
       {
         $group: {
           _id: null,
-          moneyIn: { $sum: "$movement.drop" },
-          moneyOut: { $sum: "$movement.totalCancelledCredits" },
-          jackpot: { $sum: "$movement.jackpot" },
-          coinIn: { $last: "$coinIn" },
-          coinOut: { $last: "$coinOut" },
-          gamesPlayed: { $last: "$gamesPlayed" },
-          gamesWon: { $last: "$gamesWon" },
+          moneyIn: { $sum: '$movement.drop' },
+          moneyOut: { $sum: '$movement.totalCancelledCredits' },
+          jackpot: { $sum: '$movement.jackpot' },
+          coinIn: { $last: '$coinIn' },
+          coinOut: { $last: '$coinOut' },
+          gamesPlayed: { $last: '$gamesPlayed' },
+          gamesWon: { $last: '$gamesWon' },
           meterCount: { $sum: 1 },
         },
       },
     ];
 
     const gamingDayResult = await db
-      .collection("meters")
+      .collection('meters')
       .aggregate(gamingDayPipeline)
       .toArray();
     const wrongMetrics = gamingDayResult[0] || {
@@ -201,7 +201,7 @@ async function investigateDiscrepancy() {
 
     const wrongGross = wrongMetrics.moneyIn - wrongMetrics.moneyOut;
 
-    console.log("❌ Wrong Metrics (Gaming Day Offset Applied):");
+    console.log('❌ Wrong Metrics (Gaming Day Offset Applied):');
     console.log(`   Money In: ${wrongMetrics.moneyIn}`);
     console.log(`   Money Out: ${wrongMetrics.moneyOut}`);
     console.log(`   Gross: ${wrongGross}`);
@@ -210,8 +210,8 @@ async function investigateDiscrepancy() {
     console.log(`   Meter Count: ${wrongMetrics.meterCount}`);
 
     // Step 6: Show the discrepancy
-    console.log("\n📋 Step 6: Discrepancy Analysis");
-    console.log("=".repeat(40));
+    console.log('\n📋 Step 6: Discrepancy Analysis');
+    console.log('='.repeat(40));
     console.log(`Expected (Custom Range): ${correctGross}`);
     console.log(`Wrong (Gaming Day Offset): ${wrongGross}`);
     console.log(`Difference: ${correctGross - wrongGross}`);
@@ -223,37 +223,37 @@ async function investigateDiscrepancy() {
     );
 
     // Step 7: Check what the APIs are actually returning
-    console.log("\n📋 Step 7: API Simulation");
-    console.log("Testing what the current APIs would return...");
+    console.log('\n📋 Step 7: API Simulation');
+    console.log('Testing what the current APIs would return...');
 
     // Simulate individual machine API (should be correct)
-    console.log("\n✅ Individual Machine API (/api/machines/[id]):");
+    console.log('\n✅ Individual Machine API (/api/machines/[id]):');
     console.log(`   Should return: ${correctGross} (correct)`);
 
     // Simulate aggregation API (currently wrong)
-    console.log("\n❌ Cabinets Page API (/api/machines/aggregation):");
+    console.log('\n❌ Cabinets Page API (/api/machines/aggregation):');
     console.log(
       `   Currently returns: ${wrongGross} (wrong - uses gaming day offset)`
     );
 
     // Simulate location API (currently wrong)
-    console.log("\n❌ Location Details API (/api/locations/[locationId]):");
+    console.log('\n❌ Location Details API (/api/locations/[locationId]):');
     console.log(
       `   Currently returns: ${wrongGross} (wrong - uses gaming day offset)`
     );
 
-    console.log("\n🎯 CONCLUSION:");
+    console.log('\n🎯 CONCLUSION:');
     console.log(
-      "The issue is that custom date ranges should NOT use gaming day offset."
+      'The issue is that custom date ranges should NOT use gaming day offset.'
     );
     console.log(
-      "The user specifies exact times, so we should use those exact times."
+      'The user specifies exact times, so we should use those exact times.'
     );
     console.log(
       'Gaming day offset should only apply to predefined periods like "Today", "Yesterday", etc.'
     );
   } catch (error) {
-    console.error("❌ Error during investigation:", error);
+    console.error('❌ Error during investigation:', error);
   } finally {
     if (client) {
       await client.close();

@@ -5,23 +5,43 @@
 
 ## Overview
 
-This document provides a comprehensive guide to the MQTT protocol implementation for SMIB (Slot Machine Interface Board) communication in the CMS system. It covers the complete developer flow from UI to backend, including architecture, message protocols, and implementation details.
+This document provides a comprehensive guide to the MQTT protocol implementation for SMIB (Slot Machine Interface Board) communication in the CMS system. The system uses MQTT's **publish-subscribe (pub/sub)** model to simulate request-response communication between the CMS server and SMIB devices.
 
 ## System Architecture
 
-The MQTT system follows a request-response pattern with real-time communication between:
+The MQTT system uses a **publish-subscribe model** with real-time communication between:
 
-1. **Frontend UI** (React/Next.js)
-2. **Backend API** (Next.js API routes)
-3. **MQTT Service** (Node.js MQTT client)
-4. **MQTT Broker** (External broker)
-5. **SMIB Devices** (Hardware devices)
+1. **Frontend UI** (React/Next.js) - Uses SSE for live updates
+2. **Backend API** (Next.js API routes) - Handles SSE streams and MQTT requests
+3. **MQTT Service** (Node.js MQTT client) - Manages pub/sub communication
+4. **MQTT Broker** (External broker) - Message routing hub
+5. **SMIB Devices** (Hardware devices) - MQTT clients
+
+## MQTT Pub/Sub vs Request-Response
+
+### How the System Works
+
+**MQTT is fundamentally a publish-subscribe model**, not request-response. However, this system implements a **request-response simulation** over MQTT's pub/sub infrastructure:
+
+1. **Server publishes** requests to specific topics (`sas/relay/[relayId]`)
+2. **SMIB devices subscribe** to their specific topics
+3. **SMIB devices publish** responses to a shared topic (`smib/config`)
+4. **Server subscribes** to the response topic and filters by `relayId`
+5. **Message routing** by `relayId` enables targeted communication
+
+### Key Implementation Details
+
+- **No direct connection** between server and SMIB devices
+- **Asynchronous communication** - no guaranteed response timing
+- **Message routing** by `relayId` field enables request-response simulation
+- **Live updates** via continuous MQTT subscription + SSE streaming
 
 ## Complete Developer Flow
 
 ### 1. UI to Backend Flow
 
 #### Frontend Component: Cabinet Details Page
+
 **File:** `app/cabinets/[slug]/page.tsx`
 
 ```typescript
@@ -33,25 +53,28 @@ connectToConfigStream(relayId);
 
 // 3. Requests initial configuration for all components
 Promise.all([
-  requestLiveConfig(relayId, "net"),    // Network config
-  requestLiveConfig(relayId, "mqtt"),   // MQTT config
-  requestLiveConfig(relayId, "coms"),   // Communication config
-  requestLiveConfig(relayId, "ota"),    // OTA config
-  requestLiveConfig(relayId, "app"),    // App config
+  requestLiveConfig(relayId, 'net'), // Network config
+  requestLiveConfig(relayId, 'mqtt'), // MQTT config
+  requestLiveConfig(relayId, 'coms'), // Communication config
+  requestLiveConfig(relayId, 'ota'), // OTA config
+  requestLiveConfig(relayId, 'app'), // App config
 ]);
 ```
 
 #### Custom Hook: SMIB Configuration
+
 **File:** `lib/hooks/data/useSmibConfiguration.ts`
 
 ```typescript
 // 1. Establishes SSE connection
 const connectToConfigStream = useCallback((relayId: string) => {
-  const eventSource = new EventSource(`/api/mqtt/config/subscribe?relayId=${relayId}`);
-  
-  eventSource.onmessage = (event) => {
+  const eventSource = new EventSource(
+    `/api/mqtt/config/subscribe?relayId=${relayId}`
+  );
+
+  eventSource.onmessage = event => {
     const message = JSON.parse(event.data);
-    if (message.type === "config_update") {
+    if (message.type === 'config_update') {
       // Update UI state with received configuration
       updateFormDataFromMessage(message.data);
     }
@@ -60,8 +83,8 @@ const connectToConfigStream = useCallback((relayId: string) => {
 
 // 2. Requests live configuration
 const requestLiveConfig = async (relayId: string, component: string) => {
-  const response = await fetch("/api/mqtt/config/request", {
-    method: "POST",
+  const response = await fetch('/api/mqtt/config/request', {
+    method: 'POST',
     body: JSON.stringify({ relayId, component }),
   });
 };
@@ -70,45 +93,47 @@ const requestLiveConfig = async (relayId: string, component: string) => {
 ### 2. Backend API Flow
 
 #### SSE Subscription Endpoint
+
 **File:** `app/api/mqtt/config/subscribe/route.ts`
 
 ```typescript
 export async function GET(request: NextRequest) {
-  const relayId = searchParams.get("relayId");
-  
+  const relayId = searchParams.get('relayId');
+
   // 1. Create SSE stream
   const stream = new ReadableStream({
     start(controller) {
       // 2. Subscribe to MQTT service callbacks
-      mqttService.subscribeToConfig(relayId, (message) => {
+      mqttService.subscribeToConfig(relayId, message => {
         // 3. Forward MQTT messages to frontend via SSE
         const sseMessage = {
-          type: "config_update",
+          type: 'config_update',
           relayId: message.rly,
           component: message.comp,
           data: message,
         };
         controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
       });
-    }
+    },
   });
-  
+
   return new Response(stream, {
-    headers: { "Content-Type": "text/event-stream" },
+    headers: { 'Content-Type': 'text/event-stream' },
   });
 }
 ```
 
 #### Configuration Request Endpoint
+
 **File:** `app/api/mqtt/config/request/route.ts`
 
 ```typescript
 export async function POST(request: NextRequest) {
   const { relayId, component } = await request.json();
-  
+
   // 1. Request configuration from SMIB via MQTT
   await mqttService.requestConfig(relayId, component);
-  
+
   return NextResponse.json({ success: true });
 }
 ```
@@ -116,6 +141,7 @@ export async function POST(request: NextRequest) {
 ### 3. MQTT Service Flow
 
 #### MQTT Service Implementation
+
 **File:** `lib/services/mqttService.ts`
 
 ```typescript
@@ -125,29 +151,29 @@ class MqttService {
     this.client = mqtt.connect(process.env.MQTT_URI);
     await this.ensureConfigSubscription();
   }
-  
+
   // 2. Subscribe to configuration responses
   async subscribeToConfig(relayId: string, callback: Function) {
     // Register callback for specific relayId
     this.configCallbacks.set(relayId, callback);
   }
-  
+
   // 3. Request configuration from SMIB
   async requestConfig(relayId: string, component: string) {
     const topic = `sas/relay/${relayId}`;
     const payload = JSON.stringify({
-      typ: "cfg",
+      typ: 'cfg',
       comp: component,
     });
-    
+
     this.client.publish(topic, payload);
   }
-  
+
   // 4. Handle incoming messages
   private handleMessage(topic: string, message: Buffer) {
     const payload = JSON.parse(message.toString());
     const relayId = payload.rly;
-    
+
     // Route message to appropriate callback
     const callback = this.configCallbacks.get(relayId);
     if (callback) {
@@ -159,30 +185,33 @@ class MqttService {
 
 ## Topic Structure
 
-### Server → SMIB Communication
+### Server → SMIB Communication (Publish)
+
 - **Topic:** `sas/relay/[relayId]`
   - Server publishes configuration requests TO specific SMIB devices
   - Example: `sas/relay/e831cdfa8384`
-  - Direction: Server → SMIB
+  - Direction: Server → SMIB (Publish)
 
-### SMIB → Server Communication
+### SMIB → Server Communication (Subscribe)
+
 - **Topic:** `smib/config`
   - Server subscribes to receive configuration responses FROM all SMIB devices
   - All messages include the `rly` field for message routing to specific clients
-  - Direction: SMIB → Server
+  - Direction: SMIB → Server (Subscribe)
 
-### SMIB → Server General Data
+### SMIB → Server General Data (Subscribe)
+
 - **Topic:** `sas/gli/server/[relayId]`
   - Server subscribes to receive general server data FROM specific SMIB devices
   - Example: `sas/gli/server/e831cdfa8384`
-  - Direction: SMIB → Server
+  - Direction: SMIB → Server (Subscribe)
 
 ## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    MQTT Broker                          │
-│  (mq.sas.backoffice.ltd:1883)                          │
+│              (rabbit.sbox.site)                         │
 └─────────────────────────────────────────────────────────┘
                  │                    │                    │
                  │                    │                    │
@@ -205,7 +234,7 @@ class MqttService {
         │              │      │   server/... │    │   server/... │
         └──────────────┘      └──────────────┘    └──────────────┘
                  │
-                 │ SSE Stream
+                 │ SSE Stream (Live Updates)
                  ▼
         ┌──────────────┐
         │   Frontend   │
@@ -217,6 +246,7 @@ class MqttService {
 ## Message Protocols
 
 ### Configuration Request Format
+
 All configuration requests follow this base structure:
 
 ```json
@@ -229,6 +259,7 @@ All configuration requests follow this base structure:
 ### Supported Components
 
 #### 1. MQTT Configuration Request
+
 ```json
 {
   "typ": "cfg",
@@ -237,6 +268,7 @@ All configuration requests follow this base structure:
 ```
 
 #### 2. OTA (Over-The-Air) Configuration Request
+
 ```json
 {
   "typ": "cfg",
@@ -245,6 +277,7 @@ All configuration requests follow this base structure:
 ```
 
 #### 3. COMS (Communication) Configuration Request
+
 ```json
 {
   "typ": "cfg",
@@ -253,6 +286,7 @@ All configuration requests follow this base structure:
 ```
 
 #### 4. Network Configuration Request
+
 ```json
 {
   "typ": "cfg",
@@ -261,6 +295,7 @@ All configuration requests follow this base structure:
 ```
 
 #### 5. App Configuration Request
+
 ```json
 {
   "typ": "cfg",
@@ -271,6 +306,7 @@ All configuration requests follow this base structure:
 ## Update Payloads
 
 ### MQTT Configuration Update
+
 ```json
 {
   "typ": "cfg",
@@ -286,6 +322,7 @@ All configuration requests follow this base structure:
 ```
 
 ### COMS Configuration Update
+
 ```json
 {
   "typ": "cfg",
@@ -299,6 +336,7 @@ All configuration requests follow this base structure:
 ```
 
 ### Network Configuration Update
+
 ```json
 {
   "typ": "cfg",
@@ -313,18 +351,20 @@ All configuration requests follow this base structure:
 ## Response Format
 
 ### Standard Response Structure
+
 All responses from SMIB devices include the relay ID and follow this format:
 
 ```json
 {
   "rly": "e831cdfa8384",
   "typ": "cfg",
-  "comp": "component_name",
+  "comp": "component_name"
   // Component-specific fields...
 }
 ```
 
 ### MQTT Configuration Response
+
 ```json
 {
   "rly": "e831cdfa8384",
@@ -341,6 +381,7 @@ All responses from SMIB devices include the relay ID and follow this format:
 ```
 
 ### Network Configuration Response
+
 ```json
 {
   "rly": "78421c1bf944",
@@ -356,6 +397,7 @@ All responses from SMIB devices include the relay ID and follow this format:
 ## Field Definitions
 
 ### MQTT Configuration Fields
+
 - `mqttSecure`: TLS/SSL enabled (0 = disabled, 1 = enabled)
 - `mqttQOS`: Quality of Service level (0, 1, or 2)
 - `mqttURI`: Complete MQTT broker URI with credentials
@@ -365,6 +407,7 @@ All responses from SMIB devices include the relay ID and follow this format:
 - `mqttIdleTimeS`: Idle timeout in seconds
 
 ### COMS Configuration Fields
+
 - `comsMode`: Communication mode (0 = SAS, 1 = Non-SAS, 2 = IGT)
 - `comsAddr`: Communication address
 - `comsRateMs`: Communication rate in milliseconds
@@ -372,6 +415,7 @@ All responses from SMIB devices include the relay ID and follow this format:
 - `comsGPC`: Game protocol configuration
 
 ### Network Configuration Fields
+
 - `netMode`: Network mode (0 = WiFi Station mode)
 - `netStaSSID`: WiFi network name
 - `netStaPwd`: WiFi password
@@ -382,13 +426,15 @@ All responses from SMIB devices include the relay ID and follow this format:
 ### Complete Flow Example
 
 #### 1. Frontend Request
+
 ```typescript
 // In Cabinet Details Page
-const relayId = "e831cdfa8384";
-await requestLiveConfig(relayId, "mqtt");
+const relayId = 'e831cdfa8384';
+await requestLiveConfig(relayId, 'mqtt');
 ```
 
 #### 2. API Route Processing
+
 ```typescript
 // In /api/mqtt/config/request/route.ts
 const { relayId, component } = await request.json();
@@ -396,14 +442,16 @@ await mqttService.requestConfig(relayId, component);
 ```
 
 #### 3. MQTT Service Publishing
+
 ```typescript
 // In mqttService.ts
 const topic = `sas/relay/${relayId}`;
-const payload = JSON.stringify({ typ: "cfg", comp: component });
+const payload = JSON.stringify({ typ: 'cfg', comp: component });
 this.client.publish(topic, payload);
 ```
 
 #### 4. SMIB Response
+
 ```json
 {
   "rly": "e831cdfa8384",
@@ -420,6 +468,7 @@ this.client.publish(topic, payload);
 ```
 
 #### 5. Backend Processing
+
 ```typescript
 // In mqttService.ts
 const callback = this.configCallbacks.get(relayId);
@@ -429,10 +478,11 @@ if (callback) {
 ```
 
 #### 6. SSE Forwarding
+
 ```typescript
 // In /api/mqtt/config/subscribe/route.ts
 const sseMessage = {
-  type: "config_update",
+  type: 'config_update',
   relayId: payload.rly,
   component: payload.comp,
   data: payload,
@@ -441,11 +491,12 @@ controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
 ```
 
 #### 7. Frontend Update
+
 ```typescript
 // In useSmibConfiguration.ts
-eventSource.onmessage = (event) => {
+eventSource.onmessage = event => {
   const message = JSON.parse(event.data);
-  if (message.type === "config_update" && message.data.comp === "mqtt") {
+  if (message.type === 'config_update' && message.data.comp === 'mqtt') {
     setFormData(prev => ({
       ...prev,
       mqttPubTopic: message.data.mqttPubTopic,
@@ -459,11 +510,13 @@ eventSource.onmessage = (event) => {
 ## Error Handling
 
 ### Connection Errors
+
 - **WebSocket Connection Failed**: Check MQTT broker URL and credentials
 - **Topic Subscription Failed**: Verify topic permissions and format
 - **Message Publishing Failed**: Check payload format and topic existence
 
 ### Response Errors
+
 - **Invalid JSON**: Parse error in response payload
 - **Missing Fields**: Required fields not present in response
 - **Invalid Values**: Field values outside expected range
@@ -475,9 +528,30 @@ eventSource.onmessage = (event) => {
 3. **Topic Permissions**: Restrict topic access based on device roles
 4. **Authentication**: Implement proper MQTT authentication mechanisms
 
+## Current Environment Setup
+
+### Environment Variables (Current Configuration)
+
+```bash
+# MQTT Configuration (from .env)
+MQTT_URI=mqtt://rabbit.sbox.site
+MQTT_PUB_TOPIC=sas/relay/
+MQTT_CFG_TOPIC=smib/config
+MQTT_GLI_TOPIC=sas/gli/server/
+```
+
+### MQTT Service Configuration
+
+The MQTT service is configured with the following topics:
+
+- **Publish Topic**: `sas/relay/[relayId]` - Server publishes requests to specific SMIB devices
+- **Config Topic**: `smib/config` - Server subscribes to receive responses from all SMIB devices
+- **GLI Topic**: `sas/gli/server/[relayId]` - Server subscribes to general SMIB data
+
 ## Testing
 
 ### Manual Testing
+
 Use the provided HTML example (`mqtt-example.html`) to test basic connectivity:
 
 ```bash
@@ -488,6 +562,7 @@ Use the provided HTML example (`mqtt-example.html`) to test basic connectivity:
 ```
 
 ### API Testing
+
 Use the MQTT test API endpoints:
 
 ```bash
@@ -527,12 +602,13 @@ curl -X POST http://localhost:3000/api/mqtt/test \
    - Confirm firewall settings
 
 ### Debug Logging
+
 Enable debug logging in the MQTT service to troubleshoot issues:
 
 ```javascript
 // In mqttService.ts
-console.log("📡 Publishing to:", topic, payload);
-console.log("📡 Received from:", topic, message.toString());
+console.log('📡 Publishing to:', topic, payload);
+console.log('📡 Received from:', topic, message.toString());
 ```
 
 ## References

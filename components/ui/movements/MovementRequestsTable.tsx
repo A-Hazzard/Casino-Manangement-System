@@ -1,13 +1,13 @@
-import React, { useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+import React, { useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import Image from 'next/image';
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
 import {
   getStatusColor,
   formatMovementRequestDate,
-} from "@/lib/utils/movementRequests";
-import { MovementRequest } from "@/lib/types/movementRequests";
+} from '@/lib/utils/movementRequests';
+import { MovementRequest } from '@/lib/types/movementRequests';
 
 export type MovementRequestsTableProps = {
   requests: MovementRequest[];
@@ -31,7 +31,7 @@ export default function MovementRequestsTable({
       JSON.stringify(requests) !== JSON.stringify(prevRequestsRef.current)
     ) {
       prevRequestsRef.current = [...requests];
-      const rows = tableRef.current?.querySelectorAll("tbody tr");
+      const rows = tableRef.current?.querySelectorAll('tbody tr');
       if (rows && rows.length > 0) {
         // Animate rows (optional, like CabinetTable)
       }
@@ -42,42 +42,42 @@ export default function MovementRequestsTable({
     <div className="overflow-x-auto">
       <table
         ref={tableRef}
-        className="table-fixed w-full border-collapse text-center min-w-[800px]"
+        className="w-full min-w-[800px] table-fixed border-collapse text-center"
       >
         <thead className="bg-button text-white">
           <tr>
-            <th className="p-3 border border-border border-t-0 text-sm w-[15%]">
+            <th className="w-[15%] border border-t-0 border-border p-3 text-sm">
               Creator
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm w-[18%]">
+            <th className="w-[18%] border border-t-0 border-border p-3 text-sm">
               Location From
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm w-[18%]">
+            <th className="w-[18%] border border-t-0 border-border p-3 text-sm">
               Location To
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm w-[12%]">
+            <th className="w-[12%] border border-t-0 border-border p-3 text-sm">
               Cabinet In
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm w-[15%]">
+            <th className="w-[15%] border border-t-0 border-border p-3 text-sm">
               Date
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm w-[12%]">
+            <th className="w-[12%] border border-t-0 border-border p-3 text-sm">
               Status
             </th>
-            <th className="p-3 border border-border border-t-0 text-sm w-[10%]">
+            <th className="w-[10%] border border-t-0 border-border p-3 text-sm">
               Actions
             </th>
           </tr>
         </thead>
         <tbody>
-          {requests.map((req) => (
+          {requests.map(req => (
             <tr key={req._id} className="hover:bg-grayHighlight/10">
-              <td className="p-3 bg-container border border-border text-sm text-left hover:bg-grayHighlight/20 font-medium w-[15%]">
+              <td className="w-[15%] border border-border bg-container p-3 text-left text-sm font-medium hover:bg-grayHighlight/20">
                 <div className="truncate" title={req.createdBy}>
                   {req.createdBy}
                 </div>
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20 w-[18%]">
+              <td className="w-[18%] border border-border bg-container p-3 text-sm hover:bg-grayHighlight/20">
                 <div
                   className="truncate"
                   title={locationsMap[req.locationFrom] || req.locationFrom}
@@ -85,7 +85,7 @@ export default function MovementRequestsTable({
                   {locationsMap[req.locationFrom] || req.locationFrom}
                 </div>
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20 w-[18%]">
+              <td className="w-[18%] border border-border bg-container p-3 text-sm hover:bg-grayHighlight/20">
                 <div
                   className="truncate"
                   title={locationsMap[req.locationTo] || req.locationTo}
@@ -93,12 +93,12 @@ export default function MovementRequestsTable({
                   {locationsMap[req.locationTo] || req.locationTo}
                 </div>
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20 w-[12%]">
+              <td className="w-[12%] border border-border bg-container p-3 text-sm hover:bg-grayHighlight/20">
                 <div className="truncate" title={req.cabinetIn}>
                   {req.cabinetIn}
                 </div>
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20 w-[15%]">
+              <td className="w-[15%] border border-border bg-container p-3 text-sm hover:bg-grayHighlight/20">
                 <div
                   className="truncate"
                   title={formatMovementRequestDate(req.timestamp)}
@@ -106,9 +106,9 @@ export default function MovementRequestsTable({
                   {formatMovementRequestDate(req.timestamp)}
                 </div>
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20 w-[12%]">
+              <td className="w-[12%] border border-border bg-container p-3 text-sm hover:bg-grayHighlight/20">
                 <span
-                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full truncate max-w-full ${getStatusColor(
+                  className={`inline-flex max-w-full truncate rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
                     req.status
                   )}`}
                   title={req.status}
@@ -116,24 +116,19 @@ export default function MovementRequestsTable({
                   {req.status}
                 </span>
               </td>
-              <td className="p-3 bg-container border border-border text-sm hover:bg-grayHighlight/20 w-[10%]">
+              <td className="w-[10%] border border-border bg-container p-3 text-sm hover:bg-grayHighlight/20">
                 <div className="flex items-center justify-center gap-2">
                   <Button
                     variant="ghost"
                     onClick={() => onEdit(req)}
-                    className="p-1 hover:bg-buttonActive/10 text-grayHighlight"
+                    className="p-1 text-grayHighlight hover:bg-buttonActive/10"
                   >
-                    <Image
-                      src={editIcon}
-                      alt="Edit"
-                      width={20}
-                      height={20}
-                    />
+                    <Image src={editIcon} alt="Edit" width={20} height={20} />
                   </Button>
                   <Button
                     variant="ghost"
                     onClick={() => onDelete(req)}
-                    className="p-1 hover:bg-destructive/10 text-destructive"
+                    className="p-1 text-destructive hover:bg-destructive/10"
                   >
                     <Image
                       src={deleteIcon}

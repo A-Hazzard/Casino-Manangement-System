@@ -1,4 +1,3 @@
-
 # Locations API
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
@@ -30,6 +29,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** List all gaming locations with filtering and pagination
 
 **Query Parameters:**
+
 - `licencee` - Licensee ID filter
 - `status` - Location status filter (active, inactive)
 - `page` - Page number
@@ -37,6 +37,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 - `search` - Search by location name
 
 **Response:**
+
 ```json
 {
   "locations": [
@@ -46,12 +47,12 @@ The Locations API manages gaming locations, their configurations, machine assign
       "licencee": "licencee_id",
       "address": "123 Main St, City, State",
       "status": "active",
-      "profitShare": 50,              // Profit share percentage
-      "collectionBalance": 1500,      // Current outstanding balance
+      "profitShare": 50, // Profit share percentage
+      "collectionBalance": 1500, // Current outstanding balance
       "previousCollectionTime": "2025-01-14T10:30:00Z",
-      "gameDayOffset": 4,             // Game day start time (hours from midnight)
-      "totalMachines": 25,            // Total machines at location
-      "onlineMachines": 23,           // Currently online machines
+      "gameDayOffset": 4, // Game day start time (hours from midnight)
+      "totalMachines": 25, // Total machines at location
+      "onlineMachines": 23, // Currently online machines
       "createdAt": "2025-01-01T00:00:00Z",
       "updatedAt": "2025-01-15T10:30:00Z"
     }
@@ -70,18 +71,20 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Create new gaming location
 
 **Request:**
+
 ```json
 {
   "name": "New Casino Location",
   "licencee": "licencee_id",
   "address": "456 Casino Blvd, City, State",
-  "profitShare": 45,                  // Profit share percentage
-  "gameDayOffset": 4,                 // Game day start time (hours from midnight)
+  "profitShare": 45, // Profit share percentage
+  "gameDayOffset": 4, // Game day start time (hours from midnight)
   "status": "active"
 }
 ```
 
 **Response:**
+
 ```json
 {
   "_id": "new_location_id",
@@ -104,6 +107,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Get detailed location information
 
 **Response:**
+
 ```json
 {
   "_id": "location_id",
@@ -119,7 +123,7 @@ The Locations API manages gaming locations, their configurations, machine assign
   "onlineMachines": 23,
   "coordinates": {
     "latitude": 40.7128,
-    "longitude": -74.0060
+    "longitude": -74.006
   },
   "contactInfo": {
     "phone": "+1-555-0123",
@@ -140,17 +144,19 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Update existing location
 
 **Request:**
+
 ```json
 {
   "name": "Updated Casino Name",
   "profitShare": 55,
-  "gameDayOffset": 6,                 // Change game day start time
+  "gameDayOffset": 6, // Change game day start time
   "status": "active",
   "address": "Updated Address"
 }
 ```
 
 **Response:**
+
 ```json
 {
   "_id": "location_id",
@@ -168,6 +174,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Soft delete location (sets deletedAt timestamp)
 
 **Response:**
+
 ```json
 {
   "message": "Location deleted successfully",
@@ -182,12 +189,14 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Get all machines at a location
 
 **Query Parameters:**
+
 - `status` - Machine status filter
 - `online` - Online/offline filter
 - `page` - Page number
 - `limit` - Items per page
 
 **Response:**
+
 ```json
 {
   "machines": [
@@ -219,6 +228,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Add machine to location
 
 **Request:**
+
 ```json
 {
   "machineId": "machine_id",
@@ -227,6 +237,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Machine added to location successfully",
@@ -243,6 +254,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Remove machine from location
 
 **Response:**
+
 ```json
 {
   "message": "Machine removed from location successfully"
@@ -256,15 +268,17 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Update location collection balance
 
 **Request:**
+
 ```json
 {
-  "collectionBalance": 2000,          // New balance amount
+  "collectionBalance": 2000, // New balance amount
   "reason": "Collection report completed",
   "reportId": "collection_report_id"
 }
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Balance updated successfully",
@@ -279,12 +293,14 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Purpose:** Get location balance history
 
 **Query Parameters:**
+
 - `startDate` - Start date for history
 - `endDate` - End date for history
 - `page` - Page number
 - `limit` - Items per page
 
 **Response:**
+
 ```json
 {
   "balanceHistory": [
@@ -312,12 +328,14 @@ The Locations API manages gaming locations, their configurations, machine assign
 ### Game Day Configuration
 
 **gameDayOffset Field:**
+
 - **Purpose**: Defines when the gaming day starts
 - **Values**: 0-23 (hours from midnight)
 - **Example**: 4 = 4:00 AM game day start
 - **Usage**: Used for daily reporting and collection periods
 
 **Day Start Time Options:**
+
 - 0 = 12:00 AM (Midnight)
 - 4 = 4:00 AM (Common casino start time)
 - 6 = 6:00 AM (Morning start)
@@ -326,6 +344,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 ### Profit Share Configuration
 
 **profitShare Field:**
+
 - **Purpose**: Location's percentage of gross revenue
 - **Values**: 0-100 (percentage)
 - **Usage**: Used in amount to collect calculations
@@ -336,6 +355,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 ### GamingLocation
 
 **Database Fields:**
+
 ```typescript
 {
   _id: string;                        // Unique location identifier
@@ -393,16 +413,19 @@ The Locations API manages gaming locations, their configurations, machine assign
 ## Business Logic
 
 ### Location Status Management
+
 - **Active**: Location can accept collections and machines
 - **Inactive**: Location is temporarily disabled
 - **Deleted**: Location is soft-deleted (preserves data)
 
 ### Balance Management
+
 - **Collection Balance**: Running balance of outstanding collections
 - **Previous Collection Time**: Tracks last collection for scheduling
 - **Balance History**: Complete audit trail of balance changes
 
 ### Machine Assignment
+
 - **One Location**: Each machine can only be assigned to one location
 - **Status Tracking**: Tracks online/offline status of machines
 - **Collection History**: Maintains collection history per machine
@@ -410,11 +433,13 @@ The Locations API manages gaming locations, their configurations, machine assign
 ## Security
 
 ### Access Control
+
 - **Authentication**: JWT token required for all endpoints
 - **Authorization**: Role-based access control
 - **Location Access**: Users can only access authorized locations
 
 ### Data Validation
+
 - **Profit Share**: Must be between 0-100
 - **Game Day Offset**: Must be between 0-23
 - **Balance**: Must be valid numeric value
@@ -423,6 +448,7 @@ The Locations API manages gaming locations, their configurations, machine assign
 ## Performance
 
 ### Optimization
+
 - **Indexing**: Proper indexes on frequently queried fields
 - **Pagination**: Large result sets paginated
 - **Caching**: Frequently accessed location data cached
@@ -434,11 +460,13 @@ The Locations API manages gaming locations, their configurations, machine assign
 **Status**: ✅ Fully Functional - All Issues Resolved
 
 ## Overview
+
 The Locations API provides comprehensive endpoints for managing gaming locations, including CRUD operations, cabinet management, and advanced filtering capabilities. All endpoints now function correctly with proper data handling, bill validator denominations, and SMIB filtering.
 
 ## Current Implementation Status
 
 ### ✅ **Resolved Issues**
+
 - **Location Editing**: Edit operations now work correctly with proper data handling
 - **Location Deletion**: Soft delete functionality implemented and working
 - **Bill Validator Denominations**: Denominations now save and retrieve correctly
@@ -452,6 +480,7 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 #### **Core Location Operations**
 
 ##### **GET `/api/locations`**
+
 - **Purpose**: Fetch all locations with filtering and pagination
 - **Features**: Licensee filtering, search, pagination, soft delete filtering
 - **Query Parameters**:
@@ -462,21 +491,24 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 - **Data Consistency**: Automatically filters out deleted locations (`deletedAt: { $exists: false }`)
 
 ##### **POST `/api/locations`**
+
 - **Purpose**: Create new location
 - **Features**: Full location data including bill validator denominations
 - **Request Format**: Accepts complete location data with nested objects
 - **Bill Validator Support**: Handles `billValidatorOptions` object with denomination preferences
 
 ##### **PUT `/api/locations`**
+
 - **Purpose**: Update existing location
 - **Features**: Search by `_id`, proper field mapping, bill validator handling
-- **Data Handling**: 
+- **Data Handling**:
   - Searches by `_id` (using `locationName` as identifier)
   - Filters out deleted locations
   - Handles nested `address` and `rel` fields
   - Processes `billValidatorOptions` updates
 
 ##### **DELETE `/api/locations`**
+
 - **Purpose**: Soft delete location (sets `deletedAt` timestamp)
 - **Implementation**: Marks record as deleted without permanent removal
 - **Response**: Success confirmation with soft delete status
@@ -484,6 +516,7 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 #### **Location-Specific Operations**
 
 ##### **GET `/api/locations/[locationId]`**
+
 - **Purpose**: Fetch individual location details or cabinet aggregation
 - **Dual Functionality**:
   - **Basic Details**: Returns location information when no query parameters
@@ -491,6 +524,7 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 - **Bill Validator Support**: Returns `billValidatorOptions` for basic details
 
 ##### **GET `/api/locations/[locationId]/cabinets`**
+
 - **Purpose**: Fetch cabinets for specific location
 - **Features**: Time period filtering, licensee filtering, search
 - **Query Parameters**:
@@ -499,11 +533,13 @@ The Locations API provides comprehensive endpoints for managing gaming locations
   - `search`: Search in cabinet data
 
 ##### **PUT `/api/locations/[locationId]/cabinets/[cabinetId]`**
+
 - **Purpose**: Update cabinet within location
 - **Features**: Data transformation, field mapping, validation
 - **Data Transformation**: Maps frontend field names to database format
 
 ##### **DELETE `/api/locations/[locationId]/cabinets/[cabinetId]`**
+
 - **Purpose**: Soft delete cabinet within location
 - **Implementation**: Sets `deletedAt` timestamp
 - **Response**: Success confirmation
@@ -511,6 +547,7 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 #### **Search & Aggregation**
 
 ##### **GET `/api/locations/search`**
+
 - **Purpose**: Search locations with filters
 - **Features**: Text search, licensee filtering, soft delete filtering
 - **Query Parameters**:
@@ -519,11 +556,13 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 - **Data Consistency**: Filters deleted locations (`deletedAt: { $in: [null, new Date(-1)] }`)
 
 ##### **GET `/api/locations/search-all`**
+
 - **Purpose**: Comprehensive location search
 - **Features**: Advanced filtering, multiple search criteria
 - **Data Consistency**: Filters deleted locations
 
 ##### **GET `/api/locationAggregation`**
+
 - **Purpose**: Fetch location metrics and statistics
 - **Features**: Licensee filtering, machine counting, performance metrics
 - **Helper Function**: Uses `getLocationsWithMetrics` from `app/api/lib/helpers/locationAggregation.ts`
@@ -532,6 +571,7 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 ### 📊 **Data Models**
 
 #### **Location Schema** (`app/api/lib/models/gaminglocations.ts`)
+
 ```typescript
 {
   _id: String,                    // Location identifier
@@ -578,9 +618,11 @@ The Locations API provides comprehensive endpoints for managing gaming locations
 ### 🔄 **Data Handling**
 
 #### **Bill Validator Denominations**
+
 The API now properly handles bill validator denomination preferences:
 
 **Create/Update Operations**:
+
 ```typescript
 // Frontend sends
 {
@@ -607,6 +649,7 @@ The API now properly handles bill validator denomination preferences:
 ```
 
 **Retrieve Operations**:
+
 ```typescript
 // API returns
 {
@@ -625,9 +668,11 @@ The API now properly handles bill validator denomination preferences:
 ```
 
 #### **Soft Delete Implementation**
+
 All location endpoints properly handle soft deletion:
 
 **Filtering Deleted Locations**:
+
 ```typescript
 // In aggregation pipelines
 { $match: { "deletedAt": { $exists: false } } }
@@ -637,24 +682,32 @@ All location endpoints properly handle soft deletion:
 ```
 
 **Delete Operation**:
+
 ```typescript
 // Sets deletion timestamp
-{ $set: { deletedAt: new Date() } }
+{
+  $set: {
+    deletedAt: new Date();
+  }
+}
 ```
 
 ### 🛡️ **Security & Validation**
 
 #### **Authentication**
+
 - **JWT Tokens**: Secure authentication required for all endpoints
 - **Authorization**: Proper user role validation
 - **Rate Limiting**: API call frequency restrictions
 
 #### **Input Validation**
+
 - **Type Safety**: Full TypeScript implementation
 - **Data Sanitization**: Input cleaning and validation
 - **Field Validation**: Required field checking and format validation
 
 #### **Error Handling**
+
 - **Graceful Degradation**: Proper error responses
 - **User Feedback**: Clear error messages
 - **Logging**: Comprehensive error logging
@@ -662,11 +715,13 @@ All location endpoints properly handle soft deletion:
 ### 📈 **Performance Optimizations**
 
 #### **Database Queries**
+
 - **Indexing**: Proper database indexes for performance
 - **Aggregation Pipelines**: Efficient MongoDB aggregation
 - **Pagination**: Server-side pagination for large datasets
 
 #### **Caching Strategy**
+
 - **Response Caching**: Appropriate cache headers
 - **Data Caching**: Client-side caching strategies
 - **Query Optimization**: Efficient database queries
@@ -674,6 +729,7 @@ All location endpoints properly handle soft deletion:
 ### 🔍 **Error Handling**
 
 #### **HTTP Status Codes**
+
 - **200**: Success
 - **201**: Created
 - **400**: Bad Request (validation errors)
@@ -682,6 +738,7 @@ All location endpoints properly handle soft deletion:
 - **500**: Internal Server Error
 
 #### **Error Response Format**
+
 ```json
 {
   "success": false,
@@ -693,60 +750,66 @@ All location endpoints properly handle soft deletion:
 ### 📝 **API Usage Examples**
 
 #### **Create Location**
+
 ```typescript
 const locationData = {
-  name: "New Gaming Location",
-  country: "country123",
+  name: 'New Gaming Location',
+  country: 'country123',
   address: {
-    street: "123 Main St",
-    city: "Gaming City"
+    street: '123 Main St',
+    city: 'Gaming City',
   },
   profitShare: 35,
   rel: {
-    licencee: "licensee456"
+    licencee: 'licensee456',
   },
   billValidatorOptions: {
     denom1: true,
     denom5: true,
     denom10: false,
     // ... other denominations
-  }
+  },
 };
 
 const response = await fetch('/api/locations', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(locationData)
+  body: JSON.stringify(locationData),
 });
 ```
 
 #### **Update Location**
+
 ```typescript
 const updateData = {
-  locationName: "location789", // Used as _id for search
-  name: "Updated Location Name",
+  locationName: 'location789', // Used as _id for search
+  name: 'Updated Location Name',
   billValidatorOptions: {
     denom1: false,
     denom5: true,
     denom10: true,
     // ... other denominations
-  }
+  },
 };
 
 const response = await fetch('/api/locations', {
   method: 'PUT',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(updateData)
+  body: JSON.stringify(updateData),
 });
 ```
 
 #### **Search Locations**
+
 ```typescript
-const response = await fetch('/api/locations/search?q=gaming&licensee=licensee123');
+const response = await fetch(
+  '/api/locations/search?q=gaming&licensee=licensee123'
+);
 const searchResults = await response.json();
 ```
 
 #### **Fetch Location Details**
+
 ```typescript
 const response = await fetch('/api/locations/location789');
 const location = await response.json();
@@ -756,6 +819,7 @@ const location = await response.json();
 ### 🧪 **Testing & Validation**
 
 #### **Manual Testing**
+
 - ✅ **All Endpoints**: Functional with proper responses
 - ✅ **Bill Validator**: Denominations save and retrieve correctly
 - ✅ **Soft Delete**: Deletion works without data loss
@@ -763,6 +827,7 @@ const location = await response.json();
 - ✅ **Data Consistency**: Deleted locations properly filtered
 
 #### **Build Validation**
+
 - ✅ **TypeScript**: No type errors
 - ✅ **ESLint**: All linting rules passing
 - ✅ **Build Process**: Clean builds with no errors
@@ -770,12 +835,14 @@ const location = await response.json();
 ## Future Enhancements
 
 ### **Planned Features**
+
 - **Real-time Updates**: WebSocket integration
 - **Advanced Filtering**: Complex query support
 - **Bulk Operations**: Multiple location updates
 - **Audit Logging**: Complete change tracking
 
 ### **Performance Improvements**
+
 - **GraphQL**: Alternative to REST for complex queries
 - **Redis Caching**: Enhanced caching layer
 - **Database Optimization**: Query performance improvements

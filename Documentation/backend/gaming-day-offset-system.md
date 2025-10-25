@@ -5,6 +5,7 @@
 **Status:** Current Implementation Documentation
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Gaming Day Offset Concept](#gaming-day-offset-concept)
 - [Implementation Details](#implementation-details)
@@ -29,11 +30,13 @@ The Gaming Day Offset system allows gaming locations to define their business da
 ### Business Day vs Calendar Day
 
 **Calendar Day:**
+
 - Starts at midnight (00:00:00)
 - Ends at 11:59:59 PM
 - Standard 24-hour period
 
 **Gaming Day:**
+
 - Starts at a specific hour (e.g., 8 AM)
 - Ends 24 hours later (e.g., 8 AM next day)
 - Aligned with casino operations
@@ -41,6 +44,7 @@ The Gaming Day Offset system allows gaming locations to define their business da
 ### Example: gameDayOffset = 8
 
 **Gaming Day for October 9, 2025:**
+
 - **Start**: October 8, 2025 at 8:00:00 AM Trinidad time
 - **End**: October 9, 2025 at 7:59:59 AM Trinidad time
 - **Duration**: 24 hours
@@ -97,26 +101,34 @@ export function getGamingDayRange(
 ### Predefined Time Periods
 
 #### Today
+
 **Logic:** Current gaming day
 **Example (Oct 9, 2025, gameDayOffset: 8):**
+
 - **Start**: Oct 8, 2025 08:00:00 Trinidad time
 - **End**: Oct 9, 2025 07:59:59 Trinidad time
 
 #### Yesterday
+
 **Logic:** Previous gaming day
 **Example (Oct 9, 2025, gameDayOffset: 8):**
+
 - **Start**: Oct 7, 2025 08:00:00 Trinidad time
 - **End**: Oct 8, 2025 07:59:59 Trinidad time
 
 #### Last 7 Days
+
 **Logic:** Last 7 gaming days
 **Example (Oct 9, 2025, gameDayOffset: 8):**
+
 - **Start**: Oct 2, 2025 08:00:00 Trinidad time
 - **End**: Oct 9, 2025 07:59:59 Trinidad time
 
 #### Last 30 Days
+
 **Logic:** Last 30 gaming days
 **Example (Oct 9, 2025, gameDayOffset: 8):**
+
 - **Start**: Sep 9, 2025 08:00:00 Trinidad time
 - **End**: Oct 9, 2025 07:59:59 Trinidad time
 
@@ -126,6 +138,7 @@ export function getGamingDayRange(
 **Conversion:** Trinidad time to UTC for database queries
 
 **Example:**
+
 - **User Selection**: Oct 1, 2025 to Oct 1, 2025
 - **Trinidad Time**: Oct 1, 2025 00:00:00 to Oct 1, 2025 23:59:59
 - **UTC Time**: Oct 1, 2025 04:00:00 to Oct 2, 2025 03:59:59
@@ -145,11 +158,13 @@ export function getGamingDayRange(
 **Current Time:** October 9, 2025, 2:00 PM Trinidad time
 
 **Today's Gaming Day:**
+
 - **Start**: October 8, 2025 at 8:00:00 AM Trinidad time
 - **End**: October 9, 2025 at 7:59:59 AM Trinidad time
 - **Status**: Current gaming day (in progress)
 
 **Yesterday's Gaming Day:**
+
 - **Start**: October 7, 2025 at 8:00:00 AM Trinidad time
 - **End**: October 8, 2025 at 7:59:59 AM Trinidad time
 - **Status**: Completed gaming day
@@ -161,6 +176,7 @@ export function getGamingDayRange(
 **Current Time:** October 9, 2025, 10:00 AM Trinidad time
 
 **Today's Gaming Day:**
+
 - **Start**: October 8, 2025 at 8:00:00 AM Trinidad time
 - **End**: October 9, 2025 at 7:59:59 AM Trinidad time
 - **Status**: Current gaming day (in progress)
@@ -172,6 +188,7 @@ export function getGamingDayRange(
 **Gaming Day Offset:** Not applicable (uses calendar day boundaries)
 
 **Time Range:**
+
 - **Start**: October 1, 2025 at 00:00:00 Trinidad time (Oct 1, 2025 04:00:00 UTC)
 - **End**: October 1, 2025 at 23:59:59 Trinidad time (Oct 2, 2025 03:59:59 UTC)
 
@@ -180,15 +197,17 @@ export function getGamingDayRange(
 ### Setting Gaming Day Offset
 
 **Database Update:**
+
 ```javascript
 // Set gaming day offset for a location
 db.gaminglocations.updateOne(
-  { _id: "location_id" },
+  { _id: 'location_id' },
   { $set: { gameDayOffset: 8 } }
 );
 ```
 
 **Default Values:**
+
 - **New Locations**: 8 (8 AM Trinidad time)
 - **Existing Locations**: May vary (check current values)
 - **Range**: 0-23 (0 = midnight, 23 = 11 PM)
@@ -222,37 +241,41 @@ db.gaminglocations.updateOne(
 ### Debugging Steps
 
 1. **Check Location Gaming Day Offset:**
+
    ```javascript
    db.gaminglocations.find(
-     { _id: "location_id" },
+     { _id: 'location_id' },
      { gameDayOffset: 1, name: 1 }
    );
    ```
 
 2. **Verify Time Range Calculation:**
+
    ```javascript
    // Example: Today's gaming day for location with offset 8
    const today = new Date();
    const gameDayStart = new Date(today);
    gameDayStart.setUTCDate(today.getUTCDate() - 1);
    gameDayStart.setUTCHours(8, 0, 0, 0); // 8 AM Trinidad = 12 PM UTC
-   
+
    const gameDayEnd = new Date(today);
    gameDayEnd.setUTCHours(7, 59, 59, 999); // 7:59 AM Trinidad = 11:59 AM UTC
-   
-   console.log("Gaming Day Start:", gameDayStart.toISOString());
-   console.log("Gaming Day End:", gameDayEnd.toISOString());
+
+   console.log('Gaming Day Start:', gameDayStart.toISOString());
+   console.log('Gaming Day End:', gameDayEnd.toISOString());
    ```
 
 3. **Check Meter Data in Time Range:**
    ```javascript
-   db.meters.find({
-     machine: "machine_id",
-     readAt: {
-       $gte: gameDayStart,
-       $lte: gameDayEnd
-     }
-   }).sort({ readAt: 1 });
+   db.meters
+     .find({
+       machine: 'machine_id',
+       readAt: {
+         $gte: gameDayStart,
+         $lte: gameDayEnd,
+       },
+     })
+     .sort({ readAt: 1 });
    ```
 
 ### Performance Considerations

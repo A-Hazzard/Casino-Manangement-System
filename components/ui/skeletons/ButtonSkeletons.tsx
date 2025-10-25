@@ -1,23 +1,25 @@
-"use client";
+'use client';
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * Generic button skeleton component
  * Matches the layout of standard buttons with icon and text
  */
-export const ButtonSkeleton = ({ 
-  width = "w-24", 
-  height = "h-10",
+export const ButtonSkeleton = ({
+  width = 'w-24',
+  height = 'h-10',
   showIcon = true,
-  className = ""
+  className = '',
 }: {
   width?: string;
   height?: string;
   showIcon?: boolean;
   className?: string;
 }) => (
-  <div className={`${height} ${width} ${className} flex items-center gap-2 bg-gray-200 rounded-md px-4 py-2`}>
+  <div
+    className={`${height} ${width} ${className} flex items-center gap-2 rounded-md bg-gray-200 px-4 py-2`}
+  >
     {showIcon && <Skeleton className="h-4 w-4" />}
     <Skeleton className="h-4 flex-1" />
   </div>
@@ -28,7 +30,7 @@ export const ButtonSkeleton = ({
  * Matches the exact layout of refresh buttons
  */
 export const RefreshButtonSkeleton = () => (
-  <div className="flex items-center gap-2 bg-gray-200 rounded-md px-4 py-2">
+  <div className="flex items-center gap-2 rounded-md bg-gray-200 px-4 py-2">
     <Skeleton className="h-4 w-4" />
     <Skeleton className="h-4 w-16" />
   </div>
@@ -38,14 +40,16 @@ export const RefreshButtonSkeleton = () => (
  * Action button skeleton (like "Add Cabinet", "New Location", etc.)
  * Matches the layout of primary action buttons
  */
-export const ActionButtonSkeleton = ({ 
-  width = "w-32",
-  showIcon = true 
+export const ActionButtonSkeleton = ({
+  width = 'w-32',
+  showIcon = true,
 }: {
   width?: string;
   showIcon?: boolean;
 }) => (
-  <div className={`h-10 ${width} flex items-center gap-2 bg-gray-200 rounded-md px-4 py-2`}>
+  <div
+    className={`h-10 ${width} flex items-center gap-2 rounded-md bg-gray-200 px-4 py-2`}
+  >
     {showIcon && <Skeleton className="h-4 w-4" />}
     <Skeleton className="h-4 flex-1" />
   </div>
@@ -54,14 +58,16 @@ export const ActionButtonSkeleton = ({
 /**
  * Small button skeleton for compact layouts
  */
-export const SmallButtonSkeleton = ({ 
-  width = "w-20",
-  showIcon = false 
+export const SmallButtonSkeleton = ({
+  width = 'w-20',
+  showIcon = false,
 }: {
   width?: string;
   showIcon?: boolean;
 }) => (
-  <div className={`h-8 ${width} flex items-center gap-2 bg-gray-200 rounded-md px-3 py-1`}>
+  <div
+    className={`h-8 ${width} flex items-center gap-2 rounded-md bg-gray-200 px-3 py-1`}
+  >
     {showIcon && <Skeleton className="h-3 w-3" />}
     <Skeleton className="h-3 flex-1" />
   </div>
@@ -70,9 +76,9 @@ export const SmallButtonSkeleton = ({
 /**
  * Button group skeleton for multiple buttons
  */
-export const ButtonGroupSkeleton = ({ 
+export const ButtonGroupSkeleton = ({
   count = 2,
-  buttonWidth = "w-24"
+  buttonWidth = 'w-24',
 }: {
   count?: number;
   buttonWidth?: string;

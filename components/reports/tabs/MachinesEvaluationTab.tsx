@@ -3,42 +3,42 @@
  * Handles the evaluation tab with machine performance analysis
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from 'react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   BarChart3,
   Download,
   RefreshCw,
   ChevronUp,
   ChevronDown,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
-import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
-import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import { MachinesEvaluationSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
-import { MachineEvaluationSummary } from "@/components/ui/MachineEvaluationSummary";
+} from '@/components/ui/select';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import { MachinesEvaluationSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
+import { MachineEvaluationSummary } from '@/components/ui/MachineEvaluationSummary';
 // Removed duplicate import - using MachineData from lib/types/machinesEvaluationTab instead
-import { Pencil2Icon } from "@radix-ui/react-icons";
-import { Trash2 } from "lucide-react";
-import StatusIcon from "@/components/ui/common/StatusIcon";
-import { getFinancialColorClass } from "@/lib/utils/financialColors";
+import { Pencil2Icon } from '@radix-ui/react-icons';
+import { Trash2 } from 'lucide-react';
+import StatusIcon from '@/components/ui/common/StatusIcon';
+import { getFinancialColorClass } from '@/lib/utils/financialColors';
 
 // Sortable table header component for evaluation data
 const SortableEvaluationHeader = ({
@@ -49,27 +49,27 @@ const SortableEvaluationHeader = ({
 }: {
   children: React.ReactNode;
   sortKey: keyof MachineData;
-  currentSort: { key: keyof MachineData; direction: "asc" | "desc" };
+  currentSort: { key: keyof MachineData; direction: 'asc' | 'desc' };
   onSort: (key: keyof MachineData) => void;
 }) => {
   const isActive = currentSort.key === sortKey;
 
   return (
     <th
-      className="text-center p-3 font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+      className="cursor-pointer select-none p-3 text-center font-medium text-gray-700 transition-colors hover:bg-gray-100"
       onClick={() => onSort(sortKey)}
     >
       <div className="flex items-center gap-1">
         {children}
         {isActive ? (
-          currentSort.direction === "asc" ? (
-            <ChevronUp className="w-4 h-4" />
+          currentSort.direction === 'asc' ? (
+            <ChevronUp className="h-4 w-4" />
           ) : (
-            <ChevronDown className="w-4 h-4" />
+            <ChevronDown className="h-4 w-4" />
           )
         ) : (
-          <div className="w-4 h-4 opacity-30">
-            <ChevronUp className="w-4 h-4" />
+          <div className="h-4 w-4 opacity-30">
+            <ChevronUp className="h-4 w-4" />
           </div>
         )}
       </div>
@@ -80,7 +80,7 @@ const SortableEvaluationHeader = ({
 import type {
   MachinesEvaluationTabProps,
   MachineData,
-} from "@/lib/types/machinesEvaluationTab";
+} from '@/lib/types/machinesEvaluationTab';
 
 export const MachinesEvaluationTab = ({
   evaluationData,
@@ -94,9 +94,9 @@ export const MachinesEvaluationTab = ({
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   // Filter states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
-  const [selectedPerformance, setSelectedPerformance] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [selectedPerformance, setSelectedPerformance] = useState<string>('all');
 
   // Handle edit action
   const handleEdit = useCallback(
@@ -110,7 +110,7 @@ export const MachinesEvaluationTab = ({
         gameType: machine.machineType,
         isCronosMachine: false,
         cabinetType: machine.machineType,
-        assetStatus: machine.isOnline ? "active" : "inactive",
+        assetStatus: machine.isOnline ? 'active' : 'inactive',
         manufacturer: machine.manufacturer,
         gamingLocation: machine.locationName,
         accountingDenomination: 1,
@@ -127,7 +127,7 @@ export const MachinesEvaluationTab = ({
         gamesWon: machine.gamesWon,
         handle: machine.coinIn,
         custom: {
-          name: machine.serialNumber || machine.machineId || "Unknown",
+          name: machine.serialNumber || machine.machineId || 'Unknown',
         },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -149,7 +149,7 @@ export const MachinesEvaluationTab = ({
         gameType: machine.machineType,
         isCronosMachine: false,
         cabinetType: machine.machineType,
-        assetStatus: machine.isOnline ? "active" : "inactive",
+        assetStatus: machine.isOnline ? 'active' : 'inactive',
         manufacturer: machine.manufacturer,
         gamingLocation: machine.locationName,
         accountingDenomination: 1,
@@ -166,7 +166,7 @@ export const MachinesEvaluationTab = ({
         gamesWon: machine.gamesWon,
         handle: machine.coinIn,
         custom: {
-          name: machine.serialNumber || machine.machineId || "Unknown",
+          name: machine.serialNumber || machine.machineId || 'Unknown',
         },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -183,7 +183,7 @@ export const MachinesEvaluationTab = ({
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
-        (machine) =>
+        machine =>
           machine.machineId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           machine.gameTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           machine.locationName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -191,27 +191,23 @@ export const MachinesEvaluationTab = ({
     }
 
     // Filter by location
-    if (selectedLocation !== "all") {
+    if (selectedLocation !== 'all') {
       filtered = filtered.filter(
-        (machine) => machine.locationId === selectedLocation
+        machine => machine.locationId === selectedLocation
       );
     }
 
     // Filter by performance level
-    if (selectedPerformance !== "all") {
-      if (selectedPerformance === "top") {
+    if (selectedPerformance !== 'all') {
+      if (selectedPerformance === 'top') {
+        filtered = filtered.filter(machine => (machine.actualHold || 0) > 0.8);
+      } else if (selectedPerformance === 'average') {
         filtered = filtered.filter(
-          (machine) => (machine.actualHold || 0) > 0.8
-        );
-      } else if (selectedPerformance === "average") {
-        filtered = filtered.filter(
-          (machine) =>
+          machine =>
             (machine.actualHold || 0) > 0.5 && (machine.actualHold || 0) <= 0.8
         );
-      } else if (selectedPerformance === "poor") {
-        filtered = filtered.filter(
-          (machine) => (machine.actualHold || 0) <= 0.5
-        );
+      } else if (selectedPerformance === 'poor') {
+        filtered = filtered.filter(machine => (machine.actualHold || 0) <= 0.5);
       }
     }
 
@@ -223,8 +219,8 @@ export const MachinesEvaluationTab = ({
     const sorted = [...filteredEvaluationData].sort((a, b) => {
       const aValue = a[sortConfig.key] as string | number;
       const bValue = b[sortConfig.key] as string | number;
-      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
     return sorted;
@@ -236,14 +232,14 @@ export const MachinesEvaluationTab = ({
 
     const totalMachines = evaluationData.length;
     const topPerformers = evaluationData.filter(
-      (machine) => (machine.actualHold || 0) > 0.8
+      machine => (machine.actualHold || 0) > 0.8
     ).length;
     const averagePerformers = evaluationData.filter(
-      (machine) =>
+      machine =>
         (machine.actualHold || 0) > 0.5 && (machine.actualHold || 0) <= 0.8
     ).length;
     const poorPerformers = evaluationData.filter(
-      (machine) => (machine.actualHold || 0) <= 0.5
+      machine => (machine.actualHold || 0) <= 0.5
     ).length;
 
     const totalRevenue = evaluationData.reduce(
@@ -272,10 +268,10 @@ export const MachinesEvaluationTab = ({
   }, [evaluationData]);
 
   return (
-    <div className="space-y-6 mt-2">
+    <div className="mt-2 space-y-6">
       {/* Evaluation Summary Cards */}
       {evaluationSummary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -359,14 +355,14 @@ export const MachinesEvaluationTab = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {/* Search Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <Input
                 placeholder="Search machines..."
                 value={searchTerm}
-                onChange={(event) => {
+                onChange={event => {
                   const newSearchTerm = event.target.value;
                   setSearchTerm(newSearchTerm);
                 }}
@@ -379,7 +375,7 @@ export const MachinesEvaluationTab = ({
               <LocationSingleSelect
                 locations={locations}
                 selectedLocation={selectedLocation}
-                onSelectionChange={(locationId) => {
+                onSelectionChange={locationId => {
                   setSelectedLocation(locationId);
                 }}
                 placeholder="All Locations"
@@ -391,7 +387,7 @@ export const MachinesEvaluationTab = ({
               <label className="text-sm font-medium">Performance Level</label>
               <Select
                 value={selectedPerformance}
-                onValueChange={(value) => {
+                onValueChange={value => {
                   setSelectedPerformance(value);
                 }}
               >
@@ -411,11 +407,11 @@ export const MachinesEvaluationTab = ({
           {/* Action Buttons */}
           <div className="flex gap-2">
             <Button onClick={onRefresh} disabled={evaluationLoading}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
             <Button onClick={onExport} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="mr-2 h-4 w-4" />
               Export Data
             </Button>
           </div>
@@ -442,7 +438,7 @@ export const MachinesEvaluationTab = ({
           {evaluationLoading ? (
             <MachinesEvaluationSkeleton />
           ) : sortedEvaluationData.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="py-8 text-center text-gray-500">
               No machines found matching your criteria.
             </div>
           ) : (
@@ -499,45 +495,45 @@ export const MachinesEvaluationTab = ({
                     >
                       Gross
                     </SortableEvaluationHeader>
-                    <th className="text-center p-3 font-medium text-gray-700">
+                    <th className="p-3 text-center font-medium text-gray-700">
                       Status
                     </th>
-                    <th className="text-center p-3 font-medium text-gray-700">
+                    <th className="p-3 text-center font-medium text-gray-700">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedEvaluationData.map((machine) => (
+                  {sortedEvaluationData.map(machine => (
                     <tr
                       key={machine.machineId}
                       className="border-b hover:bg-gray-50"
                     >
                       <td className="p-3 text-center">
-                        {machine.machineId || "N/A"}
+                        {machine.machineId || 'N/A'}
                       </td>
                       <td className="p-3 text-center">
-                        {machine.gameTitle || "N/A"}
+                        {machine.gameTitle || 'N/A'}
                       </td>
                       <td className="p-3 text-center">
-                        {machine.locationName || "N/A"}
+                        {machine.locationName || 'N/A'}
                       </td>
                       <td className="p-3 text-center">
                         <Badge
                           variant="outline"
                           className={
                             (machine.actualHold || 0) > 0.8
-                              ? "text-green-600 border-green-600"
+                              ? 'border-green-600 text-green-600'
                               : (machine.actualHold || 0) > 0.5
-                              ? "text-yellow-600 border-yellow-600"
-                              : "text-red-600 border-red-600"
+                                ? 'border-yellow-600 text-yellow-600'
+                                : 'border-red-600 text-red-600'
                           }
                         >
                           {(machine.actualHold || 0) > 0.8
-                            ? "Top"
+                            ? 'Top'
                             : (machine.actualHold || 0) > 0.5
-                            ? "Average"
-                            : "Poor"}
+                              ? 'Average'
+                              : 'Poor'}
                         </Badge>
                       </td>
                       <td className="p-3 text-center">
@@ -569,7 +565,7 @@ export const MachinesEvaluationTab = ({
                         <StatusIcon isOnline={machine.isOnline || false} />
                       </td>
                       <td className="p-3 text-center">
-                        <div className="flex gap-2 justify-center">
+                        <div className="flex justify-center gap-2">
                           <Button
                             size="sm"
                             variant="outline"

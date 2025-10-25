@@ -1,6 +1,5 @@
 # System Configuration API Documentation
 
-
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** October 15th, 2025  
 **Version:** 2.0.0
@@ -19,6 +18,7 @@
 The System Configuration API manages core system settings including countries, firmware management, licensee information, and gaming location configurations. This comprehensive system provides centralized management of all system-wide settings and configurations.
 
 ### System Architecture
+
 - **Database**: MongoDB with Mongoose ODM
 - **Authentication**: JWT-based authentication
 - **File Storage**: GridFS for firmware files
@@ -27,9 +27,11 @@ The System Configuration API manages core system settings including countries, f
 ## Countries Endpoints
 
 ### GET `/api/countries`
+
 **Purpose**: Retrieves country information for licensing and regional configurations
 
 **Query Parameters:**
+
 - `active` - Filter by active status
 - `region` - Filter by region
 - `licenseRequired` - Filter by license requirement
@@ -49,14 +51,17 @@ The System Configuration API manages core system settings including countries, f
 **Base URL:** `/api/countries`
 
 #### GET /api/countries
+
 Retrieves country information for licensing and regional configurations.
 
 **Query Parameters:**
+
 - `active` (boolean): Filter by active status
 - `region` (string): Filter by region
 - `licenseRequired` (boolean): Filter by license requirement
 
 **Response:**
+
 ```json
 {
   "countries": [
@@ -95,16 +100,18 @@ Retrieves country information for licensing and regional configurations.
 }
 ```
 
-
 ### POST `/api/countries`
+
 **Purpose**: Creates a new country configuration
 
 **Request Fields:**
 
 #### POST /api/countries
+
 Creates a new country configuration.
 
 **Request Body:**
+
 ```json
 {
   "name": "Canada",
@@ -122,19 +129,22 @@ Creates a new country configuration.
 }
 ```
 
-
 ### PUT `/api/countries/[id]`
+
 **Purpose**: Updates country configuration
 
 **Request Fields:**
 
 #### PUT /api/countries/[id]
+
 Updates country configuration.
 
 **Path Parameters:**
+
 - `id` (string): Country ID
 
 **Request Body:**
+
 ```json
 {
   "active": false,
@@ -146,13 +156,14 @@ Updates country configuration.
 }
 ```
 
-
 ## Firmwares Endpoints
 
 ### GET `/api/firmwares`
+
 **Purpose**: Retrieves firmware information for gaming machines
 
 **Query Parameters:**
+
 - `active` - Filter by active status
 - `machineType` - Filter by machine type
 - `version` - Filter by version number
@@ -165,15 +176,18 @@ Updates country configuration.
 **Base URL:** `/api/firmwares`
 
 #### GET /api/firmwares
+
 Retrieves firmware information for gaming machines.
 
 **Query Parameters:**
+
 - `active` (boolean): Filter by active status
 - `machineType` (string): Filter by machine type
 - `version` (string): Filter by version number
 - `locationId` (string): Filter by location
 
 **Response:**
+
 ```json
 {
   "firmwares": [
@@ -210,11 +224,12 @@ Retrieves firmware information for gaming machines.
 }
 ```
 
-
 ### POST `/api/firmwares`
+
 **Purpose**: Uploads new firmware
 
 **Request Body:** (multipart/form-data)
+
 - `file` - Firmware binary file
 - `name` - Firmware name
 - `version` - Version number
@@ -225,9 +240,11 @@ Retrieves firmware information for gaming machines.
 **Response Fields:**
 
 #### POST /api/firmwares
+
 Uploads new firmware.
 
 **Request Body:** (multipart/form-data)
+
 - `file`: Firmware binary file
 - `name`: Firmware name
 - `version`: Version number
@@ -236,6 +253,7 @@ Uploads new firmware.
 - `compatibility`: Array of compatible machine models
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -249,16 +267,17 @@ Uploads new firmware.
 }
 ```
 
-
 ### POST `/api/firmwares/migrate`
+
 **Purpose**: Initiates firmware migration for machines
 
 **Request Fields:**
+
 ```json
 {
-  "firmwareId": "string",              // Firmware to install
+  "firmwareId": "string", // Firmware to install
   "machineIds": ["machine1", "machine2"], // Target machines
-  "locationId": "string",              // Target location
+  "locationId": "string", // Target location
   "scheduledAt": "2024-01-01T02:00:00.000Z" // Migration schedule
 }
 ```
@@ -266,9 +285,11 @@ Uploads new firmware.
 ## Licensees Endpoints
 
 ### GET `/api/licensees`
+
 **Purpose**: Retrieves licensee information
 
 **Query Parameters:**
+
 - `active` - Filter by active status
 - `country` - Filter by country
 - `licenseType` - Filter by license type
@@ -277,27 +298,35 @@ Uploads new firmware.
 **Response Fields:**
 
 #### GET /api/firmwares/[id]
+
 Retrieves specific firmware details.
 
 **Path Parameters:**
+
 - `id` (string): Firmware ID
 
 #### PUT /api/firmwares/[id]
+
 Updates firmware information.
 
 **Path Parameters:**
+
 - `id` (string): Firmware ID
 
 #### DELETE /api/firmwares/[id]
+
 Deactivates firmware (soft delete).
 
 **Path Parameters:**
+
 - `id` (string): Firmware ID
 
 #### POST /api/firmwares/migrate
+
 Initiates firmware migration for machines.
 
 **Request Body:**
+
 ```json
 {
   "firmwareId": "string",
@@ -312,15 +341,18 @@ Initiates firmware migration for machines.
 **Base URL:** `/api/licensees`
 
 #### GET /api/licensees
+
 Retrieves licensee information.
 
 **Query Parameters:**
+
 - `active` (boolean): Filter by active status
 - `country` (string): Filter by country
 - `licenseType` (string): Filter by license type
 - `expiresBefore` (string): Filter by expiration date
 
 **Response:**
+
 ```json
 {
   "licensees": [
@@ -372,16 +404,18 @@ Retrieves licensee information.
 }
 ```
 
-
 ### POST `/api/licensees`
+
 **Purpose**: Creates new licensee
 
 **Request Fields:**
 
 #### POST /api/licensees
+
 Creates new licensee.
 
 **Request Body:**
+
 ```json
 {
   "name": "XYZ Gaming LLC",
@@ -402,13 +436,14 @@ Creates new licensee.
 }
 ```
 
-
 ## Gaming Locations Endpoints
 
 ### GET `/api/gaming-locations`
+
 **Purpose**: Retrieves gaming location information
 
 **Query Parameters:**
+
 - `active` - Filter by active status
 - `licenseeId` - Filter by licensee
 - `country` - Filter by country
@@ -417,15 +452,19 @@ Creates new licensee.
 **Response Fields:**
 
 #### PUT /api/licensees/[id]
+
 Updates licensee information.
 
 **Path Parameters:**
+
 - `id` (string): Licensee ID
 
 #### DELETE /api/licensees/[id]
+
 Deactivates licensee (soft delete).
 
 **Path Parameters:**
+
 - `id` (string): Licensee ID
 
 ### Gaming Locations
@@ -433,15 +472,18 @@ Deactivates licensee (soft delete).
 **Base URL:** `/api/gaming-locations`
 
 #### GET /api/gaming-locations
+
 Retrieves gaming location information.
 
 **Query Parameters:**
+
 - `active` (boolean): Filter by active status
 - `licenseeId` (string): Filter by licensee
 - `country` (string): Filter by country
 - `state` (string): Filter by state
 
 **Response:**
+
 ```json
 {
   "locations": [
@@ -499,16 +541,18 @@ Retrieves gaming location information.
 }
 ```
 
-
 ### POST `/api/gaming-locations`
+
 **Purpose**: Creates new gaming location
 
 **Request Fields:**
 
 #### POST /api/gaming-locations
+
 Creates new gaming location.
 
 **Request Body:**
+
 ```json
 {
   "name": "Downtown Gaming Center",
@@ -537,12 +581,13 @@ Creates new gaming location.
 }
 ```
 
-
 ## Data Models
 
 ### Country Model
+
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: string;                          // Country identifier
   name: string;                         // Country name
@@ -578,12 +623,13 @@ type Country = {
   createdAt: Date;
   updatedAt: Date;
 }
-```
+````
 
 ### Firmware Model
 
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: string;                          // Firmware identifier
   name: string;                         // Firmware name
@@ -617,12 +663,13 @@ type Firmware = {
   createdAt: Date;
   updatedAt: Date;
 }
-```
+````
 
 ### Licensee Model
 
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: string;                          // Licensee identifier
   name: string;                         // Licensee name
@@ -675,12 +722,13 @@ type Licensee = {
   createdAt: Date;
   updatedAt: Date;
 }
-```
+````
 
 ### GamingLocation Model
 
 **Database Fields:**
-```typescript
+
+````typescript
 {
   _id: string;                          // Location identifier
   name: string;                         // Location name
@@ -739,18 +787,19 @@ type GamingLocation = {
   createdAt: Date;
   updatedAt: Date;
 }
-```
-
+````
 
 ## Business Rules
 
 ### Country Management
+
 1. **Regional Compliance**: Country-specific gaming regulations and requirements
 2. **Currency Support**: Multi-currency support for different regions
 3. **Timezone Management**: Automatic timezone handling for global operations
 4. **License Requirements**: Automatic license requirement enforcement
 
 ### Firmware Management
+
 1. **Version Control**: Comprehensive version tracking and management
 2. **Compatibility Checking**: Automatic compatibility validation
 3. **Secure Distribution**: Secure firmware distribution with checksum verification
@@ -758,12 +807,14 @@ type GamingLocation = {
 5. **Installation Tracking**: Real-time installation status tracking
 
 ### Licensee Management
+
 1. **License Tracking**: Comprehensive license lifecycle management
 2. **Compliance Monitoring**: Automated compliance checking and reporting
 3. **Contact Management**: Centralized contact information management
 4. **Capacity Planning**: License-based capacity planning and enforcement
 
 ### Location Management
+
 1. **Capacity Management**: Real-time capacity monitoring and planning
 2. **Operating Hours**: Flexible operating hours configuration
 3. **Contact Information**: Centralized location contact management
@@ -772,6 +823,7 @@ type GamingLocation = {
 ## Financial Calculations
 
 ### Capacity Calculations
+
 ```
 Machine Utilization = Current Machines / Max Machines × 100
 Patron Utilization = Current Patrons / Max Patrons × 100
@@ -779,6 +831,7 @@ License Utilization = Current Machines / License Max Machines × 100
 ```
 
 ### Compliance Calculations
+
 ```
 Compliance Score = (Total Requirements - Violations) / Total Requirements × 100
 License Days Remaining = Expiry Date - Current Date
@@ -786,6 +839,7 @@ Audit Frequency = Last Audit Date + Audit Interval
 ```
 
 ### Firmware Calculations
+
 ```
 Installation Rate = Installed Count / Target Machines × 100
 File Size MB = File Size Bytes / (1024 × 1024)
@@ -795,22 +849,26 @@ Checksum Verification = Calculated Checksum === Stored Checksum
 ## Security Features
 
 ### Authentication
+
 - JWT tokens required for all endpoints
 - Role-based access control
 - Session management with proper expiration
 
 ### Authorization
+
 - Different access levels for different operations
 - Resource-level permissions
 - Location-based access restrictions
 
 ### Data Protection
+
 - Input sanitization and validation
 - SQL injection prevention
 - XSS protection
 - CSRF protection
 
 ### File Upload Security
+
 - Secure firmware file upload with validation
 - File type validation
 - Checksum verification
@@ -819,16 +877,19 @@ Checksum Verification = Calculated Checksum === Stored Checksum
 ## Performance Considerations
 
 ### Database Optimization
+
 - Proper indexing on frequently queried fields
 - Query optimization for complex aggregations
 - Connection pooling for efficient database access
 
 ### Caching Strategy
+
 - Configuration data cached for improved performance
 - Response caching with appropriate headers
 - Client-side caching strategies
 
 ### File Storage
+
 - Efficient firmware file storage using GridFS
 - File compression for large firmware files
 - CDN integration for firmware distribution
@@ -836,6 +897,7 @@ Checksum Verification = Calculated Checksum === Stored Checksum
 ## Error Handling
 
 ### HTTP Status Codes
+
 - `200`: Success
 - `201`: Created
 - `400`: Bad Request (Invalid request parameters)
@@ -847,6 +909,7 @@ Checksum Verification = Calculated Checksum === Stored Checksum
 - `500`: Internal Server Error
 
 ### Error Response Format
+
 ```json
 {
   "success": false,
@@ -859,7 +922,8 @@ Checksum Verification = Calculated Checksum === Stored Checksum
 ## API Usage Examples
 
 ### Creating a New Country
-```typescript
+
+````typescript
 
 ## Features
 
@@ -957,11 +1021,11 @@ const response = await axios.post('/api/countries', {
     'Authorization': `Bearer ${token}`
   }
 });
-```
+````
 
 ### Uploading Firmware
 
-```typescript
+````typescript
 
 ```javascript
 const formData = new FormData();
@@ -977,11 +1041,11 @@ const response = await axios.post('/api/firmwares', formData, {
     'Content-Type': 'multipart/form-data'
   }
 });
-```
+````
 
 ### Creating a Licensee
 
-```typescript
+````typescript
 
 ```javascript
 const response = await axios.post('/api/licensees', {
@@ -1008,11 +1072,11 @@ const response = await axios.post('/api/licensees', {
     'Authorization': `Bearer ${token}`
   }
 });
-```
+````
 
 ### Creating a Gaming Location
 
-```typescript
+````typescript
 
 ```javascript
 const response = await axios.post('/api/gaming-locations', {
@@ -1043,14 +1107,17 @@ const response = await axios.post('/api/gaming-locations', {
 
   headers: { 'Authorization': `Bearer ${token}` }
 });
-```
+````
 
 ---
 
 **Last Updated:** October 15th, 2025
 
-  headers: {
-    'Authorization': `Bearer ${token}`
-  }
+headers: {
+'Authorization': `Bearer ${token}`
+}
 });
+
+```
+
 ```

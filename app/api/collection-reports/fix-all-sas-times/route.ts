@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { CollectionReport } from "../../lib/models/collectionReport";
-import { Collections } from "../../lib/models/collections";
-import { Machine } from "../../lib/models/machines";
-import { getUserIdFromServer, getUserById } from "../../lib/helpers/users";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { CollectionReport } from '../../lib/models/collectionReport';
+import { Collections } from '../../lib/models/collections';
+import { Machine } from '../../lib/models/machines';
+import { getUserIdFromServer, getUserById } from '../../lib/helpers/users';
 
 /**
  * POST /api/collection-reports/fix-all-sas-times
@@ -18,7 +18,7 @@ export async function POST(_request: NextRequest) {
     const userId = await getUserIdFromServer();
     if (!userId) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
@@ -27,7 +27,7 @@ export async function POST(_request: NextRequest) {
     const user = await getUserById(userId);
     if (!user) {
       return NextResponse.json(
-        { success: false, error: "User not found" },
+        { success: false, error: 'User not found' },
         { status: 404 }
       );
     }
@@ -36,12 +36,12 @@ export async function POST(_request: NextRequest) {
 
     // Check if user has admin access
     const hasAdminAccess =
-      userRoles.includes("admin") || userRoles.includes("evolution admin");
+      userRoles.includes('admin') || userRoles.includes('evolution admin');
     if (!hasAdminAccess) {
       return NextResponse.json(
         {
           success: false,
-          error: "Insufficient permissions. Admin access required.",
+          error: 'Insufficient permissions. Admin access required.',
         },
         { status: 403 }
       );
@@ -49,8 +49,8 @@ export async function POST(_request: NextRequest) {
 
     console.warn(`🔧 Starting bulk SAS time fix for all reports...`);
     console.warn(
-      `   Initiated by: ${user?.username || "Unknown"} (${userRoles.join(
-        ", "
+      `   Initiated by: ${user?.username || 'Unknown'} (${userRoles.join(
+        ', '
       )})`
     );
 
@@ -254,7 +254,7 @@ export async function POST(_request: NextRequest) {
                 try {
                   // Dynamic import to avoid circular dependencies
                   const { calculateMovement } = await import(
-                    "@/lib/utils/movementCalculation"
+                    '@/lib/utils/movementCalculation'
                   );
 
                   console.warn(`      📊 Movement calculation inputs:`, {
@@ -374,7 +374,7 @@ export async function POST(_request: NextRequest) {
               `Collection ${collection._id}: ${
                 collectionError instanceof Error
                   ? collectionError.message
-                  : "Unknown error"
+                  : 'Unknown error'
               }`
             );
           }
@@ -407,7 +407,7 @@ export async function POST(_request: NextRequest) {
         totalErrors++;
         errors.push(
           `Report ${report.locationReportId}: ${
-            reportError instanceof Error ? reportError.message : "Unknown error"
+            reportError instanceof Error ? reportError.message : 'Unknown error'
           }`
         );
       }
@@ -424,7 +424,7 @@ export async function POST(_request: NextRequest) {
         const reportCollections = await Collections.find({
           locationReportId: report.locationReportId,
         });
-        reportCollections.forEach((collection) => {
+        reportCollections.forEach(collection => {
           if (collection.machineId) {
             allMachineIds.add(collection.machineId);
           }
@@ -478,12 +478,12 @@ export async function POST(_request: NextRequest) {
                   )
                 : undefined,
             // Sync collectionMeters with most recent collection
-            "collectionMeters.metersIn":
+            'collectionMeters.metersIn':
               machineCollections.length > 0
                 ? machineCollections[machineCollections.length - 1].metersIn ||
                   0
                 : 0,
-            "collectionMeters.metersOut":
+            'collectionMeters.metersOut':
               machineCollections.length > 0
                 ? machineCollections[machineCollections.length - 1].metersOut ||
                   0
@@ -520,7 +520,7 @@ export async function POST(_request: NextRequest) {
     console.warn(`   ❌ Errors: ${totalErrors}`);
 
     if (fixedReports.length > 0) {
-      console.warn(`   📋 Fixed reports: ${fixedReports.join(", ")}`);
+      console.warn(`   📋 Fixed reports: ${fixedReports.join(', ')}`);
     }
 
     return NextResponse.json({
@@ -537,12 +537,12 @@ export async function POST(_request: NextRequest) {
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {
-    console.error("❌ Error in bulk SAS time fix:", error);
+    console.error('❌ Error in bulk SAS time fix:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

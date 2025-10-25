@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import React, { Component, ErrorInfo } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { Component, ErrorInfo } from 'react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 
 import type {
   ErrorBoundaryProps,
   ErrorBoundaryState,
-} from "@/lib/types/errorBoundary";
+} from '@/lib/types/errorBoundary';
 
 /**
  * ErrorBoundary component to catch and handle React errors gracefully
@@ -45,8 +45,8 @@ export default class ErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error to console in development
-    if (process.env.NODE_ENV === "development") {
-      console.error("ErrorBoundary caught an error:", error, errorInfo);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
 
     // Call custom error handler if provided
@@ -116,9 +116,9 @@ export default class ErrorBoundary extends Component<
       }
 
       return (
-        <Card className="border-red-200 bg-red-50 max-w-md mx-auto">
+        <Card className="mx-auto max-w-md border-red-200 bg-red-50">
           <CardHeader className="text-center">
-            <div className="flex justify-center mb-2">
+            <div className="mb-2 flex justify-center">
               <AlertTriangle className="h-8 w-8 text-red-500" />
             </div>
             <CardTitle className="text-red-800">Something went wrong</CardTitle>
@@ -126,9 +126,9 @@ export default class ErrorBoundary extends Component<
               An unexpected error occurred while loading this component.
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
+          <CardContent className="space-y-4 text-center">
             {error && (
-              <div className="text-sm text-red-600 bg-red-100 p-3 rounded-md">
+              <div className="rounded-md bg-red-100 p-3 text-sm text-red-600">
                 <strong>Error:</strong> {error.message}
               </div>
             )}

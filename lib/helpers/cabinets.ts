@@ -1,14 +1,14 @@
-import axios from "axios";
-import type { GamingMachine } from "@/shared/types/entities";
+import axios from 'axios';
+import type { GamingMachine } from '@/shared/types/entities';
 type NewCabinetFormData = Partial<GamingMachine>;
 type CabinetFormData = Partial<GamingMachine>;
 
-import { DateRange } from "react-day-picker";
-import { getAuthHeaders } from "@/lib/utils/auth";
-import { getLicenseeObjectId } from "@/lib/utils/licenseeMapping";
+import { DateRange } from 'react-day-picker';
+import { getAuthHeaders } from '@/lib/utils/auth';
+import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 // Activity logging removed - handled via API calls
 
-import type { GamingMachine as CabinetDetails } from "@/shared/types/entities";
+import type { GamingMachine as CabinetDetails } from '@/shared/types/entities';
 type CabinetMetrics = {
   moneyIn: number;
   moneyOut: number;
@@ -45,7 +45,7 @@ export const fetchCabinets = async (
     if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
 
     if (
-      timePeriod === "Custom" &&
+      timePeriod === 'Custom' &&
       customDateRange?.from &&
       customDateRange?.to
     ) {
@@ -62,7 +62,7 @@ export const fetchCabinets = async (
 
     // Append query string if we have parameters
     if (queryParams.length > 0) {
-      url += `?${queryParams.join("&")}`;
+      url += `?${queryParams.join('&')}`;
     }
 
     const response = await axios.get(url, {
@@ -79,7 +79,7 @@ export const fetchCabinets = async (
         return response.data;
       } else {
         // Unexpected response format
-        console.warn("Unexpected API response format:", response.data);
+        console.warn('Unexpected API response format:', response.data);
         return [];
       }
     }
@@ -89,7 +89,7 @@ export const fetchCabinets = async (
       `Failed to fetch cabinets data. Status: ${response.status}`
     );
   } catch (error) {
-    console.error("Error fetching cabinets:", error);
+    console.error('Error fetching cabinets:', error);
     // Return empty array instead of throwing to prevent skeleton loader from showing indefinitely
     return [];
   }
@@ -115,7 +115,7 @@ export const fetchCabinetById = async (
     const queryParams = [];
 
     if (
-      timePeriod === "Custom" &&
+      timePeriod === 'Custom' &&
       customDateRange?.from &&
       customDateRange?.to
     ) {
@@ -130,10 +130,10 @@ export const fetchCabinetById = async (
     queryParams.push(`_t=${Date.now()}`);
 
     if (queryParams.length > 0) {
-      endpoint += `?${queryParams.join("&")}`;
+      endpoint += `?${queryParams.join('&')}`;
     }
 
-    console.warn("[DEBUG] fetchCabinetById calling:", endpoint);
+    console.warn('[DEBUG] fetchCabinetById calling:', endpoint);
     const response = await axios.get(endpoint, {
       headers: getAuthHeaders(),
     });
@@ -142,7 +142,7 @@ export const fetchCabinetById = async (
       return response.data.data;
     }
 
-    throw new Error("Failed to fetch cabinet details");
+    throw new Error('Failed to fetch cabinet details');
   } catch (error) {
     console.error(`Error fetching cabinet with ID ${cabinetId}:`, error);
     throw error;
@@ -162,22 +162,22 @@ export const createCabinet = async (
     // Activity logging removed - handled via API calls
 
     let apiData;
-    let endpoint = "/api/machines";
+    let endpoint = '/api/machines';
 
-    if ("serialNumber" in data) {
+    if ('serialNumber' in data) {
       apiData = data;
 
       if (data.gamingLocation) {
         endpoint = `/api/locations/${data.gamingLocation}/cabinets`;
       } else {
-        throw new Error("Gaming location is required to create a cabinet");
+        throw new Error('Gaming location is required to create a cabinet');
       }
     } else {
       apiData = data;
       if (data.locationId) {
         endpoint = `/api/locations/${data.locationId}/cabinets`;
       } else {
-        throw new Error("Location is required to create a cabinet");
+        throw new Error('Location is required to create a cabinet');
       }
     }
 
@@ -189,9 +189,9 @@ export const createCabinet = async (
       return response.data.data;
     }
 
-    throw new Error("Failed to create cabinet");
+    throw new Error('Failed to create cabinet');
   } catch (error) {
-    console.error("Error creating cabinet:", error);
+    console.error('Error creating cabinet:', error);
     throw error;
   }
 };
@@ -226,12 +226,12 @@ export const updateCabinet = async (
     });
 
     if (!cabinetResponse.data?.success || !cabinetResponse.data?.data) {
-      throw new Error("Failed to fetch cabinet data");
+      throw new Error('Failed to fetch cabinet data');
     }
 
     const cabinet = cabinetResponse.data.data;
     if (!cabinet.gamingLocation) {
-      throw new Error("Cabinet location not found");
+      throw new Error('Cabinet location not found');
     }
 
     const locationId = cabinet.gamingLocation;
@@ -254,7 +254,7 @@ export const updateCabinet = async (
       return response.data.data;
     }
 
-    throw new Error("Failed to update cabinet");
+    throw new Error('Failed to update cabinet');
   } catch (error) {
     console.error(`Error updating cabinet with ID ${data._id}:`, error);
     throw error;
@@ -283,12 +283,12 @@ export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
     });
 
     if (!cabinetResponse.data?.success || !cabinetResponse.data?.data) {
-      throw new Error("Failed to fetch cabinet data");
+      throw new Error('Failed to fetch cabinet data');
     }
 
     const cabinet = cabinetResponse.data.data;
     if (!cabinet.gamingLocation) {
-      throw new Error("Cabinet location not found");
+      throw new Error('Cabinet location not found');
     }
 
     const locationId = cabinet.gamingLocation;
@@ -302,7 +302,7 @@ export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
       return true;
     }
 
-    throw new Error("Failed to delete cabinet");
+    throw new Error('Failed to delete cabinet');
   } catch (error) {
     console.error(`Error deleting cabinet with ID ${cabinetId}:`, error);
     throw error;
@@ -324,7 +324,7 @@ export const fetchCabinetLocations = async (licensee?: string) => {
       params = { licensee, licencee: licensee };
     }
 
-    const response = await axios.get("/api/machines/locations", {
+    const response = await axios.get('/api/machines/locations', {
       params,
       headers: getAuthHeaders(),
     });
@@ -340,11 +340,11 @@ export const fetchCabinetLocations = async (licensee?: string) => {
     if (Array.isArray(locationsList)) {
       return locationsList;
     } else {
-      console.error("Locations data is not an array:", locationsList);
+      console.error('Locations data is not an array:', locationsList);
       return [];
     }
   } catch (error) {
-    console.error("Error fetching cabinet locations:", error);
+    console.error('Error fetching cabinet locations:', error);
     return []; // Return empty array instead of throwing
   }
 };
@@ -369,7 +369,7 @@ export async function fetchCabinetsForLocation(
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       console.warn(
-        "⚠️ No timePeriod provided to fetchCabinetsForLocation, returning empty array"
+        '⚠️ No timePeriod provided to fetchCabinetsForLocation, returning empty array'
       );
       return [];
     }
@@ -392,15 +392,15 @@ export async function fetchCabinetsForLocation(
 
     // Handle custom date range
     if (
-      timePeriod === "Custom" &&
+      timePeriod === 'Custom' &&
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      console.warn("Custom date range:", customDateRange);
+      console.warn('Custom date range:', customDateRange);
       params.startDate = customDateRange.from.toISOString();
       params.endDate = customDateRange.to.toISOString();
-      params.timePeriod = "Custom"; // Set timePeriod to "Custom" when using custom dates
-      console.warn("Custom date params:", params);
+      params.timePeriod = 'Custom'; // Set timePeriod to "Custom" when using custom dates
+      console.warn('Custom date params:', params);
     }
 
     const queryString = new URLSearchParams(params).toString();
@@ -409,7 +409,7 @@ export async function fetchCabinetsForLocation(
       `/api/locations/${locationId}?${queryString}`,
       {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           ...getAuthHeaders(),
         },
       }
@@ -429,7 +429,7 @@ export async function fetchCabinetsForLocation(
 
     return data;
   } catch (error) {
-    console.error(" Error in fetchCabinetsForLocation:", error);
+    console.error(' Error in fetchCabinetsForLocation:', error);
     // Always return an empty array instead of throwing
     return [];
   }
@@ -468,12 +468,12 @@ export async function fetchCabinetDetails(
 
     const queryString = new URLSearchParams(params).toString();
     const url = `/api/locations/${locationId}/cabinets/${cabinetId}${
-      queryString ? `?${queryString}` : ""
+      queryString ? `?${queryString}` : ''
     }`;
 
     const response = await axios.get(url, {
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
 
@@ -487,14 +487,14 @@ export async function fetchCabinetDetails(
 
     const data = response.data;
 
-    if (!data || typeof data !== "object") {
+    if (!data || typeof data !== 'object') {
       console.error(`⚠️ Invalid cabinet details data format:`, data);
       return null;
     }
 
     return data as CabinetDetails;
   } catch (error) {
-    console.error(" Error fetching cabinet details:", error);
+    console.error(' Error fetching cabinet details:', error);
     return null;
   }
 }
@@ -519,7 +519,7 @@ export async function updateCabinetMetrics(
 
     const response = await axios.get(url, {
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
 
@@ -551,7 +551,7 @@ export async function loadCabinetsForLocation(
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       console.warn(
-        "⚠️ No timePeriod provided to loadCabinetsForLocation, returning empty array"
+        '⚠️ No timePeriod provided to loadCabinetsForLocation, returning empty array'
       );
       return [];
     }
@@ -579,7 +579,7 @@ export async function loadCabinetsForLocation(
     });
 
     if (!Array.isArray(response.data)) {
-      console.error("Cabinets data is not an array", response.data);
+      console.error('Cabinets data is not an array', response.data);
       return [];
     }
 
@@ -588,7 +588,7 @@ export async function loadCabinetsForLocation(
     if (axios.isCancel(err)) {
       return [];
     }
-    console.error("Error fetching cabinet data:", err);
+    console.error('Error fetching cabinet data:', err);
     return []; // Return empty array on error
   }
 }
@@ -602,7 +602,7 @@ export async function loadCabinetsForLocation(
 export const fetchCollectionMetersHistory = async (machineId: string) => {
   try {
     const response = await axios.get(`/api/machines/${machineId}`, {
-      params: { dataType: "collectionMetersHistory" },
+      params: { dataType: 'collectionMetersHistory' },
     });
     return response.data?.data || [];
   } catch (error) {
@@ -623,7 +623,7 @@ export const fetchCollectionMetersHistory = async (machineId: string) => {
 export const fetchMachineEvents = async (machineId: string) => {
   try {
     const response = await axios.get(`/api/machines/${machineId}`, {
-      params: { dataType: "machineEvents" },
+      params: { dataType: 'machineEvents' },
     });
     return response.data?.data || [];
   } catch (error) {
@@ -655,7 +655,7 @@ export const updateMachineCollectionHistory = async (
     timestamp: Date;
     locationReportId: string;
   },
-  operation: "add" | "update" | "delete" = "add",
+  operation: 'add' | 'update' | 'delete' = 'add',
   entryId?: string
 ) => {
   try {

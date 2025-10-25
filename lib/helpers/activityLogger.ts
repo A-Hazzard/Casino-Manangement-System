@@ -1,12 +1,12 @@
-import mongoose from "mongoose";
-import { ActivityLog } from "../../app/api/lib/models/activityLog";
+import mongoose from 'mongoose';
+import { ActivityLog } from '../../app/api/lib/models/activityLog';
 import type {
   ActivityLog as ActivityLogType,
   ActivityLogActor,
   ActivityLogEntity,
   ActivityLogChange,
   ActivityLogQueryParams,
-} from "../types/activityLog";
+} from '../types/activityLog';
 
 /**
  * Logs an activity to the database.
@@ -88,8 +88,8 @@ export async function getActivityLogs(params: ActivityLogQueryParams): Promise<{
     actorId,
     startDate,
     endDate,
-    limit = "20",
-    skip = "0",
+    limit = '20',
+    skip = '0',
   } = params;
 
   // Build query
@@ -104,7 +104,7 @@ export async function getActivityLogs(params: ActivityLogQueryParams): Promise<{
   }
 
   if (actorId) {
-    query["actor.id"] = actorId;
+    query['actor.id'] = actorId;
   }
 
   if (startDate || endDate) {
@@ -195,10 +195,10 @@ export function generateDescription(
 
   // Custom: If payment status was changed, call it out specifically
   if (changes && changes.length > 0) {
-    const paymentChange = changes.find((c) => c.field === "isPaid");
+    const paymentChange = changes.find(c => c.field === 'isPaid');
     if (paymentChange) {
-      const oldStatus = paymentChange.oldValue ? "Paid" : "Unpaid";
-      const newStatus = paymentChange.newValue ? "Paid" : "Unpaid";
+      const oldStatus = paymentChange.oldValue ? 'Paid' : 'Unpaid';
+      const newStatus = paymentChange.newValue ? 'Paid' : 'Unpaid';
       const paymentDescription = `${actorEmail} updated the payment status for ${entity} "${entityName}" from "${oldStatus}" to "${newStatus}"`;
       return paymentDescription;
     }
@@ -210,14 +210,14 @@ export function generateDescription(
 
   let fallbackDescription: string;
   switch (action) {
-    case "create":
+    case 'create':
       fallbackDescription = `${actorEmail} created a new ${entity} "${entityName}"`;
       break;
-    case "delete":
+    case 'delete':
       fallbackDescription = `${actorEmail} deleted the ${entity} "${entityName}"`;
       break;
-    case "update":
-    case "edit":
+    case 'update':
+    case 'edit':
       fallbackDescription = `${actorEmail} updated the ${entity} "${entityName}"`;
       break;
     default:
@@ -243,6 +243,14 @@ export function createActivityLogger(actor: ActivityLogActor) {
     description?: string,
     ipAddress?: string
   ): Promise<ActivityLogType> {
-    return logActivity(actor, actionType, entityType, entity, changes, description, ipAddress);
+    return logActivity(
+      actor,
+      actionType,
+      entityType,
+      entity,
+      changes,
+      description,
+      ipAddress
+    );
   };
 }

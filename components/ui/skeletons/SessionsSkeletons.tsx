@@ -1,16 +1,16 @@
-import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
  * Specific skeleton component for Sessions Page
  * Matches the exact layout of the sessions page with filters, table, and pagination
  */
 export const SessionsPageSkeleton = () => (
-  <div className="w-full mt-8 space-y-6">
+  <div className="mt-8 w-full space-y-6">
     {/* Page Header skeleton */}
     <div className="mb-6">
-      <div className="flex items-center gap-3 mb-2">
+      <div className="mb-2 flex items-center gap-3">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-8 w-8" />
       </div>
@@ -20,8 +20,8 @@ export const SessionsPageSkeleton = () => (
     {/* Filters skeleton */}
     <Card>
       <CardContent className="p-4">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex-1 max-w-md">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="max-w-md flex-1">
             <Skeleton className="h-10 w-full" />
           </div>
           <div className="flex gap-2">
@@ -42,12 +42,12 @@ export const SessionsPageSkeleton = () => (
       </CardHeader>
       <CardContent>
         {/* Desktop Table Skeleton */}
-        <div className="hidden lg:block overflow-x-auto">
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full">
             <thead>
               <tr className="border-b">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <th key={i} className="text-center p-3">
+                  <th key={i} className="p-3 text-center">
                     <Skeleton className="h-4 w-20" />
                   </th>
                 ))}
@@ -60,7 +60,7 @@ export const SessionsPageSkeleton = () => (
                     <div className="flex items-center gap-3">
                       <Skeleton className="h-8 w-8 rounded-full" />
                       <div>
-                        <Skeleton className="h-4 w-24 mb-1" />
+                        <Skeleton className="mb-1 h-4 w-24" />
                         <Skeleton className="h-3 w-16" />
                       </div>
                     </div>
@@ -93,10 +93,13 @@ export const SessionsPageSkeleton = () => (
         </div>
 
         {/* Mobile Cards Skeleton */}
-        <div className="lg:hidden space-y-4">
+        <div className="space-y-4 lg:hidden">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-3">
-              <div className="flex justify-between items-start">
+            <div
+              key={i}
+              className="space-y-3 rounded-lg border border-gray-200 p-4"
+            >
+              <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-20" />
@@ -105,19 +108,19 @@ export const SessionsPageSkeleton = () => (
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <Skeleton className="h-3 w-16 mb-1" />
+                  <Skeleton className="mb-1 h-3 w-16" />
                   <Skeleton className="h-4 w-20" />
                 </div>
                 <div>
-                  <Skeleton className="h-3 w-12 mb-1" />
+                  <Skeleton className="mb-1 h-3 w-12" />
                   <Skeleton className="h-4 w-16" />
                 </div>
                 <div>
-                  <Skeleton className="h-3 w-14 mb-1" />
-                  <Skeleton className="h-4 w-18" />
+                  <Skeleton className="mb-1 h-3 w-14" />
+                  <Skeleton className="w-18 h-4" />
                 </div>
                 <div>
-                  <Skeleton className="h-3 w-10 mb-1" />
+                  <Skeleton className="mb-1 h-3 w-10" />
                   <Skeleton className="h-4 w-14" />
                 </div>
               </div>
@@ -146,10 +149,10 @@ export const SessionsPageSkeleton = () => (
  * Matches the exact layout of the session events page
  */
 export const SessionEventsPageSkeleton = () => (
-  <div className="w-full mt-8 space-y-6">
+  <div className="mt-8 w-full space-y-6">
     {/* Page Header skeleton */}
     <div className="mb-6">
-      <div className="flex items-center gap-3 mb-2">
+      <div className="mb-2 flex items-center gap-3">
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-8 w-8" />
       </div>
@@ -164,7 +167,7 @@ export const SessionEventsPageSkeleton = () => (
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="space-y-2">
               <Skeleton className="h-4 w-20" />
@@ -189,7 +192,7 @@ export const SessionEventsPageSkeleton = () => (
             <thead>
               <tr className="border-b">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <th key={i} className="text-center p-3">
+                  <th key={i} className="p-3 text-center">
                     <Skeleton className="h-4 w-20" />
                   </th>
                 ))}

@@ -3,15 +3,15 @@
  * Handles refresh logic, loading states, and error handling
  */
 
-import { useCallback } from "react";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { handleDashboardRefresh } from "@/lib/helpers/dashboard";
-import { TimePeriod } from "@/shared/types/common";
-import { TopPerformingData } from "@/lib/types";
+import { useCallback } from 'react';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { handleDashboardRefresh } from '@/lib/helpers/dashboard';
+import { TimePeriod } from '@/shared/types/common';
+import { TopPerformingData } from '@/lib/types';
 import type {
   UseDashboardRefreshProps,
   UseDashboardRefreshReturn,
-} from "@/lib/types/dashboardRefresh";
+} from '@/lib/types/dashboardRefresh';
 
 export function useDashboardRefresh({
   selectedLicencee,
@@ -45,7 +45,7 @@ export function useDashboardRefresh({
       activeMetricsFilter as TimePeriod,
       customDateRange || { startDate: new Date(), endDate: new Date() },
       selectedLicencee,
-      activeTab as "Cabinets" | "locations",
+      activeTab as 'Cabinets' | 'locations',
       activePieChartFilter as TimePeriod,
       setRefreshing,
       setLoadingChartData,

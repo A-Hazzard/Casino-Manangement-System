@@ -1,16 +1,16 @@
-import { GamingMachine } from "@/shared/types/entities";
-import type { CabinetSortOption } from "@/lib/hooks/data";
+import { GamingMachine } from '@/shared/types/entities';
+import type { CabinetSortOption } from '@/lib/hooks/data';
 
 /**
  * Types for cabinet details functionality
  */
 
 export type MetricsTimeFilter = {
-  type: "day" | "week" | "month" | "year" | "custom";
+  type: 'day' | 'week' | 'month' | 'year' | 'custom';
 };
 
 export type MetricsTabContent = {
-  type: "Range Metrics" | "Day Metrics" | "Week Metrics" | "Month Metrics";
+  type: 'Range Metrics' | 'Day Metrics' | 'Week Metrics' | 'Month Metrics';
 };
 
 export type CabinetDetailsProps = {
@@ -99,8 +99,8 @@ export type CabinetSearchFiltersProps = {
 
   // Sort state
   sortOption: CabinetSortOption;
-  sortOrder: "asc" | "desc";
-  onSortChange: (option: CabinetSortOption, order: "asc" | "desc") => void;
+  sortOrder: 'asc' | 'desc';
+  onSortChange: (option: CabinetSortOption, order: 'asc' | 'desc') => void;
 
   // Visibility
   activeSection: string;

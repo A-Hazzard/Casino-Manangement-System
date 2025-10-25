@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -28,15 +28,15 @@
       // For browser WebSocket connections, use ws:// or wss://
       // Try different common WebSocket ports for MQTT
       const MQTT_URI_OPTIONS = [
-        "ws://mqtt:mqtt@mq.sas.backoffice.ltd:8080/mqtt", // Common WebSocket MQTT port
-        "ws://mqtt:mqtt@mq.sas.backoffice.ltd:8083/mqtt", // Alternative WebSocket port
-        "ws://mqtt:mqtt@mq.sas.backoffice.ltd:9001/mqtt", // Another common port
-        "ws://mqtt:mqtt@mq.sas.backoffice.ltd:1883/mqtt", // Try WebSocket on MQTT port
+        'ws://mqtt:mqtt@mq.sas.backoffice.ltd:8080/mqtt', // Common WebSocket MQTT port
+        'ws://mqtt:mqtt@mq.sas.backoffice.ltd:8083/mqtt', // Alternative WebSocket port
+        'ws://mqtt:mqtt@mq.sas.backoffice.ltd:9001/mqtt', // Another common port
+        'ws://mqtt:mqtt@mq.sas.backoffice.ltd:1883/mqtt', // Try WebSocket on MQTT port
       ];
 
-      const MQTT_PUB_TOPIC = "sas/relay/";
-      const MQTT_CFG_TOPIC = "smib/config";
-      const RELAY_ID = "e831cdfa8384";
+      const MQTT_PUB_TOPIC = 'sas/relay/';
+      const MQTT_CFG_TOPIC = 'smib/config';
+      const RELAY_ID = 'e831cdfa8384';
 
       let currentUriIndex = 0;
 
@@ -44,12 +44,12 @@
       let isConnected = false;
 
       function updateStatus(message) {
-        document.getElementById("status").textContent = message;
+        document.getElementById('status').textContent = message;
       }
 
       function addMessage(message) {
-        const messagesDiv = document.getElementById("messages");
-        const messageElement = document.createElement("div");
+        const messagesDiv = document.getElementById('messages');
+        const messageElement = document.createElement('div');
         messageElement.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
         messagesDiv.appendChild(messageElement);
       }
@@ -60,20 +60,20 @@
           addMessage(`Trying to connect to: ${currentUri}`);
 
           client = mqtt.connect(currentUri, {
-            protocol: "ws", // Explicitly use WebSocket
+            protocol: 'ws', // Explicitly use WebSocket
             clientId: `browser-client-${Date.now()}`,
           });
 
-          client.on("connect", () => {
-            console.log("Connected to MQTT broker");
-            updateStatus("Connected");
+          client.on('connect', () => {
+            console.log('Connected to MQTT broker');
+            updateStatus('Connected');
             isConnected = true;
             addMessage(`✅ Connected to MQTT broker on ${currentUri}`);
           });
 
-          client.on("error", (error) => {
-            console.error("MQTT Error:", error);
-            updateStatus("Error: " + error.message);
+          client.on('error', error => {
+            console.error('MQTT Error:', error);
+            updateStatus('Error: ' + error.message);
             addMessage(
               `❌ Failed to connect to ${currentUri}: ${error.message}`
             );
@@ -89,47 +89,47 @@
                 connect();
               }, 2000);
             } else {
-              addMessage("❌ All connection attempts failed");
+              addMessage('❌ All connection attempts failed');
             }
           });
 
-          client.on("message", (topic, message) => {
+          client.on('message', (topic, message) => {
             console.log(
-              "Received message:",
+              'Received message:',
               message.toString(),
-              "on topic:",
+              'on topic:',
               topic
             );
             addMessage(`Received on ${topic}: ${message.toString()}`);
           });
 
-          client.on("close", () => {
-            console.log("Disconnected from MQTT broker");
-            updateStatus("Disconnected");
+          client.on('close', () => {
+            console.log('Disconnected from MQTT broker');
+            updateStatus('Disconnected');
             isConnected = false;
-            addMessage("Disconnected from MQTT broker");
+            addMessage('Disconnected from MQTT broker');
           });
         } catch (error) {
-          console.error("Failed to connect:", error);
-          updateStatus("Failed to connect: " + error.message);
-          addMessage("Failed to connect: " + error.message);
+          console.error('Failed to connect:', error);
+          updateStatus('Failed to connect: ' + error.message);
+          addMessage('Failed to connect: ' + error.message);
         }
       }
 
       function subscribe() {
         if (!client || !isConnected) {
-          addMessage("Please connect first");
+          addMessage('Please connect first');
           return;
         }
 
         // Subscribe to the smib/relay/[relayId] topic
         const relayTopic = `smib/relay/${RELAY_ID}`;
-        client.subscribe(relayTopic, (error) => {
+        client.subscribe(relayTopic, error => {
           if (error) {
-            console.error("Subscribe error:", error);
-            addMessage("Subscribe error: " + error.message);
+            console.error('Subscribe error:', error);
+            addMessage('Subscribe error: ' + error.message);
           } else {
-            console.log("Subscribed to relay topic");
+            console.log('Subscribed to relay topic');
             addMessage(`Subscribed to ${relayTopic}`);
           }
         });
@@ -137,22 +137,22 @@
 
       function publish() {
         if (!client || !isConnected) {
-          addMessage("Please connect first");
+          addMessage('Please connect first');
           return;
         }
 
         // Publish a message to the relay topic
         const relayTopic = `smib/relay/${RELAY_ID}`;
         const message = JSON.stringify({
-          command: "test",
+          command: 'test',
           timestamp: new Date().toISOString(),
         });
-        client.publish(relayTopic, message, (error) => {
+        client.publish(relayTopic, message, error => {
           if (error) {
-            console.error("Publish error:", error);
-            addMessage("Publish error: " + error.message);
+            console.error('Publish error:', error);
+            addMessage('Publish error: ' + error.message);
           } else {
-            console.log("Published message");
+            console.log('Published message');
             addMessage(`Published to ${relayTopic}: ${message}`);
           }
         });
@@ -163,8 +163,8 @@
           client.end();
           client = null;
           isConnected = false;
-          updateStatus("Disconnected");
-          addMessage("Disconnected manually");
+          updateStatus('Disconnected');
+          addMessage('Disconnected manually');
         }
       }
 
@@ -175,8 +175,8 @@
           isConnected = false;
         }
         currentUriIndex = 0;
-        updateStatus("Reset - Ready to try all ports");
-        addMessage("Reset connection attempts - will try all ports");
+        updateStatus('Reset - Ready to try all ports');
+        addMessage('Reset connection attempts - will try all ports');
       }
     </script>
   </body>

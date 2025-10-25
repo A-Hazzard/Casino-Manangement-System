@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import axios from "axios";
-import { Button } from "@/components/ui/button";
-import { Cross1Icon, DownloadIcon } from "@radix-ui/react-icons";
-import { useFirmwareActionsStore } from "@/lib/store/firmwareActionsStore";
+import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import axios from 'axios';
+import { Button } from '@/components/ui/button';
+import { Cross1Icon, DownloadIcon } from '@radix-ui/react-icons';
+import { useFirmwareActionsStore } from '@/lib/store/firmwareActionsStore';
 
 export const DownloadFirmwareModal = ({
   onDownloadComplete,
@@ -24,12 +24,12 @@ export const DownloadFirmwareModal = ({
         y: 0,
         opacity: 1,
         duration: 0.3,
-        ease: "power2.out",
+        ease: 'power2.out',
       });
       gsap.to(backdropRef.current, {
         opacity: 1,
         duration: 0.2,
-        ease: "power2.out",
+        ease: 'power2.out',
       });
     }
   }, [isDownloadModalOpen]);
@@ -39,12 +39,12 @@ export const DownloadFirmwareModal = ({
       y: -20,
       opacity: 0,
       duration: 0.3,
-      ease: "power2.in",
+      ease: 'power2.in',
     });
     gsap.to(backdropRef.current, {
       opacity: 0,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
       onComplete: closeDownloadModal,
     });
   };
@@ -55,14 +55,14 @@ export const DownloadFirmwareModal = ({
     try {
       const response = await axios.get(
         `/api/firmwares/${selectedFirmware._id}/download`,
-        { 
-          responseType: "blob",
-          withCredentials: true
+        {
+          responseType: 'blob',
+          withCredentials: true,
         }
       );
       const blob = response.data;
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = selectedFirmware.fileName;
       document.body.appendChild(a);
@@ -71,8 +71,8 @@ export const DownloadFirmwareModal = ({
       document.body.removeChild(a);
       onDownloadComplete();
     } catch (error) {
-      console.error("Error downloading firmware:", error);
-      alert("Failed to download firmware file.");
+      console.error('Error downloading firmware:', error);
+      alert('Failed to download firmware file.');
     } finally {
       setLoading(false);
       handleClose();
@@ -90,10 +90,10 @@ export const DownloadFirmwareModal = ({
       />
       <div
         ref={modalRef}
-        className="bg-container rounded-lg shadow-xl max-w-sm w-full opacity-0"
-        style={{ transform: "translateY(-20px)" }}
+        className="w-full max-w-sm rounded-lg bg-container opacity-0 shadow-xl"
+        style={{ transform: 'translateY(-20px)' }}
       >
-        <div className="p-4 border-b border-border flex justify-between items-center">
+        <div className="flex items-center justify-between border-b border-border p-4">
           <h2 className="text-xl font-bold text-buttonActive">
             Download Confirmation
           </h2>
@@ -103,42 +103,42 @@ export const DownloadFirmwareModal = ({
             onClick={handleClose}
             className="text-grayHighlight hover:bg-buttonInactive/10"
           >
-            <Cross1Icon className="w-5 h-5" />
+            <Cross1Icon className="h-5 w-5" />
           </Button>
         </div>
         <div className="p-6 text-center">
-          <div className="flex justify-center mb-4">
-            <DownloadIcon className="w-16 h-16 text-green-500" />
+          <div className="mb-4 flex justify-center">
+            <DownloadIcon className="h-16 w-16 text-green-500" />
           </div>
-          <p className="text-lg font-semibold text-grayHighlight mb-2">
+          <p className="mb-2 text-lg font-semibold text-grayHighlight">
             Do you want to download this firmware?
           </p>
           <p className="text-gray-200">
-            Product:{" "}
+            Product:{' '}
             <span className="font-bold text-buttonActive">
               {selectedFirmware.product}
             </span>
           </p>
           <p className="text-gray-200">
-            Version:{" "}
+            Version:{' '}
             <span className="font-bold text-buttonActive">
               {selectedFirmware.version}
             </span>
           </p>
           <p className="text-gray-200">
-            File:{" "}
+            File:{' '}
             <span className="font-bold text-buttonActive">
               {selectedFirmware.fileName}
             </span>
           </p>
         </div>
-        <div className="p-4 border-t border-border flex justify-center space-x-4">
+        <div className="flex justify-center space-x-4 border-t border-border p-4">
           <Button
             onClick={handleDownload}
             className="bg-green-600 text-white hover:bg-green-700"
             disabled={loading}
           >
-            {loading ? "Downloading..." : "Download"}
+            {loading ? 'Downloading...' : 'Download'}
           </Button>
           <Button
             onClick={handleClose}

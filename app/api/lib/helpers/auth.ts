@@ -1,15 +1,15 @@
-import { getUserByEmail, getUserByUsername } from "./users";
-import { sendEmail } from "../../lib/utils/email";
-import { UserAuthPayload } from "@/shared/types";
-import { comparePassword } from "../utils/validation";
-import type { AuthResult } from "@/shared/types";
+import { getUserByEmail, getUserByUsername } from './users';
+import { sendEmail } from '../../lib/utils/email';
+import { UserAuthPayload } from '@/shared/types';
+import { comparePassword } from '../utils/validation';
+import type { AuthResult } from '@/shared/types';
 import {
   generateAccessToken,
   generateRefreshToken,
   getCurrentDbConnectionString,
   loginRateLimiter,
-} from "@/lib/utils/auth";
-import { logActivity } from "./activityLogger";
+} from '@/lib/utils/auth';
+import { logActivity } from './activityLogger';
 
 /**
  * Validates user credentials and generates JWT tokens on success.
@@ -25,8 +25,8 @@ import { logActivity } from "./activityLogger";
 export async function authenticateUser(
   identifier: string,
   password: string,
-  ipAddress: string = "unknown",
-  userAgent: string = "unknown",
+  ipAddress: string = 'unknown',
+  userAgent: string = 'unknown',
   rememberMe: boolean = false
 ): Promise<AuthResult> {
   try {
@@ -38,7 +38,7 @@ export async function authenticateUser(
         : 15;
 
       await logActivity({
-        action: "login_blocked",
+        action: 'login_blocked',
         details: `Rate limit exceeded for ${identifier} from ${ipAddress}`,
         ipAddress,
         userAgent,
@@ -54,7 +54,7 @@ export async function authenticateUser(
     if (!identifier || !password) {
       return {
         success: false,
-        message: "Email/username and password are required.",
+        message: 'Email/username and password are required.',
       };
     }
 
@@ -65,25 +65,25 @@ export async function authenticateUser(
 
     if (!user) {
       await logActivity({
-        action: "login_failed",
+        action: 'login_failed',
         details: `User not found: ${identifier}`,
         ipAddress,
         userAgent,
       });
-      return { success: false, message: "Invalid email/username or password." };
+      return { success: false, message: 'Invalid email/username or password.' };
     }
 
     // Check if user is enabled
     if (!user.isEnabled) {
       await logActivity({
-        action: "login_blocked",
+        action: 'login_blocked',
         details: `Disabled user attempted login: ${identifier}`,
         ipAddress,
         userAgent,
       });
       return {
         success: false,
-        message: "Account is disabled. Please contact support.",
+        message: 'Account is disabled. Please contact support.',
       };
     }
 
@@ -94,19 +94,19 @@ export async function authenticateUser(
       new Date(user.lockedUntil) > new Date()
     ) {
       await logActivity({
-        action: "login_blocked",
+        action: 'login_blocked',
         details: `Locked user attempted login: ${identifier}`,
         ipAddress,
         userAgent,
       });
       return {
         success: false,
-        message: "Account is temporarily locked. Please try again later.",
+        message: 'Account is temporarily locked. Please try again later.',
       };
     }
 
     // Verify password first
-    const isMatch = await comparePassword(password, user.password || "");
+    const isMatch = await comparePassword(password, user.password || '');
     if (!isMatch) {
       // Increment failed login attempts
       const failedAttempts = (user.failedLoginAttempts || 0) + 1;
@@ -121,7 +121,7 @@ export async function authenticateUser(
         });
 
         await logActivity({
-          action: "account_locked",
+          action: 'account_locked',
           details: `Account locked due to ${failedAttempts} failed login attempts: ${identifier}`,
           ipAddress,
           userAgent,
@@ -130,20 +130,20 @@ export async function authenticateUser(
         return {
           success: false,
           message:
-            "Account locked due to multiple failed login attempts. Please try again in 30 minutes.",
+            'Account locked due to multiple failed login attempts. Please try again in 30 minutes.',
         };
       } else {
         await user.updateOne({ failedLoginAttempts: failedAttempts });
       }
 
       await logActivity({
-        action: "login_failed",
+        action: 'login_failed',
         details: `Invalid password for: ${identifier}`,
         ipAddress,
         userAgent,
       });
 
-      return { success: false, message: "Invalid email/username or password." };
+      return { success: false, message: 'Invalid email/username or password.' };
     }
 
     // Reset failed login attempts and unlock account on successful login
@@ -160,12 +160,12 @@ export async function authenticateUser(
 
     // Check for invalid profile fields (special characters)
     const { validateProfileField, validateNameField } = await import(
-      "@/lib/utils/validation"
+      '@/lib/utils/validation'
     );
     const invalidFields = {
-      username: !validateProfileField(user.username || ""),
-      firstName: !validateNameField(user.profile?.firstName || ""),
-      lastName: !validateNameField(user.profile?.lastName || ""),
+      username: !validateProfileField(user.username || ''),
+      firstName: !validateNameField(user.profile?.firstName || ''),
+      lastName: !validateNameField(user.profile?.lastName || ''),
     };
 
     const hasInvalidFields = Object.values(invalidFields).some(Boolean);
@@ -177,7 +177,7 @@ export async function authenticateUser(
       const accessToken = await generateAccessToken({
         _id: userObject._id.toString(),
         emailAddress: userObject.emailAddress,
-        username: String(userObject.username || ""),
+        username: String(userObject.username || ''),
         isEnabled: userObject.isEnabled,
         sessionId: sessionId,
         dbContext: {
@@ -194,7 +194,7 @@ export async function authenticateUser(
       const userPayload: UserAuthPayload = {
         _id: userObject._id.toString(),
         emailAddress: userObject.emailAddress,
-        username: String(userObject.username || ""),
+        username: String(userObject.username || ''),
         isEnabled: userObject.isEnabled,
         roles: userObject.roles || [],
         profile: userObject.profile || undefined,
@@ -209,7 +209,7 @@ export async function authenticateUser(
 
       // Log successful login
       await logActivity({
-        action: "login_success",
+        action: 'login_success',
         details: `Successful login with invalid profile fields: ${identifier}`,
         ipAddress,
         userAgent,
@@ -240,7 +240,7 @@ export async function authenticateUser(
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
-      username: String(userObject.username || ""),
+      username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       sessionId: sessionId,
       dbContext: {
@@ -257,7 +257,7 @@ export async function authenticateUser(
     const userPayload: UserAuthPayload = {
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
-      username: String(userObject.username || ""),
+      username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
       profile: userObject.profile || undefined,
@@ -270,7 +270,7 @@ export async function authenticateUser(
 
     // Log successful login
     await logActivity({
-      action: "login_success",
+      action: 'login_success',
       details: `Successful login: ${identifier}`,
       ipAddress,
       userAgent,
@@ -291,12 +291,12 @@ export async function authenticateUser(
       expiresAt,
     };
   } catch (error) {
-    console.error("Authentication error:", error);
+    console.error('Authentication error:', error);
 
     await logActivity({
-      action: "login_error",
+      action: 'login_error',
       details: `Authentication error for ${identifier}: ${
-        error instanceof Error ? error.message : "Unknown error"
+        error instanceof Error ? error.message : 'Unknown error'
       }`,
       ipAddress,
       userAgent,
@@ -304,7 +304,7 @@ export async function authenticateUser(
 
     return {
       success: false,
-      message: "An error occurred during authentication. Please try again.",
+      message: 'An error occurred during authentication. Please try again.',
     };
   }
 }
@@ -316,17 +316,17 @@ export async function refreshAccessToken(
   refreshToken: string
 ): Promise<AuthResult> {
   try {
-    const { verifyRefreshToken } = await import("@/lib/utils/auth");
+    const { verifyRefreshToken } = await import('@/lib/utils/auth');
     const payload = await verifyRefreshToken(refreshToken);
 
-    if (!payload || payload.type !== "refresh") {
-      return { success: false, message: "Invalid refresh token." };
+    if (!payload || payload.type !== 'refresh') {
+      return { success: false, message: 'Invalid refresh token.' };
     }
 
     // Get user from database
     const user = await getUserByEmail(payload.userId);
     if (!user || !user.isEnabled) {
-      return { success: false, message: "User not found or disabled." };
+      return { success: false, message: 'User not found or disabled.' };
     }
 
     // Generate new access token
@@ -336,7 +336,7 @@ export async function refreshAccessToken(
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
-      username: String(userObject.username || ""),
+      username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       sessionId: sessionId,
       dbContext: {
@@ -347,8 +347,8 @@ export async function refreshAccessToken(
 
     return { success: true, token: accessToken };
   } catch (error) {
-    console.error("Token refresh error:", error);
-    return { success: false, message: "Token refresh failed." };
+    console.error('Token refresh error:', error);
+    return { success: false, message: 'Token refresh failed.' };
   }
 }
 
@@ -363,7 +363,7 @@ export async function sendPasswordResetEmail(
     if (!user) {
       return {
         success: false,
-        message: "No account found with this email address.",
+        message: 'No account found with this email address.',
       };
     }
 
@@ -376,12 +376,12 @@ export async function sendPasswordResetEmail(
     // await user.updateOne({ resetToken, resetTokenExpires: new Date(Date.now() + 60 * 60 * 1000) });
 
     const resetUrl = `${
-      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     }/reset-password?token=${resetToken}`;
 
     await sendEmail(
       email,
-      "Password Reset Request",
+      'Password Reset Request',
       `Password Reset Request\n\nYou requested a password reset for your account.\nClick the link below to reset your password:\n${resetUrl}\n\nThis link will expire in 1 hour.\nIf you didn't request this reset, please ignore this email.`,
       `
         <h2>Password Reset Request</h2>
@@ -395,10 +395,10 @@ export async function sendPasswordResetEmail(
 
     return {
       success: true,
-      message: "Password reset email sent successfully.",
+      message: 'Password reset email sent successfully.',
     };
   } catch (error) {
-    console.error("Password reset email error:", error);
-    return { success: false, message: "Failed to send password reset email." };
+    console.error('Password reset email error:', error);
+    return { success: false, message: 'Failed to send password reset email.' };
   }
 }

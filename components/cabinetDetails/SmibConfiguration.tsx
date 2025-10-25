@@ -1,20 +1,20 @@
-import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDownIcon } from "@radix-ui/react-icons";
-import axios from "axios";
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
+import axios from 'axios';
 import type {
   GamingMachine as CabinetDetail,
   SmibConfig,
-} from "@/shared/types/entities";
+} from '@/shared/types/entities';
 import {
   configContentVariants,
   itemVariants,
-} from "@/lib/constants/animationVariants";
-import CommunicationModeSection from "./smibConfig/CommunicationModeSection";
-import FirmwareUpdateSection from "./smibConfig/FirmwareUpdateSection";
-import MachineControlButtons from "./smibConfig/MachineControlButtons";
-import AdvancedSettings from "./smibConfig/AdvancedSettings";
-import { toast } from "sonner";
+} from '@/lib/constants/animationVariants';
+import CommunicationModeSection from './smibConfig/CommunicationModeSection';
+import FirmwareUpdateSection from './smibConfig/FirmwareUpdateSection';
+import MachineControlButtons from './smibConfig/MachineControlButtons';
+import AdvancedSettings from './smibConfig/AdvancedSettings';
+import { toast } from 'sonner';
 
 type ExtendedSmibConfigurationProps = {
   cabinet: CabinetDetail | null;
@@ -26,7 +26,7 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
   const [smibConfigExpanded, setSmibConfigExpanded] = useState(false);
   const configSectionRef = useRef<HTMLDivElement>(null);
   const [initialCommunicationMode, setInitialCommunicationMode] =
-    useState("ethernet");
+    useState('ethernet');
   const [currentSmibConfig, setCurrentSmibConfig] = useState<
     SmibConfig | undefined
   >(undefined);
@@ -37,11 +37,11 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
     if (cabinet?.smibConfig) {
       setCurrentSmibConfig(cabinet.smibConfig);
       const modeFromConfig =
-        cabinet.smibConfig?.net?.netMode === 1 ? "wifi" : "ethernet";
+        cabinet.smibConfig?.net?.netMode === 1 ? 'wifi' : 'ethernet';
       setInitialCommunicationMode(modeFromConfig);
     } else {
       setCurrentSmibConfig(undefined);
-      setInitialCommunicationMode("ethernet");
+      setInitialCommunicationMode('ethernet');
     }
   }, [cabinet]);
 
@@ -51,7 +51,7 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
     netStaPassword?: string;
   }) => {
     if (!cabinet?._id) {
-      toast.error("Cabinet ID is missing.");
+      toast.error('Cabinet ID is missing.');
       return;
     }
     setIsLoading(true);
@@ -62,7 +62,7 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
           ...currentSmibConfig,
           net: {
             ...currentSmibConfig?.net,
-            netMode: newConfigData.communicationMode === "wifi" ? 1 : 0,
+            netMode: newConfigData.communicationMode === 'wifi' ? 1 : 0,
             netStaSSID: newConfigData.netStaSSID,
             netStaPwd: newConfigData.netStaPassword,
           },
@@ -76,15 +76,15 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
 
       if (!response.data.success) {
         throw new Error(
-          response.data.message || "Failed to update SMIB configuration"
+          response.data.message || 'Failed to update SMIB configuration'
         );
       }
-      toast.success("SMIB configuration updated successfully!");
-      setCurrentSmibConfig((prevConfig) => ({
+      toast.success('SMIB configuration updated successfully!');
+      setCurrentSmibConfig(prevConfig => ({
         ...prevConfig,
         net: {
           ...prevConfig?.net,
-          netMode: newConfigData.communicationMode === "wifi" ? 1 : 0,
+          netMode: newConfigData.communicationMode === 'wifi' ? 1 : 0,
           netStaSSID: newConfigData.netStaSSID,
           netStaPwd: newConfigData.netStaPassword,
         },
@@ -92,7 +92,7 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
       setInitialCommunicationMode(newConfigData.communicationMode);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "An unknown error occurred.";
+        err instanceof Error ? err.message : 'An unknown error occurred.';
       setError(errorMessage);
       toast.error(`Error: ${errorMessage}`);
     } finally {
@@ -111,13 +111,13 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
 
   return (
     <motion.div
-      className="mt-4 bg-container rounded-lg shadow-md shadow-purple-200"
+      className="mt-4 rounded-lg bg-container shadow-md shadow-purple-200"
       variants={itemVariants}
       initial="hidden"
       animate="visible"
     >
       <div
-        className="px-6 py-4 flex justify-between items-center cursor-pointer"
+        className="flex cursor-pointer items-center justify-between px-6 py-4"
         onClick={toggleSmibConfig}
       >
         <h2 className="text-xl font-semibold">SMIB Configuration</h2>
@@ -135,31 +135,31 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 md:justify-between gap-2 md:gap-4">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:justify-between md:gap-4">
           <div>
             <p className="text-sm text-grayHighlight">
-              SMIB ID:{" "}
-              {cabinet?.relayId || cabinet?.smibBoard || "Not configured"}
+              SMIB ID:{' '}
+              {cabinet?.relayId || cabinet?.smibBoard || 'Not configured'}
             </p>
-            <p className="text-sm text-grayHighlight mt-1 md:mt-0">
-              Connected to WiFi network{" "}
-              {cabinet?.smibConfig?.net?.netStaSSID || "Not configured"}
+            <p className="mt-1 text-sm text-grayHighlight md:mt-0">
+              Connected to WiFi network{' '}
+              {cabinet?.smibConfig?.net?.netStaSSID || 'Not configured'}
             </p>
           </div>
           <div className="md:text-right">
             <p className="text-sm text-grayHighlight">
-              Communication Mode:{" "}
+              Communication Mode:{' '}
               {cabinet?.smibConfig?.coms?.comsMode !== undefined
                 ? cabinet?.smibConfig?.coms?.comsMode === 0
-                  ? "sas"
+                  ? 'sas'
                   : cabinet?.smibConfig?.coms?.comsMode === 1
-                  ? "non sas"
-                  : "IGT"
-                : "Not configured"}
+                    ? 'non sas'
+                    : 'IGT'
+                : 'Not configured'}
             </p>
-            <p className="text-sm text-grayHighlight mt-1 md:mt-0">
-              Running firmware{" "}
-              {cabinet?.smibVersion?.firmware || "Not configured"}
+            <p className="mt-1 text-sm text-grayHighlight md:mt-0">
+              Running firmware{' '}
+              {cabinet?.smibVersion?.firmware || 'Not configured'}
             </p>
           </div>
         </div>
@@ -169,7 +169,7 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
         {smibConfigExpanded && (
           <motion.div
             ref={configSectionRef}
-            className="px-6 pb-6 space-y-6 border-t border-border pt-4 overflow-hidden"
+            className="space-y-6 overflow-hidden border-t border-border px-6 pb-6 pt-4"
             variants={configContentVariants}
             initial="hidden"
             animate="visible"
@@ -184,7 +184,7 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
             />
 
             <FirmwareUpdateSection
-              currentFirmwareVersion={cabinet?.smibVersion?.firmware || "N/A"}
+              currentFirmwareVersion={cabinet?.smibVersion?.firmware || 'N/A'}
             />
 
             <MachineControlButtons />

@@ -1,7 +1,7 @@
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { dashboardData } from "@/lib/types";
-import type { MeterData } from "@shared/types";
-import { Meters as MeterModel } from "@/app/api/lib/models/meters";
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { dashboardData } from '@/lib/types';
+import type { MeterData } from '@shared/types';
+import { Meters as MeterModel } from '@/app/api/lib/models/meters';
 
 /**
  * Fetches all meter records from the database as plain JavaScript objects.
@@ -18,13 +18,13 @@ export async function getAllMeters(): Promise<MeterData[]> {
     // Check if MongoDB returned an array as expected
     // If not, log error and return empty array as fallback
     if (!Array.isArray(rawMeters)) {
-      console.error("Unexpected response from MongoDB, expected an array");
+      console.error('Unexpected response from MongoDB, expected an array');
       return [];
     }
 
     return rawMeters;
   } catch (error) {
-    console.error("Error fetching meters:", error);
+    console.error('Error fetching meters:', error);
     return [];
   }
 }

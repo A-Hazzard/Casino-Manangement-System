@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Settings,
   Bell,
@@ -20,7 +20,7 @@ import {
   Plus,
   Trash2,
   AlertCircle,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   Dialog,
   DialogTrigger,
@@ -28,43 +28,43 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { useSettingsStore } from "@/lib/store/settingsStore";
+} from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
+import { useSettingsStore } from '@/lib/store/settingsStore';
 import {
   CURRENCY_SYMBOLS,
   type Currency,
   type Language,
   type Region,
   type SettingsCategory,
-} from "@/lib/types/settings";
-import { toast } from "sonner";
+} from '@/lib/types/settings';
+import { toast } from 'sonner';
 
 export default function SettingsModal() {
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("display");
-  const [newIpAddress, setNewIpAddress] = useState("");
+  const [activeTab, setActiveTab] = useState('display');
+  const [newIpAddress, setNewIpAddress] = useState('');
 
   const {
     settings,
@@ -92,17 +92,17 @@ export default function SettingsModal() {
   const handleSave = async () => {
     try {
       await saveSettings();
-      toast.success("Settings saved successfully!");
+      toast.success('Settings saved successfully!');
     } catch {
-      toast.error("Failed to save settings");
+      toast.error('Failed to save settings');
     }
   };
 
   // Handle reset with confirmation
   const handleReset = () => {
-    if (confirm("Are you sure you want to reset all settings to defaults?")) {
+    if (confirm('Are you sure you want to reset all settings to defaults?')) {
       resetSettings();
-      toast.success("Settings reset to defaults");
+      toast.success('Settings reset to defaults');
     }
   };
 
@@ -122,69 +122,69 @@ export default function SettingsModal() {
   const handleAddIpAddress = () => {
     if (newIpAddress.trim()) {
       addToIpWhitelist(newIpAddress.trim());
-      setNewIpAddress("");
-      toast.success("IP address added to whitelist");
+      setNewIpAddress('');
+      toast.success('IP address added to whitelist');
     }
   };
 
   // Currency options with symbols (limited for performance)
   const currencyOptions = [
-    { value: "USD" as Currency, label: "USD ($)", symbol: "$" },
-    { value: "EUR" as Currency, label: "EUR (€)", symbol: "€" },
-    { value: "GBP" as Currency, label: "GBP (£)", symbol: "£" },
-    { value: "CAD" as Currency, label: "CAD (C$)", symbol: "C$" },
-    { value: "AUD" as Currency, label: "AUD (A$)", symbol: "A$" },
-    { value: "JPY" as Currency, label: "JPY (¥)", symbol: "¥" },
-    { value: "CHF" as Currency, label: "CHF (CHF)", symbol: "CHF" },
-    { value: "CNY" as Currency, label: "CNY (¥)", symbol: "¥" },
-    { value: "INR" as Currency, label: "INR (₹)", symbol: "₹" },
-    { value: "BRL" as Currency, label: "BRL (R$)", symbol: "R$" },
+    { value: 'USD' as Currency, label: 'USD ($)', symbol: '$' },
+    { value: 'EUR' as Currency, label: 'EUR (€)', symbol: '€' },
+    { value: 'GBP' as Currency, label: 'GBP (£)', symbol: '£' },
+    { value: 'CAD' as Currency, label: 'CAD (C$)', symbol: 'C$' },
+    { value: 'AUD' as Currency, label: 'AUD (A$)', symbol: 'A$' },
+    { value: 'JPY' as Currency, label: 'JPY (¥)', symbol: '¥' },
+    { value: 'CHF' as Currency, label: 'CHF (CHF)', symbol: 'CHF' },
+    { value: 'CNY' as Currency, label: 'CNY (¥)', symbol: '¥' },
+    { value: 'INR' as Currency, label: 'INR (₹)', symbol: '₹' },
+    { value: 'BRL' as Currency, label: 'BRL (R$)', symbol: 'R$' },
   ];
 
   // Language options (limited for performance)
   const languageOptions = [
-    { value: "en" as Language, label: "English" },
-    { value: "es" as Language, label: "Español" },
-    { value: "fr" as Language, label: "Français" },
-    { value: "de" as Language, label: "Deutsch" },
-    { value: "it" as Language, label: "Italiano" },
-    { value: "pt" as Language, label: "Português" },
-    { value: "ru" as Language, label: "Русский" },
-    { value: "zh" as Language, label: "中文" },
-    { value: "ja" as Language, label: "日本語" },
-    { value: "ko" as Language, label: "한국어" },
+    { value: 'en' as Language, label: 'English' },
+    { value: 'es' as Language, label: 'Español' },
+    { value: 'fr' as Language, label: 'Français' },
+    { value: 'de' as Language, label: 'Deutsch' },
+    { value: 'it' as Language, label: 'Italiano' },
+    { value: 'pt' as Language, label: 'Português' },
+    { value: 'ru' as Language, label: 'Русский' },
+    { value: 'zh' as Language, label: '中文' },
+    { value: 'ja' as Language, label: '日本語' },
+    { value: 'ko' as Language, label: '한국어' },
   ];
 
   // Region options (limited for performance)
   const regionOptions = [
-    { value: "US" as Region, label: "United States" },
-    { value: "CA" as Region, label: "Canada" },
-    { value: "GB" as Region, label: "United Kingdom" },
-    { value: "DE" as Region, label: "Germany" },
-    { value: "FR" as Region, label: "France" },
-    { value: "IT" as Region, label: "Italy" },
-    { value: "ES" as Region, label: "Spain" },
-    { value: "AU" as Region, label: "Australia" },
-    { value: "JP" as Region, label: "Japan" },
-    { value: "BR" as Region, label: "Brazil" },
+    { value: 'US' as Region, label: 'United States' },
+    { value: 'CA' as Region, label: 'Canada' },
+    { value: 'GB' as Region, label: 'United Kingdom' },
+    { value: 'DE' as Region, label: 'Germany' },
+    { value: 'FR' as Region, label: 'France' },
+    { value: 'IT' as Region, label: 'Italy' },
+    { value: 'ES' as Region, label: 'Spain' },
+    { value: 'AU' as Region, label: 'Australia' },
+    { value: 'JP' as Region, label: 'Japan' },
+    { value: 'BR' as Region, label: 'Brazil' },
   ];
 
   return (
-    <div className="z-[9999] relative">
+    <div className="relative z-[9999]">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <button
             type="button"
             aria-label="Settings"
-            className="group mb-2 mx-auto p-2 rounded hover:bg-buttonActive transition-colors"
+            className="group mx-auto mb-2 rounded p-2 transition-colors hover:bg-buttonActive"
           >
-            <Settings className="w-6 h-6 text-grayHighlight group-hover:text-container" />
+            <Settings className="h-6 w-6 text-grayHighlight group-hover:text-container" />
           </button>
         </DialogTrigger>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-              <Settings className="w-6 h-6" />
+            <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
+              <Settings className="h-6 w-6" />
               Settings
             </DialogTitle>
             <DialogDescription>
@@ -199,31 +199,43 @@ export default function SettingsModal() {
               className="h-full"
             >
               <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="display" className="flex items-center gap-1">
-                  <Palette className="w-4 h-4" />
+                <TabsTrigger
+                  value="display"
+                  className="flex items-center gap-1"
+                >
+                  <Palette className="h-4 w-4" />
                   Display
                 </TabsTrigger>
-                <TabsTrigger value="regional" className="flex items-center gap-1">
-                  <Globe className="w-4 h-4" />
+                <TabsTrigger
+                  value="regional"
+                  className="flex items-center gap-1"
+                >
+                  <Globe className="h-4 w-4" />
                   Regional
                 </TabsTrigger>
                 <TabsTrigger
                   value="notifications"
                   className="flex items-center gap-1"
                 >
-                  <Bell className="w-4 h-4" />
+                  <Bell className="h-4 w-4" />
                   Notifications
                 </TabsTrigger>
-                <TabsTrigger value="currency" className="flex items-center gap-1">
-                  <DollarSign className="w-4 h-4" />
+                <TabsTrigger
+                  value="currency"
+                  className="flex items-center gap-1"
+                >
+                  <DollarSign className="h-4 w-4" />
                   Currency
                 </TabsTrigger>
-                <TabsTrigger value="security" className="flex items-center gap-1">
-                  <Shield className="w-4 h-4" />
+                <TabsTrigger
+                  value="security"
+                  className="flex items-center gap-1"
+                >
+                  <Shield className="h-4 w-4" />
                   Security
                 </TabsTrigger>
                 <TabsTrigger value="system" className="flex items-center gap-1">
-                  <Cog className="w-4 h-4" />
+                  <Cog className="h-4 w-4" />
                   System
                 </TabsTrigger>
               </TabsList>
@@ -238,9 +250,9 @@ export default function SettingsModal() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleCategoryReset("display")}
+                          onClick={() => handleCategoryReset('display')}
                         >
-                          <RotateCcw className="w-4 h-4 mr-1" />
+                          <RotateCcw className="mr-1 h-4 w-4" />
                           Reset
                         </Button>
                       </CardTitle>
@@ -255,41 +267,41 @@ export default function SettingsModal() {
                         <div className="flex gap-2">
                           <Button
                             variant={
-                              settings.display.theme === "light"
-                                ? "default"
-                                : "outline"
+                              settings.display.theme === 'light'
+                                ? 'default'
+                                : 'outline'
                             }
                             size="sm"
-                            onClick={() => setTheme("light")}
+                            onClick={() => setTheme('light')}
                             className="flex items-center gap-2"
                           >
-                            <Sun className="w-4 h-4" />
+                            <Sun className="h-4 w-4" />
                             Light
                           </Button>
                           <Button
                             variant={
-                              settings.display.theme === "dark"
-                                ? "default"
-                                : "outline"
+                              settings.display.theme === 'dark'
+                                ? 'default'
+                                : 'outline'
                             }
                             size="sm"
-                            onClick={() => setTheme("dark")}
+                            onClick={() => setTheme('dark')}
                             className="flex items-center gap-2"
                           >
-                            <Moon className="w-4 h-4" />
+                            <Moon className="h-4 w-4" />
                             Dark
                           </Button>
                           <Button
                             variant={
-                              settings.display.theme === "system"
-                                ? "default"
-                                : "outline"
+                              settings.display.theme === 'system'
+                                ? 'default'
+                                : 'outline'
                             }
                             size="sm"
-                            onClick={() => setTheme("system")}
+                            onClick={() => setTheme('system')}
                             className="flex items-center gap-2"
                           >
-                            <Monitor className="w-4 h-4" />
+                            <Monitor className="h-4 w-4" />
                             System
                           </Button>
                         </div>
@@ -303,7 +315,7 @@ export default function SettingsModal() {
                             variant="outline"
                             size="sm"
                             onClick={decreaseFontSize}
-                            disabled={settings.display.fontSize === "small"}
+                            disabled={settings.display.fontSize === 'small'}
                           >
                             A-
                           </Button>
@@ -314,7 +326,7 @@ export default function SettingsModal() {
                             variant="outline"
                             size="sm"
                             onClick={increaseFontSize}
-                            disabled={settings.display.fontSize === "large"}
+                            disabled={settings.display.fontSize === 'large'}
                           >
                             A+
                           </Button>
@@ -332,7 +344,7 @@ export default function SettingsModal() {
                           </div>
                           <Switch
                             checked={settings.display.compactMode}
-                            onCheckedChange={(checked) =>
+                            onCheckedChange={checked =>
                               updateDisplaySettings({ compactMode: checked })
                             }
                           />
@@ -347,7 +359,7 @@ export default function SettingsModal() {
                           </div>
                           <Switch
                             checked={settings.display.showAnimations}
-                            onCheckedChange={(checked) =>
+                            onCheckedChange={checked =>
                               updateDisplaySettings({ showAnimations: checked })
                             }
                           />
@@ -366,9 +378,9 @@ export default function SettingsModal() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleCategoryReset("regional")}
+                          onClick={() => handleCategoryReset('regional')}
                         >
-                          <RotateCcw className="w-4 h-4 mr-1" />
+                          <RotateCcw className="mr-1 h-4 w-4" />
                           Reset
                         </Button>
                       </CardTitle>
@@ -390,7 +402,7 @@ export default function SettingsModal() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {languageOptions.map((option) => (
+                              {languageOptions.map(option => (
                                 <SelectItem
                                   key={option.value}
                                   value={option.value}
@@ -414,7 +426,7 @@ export default function SettingsModal() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {regionOptions.map((option) => (
+                              {regionOptions.map(option => (
                                 <SelectItem
                                   key={option.value}
                                   value={option.value}
@@ -432,14 +444,14 @@ export default function SettingsModal() {
                           <Label>Date Format</Label>
                           <Select
                             value={settings.regional.dateFormat}
-                            onValueChange={(value) =>
+                            onValueChange={value =>
                               updateRegionalSettings({
                                 dateFormat: value as
-                                  | "MM/DD/YYYY"
-                                  | "DD/MM/YYYY"
-                                  | "YYYY-MM-DD"
-                                  | "DD-MM-YYYY"
-                                  | "MM-DD-YYYY",
+                                  | 'MM/DD/YYYY'
+                                  | 'DD/MM/YYYY'
+                                  | 'YYYY-MM-DD'
+                                  | 'DD-MM-YYYY'
+                                  | 'MM-DD-YYYY',
                               })
                             }
                           >
@@ -464,7 +476,7 @@ export default function SettingsModal() {
                           <Label>Time Format</Label>
                           <Select
                             value={settings.regional.timeFormat}
-                            onValueChange={(value: "12h" | "24h") =>
+                            onValueChange={(value: '12h' | '24h') =>
                               updateRegionalSettings({ timeFormat: value })
                             }
                           >
@@ -472,7 +484,9 @@ export default function SettingsModal() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="12h">12 Hour (AM/PM)</SelectItem>
+                              <SelectItem value="12h">
+                                12 Hour (AM/PM)
+                              </SelectItem>
                               <SelectItem value="24h">24 Hour</SelectItem>
                             </SelectContent>
                           </Select>
@@ -491,15 +505,15 @@ export default function SettingsModal() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleCategoryReset("regional")}
+                          onClick={() => handleCategoryReset('regional')}
                         >
-                          <RotateCcw className="w-4 h-4 mr-1" />
+                          <RotateCcw className="mr-1 h-4 w-4" />
                           Reset
                         </Button>
                       </CardTitle>
                       <CardDescription>
-                        Configure how monetary values are displayed throughout the
-                        system
+                        Configure how monetary values are displayed throughout
+                        the system
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -519,8 +533,11 @@ export default function SettingsModal() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {currencyOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
+                            {currencyOptions.map(option => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
                                 {option.label}
                               </SelectItem>
                             ))}
@@ -533,14 +550,14 @@ export default function SettingsModal() {
                         <div className="flex gap-2">
                           <Button
                             variant={
-                              settings.regional.currencyPosition === "before"
-                                ? "default"
-                                : "outline"
+                              settings.regional.currencyPosition === 'before'
+                                ? 'default'
+                                : 'outline'
                             }
                             size="sm"
                             onClick={() =>
                               updateRegionalSettings({
-                                currencyPosition: "before",
+                                currencyPosition: 'before',
                               })
                             }
                           >
@@ -548,14 +565,14 @@ export default function SettingsModal() {
                           </Button>
                           <Button
                             variant={
-                              settings.regional.currencyPosition === "after"
-                                ? "default"
-                                : "outline"
+                              settings.regional.currencyPosition === 'after'
+                                ? 'default'
+                                : 'outline'
                             }
                             size="sm"
                             onClick={() =>
                               updateRegionalSettings({
-                                currencyPosition: "after",
+                                currencyPosition: 'after',
                               })
                             }
                           >
@@ -565,8 +582,8 @@ export default function SettingsModal() {
                       </div>
 
                       {/* Preview */}
-                      <div className="p-4 bg-muted rounded-lg">
-                        <h4 className="font-medium mb-2">Preview</h4>
+                      <div className="rounded-lg bg-muted p-4">
+                        <h4 className="mb-2 font-medium">Preview</h4>
                         <div className="space-y-1 text-sm">
                           <p>Currency: {formatCurrency(1234.56)}</p>
                           <p>Large Amount: {formatCurrency(1234567.89)}</p>
@@ -611,7 +628,7 @@ export default function SettingsModal() {
                             <div className="flex items-center justify-between">
                               <div>
                                 <Label className="capitalize">
-                                  {key.replace(/([A-Z])/g, " $1").trim()}
+                                  {key.replace(/([A-Z])/g, ' $1').trim()}
                                 </Label>
                                 <p className="text-sm text-muted-foreground">
                                   Configure {key.toLowerCase()} notifications
@@ -619,9 +636,12 @@ export default function SettingsModal() {
                               </div>
                               <Switch
                                 checked={notification.enabled}
-                                onCheckedChange={(checked) =>
+                                onCheckedChange={checked =>
                                   updateNotificationSettings({
-                                    [key]: { ...notification, enabled: checked },
+                                    [key]: {
+                                      ...notification,
+                                      enabled: checked,
+                                    },
                                   })
                                 }
                               />
@@ -630,10 +650,10 @@ export default function SettingsModal() {
                             {notification.enabled && (
                               <div className="ml-4 flex gap-4">
                                 <div className="flex items-center gap-2">
-                                  <Volume2 className="w-4 h-4" />
+                                  <Volume2 className="h-4 w-4" />
                                   <Switch
                                     checked={notification.sound}
-                                    onCheckedChange={(checked) =>
+                                    onCheckedChange={checked =>
                                       updateNotificationSettings({
                                         [key]: {
                                           ...notification,
@@ -646,10 +666,10 @@ export default function SettingsModal() {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  <Computer className="w-4 h-4" />
+                                  <Computer className="h-4 w-4" />
                                   <Switch
                                     checked={notification.desktop}
-                                    onCheckedChange={(checked) =>
+                                    onCheckedChange={checked =>
                                       updateNotificationSettings({
                                         [key]: {
                                           ...notification,
@@ -662,10 +682,10 @@ export default function SettingsModal() {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  <Mail className="w-4 h-4" />
+                                  <Mail className="h-4 w-4" />
                                   <Switch
                                     checked={notification.email}
-                                    onCheckedChange={(checked) =>
+                                    onCheckedChange={checked =>
                                       updateNotificationSettings({
                                         [key]: {
                                           ...notification,
@@ -706,7 +726,7 @@ export default function SettingsModal() {
                           </div>
                           <Switch
                             checked={settings.security.twoFactorAuth}
-                            onCheckedChange={(checked) =>
+                            onCheckedChange={checked =>
                               updateSecuritySettings({ twoFactorAuth: checked })
                             }
                           />
@@ -721,7 +741,7 @@ export default function SettingsModal() {
                           </div>
                           <Switch
                             checked={settings.security.loginNotifications}
-                            onCheckedChange={(checked) =>
+                            onCheckedChange={checked =>
                               updateSecuritySettings({
                                 loginNotifications: checked,
                               })
@@ -735,8 +755,10 @@ export default function SettingsModal() {
                         <div className="flex items-center gap-4">
                           <Slider
                             value={[settings.security.sessionTimeout]}
-                            onValueChange={(value) =>
-                              updateSecuritySettings({ sessionTimeout: value[0] })
+                            onValueChange={value =>
+                              updateSecuritySettings({
+                                sessionTimeout: value[0],
+                              })
                             }
                             max={1440}
                             min={5}
@@ -756,17 +778,17 @@ export default function SettingsModal() {
                           <Input
                             placeholder="Enter IP address"
                             value={newIpAddress}
-                            onChange={(e) => setNewIpAddress(e.target.value)}
+                            onChange={e => setNewIpAddress(e.target.value)}
                           />
                           <Button onClick={handleAddIpAddress} size="sm">
-                            <Plus className="w-4 h-4" />
+                            <Plus className="h-4 w-4" />
                           </Button>
                         </div>
                         <div className="space-y-2">
                           {settings.security.ipWhitelist.map((ip, index) => (
                             <div
                               key={index}
-                              className="flex items-center justify-between p-2 bg-muted rounded"
+                              className="flex items-center justify-between rounded bg-muted p-2"
                             >
                               <span className="font-mono text-sm">{ip}</span>
                               <Button
@@ -774,7 +796,7 @@ export default function SettingsModal() {
                                 size="sm"
                                 onClick={() => removeFromIpWhitelist(ip)}
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           ))}
@@ -804,7 +826,7 @@ export default function SettingsModal() {
                           </div>
                           <Switch
                             checked={settings.system.autoRefresh}
-                            onCheckedChange={(checked) =>
+                            onCheckedChange={checked =>
                               updateSystemSettings({ autoRefresh: checked })
                             }
                           />
@@ -819,7 +841,7 @@ export default function SettingsModal() {
                           </div>
                           <Switch
                             checked={settings.system.autoSave}
-                            onCheckedChange={(checked) =>
+                            onCheckedChange={checked =>
                               updateSystemSettings({ autoSave: checked })
                             }
                           />
@@ -830,7 +852,7 @@ export default function SettingsModal() {
                         <Label>Default Page Size</Label>
                         <Select
                           value={settings.system.defaultPageSize.toString()}
-                          onValueChange={(value) =>
+                          onValueChange={value =>
                             updateSystemSettings({
                               defaultPageSize: parseInt(value),
                             })
@@ -855,11 +877,11 @@ export default function SettingsModal() {
           </div>
 
           {/* Footer with save/reset buttons */}
-          <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex items-center justify-between border-t pt-4">
             <div className="flex items-center gap-2">
               {hasUnsavedChanges && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
+                  <AlertCircle className="h-3 w-3" />
                   Unsaved changes
                 </Badge>
               )}
@@ -871,7 +893,7 @@ export default function SettingsModal() {
                 onClick={handleReset}
                 disabled={isLoading}
               >
-                <RotateCcw className="w-4 h-4 mr-1" />
+                <RotateCcw className="mr-1 h-4 w-4" />
                 Reset All
               </Button>
               <Button
@@ -882,7 +904,7 @@ export default function SettingsModal() {
                   <>Loading...</>
                 ) : (
                   <>
-                    <Save className="w-4 h-4 mr-1" />
+                    <Save className="mr-1 h-4 w-4" />
                     Save Changes
                   </>
                 )}

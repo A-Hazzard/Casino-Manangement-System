@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useUserStore } from "@/lib/store/userStore";
-import axios from "axios";
-import type { CurrentUserData, UseCurrentUserReturn } from "@/lib/types/user";
-import { fetchUserWithCache, CACHE_KEYS } from "@/lib/utils/userCache";
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useUserStore } from '@/lib/store/userStore';
+import axios from 'axios';
+import type { CurrentUserData, UseCurrentUserReturn } from '@/lib/types/user';
+import { fetchUserWithCache, CACHE_KEYS } from '@/lib/utils/userCache';
 
 /**
  * Hook to fetch current user data from database and detect changes
@@ -30,7 +30,7 @@ export function useCurrentUser(): UseCurrentUserReturn {
       const cachedData = await fetchUserWithCache(
         CACHE_KEYS.CURRENT_USER,
         async () => {
-          const response = await axios.get("/api/auth/current-user", {
+          const response = await axios.get('/api/auth/current-user', {
             withCredentials: true, // Include cookies for authentication
           });
           return response.data;
@@ -39,7 +39,7 @@ export function useCurrentUser(): UseCurrentUserReturn {
       );
 
       if (!cachedData) {
-        setError("Failed to fetch user data");
+        setError('Failed to fetch user data');
         hasFetchedRef.current = false;
         return;
       }
@@ -91,8 +91,8 @@ export function useCurrentUser(): UseCurrentUserReturn {
             });
 
             // Log the changes for debugging
-            if (process.env.NODE_ENV === "development") {
-              console.warn("User data updated from database:", {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('User data updated from database:', {
                 roleChanges: hasRoleChanges,
                 profileChanges: hasProfileChanges,
                 permissionChanges: hasPermissionChanges,
@@ -104,33 +104,33 @@ export function useCurrentUser(): UseCurrentUserReturn {
           }
         }
       } else {
-        setError("Failed to fetch user data");
+        setError('Failed to fetch user data');
       }
     } catch (error: unknown) {
-      console.error("Error fetching current user:", error);
+      console.error('Error fetching current user:', error);
       hasFetchedRef.current = false;
 
       if (
         error &&
-        typeof error === "object" &&
-        "response" in error &&
+        typeof error === 'object' &&
+        'response' in error &&
         error.response &&
-        typeof error.response === "object" &&
-        "status" in error.response &&
+        typeof error.response === 'object' &&
+        'status' in error.response &&
         error.response.status === 401
       ) {
         // Token expired or invalid, clear user
         clearUser();
-        setError("Session expired");
+        setError('Session expired');
       } else if (
         error &&
-        typeof error === "object" &&
-        "code" in error &&
-        error.code === "ECONNABORTED"
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'ECONNABORTED'
       ) {
-        setError("Request timeout");
+        setError('Request timeout');
       } else {
-        setError("Failed to fetch user data");
+        setError('Failed to fetch user data');
       }
     } finally {
       setIsLoading(false);

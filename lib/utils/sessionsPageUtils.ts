@@ -1,4 +1,4 @@
-import type { MachineEvent } from "@/lib/types/sessions";
+import type { MachineEvent } from '@/lib/types/sessions';
 
 /**
  * Format date for display
@@ -6,17 +6,17 @@ import type { MachineEvent } from "@/lib/types/sessions";
 export function formatDate(dateString: string): string {
   try {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
       hour12: true,
     });
-      } catch {
-    return "Invalid Date";
+  } catch {
+    return 'Invalid Date';
   }
 }
 
@@ -25,14 +25,14 @@ export function formatDate(dateString: string): string {
  */
 export function getEventTypeColor(eventType: string): string {
   switch (eventType.toLowerCase()) {
-    case "priority":
-      return "bg-red-100 text-red-800";
-    case "significant":
-      return "bg-yellow-100 text-yellow-800";
-    case "general":
-      return "bg-blue-100 text-blue-800";
+    case 'priority':
+      return 'bg-red-100 text-red-800';
+    case 'significant':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'general':
+      return 'bg-blue-100 text-blue-800';
     default:
-      return "bg-gray-100 text-gray-800";
+      return 'bg-gray-100 text-gray-800';
   }
 }
 
@@ -41,14 +41,14 @@ export function getEventTypeColor(eventType: string): string {
  */
 export function getLogLevelColor(logLevel: string): string {
   switch (logLevel) {
-    case "ERROR":
-      return "bg-red-100 text-red-800";
-    case "WARN":
-      return "bg-yellow-100 text-yellow-800";
-    case "INFO":
-      return "bg-blue-100 text-blue-800";
+    case 'ERROR':
+      return 'bg-red-100 text-red-800';
+    case 'WARN':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'INFO':
+      return 'bg-blue-100 text-blue-800';
     default:
-      return "bg-green-100 text-green-800";
+      return 'bg-green-100 text-green-800';
   }
 }
 
@@ -56,7 +56,7 @@ export function getLogLevelColor(logLevel: string): string {
  * Get success/failure color for styling
  */
 export function getSuccessColor(success: boolean): string {
-  return success ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+  return success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 }
 
 /**
@@ -68,7 +68,7 @@ export function filterEvents(
   event?: string,
   game?: string
 ): MachineEvent[] {
-  return events.filter((eventItem) => {
+  return events.filter(eventItem => {
     if (eventType && eventItem.eventType !== eventType) {
       return false;
     }
@@ -87,13 +87,13 @@ export function filterEvents(
  */
 export function sortEventsByDate(
   events: MachineEvent[],
-  order: "asc" | "desc" = "desc"
+  order: 'asc' | 'desc' = 'desc'
 ): MachineEvent[] {
   return [...events].sort((a, b) => {
     const dateA = new Date(a.date).getTime();
     const dateB = new Date(b.date).getTime();
 
-    return order === "asc" ? dateA - dateB : dateB - dateA;
+    return order === 'asc' ? dateA - dateB : dateB - dateA;
   });
 }
 
@@ -173,7 +173,7 @@ export function toggleEventExpansion(
  * Format date for filter input
  */
 export function formatDateForFilter(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return date.toISOString().split('T')[0];
 }
 
 /**
@@ -203,5 +203,3 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     timeout = setTimeout(() => func(...args), wait);
   };
 }
-
-

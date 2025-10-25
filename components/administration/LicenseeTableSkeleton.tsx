@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LicenseeTableSkeleton() {
   return (
-    <div className="overflow-x-auto mt-6">
-      <table className="min-w-full bg-white rounded-lg shadow-md">
+    <div className="mt-6 overflow-x-auto">
+      <table className="min-w-full rounded-lg bg-white shadow-md">
         <thead className="bg-button text-white">
           <tr>
-            {["NAME", "COUNTRY", "STATUS", "EXPIRY DATE", "ACTIONS"].map(
-              (col) => (
+            {['NAME', 'COUNTRY', 'STATUS', 'EXPIRY DATE', 'ACTIONS'].map(
+              col => (
                 <th
                   key={col}
-                  className="py-3 px-4 text-left font-semibold text-sm select-none"
+                  className="select-none px-4 py-3 text-left text-sm font-semibold"
                 >
                   {col}
                 </th>
@@ -24,7 +24,7 @@ export default function LicenseeTableSkeleton() {
           {Array.from({ length: 8 }).map((_, idx) => (
             <tr key={idx} className="border-b last:border-b-0">
               {Array.from({ length: 5 }).map((__, colIdx) => (
-                <td key={colIdx} className="py-3 px-4">
+                <td key={colIdx} className="px-4 py-3">
                   <Skeleton className="h-4 w-3/4" />
                 </td>
               ))}

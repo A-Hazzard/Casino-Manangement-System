@@ -1,10 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Header from "@/components/layout/Header";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import NotFoundError from "@/components/ui/errors/NotFoundError";
-
+import { useState, useEffect } from 'react';
+import Header from '@/components/layout/Header';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import NotFoundError from '@/components/ui/errors/NotFoundError';
 
 export default function LocationsNotFound() {
   // Add client-side initialization
@@ -18,10 +17,10 @@ export default function LocationsNotFound() {
   // If not mounted yet (server-side), render a minimal version
   if (!isMounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <h1 className="text-6xl font-bold mb-4">404</h1>
-          <h2 className="text-2xl font-semibold mb-2">
+          <h1 className="mb-4 text-6xl font-bold">404</h1>
+          <h2 className="mb-2 text-2xl font-semibold">
             Locations Page Not Found
           </h2>
           <p className="mb-6">
@@ -41,9 +40,8 @@ function LocationsNotFoundContent() {
 
   return (
     <>
-
-      <div className="xl:w-full xl:mx-auto md:pl-36 min-h-screen bg-background flex overflow-hidden">
-        <main className="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden items-center justify-center">
+      <div className="flex min-h-screen overflow-hidden bg-background md:pl-36 xl:mx-auto xl:w-full">
+        <main className="flex flex-1 flex-col items-center justify-center overflow-x-hidden p-4 md:p-6">
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}

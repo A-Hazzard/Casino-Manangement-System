@@ -1,8 +1,8 @@
-import React from "react";
-import { GamingMachine as CabinetDetail } from "@/shared/types/entities";
+import React from 'react';
+import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 
 // Make TypeScript recognize our hook
-declare module "@/lib/hooks/useCabinetDetails" {
+declare module '@/lib/hooks/useCabinetDetails' {
   export type UseCabinetDetailsReturn = {
     cabinet: CabinetDetail | null;
     loading: boolean;
@@ -27,8 +27,8 @@ declare module "@/lib/hooks/useCabinetDetails" {
 }
 
 // Make TypeScript recognize our component
-declare module "@/components/cabinetDetails/AccountingDetails" {
-  import { TimePeriod } from "@/shared/types/entities";
+declare module '@/components/cabinetDetails/AccountingDetails' {
+  import { TimePeriod } from '@/shared/types/entities';
 
   export type AccountingDetailsProps = {
     cabinet: CabinetDetail;

@@ -1,10 +1,10 @@
-import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
-import { Machine } from "@/app/api/lib/models/machines";
-import { Meters } from "@/app/api/lib/models/meters";
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { MachineAggregationMatchStage } from "@/shared/types/mongo";
-import { getGamingDayRangesForLocations } from "@/lib/utils/gamingDayRange";
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { MachineAggregationMatchStage } from '@/shared/types/mongo';
+import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,28 +13,28 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     // Get parameters from search params
-    const locationId = searchParams.get("locationId");
-    const searchTerm = searchParams.get("search")?.trim() || "";
-    const licensee = searchParams.get("licensee");
-    const timePeriod = searchParams.get("timePeriod");
+    const locationId = searchParams.get('locationId');
+    const searchTerm = searchParams.get('search')?.trim() || '';
+    const licensee = searchParams.get('licensee');
+    const timePeriod = searchParams.get('timePeriod');
 
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       return NextResponse.json(
-        { error: "timePeriod parameter is required" },
+        { error: 'timePeriod parameter is required' },
         { status: 400 }
       );
     }
-    const startDateParam = searchParams.get("startDate");
-    const endDateParam = searchParams.get("endDate");
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
 
     // We'll calculate gaming day ranges per location instead of using a single range
     let timePeriodForGamingDay: string;
     let customStartDateForGamingDay: Date | undefined;
     let customEndDateForGamingDay: Date | undefined;
 
-    if (timePeriod === "Custom" && startDateParam && endDateParam) {
-      timePeriodForGamingDay = "Custom";
+    if (timePeriod === 'Custom' && startDateParam && endDateParam) {
+      timePeriodForGamingDay = 'Custom';
       customStartDateForGamingDay = new Date(startDateParam);
       customEndDateForGamingDay = new Date(endDateParam);
     } else {
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     const matchStage: MachineAggregationMatchStage = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
     if (locationId) {
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (licensee) {
-      matchStage["rel.licencee"] = licensee;
+      matchStage['rel.licencee'] = licensee;
     }
 
     // Get all locations with their gameDayOffset
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
       ...matchStage,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     }).lean();
 
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
         gamingLocation: location._id,
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date("2020-01-01") } },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
         ],
       }).lean();
 
@@ -123,14 +123,14 @@ export async function GET(req: NextRequest) {
         pipeline.push({
           $group: {
             _id: null,
-            moneyIn: { $sum: "$movement.drop" },
-            moneyOut: { $sum: "$movement.totalCancelledCredits" },
-            jackpot: { $sum: "$movement.jackpot" },
-            coinIn: { $last: "$coinIn" },
-            coinOut: { $last: "$coinOut" },
-            gamesPlayed: { $last: "$gamesPlayed" },
-            gamesWon: { $last: "$gamesWon" },
-            handPaidCancelledCredits: { $last: "$handPaidCancelledCredits" },
+            moneyIn: { $sum: '$movement.drop' },
+            moneyOut: { $sum: '$movement.totalCancelledCredits' },
+            jackpot: { $sum: '$movement.jackpot' },
+            coinIn: { $last: '$coinIn' },
+            coinOut: { $last: '$coinOut' },
+            gamesPlayed: { $last: '$gamesPlayed' },
+            gamesWon: { $last: '$gamesWon' },
+            handPaidCancelledCredits: { $last: '$handPaidCancelledCredits' },
             meterCount: { $sum: 1 },
           },
         });
@@ -163,21 +163,21 @@ export async function GET(req: NextRequest) {
         const machineData = {
           _id: machineId,
           locationId: locationIdStr,
-          locationName: (location.name as string) || "(No Location)",
-          assetNumber: machine.serialNumber || "",
-          serialNumber: machine.serialNumber || "",
-          smbId: machine.relayId || "",
-          relayId: machine.relayId || "",
-          installedGame: machine.game || "",
-          game: machine.game || "",
+          locationName: (location.name as string) || '(No Location)',
+          assetNumber: machine.serialNumber || '',
+          serialNumber: machine.serialNumber || '',
+          smbId: machine.relayId || '',
+          relayId: machine.relayId || '',
+          installedGame: machine.game || '',
+          game: machine.game || '',
           manufacturer:
-            machine.manufacturer || machine.manuf || "Unknown Manufacturer",
-          status: machine.assetStatus || "",
-          assetStatus: machine.assetStatus || "",
-          cabinetType: machine.cabinetType || "",
+            machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
+          status: machine.assetStatus || '',
+          assetStatus: machine.assetStatus || '',
+          cabinetType: machine.cabinetType || '',
           accountingDenomination:
-            machine.gameConfig?.accountingDenomination || "1",
-          collectionMultiplier: "1",
+            machine.gameConfig?.accountingDenomination || '1',
+          collectionMultiplier: '1',
           isCronosMachine: false,
           lastOnline: machine.lastActivity,
           lastActivity: machine.lastActivity,
@@ -203,7 +203,7 @@ export async function GET(req: NextRequest) {
     let filteredMachines = allMachines;
     if (searchTerm) {
       filteredMachines = allMachines.filter(
-        (machine) =>
+        machine =>
           machine.serialNumber
             ?.toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
@@ -215,9 +215,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: filteredMachines });
   } catch (error) {
-    console.error("Error in machineAggregation route:", error);
+    console.error('Error in machineAggregation route:', error);
     return NextResponse.json(
-      { success: false, error: "Aggregation failed", details: String(error) },
+      { success: false, error: 'Aggregation failed', details: String(error) },
       { status: 500 }
     );
   }

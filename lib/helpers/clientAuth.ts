@@ -1,14 +1,14 @@
-import type { AuthResult } from "@/shared/types/auth";
+import type { AuthResult } from '@/shared/types/auth';
 
 export async function loginUser(credentials: {
   identifier: string;
   password: string;
 }): Promise<AuthResult> {
   try {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
     });
@@ -16,11 +16,11 @@ export async function loginUser(credentials: {
     const data = await response.json();
 
     if (!response.ok) {
-      let errorMessage = "Login failed";
+      let errorMessage = 'Login failed';
       if (response.status === 401) {
-        errorMessage = data.message || "Invalid credentials";
+        errorMessage = data.message || 'Invalid credentials';
       } else if (response.status === 500) {
-        errorMessage = "Server error. Please try again later";
+        errorMessage = 'Server error. Please try again later';
       }
       return { success: false, message: errorMessage };
     }
@@ -38,40 +38,40 @@ export async function loginUser(credentials: {
       invalidProfileFields: data.data?.invalidProfileFields,
     };
   } catch (error) {
-    console.error("Login error:", error);
+    console.error('Login error:', error);
     return {
       success: false,
-      message: "Network error occurred. Please check your connection",
+      message: 'Network error occurred. Please check your connection',
     };
   }
 }
 
 export async function logoutUser(): Promise<AuthResult> {
   try {
-    const response = await fetch("/api/auth/logout", {
-      method: "POST",
+    const response = await fetch('/api/auth/logout', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
 
     // Clear client-side storage regardless of API response
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("user-auth-store");
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user-auth-store');
       sessionStorage.clear();
     }
 
     if (!response.ok) {
-      return { success: false, message: "Logout failed" };
+      return { success: false, message: 'Logout failed' };
     }
 
-    return { success: true, message: "Logged out successfully" };
+    return { success: true, message: 'Logged out successfully' };
   } catch (error) {
-    console.error("Logout error:", error);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("user-auth-store");
+    console.error('Logout error:', error);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user-auth-store');
       sessionStorage.clear();
     }
-    return { success: true, message: "Logged out locally" };
+    return { success: true, message: 'Logged out locally' };
   }
 }

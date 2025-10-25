@@ -1,4 +1,4 @@
-import { model, models, Schema } from "mongoose";
+import { model, models, Schema } from 'mongoose';
 
 const machineEventSchema = new Schema(
   {
@@ -66,4 +66,4 @@ machineEventSchema.index({ date: -1 }); // For date-based queries
  * Mongoose model for machine events, supporting both legacy and new schema fields.
  */
 export const MachineEvent =
-  models.machineevents || model("machineevents", machineEventSchema);
+  models.machineevents || model('machineevents', machineEventSchema);

@@ -1,6 +1,6 @@
 // Allow TypeScript to recognize our hook
-declare module "@/lib/hooks/useCabinetDetails" {
-  import { GamingMachine as CabinetDetail } from "@/shared/types/entities";
+declare module '@/lib/hooks/useCabinetDetails' {
+  import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 
   export type UseCabinetDetailsReturn = {
     cabinet: CabinetDetail | null;
@@ -25,11 +25,11 @@ declare module "@/lib/hooks/useCabinetDetails" {
 }
 
 // Allow TypeScript to recognize our component
-declare module "@/components/cabinetDetails/AccountingDetails" {
+declare module '@/components/cabinetDetails/AccountingDetails' {
   import {
     GamingMachine as CabinetDetail,
     TimePeriod,
-  } from "@/shared/types/entities";
+  } from '@/shared/types/entities';
 
   export type AccountingDetailsProps = {
     cabinet: CabinetDetail;

@@ -1,4 +1,4 @@
-import { LocationCoordinates } from "@/lib/types/maps";
+import { LocationCoordinates } from '@/lib/types/maps';
 
 /**
  * Get user location from IP address as fallback
@@ -8,17 +8,17 @@ export async function getLocationFromIP(): Promise<LocationCoordinates | null> {
   try {
     // Try multiple IP geolocation services as fallbacks
     const services = [
-      "https://ipapi.co/json/",
-      "https://ip-api.com/json/",
-      "https://api.ipify.org?format=json",
+      'https://ipapi.co/json/',
+      'https://ip-api.com/json/',
+      'https://api.ipify.org?format=json',
     ];
 
     for (const service of services) {
       try {
         const response = await fetch(service, {
-          method: "GET",
+          method: 'GET',
           headers: {
-            Accept: "application/json",
+            Accept: 'application/json',
           },
         });
 
@@ -31,13 +31,13 @@ export async function getLocationFromIP(): Promise<LocationCoordinates | null> {
         // Handle different response formats
         let lat, lng;
 
-        if (service.includes("ipapi.co")) {
+        if (service.includes('ipapi.co')) {
           lat = data.latitude;
           lng = data.longitude;
-        } else if (service.includes("ip-api.com")) {
+        } else if (service.includes('ip-api.com')) {
           lat = data.lat;
           lng = data.lon;
-        } else if (service.includes("ipify.org")) {
+        } else if (service.includes('ipify.org')) {
           // ipify.org doesn't provide location, skip
           continue;
         }
@@ -54,10 +54,10 @@ export async function getLocationFromIP(): Promise<LocationCoordinates | null> {
       }
     }
 
-    console.warn("All IP services failed");
+    console.warn('All IP services failed');
     return null;
   } catch (error) {
-    console.error("Failed to get location from IP:", error);
+    console.error('Failed to get location from IP:', error);
     return null;
   }
 }
@@ -73,22 +73,22 @@ export async function getUserLocationWithFallback(): Promise<LocationCoordinates
       const position = await new Promise<GeolocationPosition>(
         (resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
-            (pos) => {
+            pos => {
               resolve(pos);
             },
-            (error) => {
+            error => {
               // Provide more specific error information
-              let errorMessage = "Unknown geolocation error";
+              let errorMessage = 'Unknown geolocation error';
               switch (error.code) {
                 case error.PERMISSION_DENIED:
-                  errorMessage = "Location access denied by user";
+                  errorMessage = 'Location access denied by user';
                   break;
                 case error.POSITION_UNAVAILABLE:
                   errorMessage =
-                    "Location information unavailable (check Windows location services)";
+                    'Location information unavailable (check Windows location services)';
                   break;
                 case error.TIMEOUT:
-                  errorMessage = "Location request timed out";
+                  errorMessage = 'Location request timed out';
                   break;
               }
               console.warn(`Geolocation failed: ${errorMessage}`);
@@ -108,10 +108,10 @@ export async function getUserLocationWithFallback(): Promise<LocationCoordinates
       };
       return result;
     } catch (error) {
-      console.warn("Geolocation denied or failed:", error);
+      console.warn('Geolocation denied or failed:', error);
     }
   } else {
-    console.warn("Geolocation API not available");
+    console.warn('Geolocation API not available');
   }
 
   // Fallback to IP-based location

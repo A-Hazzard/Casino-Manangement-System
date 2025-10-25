@@ -1,5 +1,5 @@
-import type { Document } from "mongoose";
-import type { CollectionReportMachineEntry } from "./collections";
+import type { Document } from 'mongoose';
+import type { CollectionReportMachineEntry } from './collections';
 import type {
   MongooseId,
   MongoMatchStage,
@@ -12,7 +12,7 @@ import type {
   QueryFilter,
   ParamsType,
   CustomDate,
-} from "@shared/types";
+} from '@shared/types';
 
 // Re-export shared types for convenience
 export type {
@@ -73,7 +73,7 @@ export type SchedulerData = {
   location: string;
   startTime: string;
   endTime: string;
-  status: "pending" | "completed" | "canceled";
+  status: 'pending' | 'completed' | 'canceled';
   createdAt: string;
   updatedAt: string;
   __v: number;
@@ -227,7 +227,7 @@ export type IScheduler = Document & {
   creator: string;
   startTime: Date;
   endTime: Date;
-  status: "pending" | "completed" | "canceled";
+  status: 'pending' | 'completed' | 'canceled';
   notes?: string;
   createdAt?: Date;
   updatedAt?: Date;

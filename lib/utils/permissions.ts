@@ -15,33 +15,33 @@
  */
 
 export type UserRole =
-  | "evolution admin"
-  | "admin"
-  | "manager"
-  | "location admin"
-  | "technician"
-  | "collector"
-  | "collector meters";
+  | 'evolution admin'
+  | 'admin'
+  | 'manager'
+  | 'location admin'
+  | 'technician'
+  | 'collector'
+  | 'collector meters';
 
 export type PageName =
-  | "dashboard"
-  | "machines"
-  | "locations"
-  | "location-details"
-  | "members"
-  | "member-details"
-  | "collection-report"
-  | "reports"
-  | "sessions"
-  | "administration";
+  | 'dashboard'
+  | 'machines'
+  | 'locations'
+  | 'location-details'
+  | 'members'
+  | 'member-details'
+  | 'collection-report'
+  | 'reports'
+  | 'sessions'
+  | 'administration';
 
 export type TabName =
-  | "administration-users"
-  | "administration-licensees"
-  | "administration-activity-logs"
-  | "collection-reports-monthly"
-  | "collection-reports-manager-schedules"
-  | "collection-reports-collector-schedules";
+  | 'administration-users'
+  | 'administration-licensees'
+  | 'administration-activity-logs'
+  | 'collection-reports-monthly'
+  | 'collection-reports-manager-schedules'
+  | 'collection-reports-collector-schedules';
 
 /**
  * Check if user has access to a specific page
@@ -51,63 +51,63 @@ export type TabName =
  */
 export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
   const pagePermissions: Record<PageName, string[]> = {
-    dashboard: ["evolution admin", "admin", "manager", "location admin"],
+    dashboard: ['evolution admin', 'admin', 'manager', 'location admin'],
     machines: [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "technician",
-      "collector",
-      "collector meters",
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+      'collector',
+      'collector meters',
     ],
     locations: [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "collector",
-      "collector meters",
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'collector',
+      'collector meters',
     ],
-    "location-details": [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "technician",
-      "collector",
-      "collector meters",
+    'location-details': [
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+      'collector',
+      'collector meters',
     ],
-    members: ["evolution admin", "admin", "manager"],
-    "member-details": [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "technician",
+    members: ['evolution admin', 'admin', 'manager'],
+    'member-details': [
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
     ],
-    "collection-report": [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "collector",
-      "collector meters",
-      "technician",
+    'collection-report': [
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'collector',
+      'collector meters',
+      'technician',
     ],
-    reports: ["evolution admin", "admin", "manager", "location admin"],
+    reports: ['evolution admin', 'admin', 'manager', 'location admin'],
     sessions: [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
-      "technician",
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
     ],
-    administration: ["evolution admin", "admin"],
+    administration: ['evolution admin', 'admin'],
   };
 
   const requiredRoles = pagePermissions[page] || [];
-  return requiredRoles.some((role) => userRoles.includes(role));
+  return requiredRoles.some(role => userRoles.includes(role));
 };
 
 /**
@@ -123,31 +123,31 @@ export const hasTabAccess = (
   tab: string
 ): boolean => {
   const tabPermissions: Record<string, string[]> = {
-    "administration-users": ["evolution admin", "admin"],
-    "administration-licensees": ["evolution admin", "admin"],
-    "administration-activity-logs": ["evolution admin", "admin"],
-    "collection-reports-monthly": [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
+    'administration-users': ['evolution admin', 'admin'],
+    'administration-licensees': ['evolution admin', 'admin'],
+    'administration-activity-logs': ['evolution admin', 'admin'],
+    'collection-reports-monthly': [
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
     ],
-    "collection-reports-manager-schedules": [
-      "evolution admin",
-      "admin",
-      "manager",
+    'collection-reports-manager-schedules': [
+      'evolution admin',
+      'admin',
+      'manager',
     ],
-    "collection-reports-collector-schedules": [
-      "evolution admin",
-      "admin",
-      "manager",
-      "location admin",
+    'collection-reports-collector-schedules': [
+      'evolution admin',
+      'admin',
+      'manager',
+      'location admin',
     ],
   };
 
   const key = `${page}-${tab}`;
   const requiredRoles = tabPermissions[key] || [];
-  return requiredRoles.some((role) => userRoles.includes(role));
+  return requiredRoles.some(role => userRoles.includes(role));
 };
 
 /**
@@ -156,7 +156,7 @@ export const hasTabAccess = (
  * @returns boolean indicating if user is Evolution Admin
  */
 export const isEvolutionAdmin = (userRoles: string[]): boolean => {
-  return userRoles.includes("evolution admin");
+  return userRoles.includes('evolution admin');
 };
 
 /**
@@ -165,7 +165,7 @@ export const isEvolutionAdmin = (userRoles: string[]): boolean => {
  * @returns boolean indicating if user has admin access
  */
 export const hasAdminAccess = (userRoles: string[]): boolean => {
-  return userRoles.includes("evolution admin") || userRoles.includes("admin");
+  return userRoles.includes('evolution admin') || userRoles.includes('admin');
 };
 
 /**
@@ -174,7 +174,7 @@ export const hasAdminAccess = (userRoles: string[]): boolean => {
  * @returns boolean indicating if user has manager access
  */
 export const hasManagerAccess = (userRoles: string[]): boolean => {
-  return ["evolution admin", "admin", "manager"].some((role) =>
+  return ['evolution admin', 'admin', 'manager'].some(role =>
     userRoles.includes(role)
   );
 };
@@ -185,8 +185,8 @@ export const hasManagerAccess = (userRoles: string[]): boolean => {
  * @returns boolean indicating if user has location admin access
  */
 export const hasLocationAdminAccess = (userRoles: string[]): boolean => {
-  return ["evolution admin", "admin", "manager", "location admin"].some(
-    (role) => userRoles.includes(role)
+  return ['evolution admin', 'admin', 'manager', 'location admin'].some(role =>
+    userRoles.includes(role)
   );
 };
 
@@ -197,13 +197,13 @@ export const hasLocationAdminAccess = (userRoles: string[]): boolean => {
  */
 export const getHighestPriorityRole = (userRoles: string[]): string => {
   const roleHierarchy: UserRole[] = [
-    "evolution admin",
-    "admin",
-    "manager",
-    "location admin",
-    "technician",
-    "collector",
-    "collector meters",
+    'evolution admin',
+    'admin',
+    'manager',
+    'location admin',
+    'technician',
+    'collector',
+    'collector meters',
   ];
 
   for (const role of roleHierarchy) {
@@ -212,7 +212,7 @@ export const getHighestPriorityRole = (userRoles: string[]): string => {
     }
   }
 
-  return "viewer"; // Default fallback
+  return 'viewer'; // Default fallback
 };
 
 /**
@@ -250,14 +250,14 @@ export const getAccessibleLicensees = (
 ): string[] => {
   // Evolution Admin and Admin can access all licensees
   if (hasAdminAccess(userRoles)) {
-    return allLicensees.map((l) => l.id);
+    return allLicensees.map(l => l.id);
   }
 
   // Other roles can only access licensees for their assigned locations
   const accessibleLicenseeIds = new Set<string>();
 
   for (const licensee of allLicensees) {
-    const hasLocationAccess = licensee.locations.some((locationId) =>
+    const hasLocationAccess = licensee.locations.some(locationId =>
       userLocations.includes(locationId)
     );
 
@@ -280,7 +280,7 @@ export const shouldShowNavigationLink = (
   page: PageName
 ): boolean => {
   // Special cases for direct link access
-  if (page === "location-details" || page === "member-details") {
+  if (page === 'location-details' || page === 'member-details') {
     return false; // These are accessed via direct links only
   }
 
@@ -294,15 +294,15 @@ export const shouldShowNavigationLink = (
  */
 export const getRoleDisplayName = (userRoles: string[]): string => {
   const roleDisplayNames: Record<string, string> = {
-    "evolution admin": "Evolution Admin",
-    admin: "Administrator",
-    manager: "Manager",
-    "location admin": "Location Admin",
-    technician: "Technician",
-    collector: "Collector",
-    "collector meters": "Collector Meters",
+    'evolution admin': 'Evolution Admin',
+    admin: 'Administrator',
+    manager: 'Manager',
+    'location admin': 'Location Admin',
+    technician: 'Technician',
+    collector: 'Collector',
+    'collector meters': 'Collector Meters',
   };
 
   const highestRole = getHighestPriorityRole(userRoles);
-  return roleDisplayNames[highestRole] || "User";
+  return roleDisplayNames[highestRole] || 'User';
 };

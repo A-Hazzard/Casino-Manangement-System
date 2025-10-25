@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 
 type NewCabinetStore = {
   isCabinetModalOpen: boolean;
@@ -17,10 +17,10 @@ const dummyState: NewCabinetStore = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<NewCabinetStore>((set) => ({
+  return create<NewCabinetStore>(set => ({
     isCabinetModalOpen: false,
     locationId: null,
-    openCabinetModal: (locationId) =>
+    openCabinetModal: locationId =>
       set({ isCabinetModalOpen: true, locationId: locationId || null }),
     closeCabinetModal: () => set({ isCabinetModalOpen: false }),
   }));
@@ -48,4 +48,4 @@ const getClientStore = () => {
  */
 // Use this store only on client side
 export const useNewCabinetStore =
-  typeof window !== "undefined" ? getClientStore() : create(() => dummyState);
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

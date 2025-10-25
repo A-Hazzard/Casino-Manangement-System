@@ -1,7 +1,7 @@
 import type {
   MachineData as SharedMachineData,
   MachineStats as SharedMachineStats,
-} from "@/shared/types/machines";
+} from '@/shared/types/machines';
 
 // Use the shared types for consistency
 export type MachineData = SharedMachineData;
@@ -51,7 +51,7 @@ export type MachinesOverviewTabProps = {
   // Sorting
   sortConfig: {
     key: keyof MachineData;
-    direction: "asc" | "desc";
+    direction: 'asc' | 'desc';
   };
 
   // Actions

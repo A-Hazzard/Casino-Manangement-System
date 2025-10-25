@@ -15,7 +15,7 @@ export type LocationMetricsResponse = {
   locationId: string;
   locationName: string;
   metrics: AggregatedMetrics;
-  performance: "excellent" | "good" | "average" | "poor";
+  performance: 'excellent' | 'good' | 'average' | 'poor';
 };
 
 export type MachineMetricsResponse = {
@@ -23,7 +23,7 @@ export type MachineMetricsResponse = {
   machineName: string;
   locationName: string;
   metrics: AggregatedMetrics;
-  status: "online" | "offline" | "maintenance";
+  status: 'online' | 'offline' | 'maintenance';
 };
 
 // ApiResponse type is defined in shared/types/common.ts
@@ -147,10 +147,12 @@ export type ComparisonResponse = {
 // Stacked data type for hourly machine analytics
 export type StackedData = {
   hour: string;
-  [locationKey: string]: {
-    handle: number;
-    winLoss: number;
-    jackpot: number;
-    plays: number;
-  } | string;
+  [locationKey: string]:
+    | {
+        handle: number;
+        winLoss: number;
+        jackpot: number;
+        plays: number;
+      }
+    | string;
 };

@@ -5,11 +5,13 @@ This directory contains all custom React hooks organized by functionality for be
 ## Folder Structure
 
 ### `/auth` - Authentication & User Management
+
 - `useAuth.ts` - Main authentication hook with role-based access control
 - `useUserProfileValidation.ts` - User profile validation logic
 - `useUserValidation.ts` - Comprehensive user validation with API integration
 
 ### `/data` - Data Fetching & State Management
+
 - `useAcceptedBills.ts` - Bill validator data fetching
 - `useAdministrationData.ts` - Administration data fetching (users, licensees, activity logs)
 - `useAdministrationModals.ts` - Administration modal state management
@@ -37,12 +39,14 @@ This directory contains all custom React hooks organized by functionality for be
 - `useSmibConfiguration.ts` - SMIB configuration state management
 
 ### `/navigation` - Navigation & Routing
+
 - `useCabinetNavigation.ts` - Cabinet section navigation
 - `useCollectionNavigation.ts` - Collection report navigation
 - `useMembersNavigation.ts` - Members page navigation with permissions
 - `useReportsNavigation.ts` - Reports navigation with role-based access
 
 ### `/reports` - Reports & Analytics
+
 - `useDashboardReports.ts` - Dashboard analytics data
 - `useGenerateCustomReport.ts` - Custom report generation
 - `useLocationsReports.ts` - Location-based reports
@@ -50,43 +54,53 @@ This directory contains all custom React hooks organized by functionality for be
 - `useMachinesReports.ts` - Machine performance reports
 
 ### `/ui` - UI & Utility Hooks
+
 - `useHasMounted.ts` - Client-side mounting detection
 - `useSafeGSAPAnimation.ts` - Safe GSAP animations for React 19
 
 ### `/validation` - Validation Hooks
+
 - Reserved for future validation hooks
 - User validation hooks are in the `/auth` folder
 
 ## Usage
 
 ### Import from specific categories:
+
 ```typescript
 // Data hooks
-import { 
-  useCabinetData, 
-  useLocationData, 
+import {
+  useCabinetData,
+  useLocationData,
   useDashboardFilters,
   useLocationMachineStats,
-  useSessionsFilters 
-} from "@/lib/hooks/data";
+  useSessionsFilters,
+} from '@/lib/hooks/data';
 
 // Navigation hooks
-import { useCabinetNavigation, useReportsNavigation } from "@/lib/hooks/navigation";
+import {
+  useCabinetNavigation,
+  useReportsNavigation,
+} from '@/lib/hooks/navigation';
 
 // Auth hooks
-import { useAuth, useUserValidation } from "@/lib/hooks/auth";
+import { useAuth, useUserValidation } from '@/lib/hooks/auth';
 
 // Reports hooks
-import { useGenerateCustomReport, useDashboardReports } from "@/lib/hooks/reports";
+import {
+  useGenerateCustomReport,
+  useDashboardReports,
+} from '@/lib/hooks/reports';
 
 // UI hooks
-import { useHasMounted, useSafeGSAPAnimation } from "@/lib/hooks/ui";
+import { useHasMounted, useSafeGSAPAnimation } from '@/lib/hooks/ui';
 ```
 
 ### Import from main index:
+
 ```typescript
 // All hooks
-import { useAuth, useCabinetData, useCabinetNavigation } from "@/lib/hooks";
+import { useAuth, useCabinetData, useCabinetNavigation } from '@/lib/hooks';
 ```
 
 ## Benefits of This Organization
@@ -112,19 +126,25 @@ When adding new hooks, follow these guidelines:
 ## Key Features in Hooks
 
 ### Gaming Day Offset Support
+
 Many data hooks (particularly dashboard, location, and cabinet hooks) support gaming day offset functionality:
+
 - Default gaming day starts at 8 AM (configurable per location)
 - Local time (Trinidad UTC-4) is converted to UTC for database queries
 - Custom date ranges with time inputs for precise filtering
 
 ### Financial Calculations
+
 Data hooks use the **Movement Delta Method** for all financial calculations:
+
 - Sum of `movement.drop` for money in
 - Sum of `movement.totalCancelledCredits` for money out
 - Gross = Drop - Total Cancelled Credits
 
 ### Authentication & Permissions
+
 Auth hooks implement comprehensive role-based access control (RBAC):
+
 - Super Admin, Admin, Manager, Collector, Viewer roles
 - Granular permissions for all actions
 - Automatic session management and token refresh

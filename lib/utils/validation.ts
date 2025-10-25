@@ -1,5 +1,5 @@
-import { UserDocument } from "@/shared/types/auth";
-import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import { UserDocument } from '@/shared/types/auth';
+import type { CreateCollectionReportPayload } from '@/lib/types/api';
 
 /**
  * Validates if a string is a valid email address.
@@ -8,7 +8,7 @@ import type { CreateCollectionReportPayload } from "@/lib/types/api";
  * @returns True if valid, false otherwise.
  */
 export function validateEmail(
-  emailAddress: UserDocument["emailAddress"]
+  emailAddress: UserDocument['emailAddress']
 ): boolean {
   return /\S+@\S+\.\S+/.test(emailAddress);
 }
@@ -19,7 +19,7 @@ export function validateEmail(
  * @param password - The password to validate.
  * @returns True if valid, false otherwise.
  */
-export function validatePassword(password: UserDocument["password"]): boolean {
+export function validatePassword(password: UserDocument['password']): boolean {
   // Minimum 8 characters, at least one uppercase, one lowercase, one number
   const strongPasswordRegex =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
@@ -58,32 +58,32 @@ export function validatePasswordStrength(password: string): {
   if (requirements.length) {
     score++;
   } else {
-    feedback.push("Password must be at least 8 characters long");
+    feedback.push('Password must be at least 8 characters long');
   }
 
   if (requirements.uppercase) {
     score++;
   } else {
-    feedback.push("Password must contain at least one uppercase letter");
+    feedback.push('Password must contain at least one uppercase letter');
   }
 
   if (requirements.lowercase) {
     score++;
   } else {
-    feedback.push("Password must contain at least one lowercase letter");
+    feedback.push('Password must contain at least one lowercase letter');
   }
 
   if (requirements.number) {
     score++;
   } else {
-    feedback.push("Password must contain at least one number");
+    feedback.push('Password must contain at least one number');
   }
 
   if (requirements.special) {
     score++;
   } else {
     feedback.push(
-      "Password should contain at least one special character (@$!%*?&)"
+      'Password should contain at least one special character (@$!%*?&)'
     );
   }
 
@@ -107,16 +107,16 @@ export function getPasswordStrengthLabel(score: number): string {
   switch (score) {
     case 0:
     case 1:
-      return "Very Weak";
+      return 'Very Weak';
     case 2:
-      return "Weak";
+      return 'Weak';
     case 3:
-      return "Good";
+      return 'Good';
     case 4:
     case 5:
-      return "Strong";
+      return 'Strong';
     default:
-      return "Unknown";
+      return 'Unknown';
   }
 }
 
@@ -175,7 +175,7 @@ export function containsPhonePattern(value: string): boolean {
   ];
 
   const trimmedValue = value.trim();
-  return phonePatterns.some((pattern) => pattern.test(trimmedValue));
+  return phonePatterns.some(pattern => pattern.test(trimmedValue));
 }
 
 /**
@@ -190,70 +190,70 @@ export function validateCollectionReportPayload(
   errors: string[];
 } {
   const errors: string[] = [];
-  if (!payload.collectorName) errors.push("Collector name is required.");
-  if (!payload.locationName) errors.push("Location name is required.");
-  if (!payload.locationReportId) errors.push("Location report ID is required.");
-  if (!payload.location) errors.push("Location ID is required.");
-  if (!payload.timestamp) errors.push("Timestamp is required.");
+  if (!payload.collectorName) errors.push('Collector name is required.');
+  if (!payload.locationName) errors.push('Location name is required.');
+  if (!payload.locationReportId) errors.push('Location report ID is required.');
+  if (!payload.location) errors.push('Location ID is required.');
+  if (!payload.timestamp) errors.push('Timestamp is required.');
   // Only validate variance if it's provided (optional field)
   if (
     payload.variance !== undefined &&
     payload.variance !== null &&
-    (typeof payload.variance !== "number" || isNaN(payload.variance))
+    (typeof payload.variance !== 'number' || isNaN(payload.variance))
   )
-    errors.push("Variance must be a number if provided.");
+    errors.push('Variance must be a number if provided.');
   // Only validate previous balance if it's provided (optional field)
   if (
     payload.previousBalance !== undefined &&
     payload.previousBalance !== null &&
-    (typeof payload.previousBalance !== "number" ||
+    (typeof payload.previousBalance !== 'number' ||
       isNaN(payload.previousBalance))
   )
-    errors.push("Previous balance must be a number if provided.");
+    errors.push('Previous balance must be a number if provided.');
   if (
-    typeof payload.amountToCollect !== "number" ||
+    typeof payload.amountToCollect !== 'number' ||
     isNaN(payload.amountToCollect)
   )
-    errors.push("Amount to collect is required and must be a number.");
+    errors.push('Amount to collect is required and must be a number.');
   // Only validate collected amount if it's provided (optional field)
   if (
     payload.amountCollected !== undefined &&
     payload.amountCollected !== null &&
-    (typeof payload.amountCollected !== "number" ||
+    (typeof payload.amountCollected !== 'number' ||
       isNaN(payload.amountCollected))
   )
-    errors.push("Collected amount must be a number if provided.");
+    errors.push('Collected amount must be a number if provided.');
   // Only validate taxes if it's provided (optional field)
   if (
     payload.taxes !== undefined &&
     payload.taxes !== null &&
-    (typeof payload.taxes !== "number" || isNaN(payload.taxes))
+    (typeof payload.taxes !== 'number' || isNaN(payload.taxes))
   )
-    errors.push("Taxes must be a number if provided.");
+    errors.push('Taxes must be a number if provided.');
   // Only validate advance if it's provided (optional field)
   if (
     payload.advance !== undefined &&
     payload.advance !== null &&
-    (typeof payload.advance !== "number" || isNaN(payload.advance))
+    (typeof payload.advance !== 'number' || isNaN(payload.advance))
   )
-    errors.push("Advance must be a number if provided.");
+    errors.push('Advance must be a number if provided.');
   if (
-    typeof payload.balanceCorrection !== "number" ||
+    typeof payload.balanceCorrection !== 'number' ||
     isNaN(payload.balanceCorrection)
   )
-    errors.push("Balance correction is required and must be a number.");
+    errors.push('Balance correction is required and must be a number.');
   if (
     payload.balanceCorrectionReas &&
-    payload.balanceCorrectionReas.trim() === ""
+    payload.balanceCorrectionReas.trim() === ''
   )
-    errors.push("Balance correction reason cannot be empty if provided.");
-  if (payload.varianceReason && payload.varianceReason.trim() === "")
-    errors.push("Variance reason cannot be empty if provided.");
+    errors.push('Balance correction reason cannot be empty if provided.');
+  if (payload.varianceReason && payload.varianceReason.trim() === '')
+    errors.push('Variance reason cannot be empty if provided.');
   if (
     payload.reasonShortagePayment &&
-    payload.reasonShortagePayment.trim() === ""
+    payload.reasonShortagePayment.trim() === ''
   )
-    errors.push("Reason for shortage payment cannot be empty if provided.");
+    errors.push('Reason for shortage payment cannot be empty if provided.');
   return { isValid: errors.length === 0, errors };
 }
 
@@ -263,7 +263,7 @@ export function validateCollectionReportPayload(
  * @returns True if the data is valid, false otherwise.
  */
 export function validateCollectionReportData(data: unknown): boolean {
-  if (!data || typeof data !== "object") {
+  if (!data || typeof data !== 'object') {
     return false;
   }
 
@@ -277,6 +277,6 @@ export function validateCollectionReportData(data: unknown): boolean {
     report.collectionDate &&
     Array.isArray(report.machineMetrics) &&
     report.locationMetrics &&
-    typeof report.locationMetrics === "object"
+    typeof report.locationMetrics === 'object'
   );
 }

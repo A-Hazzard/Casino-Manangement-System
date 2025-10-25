@@ -1,7 +1,7 @@
-import { NextRequest } from "next/server";
-import { Licencee } from "../../app/api/lib/models/licencee";
-import { generateUniqueLicenseKey } from "../utils/licenseKey";
-import { generateMongoId } from "@/lib/utils/id";
+import { NextRequest } from 'next/server';
+import { Licencee } from '../../app/api/lib/models/licencee';
+import { generateUniqueLicenseKey } from '../utils/licenseKey';
+import { generateMongoId } from '@/lib/utils/id';
 
 /**
  * Formats licensees data for frontend consumption, ensuring isPaid status is always defined
@@ -9,9 +9,9 @@ import { generateMongoId } from "@/lib/utils/id";
 export function formatLicenseesForResponse(
   licensees: Record<string, unknown>[]
 ) {
-  return licensees.map((licensee) => {
+  return licensees.map(licensee => {
     let isPaid = licensee.isPaid;
-    if (typeof isPaid === "undefined") {
+    if (typeof isPaid === 'undefined') {
       if (licensee.expiryDate) {
         isPaid = new Date(licensee.expiryDate as string | Date) > new Date();
       } else {
@@ -35,7 +35,7 @@ export async function getAllLicensees() {
     {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     },
     {
@@ -86,7 +86,7 @@ export async function createLicensee(
   const licensee = await Licencee.create({
     _id: newId,
     name,
-    description: description || "",
+    description: description || '',
     country,
     startDate: finalStartDate,
     expiryDate: finalExpiryDate,
@@ -142,7 +142,7 @@ export async function updateLicensee(
   } | null;
 
   if (!originalLicensee) {
-    throw new Error("Licensee not found");
+    throw new Error('Licensee not found');
   }
 
   const updateData: Record<string, unknown> = { lastEdited: new Date() };
@@ -185,11 +185,11 @@ export async function updateLicensee(
   });
 
   if (!updated) {
-    throw new Error("Licensee not found");
+    throw new Error('Licensee not found');
   }
 
   const updatedLicensee = updated.toObject();
-  if (typeof updatedLicensee.isPaid === "undefined") {
+  if (typeof updatedLicensee.isPaid === 'undefined') {
     if (updatedLicensee.expiryDate) {
       updatedLicensee.isPaid =
         new Date(updatedLicensee.expiryDate) > new Date();
@@ -210,7 +210,7 @@ export async function deleteLicensee(_id: string, _request: NextRequest) {
   const licenseeToDelete = await Licencee.findById(_id);
 
   if (!licenseeToDelete) {
-    throw new Error("Licensee not found");
+    throw new Error('Licensee not found');
   }
 
   const deleted = await Licencee.findByIdAndUpdate(
@@ -220,7 +220,7 @@ export async function deleteLicensee(_id: string, _request: NextRequest) {
   );
 
   if (!deleted) {
-    throw new Error("Licensee not found");
+    throw new Error('Licensee not found');
   }
 
   // Activity logging removed - server-side context not available in client helpers
@@ -236,11 +236,11 @@ export async function fetchLicensees() {
     const licensees = await Licencee.find({
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     }).sort({ name: 1 });
 
-    return licensees.map((licencee) => ({
+    return licensees.map(licencee => ({
       _id: licencee._id,
       name: licencee.name,
       description: licencee.description,
@@ -253,7 +253,7 @@ export async function fetchLicensees() {
       updatedAt: licencee.updatedAt,
     }));
   } catch (error) {
-    console.error("Error fetching licensees:", error);
+    console.error('Error fetching licensees:', error);
     return [];
   }
 }

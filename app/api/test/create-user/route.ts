@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import UserModel from "@/app/api/lib/models/user";
-import { hashPassword } from "@/app/api/lib/utils/validation";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import UserModel from '@/app/api/lib/models/user';
+import { hashPassword } from '@/app/api/lib/utils/validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Username, email, and password are required",
+          message: 'Username, email, and password are required',
         },
         { status: 400 }
       );
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { success: false, message: "User already exists" },
+        { success: false, message: 'User already exists' },
         { status: 400 }
       );
     }
@@ -35,15 +35,15 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password);
     const newUser = await UserModel.create({
       _id: new (
-        await import("mongoose")
+        await import('mongoose')
       ).default.Types.ObjectId().toHexString(),
       username,
       emailAddress,
       password: hashedPassword,
-      roles: ["user"],
+      roles: ['user'],
       profile: {
-        firstName: "Test",
-        lastName: "User",
+        firstName: 'Test',
+        lastName: 'User',
       },
       isEnabled: true,
       profilePicture: null,
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Test user created successfully",
+      message: 'Test user created successfully',
       user: {
         _id: newUser._id,
         username: newUser.username,
@@ -61,9 +61,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error creating test user:", error);
+    console.error('Error creating test user:', error);
     return NextResponse.json(
-      { success: false, message: "Failed to create test user" },
+      { success: false, message: 'Failed to create test user' },
       { status: 500 }
     );
   }

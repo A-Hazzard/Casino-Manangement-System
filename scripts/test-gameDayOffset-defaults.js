@@ -1,13 +1,13 @@
 // Test script to verify gameDayOffset defaults work correctly
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = 'http://localhost:3000';
 
 async function testGameDayOffsetDefaults() {
   try {
-    const machineId = "5769366190e560cdab9b8e51";
+    const machineId = '5769366190e560cdab9b8e51';
 
-    console.log("🔍 Testing gameDayOffset defaults for Machine 1309");
-    console.log("📅 Testing with gameDayOffset = 8 (8 AM to 8 AM)\n");
+    console.log('🔍 Testing gameDayOffset defaults for Machine 1309');
+    console.log('📅 Testing with gameDayOffset = 8 (8 AM to 8 AM)\n');
 
     // Test the machines API to get gameDayOffset
     const machineResponse = await fetch(
@@ -15,11 +15,11 @@ async function testGameDayOffsetDefaults() {
     );
     const machineData = await machineResponse.json();
 
-    console.log("📊 MACHINE API RESPONSE:");
+    console.log('📊 MACHINE API RESPONSE:');
     console.log(`   Success: ${machineData.success}`);
-    console.log(`   Location Name: ${machineData.data?.locationName || "N/A"}`);
+    console.log(`   Location Name: ${machineData.data?.locationName || 'N/A'}`);
     console.log(
-      `   Game Day Offset: ${machineData.data?.gameDayOffset || "N/A"}`
+      `   Game Day Offset: ${machineData.data?.gameDayOffset || 'N/A'}`
     );
 
     if (machineData.data?.gameDayOffset !== undefined) {
@@ -36,7 +36,7 @@ async function testGameDayOffsetDefaults() {
       const endDate = new Date(tomorrow);
       endDate.setHours(gameDayOffset, 0, 0, 0);
 
-      console.log("\n🕐 EXPECTED DEFAULT TIMES:");
+      console.log('\n🕐 EXPECTED DEFAULT TIMES:');
       console.log(`   Start: ${startDate.toISOString()}`);
       console.log(`   End: ${endDate.toISOString()}`);
 
@@ -46,7 +46,7 @@ async function testGameDayOffsetDefaults() {
       );
       const billValidatorData = await billValidatorResponse.json();
 
-      console.log("\n📊 BILL VALIDATOR WITH DEFAULT TIMES:");
+      console.log('\n📊 BILL VALIDATOR WITH DEFAULT TIMES:');
       console.log(`   Success: ${billValidatorData.success}`);
       console.log(
         `   Total: $${
@@ -56,12 +56,12 @@ async function testGameDayOffsetDefaults() {
       );
       console.log(`   Bills Found: ${billValidatorData.totalBills || 0}`);
 
-      console.log("\n✅ gameDayOffset defaults working correctly!");
+      console.log('\n✅ gameDayOffset defaults working correctly!');
     } else {
-      console.log("❌ gameDayOffset not found in machine data");
+      console.log('❌ gameDayOffset not found in machine data');
     }
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error('❌ Error:', error);
   }
 }
 

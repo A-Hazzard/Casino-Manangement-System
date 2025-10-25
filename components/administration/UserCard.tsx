@@ -1,8 +1,8 @@
-import Image from "next/image";
-import type { User } from "@/lib/types/administration";
-import defaultAvatar from "@/public/defaultAvatar.svg";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+import Image from 'next/image';
+import type { User } from '@/lib/types/administration';
+import defaultAvatar from '@/public/defaultAvatar.svg';
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 type UserCardProps = {
   user: User;
@@ -12,74 +12,74 @@ type UserCardProps = {
 
 export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="bg-blue-500 text-white p-3 flex items-center gap-2">
+    <div className="overflow-hidden rounded-lg bg-white shadow-md">
+      <div className="flex items-center gap-2 bg-blue-500 p-3 text-white">
         <Image
           src={
-            user.profilePicture && !user.profilePicture.startsWith("blob:")
+            user.profilePicture && !user.profilePicture.startsWith('blob:')
               ? user.profilePicture
               : defaultAvatar
           }
-          alt={`${user.username || "user"} avatar`}
+          alt={`${user.username || 'user'} avatar`}
           width={24}
           height={24}
-          className="rounded-full bg-gray-300 flex-shrink-0"
+          className="flex-shrink-0 rounded-full bg-gray-300"
         />
-        <div className="flex gap-1 overflow-x-auto no-scrollbar min-w-0 flex-1">
+        <div className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto">
           {user.roles && user.roles.length > 0 ? (
-            user.roles.map((role) => (
+            user.roles.map(role => (
               <span
                 key={role}
-                className="bg-black text-white text-[10px] font-semibold px-2 py-1 rounded whitespace-nowrap flex-shrink-0"
+                className="flex-shrink-0 whitespace-nowrap rounded bg-black px-2 py-1 text-[10px] font-semibold text-white"
               >
                 {role.toUpperCase()}
               </span>
             ))
           ) : (
-            <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-1 rounded whitespace-nowrap flex-shrink-0">
+            <span className="flex-shrink-0 whitespace-nowrap rounded bg-red-500 px-2 py-1 text-[10px] font-semibold text-white">
               NO ROLES
             </span>
           )}
         </div>
       </div>
       <div className="p-3">
-        <div className="text-sm text-gray-700 mb-1">
-          <span className="font-semibold">Username:</span>{" "}
+        <div className="mb-1 text-sm text-gray-700">
+          <span className="font-semibold">Username:</span>{' '}
           {user.username ? (
             user.username
           ) : (
-            <span className="text-red-500 italic">No username provided</span>
+            <span className="italic text-red-500">No username provided</span>
           )}
         </div>
-        <div className="text-sm text-gray-700 mb-1">
-          <span className="font-semibold">Name:</span>{" "}
+        <div className="mb-1 text-sm text-gray-700">
+          <span className="font-semibold">Name:</span>{' '}
           {user.name ? (
             user.name
           ) : (
-            <span className="text-red-500 italic">No name provided</span>
+            <span className="italic text-red-500">No name provided</span>
           )}
         </div>
-        <div className="text-sm text-gray-700 mb-1">
-          <span className="font-semibold">Email:</span>{" "}
+        <div className="mb-1 text-sm text-gray-700">
+          <span className="font-semibold">Email:</span>{' '}
           {user.email ? (
             user.email
           ) : (
-            <span className="text-red-500 italic">No email provided</span>
+            <span className="italic text-red-500">No email provided</span>
           )}
         </div>
-        <div className="text-sm text-gray-700 mb-3">
-          <span className="font-semibold">Enabled:</span>{" "}
+        <div className="mb-3 text-sm text-gray-700">
+          <span className="font-semibold">Enabled:</span>{' '}
           {user.enabled !== undefined ? (
             user.enabled ? (
-              "True"
+              'True'
             ) : (
-              "False"
+              'False'
             )
           ) : (
-            <span className="text-red-500 italic">Status unknown</span>
+            <span className="italic text-red-500">Status unknown</span>
           )}
         </div>
-        <div className="flex justify-end gap-3 items-center">
+        <div className="flex items-center justify-end gap-3">
           <Image
             src={editIcon}
             alt="Edit"

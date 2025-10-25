@@ -1,26 +1,24 @@
-import type { User, SortKey } from "@/lib/types/administration";
-import type { Licensee } from "@/lib/types/licensee";
-import type { AddUserForm, AddLicenseeForm } from "@/lib/types/pages";
-import axios from "axios";
+import type { User, SortKey } from '@/lib/types/administration';
+import type { Licensee } from '@/lib/types/licensee';
+import type { AddUserForm, AddLicenseeForm } from '@/lib/types/pages';
+import axios from 'axios';
 import {
   fetchUsers,
   filterAndSortUsers,
   updateUser,
   createUser,
-} from "@/lib/helpers/administration";
-import {
-  fetchLicensees,
-} from "@/lib/helpers/clientLicensees";
-import { validateEmail, validatePassword } from "@/lib/utils/validation";
-import { getNext30Days } from "@/lib/utils/licensee";
-import { toast } from "sonner";
+} from '@/lib/helpers/administration';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
+import { validateEmail, validatePassword } from '@/lib/utils/validation';
+import { getNext30Days } from '@/lib/utils/licensee';
+import { toast } from 'sonner';
 
 /**
  * Administration page helper functions for managing section changes and transitions
  */
 
-import type { AdministrationSection } from "@/lib/constants/administration";
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import type { AdministrationSection } from '@/lib/constants/administration';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 /**
  * Handles section changes with smooth transitions and URL updates
@@ -40,15 +38,15 @@ export function handleSectionChange(
   router: AppRouterInstance
 ) {
   // Add smooth transition class to the content area
-  const contentElement = document.querySelector("[data-section-content]");
+  const contentElement = document.querySelector('[data-section-content]');
   if (contentElement) {
     contentElement.classList.add(
-      "opacity-0",
-      "transform",
-      "translate-y-2",
-      "transition-all",
-      "duration-300",
-      "ease-in-out"
+      'opacity-0',
+      'transform',
+      'translate-y-2',
+      'transition-all',
+      'duration-300',
+      'ease-in-out'
     );
   }
 
@@ -59,12 +57,12 @@ export function handleSectionChange(
 
     // Update URL based on section
     const params = new URLSearchParams(searchParams.toString());
-    if (section === "users") {
-      params.delete("section"); // Default section, no param needed
-    } else if (section === "licensees") {
-      params.set("section", "licensees");
-    } else if (section === "activity-logs") {
-      params.set("section", "activity-logs");
+    if (section === 'users') {
+      params.delete('section'); // Default section, no param needed
+    } else if (section === 'licensees') {
+      params.set('section', 'licensees');
+    } else if (section === 'activity-logs') {
+      params.set('section', 'activity-logs');
     }
 
     const newURL = params.toString()
@@ -76,9 +74,9 @@ export function handleSectionChange(
     setTimeout(() => {
       if (contentElement) {
         contentElement.classList.remove(
-          "opacity-0",
-          "transform",
-          "translate-y-2"
+          'opacity-0',
+          'transform',
+          'translate-y-2'
         );
       }
     }, 50);
@@ -101,10 +99,10 @@ export const userManagement = {
       const usersData = await fetchUsers();
       setAllUsers(usersData);
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Failed to fetch users:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch users:', error);
       }
-      toast.error("Failed to load users");
+      toast.error('Failed to load users');
     }
     setIsLoading(false);
   },
@@ -127,9 +125,9 @@ export const userManagement = {
       setIsRolesModalOpen(false);
       setSelectedUser(null);
       await refreshUsers();
-      toast.success("User updated successfully");
+      toast.success('User updated successfully');
     } catch {
-      toast.error("Failed to update user");
+      toast.error('Failed to update user');
     }
   },
 
@@ -154,20 +152,20 @@ export const userManagement = {
       resourcePermissions,
     } = addUserForm;
 
-    if (!username || typeof username !== "string") {
-      toast.error("Username is required");
+    if (!username || typeof username !== 'string') {
+      toast.error('Username is required');
       return;
     }
     if (!email || !validateEmail(email)) {
-      toast.error("A valid email is required");
+      toast.error('A valid email is required');
       return;
     }
     if (!password || !validatePassword(password)) {
-      toast.error("Password must be at least 6 characters");
+      toast.error('Password must be at least 6 characters');
       return;
     }
     if (!roles || !Array.isArray(roles) || roles.length === 0) {
-      toast.error("At least one role is required");
+      toast.error('At least one role is required');
       return;
     }
 
@@ -191,7 +189,7 @@ export const userManagement = {
       await createUser(payload);
       setIsAddUserModalOpen(false);
       await refreshUsers();
-      toast.success("User created successfully");
+      toast.success('User created successfully');
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -199,7 +197,7 @@ export const userManagement = {
       toast.error(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to create user"
+          'Failed to create user'
       );
     }
   },
@@ -221,11 +219,11 @@ export const licenseeManagement = {
       const licenseesData = await fetchLicensees();
       setAllLicensees(licenseesData);
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Failed to fetch licensees:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch licensees:', error);
       }
       setAllLicensees([]);
-      toast.error("Failed to load licensees");
+      toast.error('Failed to load licensees');
     }
     setIsLicenseesLoading(false);
   },
@@ -244,15 +242,15 @@ export const licenseeManagement = {
     refreshLicensees: () => Promise<void>
   ) => {
     if (!licenseeForm.name || !licenseeForm.country) {
-      toast.error("Name and country are required");
+      toast.error('Name and country are required');
       return;
     }
 
     try {
-      const response = await fetch("/api/licensees", {
-        method: "POST",
+      const response = await fetch('/api/licensees', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           name: licenseeForm.name,
@@ -262,7 +260,7 @@ export const licenseeManagement = {
           expiryDate: licenseeForm.expiryDate,
         }),
       });
-      
+
       const result = await response.json();
 
       // Show success modal with license key
@@ -277,7 +275,7 @@ export const licenseeManagement = {
       setIsAddLicenseeModalOpen(false);
       setLicenseeForm({});
       await refreshLicensees();
-      toast.success("Licensee created successfully");
+      toast.success('Licensee created successfully');
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -285,7 +283,7 @@ export const licenseeManagement = {
       toast.error(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to add licensee"
+          'Failed to add licensee'
       );
     }
   },
@@ -310,21 +308,21 @@ export const licenseeManagement = {
       };
 
       const response = await fetch(`/api/licensees/${selectedLicensee._id}`, {
-        method: "PUT",
+        method: 'PUT',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(updateData),
       });
-      
+
       if (!response.ok) {
-        throw new Error("Failed to update licensee");
+        throw new Error('Failed to update licensee');
       }
       setIsEditLicenseeModalOpen(false);
       setSelectedLicensee(null);
       setLicenseeForm({});
       await refreshLicensees();
-      toast.success("Licensee updated successfully");
+      toast.success('Licensee updated successfully');
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -332,7 +330,7 @@ export const licenseeManagement = {
       toast.error(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to update licensee"
+          'Failed to update licensee'
       );
     }
   },
@@ -348,16 +346,16 @@ export const licenseeManagement = {
   ) => {
     try {
       const response = await fetch(`/api/licensees/${selectedLicensee._id}`, {
-        method: "DELETE",
+        method: 'DELETE',
       });
-      
+
       if (!response.ok) {
-        throw new Error("Failed to delete licensee");
+        throw new Error('Failed to delete licensee');
       }
       setIsDeleteLicenseeModalOpen(false);
       setSelectedLicensee(null);
       await refreshLicensees();
-      toast.success("Licensee deleted successfully");
+      toast.success('Licensee deleted successfully');
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -365,7 +363,7 @@ export const licenseeManagement = {
       toast.error(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to delete licensee"
+          'Failed to delete licensee'
       );
     }
   },
@@ -383,8 +381,8 @@ export const licenseeManagement = {
         selectedLicenseeForPaymentChange.isPaid !== undefined
           ? selectedLicenseeForPaymentChange.isPaid
           : selectedLicenseeForPaymentChange.expiryDate
-          ? new Date(selectedLicenseeForPaymentChange.expiryDate) > new Date()
-          : false;
+            ? new Date(selectedLicenseeForPaymentChange.expiryDate) > new Date()
+            : false;
 
       const newIsPaid = !currentIsPaid;
 
@@ -407,10 +405,10 @@ export const licenseeManagement = {
         updateData.expiryDate = getNext30Days();
       }
 
-      await axios.put("/api/licensees", updateData);
+      await axios.put('/api/licensees', updateData);
 
       await refreshLicensees();
-      toast.success("Payment status updated successfully");
+      toast.success('Payment status updated successfully');
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -418,7 +416,7 @@ export const licenseeManagement = {
       toast.error(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to update payment status"
+          'Failed to update payment status'
       );
     }
   },
@@ -434,8 +432,8 @@ export const administrationUtils = {
   processUsers: (
     allUsers: User[],
     searchValue: string,
-    searchMode: "username" | "email",
-    sortConfig: { key: SortKey; direction: "ascending" | "descending" } | null
+    searchMode: 'username' | 'email',
+    sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null
   ) => {
     return filterAndSortUsers(allUsers, searchValue, searchMode, sortConfig);
   },
@@ -445,7 +443,7 @@ export const administrationUtils = {
    */
   filterLicensees: (allLicensees: Licensee[], licenseeSearchValue: string) => {
     if (!licenseeSearchValue) return allLicensees;
-    return allLicensees.filter((licensee) =>
+    return allLicensees.filter(licensee =>
       licensee.name.toLowerCase().includes(licenseeSearchValue.toLowerCase())
     );
   },
@@ -466,20 +464,20 @@ export const administrationUtils = {
    * Creates sort request handler
    */
   createSortHandler: (
-    sortConfig: { key: SortKey; direction: "ascending" | "descending" } | null,
+    sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null,
     setSortConfig: (
-      config: { key: SortKey; direction: "ascending" | "descending" } | null
+      config: { key: SortKey; direction: 'ascending' | 'descending' } | null
     ) => void,
     setCurrentPage: (page: number) => void
   ) => {
     return (key: SortKey) => {
-      let direction: "ascending" | "descending" = "ascending";
+      let direction: 'ascending' | 'descending' = 'ascending';
       if (
         sortConfig &&
         sortConfig.key === key &&
-        sortConfig.direction === "ascending"
+        sortConfig.direction === 'ascending'
       ) {
-        direction = "descending";
+        direction = 'descending';
       }
       setSortConfig({ key, direction });
       setCurrentPage(0);

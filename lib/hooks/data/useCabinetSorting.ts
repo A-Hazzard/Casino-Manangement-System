@@ -3,22 +3,22 @@
  * Handles sort state, pagination logic, and data transformation
  */
 
-import { useState, useMemo, useCallback } from "react";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-import { mapToCabinetProps } from "@/lib/utils/cabinet";
+import { useState, useMemo, useCallback } from 'react';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { mapToCabinetProps } from '@/lib/utils/cabinet';
 
 export type CabinetSortOption =
-  | "assetNumber"
-  | "locationName"
-  | "moneyIn"
-  | "moneyOut"
-  | "jackpot"
-  | "gross"
-  | "cancelledCredits"
-  | "game"
-  | "smbId"
-  | "serialNumber"
-  | "lastOnline";
+  | 'assetNumber'
+  | 'locationName'
+  | 'moneyIn'
+  | 'moneyOut'
+  | 'jackpot'
+  | 'gross'
+  | 'cancelledCredits'
+  | 'game'
+  | 'smbId'
+  | 'serialNumber'
+  | 'lastOnline';
 
 type UseCabinetSortingProps = {
   filteredCabinets: Cabinet[];
@@ -26,7 +26,7 @@ type UseCabinetSortingProps = {
 };
 
 type UseCabinetSortingReturn = {
-  sortOrder: "asc" | "desc";
+  sortOrder: 'asc' | 'desc';
   sortOption: CabinetSortOption;
   currentPage: number;
   sortedCabinets: Cabinet[];
@@ -43,34 +43,32 @@ export const useCabinetSorting = ({
   itemsPerPage = 10,
 }: UseCabinetSortingProps): UseCabinetSortingReturn => {
   // Sort state management
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [sortOption, setSortOption] = useState<CabinetSortOption>("moneyIn");
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [currentPage, setCurrentPage] = useState(0);
 
   // Sort toggle handler
   const handleSortToggle = useCallback(() => {
     console.warn(
-      "Toggling sort order from",
+      'Toggling sort order from',
       sortOrder,
-      "to",
-      sortOrder === "desc" ? "asc" : "desc"
+      'to',
+      sortOrder === 'desc' ? 'asc' : 'desc'
     );
-    setSortOrder((previousOrder) =>
-      previousOrder === "desc" ? "asc" : "desc"
-    );
+    setSortOrder(previousOrder => (previousOrder === 'desc' ? 'asc' : 'desc'));
   }, [sortOrder]);
 
   // Column sort handler
   const handleColumnSort = useCallback(
     (column: CabinetSortOption) => {
-      console.warn("Sorting by column:", column, "current option:", sortOption);
+      console.warn('Sorting by column:', column, 'current option:', sortOption);
 
       if (sortOption === column) {
         handleSortToggle();
       } else {
         setSortOption(column);
-        setSortOrder("desc");
-        console.warn("New sort option:", column, "order: desc");
+        setSortOrder('desc');
+        console.warn('New sort option:', column, 'order: desc');
       }
     },
     [sortOption, handleSortToggle]
@@ -78,21 +76,21 @@ export const useCabinetSorting = ({
 
   // Sort cabinets based on current sort option and order
   const sortedCabinets = useMemo(() => {
-    console.warn("Sorting cabinets:", {
+    console.warn('Sorting cabinets:', {
       totalCabinets: filteredCabinets.length,
       sortOption,
       sortOrder,
     });
 
     const sorted = [...filteredCabinets].sort((firstCabinet, secondCabinet) => {
-      const orderMultiplier = sortOrder === "desc" ? -1 : 1;
+      const orderMultiplier = sortOrder === 'desc' ? -1 : 1;
       const firstValue = firstCabinet[sortOption] || 0;
       const secondValue = secondCabinet[sortOption] || 0;
 
       return (firstValue > secondValue ? 1 : -1) * orderMultiplier;
     });
 
-    console.warn("Sorted cabinets result:", sorted.length);
+    console.warn('Sorted cabinets result:', sorted.length);
     return sorted;
   }, [filteredCabinets, sortOption, sortOrder]);
 
@@ -102,7 +100,7 @@ export const useCabinetSorting = ({
     const endIndex = startIndex + itemsPerPage;
     const paginated = sortedCabinets.slice(startIndex, endIndex);
 
-    console.warn("Paginated cabinets:", {
+    console.warn('Paginated cabinets:', {
       currentPage,
       itemsPerPage,
       startIndex,
@@ -118,11 +116,11 @@ export const useCabinetSorting = ({
   const totalPages = useMemo(() => {
     const total = Math.ceil(sortedCabinets.length / itemsPerPage);
     console.warn(
-      "Total pages calculated:",
+      'Total pages calculated:',
       total,
-      "for",
+      'for',
       sortedCabinets.length,
-      "items"
+      'items'
     );
     return total;
   }, [sortedCabinets.length, itemsPerPage]);
@@ -130,7 +128,7 @@ export const useCabinetSorting = ({
   // Cabinet transformation function
   const transformCabinet = useMemo(() => {
     return (cabinet: Cabinet) => {
-      console.warn("Transforming cabinet for display:", cabinet._id);
+      console.warn('Transforming cabinet for display:', cabinet._id);
       return mapToCabinetProps(cabinet);
     };
   }, []);

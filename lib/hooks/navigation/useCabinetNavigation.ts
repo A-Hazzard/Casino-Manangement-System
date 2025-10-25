@@ -3,14 +3,14 @@
  * Handles section changes, URL synchronization, and navigation state
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   getActiveSectionFromURL,
   handleSectionChange as handleSectionChangeHelper,
-} from "@/lib/helpers/cabinetsPage";
-import type { CabinetSection } from "@/lib/constants/cabinets";
-import type { UseCabinetNavigationReturn } from "@/lib/types/cabinets";
+} from '@/lib/helpers/cabinetsPage';
+import type { CabinetSection } from '@/lib/constants/cabinets';
+import type { UseCabinetNavigationReturn } from '@/lib/types/cabinets';
 
 export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   const pathname = usePathname();
@@ -20,7 +20,7 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   // Get active section from URL search params, default to "cabinets"
   const getActiveSectionFromURLLocal = useCallback((): CabinetSection => {
     const section = getActiveSectionFromURL(searchParams);
-    console.warn("Getting active section from URL:", section);
+    console.warn('Getting active section from URL:', section);
     return section;
   }, [searchParams]);
 
@@ -31,7 +31,7 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   // Handle section changes with URL updates
   const handleSectionChange = useCallback(
     (section: CabinetSection) => {
-      console.warn("Changing section from", activeSection, "to", section);
+      console.warn('Changing section from', activeSection, 'to', section);
       setActiveSection(section);
       handleSectionChangeHelper(section, searchParams, pathname, router);
     },
@@ -43,9 +43,9 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
     const newSection = getActiveSectionFromURLLocal();
     if (newSection !== activeSection) {
       console.warn(
-        "URL changed, updating active section from",
+        'URL changed, updating active section from',
         activeSection,
-        "to",
+        'to',
         newSection
       );
       setActiveSection(newSection);

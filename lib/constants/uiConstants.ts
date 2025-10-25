@@ -1,21 +1,21 @@
-import { TimeFrames } from "../types";
-import { licenceeOption } from "../types";
-import { TimePeriod } from "@/shared/types/common";
+import { TimeFrames } from '../types';
+import { licenceeOption } from '../types';
+import { TimePeriod } from '@/shared/types/common';
 
 /**
  * Color palette used for charts and UI elements throughout the dashboard (e.g., PieChart, StatCards)
  */
 export const colorPalette = [
-  "#94F394", // Green
-  "#96E3D4", // Teal
-  "#FFA203", // Orange
-  "#5A69E7", // Blue
-  "#F9687D", // Red
-  "#8A7FFF", // Purple
-  "#E8A837", // Yellow
-  "#FF6B93", // Pink
-  "#53B3E7", // Light Blue
-  "#F4C542", // Gold
+  '#94F394', // Green
+  '#96E3D4', // Teal
+  '#FFA203', // Orange
+  '#5A69E7', // Blue
+  '#F9687D', // Red
+  '#8A7FFF', // Purple
+  '#E8A837', // Yellow
+  '#FF6B93', // Pink
+  '#53B3E7', // Light Blue
+  '#F4C542', // Gold
 ];
 
 /**
@@ -23,10 +23,10 @@ export const colorPalette = [
  * Used in PcLayout, MobileLayout, and CustomSelect for selecting time periods.
  */
 export const timeFrames: TimeFrames[] = [
-  { time: "Today", value: "Today" as TimePeriod },
-  { time: "Yesterday", value: "Yesterday" as TimePeriod },
-  { time: "Last 7 days", value: "7d" as TimePeriod },
-  { time: "Last 30 days", value: "30d" as TimePeriod },
+  { time: 'Today', value: 'Today' as TimePeriod },
+  { time: 'Yesterday', value: 'Yesterday' as TimePeriod },
+  { time: 'Last 7 days', value: '7d' as TimePeriod },
+  { time: 'Last 30 days', value: '30d' as TimePeriod },
 ];
 
 /**
@@ -34,11 +34,11 @@ export const timeFrames: TimeFrames[] = [
  * Used in Header and filter logic to convert UI selections to API parameters.
  */
 export const filterValueMap = {
-  Today: "Today" as TimePeriod,
-  Yesterday: "Yesterday" as TimePeriod,
-  last7days: "7d" as TimePeriod,
-  last30days: "30d" as TimePeriod,
-  Custom: "Custom" as TimePeriod,
+  Today: 'Today' as TimePeriod,
+  Yesterday: 'Yesterday' as TimePeriod,
+  last7days: '7d' as TimePeriod,
+  last30days: '30d' as TimePeriod,
+  Custom: 'Custom' as TimePeriod,
 };
 
 /**
@@ -46,10 +46,10 @@ export const filterValueMap = {
  * Used in LicenceeSelect dropdown and Header for licencee filtering.
  */
 export const licenceeOptions: licenceeOption[] = [
-  { label: "All Licencee", value: "" },
-  { label: "TTG", value: "9a5db2cb29ffd2d962fd1d91" },
-  { label: "Cabana", value: "c03b094083226f216b3fc39c" },
-  { label: "Barbados", value: "732b094083226f216b3fc11a" },
+  { label: 'All Licencee', value: '' },
+  { label: 'TTG', value: '9a5db2cb29ffd2d962fd1d91' },
+  { label: 'Cabana', value: 'c03b094083226f216b3fc39c' },
+  { label: 'Barbados', value: '732b094083226f216b3fc11a' },
 ];
 
 /**

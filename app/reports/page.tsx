@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { Suspense } from "react";
+import { Suspense } from 'react';
 
 // Components
-import ReportsContent from "@/components/reports/ReportsContent";
-import { ReportsPageSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ReportsContent from '@/components/reports/ReportsContent';
+import { ReportsPageSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 /**
  * Reports Page

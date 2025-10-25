@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import { devtools } from "zustand/middleware";
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import type {
   ReportView,
   ReportConfig,
@@ -13,7 +13,7 @@ import type {
   UserReportPreferences,
   ReportGenerationStatus,
   PerformanceComparison,
-} from "@/lib/types/reports";
+} from '@/lib/types/reports';
 
 type ReportsState = {
   // Current view and navigation
@@ -147,7 +147,7 @@ type ReportsActions = {
 
 const initialState: ReportsState = {
   // Current view and navigation
-  activeView: "locations",
+  activeView: 'locations',
   isLoading: false,
   error: null,
   userPermissions: null,
@@ -202,106 +202,105 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
       ...initialState,
 
       // Navigation actions
-      setActiveView: (view) => set({ activeView: view }),
-      setLoading: (loading) => set({ isLoading: loading }),
-      setError: (error) => set({ error }),
+      setActiveView: view => set({ activeView: view }),
+      setLoading: loading => set({ isLoading: loading }),
+      setError: error => set({ error }),
 
       // Dashboard actions
-      updateDashboardWidgets: (widgets) => set({ dashboardWidgets: widgets }),
-      updateRealTimeMetrics: (metrics) => set({ realTimeMetrics: metrics }),
-      addDashboardWidget: (widget) =>
-        set((state) => ({
+      updateDashboardWidgets: widgets => set({ dashboardWidgets: widgets }),
+      updateRealTimeMetrics: metrics => set({ realTimeMetrics: metrics }),
+      addDashboardWidget: widget =>
+        set(state => ({
           dashboardWidgets: [...state.dashboardWidgets, widget],
         })),
-      removeDashboardWidget: (widgetId) =>
-        set((state) => ({
+      removeDashboardWidget: widgetId =>
+        set(state => ({
           dashboardWidgets: state.dashboardWidgets.filter(
-            (w) => w.id !== widgetId
+            w => w.id !== widgetId
           ),
         })),
-      reorderDashboardWidgets: (widgets) => set({ dashboardWidgets: widgets }),
+      reorderDashboardWidgets: widgets => set({ dashboardWidgets: widgets }),
 
       // Report configuration actions
-      setReportConfig: (config) => set({ currentReportConfig: config }),
-      updateReportConfig: (updates) =>
-        set((state) => ({
+      setReportConfig: config => set({ currentReportConfig: config }),
+      updateReportConfig: updates =>
+        set(state => ({
           currentReportConfig: state.currentReportConfig
             ? { ...state.currentReportConfig, ...updates }
             : null,
         })),
       clearReportConfig: () =>
         set({ currentReportConfig: null, reportData: null }),
-      setReportData: (data) => set({ reportData: data }),
+      setReportData: data => set({ reportData: data }),
 
       // Customer metrics actions
-      updateCustomerMetrics: (metrics) => set({ customerMetrics: metrics }),
+      updateCustomerMetrics: metrics => set({ customerMetrics: metrics }),
 
       // Voucher tracking actions
-      updateVoucherMetrics: (metrics) => set({ voucherMetrics: metrics }),
+      updateVoucherMetrics: metrics => set({ voucherMetrics: metrics }),
 
       // Compliance actions
-      updateComplianceMetrics: (metrics) => set({ complianceMetrics: metrics }),
+      updateComplianceMetrics: metrics => set({ complianceMetrics: metrics }),
 
       // Performance comparison actions
-      updatePerformanceComparisons: (comparisons) =>
+      updatePerformanceComparisons: comparisons =>
         set({ performanceComparisons: comparisons }),
-      addPerformanceComparison: (comparison) =>
-        set((state) => ({
+      addPerformanceComparison: comparison =>
+        set(state => ({
           performanceComparisons: [...state.performanceComparisons, comparison],
         })),
 
       // Scheduled reports actions
-      updateScheduledReports: (reports) => set({ scheduledReports: reports }),
-      addScheduledReport: (report) =>
-        set((state) => ({
+      updateScheduledReports: reports => set({ scheduledReports: reports }),
+      addScheduledReport: report =>
+        set(state => ({
           scheduledReports: [...state.scheduledReports, report],
         })),
       updateScheduledReport: (id, updates) =>
-        set((state) => ({
-          scheduledReports: state.scheduledReports.map((r) =>
+        set(state => ({
+          scheduledReports: state.scheduledReports.map(r =>
             r.id === id ? { ...r, ...updates } : r
           ),
         })),
-      deleteScheduledReport: (id) =>
-        set((state) => ({
-          scheduledReports: state.scheduledReports.filter((r) => r.id !== id),
+      deleteScheduledReport: id =>
+        set(state => ({
+          scheduledReports: state.scheduledReports.filter(r => r.id !== id),
         })),
 
       // User preferences actions
-      updateUserPreferences: (preferences) =>
+      updateUserPreferences: preferences =>
         set({ userPreferences: preferences }),
 
       // Report generation actions
-      updateGenerationStatus: (status) => set({ generationStatus: status }),
+      updateGenerationStatus: status => set({ generationStatus: status }),
       clearGenerationStatus: () => set({ generationStatus: null }),
 
       // Filter actions
       setDateRange: (start, end) => set({ selectedDateRange: { start, end } }),
-      setSelectedLocations: (locations) =>
-        set({ selectedLocations: locations }),
-      setSelectedMachines: (machines) => set({ selectedMachines: machines }),
-      addSelectedLocation: (locationId) =>
-        set((state) => ({
+      setSelectedLocations: locations => set({ selectedLocations: locations }),
+      setSelectedMachines: machines => set({ selectedMachines: machines }),
+      addSelectedLocation: locationId =>
+        set(state => ({
           selectedLocations: state.selectedLocations.includes(locationId)
             ? state.selectedLocations
             : [...state.selectedLocations, locationId],
         })),
-      removeSelectedLocation: (locationId) =>
-        set((state) => ({
+      removeSelectedLocation: locationId =>
+        set(state => ({
           selectedLocations: state.selectedLocations.filter(
-            (id) => id !== locationId
+            id => id !== locationId
           ),
         })),
-      addSelectedMachine: (machineId) =>
-        set((state) => ({
+      addSelectedMachine: machineId =>
+        set(state => ({
           selectedMachines: state.selectedMachines.includes(machineId)
             ? state.selectedMachines
             : [...state.selectedMachines, machineId],
         })),
-      removeSelectedMachine: (machineId) =>
-        set((state) => ({
+      removeSelectedMachine: machineId =>
+        set(state => ({
           selectedMachines: state.selectedMachines.filter(
-            (id) => id !== machineId
+            id => id !== machineId
           ),
         })),
       clearAllFilters: () =>
@@ -316,12 +315,12 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
 
       // UI actions
       toggleSidebar: () =>
-        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+        set(state => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setSidebarCollapsed: collapsed => set({ sidebarCollapsed: collapsed }),
       toggleFullscreen: () =>
-        set((state) => ({ fullscreenMode: !state.fullscreenMode })),
-      setRefreshInterval: (interval) => set({ refreshInterval: interval }),
-      setIsMachineComparisonModalOpen: (open) =>
+        set(state => ({ fullscreenMode: !state.fullscreenMode })),
+      setRefreshInterval: interval => set({ refreshInterval: interval }),
+      setIsMachineComparisonModalOpen: open =>
         set({ isMachineComparisonModalOpen: open }),
 
       // Data refresh actions
@@ -343,7 +342,7 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
         } catch (error) {
           set({
             error:
-              error instanceof Error ? error.message : "Failed to refresh data",
+              error instanceof Error ? error.message : 'Failed to refresh data',
           });
         } finally {
           set({ isLoading: false });
@@ -367,7 +366,7 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
       },
     }),
     {
-      name: "reports-store",
+      name: 'reports-store',
     }
   )
 );

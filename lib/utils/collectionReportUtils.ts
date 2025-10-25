@@ -1,5 +1,5 @@
-import type { CollectionReportRow } from "@/lib/types/componentProps";
-import type { LocationSelectItem } from "@/lib/types/location";
+import type { CollectionReportRow } from '@/lib/types/componentProps';
+import type { LocationSelectItem } from '@/lib/types/location';
 
 /**
  * Filter collection reports based on location, search term, and uncollected filter
@@ -11,10 +11,10 @@ export function filterCollectionReports(
   showUncollectedOnly: boolean,
   locations: LocationSelectItem[]
 ): CollectionReportRow[] {
-  return reports.filter((report) => {
+  return reports.filter(report => {
     // Location filter
-    if (selectedLocation !== "all") {
-      const location = locations.find((loc) => loc._id === selectedLocation);
+    if (selectedLocation !== 'all') {
+      const location = locations.find(loc => loc._id === selectedLocation);
       if (location && report.location !== location.name) {
         return false;
       }
@@ -35,7 +35,7 @@ export function filterCollectionReports(
 
     // Uncollected only filter - show only reports where uncollected > 0
     if (showUncollectedOnly) {
-      const uncollectedStr = String(report.uncollected || "").trim();
+      const uncollectedStr = String(report.uncollected || '').trim();
       const uncollectedNum = Number(uncollectedStr);
       if (isNaN(uncollectedNum) || uncollectedNum <= 0) {
         return false;
@@ -130,9 +130,9 @@ export function createPaginationHandlers(
  * Format currency for display
  */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
   }).format(amount);
 }
 
@@ -140,10 +140,10 @@ export function formatCurrency(amount: number): string {
  * Format date for display
  */
 export function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   }).format(date);
 }
 
@@ -151,11 +151,11 @@ export function formatDate(date: Date): string {
  * Format date and time for display
  */
 export function formatDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(date);
 }

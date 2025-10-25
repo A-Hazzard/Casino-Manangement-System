@@ -20,12 +20,14 @@
 This document provides comprehensive documentation of the database models and relationships used in the Evolution One Casino Management System. It covers the complete data architecture that drives all system functionality including dashboard analytics, financial reporting, collection management, and operational monitoring.
 
 ### Key Principles
+
 - **Data Integrity**: All models maintain referential integrity and data consistency
 - **Performance**: Optimized database design with proper indexing and relationships
 - **Scalability**: Architecture supports growth and expansion
 - **Compliance**: Models support regulatory reporting and audit requirements
 
 ### System Architecture
+
 - **MongoDB**: Document-based database with flexible schema design
 - **Mongoose ODM**: Object Document Mapping for data validation and relationships
 - **TypeScript**: Strong typing for all database models and operations
@@ -52,13 +54,14 @@ Licencee (licencee.ts)
 **Purpose**: Core model that drives most UI components including dashboard, reports, and machine management.
 
 **Key Fields Used in UI**:
+
 ```typescript
 Machine {
   _id: string;
   serialNumber: string;           // Machine identification
   gamingLocation: string;         // Links to GamingLocation
   status: "online" | "offline";   // Machine status for UI display
-  
+
   // Financial Data (Primary UI Source)
   sasMeters: {
     drop: number;                 // Money In - used in Financial Metrics Cards
@@ -67,14 +70,14 @@ Machine {
     jackpot: number;              // Jackpot - displayed in Location Tables
     gamesPlayed: number;          // Games played - used for calculations
   };
-  
+
   // Collection Data (for Collection Reports)
   collectionMetersHistory: [{
     metersIn: number;             // Money in at collection start
     metersOut: number;            // Money in at collection end
     timestamp: Date;              // Collection timestamp
   }];
-  
+
   // Machine Configuration
   gameConfig: {
     theoreticalRtp: number;       // Used in Machine Evaluation
@@ -88,13 +91,14 @@ Machine {
 **Purpose**: Provides detailed financial metrics for reports and analytics.
 
 **Key Fields Used in UI**:
+
 ```typescript
 Meter {
   _id: string;
   machine: string;                // Links to Machine
   location: string;               // Links to GamingLocation
   readAt: Date;                  // Date filtering (NOT createdAt)
-  
+
   // Movement Data (Primary UI Source)
   movement: {
     drop: number;                 // Money In - primary financial metric
@@ -111,6 +115,7 @@ Meter {
 **Purpose**: Manages casino locations and aggregates machine data.
 
 **Key Fields Used in UI**:
+
 ```typescript
 GamingLocation {
   _id: string;
@@ -125,12 +130,13 @@ GamingLocation {
 **Purpose**: Aggregates collection data for financial reporting.
 
 **Key Fields Used in UI**:
+
 ```typescript
 CollectionReport {
   _id: string;
   location: string;               // Links to GamingLocation
   date: string;                   // Report date
-  
+
   // Financial Summary (UI Display)
   totalDrop: number;              // Total money in across location
   totalGross: number;             // Total gross revenue
@@ -171,23 +177,27 @@ CollectionReport (collectionReport.ts) - Aggregated summaries
 ## Important Relationships
 
 ### 1. **Licencee → GamingLocation → Machine**
+
 - **Purpose**: Multi-tenant architecture for casino management
 - **UI Usage**: Location filtering and machine organization
 - **Key Fields**: `rel.licencee` → `gamingLocation` → `_id`
 
 ### 2. **Machine → Meter (Financial Data)**
+
 - **Purpose**: Primary financial metrics for UI components
 - **UI Usage**: Dashboard, Reports, Machine Performance
 - **Key Fields**: `machine._id` → `meter.machine`
 - **Data Flow**: `meter.movement` → UI financial calculations
 
 ### 3. **Machine → CollectionMetersHistory (Collection Data)**
+
 - **Purpose**: Collection-specific financial tracking
 - **UI Usage**: Collection Reports and accounting details
 - **Key Fields**: Embedded in `machine.collectionMetersHistory`
 - **Data Flow**: Collection timestamps and meter readings
 
 ### 4. **GamingLocation → CollectionReport (Financial Summaries)**
+
 - **Purpose**: Location-wide financial aggregation
 - **UI Usage**: Location performance and financial summaries
 - **Key Fields**: `location` → `collectionReport.location`
@@ -198,12 +208,14 @@ CollectionReport (collectionReport.ts) - Aggregated summaries
 This focused documentation covers the essential database models and relationships that drive the Evolution One Casino Management System UI:
 
 ### Key Models
+
 - **Machines**: Primary UI data source with financial metrics and status
 - **Meters**: Financial metrics source with movement data
 - **GamingLocation**: Location management and organization
 - **CollectionReport**: Financial summaries and aggregated data
 
 ### Core Financial Fields
+
 - **Money In**: `movement.drop` (primary) / `sasMeters.drop` (fallback)
 - **Money Out**: `movement.totalCancelledCredits` (primary) / `sasMeters.totalCancelledCredits` (fallback)
 - **Gross Revenue**: Money In - Money Out
@@ -211,11 +223,13 @@ This focused documentation covers the essential database models and relationship
 - **Jackpot**: `movement.jackpot` for large payouts
 
 ### UI Data Flow
+
 - **Dashboard**: Financial Metrics Cards using Money In/Out/Gross
 - **Reports**: Location and Machine performance with aggregated metrics
 - **Collection Reports**: Collection-specific meter readings and history
 
 ### Critical Relationships
+
 - **Licencee → GamingLocation → Machine**: Multi-tenant architecture
 - **Machine → Meter**: Primary financial data source
 - **Machine → CollectionMetersHistory**: Collection tracking

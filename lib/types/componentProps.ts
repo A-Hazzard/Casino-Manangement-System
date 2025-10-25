@@ -1,4 +1,4 @@
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from '@/components/ui/button';
 import {
   ActiveFilters,
   ActiveTab,
@@ -8,21 +8,21 @@ import {
   locations,
   TimeFrames,
   TopPerformingData,
-} from "@/lib/types";
-import { TimePeriod } from "@shared/types";
-import { VariantProps } from "class-variance-authority";
-import { JSX } from "react";
-import type { LocationSelectItem } from "./location";
-import type { DateRange as RDPDateRange } from "react-day-picker";
-import type { CollectionReportLocationWithMachines } from "./api";
-import { LatLng } from "leaflet";
-import type { CollectorSchedule } from "@/lib/types/components";
+} from '@/lib/types';
+import { TimePeriod } from '@shared/types';
+import { VariantProps } from 'class-variance-authority';
+import { JSX } from 'react';
+import type { LocationSelectItem } from './location';
+import type { DateRange as RDPDateRange } from 'react-day-picker';
+import type { CollectionReportLocationWithMachines } from './api';
+import { LatLng } from 'leaflet';
+import type { CollectorSchedule } from '@/lib/types/components';
 
 export type DashboardLayoutProps = {
   activeTab: ActiveTab;
   topPerformingData: TopPerformingData;
-  activeMetricsFilter: TimePeriod | "";
-  activePieChartFilter: TimePeriod | "";
+  activeMetricsFilter: TimePeriod | '';
+  activePieChartFilter: TimePeriod | '';
   activeFilters: ActiveFilters;
   pieChartSortIsOpen: boolean;
   totals: DashboardTotals | null;
@@ -39,7 +39,7 @@ export type DashboardLayoutProps = {
   setLoadingChartData: (_state: boolean) => void;
   setRefreshing: (_state: boolean) => void;
   setActiveTab: (_state: ActiveTab) => void;
-  setActivePieChartFilter: (_state: TimePeriod | "") => void;
+  setActivePieChartFilter: (_state: TimePeriod | '') => void;
   setActiveFilters: (_state: ActiveFilters) => void;
   setActiveMetricsFilter: (_state: TimePeriod) => void;
   setTotals: (_state: DashboardTotals | null) => void;
@@ -48,7 +48,7 @@ export type DashboardLayoutProps = {
   setTopPerformingData: (_state: TopPerformingData[]) => void;
   onRefresh: () => void;
   renderCustomizedLabel: (_props: CustomizedLabelProps) => JSX.Element;
-  queryType?: "user" | "all";
+  queryType?: 'user' | 'all';
   userId?: string | null;
   selectedLicencee: string;
 };
@@ -58,7 +58,7 @@ export type PcLayoutProps = DashboardLayoutProps;
 export type ChartProps = {
   loadingChartData: boolean;
   chartData: dashboardData[];
-  activeMetricsFilter: TimePeriod | "";
+  activeMetricsFilter: TimePeriod | '';
 };
 
 export type MapPreviewProps = {
@@ -85,9 +85,9 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   };
 
 export type DashboardCustomSelectProps = {
-  selectedFilter: TimePeriod | "";
+  selectedFilter: TimePeriod | '';
   placeholder?: string;
-  activePieChartFilter?: TimePeriod | "";
+  activePieChartFilter?: TimePeriod | '';
   isActive: boolean;
   timeFrames: TimeFrames[];
   activeFilters: ActiveFilters;
@@ -116,7 +116,7 @@ export type DashboardDateFiltersProps = {
   disabled?: boolean;
   onCustomRangeGo?: () => void;
   hideAllTime: boolean;
-  mode?: "auto" | "mobile" | "desktop";
+  mode?: 'auto' | 'mobile' | 'desktop';
   enableTimeInputs?: boolean;
 };
 
@@ -233,7 +233,7 @@ export type CollectionDesktopUIProps = {
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
   sortField?: keyof CollectionReportRow;
-  sortDirection?: "asc" | "desc";
+  sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
 };
 
@@ -383,12 +383,12 @@ export type LocationPickerMapProps = {
 };
 
 export type CollectionReportDateFilter =
-  | "today"
-  | "yesterday"
-  | "last7"
-  | "last30"
-  | "custom"
-  | "alltime";
+  | 'today'
+  | 'yesterday'
+  | 'last7'
+  | 'last30'
+  | 'custom'
+  | 'alltime';
 
 export type DateRangeFilterProps = {
   dateRange?: RDPDateRange;

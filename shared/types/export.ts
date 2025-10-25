@@ -1,5 +1,5 @@
 // Export format types
-export type ExportFormat = "pdf" | "csv" | "excel" | "json";
+export type ExportFormat = 'pdf' | 'csv' | 'excel' | 'json';
 
 // Export data type
 export type ExportData = {
@@ -22,9 +22,9 @@ export type ExportJob = {
   userId: string;
   format: ExportFormat;
   data: LegacyExportData;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   createdAt: Date;
   completedAt?: Date;
   error?: string;
   downloadUrl?: string;
-}; 
+};

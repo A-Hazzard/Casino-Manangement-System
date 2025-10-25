@@ -65,7 +65,7 @@ export type MovementRequest = {
  * Status values for a movement request.
  */
 export type MovementRequestStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "in progress";
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'in progress';

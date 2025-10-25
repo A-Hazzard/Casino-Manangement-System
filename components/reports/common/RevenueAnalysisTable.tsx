@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useState, useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import React, { useState, useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   ChevronLeft,
   ChevronRight,
@@ -20,9 +20,9 @@ import {
   ArrowUpDown,
   MapPin,
   Monitor,
-} from "lucide-react";
-import { AggregatedLocation } from "@/lib/types/location";
-import type { RevenueAnalysisTableProps } from "@/lib/types/components";
+} from 'lucide-react';
+import { AggregatedLocation } from '@/lib/types/location';
+import type { RevenueAnalysisTableProps } from '@/lib/types/components';
 
 export default function RevenueAnalysisTable({
   locations,
@@ -34,20 +34,20 @@ export default function RevenueAnalysisTable({
   onPageChange,
   onLocationClick,
 }: RevenueAnalysisTableProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<keyof AggregatedLocation>("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<keyof AggregatedLocation>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Filter locations based on search term
   const filteredLocations = useMemo(() => {
     if (!searchTerm?.trim()) return locations;
-    const q = (searchTerm || "").toLowerCase();
-    return locations.filter((location) => {
-      const name = location.name || "";
-      const id = location._id || "";
+    const q = (searchTerm || '').toLowerCase();
+    return locations.filter(location => {
+      const name = location.name || '';
+      const id = location._id || '';
       return (
-        (typeof name === "string" && name.toLowerCase().includes(q)) ||
-        (typeof id === "string" && id.toLowerCase().includes(q))
+        (typeof name === 'string' && name.toLowerCase().includes(q)) ||
+        (typeof id === 'string' && id.toLowerCase().includes(q))
       );
     });
   }, [locations, searchTerm]);
@@ -58,12 +58,12 @@ export default function RevenueAnalysisTable({
       const aValue = a[sortField];
       const bValue = b[sortField];
 
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
       }
 
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc"
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
@@ -81,10 +81,10 @@ export default function RevenueAnalysisTable({
 
   const handleSort = (field: keyof AggregatedLocation) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortDirection("desc");
+      setSortDirection('desc');
     }
   };
 
@@ -109,7 +109,7 @@ export default function RevenueAnalysisTable({
   const TableSkeleton = () => (
     <div className="animate-pulse">
       <div className="p-4">
-        <div className="text-sm text-gray-500 mb-4">
+        <div className="mb-4 text-sm text-gray-500">
           Loading location data...
         </div>
       </div>
@@ -117,17 +117,17 @@ export default function RevenueAnalysisTable({
         {[...Array(10)].map((_, i) => (
           <div
             key={i}
-            className="flex items-center space-x-4 p-4 border rounded-lg bg-gray-50"
+            className="flex items-center space-x-4 rounded-lg border bg-gray-50 p-4"
           >
             <div className="flex-1 space-y-2">
-              <div className="h-4 bg-gray-300 rounded w-1/4"></div>
-              <div className="h-3 bg-gray-300 rounded w-1/6"></div>
+              <div className="h-4 w-1/4 rounded bg-gray-300"></div>
+              <div className="h-3 w-1/6 rounded bg-gray-300"></div>
             </div>
-            <div className="h-6 bg-gray-300 rounded w-16"></div>
-            <div className="h-4 bg-gray-300 rounded w-12"></div>
-            <div className="h-4 bg-gray-300 rounded w-20"></div>
-            <div className="h-4 bg-gray-300 rounded w-20"></div>
-            <div className="h-4 bg-gray-300 rounded w-16"></div>
+            <div className="h-6 w-16 rounded bg-gray-300"></div>
+            <div className="h-4 w-12 rounded bg-gray-300"></div>
+            <div className="h-4 w-20 rounded bg-gray-300"></div>
+            <div className="h-4 w-20 rounded bg-gray-300"></div>
+            <div className="h-4 w-16 rounded bg-gray-300"></div>
           </div>
         ))}
       </div>
@@ -138,30 +138,30 @@ export default function RevenueAnalysisTable({
   const CardSkeleton = () => (
     <div className="animate-pulse space-y-4">
       <div className="p-4">
-        <div className="text-sm text-gray-500 mb-4">
+        <div className="mb-4 text-sm text-gray-500">
           Loading location data...
         </div>
       </div>
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
-          className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+          className="space-y-3 rounded-lg border border-gray-200 bg-white p-4"
         >
-          <div className="flex justify-between items-start">
-            <div className="space-y-2 flex-1">
-              <div className="h-5 bg-gray-300 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+          <div className="flex items-start justify-between">
+            <div className="flex-1 space-y-2">
+              <div className="h-5 w-3/4 rounded bg-gray-300"></div>
+              <div className="h-4 w-1/2 rounded bg-gray-300"></div>
             </div>
-            <div className="h-6 bg-gray-300 rounded w-20"></div>
+            <div className="h-6 w-20 rounded bg-gray-300"></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <div className="h-4 bg-gray-300 rounded w-16"></div>
-              <div className="h-4 bg-gray-300 rounded w-20"></div>
+              <div className="h-4 w-16 rounded bg-gray-300"></div>
+              <div className="h-4 w-20 rounded bg-gray-300"></div>
             </div>
             <div className="space-y-2">
-              <div className="h-4 bg-gray-300 rounded w-16"></div>
-              <div className="h-4 bg-gray-300 rounded w-20"></div>
+              <div className="h-4 w-16 rounded bg-gray-300"></div>
+              <div className="h-4 w-20 rounded bg-gray-300"></div>
             </div>
           </div>
         </div>
@@ -173,22 +173,20 @@ export default function RevenueAnalysisTable({
   const LocationCard = ({ location }: { location: AggregatedLocation }) => {
     return (
       <div
-        className={`bg-white border border-gray-200 rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow ${
-          onLocationClick ? "cursor-pointer" : ""
+        className={`space-y-3 rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md ${
+          onLocationClick ? 'cursor-pointer' : ''
         }`}
         onClick={() => onLocationClick?.(location)}
       >
         {/* Header */}
-        <div className="flex justify-between items-start">
+        <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-gray-900 truncate">
+            <h3 className="truncate text-sm font-medium text-gray-900">
               {location.name}
             </h3>
-            <p className="text-xs text-gray-500 truncate">
-              {location._id}
-            </p>
+            <p className="truncate text-xs text-gray-500">{location._id}</p>
           </div>
-          <Badge variant="secondary" className="text-xs font-mono">
+          <Badge variant="secondary" className="font-mono text-xs">
             {location.totalMachines} machines
           </Badge>
         </div>
@@ -207,7 +205,7 @@ export default function RevenueAnalysisTable({
               ${location.moneyOut.toLocaleString()}
             </p>
           </div>
-          <div className="space-y-1 col-span-2">
+          <div className="col-span-2 space-y-1">
             <p className="text-xs text-gray-500">Gross Revenue</p>
             <p className="text-lg font-semibold text-green-600">
               ${location.gross.toLocaleString()}
@@ -216,11 +214,11 @@ export default function RevenueAnalysisTable({
         </div>
 
         {/* Additional Info */}
-        <div className="pt-2 border-t border-gray-100">
+        <div className="border-t border-gray-100 pt-2">
           <div className="flex justify-between text-xs text-gray-500">
             <span>Online: {location.onlineMachines}</span>
             <span>
-              Hold:{" "}
+              Hold:{' '}
               {location.moneyIn > 0
                 ? ((location.gross / location.moneyIn) * 100).toFixed(1)
                 : 0}
@@ -263,13 +261,13 @@ export default function RevenueAnalysisTable({
     <Card>
       <CardContent className="p-6">
         {/* Search and Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
             <Input
               placeholder="Search locations..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -288,18 +286,18 @@ export default function RevenueAnalysisTable({
                   <TableHead className="font-semibold">
                     <SortButton field="name">Location Name</SortButton>
                   </TableHead>
-                  <TableHead className="font-semibold text-center">
+                  <TableHead className="text-center font-semibold">
                     <SortButton field="totalMachines">
                       Machine Numbers
                     </SortButton>
                   </TableHead>
-                  <TableHead className="font-semibold text-right">
+                  <TableHead className="text-right font-semibold">
                     <SortButton field="moneyIn">Drop</SortButton>
                   </TableHead>
-                  <TableHead className="font-semibold text-right">
+                  <TableHead className="text-right font-semibold">
                     <SortButton field="moneyOut">Cancelled Credits</SortButton>
                   </TableHead>
-                  <TableHead className="font-semibold text-right">
+                  <TableHead className="text-right font-semibold">
                     <SortButton field="gross">Gross Revenue</SortButton>
                   </TableHead>
                 </TableRow>
@@ -309,18 +307,18 @@ export default function RevenueAnalysisTable({
                   <TableRow>
                     <TableCell
                       colSpan={5}
-                      className="text-center py-8 text-gray-500"
+                      className="py-8 text-center text-gray-500"
                     >
                       {searchTerm
-                        ? "No locations found matching your search"
-                        : "No locations available"}
+                        ? 'No locations found matching your search'
+                        : 'No locations available'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedLocations.map((location) => (
+                  paginatedLocations.map(location => (
                     <TableRow
                       key={location.name}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      className="cursor-pointer transition-colors hover:bg-gray-50"
                       onClick={() => onLocationClick?.(location)}
                     >
                       <TableCell className="font-medium">
@@ -352,15 +350,15 @@ export default function RevenueAnalysisTable({
         </div>
 
         {/* Mobile Card View */}
-        <div className="lg:hidden space-y-4">
+        <div className="space-y-4 lg:hidden">
           {paginatedLocations.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="py-8 text-center text-gray-500">
               {searchTerm
-                ? "No locations found matching your search"
-                : "No locations available"}
+                ? 'No locations found matching your search'
+                : 'No locations available'}
             </div>
           ) : (
-            paginatedLocations.map((location) => (
+            paginatedLocations.map(location => (
               <LocationCard key={location.name} location={location} />
             ))
           )}
@@ -368,11 +366,11 @@ export default function RevenueAnalysisTable({
 
         {/* Pagination - Fixed positioning to prevent overlap */}
         {totalPages > 1 && (
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-gray-600 text-center sm:text-left">
-                Showing {(currentPage - 1) * 10 + 1} to{" "}
-                {Math.min(currentPage * 10, totalCount)} of {totalCount}{" "}
+          <div className="mt-8 border-t border-gray-200 pt-6">
+            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+              <div className="text-center text-sm text-gray-600 sm:text-left">
+                Showing {(currentPage - 1) * 10 + 1} to{' '}
+                {Math.min(currentPage * 10, totalCount)} of {totalCount}{' '}
                 locations
               </div>
               <div className="flex items-center gap-2">
@@ -391,10 +389,10 @@ export default function RevenueAnalysisTable({
                     return (
                       <Button
                         key={page}
-                        variant={currentPage === page ? "default" : "outline"}
+                        variant={currentPage === page ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => onPageChange?.(page)}
-                        className="w-8 h-8 p-0"
+                        className="h-8 w-8 p-0"
                       >
                         {page}
                       </Button>
@@ -407,7 +405,7 @@ export default function RevenueAnalysisTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-8 h-8 p-0"
+                          className="h-8 w-8 p-0"
                         >
                           {currentPage}
                         </Button>
@@ -420,7 +418,7 @@ export default function RevenueAnalysisTable({
                           variant="outline"
                           size="sm"
                           onClick={() => onPageChange?.(totalPages)}
-                          className="w-8 h-8 p-0"
+                          className="h-8 w-8 p-0"
                         >
                           {totalPages}
                         </Button>
@@ -441,8 +439,6 @@ export default function RevenueAnalysisTable({
             </div>
           </div>
         )}
-
-
       </CardContent>
     </Card>
   );

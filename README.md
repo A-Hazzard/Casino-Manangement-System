@@ -9,6 +9,7 @@
 **Author:** Aaron Hazzard - Senior Software Engineer
 
 ## 🚀 Features
+
 - 📊 **Dashboard with Real-Time Analytics** ([docs](Documentation/frontend/dashboard.md))
   - Gaming day offset support for accurate financial reporting
   - Custom date ranges with time inputs
@@ -40,6 +41,7 @@
 - ⏰ **Gaming Day Offset System** ([docs](.cursor/gaming-day-offset-rules.md)) - **8 AM gaming day start time**
 
 ## 🛠️ Tech Stack
+
 - **Next.js 15** (App Router)
 - **TypeScript**
 - **Tailwind CSS**
@@ -52,36 +54,44 @@
 ## ⚙️ Installation & Setup
 
 ### 1️⃣ Clone the Repository
+
 ```sh
 git clone https://gitlab.com/sunny-group/sas/evolution-one-cms.git
 cd "evolution-one-cms"
 ```
 
 ### 2️⃣ Install pnpm (if you don't have it)
+
 If you don't have pnpm installed globally, run:
+
 ```sh
 npm i -g pnpm@latest
 ```
 
 ### 3️⃣ Install Dependencies
+
 ```sh
 pnpm install
 ```
 
 ### 4️⃣ Run the Development Server
+
 ```sh
 pnpm run dev
 ```
+
 Open http://localhost:3000 to see the application.
 
 ## 🐳 Docker Setup
 
 ### 1️⃣ Build the Docker Image Locally
+
 ```sh
 docker build -t evolution1-cms:local .
 ```
 
 ### 2️⃣ Run the Docker Container Locally
+
 ```sh
 docker run --rm -p 3000:3000 \
   -e MONGO_URI="your_mongodb_connection_string" \
@@ -93,22 +103,26 @@ docker run --rm -p 3000:3000 \
 ### 3️⃣ GitLab Container Registry
 
 **Authenticate:**
+
 ```sh
 docker login registry.gitlab.com
 ```
 
 **Build for GitLab Registry:**
+
 ```sh
 docker build -t registry.gitlab.com/sunny-group/sas/evolution-one-cms .
 ```
 
 **Push to Registry:**
+
 ```sh
 docker push registry.gitlab.com/sunny-group/sas/evolution-one-cms
 
 ```
 
 **Run from Registry:**
+
 ```sh
 # Windows (CMD or PowerShell): run as one line (no backslashes)
 docker run --rm -p 3000:3000 -e MONGO_URI="mongo uri in .env" -e JWT_SECRET="jwt secret in .env" -e NODE_ENV="production" -e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="api key in .env" registry.gitlab.com/sunny-group/sas/evolution-one-cms
@@ -126,26 +140,29 @@ docker run --rm -p 3000:3000 \
 
 ## 🖥️ Development Commands
 
-| Command | Description |
-|---------|-------------|
-| `pnpm run dev` | Start development server |
-| `pnpm run build` | Build production app |
-| `pnpm run start` | Start production server |
-| `pnpm run lint` | Check for linting issues |
+| Command               | Description                  |
+| --------------------- | ---------------------------- |
+| `pnpm run dev`        | Start development server     |
+| `pnpm run build`      | Build production app         |
+| `pnpm run start`      | Start production server      |
+| `pnpm run lint`       | Check for linting issues     |
 | `pnpm run type-check` | Run TypeScript type checking |
 
 ## 🧪 Testing & Development Tools
 
 ### Test Directory (`test/`)
+
 The `test/` directory contains a **Go-based MongoDB query tool** for development and debugging:
 
 **Purpose:**
+
 - **Database Testing**: Interactive tool for testing MongoDB queries directly
 - **Data Validation**: Verify data structure and relationships
 - **Query Optimization**: Test and optimize complex aggregation pipelines
 - **Development Support**: Debug data issues without affecting the main application
 
 **Features:**
+
 - **Interactive CLI**: Menu-driven interface for different query types
 - **Date Range Support**: Query data for specific time periods (today, yesterday, 7 days, custom dates)
 - **Location & Licensee Filtering**: Filter data by specific locations or licensees
@@ -154,12 +171,14 @@ The `test/` directory contains a **Go-based MongoDB query tool** for development
 - **Real-time Results**: Immediate feedback on query results
 
 **Usage:**
+
 ```bash
 cd test/
 go run main.go
 ```
 
 **Query Types Available:**
+
 1. **Machine Search**: Find machines by serial number with location/licensee info
 2. **Machine with Meters**: Search machines with meter data by date range
 3. **Licensee Search**: Find all machines under a specific licensee
@@ -168,12 +187,14 @@ go run main.go
 6. **Location by Licensee**: Find all locations under a specific licensee
 
 **Configuration:**
+
 - Requires `.env` file with `MONGO_URI` connection string
 - Connects to `sas-prod` database
 - Supports 5-minute timeout for complex queries
 - Includes progress monitoring for long-running queries
 
 **Benefits for Development:**
+
 - **Data Verification**: Confirm API responses match database state
 - **Query Debugging**: Test aggregation pipelines before implementing in API
 - **Performance Testing**: Measure query performance with real data
@@ -183,11 +204,13 @@ go run main.go
 ## 🏗️ Development Guidelines
 
 ### Package Management & Build Integrity
+
 - **Use `pnpm` exclusively** for all package management
 - Always run `pnpm build` after code changes
 - Fix build errors immediately and re-run until clean build
 
 ### TypeScript & Code Organization
+
 - **Prefer `type` over `interface`** for consistency
 - **No `any` allowed** - Create proper type definitions
 - Organize types in appropriate directories:
@@ -196,18 +219,21 @@ go run main.go
   - `app/api/lib/types/` - API-specific types
 
 ### File Organization & Separation of Concerns
+
 - Keep `page.tsx` files lean - offload logic to helpers
 - API logic in `app/api/lib/helpers/`
 - Shared utilities in `lib/utils/` or `lib/helpers/`
 - Components organized by feature in `components/`
 
 ### Code Quality
+
 - Address all ESLint warnings immediately
 - Run `pnpm lint` regularly
 - Document complex business logic
 - Use proper error handling in components
 
 ### Security & Authentication
+
 - **Implement secure authentication practices** through Firebase Authentication
 - **Follow OWASP standards** to safeguard code from vulnerabilities
 - Never expose sensitive information (API keys, tokens) in client-side code
@@ -215,6 +241,7 @@ go run main.go
 - Use middleware for route protection where necessary
 
 ### Timezone Management
+
 - **Trinidad Timezone (UTC-4)**: All date fields are automatically converted from UTC to Trinidad local time
 - **Database Storage**: All dates are stored in UTC format in the database
 - **API Responses**: Date fields are automatically converted to Trinidad time before being sent to the frontend
@@ -226,6 +253,7 @@ go run main.go
 **Critical Importance:** Comprehensive auditing and logging are essential for casino management systems due to regulatory compliance requirements, security monitoring, and operational transparency.
 
 #### API Logging Standards
+
 - **Use `APILogger` utility** (`app/api/lib/utils/logger.ts`) for all API endpoints
 - **Log all CRUD operations** with success/failure status, duration, and context
 - **Include user identification** when available for audit trail
@@ -233,6 +261,7 @@ go run main.go
 - **Format:** `[timestamp] [level] (duration) METHOD endpoint: message [context]`
 
 #### Activity Logging Requirements
+
 - **Track all user actions** that modify system data or access sensitive information
 - **Record before/after values** for data changes to enable rollback and audit
 - **Include IP addresses and user agents** for security investigation
@@ -240,12 +269,14 @@ go run main.go
 - **Implement log retention policies** according to regulatory requirements
 
 #### Compliance Considerations
+
 - **Gaming regulations** require detailed audit trails for all financial transactions
 - **Data protection laws** mandate logging of personal data access and modifications
 - **Security standards** require monitoring of privileged operations and access patterns
 - **Operational transparency** enables troubleshooting and performance optimization
 
 #### Implementation Guidelines
+
 - **Use structured logging** with consistent field names and data types
 - **Implement log levels** (INFO, WARNING, ERROR) for appropriate filtering
 - **Include correlation IDs** to trace related operations across systems
@@ -253,6 +284,7 @@ go run main.go
 - **Monitor log performance** to prevent system impact during high-volume operations
 
 ## 🏗️ Project Structure
+
 ```
 Evolution1 CMS/
 ├── app/                    # Next.js App Router pages
@@ -277,6 +309,7 @@ Evolution1 CMS/
 ## 📊 Key Modules & Documentation
 
 ### Frontend Documentation
+
 - **Dashboard:** Real-time analytics and metrics ([dashboard.md](Documentation/frontend/dashboard.md))
 - **Reports:** Comprehensive reporting with 4 tabs (Dashboard, Locations, Machines, Meters) ([reports.md](Documentation/frontend/reports.md))
 - **Members:** Member management and session tracking ([members.md](Documentation/frontend/members.md))
@@ -291,6 +324,7 @@ Evolution1 CMS/
 - **Login:** Secure authentication ([login.md](Documentation/frontend/login.md))
 
 ### Backend Documentation
+
 - **API Overview:** Complete API reference ([api-overview.md](Documentation/backend/api-overview.md))
 - **Reports API:** Backend reporting and aggregation ([reports-api.md](Documentation/backend/reports-api.md))
 - **Meters Report API:** Machine-level meter readings ([meters-report-api.md](Documentation/backend/meters-report-api.md))
@@ -311,6 +345,7 @@ Evolution1 CMS/
 - **System Configuration:** System configuration and settings ([system-config-api.md](Documentation/backend/system-config-api.md))
 
 ### General Documentation
+
 - **Timezone:** Trinidad timezone handling and date conversion ([timezone.md](Documentation/timezone.md))
 - **Engineering Guidelines:** Development standards and best practices ([ENGINEERING_GUIDELINES.md](Documentation/ENGINEERING_GUIDELINES.md))
 - **Financial Metrics:** Financial calculations and metrics guide ([financial-metrics-guide.md](Documentation/financial-metrics-guide.md))
@@ -324,6 +359,7 @@ See [pages-overview.md](Documentation/frontend/pages-overview.md) for a full lis
 Evolution1 CMS enforces strict engineering discipline in type safety, code style, modularity, and security. All contributors must follow these guidelines to maintain a robust, maintainable, and secure codebase.
 
 **Key Principles:**
+
 - **Build Integrity:** Always ensure clean builds with zero errors
 - **Type Safety:** Comprehensive TypeScript coverage
 - **Code Organization:** Clear separation of concerns
@@ -337,6 +373,7 @@ Evolution1 CMS enforces strict engineering discipline in type safety, code style
 **Activity Logs:** Track all significant actions for auditing and security.
 
 ## ✨ Core Principles
+
 - **Modularity**: Easy to extend and maintain
 - **Documentation**: See the `Documentation/` folder for detailed specs, requirements, and page summaries.
 - **Testing**: Use the `test/` directory for database validation and development support.

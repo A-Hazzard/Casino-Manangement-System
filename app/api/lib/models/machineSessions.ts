@@ -1,4 +1,4 @@
-import { model, models, Schema } from "mongoose";
+import { model, models, Schema } from 'mongoose';
 
 const machineSessionSchema = new Schema(
   {
@@ -74,7 +74,7 @@ const machineSessionSchema = new Schema(
       updatedAt: { type: Date },
     },
     endTime: { type: Date },
-    gameName: { type: String, default: "" },
+    gameName: { type: String, default: '' },
     gamesPlayed: { type: Number, default: 0 },
     gamesWon: { type: Number, default: 0 },
     lastAutoLogoutTime: { type: Date },
@@ -121,7 +121,7 @@ const machineSessionSchema = new Schema(
       freePlayCreditsTimeout: { type: Number },
     },
     machineId: { type: String, required: true },
-    machineSerialNumber: { type: String, default: "" },
+    machineSerialNumber: { type: String, default: '' },
     memberId: { type: String, required: true },
     nonRestricted: { type: Number, default: 0 },
     points: { type: Number, default: 0 },
@@ -195,9 +195,9 @@ const machineSessionSchema = new Schema(
       updatedAt: { type: Date },
     },
     startTime: { type: Date },
-    status: { type: String, default: "NOTACTIVE" },
+    status: { type: String, default: 'NOTACTIVE' },
     uaccount: { type: Number, default: 0 },
-    ucardId: { type: String, default: "" },
+    ucardId: { type: String, default: '' },
     user: { type: String },
   },
   { timestamps: true }
@@ -212,4 +212,4 @@ machineSessionSchema.index({ startTime: -1 }); // For date-based queries
  * Mongoose model for machine sessions, including all session data and meter readings.
  */
 export const MachineSession =
-  models.machinesessions || model("machinesessions", machineSessionSchema);
+  models.machinesessions || model('machinesessions', machineSessionSchema);

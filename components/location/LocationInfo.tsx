@@ -1,8 +1,8 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { LocationData } from "@/lib/types/location";
-import { formatCurrency } from "@/lib/utils/formatting";
-import type { LocationData as LocationDataType } from "@/lib/types/location";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { LocationData } from '@/lib/types/location';
+import { formatCurrency } from '@/lib/utils/formatting';
+import type { LocationData as LocationDataType } from '@/lib/types/location';
 
 type ExtendedLocationInfoProps = {
   location: LocationDataType | null;
@@ -12,44 +12,44 @@ const LocationInfoCard: React.FC<ExtendedLocationInfoProps> = ({
   location,
 }) => {
   // Format address object into a string
-  const formatAddress = (address?: LocationData["address"]) => {
-    if (!address || typeof address !== "object") return "N/A";
+  const formatAddress = (address?: LocationData['address']) => {
+    if (!address || typeof address !== 'object') return 'N/A';
     const street =
-      "street" in address && typeof address.street === "string"
+      'street' in address && typeof address.street === 'string'
         ? address.street
-        : "";
+        : '';
     const city =
-      "city" in address && typeof address.city === "string" ? address.city : "";
+      'city' in address && typeof address.city === 'string' ? address.city : '';
     const country =
-      "country" in address && typeof address.country === "string"
+      'country' in address && typeof address.country === 'string'
         ? address.country
-        : "";
+        : '';
     const parts = [street, city, country].filter(Boolean);
-    return parts.join(", ") || "N/A";
+    return parts.join(', ') || 'N/A';
   };
 
   return (
     <motion.div
-      className="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6"
+      className="mb-6 rounded-lg bg-white p-4 shadow-sm md:p-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <h2 className="text-lg font-semibold mb-4">Location Information</h2>
+          <h2 className="mb-4 text-lg font-semibold">Location Information</h2>
           <div className="space-y-2">
             <p>
-              <span className="font-medium">Name:</span>{" "}
+              <span className="font-medium">Name:</span>{' '}
               {location?.locationName}
             </p>
-            <div className="text-sm text-gray-600 mt-4">
+            <div className="mt-4 text-sm text-gray-600">
               <p>
-                <span className="font-medium">Address:</span>{" "}
+                <span className="font-medium">Address:</span>{' '}
                 {formatAddress(location?.address)}
               </p>
             </div>
@@ -61,23 +61,23 @@ const LocationInfoCard: React.FC<ExtendedLocationInfoProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <h2 className="text-lg font-semibold mb-4">Metrics</h2>
+          <h2 className="mb-4 text-lg font-semibold">Metrics</h2>
           <div className="grid grid-cols-1 gap-2">
             <motion.div
-              className="bg-gray-50 p-3 rounded-lg"
+              className="rounded-lg bg-gray-50 p-3"
               whileHover={{
                 scale: 1.02,
-                backgroundColor: "#f5f3ff",
+                backgroundColor: '#f5f3ff',
               }}
             >
               <p className="text-sm text-gray-500">Total Cabinets</p>
               <p className="text-lg font-semibold">{location?.totalMachines}</p>
             </motion.div>
             <motion.div
-              className="bg-gray-50 p-3 rounded-lg"
+              className="rounded-lg bg-gray-50 p-3"
               whileHover={{
                 scale: 1.02,
-                backgroundColor: "#f0fdf4",
+                backgroundColor: '#f0fdf4',
               }}
             >
               <p className="text-sm text-gray-500">Money In</p>
@@ -86,10 +86,10 @@ const LocationInfoCard: React.FC<ExtendedLocationInfoProps> = ({
               </p>
             </motion.div>
             <motion.div
-              className="bg-gray-50 p-3 rounded-lg"
+              className="rounded-lg bg-gray-50 p-3"
               whileHover={{
                 scale: 1.02,
-                backgroundColor: "#fef2f2",
+                backgroundColor: '#fef2f2',
               }}
             >
               <p className="text-sm text-gray-500">Money Out</p>

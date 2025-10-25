@@ -1,14 +1,14 @@
-import { NextRequest } from "next/server";
-import UserModel from "../../app/api/lib/models/user";
-import { hashPassword } from "../utils/password";
-import type { ResourcePermissions } from "@/lib/types/administration";
-import { logActivity } from "./activityLogger";
-import { getClientIP } from "@/lib/utils/ipAddress";
+import { NextRequest } from 'next/server';
+import UserModel from '../../app/api/lib/models/user';
+import { hashPassword } from '../utils/password';
+import type { ResourcePermissions } from '@/lib/types/administration';
+import { logActivity } from './activityLogger';
+import { getClientIP } from '@/lib/utils/ipAddress';
 import type {
   UserDocument,
   UserDocumentWithPassword,
   OriginalUserType,
-} from "../types/users";
+} from '../types/users';
 
 /**
  * Finds a user by email address (case-insensitive).
@@ -20,7 +20,7 @@ export async function getUserByEmail(
   emailAddress: string
 ): Promise<UserDocumentWithPassword | null> {
   return UserModel.findOne({
-    emailAddress: { $regex: new RegExp(`^${emailAddress}$`, "i") },
+    emailAddress: { $regex: new RegExp(`^${emailAddress}$`, 'i') },
   });
 }
 
@@ -31,7 +31,7 @@ export async function getUserByUsername(
   username: string
 ): Promise<UserDocumentWithPassword | null> {
   return UserModel.findOne({
-    username: { $regex: new RegExp(`^${username}$`, "i") },
+    username: { $regex: new RegExp(`^${username}$`, 'i') },
   });
 }
 
@@ -41,8 +41,8 @@ export async function getUserByUsername(
 export function formatUsersForResponse(users: UserDocument[]) {
   return users.map((user: UserDocument) => ({
     _id: user._id,
-    name: `${user.profile?.firstName ?? ""} ${
-      user.profile?.lastName ?? ""
+    name: `${user.profile?.firstName ?? ''} ${
+      user.profile?.lastName ?? ''
     }`.trim(),
     username: user.username,
     email: user.emailAddress,
@@ -60,10 +60,10 @@ export async function getAllUsers() {
     {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     },
-    "-password"
+    '-password'
   );
 }
 
@@ -99,12 +99,12 @@ export async function createUser(
   });
 
   if (existingUser) {
-    throw new Error("Username or email already exists");
+    throw new Error('Username or email already exists');
   }
 
   const hashedPassword = await hashPassword(password);
   const newUser = await UserModel.create({
-    _id: new (await import("mongoose")).default.Types.ObjectId().toHexString(),
+    _id: new (await import('mongoose')).default.Types.ObjectId().toHexString(),
     username,
     emailAddress,
     password: hashedPassword,
@@ -118,18 +118,18 @@ export async function createUser(
 
   // Log user creation activity
   try {
-    const clientIP = getClientIP(request) || "unknown";
+    const clientIP = getClientIP(request) || 'unknown';
     await logActivity(
-      { id: "system", email: "system", role: "system" }, // actor
-      "user_created", // actionType
-      "user", // entityType
+      { id: 'system', email: 'system', role: 'system' }, // actor
+      'user_created', // actionType
+      'user', // entityType
       { id: newUser._id, name: newUser.username }, // entity
       [], // changes
       `User created: ${newUser.username} (${newUser.emailAddress})`, // description
       clientIP || undefined // ipAddress
     );
   } catch (error) {
-    console.error("Failed to log user creation activity:", error);
+    console.error('Failed to log user creation activity:', error);
   }
 
   const userObject = newUser.toObject();
@@ -148,7 +148,7 @@ export async function updateUser(
 ) {
   const user = await UserModel.findById(_id);
   if (!user) {
-    throw new Error("User not found");
+    throw new Error('User not found');
   }
 
   // Calculate changes for activity log
@@ -163,18 +163,18 @@ export async function updateUser(
 
   // Log user update activity
   try {
-    const clientIP = getClientIP(request) || "unknown";
+    const clientIP = getClientIP(request) || 'unknown';
     await logActivity(
-      { id: "system", email: "system", role: "system" }, // actor
-      "user_updated", // actionType
-      "user", // entityType
+      { id: 'system', email: 'system', role: 'system' }, // actor
+      'user_updated', // actionType
+      'user', // entityType
       { id: _id, name: user.username }, // entity
       changes, // changes
       `User updated: ${user.username}`, // description
       clientIP || undefined // ipAddress
     );
   } catch (error) {
-    console.error("Failed to log user update activity:", error);
+    console.error('Failed to log user update activity:', error);
   }
 
   return updatedUser;
@@ -193,23 +193,23 @@ export async function deleteUser(_id: string, request: NextRequest) {
     { new: true }
   );
   if (!deletedUser) {
-    throw new Error("User not found");
+    throw new Error('User not found');
   }
 
   // Log user deletion activity
   try {
-    const clientIP = getClientIP(request) || "unknown";
+    const clientIP = getClientIP(request) || 'unknown';
     await logActivity(
-      { id: "system", email: "system", role: "system" }, // actor
-      "user_deleted", // actionType
-      "user", // entityType
+      { id: 'system', email: 'system', role: 'system' }, // actor
+      'user_deleted', // actionType
+      'user', // entityType
       { id: _id, name: deletedUser.username }, // entity
       [], // changes
       `User deleted: ${deletedUser.username} (${deletedUser.emailAddress})`, // description
       clientIP || undefined // ipAddress
     );
   } catch (error) {
-    console.error("Failed to log user deletion activity:", error);
+    console.error('Failed to log user deletion activity:', error);
   }
 
   return deletedUser;
@@ -227,72 +227,72 @@ function calculateUserChanges(
 
   const fieldChecks = [
     {
-      field: "firstName",
+      field: 'firstName',
       original: originalUser.profile?.firstName,
       updated: updateFields.firstName,
     },
     {
-      field: "lastName",
+      field: 'lastName',
       original: originalUser.profile?.lastName,
       updated: updateFields.lastName,
     },
     {
-      field: "middleName",
+      field: 'middleName',
       original: originalUser.profile?.middleName,
       updated: updateFields.middleName,
     },
     {
-      field: "otherName",
+      field: 'otherName',
       original: originalUser.profile?.otherName,
       updated: updateFields.otherName,
     },
     {
-      field: "gender",
+      field: 'gender',
       original: originalUser.profile?.gender,
       updated: updateFields.gender,
     },
     {
-      field: "address.street",
+      field: 'address.street',
       original: originalUser.profile?.address?.street,
       updated: updateFields.street,
     },
     {
-      field: "address.town",
+      field: 'address.town',
       original: originalUser.profile?.address?.town,
       updated: updateFields.town,
     },
     {
-      field: "address.region",
+      field: 'address.region',
       original: originalUser.profile?.address?.region,
       updated: updateFields.region,
     },
     {
-      field: "address.country",
+      field: 'address.country',
       original: originalUser.profile?.address?.country,
       updated: updateFields.country,
     },
     {
-      field: "address.postalCode",
+      field: 'address.postalCode',
       original: originalUser.profile?.address?.postalCode,
       updated: updateFields.postalCode,
     },
     {
-      field: "identification.dateOfBirth",
+      field: 'identification.dateOfBirth',
       original: originalUser.profile?.identification?.dateOfBirth,
       updated: updateFields.dateOfBirth,
     },
     {
-      field: "identification.idType",
+      field: 'identification.idType',
       original: originalUser.profile?.identification?.idType,
       updated: updateFields.idType,
     },
     {
-      field: "identification.idNumber",
+      field: 'identification.idNumber',
       original: originalUser.profile?.identification?.idNumber,
       updated: updateFields.idNumber,
     },
     {
-      field: "identification.notes",
+      field: 'identification.notes',
       original: originalUser.profile?.identification?.notes,
       updated: updateFields.notes,
     },
@@ -302,8 +302,8 @@ function calculateUserChanges(
     if (updated !== undefined && updated !== original) {
       changes.push({
         field,
-        oldValue: (original as string) || "",
-        newValue: (updated as string) || "",
+        oldValue: (original as string) || '',
+        newValue: (updated as string) || '',
       });
     }
   });

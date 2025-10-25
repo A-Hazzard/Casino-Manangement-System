@@ -1,47 +1,51 @@
-import { Machine } from "@/app/api/lib/models/machines";
+import { Machine } from '@/app/api/lib/models/machines';
 
 /**
  * Get top performing locations for a given licensee
  */
-export async function getTopLocations(licensee: string, startDate?: Date, endDate?: Date) {
+export async function getTopLocations(
+  licensee: string,
+  startDate?: Date,
+  endDate?: Date
+) {
   // First get all locations for the licensee
   const locations = await Machine.aggregate([
     // Stage 1: Join machines with gaming locations to get location details
     {
       $lookup: {
-        from: "gaminglocations",
-        localField: "gamingLocation",
-        foreignField: "_id",
-        as: "locationDetails",
+        from: 'gaminglocations',
+        localField: 'gamingLocation',
+        foreignField: '_id',
+        as: 'locationDetails',
       },
     },
-    
+
     // Stage 2: Flatten the location details array (each machine now has location info)
     {
-      $unwind: "$locationDetails",
+      $unwind: '$locationDetails',
     },
-    
+
     // Stage 3: Filter machines by licensee to get only relevant locations
     {
       $match: {
-        "locationDetails.rel.licencee": licensee,
+        'locationDetails.rel.licencee': licensee,
       },
     },
-    
+
     // Stage 4: Group by location to aggregate machine statistics
     {
       $group: {
-        _id: "$gamingLocation",
-        locationInfo: { $first: "$locationDetails" },
+        _id: '$gamingLocation',
+        locationInfo: { $first: '$locationDetails' },
         machineCount: { $sum: 1 },
         onlineMachines: {
           $sum: {
-            $cond: [{ $eq: ["$assetStatus", "active"] }, 1, 0],
+            $cond: [{ $eq: ['$assetStatus', 'active'] }, 1, 0],
           },
         },
         sasMachines: {
           $sum: {
-            $cond: ["$isSasMachine", 1, 0],
+            $cond: ['$isSasMachine', 1, 0],
           },
         },
       },
@@ -50,39 +54,47 @@ export async function getTopLocations(licensee: string, startDate?: Date, endDat
 
   // Now get financial metrics for each location using meters collection
   const topLocationsWithMetrics = await Promise.all(
-    locations.map(async (location) => {
+    locations.map(async location => {
       const locationId = location._id.toString();
-      
+
       // Get financial metrics from meters collection with date filtering
       const matchStage: Record<string, unknown> = {
         location: locationId,
       };
-      
+
       // Add date filtering if provided
       if (startDate && endDate) {
         matchStage.readAt = { $gte: startDate, $lte: endDate };
       }
-      
-      const metersAggregation = await Machine.db?.db?.collection("meters")?.aggregate([
-        // Stage 1: Filter meter records by location and date range
-        {
-          $match: matchStage,
-        },
-        
-        // Stage 2: Aggregate financial metrics for this location
-        {
-          $group: {
-            _id: null,
-            totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
-            totalCancelledCredits: {
-              $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
-            },
-          },
-        },
-      ])?.toArray() || [];
 
-      const financialMetrics = metersAggregation[0] || { totalDrop: 0, totalCancelledCredits: 0 };
-      const gross = financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+      const metersAggregation =
+        (await Machine.db?.db
+          ?.collection('meters')
+          ?.aggregate([
+            // Stage 1: Filter meter records by location and date range
+            {
+              $match: matchStage,
+            },
+
+            // Stage 2: Aggregate financial metrics for this location
+            {
+              $group: {
+                _id: null,
+                totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+                totalCancelledCredits: {
+                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                },
+              },
+            },
+          ])
+          ?.toArray()) || [];
+
+      const financialMetrics = metersAggregation[0] || {
+        totalDrop: 0,
+        totalCancelledCredits: 0,
+      };
+      const gross =
+        financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
 
       return {
         id: locationId,
@@ -93,19 +105,22 @@ export async function getTopLocations(licensee: string, startDate?: Date, endDat
         machineCount: location.machineCount,
         onlineMachines: location.onlineMachines,
         sasMachines: location.sasMachines,
-        coordinates: location.locationInfo.geoCoords?.latitude && location.locationInfo.geoCoords?.longitude
-          ? [location.locationInfo.geoCoords.longitude, location.locationInfo.geoCoords.latitude]
-          : null,
-        trend: gross >= 10000 ? "up" : "down",
+        coordinates:
+          location.locationInfo.geoCoords?.latitude &&
+          location.locationInfo.geoCoords?.longitude
+            ? [
+                location.locationInfo.geoCoords.longitude,
+                location.locationInfo.geoCoords.latitude,
+              ]
+            : null,
+        trend: gross >= 10000 ? 'up' : 'down',
         trendPercentage: Math.abs(Math.random() * 10),
       };
     })
   );
 
   // Sort by gross and return top 5
-  return topLocationsWithMetrics
-    .sort((a, b) => b.gross - a.gross)
-    .slice(0, 5);
+  return topLocationsWithMetrics.sort((a, b) => b.gross - a.gross).slice(0, 5);
 }
 
 /**
@@ -114,21 +129,21 @@ export async function getTopLocations(licensee: string, startDate?: Date, endDat
 export async function getMachineStats(licensee: string) {
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
   const matchStage =
-    licensee && licensee.toLowerCase() !== "all"
-      ? { "locationDetails.rel.licencee": licensee }
+    licensee && licensee.toLowerCase() !== 'all'
+      ? { 'locationDetails.rel.licencee': licensee }
       : {};
 
   const statsPipeline = [
     {
       $lookup: {
-        from: "gaminglocations",
-        localField: "gamingLocation",
-        foreignField: "_id",
-        as: "locationDetails",
+        from: 'gaminglocations',
+        localField: 'gamingLocation',
+        foreignField: '_id',
+        as: 'locationDetails',
       },
     },
     {
-      $unwind: "$locationDetails",
+      $unwind: '$locationDetails',
     },
     {
       $match: matchStage,
@@ -139,12 +154,12 @@ export async function getMachineStats(licensee: string) {
         totalMachines: { $sum: 1 },
         onlineMachines: {
           $sum: {
-            $cond: [{ $gt: ["$lastActivity", onlineThreshold] }, 1, 0],
+            $cond: [{ $gt: ['$lastActivity', onlineThreshold] }, 1, 0],
           },
         },
         sasMachines: {
           $sum: {
-            $cond: ["$isSasMachine", 1, 0],
+            $cond: ['$isSasMachine', 1, 0],
           },
         },
       },
@@ -164,46 +179,53 @@ export async function getMachineStats(licensee: string) {
   };
 
   // Get financial metrics from meters collection for the licensee
-  const financialMetrics = await Machine.db?.db?.collection("meters")?.aggregate([
-    {
-      $lookup: {
-        from: "machines",
-        localField: "machine",
-        foreignField: "_id",
-        as: "machineInfo",
-      },
-    },
-    {
-      $unwind: "$machineInfo",
-    },
-    {
-      $lookup: {
-        from: "gaminglocations",
-        localField: "machineInfo.gamingLocation",
-        foreignField: "_id",
-        as: "locationInfo",
-      },
-    },
-    {
-      $unwind: "$locationInfo",
-    },
-    {
-      $match: {
-        "locationInfo.rel.licencee": licensee,
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        totalDrop: { $sum: { $ifNull: ["$movement.drop", 0] } },
-        totalCancelledCredits: {
-          $sum: { $ifNull: ["$movement.totalCancelledCredits", 0] },
+  const financialMetrics =
+    (await Machine.db?.db
+      ?.collection('meters')
+      ?.aggregate([
+        {
+          $lookup: {
+            from: 'machines',
+            localField: 'machine',
+            foreignField: '_id',
+            as: 'machineInfo',
+          },
         },
-      },
-    },
-  ])?.toArray() || [];
+        {
+          $unwind: '$machineInfo',
+        },
+        {
+          $lookup: {
+            from: 'gaminglocations',
+            localField: 'machineInfo.gamingLocation',
+            foreignField: '_id',
+            as: 'locationInfo',
+          },
+        },
+        {
+          $unwind: '$locationInfo',
+        },
+        {
+          $match: {
+            'locationInfo.rel.licencee': licensee,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            totalCancelledCredits: {
+              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+            },
+          },
+        },
+      ])
+      ?.toArray()) || [];
 
-  const financial = financialMetrics[0] || { totalDrop: 0, totalCancelledCredits: 0 };
+  const financial = financialMetrics[0] || {
+    totalDrop: 0,
+    totalCancelledCredits: 0,
+  };
   const totalGross = financial.totalDrop - financial.totalCancelledCredits;
 
   return {

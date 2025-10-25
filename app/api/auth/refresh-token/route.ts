@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { verifyAccessToken, generateAccessToken } from "@/lib/utils/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAccessToken, generateAccessToken } from '@/lib/utils/auth';
 
 /**
  * POST /api/auth/refresh-token
@@ -8,11 +8,11 @@ import { verifyAccessToken, generateAccessToken } from "@/lib/utils/auth";
  */
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value;
+    const token = request.cookies.get('token')?.value;
 
     if (!token) {
       return NextResponse.json(
-        { error: "No authentication token found" },
+        { error: 'No authentication token found' },
         { status: 401 }
       );
     }
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     if (!payload) {
       return NextResponse.json(
-        { error: "Invalid or expired token" },
+        { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
@@ -40,24 +40,23 @@ export async function POST(request: NextRequest) {
     // Set the new token in cookies
     const response = NextResponse.json({
       success: true,
-      message: "Token refreshed successfully",
+      message: 'Token refreshed successfully',
     });
 
-    response.cookies.set("token", newToken, {
+    response.cookies.set('token', newToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 120 * 60, // 2 hours (same as token expiration)
-      path: "/",
+      path: '/',
     });
 
     return response;
   } catch (error) {
-    console.error("Error refreshing token:", error);
+    console.error('Error refreshing token:', error);
     return NextResponse.json(
-      { error: "Failed to refresh token" },
+      { error: 'Failed to refresh token' },
       { status: 500 }
     );
   }
 }
-

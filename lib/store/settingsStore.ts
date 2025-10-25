@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
   UserSettings,
   SettingsCategory,
@@ -11,12 +11,12 @@ import type {
   SystemSettings,
   BackupSettings,
   IntegrationSettings,
-} from "@/lib/types/settings";
-import { DEFAULT_SETTINGS } from "@/lib/types/settings";
+} from '@/lib/types/settings';
+import { DEFAULT_SETTINGS } from '@/lib/types/settings';
 
 type SettingsState = {
   // Settings data
-  settings: Omit<UserSettings, "id" | "userId" | "createdAt" | "updatedAt">;
+  settings: Omit<UserSettings, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
   isLoading: boolean;
   error: string | null;
   hasUnsavedChanges: boolean;
@@ -43,7 +43,7 @@ type SettingsState = {
 
   // Theme and display helpers
   toggleTheme: () => void;
-  setTheme: (theme: "light" | "dark" | "system") => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
   increaseFontSize: () => void;
   decreaseFontSize: () => void;
   toggleCompactMode: () => void;
@@ -77,35 +77,35 @@ type SettingsState = {
 const formatCurrencyHelper = (
   amount: number,
   currency: string,
-  position: "before" | "after",
+  position: 'before' | 'after',
   symbol: string
 ): string => {
-  const formattedAmount = new Intl.NumberFormat("en-US", {
+  const formattedAmount = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
 
-  return position === "before"
+  return position === 'before'
     ? `${symbol}${formattedAmount}`
     : `${formattedAmount}${symbol}`;
 };
 
 // Helper function to format date based on user settings
 const formatDateHelper = (date: Date, format: string): string => {
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const year = date.getFullYear().toString();
 
   switch (format) {
-    case "MM/DD/YYYY":
+    case 'MM/DD/YYYY':
       return `${month}/${day}/${year}`;
-    case "DD/MM/YYYY":
+    case 'DD/MM/YYYY':
       return `${day}/${month}/${year}`;
-    case "YYYY-MM-DD":
+    case 'YYYY-MM-DD':
       return `${year}-${month}-${day}`;
-    case "DD-MM-YYYY":
+    case 'DD-MM-YYYY':
       return `${day}-${month}-${year}`;
-    case "MM-DD-YYYY":
+    case 'MM-DD-YYYY':
       return `${month}-${day}-${year}`;
     default:
       return `${month}/${day}/${year}`;
@@ -113,18 +113,18 @@ const formatDateHelper = (date: Date, format: string): string => {
 };
 
 // Helper function to format time based on user settings
-const formatTimeHelper = (date: Date, format: "12h" | "24h"): string => {
-  if (format === "24h") {
-    return date.toLocaleTimeString("en-US", {
+const formatTimeHelper = (date: Date, format: '12h' | '24h'): string => {
+  if (format === '24h') {
+    return date.toLocaleTimeString('en-US', {
       hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
+      hour: '2-digit',
+      minute: '2-digit',
     });
   } else {
-    return date.toLocaleTimeString("en-US", {
+    return date.toLocaleTimeString('en-US', {
       hour12: true,
-      hour: "numeric",
-      minute: "2-digit",
+      hour: 'numeric',
+      minute: '2-digit',
     });
   }
 };
@@ -132,16 +132,16 @@ const formatTimeHelper = (date: Date, format: "12h" | "24h"): string => {
 // Helper function to format numbers based on user settings
 const formatNumberHelper = (number: number, format: string): string => {
   switch (format) {
-    case "US":
-      return number.toLocaleString("en-US");
-    case "EU":
-      return number.toLocaleString("de-DE");
-    case "UK":
-      return number.toLocaleString("en-GB");
-    case "IN":
-      return number.toLocaleString("en-IN");
+    case 'US':
+      return number.toLocaleString('en-US');
+    case 'EU':
+      return number.toLocaleString('de-DE');
+    case 'UK':
+      return number.toLocaleString('en-GB');
+    case 'IN':
+      return number.toLocaleString('en-IN');
     default:
-      return number.toLocaleString("en-US");
+      return number.toLocaleString('en-US');
   }
 };
 
@@ -156,8 +156,8 @@ const createStore = () => {
         hasUnsavedChanges: false,
 
         // Settings update actions
-        updateNotificationSettings: (newSettings) =>
-          set((state) => ({
+        updateNotificationSettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               notifications: {
@@ -168,8 +168,8 @@ const createStore = () => {
             hasUnsavedChanges: true,
           })),
 
-        updateDisplaySettings: (newSettings) =>
-          set((state) => ({
+        updateDisplaySettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               display: { ...state.settings.display, ...newSettings },
@@ -177,8 +177,8 @@ const createStore = () => {
             hasUnsavedChanges: true,
           })),
 
-        updateRegionalSettings: (newSettings) =>
-          set((state) => ({
+        updateRegionalSettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               regional: { ...state.settings.regional, ...newSettings },
@@ -186,8 +186,8 @@ const createStore = () => {
             hasUnsavedChanges: true,
           })),
 
-        updatePrivacySettings: (newSettings) =>
-          set((state) => ({
+        updatePrivacySettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               privacy: { ...state.settings.privacy, ...newSettings },
@@ -195,8 +195,8 @@ const createStore = () => {
             hasUnsavedChanges: true,
           })),
 
-        updateSecuritySettings: (newSettings) =>
-          set((state) => ({
+        updateSecuritySettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               security: { ...state.settings.security, ...newSettings },
@@ -204,8 +204,8 @@ const createStore = () => {
             hasUnsavedChanges: true,
           })),
 
-        updateSystemSettings: (newSettings) =>
-          set((state) => ({
+        updateSystemSettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               system: { ...state.settings.system, ...newSettings },
@@ -213,8 +213,8 @@ const createStore = () => {
             hasUnsavedChanges: true,
           })),
 
-        updateBackupSettings: (newSettings) =>
-          set((state) => ({
+        updateBackupSettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               backup: { ...state.settings.backup, ...newSettings },
@@ -222,8 +222,8 @@ const createStore = () => {
             hasUnsavedChanges: true,
           })),
 
-        updateIntegrationSettings: (newSettings) =>
-          set((state) => ({
+        updateIntegrationSettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               integrations: { ...state.settings.integrations, ...newSettings },
@@ -231,8 +231,8 @@ const createStore = () => {
             hasUnsavedChanges: true,
           })),
 
-        updateCustomSettings: (newSettings) =>
-          set((state) => ({
+        updateCustomSettings: newSettings =>
+          set(state => ({
             settings: {
               ...state.settings,
               customSettings: {
@@ -250,35 +250,35 @@ const createStore = () => {
             hasUnsavedChanges: true,
           }),
 
-        resetCategory: (category) =>
-          set((state) => {
+        resetCategory: category =>
+          set(state => {
             const newSettings = { ...state.settings };
             switch (category) {
-              case "notifications":
+              case 'notifications':
                 newSettings.notifications = DEFAULT_SETTINGS.notifications;
                 break;
-              case "display":
+              case 'display':
                 newSettings.display = DEFAULT_SETTINGS.display;
                 break;
-              case "regional":
+              case 'regional':
                 newSettings.regional = DEFAULT_SETTINGS.regional;
                 break;
-              case "privacy":
+              case 'privacy':
                 newSettings.privacy = DEFAULT_SETTINGS.privacy;
                 break;
-              case "security":
+              case 'security':
                 newSettings.security = DEFAULT_SETTINGS.security;
                 break;
-              case "system":
+              case 'system':
                 newSettings.system = DEFAULT_SETTINGS.system;
                 break;
-              case "backup":
+              case 'backup':
                 newSettings.backup = DEFAULT_SETTINGS.backup;
                 break;
-              case "integrations":
+              case 'integrations':
                 newSettings.integrations = DEFAULT_SETTINGS.integrations;
                 break;
-              case "custom":
+              case 'custom':
                 newSettings.customSettings = {};
                 break;
               default:
@@ -295,14 +295,14 @@ const createStore = () => {
           try {
             // Here you would typically make an API call to save settings
             // For now, we'll just simulate a successful save
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 500));
             set({ hasUnsavedChanges: false, isLoading: false });
           } catch (error) {
             set({
               error:
                 error instanceof Error
                   ? error.message
-                  : "Failed to save settings",
+                  : 'Failed to save settings',
               isLoading: false,
             });
           }
@@ -313,22 +313,22 @@ const createStore = () => {
           try {
             // Here you would typically make an API call to load settings
             // For now, we'll just simulate a successful load
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 500));
             set({ isLoading: false });
           } catch (error) {
             set({
               error:
                 error instanceof Error
                   ? error.message
-                  : "Failed to load settings",
+                  : 'Failed to load settings',
               isLoading: false,
             });
           }
         },
 
-        setLoading: (loading) => set({ isLoading: loading }),
-        setError: (error) => set({ error }),
-        setHasUnsavedChanges: (hasChanges) =>
+        setLoading: loading => set({ isLoading: loading }),
+        setError: error => set({ error }),
+        setHasUnsavedChanges: hasChanges =>
           set({ hasUnsavedChanges: hasChanges }),
 
         // Theme and display helpers
@@ -336,25 +336,25 @@ const createStore = () => {
           const { settings } = get();
           const currentTheme = settings.display.theme;
           const newTheme =
-            currentTheme === "light"
-              ? "dark"
-              : currentTheme === "dark"
-              ? "system"
-              : "light";
+            currentTheme === 'light'
+              ? 'dark'
+              : currentTheme === 'dark'
+                ? 'system'
+                : 'light';
           get().updateDisplaySettings({ theme: newTheme });
         },
 
-        setTheme: (theme) => get().updateDisplaySettings({ theme }),
+        setTheme: theme => get().updateDisplaySettings({ theme }),
 
         increaseFontSize: () => {
           const { settings } = get();
           const currentSize = settings.display.fontSize;
           const newSize =
-            currentSize === "small"
-              ? "medium"
-              : currentSize === "medium"
-              ? "large"
-              : "large";
+            currentSize === 'small'
+              ? 'medium'
+              : currentSize === 'medium'
+                ? 'large'
+                : 'large';
           get().updateDisplaySettings({ fontSize: newSize });
         },
 
@@ -362,11 +362,11 @@ const createStore = () => {
           const { settings } = get();
           const currentSize = settings.display.fontSize;
           const newSize =
-            currentSize === "large"
-              ? "medium"
-              : currentSize === "medium"
-              ? "small"
-              : "small";
+            currentSize === 'large'
+              ? 'medium'
+              : currentSize === 'medium'
+                ? 'small'
+                : 'small';
           get().updateDisplaySettings({ fontSize: newSize });
         },
 
@@ -385,7 +385,7 @@ const createStore = () => {
         },
 
         // Currency and formatting helpers
-        formatCurrency: (amount) => {
+        formatCurrency: amount => {
           const { settings } = get();
           return formatCurrencyHelper(
             amount,
@@ -395,23 +395,23 @@ const createStore = () => {
           );
         },
 
-        formatDate: (date) => {
+        formatDate: date => {
           const { settings } = get();
           return formatDateHelper(date, settings.regional.dateFormat);
         },
 
-        formatTime: (date) => {
+        formatTime: date => {
           const { settings } = get();
           return formatTimeHelper(date, settings.regional.timeFormat);
         },
 
-        formatNumber: (number) => {
+        formatNumber: number => {
           const { settings } = get();
           return formatNumberHelper(number, settings.regional.numberFormat);
         },
 
         // Notification helpers
-        toggleNotificationCategory: (category) => {
+        toggleNotificationCategory: category => {
           const { settings } = get();
           const currentSetting = settings.notifications[category];
           get().updateNotificationSettings({
@@ -422,7 +422,7 @@ const createStore = () => {
         enableAllNotifications: () => {
           const { settings } = get();
           const updatedNotifications: Partial<NotificationSettings> = {};
-          Object.keys(settings.notifications).forEach((key) => {
+          Object.keys(settings.notifications).forEach(key => {
             const typedKey = key as keyof NotificationSettings;
             updatedNotifications[typedKey] = {
               ...settings.notifications[typedKey],
@@ -435,7 +435,7 @@ const createStore = () => {
         disableAllNotifications: () => {
           const { settings } = get();
           const updatedNotifications: Partial<NotificationSettings> = {};
-          Object.keys(settings.notifications).forEach((key) => {
+          Object.keys(settings.notifications).forEach(key => {
             const typedKey = key as keyof NotificationSettings;
             updatedNotifications[typedKey] = {
               ...settings.notifications[typedKey],
@@ -451,7 +451,7 @@ const createStore = () => {
         disableTwoFactor: () =>
           get().updateSecuritySettings({ twoFactorAuth: false }),
 
-        addToIpWhitelist: (ip) => {
+        addToIpWhitelist: ip => {
           const { settings } = get();
           const currentWhitelist = settings.security.ipWhitelist;
           if (!currentWhitelist.includes(ip)) {
@@ -461,11 +461,11 @@ const createStore = () => {
           }
         },
 
-        removeFromIpWhitelist: (ip) => {
+        removeFromIpWhitelist: ip => {
           const { settings } = get();
           const currentWhitelist = settings.security.ipWhitelist;
           get().updateSecuritySettings({
-            ipWhitelist: currentWhitelist.filter((item) => item !== ip),
+            ipWhitelist: currentWhitelist.filter(item => item !== ip),
           });
         },
 
@@ -477,7 +477,7 @@ const createStore = () => {
           });
         },
 
-        setRefreshInterval: (seconds) =>
+        setRefreshInterval: seconds =>
           get().updateSystemSettings({ refreshInterval: seconds }),
 
         toggleAutoSave: () => {
@@ -485,13 +485,13 @@ const createStore = () => {
           get().updateSystemSettings({ autoSave: !settings.system.autoSave });
         },
 
-        setAutoSaveInterval: (seconds) =>
+        setAutoSaveInterval: seconds =>
           get().updateSystemSettings({ autoSaveInterval: seconds }),
       }),
       {
-        name: "cms-settings-store",
+        name: 'cms-settings-store',
         storage: createJSONStorage(() => {
-          if (typeof window !== "undefined") {
+          if (typeof window !== 'undefined') {
             return localStorage;
           }
           return {
@@ -501,7 +501,7 @@ const createStore = () => {
           };
         }),
         // Only persist the settings, not the loading states
-        partialize: (state) => ({
+        partialize: state => ({
           settings: state.settings,
         }),
       }
@@ -537,10 +537,10 @@ const dummyState: SettingsState = {
   decreaseFontSize: () => {},
   toggleCompactMode: () => {},
   toggleAnimations: () => {},
-  formatCurrency: () => "$0.00",
-  formatDate: () => "01/01/2024",
-  formatTime: () => "12:00 PM",
-  formatNumber: () => "0",
+  formatCurrency: () => '$0.00',
+  formatDate: () => '01/01/2024',
+  formatTime: () => '12:00 PM',
+  formatNumber: () => '0',
   toggleNotificationCategory: () => {},
   enableAllNotifications: () => {},
   disableAllNotifications: () => {},
@@ -555,4 +555,4 @@ const dummyState: SettingsState = {
 };
 
 export const useSettingsStore =
-  typeof window !== "undefined" ? createStore() : () => dummyState;
+  typeof window !== 'undefined' ? createStore() : () => dummyState;

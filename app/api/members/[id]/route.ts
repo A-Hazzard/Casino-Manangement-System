@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { Member } from "@/app/api/lib/models/members";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Member } from '@/app/api/lib/models/members';
 
 export async function GET(
   request: NextRequest,
@@ -15,16 +15,16 @@ export async function GET(
 
     if (!member) {
       return NextResponse.json(
-        { success: false, error: "Member not found" },
+        { success: false, error: 'Member not found' },
         { status: 404 }
       );
     }
 
     return NextResponse.json(member);
   } catch (error) {
-    console.error("Error fetching member:", error);
+    console.error('Error fetching member:', error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -42,7 +42,7 @@ export async function PUT(
 
     if (!memberId) {
       return NextResponse.json(
-        { error: "Member ID is required" },
+        { error: 'Member ID is required' },
         { status: 400 }
       );
     }
@@ -50,7 +50,7 @@ export async function PUT(
     const member = await Member.findById(memberId);
 
     if (!member) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
     // Update member fields
@@ -71,9 +71,9 @@ export async function PUT(
 
     return NextResponse.json(member);
   } catch (error) {
-    console.error("Error updating member:", error);
+    console.error('Error updating member:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -90,7 +90,7 @@ export async function DELETE(
 
     if (!memberId) {
       return NextResponse.json(
-        { error: "Member ID is required" },
+        { error: 'Member ID is required' },
         { status: 400 }
       );
     }
@@ -98,18 +98,18 @@ export async function DELETE(
     const member = await Member.findById(memberId);
 
     if (!member) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
     // Soft delete by setting deletedAt
     member.deletedAt = new Date();
     await member.save();
 
-    return NextResponse.json({ message: "Member deleted successfully" });
+    return NextResponse.json({ message: 'Member deleted successfully' });
   } catch (error) {
-    console.error("Error deleting member:", error);
+    console.error('Error deleting member:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

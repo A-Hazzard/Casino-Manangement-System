@@ -1,11 +1,22 @@
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-type CabinetSortOption = "assetNumber" | "locationName" | "moneyIn" | "moneyOut" | "jackpot" | "gross" | "cancelledCredits" | "game" | "smbId" | "serialNumber" | "lastOnline";
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+type CabinetSortOption =
+  | 'assetNumber'
+  | 'locationName'
+  | 'moneyIn'
+  | 'moneyOut'
+  | 'jackpot'
+  | 'gross'
+  | 'cancelledCredits'
+  | 'game'
+  | 'smbId'
+  | 'serialNumber'
+  | 'lastOnline';
 import {
   fetchAllGamingLocations,
   fetchLocationDetailsById,
-} from "@/lib/helpers/locations";
-import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
-import { filterAndSortCabinets as filterAndSortCabinetsUtil } from "@/lib/utils/ui";
+} from '@/lib/helpers/locations';
+import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
+import { filterAndSortCabinets as filterAndSortCabinetsUtil } from '@/lib/utils/ui';
 
 /**
  * Handles filtering and sorting of cabinets
@@ -14,7 +25,7 @@ export const applyFiltersAndSort = (
   allCabinets: Cabinet[],
   searchTerm: string,
   sortOption: CabinetSortOption,
-  sortOrder: "asc" | "desc"
+  sortOrder: 'asc' | 'desc'
 ) => {
   const filtered = filterAndSortCabinetsUtil(
     allCabinets,
@@ -38,7 +49,7 @@ export const handleLocationChange = (
 ) => {
   setSelectedLocation(locationName);
   setIsLocationDropdownOpen(false);
-  if (locationId !== "all" && locationId !== currentSlug) {
+  if (locationId !== 'all' && locationId !== currentSlug) {
     router.push(`/locations/${locationId}`);
   }
 };
@@ -62,24 +73,22 @@ export const createPaginationHandlers = (
  * Handles cabinet status filtering
  */
 export const handleFilterChange = (
-  status: "All" | "Online" | "Offline",
+  status: 'All' | 'Online' | 'Offline',
   allCabinets: Cabinet[],
-  setSelectedStatus: (status: "All" | "Online" | "Offline") => void,
+  setSelectedStatus: (status: 'All' | 'Online' | 'Offline') => void,
   setFilteredCabinets: (cabinets: Cabinet[]) => void
 ) => {
   setSelectedStatus(status);
 
   if (!allCabinets) return;
 
-  if (status === "All") {
+  if (status === 'All') {
     setFilteredCabinets(allCabinets);
-  } else if (status === "Online") {
+  } else if (status === 'Online') {
+    setFilteredCabinets(allCabinets.filter(cabinet => cabinet.online === true));
+  } else if (status === 'Offline') {
     setFilteredCabinets(
-      allCabinets.filter((cabinet) => cabinet.online === true)
-    );
-  } else if (status === "Offline") {
-    setFilteredCabinets(
-      allCabinets.filter((cabinet) => cabinet.online === false)
+      allCabinets.filter(cabinet => cabinet.online === false)
     );
   }
 };
@@ -106,7 +115,7 @@ export const fetchLocationData = async (
         const formattedLocations = await fetchAllGamingLocations();
         setLocations(formattedLocations);
       } catch {
-        errors.push("Failed to load locations.");
+        errors.push('Failed to load locations.');
       }
     }
 
@@ -115,8 +124,8 @@ export const fetchLocationData = async (
       const locationData = await fetchLocationDetailsById(locationId);
       setLocationName(locationData.name);
     } catch {
-      setLocationName("Location"); // Default name on error
-      errors.push("Failed to load location details.");
+      setLocationName('Location'); // Default name on error
+      errors.push('Failed to load location details.');
     }
 
     // Fetch cabinets data
@@ -129,14 +138,14 @@ export const fetchLocationData = async (
       setAllCabinets(cabinetsData);
     } catch {
       setAllCabinets([]);
-      errors.push("Failed to load cabinets.");
+      errors.push('Failed to load cabinets.');
     }
 
     if (errors.length > 0) {
-      setError(errors.join(" ") + " Please try again later.");
+      setError(errors.join(' ') + ' Please try again later.');
     }
   } catch {
-    setError("An unexpected error occurred. Please try again later.");
+    setError('An unexpected error occurred. Please try again later.');
   }
 };
 
@@ -159,8 +168,8 @@ export const refreshLocationData = async (
       const locationData = await fetchLocationDetailsById(locationId);
       setLocationName(locationData.name);
     } catch {
-      setLocationName("Location"); // Default name on error
-      errors.push("Failed to load location details.");
+      setLocationName('Location'); // Default name on error
+      errors.push('Failed to load location details.');
     }
 
     // Fetch cabinets data
@@ -173,15 +182,15 @@ export const refreshLocationData = async (
       setAllCabinets(cabinetsData);
     } catch {
       setAllCabinets([]);
-      errors.push("Failed to refresh cabinets.");
+      errors.push('Failed to refresh cabinets.');
     }
 
     if (errors.length > 0) {
-      setError(errors.join(" ") + " Please try again later.");
+      setError(errors.join(' ') + ' Please try again later.');
     }
   } catch {
     setError(
-      "An unexpected error occurred during refresh. Please try again later."
+      'An unexpected error occurred during refresh. Please try again later.'
     );
   }
 };
@@ -192,5 +201,5 @@ export const refreshLocationData = async (
 export const handleBackToLocations = (router: {
   push: (url: string) => void;
 }) => {
-  router.push("/locations");
+  router.push('/locations');
 };

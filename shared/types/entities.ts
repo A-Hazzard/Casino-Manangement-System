@@ -1,11 +1,11 @@
 // Shared entity types used across frontend and backend
-import { Types } from "mongoose";
-import type { SasMeters } from "./common";
+import { Types } from 'mongoose';
+import type { SasMeters } from './common';
 import type {
   MeterData,
   BillValidatorData,
   CollectionMetersHistoryEntry,
-} from "./database";
+} from './database';
 
 // Location types
 export type Location = {
@@ -92,7 +92,7 @@ export type TopLocation = {
   cancelledCredits: number;
   onlineMachines: number;
   totalMachines: number;
-  performance: "excellent" | "good" | "average" | "poor";
+  performance: 'excellent' | 'good' | 'average' | 'poor';
   sasEnabled: boolean;
   coordinates?: {
     lat: number;
@@ -443,8 +443,8 @@ export type CasinoMember = {
 };
 
 export type ResourcePermissions = {
-  "gaming-locations"?: {
-    entity: "gaming-locations";
+  'gaming-locations'?: {
+    entity: 'gaming-locations';
     resources: string[];
   };
   // Add other resource types as needed
@@ -530,10 +530,10 @@ export type MovementRequest = {
 };
 
 export type MovementRequestStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "in progress";
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'in progress';
 
 // Supporting types for CasinoMember and GamingMachine
 export type MetersData = {
@@ -639,7 +639,7 @@ export type MemberSession = {
 };
 
 // Members UI types
-export type MembersView = "members" | "summary-report";
+export type MembersView = 'members' | 'summary-report';
 
 export type MembersTab = {
   id: MembersView;
@@ -697,11 +697,11 @@ export type CollectionIssue = {
   collectionId: string;
   machineName: string;
   issueType:
-    | "inverted_times"
-    | "prev_meters_mismatch"
-    | "sas_time_wrong"
-    | "history_mismatch"
-    | "machine_time_mismatch";
+    | 'inverted_times'
+    | 'prev_meters_mismatch'
+    | 'sas_time_wrong'
+    | 'history_mismatch'
+    | 'machine_time_mismatch';
   details: {
     current: any;
     expected: any;

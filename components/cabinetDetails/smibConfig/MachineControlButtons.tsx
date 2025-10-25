@@ -1,7 +1,7 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { itemVariants } from "@/lib/constants/animationVariants";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { itemVariants } from '@/lib/constants/animationVariants';
 
 const MachineControlButtons: React.FC = () => {
   return (
@@ -12,7 +12,7 @@ const MachineControlButtons: React.FC = () => {
       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
         <Button
           variant="outline"
-          className="border-lighterBlueHighlight text-lighterBlueHighlight hover:bg-accent w-full md:w-auto"
+          className="w-full border-lighterBlueHighlight text-lighterBlueHighlight hover:bg-accent md:w-auto"
         >
           RESTART
         </Button>
@@ -20,7 +20,7 @@ const MachineControlButtons: React.FC = () => {
       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
         <Button
           variant="outline"
-          className="border-orangeHighlight text-orangeHighlight hover:bg-accent w-full md:w-auto"
+          className="w-full border-orangeHighlight text-orangeHighlight hover:bg-accent md:w-auto"
         >
           UNLOCK MACHINE
         </Button>
@@ -28,7 +28,7 @@ const MachineControlButtons: React.FC = () => {
       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
         <Button
           variant="outline"
-          className="border-destructive text-destructive hover:bg-accent w-full md:w-auto"
+          className="w-full border-destructive text-destructive hover:bg-accent md:w-auto"
         >
           LOCK MACHINE
         </Button>
@@ -36,7 +36,7 @@ const MachineControlButtons: React.FC = () => {
 
       <motion.div
         variants={itemVariants}
-        className="flex items-center w-full mt-4"
+        className="mt-4 flex w-full items-center"
       >
         <input type="checkbox" id="applyToAll" className="mr-2" />
         <label htmlFor="applyToAll" className="text-sm">

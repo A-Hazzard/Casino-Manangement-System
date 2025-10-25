@@ -35,13 +35,13 @@ export function isMachineOffline(
  * 5) fallback "Unknown"
  */
 export function getMachineDisplayId(machine: Record<string, unknown>): string {
-  if (!machine || typeof machine !== "object") return "Unknown";
+  if (!machine || typeof machine !== 'object') return 'Unknown';
   const pick = (...vals: Array<unknown>): string | undefined => {
     for (const v of vals) {
-      if (typeof v === "string") {
+      if (typeof v === 'string') {
         const trimmed = v.trim();
         if (trimmed.length > 0) return trimmed;
-      } else if (typeof v === "number") {
+      } else if (typeof v === 'number') {
         return String(v);
       }
     }
@@ -49,11 +49,12 @@ export function getMachineDisplayId(machine: Record<string, unknown>): string {
   };
 
   return (
-    pick(machine.serialNumber,
-         machine.origSerialNumber,
-         machine.machineId,
-         machine._id?.toString?.(),
-         machine.machineName) || "Unknown"
+    pick(
+      machine.serialNumber,
+      machine.origSerialNumber,
+      machine.machineId,
+      machine._id?.toString?.(),
+      machine.machineName
+    ) || 'Unknown'
   );
 }
-

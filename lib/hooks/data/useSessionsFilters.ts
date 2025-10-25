@@ -3,28 +3,28 @@
  * Handles search terms, sorting, and filter state management
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from 'react';
 type UseSessionsFiltersProps = {
   onFiltersChange?: (filters: {
     searchTerm: string;
     sortBy: string;
-    sortOrder: "asc" | "desc";
+    sortOrder: 'asc' | 'desc';
   }) => void;
 };
 
 type UseSessionsFiltersReturn = {
   searchTerm: string;
   sortBy: string;
-  sortOrder: "asc" | "desc";
+  sortOrder: 'asc' | 'desc';
   setSearchTerm: (term: string) => void;
   setSortBy: (field: string) => void;
-  setSortOrder: (order: "asc" | "desc") => void;
+  setSortOrder: (order: 'asc' | 'desc') => void;
   handleSort: (field: string) => void;
   clearFilters: () => void;
   filters: {
     searchTerm: string;
     sortBy: string;
-    sortOrder: "asc" | "desc";
+    sortOrder: 'asc' | 'desc';
   };
   hasActiveFilters: boolean;
   getSortIcon: (field: string) => React.ReactNode;
@@ -34,9 +34,9 @@ export function useSessionsFilters({
   onFiltersChange,
 }: UseSessionsFiltersProps = {}): UseSessionsFiltersReturn {
   // Filter states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("startTime");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('startTime');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Handle search term changes
   const handleSearchTermChange = useCallback((term: string) => {
@@ -49,7 +49,7 @@ export function useSessionsFilters({
   }, []);
 
   // Handle sort order changes
-  const handleSortOrderChange = useCallback((order: "asc" | "desc") => {
+  const handleSortOrderChange = useCallback((order: 'asc' | 'desc') => {
     setSortOrder(order);
   }, []);
 
@@ -57,10 +57,10 @@ export function useSessionsFilters({
   const handleSort = useCallback(
     (field: string) => {
       if (sortBy === field) {
-        setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
       } else {
         setSortBy(field);
-        setSortOrder("desc");
+        setSortOrder('desc');
       }
     },
     [sortBy]
@@ -68,23 +68,23 @@ export function useSessionsFilters({
 
   // Clear all filters
   const clearFilters = useCallback(() => {
-    setSearchTerm("");
-    setSortBy("startTime");
-    setSortOrder("desc");
+    setSearchTerm('');
+    setSortBy('startTime');
+    setSortOrder('desc');
   }, []);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
     return (
-      searchTerm.trim() !== "" || sortBy !== "startTime" || sortOrder !== "desc"
+      searchTerm.trim() !== '' || sortBy !== 'startTime' || sortOrder !== 'desc'
     );
   }, [searchTerm, sortBy, sortOrder]);
 
   // Get sort icon for a field
   const getSortIcon = useCallback(
     (field: string) => {
-      if (sortBy !== field) return "↕";
-      return sortOrder === "asc" ? "↑" : "↓";
+      if (sortBy !== field) return '↕';
+      return sortOrder === 'asc' ? '↑' : '↓';
     },
     [sortBy, sortOrder]
   );

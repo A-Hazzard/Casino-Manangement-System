@@ -1,31 +1,31 @@
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 const MONGODB_URI =
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function verifyFixResults() {
   const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
-    console.log("🔍 Connected to MongoDB");
+    console.log('🔍 Connected to MongoDB');
 
-    const db = client.db("sas-prod-local");
-    const machinesCollection = db.collection("machines");
+    const db = client.db('sas-prod-local');
+    const machinesCollection = db.collection('machines');
 
     // Check machine 1309 specifically
-    const machineId = "5769366190e560cdab9b8e51";
+    const machineId = '5769366190e560cdab9b8e51';
     const machine = await machinesCollection.findOne({ _id: machineId });
 
     if (!machine) {
-      console.log("❌ Machine 1309 not found");
+      console.log('❌ Machine 1309 not found');
       return;
     }
 
     console.log(
       `\n📋 Machine 1309 (${machine.serialNumber}) collectionMetersHistory:`
     );
-    console.log("=".repeat(60));
+    console.log('='.repeat(60));
 
     if (
       machine.collectionMetersHistory &&
@@ -38,7 +38,7 @@ async function verifyFixResults() {
         console.log(`  MetersOut: ${entry.metersOut}`);
         console.log(`  PrevIn: ${entry.prevIn}`);
         console.log(`  PrevOut: ${entry.prevOut}`);
-        console.log(`  Movement: ${entry.movement?.gross || "N/A"}`);
+        console.log(`  Movement: ${entry.movement?.gross || 'N/A'}`);
       });
 
       // Check if prevIn/prevOut are still 0 or undefined
@@ -59,7 +59,7 @@ async function verifyFixResults() {
 
       console.log(`\n🔍 Analysis:`);
       console.log(
-        `  Has prevIn/prevOut issues: ${hasIssues ? "❌ YES" : "✅ NO"}`
+        `  Has prevIn/prevOut issues: ${hasIssues ? '❌ YES' : '✅ NO'}`
       );
 
       if (hasIssues) {
@@ -97,10 +97,10 @@ async function verifyFixResults() {
         console.log(`\n✅ NO ISSUES FOUND - The fix worked correctly`);
       }
     } else {
-      console.log("❌ No collectionMetersHistory found");
+      console.log('❌ No collectionMetersHistory found');
     }
   } catch (error) {
-    console.error("❌ Error:", error.message || error);
+    console.error('❌ Error:', error.message || error);
   } finally {
     await client.close();
   }

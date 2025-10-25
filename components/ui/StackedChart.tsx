@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   BarChart,
   Bar,
@@ -8,9 +8,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { StackedChartProps } from "@/lib/types/components";
+} from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { StackedChartProps } from '@/lib/types/components';
 
 export function StackedChart({
   title,
@@ -23,11 +23,11 @@ export function StackedChart({
   locationNames,
 }: StackedChartProps) {
   // Transform data for stacked chart
-  const chartData = data.map((item) => {
+  const chartData = data.map(item => {
     const transformed: Record<string, string | number> = { hour: item.hour };
-    machines.forEach((locationId) => {
+    machines.forEach(locationId => {
       const locationData = item[locationId];
-      if (typeof locationData === "object" && locationData !== null) {
+      if (typeof locationData === 'object' && locationData !== null) {
         // Use location name if available, otherwise use location ID
         const displayName = locationNames?.[locationId] || locationId;
         transformed[displayName] = locationData[dataKey];
@@ -54,8 +54,8 @@ export function StackedChart({
             <XAxis dataKey="hour" />
             <YAxis />
             <Tooltip
-              formatter={(value: number) => [formatter(value), "Value"]}
-              labelFormatter={(label) => `Hour: ${label}`}
+              formatter={(value: number) => [formatter(value), 'Value']}
+              labelFormatter={label => `Hour: ${label}`}
             />
             <Legend />
             {machines.map((locationId, index) => {

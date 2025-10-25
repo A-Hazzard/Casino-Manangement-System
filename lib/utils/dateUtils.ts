@@ -28,7 +28,7 @@ export function getDateRangeForTimePeriod(timePeriod: string): DateRange {
   let endDate: Date;
 
   switch (timePeriod) {
-    case "Today":
+    case 'Today':
       // Define start and end of today in Trinidad time
       const startOfTodayTrinidad = new Date(trinidadNow);
       startOfTodayTrinidad.setHours(0, 0, 0, 0);
@@ -40,7 +40,7 @@ export function getDateRangeForTimePeriod(timePeriod: string): DateRange {
       startDate = new Date(startOfTodayTrinidad.getTime() + 4 * 60 * 60 * 1000);
       endDate = new Date(endOfTodayTrinidad.getTime() + 4 * 60 * 60 * 1000);
       break;
-    case "Yesterday":
+    case 'Yesterday':
       // Define start and end of yesterday in Trinidad time
       const startOfYesterdayTrinidad = new Date(trinidadNow);
       startOfYesterdayTrinidad.setDate(startOfYesterdayTrinidad.getDate() - 1);
@@ -51,11 +51,13 @@ export function getDateRangeForTimePeriod(timePeriod: string): DateRange {
       endOfYesterdayTrinidad.setHours(23, 59, 59, 999);
 
       // Convert back to UTC for database query
-      startDate = new Date(startOfYesterdayTrinidad.getTime() + 4 * 60 * 60 * 1000);
+      startDate = new Date(
+        startOfYesterdayTrinidad.getTime() + 4 * 60 * 60 * 1000
+      );
       endDate = new Date(endOfYesterdayTrinidad.getTime() + 4 * 60 * 60 * 1000);
       break;
-    case "7d":
-    case "last7days":
+    case '7d':
+    case 'last7days':
       // Define start of 7-day period in Trinidad time
       const startOf7DaysTrinidad = new Date(trinidadNow);
       startOf7DaysTrinidad.setDate(startOf7DaysTrinidad.getDate() - 7);
@@ -69,8 +71,8 @@ export function getDateRangeForTimePeriod(timePeriod: string): DateRange {
       startDate = new Date(startOf7DaysTrinidad.getTime() + 4 * 60 * 60 * 1000);
       endDate = new Date(endOf7DaysTrinidad.getTime() + 4 * 60 * 60 * 1000);
       break;
-    case "30d":
-    case "last30days":
+    case '30d':
+    case 'last30days':
       // Define start of 30-day period in Trinidad time
       const startOf30DaysTrinidad = new Date(trinidadNow);
       startOf30DaysTrinidad.setDate(startOf30DaysTrinidad.getDate() - 30);
@@ -81,15 +83,17 @@ export function getDateRangeForTimePeriod(timePeriod: string): DateRange {
       endOf30DaysTrinidad.setHours(23, 59, 59, 999);
 
       // Convert back to UTC for database query
-      startDate = new Date(startOf30DaysTrinidad.getTime() + 4 * 60 * 60 * 1000);
+      startDate = new Date(
+        startOf30DaysTrinidad.getTime() + 4 * 60 * 60 * 1000
+      );
       endDate = new Date(endOf30DaysTrinidad.getTime() + 4 * 60 * 60 * 1000);
       break;
-    case "All Time":
+    case 'All Time':
       // For All Time, return undefined dates to fetch all records
       startDate = new Date(0); // Unix epoch
       endDate = new Date(8640000000000000); // Far future date
       break;
-    case "Custom":
+    case 'Custom':
       // Custom date range would need to be handled with additional parameters
       // For now, default to all time
       startDate = new Date(0); // Unix epoch
@@ -145,18 +149,18 @@ export function formatDateString(dateInput: string | Date | number): string {
   try {
     const date = new Date(dateInput);
     if (isNaN(date.getTime())) {
-      return "Invalid Date";
+      return 'Invalid Date';
     }
-    
+
     return date.toLocaleString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
     });
   } catch {
-    return "Invalid Date";
+    return 'Invalid Date';
   }
 }

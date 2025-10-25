@@ -1,20 +1,20 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback } from "react";
-import { useApiWithRetry } from "@/lib/hooks/data/useApiWithRetry";
+import React, { useState, useCallback } from 'react';
+import { useApiWithRetry } from '@/lib/hooks/data/useApiWithRetry';
 import {
   classifyError,
   getUserFriendlyErrorMessage,
-} from "@/lib/utils/errorHandling";
+} from '@/lib/utils/errorHandling';
 import {
   showErrorNotification,
   showRetrySuccessNotification,
   showRetryWarningNotification,
-} from "@/lib/utils/errorNotifications";
-import ConnectionError from "@/components/ui/errors/ConnectionError";
-import LocationsTab from "./LocationsTab";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import axios from "axios";
+} from '@/lib/utils/errorNotifications';
+import ConnectionError from '@/components/ui/errors/ConnectionError';
+import LocationsTab from './LocationsTab';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import axios from 'axios';
 
 /**
  * Wrapper component for LocationsTab that handles connection errors gracefully
@@ -27,11 +27,11 @@ export default function LocationsTabWithErrorHandling() {
   // API function for fetching locations data
   const fetchLocationsData = useCallback(async () => {
     const params = new URLSearchParams();
-    if (selectedLicencee && selectedLicencee !== "all") {
-      params.append("licencee", selectedLicencee);
+    if (selectedLicencee && selectedLicencee !== 'all') {
+      params.append('licencee', selectedLicencee);
     }
-    params.append("timePeriod", "30d");
-    params.append("showAllLocations", "true");
+    params.append('timePeriod', '30d');
+    params.append('showAllLocations', 'true');
 
     const response = await axios.get(
       `/api/reports/locations?${params.toString()}`
@@ -43,16 +43,16 @@ export default function LocationsTabWithErrorHandling() {
   const { data, loading, execute } = useApiWithRetry(fetchLocationsData, {
     maxRetries: 3,
     baseDelay: 1000,
-    onError: (apiError) => {
+    onError: apiError => {
       setConnectionError(new Error(getUserFriendlyErrorMessage(apiError)));
-      showErrorNotification(apiError, "Locations Data");
+      showErrorNotification(apiError, 'Locations Data');
     },
     onRetry: (attempt, apiError) => {
       console.warn(
         `Retrying locations data fetch (attempt ${attempt}):`,
         apiError
       );
-      showRetryWarningNotification(attempt, 3, "Locations Data");
+      showRetryWarningNotification(attempt, 3, 'Locations Data');
     },
   });
 
@@ -62,11 +62,11 @@ export default function LocationsTabWithErrorHandling() {
 
     try {
       await execute();
-      showRetrySuccessNotification("Locations Data");
+      showRetrySuccessNotification('Locations Data');
     } catch (error) {
       const apiError = classifyError(error);
       setConnectionError(new Error(getUserFriendlyErrorMessage(apiError)));
-      showErrorNotification(apiError, "Locations Data");
+      showErrorNotification(apiError, 'Locations Data');
     } finally {
       setIsRetrying(false);
     }
@@ -75,7 +75,7 @@ export default function LocationsTabWithErrorHandling() {
   // If there's a connection error, show the error UI
   if (connectionError) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] p-4">
+      <div className="flex min-h-[400px] items-center justify-center p-4">
         <ConnectionError
           error={connectionError}
           onRetry={handleRetry}
@@ -91,15 +91,15 @@ export default function LocationsTabWithErrorHandling() {
   if (loading && !data) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="h-24 bg-gray-200 animate-pulse rounded-lg"
+              className="h-24 animate-pulse rounded-lg bg-gray-200"
             />
           ))}
         </div>
-        <div className="h-96 bg-gray-200 animate-pulse rounded-lg" />
+        <div className="h-96 animate-pulse rounded-lg bg-gray-200" />
       </div>
     );
   }

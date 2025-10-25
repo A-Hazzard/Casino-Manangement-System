@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React, { ComponentType, useState, useCallback } from "react";
-import { classifyError } from "@/lib/utils/errorHandling";
-import type { ApiError } from "@/lib/types/errors";
-import type { WithErrorHandlingProps } from "@/lib/types/errorHandlingHOC";
-import { showErrorNotification } from "@/lib/utils/errorNotifications";
-import ConnectionError from "./ConnectionError";
+import React, { ComponentType, useState, useCallback } from 'react';
+import { classifyError } from '@/lib/utils/errorHandling';
+import type { ApiError } from '@/lib/types/errors';
+import type { WithErrorHandlingProps } from '@/lib/types/errorHandlingHOC';
+import { showErrorNotification } from '@/lib/utils/errorNotifications';
+import ConnectionError from './ConnectionError';
 
 // Props moved to lib/types/errorHandlingHOC
 
@@ -24,8 +24,8 @@ export function withErrorHandling<P extends object>(
     onError,
     onRetry,
     showErrorUI = true,
-    errorTitle = "Something went wrong",
-    errorDescription = "An error occurred while loading this content. Please try again.",
+    errorTitle = 'Something went wrong',
+    errorDescription = 'An error occurred while loading this content. Please try again.',
   } = options;
 
   return function ErrorHandledComponent(props: P) {
@@ -60,7 +60,7 @@ export function withErrorHandling<P extends object>(
     // If there's an error and we should show error UI
     if (error && showErrorUI) {
       return (
-        <div className="flex items-center justify-center min-h-[400px] p-4">
+        <div className="flex min-h-[400px] items-center justify-center p-4">
           <ConnectionError
             error={error.message}
             onRetry={handleRetry}

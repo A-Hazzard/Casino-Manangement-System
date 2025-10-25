@@ -1,5 +1,5 @@
-import { GamingMachine } from "@/shared/types/entities";
-import type { ResourcePermissions } from "./administration";
+import { GamingMachine } from '@/shared/types/entities';
+import type { ResourcePermissions } from './administration';
 
 // Location page types
 export type ExtendedCabinetDetail = GamingMachine & {

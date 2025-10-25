@@ -1,28 +1,28 @@
-import axios from "axios";
-import type { CollectionReportRow } from "@/lib/types/componentProps";
+import axios from 'axios';
+import type { CollectionReportRow } from '@/lib/types/componentProps';
 import type {
   MonthlyReportSummary,
   MonthlyReportDetailsRow,
-} from "@/lib/types/componentProps";
-import type { SchedulerTableRow } from "@/lib/types/componentProps";
-import type { CollectorSchedule } from "@/lib/types/components";
-import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
+} from '@/lib/types/componentProps';
+import type { SchedulerTableRow } from '@/lib/types/componentProps';
+import type { CollectorSchedule } from '@/lib/types/components';
+import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 
-import { DateRange as RDPDateRange } from "react-day-picker";
+import { DateRange as RDPDateRange } from 'react-day-picker';
 
 /**
  * Maps frontend time period values to backend API time period values
  */
 export const mapTimePeriodForAPI = (frontendTimePeriod: string): string => {
   switch (frontendTimePeriod) {
-    case "last7days":
-      return "7d";
-    case "last30days":
-      return "30d";
-    case "Today":
-    case "Yesterday":
-    case "All Time":
-    case "Custom":
+    case 'last7days':
+      return '7d';
+    case 'last30days':
+      return '30d';
+    case 'Today':
+    case 'Yesterday':
+    case 'All Time':
+    case 'Custom':
     default:
       return frontendTimePeriod;
   }
@@ -41,14 +41,14 @@ export async function fetchCollectionReportsData(
     let dateRangeForFetch = undefined;
     let timePeriodForFetch = undefined;
 
-    if (activeMetricsFilter === "Custom") {
+    if (activeMetricsFilter === 'Custom') {
       // For custom filter, check if both dates are set
       if (customDateRange?.startDate && customDateRange?.endDate) {
         dateRangeForFetch = {
           from: customDateRange.startDate,
           to: customDateRange.endDate,
         };
-        timePeriodForFetch = "Custom";
+        timePeriodForFetch = 'Custom';
       } else {
         // Custom selected but no range: return empty array
         return [];
@@ -60,14 +60,14 @@ export async function fetchCollectionReportsData(
 
     const params = new URLSearchParams();
     if (selectedLicencee) {
-      params.append("licencee", selectedLicencee);
+      params.append('licencee', selectedLicencee);
     }
     if (timePeriodForFetch) {
-      params.append("timePeriod", timePeriodForFetch);
+      params.append('timePeriod', timePeriodForFetch);
     }
     if (dateRangeForFetch) {
-      params.append("startDate", dateRangeForFetch.from.toISOString());
-      params.append("endDate", dateRangeForFetch.to.toISOString());
+      params.append('startDate', dateRangeForFetch.from.toISOString());
+      params.append('endDate', dateRangeForFetch.to.toISOString());
     }
 
     const response = await axios.get(
@@ -77,24 +77,24 @@ export async function fetchCollectionReportsData(
   } catch (error) {
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
-      if (error.code === "ECONNABORTED") {
+      if (error.code === 'ECONNABORTED') {
         console.warn(
-          "⏰ Collection reports request timed out - returning empty array"
+          '⏰ Collection reports request timed out - returning empty array'
         );
       } else if (error.response?.status === 500) {
         console.warn(
-          "🔧 Server error fetching collection reports - database may be unavailable"
+          '🔧 Server error fetching collection reports - database may be unavailable'
         );
       } else if (error.response?.status === 404) {
-        console.warn("📭 Collection reports endpoint not found");
+        console.warn('📭 Collection reports endpoint not found');
       } else {
         console.warn(
-          "⚠️ Network error fetching collection reports:",
+          '⚠️ Network error fetching collection reports:',
           error.message
         );
       }
     } else {
-      console.warn("⚠️ Unexpected error fetching collection reports:", error);
+      console.warn('⚠️ Unexpected error fetching collection reports:', error);
     }
     return [];
   }
@@ -114,20 +114,20 @@ export async function fetchMonthlyReportData(
     if (!dateRange.from || !dateRange.to) {
       return {
         summary: {
-          drop: "-",
-          cancelledCredits: "-",
-          gross: "-",
-          sasGross: "-",
+          drop: '-',
+          cancelledCredits: '-',
+          gross: '-',
+          sasGross: '-',
         },
         details: [],
       };
     }
 
     const params = new URLSearchParams();
-    params.append("startDate", dateRange.from.toISOString());
-    params.append("endDate", dateRange.to.toISOString());
-    if (location !== "all") {
-      params.append("locationName", location);
+    params.append('startDate', dateRange.from.toISOString());
+    params.append('endDate', dateRange.to.toISOString());
+    if (location !== 'all') {
+      params.append('locationName', location);
     }
 
     const response = await axios.get(
@@ -135,9 +135,9 @@ export async function fetchMonthlyReportData(
     );
     return response.data;
   } catch (error) {
-    console.error(" Error fetching monthly report data:", error);
+    console.error(' Error fetching monthly report data:', error);
     return {
-      summary: { drop: "-", cancelledCredits: "-", gross: "-", sasGross: "-" },
+      summary: { drop: '-', cancelledCredits: '-', gross: '-', sasGross: '-' },
       details: [],
     };
   }
@@ -153,14 +153,14 @@ export async function fetchManagerScheduleData(
 ): Promise<{ schedulers: SchedulerTableRow[]; collectors: string[] }> {
   try {
     const params = new URLSearchParams();
-    if (selectedSchedulerLocation !== "all") {
-      params.append("location", selectedSchedulerLocation);
+    if (selectedSchedulerLocation !== 'all') {
+      params.append('location', selectedSchedulerLocation);
     }
-    if (selectedCollector !== "all") {
-      params.append("collector", selectedCollector);
+    if (selectedCollector !== 'all') {
+      params.append('collector', selectedCollector);
     }
-    if (selectedStatus !== "all") {
-      params.append("status", selectedStatus);
+    if (selectedStatus !== 'all') {
+      params.append('status', selectedStatus);
     }
 
     const response = await axios.get(`/api/schedulers?${params.toString()}`);
@@ -178,7 +178,7 @@ export async function fetchManagerScheduleData(
       collectors,
     };
   } catch (error) {
-    console.error(" Error fetching manager schedule data:", error);
+    console.error(' Error fetching manager schedule data:', error);
     return { schedulers: [], collectors: [] };
   }
 }
@@ -195,16 +195,16 @@ export async function fetchCollectorScheduleData(
   try {
     const params = new URLSearchParams();
     if (selectedLicencee) {
-      params.append("licencee", selectedLicencee);
+      params.append('licencee', selectedLicencee);
     }
-    if (selectedCollectorLocation !== "all") {
-      params.append("location", selectedCollectorLocation);
+    if (selectedCollectorLocation !== 'all') {
+      params.append('location', selectedCollectorLocation);
     }
-    if (selectedCollectorFilter !== "all") {
-      params.append("collector", selectedCollectorFilter);
+    if (selectedCollectorFilter !== 'all') {
+      params.append('collector', selectedCollectorFilter);
     }
-    if (selectedCollectorStatus !== "all") {
-      params.append("status", selectedCollectorStatus);
+    if (selectedCollectorStatus !== 'all') {
+      params.append('status', selectedCollectorStatus);
     }
 
     const response = await axios.get(
@@ -224,7 +224,7 @@ export async function fetchCollectorScheduleData(
       collectors,
     };
   } catch (error) {
-    console.error(" Error fetching collector schedule data:", error);
+    console.error(' Error fetching collector schedule data:', error);
     return { collectorSchedules: [], collectors: [] };
   }
 }
@@ -234,10 +234,10 @@ export async function fetchCollectorScheduleData(
  */
 export async function fetchAllLocationNames(): Promise<string[]> {
   try {
-    const response = await axios.get("/api/locations/names");
+    const response = await axios.get('/api/locations/names');
     return response.data;
   } catch (error) {
-    console.error(" Error fetching location names:", error);
+    console.error(' Error fetching location names:', error);
     return [];
   }
 }
@@ -249,30 +249,30 @@ export async function fetchLocationsWithMachines(): Promise<
   CollectionReportLocationWithMachines[]
 > {
   try {
-    const response = await axios.get("/api/collectionReport/locations", {});
+    const response = await axios.get('/api/collectionReport/locations', {});
     return response.data;
   } catch (error) {
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
-      if (error.code === "ECONNABORTED") {
+      if (error.code === 'ECONNABORTED') {
         console.warn(
-          "⏰ Locations with machines request timed out - returning empty array"
+          '⏰ Locations with machines request timed out - returning empty array'
         );
       } else if (error.response?.status === 500) {
         console.warn(
-          "🔧 Server error fetching locations with machines - database may be unavailable"
+          '🔧 Server error fetching locations with machines - database may be unavailable'
         );
       } else if (error.response?.status === 404) {
-        console.warn("📭 Locations with machines endpoint not found");
+        console.warn('📭 Locations with machines endpoint not found');
       } else {
         console.warn(
-          "⚠️ Network error fetching locations with machines:",
+          '⚠️ Network error fetching locations with machines:',
           error.message
         );
       }
     } else {
       console.warn(
-        "⚠️ Unexpected error fetching locations with machines:",
+        '⚠️ Unexpected error fetching locations with machines:',
         error
       );
     }
@@ -287,29 +287,29 @@ export async function fetchAllGamingLocations(): Promise<
   { id: string; name: string }[]
 > {
   try {
-    const response = await axios.get("/api/gaming-locations", {});
+    const response = await axios.get('/api/gaming-locations', {});
     return response.data;
   } catch (error) {
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
-      if (error.code === "ECONNABORTED") {
+      if (error.code === 'ECONNABORTED') {
         console.warn(
-          "⏰ Gaming locations request timed out - returning empty array"
+          '⏰ Gaming locations request timed out - returning empty array'
         );
       } else if (error.response?.status === 500) {
         console.warn(
-          "🔧 Server error fetching gaming locations - database may be unavailable"
+          '🔧 Server error fetching gaming locations - database may be unavailable'
         );
       } else if (error.response?.status === 404) {
-        console.warn("📭 Gaming locations endpoint not found");
+        console.warn('📭 Gaming locations endpoint not found');
       } else {
         console.warn(
-          "⚠️ Network error fetching gaming locations:",
+          '⚠️ Network error fetching gaming locations:',
           error.message
         );
       }
     } else {
-      console.warn("⚠️ Unexpected error fetching gaming locations:", error);
+      console.warn('⚠️ Unexpected error fetching gaming locations:', error);
     }
     return [];
   }

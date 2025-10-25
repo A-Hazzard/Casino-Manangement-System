@@ -6,11 +6,11 @@ import {
   dateRange,
   locations,
   TopPerformingData,
-} from "@/lib/types/index";
-import type { UserAuthPayload } from "@/shared/types/auth";
-import { TimePeriod } from "@/shared/types/common";
-import type { Firmware } from "@/shared/types/entities";
-import type { CurrencyCode } from "@/shared/types/currency";
+} from '@/lib/types/index';
+import type { UserAuthPayload } from '@/shared/types/auth';
+import { TimePeriod } from '@/shared/types/common';
+import type { Firmware } from '@/shared/types/entities';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 export type DashBoardStore = {
   initialLoading: boolean;
@@ -43,11 +43,11 @@ export type DashBoardStore = {
   chartData: dashboardData[];
   setChartData: (_state: dashboardData[]) => void;
 
-  activeMetricsFilter: TimePeriod | "";
-  setActiveMetricsFilter: (_state: TimePeriod | "") => void;
+  activeMetricsFilter: TimePeriod | '';
+  setActiveMetricsFilter: (_state: TimePeriod | '') => void;
 
-  activePieChartFilter: TimePeriod | "";
-  setActivePieChartFilter: (_state: TimePeriod | "") => void;
+  activePieChartFilter: TimePeriod | '';
+  setActivePieChartFilter: (_state: TimePeriod | '') => void;
 
   customDateRange: dateRange;
   setCustomDateRange: (_state: dateRange) => void;

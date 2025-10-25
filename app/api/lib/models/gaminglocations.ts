@@ -1,4 +1,4 @@
-import { model, models, Schema } from "mongoose";
+import { model, models, Schema } from 'mongoose';
 
 const GamingLocationsSchema = new Schema(
   {
@@ -54,7 +54,7 @@ const GamingLocationsSchema = new Schema(
 );
 
 // Critical indexes for aggregation performance
-GamingLocationsSchema.index({ "rel.licencee": 1, deletedAt: 1 }); // For licencee-based queries
+GamingLocationsSchema.index({ 'rel.licencee': 1, deletedAt: 1 }); // For licencee-based queries
 GamingLocationsSchema.index({ deletedAt: 1 }); // For active locations
 GamingLocationsSchema.index({ _id: 1, deletedAt: 1 }); // For location lookups
 
@@ -62,4 +62,4 @@ GamingLocationsSchema.index({ _id: 1, deletedAt: 1 }); // For location lookups
  * Mongoose model for gaming locations, including schema for address, geo-coordinates, and status.
  */
 export const GamingLocations =
-  models.GamingLocations || model("GamingLocations", GamingLocationsSchema);
+  models.GamingLocations || model('GamingLocations', GamingLocationsSchema);

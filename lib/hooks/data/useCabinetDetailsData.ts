@@ -3,11 +3,11 @@
  * Extracts complex cabinet details logic from the Cabinet Details page
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { differenceInMinutes } from "date-fns";
-import { fetchCabinetById } from "@/lib/helpers/cabinets";
-import { GamingMachine as CabinetDetail } from "@/shared/types/entities";
-import { toast } from "sonner";
+import { useState, useEffect, useCallback } from 'react';
+import { differenceInMinutes } from 'date-fns';
+import { fetchCabinetById } from '@/lib/helpers/cabinets';
+import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
+import { toast } from 'sonner';
 
 type UseCabinetDetailsDataProps = {
   slug: string;
@@ -21,7 +21,7 @@ type UseCabinetDetailsDataReturn = {
   cabinet: CabinetDetail | null;
   locationName: string;
   error: string | null;
-  errorType: "not-found" | "network" | "unknown";
+  errorType: 'not-found' | 'network' | 'unknown';
   metricsLoading: boolean;
   isOnline: boolean;
   fetchCabinetDetailsData: () => Promise<void>;
@@ -36,17 +36,17 @@ export function useCabinetDetailsData({
   dateFilterInitialized,
 }: UseCabinetDetailsDataProps): UseCabinetDetailsDataReturn {
   const [cabinet, setCabinet] = useState<CabinetDetail | null>(null);
-  const [locationName, setLocationName] = useState<string>("");
+  const [locationName, setLocationName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<
-    "not-found" | "network" | "unknown"
-  >("unknown");
+    'not-found' | 'network' | 'unknown'
+  >('unknown');
   const [isOnline, setIsOnline] = useState(false);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
   const fetchCabinetDetailsData = useCallback(async () => {
     setError(null);
-    setErrorType("unknown");
+    setErrorType('unknown');
     setMetricsLoading(true);
 
     try {
@@ -59,15 +59,15 @@ export function useCabinetDetailsData({
       const cabinetData = await fetchCabinetById(
         slug,
         activeMetricsFilter,
-        activeMetricsFilter === "Custom" && customDateRange
+        activeMetricsFilter === 'Custom' && customDateRange
           ? { from: customDateRange.startDate, to: customDateRange.endDate }
           : undefined
       );
 
       // Check if cabinet was not found
       if (!cabinetData) {
-        setError("Cabinet not found");
-        setErrorType("not-found");
+        setError('Cabinet not found');
+        setErrorType('not-found');
         setCabinet(null);
         return;
       }
@@ -78,9 +78,9 @@ export function useCabinetDetailsData({
       if (cabinetData?.locationName) {
         setLocationName(cabinetData.locationName);
       } else if (cabinetData?.locationId) {
-        setLocationName("Location Not Found");
+        setLocationName('Location Not Found');
       } else {
-        setLocationName("No Location Assigned");
+        setLocationName('No Location Assigned');
       }
 
       if (cabinetData?.lastActivity) {
@@ -92,25 +92,25 @@ export function useCabinetDetailsData({
 
       // Determine error type based on the error
       if (err instanceof Error) {
-        if (err.message.includes("404") || err.message.includes("not found")) {
-          setError("Cabinet not found");
-          setErrorType("not-found");
+        if (err.message.includes('404') || err.message.includes('not found')) {
+          setError('Cabinet not found');
+          setErrorType('not-found');
         } else if (
-          err.message.includes("network") ||
-          err.message.includes("fetch")
+          err.message.includes('network') ||
+          err.message.includes('fetch')
         ) {
-          setError("Network error");
-          setErrorType("network");
+          setError('Network error');
+          setErrorType('network');
         } else {
-          setError("Failed to fetch cabinet details");
-          setErrorType("unknown");
+          setError('Failed to fetch cabinet details');
+          setErrorType('unknown');
         }
       } else {
-        setError("Failed to fetch cabinet details");
-        setErrorType("unknown");
+        setError('Failed to fetch cabinet details');
+        setErrorType('unknown');
       }
 
-      toast.error("Failed to fetch cabinet details");
+      toast.error('Failed to fetch cabinet details');
     } finally {
       setMetricsLoading(false);
     }

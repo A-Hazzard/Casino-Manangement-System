@@ -1,6 +1,6 @@
 // Shared database types used across frontend and backend
-import mongoose from "mongoose";
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
+import { ObjectId } from 'mongodb';
 
 // MongoDB query filter types
 export type DateRangeFilter = {

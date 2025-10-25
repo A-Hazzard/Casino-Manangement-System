@@ -1,10 +1,10 @@
-import React from "react";
-import type { ChipProps } from "@/lib/types/components";
+import React from 'react';
+import type { ChipProps } from '@/lib/types/components';
 
 const Chip: React.FC<ChipProps> = ({ label, onRemove, className }) => (
   <span
-    className={`inline-flex items-center px-3 py-1 rounded-full bg-blue-500 text-white text-sm font-medium mr-2 mb-2 ${
-      className || ""
+    className={`mb-2 mr-2 inline-flex items-center rounded-full bg-blue-500 px-3 py-1 text-sm font-medium text-white ${
+      className || ''
     }`}
   >
     {label}
@@ -12,11 +12,11 @@ const Chip: React.FC<ChipProps> = ({ label, onRemove, className }) => (
       <button
         type="button"
         onClick={onRemove}
-        className="ml-2 text-white hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded-full"
+        className="ml-2 rounded-full text-white hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
         aria-label={`Remove ${label}`}
       >
         <svg
-          className="w-4 h-4"
+          className="h-4 w-4"
           fill="none"
           stroke="currentColor"
           strokeWidth="2"

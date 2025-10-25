@@ -3,20 +3,20 @@
  * Main component that orchestrates the three sub-tabs: Overview, Evaluation, and Offline
  */
 
-import { useState, useCallback, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import axios from "axios";
-import type { MachineData, MachineStats } from "@/shared/types/machines";
-import { handleMachineSort } from "@/lib/helpers/reportsPage";
-import { fetchMachineStats } from "@/lib/helpers/machineStats";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
+import { useState, useCallback, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import axios from 'axios';
+import type { MachineData, MachineStats } from '@/shared/types/machines';
+import { handleMachineSort } from '@/lib/helpers/reportsPage';
+import { fetchMachineStats } from '@/lib/helpers/machineStats';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 
 // Import the extracted tab components
-import { MachinesOverviewTab } from "./MachinesOverviewTab";
-import { MachinesEvaluationTab } from "./MachinesEvaluationTab";
-import { MachinesOfflineTab } from "./MachinesOfflineTab";
+import { MachinesOverviewTab } from './MachinesOverviewTab';
+import { MachinesEvaluationTab } from './MachinesEvaluationTab';
+import { MachinesOfflineTab } from './MachinesOfflineTab';
 
 export default function MachinesTabRefactored() {
   const { selectedLicencee } = useDashBoardStore();
@@ -93,28 +93,28 @@ export default function MachinesTabRefactored() {
   // Sorting state for machine overview table
   const [sortConfig, setSortConfig] = useState<{
     key: keyof MachineData;
-    direction: "asc" | "desc";
+    direction: 'asc' | 'desc';
   }>({
-    key: "netWin",
-    direction: "desc",
+    key: 'netWin',
+    direction: 'desc',
   });
 
   // Sorting state for evaluation data
   const [evaluationSortConfig, setEvaluationSortConfig] = useState<{
     key: keyof MachineData;
-    direction: "asc" | "desc";
+    direction: 'asc' | 'desc';
   }>({
-    key: "netWin",
-    direction: "desc",
+    key: 'netWin',
+    direction: 'desc',
   });
 
   // Sorting state for offline machines
   const [offlineSortConfig, setOfflineSortConfig] = useState<{
     key: keyof MachineData;
-    direction: "asc" | "desc";
+    direction: 'asc' | 'desc';
   }>({
-    key: "isOnline",
-    direction: "desc",
+    key: 'isOnline',
+    direction: 'desc',
   });
 
   // Data fetching functions
@@ -133,10 +133,10 @@ export default function MachinesTabRefactored() {
       };
       setMachineStats(convertedStats);
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error fetching machine stats:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching machine stats:', error);
       }
-      toast.error("Failed to fetch machine statistics");
+      toast.error('Failed to fetch machine statistics');
     } finally {
       setStatsLoading(false);
     }
@@ -145,7 +145,7 @@ export default function MachinesTabRefactored() {
   const fetchOverviewMachines = useCallback(async () => {
     setOverviewLoading(true);
     try {
-      const response = await axios.get("/api/analytics/machines", {
+      const response = await axios.get('/api/analytics/machines', {
         params: {
           licensee: selectedLicencee,
           page: pagination.page,
@@ -157,7 +157,7 @@ export default function MachinesTabRefactored() {
 
       if (response.data?.success) {
         setOverviewMachines(response.data.data || []);
-        setPagination((prev) => ({
+        setPagination(prev => ({
           ...prev,
           totalCount: response.data.totalCount || 0,
           totalPages: response.data.totalPages || 1,
@@ -166,10 +166,10 @@ export default function MachinesTabRefactored() {
         }));
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error fetching overview machines:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching overview machines:', error);
       }
-      toast.error("Failed to fetch machine data");
+      toast.error('Failed to fetch machine data');
     } finally {
       setOverviewLoading(false);
     }
@@ -178,7 +178,7 @@ export default function MachinesTabRefactored() {
   const fetchOfflineMachines = useCallback(async () => {
     setOfflineLoading(true);
     try {
-      const response = await axios.get("/api/analytics/machines/offline", {
+      const response = await axios.get('/api/analytics/machines/offline', {
         params: {
           licensee: selectedLicencee,
           page: offlinePagination.page,
@@ -190,7 +190,7 @@ export default function MachinesTabRefactored() {
 
       if (response.data?.success) {
         setOfflineMachines(response.data.data || []);
-        setOfflinePagination((prev) => ({
+        setOfflinePagination(prev => ({
           ...prev,
           totalCount: response.data.totalCount || 0,
           totalPages: response.data.totalPages || 1,
@@ -199,10 +199,10 @@ export default function MachinesTabRefactored() {
         }));
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error fetching offline machines:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching offline machines:', error);
       }
-      toast.error("Failed to fetch offline machines");
+      toast.error('Failed to fetch offline machines');
     } finally {
       setOfflineLoading(false);
     }
@@ -216,7 +216,7 @@ export default function MachinesTabRefactored() {
   const fetchEvaluationData = useCallback(async () => {
     setEvaluationLoading(true);
     try {
-      const response = await axios.get("/api/analytics/machines/evaluation", {
+      const response = await axios.get('/api/analytics/machines/evaluation', {
         params: {
           licensee: selectedLicencee,
           sortBy: evaluationSortConfig.key,
@@ -228,10 +228,10 @@ export default function MachinesTabRefactored() {
         setEvaluationData(response.data.data || []);
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error fetching evaluation data:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching evaluation data:', error);
       }
-      toast.error("Failed to fetch evaluation data");
+      toast.error('Failed to fetch evaluation data');
     } finally {
       setEvaluationLoading(false);
     }
@@ -244,28 +244,28 @@ export default function MachinesTabRefactored() {
 
   // Handle sort for evaluation data
   const handleEvaluationSort = useCallback((key: keyof MachineData) => {
-    setEvaluationSortConfig((prev) => ({
+    setEvaluationSortConfig(prev => ({
       key,
-      direction: prev.key === key && prev.direction === "desc" ? "asc" : "desc",
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc',
     }));
   }, []);
 
   // Handle sort for offline machines
   const handleOfflineSort = useCallback((key: keyof MachineData) => {
-    setOfflineSortConfig((prev) => ({
+    setOfflineSortConfig(prev => ({
       key,
-      direction: prev.key === key && prev.direction === "desc" ? "asc" : "desc",
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc',
     }));
   }, []);
 
   // Handle page change for overview
   const handleOverviewPageChange = useCallback((page: number) => {
-    setPagination((prev) => ({ ...prev, page }));
+    setPagination(prev => ({ ...prev, page }));
   }, []);
 
   // Handle page change for offline machines
   const handleOfflinePageChange = useCallback((page: number) => {
-    setOfflinePagination((prev) => ({ ...prev, page }));
+    setOfflinePagination(prev => ({ ...prev, page }));
   }, []);
 
   // Handle refresh for all data
@@ -276,7 +276,7 @@ export default function MachinesTabRefactored() {
       fetchOfflineMachines(),
       fetchEvaluationData(),
     ]);
-    toast.success("Data refreshed successfully");
+    toast.success('Data refreshed successfully');
   }, [
     fetchMachineStatsData,
     fetchOverviewMachines,
@@ -287,29 +287,29 @@ export default function MachinesTabRefactored() {
   // Handle export for all data
   const handleExport = useCallback(async () => {
     try {
-      const response = await axios.get("/api/analytics/machines/export", {
+      const response = await axios.get('/api/analytics/machines/export', {
         params: { licensee: selectedLicencee },
-        responseType: "blob",
+        responseType: 'blob',
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = url;
       link.setAttribute(
-        "download",
-        `machines-report-${new Date().toISOString().split("T")[0]}.csv`
+        'download',
+        `machines-report-${new Date().toISOString().split('T')[0]}.csv`
       );
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      toast.success("Export completed successfully");
+      toast.success('Export completed successfully');
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error exporting data:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error exporting data:', error);
       }
-      toast.error("Failed to export data");
+      toast.error('Failed to export data');
     }
   }, [selectedLicencee]);
 
@@ -344,7 +344,7 @@ export default function MachinesTabRefactored() {
         gameType: machine.machineType,
         isCronosMachine: false,
         cabinetType: machine.machineType,
-        assetStatus: machine.isOnline ? "active" : "inactive",
+        assetStatus: machine.isOnline ? 'active' : 'inactive',
         manufacturer: machine.manufacturer,
         gamingLocation: machine.locationName,
         accountingDenomination: 1,
@@ -361,7 +361,7 @@ export default function MachinesTabRefactored() {
         gamesWon: machine.gamesWon || 0,
         handle: machine.coinIn,
         custom: {
-          name: machine.serialNumber || machine.machineId || "Unknown",
+          name: machine.serialNumber || machine.machineId || 'Unknown',
         },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -385,7 +385,7 @@ export default function MachinesTabRefactored() {
         gameType: machine.machineType,
         isCronosMachine: false,
         cabinetType: machine.machineType,
-        assetStatus: machine.isOnline ? "active" : "inactive",
+        assetStatus: machine.isOnline ? 'active' : 'inactive',
         manufacturer: machine.manufacturer,
         gamingLocation: machine.locationName,
         accountingDenomination: 1,
@@ -402,7 +402,7 @@ export default function MachinesTabRefactored() {
         gamesWon: machine.gamesWon || 0,
         handle: machine.coinIn,
         custom: {
-          name: machine.serialNumber || machine.machineId || "Unknown",
+          name: machine.serialNumber || machine.machineId || 'Unknown',
         },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -454,7 +454,7 @@ export default function MachinesTabRefactored() {
         </TabsContent>
 
         {/* Evaluation Tab */}
-        <TabsContent value="evaluation" className="space-y-6 mt-2">
+        <TabsContent value="evaluation" className="mt-2 space-y-6">
           <MachinesEvaluationTab
             evaluationData={evaluationData}
             locations={locations}

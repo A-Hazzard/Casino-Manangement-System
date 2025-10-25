@@ -1,9 +1,20 @@
 // UI-related utility functions
 
-import { gsap } from "gsap";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-type CabinetSortOption = "assetNumber" | "locationName" | "moneyIn" | "moneyOut" | "jackpot" | "gross" | "cancelledCredits" | "game" | "smbId" | "serialNumber" | "lastOnline";
-import { RefObject } from "react";
+import { gsap } from 'gsap';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+type CabinetSortOption =
+  | 'assetNumber'
+  | 'locationName'
+  | 'moneyIn'
+  | 'moneyOut'
+  | 'jackpot'
+  | 'gross'
+  | 'cancelledCredits'
+  | 'game'
+  | 'smbId'
+  | 'serialNumber'
+  | 'lastOnline';
+import { RefObject } from 'react';
 
 /**
  * Calculates the visible page numbers for pagination
@@ -51,7 +62,7 @@ export const animateTableRows = (
   tableRef: RefObject<HTMLDivElement | null>
 ) => {
   if (tableRef.current) {
-    const tableRows = tableRef.current.querySelectorAll("tbody tr");
+    const tableRows = tableRef.current.querySelectorAll('tbody tr');
     gsap.fromTo(
       tableRows,
       { opacity: 0, y: 15 },
@@ -60,7 +71,7 @@ export const animateTableRows = (
         y: 0,
         duration: 0.4,
         stagger: 0.05,
-        ease: "power2.out",
+        ease: 'power2.out',
       }
     );
   }
@@ -81,7 +92,7 @@ export const animateCards = (cardsRef: RefObject<HTMLDivElement | null>) => {
         y: 0,
         duration: 0.4,
         stagger: 0.08,
-        ease: "back.out(1.5)",
+        ease: 'back.out(1.5)',
       }
     );
   }
@@ -96,11 +107,11 @@ export const highlightSearchResults = (
 ) => {
   if (ref.current && searchActive) {
     gsap.to(ref.current, {
-      backgroundColor: "rgba(59, 130, 246, 0.05)",
+      backgroundColor: 'rgba(59, 130, 246, 0.05)',
       duration: 0.2,
       onComplete: () => {
         gsap.to(ref.current, {
-          backgroundColor: "transparent",
+          backgroundColor: 'transparent',
           duration: 0.5,
         });
       },
@@ -111,13 +122,13 @@ export const highlightSearchResults = (
 /**
  * Animates sort direction change
  */
-export const animateSortDirection = (sortOrder: "asc" | "desc") => {
-  const sortIconElement = document.querySelector(".sort-icon");
+export const animateSortDirection = (sortOrder: 'asc' | 'desc') => {
+  const sortIconElement = document.querySelector('.sort-icon');
   if (sortIconElement) {
     gsap.to(sortIconElement, {
-      rotation: sortOrder === "desc" ? 0 : 180,
+      rotation: sortOrder === 'desc' ? 0 : 180,
       duration: 0.3,
-      ease: "back.out(1.7)",
+      ease: 'back.out(1.7)',
     });
   }
 };
@@ -130,19 +141,19 @@ export const animateColumnSort = (
   column: CabinetSortOption
 ) => {
   if (tableRef.current) {
-    const headers = tableRef.current.querySelectorAll("th");
-    const targetHeader = Array.from(headers).find((header) =>
+    const headers = tableRef.current.querySelectorAll('th');
+    const targetHeader = Array.from(headers).find(header =>
       header.textContent?.includes(column.toUpperCase())
     );
 
     if (targetHeader) {
       gsap.fromTo(
         targetHeader,
-        { backgroundColor: "#008000" },
+        { backgroundColor: '#008000' },
         {
-          backgroundColor: "#142E44",
+          backgroundColor: '#142E44',
           duration: 0.5,
-          ease: "power2.out",
+          ease: 'power2.out',
         }
       );
     }
@@ -155,17 +166,17 @@ export const animateColumnSort = (
 export const handleColumnSort = (
   column: CabinetSortOption,
   currentSortOption: CabinetSortOption,
-  currentSortOrder: "asc" | "desc",
+  currentSortOrder: 'asc' | 'desc',
   setSortOption: (_option: CabinetSortOption) => void,
-  setSortOrder: (_order: "asc" | "desc") => void
+  setSortOrder: (_order: 'asc' | 'desc') => void
 ) => {
   if (currentSortOption === column) {
     // Toggle sort order if clicking the same column
-    setSortOrder(currentSortOrder === "desc" ? "asc" : "desc");
+    setSortOrder(currentSortOrder === 'desc' ? 'asc' : 'desc');
   } else {
     // Set new sort column and default to descending order
     setSortOption(column);
-    setSortOrder("desc");
+    setSortOrder('desc');
   }
 };
 
@@ -175,10 +186,10 @@ export const handleColumnSort = (
 export const sortCabinets = (
   cabinets: Cabinet[],
   sortOption: CabinetSortOption,
-  sortOrder: "asc" | "desc"
+  sortOrder: 'asc' | 'desc'
 ) => {
   return [...cabinets].sort((a, b) => {
-    const order = sortOrder === "desc" ? -1 : 1;
+    const order = sortOrder === 'desc' ? -1 : 1;
     const aValue = a[sortOption] || 0;
     const bValue = b[sortOption] || 0;
     return (aValue > bValue ? 1 : -1) * order;
@@ -192,7 +203,7 @@ export const filterAndSortCabinets = (
   allCabinets: Cabinet[],
   searchTerm: string,
   sortOption: CabinetSortOption,
-  sortOrder: "asc" | "desc"
+  sortOrder: 'asc' | 'desc'
 ) => {
   if (!allCabinets || allCabinets.length === 0) {
     return [];
@@ -204,7 +215,7 @@ export const filterAndSortCabinets = (
   if (searchTerm.trim()) {
     const searchLower = searchTerm.toLowerCase();
     filtered = filtered.filter(
-      (cab) =>
+      cab =>
         cab.assetNumber?.toLowerCase().includes(searchLower) ||
         cab.smbId?.toLowerCase().includes(searchLower) ||
         cab.serialNumber?.toLowerCase().includes(searchLower) ||
@@ -214,7 +225,7 @@ export const filterAndSortCabinets = (
 
   // Apply sorting
   filtered.sort((a, b) => {
-    const order = sortOrder === "desc" ? -1 : 1;
+    const order = sortOrder === 'desc' ? -1 : 1;
     let valA = a[sortOption] as string | number | undefined;
     let valB = b[sortOption] as string | number | undefined;
 
@@ -226,7 +237,7 @@ export const filterAndSortCabinets = (
     if (bIsNull) return 1 * order;
 
     // Specific type comparisons
-    if (sortOption === "assetNumber") {
+    if (sortOption === 'assetNumber') {
       // Ensure string comparison
       valA = String(valA);
       valB = String(valB);

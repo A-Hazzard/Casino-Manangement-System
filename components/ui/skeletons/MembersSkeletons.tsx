@@ -1,15 +1,15 @@
-import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
  * Specific skeleton component for Members Page Layout
  * Matches the exact layout of the members page with navigation and content
  */
 export const MembersPageSkeleton = () => (
-  <div className="flex flex-col h-full">
+  <div className="flex h-full flex-col">
     {/* Navigation skeleton */}
-    <div className="flex items-center justify-between mb-6">
+    <div className="mb-6 flex items-center justify-between">
       <div className="flex space-x-1">
         {Array.from({ length: 2 }).map((_, i) => (
           <Skeleton key={i} className="h-10 w-24 rounded-md" />
@@ -32,8 +32,8 @@ export const MembersPageSkeleton = () => (
 export const MembersListTabSkeleton = () => (
   <div className="space-y-6">
     {/* Header with search and new member button */}
-    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-      <div className="flex-1 max-w-md">
+    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="max-w-md flex-1">
         <Skeleton className="h-10 w-full" />
       </div>
       <Skeleton className="h-10 w-32" />
@@ -56,7 +56,7 @@ export const MembersListTabSkeleton = () => (
                 <thead>
                   <tr className="border-b">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <th key={i} className="text-center p-3">
+                      <th key={i} className="p-3 text-center">
                         <Skeleton className="h-4 w-20" />
                       </th>
                     ))}
@@ -69,7 +69,7 @@ export const MembersListTabSkeleton = () => (
                         <div className="flex items-center gap-3">
                           <Skeleton className="h-8 w-8 rounded-full" />
                           <div>
-                            <Skeleton className="h-4 w-24 mb-1" />
+                            <Skeleton className="mb-1 h-4 w-24" />
                             <Skeleton className="h-3 w-16" />
                           </div>
                         </div>
@@ -99,15 +99,15 @@ export const MembersListTabSkeleton = () => (
       </div>
 
       {/* Mobile cards skeleton */}
-      <div className="block lg:hidden space-y-4">
+      <div className="block space-y-4 lg:hidden">
         {Array.from({ length: 5 }).map((_, i) => (
           <Card key={i}>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Skeleton className="h-10 w-10 rounded-full" />
                   <div>
-                    <Skeleton className="h-4 w-24 mb-1" />
+                    <Skeleton className="mb-1 h-4 w-24" />
                     <Skeleton className="h-3 w-16" />
                   </div>
                 </div>
@@ -118,11 +118,11 @@ export const MembersListTabSkeleton = () => (
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <Skeleton className="h-3 w-16 mb-1" />
+                  <Skeleton className="mb-1 h-3 w-16" />
                   <Skeleton className="h-4 w-20" />
                 </div>
                 <div>
-                  <Skeleton className="h-3 w-12 mb-1" />
+                  <Skeleton className="mb-1 h-3 w-12" />
                   <Skeleton className="h-4 w-16" />
                 </div>
               </div>
@@ -153,7 +153,7 @@ export const MembersListTabSkeleton = () => (
 export const MembersSummaryTabSkeleton = () => (
   <div className="space-y-6">
     {/* Summary cards skeleton */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i}>
           <CardContent className="p-6">
@@ -174,7 +174,7 @@ export const MembersSummaryTabSkeleton = () => (
     </div>
 
     {/* Charts skeleton */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>
@@ -207,11 +207,14 @@ export const MembersSummaryTabSkeleton = () => (
       <CardContent>
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+            >
               <div className="flex items-center gap-3">
                 <Skeleton className="h-8 w-8 rounded-full" />
                 <div>
-                  <Skeleton className="h-4 w-24 mb-1" />
+                  <Skeleton className="mb-1 h-4 w-24" />
                   <Skeleton className="h-3 w-16" />
                 </div>
               </div>

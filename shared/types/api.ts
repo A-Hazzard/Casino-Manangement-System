@@ -56,7 +56,7 @@ export type PaginationParams = {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
+  sortOrder?: 'asc' | 'desc';
 };
 
 /**
@@ -90,7 +90,7 @@ export type ValidationError = {
  */
 export type ValidationErrorResponse = {
   success: false;
-  error: "Validation failed";
+  error: 'Validation failed';
   validationErrors: ValidationError[];
   timestamp: string;
 };
@@ -132,11 +132,14 @@ export type BulkOperationResult<T> = {
  */
 export type HealthCheckResponse = {
   success: boolean;
-  status: "healthy" | "degraded" | "unhealthy";
-  services: Record<string, {
-    status: "up" | "down";
-    responseTime?: number;
-    lastCheck: string;
-  }>;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  services: Record<
+    string,
+    {
+      status: 'up' | 'down';
+      responseTime?: number;
+      lastCheck: string;
+    }
+  >;
   timestamp: string;
 };

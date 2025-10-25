@@ -24,6 +24,7 @@
 This document serves as the comprehensive engineering guidelines for the Evolution One CMS system. It establishes the standards, practices, and architectural principles that all contributors must follow to ensure code quality, maintainability, and system reliability.
 
 ### Key Principles
+
 - **Code Quality**: Maintainable, readable, and well-documented code
 - **Type Safety**: Comprehensive TypeScript implementation with strict typing
 - **Performance**: Optimized code with efficient algorithms and data structures
@@ -31,6 +32,7 @@ This document serves as the comprehensive engineering guidelines for the Evoluti
 - **Scalability**: Architecture that supports growth and expansion
 
 ### System Architecture
+
 - **Next.js 15**: Modern React framework with App Router
 - **TypeScript**: Strong typing for all components and APIs
 - **MongoDB**: Document-based database with Mongoose ODM
@@ -38,6 +40,7 @@ This document serves as the comprehensive engineering guidelines for the Evoluti
 - **JWT Authentication**: Secure authentication with role-based access control
 
 ### Development Standards
+
 - **Modular Design**: Clear separation of concerns and reusable components
 - **API-First**: RESTful API design with comprehensive documentation
 - **Testing**: Comprehensive testing with manual and automated validation
@@ -100,17 +103,18 @@ This document serves as the comprehensive engineering guidelines for the Evoluti
 - **Date Inputs**: Convert user-selected Trinidad time to UTC before API calls using `trinidadTimeToUtc()`
 
 **Required Implementation:**
+
 ```typescript
 // API routes - convert responses to Trinidad time
-import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
+import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 return NextResponse.json({ data: convertResponseToTrinidadTime(results) });
 
 // Date range queries - convert Trinidad time to UTC
-import { createTrinidadTimeDateRange } from "@/app/api/lib/utils/timezone";
+import { createTrinidadTimeDateRange } from '@/app/api/lib/utils/timezone';
 const utcRange = createTrinidadTimeDateRange(startDate, endDate);
 
 // Frontend date inputs - convert to UTC for API calls
-import { trinidadTimeToUtc } from "@/app/api/lib/utils/timezone";
+import { trinidadTimeToUtc } from '@/app/api/lib/utils/timezone';
 const utcDate = trinidadTimeToUtc(userSelectedDate);
 ```
 
@@ -118,7 +122,7 @@ const utcDate = trinidadTimeToUtc(userSelectedDate);
 
 ### Data flow and typing
 
-1. API route (app/api/*) → validate/transform → returns typed JSON
+1. API route (app/api/\*) → validate/transform → returns typed JSON
 2. Frontend helpers (`lib/helpers/*`) → call APIs with axios → return typed data
 3. Components consume typed data via props/state only
 

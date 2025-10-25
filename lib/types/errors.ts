@@ -6,5 +6,3 @@ export type ApiError = {
   isTimeoutError?: boolean;
   isConnectionError?: boolean;
 };
-
-

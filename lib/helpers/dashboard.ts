@@ -5,15 +5,15 @@ import {
   ActiveFilters,
   TopPerformingData,
   ActiveTab,
-} from "@/lib/types";
+} from '@/lib/types';
 
-import { switchFilter } from "@/lib/utils/metrics";
-import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
-import getAllGamingLocations from "@/lib/helpers/locations";
-import { TimePeriod } from "@/shared/types/common";
-import axios from "axios";
-import { classifyError } from "@/lib/utils/errorHandling";
-import { showErrorNotification } from "@/lib/utils/errorNotifications";
+import { switchFilter } from '@/lib/utils/metrics';
+import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
+import getAllGamingLocations from '@/lib/helpers/locations';
+import { TimePeriod } from '@/shared/types/common';
+import axios from 'axios';
+import { classifyError } from '@/lib/utils/errorHandling';
+import { showErrorNotification } from '@/lib/utils/errorNotifications';
 
 /**
  * Calculates pie chart label position data for rendering
@@ -31,9 +31,9 @@ export const loadGamingLocations = async (
   try {
     // Lightweight locations fetch (minimal projection, no heavy lookups)
     const params = new URLSearchParams();
-    params.append("minimal", "1");
-    if (selectedLicencee && selectedLicencee !== "all") {
-      params.append("licencee", selectedLicencee);
+    params.append('minimal', '1');
+    if (selectedLicencee && selectedLicencee !== 'all') {
+      params.append('licencee', selectedLicencee);
     }
 
     const response = await axios.get(`/api/locations?${params.toString()}`);
@@ -42,10 +42,10 @@ export const loadGamingLocations = async (
     setGamingLocations(locationsData);
   } catch (error) {
     const apiError = classifyError(error);
-    showErrorNotification(apiError, "Gaming Locations");
+    showErrorNotification(apiError, 'Gaming Locations');
 
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error loading gaming locations:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error loading gaming locations:', error);
     }
 
     // Fallback to original method
@@ -54,7 +54,7 @@ export const loadGamingLocations = async (
       setGamingLocations(locationsData);
     } catch (fallbackError) {
       const fallbackApiError = classifyError(fallbackError);
-      showErrorNotification(fallbackApiError, "Gaming Locations Fallback");
+      showErrorNotification(fallbackApiError, 'Gaming Locations Fallback');
     }
   }
 };
@@ -73,14 +73,14 @@ export const fetchDashboardTotals = async (
     let url = `/api/dashboard/totals?timePeriod=${activeMetricsFilter}`;
 
     if (
-      activeMetricsFilter === "Custom" &&
+      activeMetricsFilter === 'Custom' &&
       customDateRange.startDate &&
       customDateRange.endDate
     ) {
       url += `&startDate=${customDateRange.startDate.toISOString()}&endDate=${customDateRange.endDate.toISOString()}`;
     }
 
-    if (selectedLicencee && selectedLicencee !== "all") {
+    if (selectedLicencee && selectedLicencee !== 'all') {
       url += `&licencee=${selectedLicencee}`;
     }
 
@@ -89,9 +89,9 @@ export const fetchDashboardTotals = async (
     }
 
     // Log the API call
-    console.warn("=== FETCH DASHBOARD TOTALS DEBUG ===");
-    console.warn("API URL:", url);
-    console.warn("Parameters:", {
+    console.warn('=== FETCH DASHBOARD TOTALS DEBUG ===');
+    console.warn('API URL:', url);
+    console.warn('Parameters:', {
       activeMetricsFilter,
       selectedLicencee,
       displayCurrency,
@@ -102,7 +102,7 @@ export const fetchDashboardTotals = async (
     const totals = response.data;
 
     // Log the response
-    console.warn("API Response:", {
+    console.warn('API Response:', {
       moneyIn: totals.moneyIn,
       moneyOut: totals.moneyOut,
       gross: totals.gross,
@@ -118,10 +118,10 @@ export const fetchDashboardTotals = async (
     });
   } catch (error) {
     const apiError = classifyError(error);
-    showErrorNotification(apiError, "Dashboard Totals");
+    showErrorNotification(apiError, 'Dashboard Totals');
 
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error fetching dashboard totals:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching dashboard totals:', error);
     }
 
     setTotals(null);
@@ -156,8 +156,8 @@ export const fetchMetricsData = async (
       activeMetricsFilter,
       () => {}, // Don't set totals here, we already did it above
       setChartData,
-      activeMetricsFilter === "Custom" ? customDateRange.startDate : undefined,
-      activeMetricsFilter === "Custom" ? customDateRange.endDate : undefined,
+      activeMetricsFilter === 'Custom' ? customDateRange.startDate : undefined,
+      activeMetricsFilter === 'Custom' ? customDateRange.endDate : undefined,
       selectedLicencee,
       setActiveFilters,
       setShowDatePicker
@@ -167,8 +167,8 @@ export const fetchMetricsData = async (
       activeMetricsFilter,
       () => {}, // Don't set totals here, we already did it above
       setChartData,
-      activeMetricsFilter === "Custom" ? customDateRange.startDate : undefined,
-      activeMetricsFilter === "Custom" ? customDateRange.endDate : undefined,
+      activeMetricsFilter === 'Custom' ? customDateRange.startDate : undefined,
+      activeMetricsFilter === 'Custom' ? customDateRange.endDate : undefined,
       undefined,
       setActiveFilters,
       setShowDatePicker
@@ -197,10 +197,10 @@ export const fetchTopPerformingDataHelper = async (
     setTopPerformingData(data);
   } catch (error) {
     const apiError = classifyError(error);
-    showErrorNotification(apiError, "Top Performing Data");
+    showErrorNotification(apiError, 'Top Performing Data');
 
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error fetching top-performing data:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching top-performing data:', error);
     }
   } finally {
     setLoadingTopPerforming(false);
@@ -233,9 +233,9 @@ export const handleDashboardRefresh = async (
   try {
     // In refresh: also refetch gaming locations to ensure map data stays in sync
     const locationsParams = new URLSearchParams();
-    locationsParams.append("minimal", "1");
-    if (selectedLicencee && selectedLicencee !== "all") {
-      locationsParams.append("licencee", selectedLicencee);
+    locationsParams.append('minimal', '1');
+    if (selectedLicencee && selectedLicencee !== 'all') {
+      locationsParams.append('licencee', selectedLicencee);
     }
 
     // Parallelize metrics + top-performing + a lightweight locations ping to warm caches
@@ -256,10 +256,10 @@ export const handleDashboardRefresh = async (
     setTopPerformingData(topPerformingDataResult);
   } catch (error) {
     const apiError = classifyError(error);
-    showErrorNotification(apiError, "Dashboard Refresh");
+    showErrorNotification(apiError, 'Dashboard Refresh');
 
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error refreshing data:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error refreshing data:', error);
     }
   } finally {
     setRefreshing(false);
@@ -272,10 +272,10 @@ export const handleDashboardRefresh = async (
  * Creates time filter buttons configuration
  */
 export const getTimeFilterButtons = () => [
-  { label: "Today", value: "Today" as TimePeriod },
-  { label: "Yesterday", value: "Yesterday" as TimePeriod },
-  { label: "Last 7 days", value: "7d" as TimePeriod },
-  { label: "30 days", value: "30d" as TimePeriod },
-  { label: "All Time", value: "All Time" as TimePeriod },
-  { label: "Custom", value: "Custom" as TimePeriod },
+  { label: 'Today', value: 'Today' as TimePeriod },
+  { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+  { label: 'Last 7 days', value: '7d' as TimePeriod },
+  { label: '30 days', value: '30d' as TimePeriod },
+  { label: 'All Time', value: 'All Time' as TimePeriod },
+  { label: 'Custom', value: 'Custom' as TimePeriod },
 ];

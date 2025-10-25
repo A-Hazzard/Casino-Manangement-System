@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { X } from "lucide-react";
-import type { Licensee } from "@/lib/types/licensee";
+import { useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { X } from 'lucide-react';
+import type { Licensee } from '@/lib/types/licensee';
 
 type PaymentHistoryModalProps = {
   open: boolean;
@@ -15,7 +15,7 @@ type Payment = {
   datePaid: string;
   nextBilling: string;
   amount: string;
-  status: "completed" | "overdue" | "cancelled";
+  status: 'completed' | 'overdue' | 'cancelled';
 };
 
 export default function PaymentHistoryModal({
@@ -33,7 +33,7 @@ export default function PaymentHistoryModal({
       gsap.fromTo(
         modalRef.current,
         { opacity: 0, scale: 0.95 },
-        { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out" }
+        { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' }
       );
     }
   }, [open]);
@@ -42,28 +42,28 @@ export default function PaymentHistoryModal({
 
   const getStatusDisplay = (payment: Payment) => {
     switch (payment.status) {
-      case "cancelled":
+      case 'cancelled':
         return (
           <div className="text-right">
-            <div className="text-red-600 font-bold text-lg">Cancelled</div>
+            <div className="text-lg font-bold text-red-600">Cancelled</div>
           </div>
         );
-      case "overdue":
+      case 'overdue':
         return (
           <div className="text-right">
-            <div className="text-orange-600 font-bold text-lg">
+            <div className="text-lg font-bold text-orange-600">
               {payment.amount}
             </div>
-            <div className="text-orange-600 text-sm">Overdue</div>
+            <div className="text-sm text-orange-600">Overdue</div>
           </div>
         );
-      case "completed":
+      case 'completed':
         return (
           <div className="text-right">
-            <div className="text-green-600 font-bold text-lg">
+            <div className="text-lg font-bold text-green-600">
               {payment.amount}
             </div>
-            <div className="text-green-600 text-sm">Completed</div>
+            <div className="text-sm text-green-600">Completed</div>
           </div>
         );
       default:
@@ -75,20 +75,20 @@ export default function PaymentHistoryModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         {/* Header */}
-        <div className="relative bg-white border-b border-gray-200 px-6 py-6">
+        <div className="relative border-b border-gray-200 bg-white px-6 py-6">
           <button
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
+            className="absolute right-4 top-4 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
             onClick={onClose}
             aria-label="Close"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6" />
           </button>
 
           {/* Main Title */}
-          <h2 className="text-3xl font-bold text-gray-900 mb-2 pr-12">
+          <h2 className="mb-2 pr-12 text-3xl font-bold text-gray-900">
             Payment History
           </h2>
 
@@ -100,35 +100,35 @@ export default function PaymentHistoryModal({
         <div className="flex-1 overflow-y-auto bg-gray-50">
           <div className="px-6 py-6">
             <div className="space-y-4">
-              {payments.map((payment) => (
+              {payments.map(payment => (
                 <div
                   key={payment.id}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 p-5"
+                  className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md"
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     {/* Left Section - Payment Details */}
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       {/* Payment Type */}
-                      <h3 className="font-bold text-gray-900 text-lg mb-3">
+                      <h3 className="mb-3 text-lg font-bold text-gray-900">
                         {payment.type}
                       </h3>
 
                       {/* Date Paid */}
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="text-gray-700 font-medium">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-gray-700">
                           Date Paid:
                         </span>
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
+                        <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-800">
                           {payment.datePaid}
                         </span>
                       </div>
 
                       {/* Next Billing */}
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-gray-700 font-medium">
+                        <span className="font-medium text-gray-700">
                           Next Billing:
                         </span>
-                        <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold">
+                        <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-800">
                           {payment.nextBilling}
                         </span>
                       </div>
@@ -145,11 +145,11 @@ export default function PaymentHistoryModal({
 
             {/* Empty State */}
             {payments.length === 0 && (
-              <div className="text-center text-gray-500 py-12">
+              <div className="py-12 text-center text-gray-500">
                 <div className="text-lg font-medium">
                   No payment history found
                 </div>
-                <div className="text-sm mt-1">
+                <div className="mt-1 text-sm">
                   Payment records will appear here once available
                 </div>
               </div>

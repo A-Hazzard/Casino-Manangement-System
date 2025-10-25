@@ -20,18 +20,21 @@
 This document provides a comprehensive overview of all pages in the Evolution One Casino Management System. It serves as a central reference for understanding the system's page structure, functionality, and user interface organization.
 
 ### Key Principles
+
 - **User Experience**: Intuitive navigation and consistent interface design
 - **Functionality**: Complete feature coverage across all system components
 - **Security**: Role-based access control and authentication requirements
 - **Performance**: Optimized page loading and real-time data updates
 
 ### System Architecture
+
 - **Next.js 15**: Modern React framework with App Router
 - **TypeScript**: Strong typing for all page components and data
 - **Tailwind CSS**: Responsive design with consistent styling
 - **Real-time Updates**: Live data synchronization across all pages
 
 ### Page Categories
+
 - **Main Pages**: Core system functionality and navigation
 - **Collection System**: Financial collection and reporting pages
 - **Administration**: User management and system administration
@@ -40,6 +43,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 ## Main Pages
 
 ### ✅ Dashboard
+
 - **File:** `app/page.tsx`
 - **URL:** `/`
 - **Documentation:** `dashboard.md`
@@ -47,6 +51,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Real-time financial metrics, machine status, performance charts, date filtering
 
 ### ✅ Login
+
 - **File:** `app/(auth)/login/page.tsx`
 - **URL:** `/login`
 - **Documentation:** `login.md`
@@ -54,6 +59,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Email/password authentication, validation, error handling, responsive design
 
 ### ✅ Administration
+
 - **File:** `app/administration/page.tsx`
 - **URL:** `/administration`
 - **Documentation:** `administration.md`
@@ -61,6 +67,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** User management, licensee management, activity logs, role-based access
 
 ### ✅ Collection Report
+
 - **File:** `app/collection-report/page.tsx`
 - **URL:** `/collection-report`
 - **Documentation:** `collection-report.md`
@@ -68,6 +75,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Collection reports, monthly reports, manager/collector schedules, filtering
 
 ### ✅ Cabinets
+
 - **File:** `app/cabinets/page.tsx`
 - **URL:** `/cabinets`
 - **Documentation:** `cabinets.md`
@@ -75,6 +83,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Cabinet listing, filtering, sorting, movement requests, SMIB data upload
 
 ### ✅ Locations
+
 - **File:** `app/locations/page.tsx`
 - **URL:** `/locations`
 - **Documentation:** `locations.md`
@@ -82,6 +91,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Location listing, filtering, sorting, machine status tracking, management
 
 ### ✅ Reports
+
 - **File:** `app/reports/page.tsx`
 - **URL:** `/reports`
 - **Documentation:** `Reports FRD.md`
@@ -89,6 +99,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Dashboard, locations, machines, and meters reports with export functionality
 
 ### ✅ Members
+
 - **File:** `app/members/page.tsx`
 - **URL:** `/members`
 - **Documentation:** `members.md`
@@ -96,6 +107,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Member profiles, session analytics, data export, performance tracking
 
 ### ✅ Sessions
+
 - **File:** `app/sessions/page.tsx`
 - **URL:** `/sessions`
 - **Documentation:** `sessions.md`
@@ -105,6 +117,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 ## Detail Pages
 
 ### ✅ Cabinet Details
+
 - **File:** `app/cabinets/[slug]/page.tsx`
 - **URL:** `/cabinets/[slug]`
 - **Documentation:** `cabinet-details.md`
@@ -112,6 +125,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** SMIB configuration, real-time status, metrics filtering, firmware management
 
 ### ✅ Location Cabinets
+
 - **File:** `app/locations/[slug]/page.tsx`
 - **URL:** `/locations/[slug]`
 - **Documentation:** `location-cabinets.md`
@@ -119,6 +133,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Location-specific cabinet management, filtering, sorting, pagination
 
 ### ✅ Location Details
+
 - **File:** `app/locations/[slug]/details/page.tsx`
 - **URL:** `/locations/[slug]/details`
 - **Documentation:** `location-details.md`
@@ -126,6 +141,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Location analytics, cabinet breakdowns, performance metrics, time filtering
 
 ### ✅ Collection Report Details
+
 - **File:** `app/collection-report/report/[reportId]/page.tsx`
 - **URL:** `/collection-report/report/[reportId]`
 - **Documentation:** `collection-report-details.md`
@@ -133,6 +149,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Machine metrics, location metrics, SAS metrics comparison, pagination
 
 ### ✅ Member Details
+
 - **File:** `app/members/[id]/page.tsx`
 - **URL:** `/members/[id]`
 - **Documentation:** `members.md`
@@ -140,6 +157,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **Features:** Member profile, session tracking, view filtering (session/day/week/month), data export
 
 ### ✅ Session Events
+
 - **File:** `app/sessions/[sessionId]/[machineId]/events/page.tsx`
 - **URL:** `/sessions/[sessionId]/[machineId]/events`
 - **Documentation:** `sessions.md`
@@ -149,18 +167,21 @@ This document provides a comprehensive overview of all pages in the Evolution On
 ## Redirect Pages
 
 ### ✅ Collections Redirect
+
 - **File:** `app/collections/page.tsx`
 - **URL:** `/collections`
 - **Documentation:** `redirect-pages.md`
 - **Status:** Redirects to `/collection-report`
 
 ### ✅ Collection Redirect
+
 - **File:** `app/collection/page.tsx`
 - **URL:** `/collection`
 - **Documentation:** `redirect-pages.md`
 - **Status:** Redirects to `/collection-report`
 
 ### ✅ Collection Reports Redirect
+
 - **File:** `app/collection-reports/page.tsx`
 - **URL:** `/collection-reports`
 - **Documentation:** `redirect-pages.md`
@@ -169,18 +190,21 @@ This document provides a comprehensive overview of all pages in the Evolution On
 ## Error Pages
 
 ### ✅ Not Found (Global)
+
 - **File:** `app/not-found.tsx`
 - **URL:** Any non-existent route
 - **Documentation:** Referenced in individual page docs
 - **Status:** Global 404 error page
 
 ### ✅ Cabinet Not Found
+
 - **File:** `app/cabinets/[slug]/not-found.tsx`
 - **URL:** `/cabinets/[invalid-slug]`
 - **Documentation:** Referenced in `cabinet-details.md`
 - **Status:** Cabinet-specific 404 page
 
 ### ✅ Location Not Found
+
 - **File:** `app/locations/[slug]/not-found.tsx`
 - **URL:** `/locations/[invalid-slug]`
 - **Documentation:** Referenced in `location-details.md`
@@ -225,21 +249,25 @@ Currently no pages have been removed from the system. All major modules are acti
 ## Technical Architecture Overview
 
 ### State Management
+
 - **Zustand Stores:** Dashboard store for shared state, cabinet actions store for modals
 - **React Hooks:** Local state management for page-specific functionality
 - **Context Providers:** Authentication and theme context
 
 ### API Integration
+
 - **RESTful Endpoints:** Consistent API structure for all data operations
 - **Helper Functions:** Organized helper modules for API interactions
 - **Error Handling:** Comprehensive error handling and user feedback
 
 ### Component Architecture
+
 - **Layout Components:** Consistent header, sidebar, and navigation
 - **UI Components:** Reusable components with proper TypeScript typing
 - **Page Components:** Page-specific components with clear separation of concerns
 
 ### Data Flow
+
 - **Server-Side:** Next.js API routes with proper validation
 - **Client-Side:** React components with efficient state management
 - **Real-time Updates:** WebSocket integration for live data updates
@@ -248,4 +276,4 @@ All pages maintain consistent navigation through the sidebar and follow the esta
 
 ---
 
-**Last Updated:** October 20th, 2025 
+**Last Updated:** October 20th, 2025

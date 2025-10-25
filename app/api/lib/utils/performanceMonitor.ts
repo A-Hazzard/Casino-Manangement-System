@@ -15,7 +15,9 @@ export class PerformanceMonitor {
    */
   complete(additionalInfo?: Record<string, unknown>) {
     const duration = Date.now() - this.startTime;
-    console.warn(`⏱️ ${this.operationName} completed in ${duration}ms${additionalInfo ? ` | ${JSON.stringify(additionalInfo)}` : ''}`);
+    console.warn(
+      `⏱️ ${this.operationName} completed in ${duration}ms${additionalInfo ? ` | ${JSON.stringify(additionalInfo)}` : ''}`
+    );
     return duration;
   }
 
@@ -26,5 +28,3 @@ export class PerformanceMonitor {
     return new PerformanceMonitor(`${this.operationName} > ${name}`);
   }
 }
-
- 

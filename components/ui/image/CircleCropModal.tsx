@@ -1,22 +1,22 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import ReactCrop, {
   Crop,
   PixelCrop,
   centerCrop,
   makeAspectCrop,
-} from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
+} from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 type CircleCropModalProps = {
   open: boolean;
@@ -34,7 +34,7 @@ function centerAspectCrop(
   return centerCrop(
     makeAspectCrop(
       {
-        unit: "%",
+        unit: '%',
         width: 90,
       },
       aspect,
@@ -69,15 +69,12 @@ export default function CircleCropModal({
   const aspect = 1; // Square aspect ratio for circular crop
 
   const getCroppedImg = useCallback(
-    (
-      image: HTMLImageElement,
-      crop: PixelCrop
-    ): Promise<{ url: string }> => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
+    (image: HTMLImageElement, crop: PixelCrop): Promise<{ url: string }> => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
 
       if (!ctx) {
-        throw new Error("No 2d context");
+        throw new Error('No 2d context');
       }
 
       // Calculate the actual crop coordinates
@@ -87,7 +84,7 @@ export default function CircleCropModal({
       canvas.width = crop.width;
       canvas.height = crop.height;
 
-      ctx.imageSmoothingQuality = "high";
+      ctx.imageSmoothingQuality = 'high';
 
       ctx.drawImage(
         image,
@@ -102,10 +99,10 @@ export default function CircleCropModal({
       );
 
       // Create circular mask - ensure perfect circle
-      const circleCanvas = document.createElement("canvas");
-      const circleCtx = circleCanvas.getContext("2d");
+      const circleCanvas = document.createElement('canvas');
+      const circleCtx = circleCanvas.getContext('2d');
       if (!circleCtx) {
-        throw new Error("No 2d context for circle");
+        throw new Error('No 2d context for circle');
       }
 
       // Use the crop size as the output size (should be square due to aspect ratio)
@@ -132,7 +129,7 @@ export default function CircleCropModal({
       circleCtx.drawImage(canvas, 0, 0);
 
       // Return a persistent Data URL so it can be stored in DB and rendered later
-      const dataUrl = circleCanvas.toDataURL("image/png", 1);
+      const dataUrl = circleCanvas.toDataURL('image/png', 1);
       return Promise.resolve({ url: dataUrl });
     },
     []
@@ -142,25 +139,24 @@ export default function CircleCropModal({
     if (!imgRef.current || !completedCrop) return;
 
     try {
-      const { url } = await getCroppedImg(
-        imgRef.current,
-        completedCrop
-      );
+      const { url } = await getCroppedImg(imgRef.current, completedCrop);
       onCropped(url);
       onClose();
     } catch (e) {
-      console.error("Error cropping image:", e);
+      console.error('Error cropping image:', e);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       {/* Elevated overlay above any underlying modal */}
-      {open && typeof window !== "undefined" &&
+      {open &&
+        typeof window !== 'undefined' &&
         createPortal(
-          <div className="fixed inset-0 z-[100001] bg-black/70" />, document.body
+          <div className="fixed inset-0 z-[100001] bg-black/70" />,
+          document.body
         )}
-      <DialogContent className="max-w-4xl w-full z-[100002]">
+      <DialogContent className="z-[100002] w-full max-w-4xl">
         <DialogHeader>
           <DialogTitle>Crop Profile Picture</DialogTitle>
         </DialogHeader>
@@ -170,25 +166,24 @@ export default function CircleCropModal({
             <ReactCrop
               crop={crop}
               onChange={(_, percentCrop) => setCrop(percentCrop)}
-              onComplete={(c) => setCompletedCrop(c)}
+              onComplete={c => setCompletedCrop(c)}
               aspect={aspect}
               circularCrop
               className="max-h-96"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  ref={imgRef}
-                  alt="Crop me"
-                  src={imageSrc}
-                  style={{
-                    maxHeight: "400px",
-                    maxWidth: "100%",
-                  }}
-                  onLoad={onImageLoad}
-                />
+              <img
+                ref={imgRef}
+                alt="Crop me"
+                src={imageSrc}
+                style={{
+                  maxHeight: '400px',
+                  maxWidth: '100%',
+                }}
+                onLoad={onImageLoad}
+              />
             </ReactCrop>
           </div>
-
         </div>
 
         <DialogFooter>
@@ -198,7 +193,7 @@ export default function CircleCropModal({
           <Button
             onClick={handleApply}
             disabled={!completedCrop}
-            className="bg-button hover:bg-button/90 text-white"
+            className="bg-button text-white hover:bg-button/90"
           >
             Apply Crop
           </Button>

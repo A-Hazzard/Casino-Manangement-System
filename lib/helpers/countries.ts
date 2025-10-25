@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 // Activity logging removed - handled via API calls
 
@@ -17,21 +17,21 @@ export type Country = {
  */
 export async function fetchCountries(): Promise<Country[]> {
   try {
-    const response = await axios.get("/api/countries");
+    const response = await axios.get('/api/countries');
     if (response.data.success) {
       return response.data.countries;
     }
-    throw new Error("Failed to fetch countries");
+    throw new Error('Failed to fetch countries');
   } catch (error) {
-    console.error("Error fetching countries:", error);
+    console.error('Error fetching countries:', error);
     throw error;
   }
 }
 
 export const createCountry = async (
-  country: Omit<Country, "_id" | "createdAt" | "updatedAt">
+  country: Omit<Country, '_id' | 'createdAt' | 'updatedAt'>
 ) => {
-  const response = await axios.post("/api/countries", country);
+  const response = await axios.post('/api/countries', country);
 
   // Activity logging removed - handled via API calls
 

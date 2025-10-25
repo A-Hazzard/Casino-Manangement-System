@@ -1,9 +1,9 @@
 // UI Component types
-import type { ExtendedCabinetDetail } from "./pages";
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import type { MachineMovementRecord } from "@/lib/types/reports";
-import type { AggregatedLocation } from "@/lib/types/location";
-import type { ActivityLog } from "@/app/api/lib/types/activityLog";
+import type { ExtendedCabinetDetail } from './pages';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import type { MachineMovementRecord } from '@/lib/types/reports';
+import type { AggregatedLocation } from '@/lib/types/location';
+import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 
 export type SmibConfig = {
   firmwareVersion: string;
@@ -20,12 +20,12 @@ export type CollectorSchedule = {
   startTime: string;
   endTime: string;
   status:
-    | "pending"
-    | "completed"
-    | "canceled"
-    | "scheduled"
-    | "in-progress"
-    | "cancelled";
+    | 'pending'
+    | 'completed'
+    | 'canceled'
+    | 'scheduled'
+    | 'in-progress'
+    | 'cancelled';
   notes?: string;
 };
 
@@ -97,7 +97,7 @@ export type TemplateData = {
   };
 };
 
-export type Option = Record<"value" | "label", string>;
+export type Option = Record<'value' | 'label', string>;
 
 // Modal Props Types
 export type NewLocationModalProps = {
@@ -346,7 +346,7 @@ export type AddCountryModalProps = {
   onClose: () => void;
 };
 
-export type PaginationLinkProps = React.ComponentProps<"a"> & {
+export type PaginationLinkProps = React.ComponentProps<'a'> & {
   isActive?: boolean;
 };
 
@@ -356,7 +356,7 @@ export type SyncButtonProps = {
   className?: string;
   label?: string;
   iconOnly?: boolean;
-  variant?: "sync" | "refresh";
+  variant?: 'sync' | 'refresh';
 };
 
 export type PaginationControlsProps = {
@@ -411,7 +411,7 @@ export type StackedChartProps = {
         }
       | string;
   }>;
-  dataKey: "handle" | "winLoss" | "jackpot" | "plays";
+  dataKey: 'handle' | 'winLoss' | 'jackpot' | 'plays';
   machines: string[]; // This will contain location IDs
   colors: string[];
   formatter: (value: number) => string;

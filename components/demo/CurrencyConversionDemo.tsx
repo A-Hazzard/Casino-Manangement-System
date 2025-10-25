@@ -1,8 +1,12 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { convertCurrency, getCurrencySymbol, getCurrencyName } from '@/lib/helpers/rates';
+import {
+  convertCurrency,
+  getCurrencySymbol,
+  getCurrencyName,
+} from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 
 /**
@@ -21,50 +25,52 @@ export function CurrencyConversionDemo() {
 
   if (!isAllLicensee) {
     return (
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="text-lg font-semibold text-blue-800 mb-2">
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <h3 className="mb-2 text-lg font-semibold text-blue-800">
           Currency Conversion Demo
         </h3>
         <p className="text-blue-600">
-          Currency conversion is only available when &quot;All Licensee&quot; is selected.
-          Please select &quot;All Licensee&quot; to see the currency conversion functionality.
+          Currency conversion is only available when &quot;All Licensee&quot; is
+          selected. Please select &quot;All Licensee&quot; to see the currency
+          conversion functionality.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-      <h3 className="text-xl font-semibold text-gray-800 mb-4">
+    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <h3 className="mb-4 text-xl font-semibold text-gray-800">
         Currency Conversion Demo
       </h3>
-      
+
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-sm font-medium text-gray-700">
               Amount
             </label>
             <input
               type="number"
               value={testAmount}
-              onChange={(e) => setTestAmount(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={e => setTestAmount(Number(e.target.value))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-sm font-medium text-gray-700">
               From Currency
             </label>
             <select
               value={fromCurrency}
-              onChange={(e) => setFromCurrency(e.target.value as CurrencyCode)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={e => setFromCurrency(e.target.value as CurrencyCode)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {currencies.map(currency => (
                 <option key={currency} value={currency}>
-                  {getCurrencySymbol(currency)} {currency} - {getCurrencyName(currency)}
+                  {getCurrencySymbol(currency)} {currency} -{' '}
+                  {getCurrencyName(currency)}
                 </option>
               ))}
             </select>
@@ -73,17 +79,21 @@ export function CurrencyConversionDemo() {
 
         <div className="text-center">
           <div className="text-2xl font-bold text-gray-800">
-            {getCurrencySymbol(fromCurrency)}{testAmount.toFixed(2)} {fromCurrency}
+            {getCurrencySymbol(fromCurrency)}
+            {testAmount.toFixed(2)} {fromCurrency}
           </div>
-          <div className="text-lg text-gray-600 my-2">↓</div>
+          <div className="my-2 text-lg text-gray-600">↓</div>
           <div className="text-2xl font-bold text-green-600">
-            {getCurrencySymbol(toCurrency)}{convertedAmount.toFixed(2)} {toCurrency}
+            {getCurrencySymbol(toCurrency)}
+            {convertedAmount.toFixed(2)} {toCurrency}
           </div>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-semibold text-gray-700 mb-2">Exchange Rates (USD Base)</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+        <div className="rounded-lg bg-gray-50 p-4">
+          <h4 className="mb-2 font-semibold text-gray-700">
+            Exchange Rates (USD Base)
+          </h4>
+          <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
             <div className="text-center">
               <div className="font-medium">USD</div>
               <div className="text-gray-600">1.00</div>
@@ -104,8 +114,14 @@ export function CurrencyConversionDemo() {
         </div>
 
         <div className="text-sm text-gray-600">
-          <p><strong>Current Display Currency:</strong> {getCurrencySymbol(displayCurrency)} {displayCurrency}</p>
-          <p><strong>Conversion Status:</strong> {isAllLicensee ? 'Active' : 'Inactive'}</p>
+          <p>
+            <strong>Current Display Currency:</strong>{' '}
+            {getCurrencySymbol(displayCurrency)} {displayCurrency}
+          </p>
+          <p>
+            <strong>Conversion Status:</strong>{' '}
+            {isAllLicensee ? 'Active' : 'Inactive'}
+          </p>
         </div>
       </div>
     </div>

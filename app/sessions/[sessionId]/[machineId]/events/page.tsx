@@ -1,21 +1,18 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useCallback } from "react";
-import { useRouter, useParams } from "next/navigation";
-import axios from "axios";
-import PageLayout from "@/components/layout/PageLayout";
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import axios from 'axios';
+import PageLayout from '@/components/layout/PageLayout';
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { toast } from "sonner";
-import { SessionEventsPageSkeleton } from "@/components/ui/skeletons/SessionsSkeletons";
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { toast } from 'sonner';
+import { SessionEventsPageSkeleton } from '@/components/ui/skeletons/SessionsSkeletons';
 
-import type {
-  MachineEvent,
-  PaginationData,
-} from "@/lib/types/sessions";
+import type { MachineEvent, PaginationData } from '@/lib/types/sessions';
 
 export default function SessionEventsPage() {
   const params = useParams();
@@ -27,7 +24,7 @@ export default function SessionEventsPage() {
   const [pagination, setPagination] = useState<PaginationData | null>(null);
 
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
-  const [selectedLicencee, setSelectedLicencee] = useState("All Licensees");
+  const [selectedLicencee, setSelectedLicencee] = useState('All Licensees');
 
   // Get date filtering from dashboard store
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
@@ -48,11 +45,11 @@ export default function SessionEventsPage() {
 
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: "10",
+        limit: '10',
       });
 
       // Add date filtering based on activeMetricsFilter
-      if (activeMetricsFilter === "Custom" && customDateRange) {
+      if (activeMetricsFilter === 'Custom' && customDateRange) {
         const sd =
           customDateRange.startDate instanceof Date
             ? customDateRange.startDate
@@ -61,28 +58,50 @@ export default function SessionEventsPage() {
           customDateRange.endDate instanceof Date
             ? customDateRange.endDate
             : new Date(customDateRange.endDate as unknown as string);
-        params.append("startDate", sd.toISOString());
-        params.append("endDate", ed.toISOString());
-      } else if (activeMetricsFilter && activeMetricsFilter !== "Custom") {
+        params.append('startDate', sd.toISOString());
+        params.append('endDate', ed.toISOString());
+      } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {
         // Add date filtering based on activeMetricsFilter
         const now = new Date();
         let startDate: Date;
         let endDate: Date;
 
         switch (activeMetricsFilter) {
-          case "Today":
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+          case 'Today':
+            startDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate()
+            );
+            endDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate(),
+              23,
+              59,
+              59
+            );
             break;
-          case "Yesterday":
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59);
+          case 'Yesterday':
+            startDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate() - 1
+            );
+            endDate = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate() - 1,
+              23,
+              59,
+              59
+            );
             break;
-          case "last7days":
+          case 'last7days':
             startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
             endDate = now;
             break;
-          case "last30days":
+          case 'last30days':
             startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
             endDate = now;
             break;
@@ -91,11 +110,9 @@ export default function SessionEventsPage() {
             endDate = now;
         }
 
-        params.append("startDate", startDate.toISOString());
-        params.append("endDate", endDate.toISOString());
+        params.append('startDate', startDate.toISOString());
+        params.append('endDate', endDate.toISOString());
       }
-
-
 
       const response = await axios.get(
         `/api/sessions/${sessionId}/${machineId}/events?${params}`
@@ -106,20 +123,14 @@ export default function SessionEventsPage() {
       setEvents(data.data.events);
       setPagination(data.data.pagination);
     } catch (err) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("❌ Events Page Error:", err);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Events Page Error:', err);
       }
-      toast.error("Failed to fetch events");
+      toast.error('Failed to fetch events');
     } finally {
       setLoading(false);
     }
-  }, [
-    currentPage,
-    sessionId,
-    machineId,
-    activeMetricsFilter,
-    customDateRange,
-  ]);
+  }, [currentPage, sessionId, machineId, activeMetricsFilter, customDateRange]);
 
   useEffect(() => {
     fetchEvents();
@@ -128,10 +139,6 @@ export default function SessionEventsPage() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
-
-
-
-
 
   const toggleEventExpansion = (eventId: string) => {
     const newExpanded = new Set(expandedEvents);
@@ -146,30 +153,30 @@ export default function SessionEventsPage() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
         hour12: true,
       });
     } catch {
-      return "Invalid Date";
+      return 'Invalid Date';
     }
   };
 
   const getEventTypeColor = (eventType: string) => {
     switch (eventType.toLowerCase()) {
-      case "priority":
-        return "bg-red-100 text-red-800";
-      case "significant":
-        return "bg-yellow-100 text-yellow-800";
-      case "general":
-        return "bg-blue-100 text-blue-800";
+      case 'priority':
+        return 'bg-red-100 text-red-800';
+      case 'significant':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'general':
+        return 'bg-blue-100 text-blue-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -180,52 +187,52 @@ export default function SessionEventsPage() {
 
     if (events.length === 0) {
       return (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
           <p className="text-gray-500">No events found for this session</p>
         </div>
       );
     }
 
     return (
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr className="bg-button text-white">
-                <th className="p-3 border border-border text-sm">Type</th>
-                <th className="p-3 border border-border text-sm">Event</th>
-                <th className="p-3 border border-border text-sm">Event Code</th>
-                <th className="p-3 border border-border text-sm">Game</th>
-                <th className="p-3 border border-border text-sm">Date</th>
-                <th className="p-3 border border-border text-sm">Details</th>
+                <th className="border border-border p-3 text-sm">Type</th>
+                <th className="border border-border p-3 text-sm">Event</th>
+                <th className="border border-border p-3 text-sm">Event Code</th>
+                <th className="border border-border p-3 text-sm">Game</th>
+                <th className="border border-border p-3 text-sm">Date</th>
+                <th className="border border-border p-3 text-sm">Details</th>
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => (
+              {events.map(event => (
                 <React.Fragment key={event._id}>
                   <tr className="text-center hover:bg-muted">
-                    <td className="p-3 border border-border">
+                    <td className="border border-border p-3">
                       <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEventTypeColor(
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getEventTypeColor(
                           event.eventType
                         )}`}
                       >
                         {event.eventType}
                       </span>
                     </td>
-                    <td className="p-3 border border-border text-sm text-gray-900">
+                    <td className="border border-border p-3 text-sm text-gray-900">
                       {event.description}
                     </td>
-                    <td className="p-3 border border-border text-sm text-gray-900">
-                      {event.command || "-"}
+                    <td className="border border-border p-3 text-sm text-gray-900">
+                      {event.command || '-'}
                     </td>
-                    <td className="p-3 border border-border text-sm text-gray-900">
-                      {event.gameName || "-"}
+                    <td className="border border-border p-3 text-sm text-gray-900">
+                      {event.gameName || '-'}
                     </td>
-                    <td className="p-3 border border-border text-sm text-gray-900">
+                    <td className="border border-border p-3 text-sm text-gray-900">
                       {formatDate(event.date)}
                     </td>
-                    <td className="p-3 border border-border text-sm text-gray-900">
+                    <td className="border border-border p-3 text-sm text-gray-900">
                       {event.sequence && event.sequence.length > 0 && (
                         <Button
                           variant="ghost"
@@ -246,16 +253,16 @@ export default function SessionEventsPage() {
                     <tr>
                       <td
                         colSpan={6}
-                        className="p-3 border border-border bg-gray-50"
+                        className="border border-border bg-gray-50 p-3"
                       >
                         <div className="space-y-2">
-                          <h4 className="font-medium text-sm text-gray-700">
+                          <h4 className="text-sm font-medium text-gray-700">
                             Sequence Details:
                           </h4>
                           {event.sequence.map((step, index) => (
                             <div
                               key={index}
-                              className="ml-4 p-3 bg-white rounded border border-gray-200"
+                              className="ml-4 rounded border border-gray-200 bg-white p-3"
                             >
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-900">
@@ -263,24 +270,24 @@ export default function SessionEventsPage() {
                                 </span>
                                 <div className="flex items-center space-x-2">
                                   <span
-                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                      step.logLevel === "ERROR"
-                                        ? "bg-red-100 text-red-800"
-                                        : step.logLevel === "WARN"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-green-100 text-green-800"
+                                    className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                      step.logLevel === 'ERROR'
+                                        ? 'bg-red-100 text-red-800'
+                                        : step.logLevel === 'WARN'
+                                          ? 'bg-yellow-100 text-yellow-800'
+                                          : 'bg-green-100 text-green-800'
                                     }`}
                                   >
                                     {step.logLevel}
                                   </span>
                                   <span
-                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                                       step.success
-                                        ? "bg-green-100 text-green-800"
-                                        : "bg-red-100 text-red-800"
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-red-100 text-red-800'
                                     }`}
                                   >
-                                    {step.success ? "SUCCESS" : "FAILED"}
+                                    {step.success ? 'SUCCESS' : 'FAILED'}
                                   </span>
                                 </div>
                               </div>
@@ -306,10 +313,10 @@ export default function SessionEventsPage() {
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse"
+              className="animate-pulse rounded-lg border border-gray-200 bg-white p-4"
             >
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              <div className="mb-2 h-4 w-3/4 rounded bg-gray-200"></div>
+              <div className="h-3 w-1/2 rounded bg-gray-200"></div>
             </div>
           ))}
         </div>
@@ -318,7 +325,7 @@ export default function SessionEventsPage() {
 
     if (events.length === 0) {
       return (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
           <p className="text-gray-500">No events found for this session</p>
         </div>
       );
@@ -326,17 +333,17 @@ export default function SessionEventsPage() {
 
     return (
       <div className="grid grid-cols-1 gap-4">
-        {events.map((event) => (
+        {events.map(event => (
           <div
             key={event._id}
-            className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
+            className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
           >
             <div className="flex flex-col space-y-2">
-              <div className="flex justify-between items-start">
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
+                  <div className="mb-2 flex items-center space-x-2">
                     <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEventTypeColor(
+                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getEventTypeColor(
                         event.eventType
                       )}`}
                     >
@@ -365,11 +372,11 @@ export default function SessionEventsPage() {
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-gray-500">Event Code:</span>
-                  <p className="text-gray-900">{event.command || "-"}</p>
+                  <p className="text-gray-900">{event.command || '-'}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Game:</span>
-                  <p className="text-gray-900">{event.gameName || "-"}</p>
+                  <p className="text-gray-900">{event.gameName || '-'}</p>
                 </div>
                 <div className="col-span-2">
                   <span className="text-gray-500">Date:</span>
@@ -378,13 +385,13 @@ export default function SessionEventsPage() {
               </div>
               {expandedEvents.has(event._id) && event.sequence && (
                 <div className="mt-4 space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">
+                  <h4 className="text-sm font-medium text-gray-700">
                     Sequence Details:
                   </h4>
                   {event.sequence.map((step, index) => (
                     <div
                       key={index}
-                      className="ml-4 p-3 bg-gray-50 rounded border border-gray-200"
+                      className="ml-4 rounded border border-gray-200 bg-gray-50 p-3"
                     >
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-gray-900">
@@ -392,24 +399,24 @@ export default function SessionEventsPage() {
                         </span>
                         <div className="flex items-center space-x-2">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              step.logLevel === "ERROR"
-                                ? "bg-red-100 text-red-800"
-                                : step.logLevel === "WARN"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-green-100 text-green-800"
+                            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                              step.logLevel === 'ERROR'
+                                ? 'bg-red-100 text-red-800'
+                                : step.logLevel === 'WARN'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-green-100 text-green-800'
                             }`}
                           >
                             {step.logLevel}
                           </span>
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                               step.success
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
                             }`}
                           >
-                            {step.success ? "SUCCESS" : "FAILED"}
+                            {step.success ? 'SUCCESS' : 'FAILED'}
                           </span>
                         </div>
                       </div>
@@ -428,8 +435,8 @@ export default function SessionEventsPage() {
     if (!pagination || pagination.totalPages <= 1) return null;
 
     return (
-      <div className="flex items-center justify-between bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-        <div className="flex-1 flex justify-between sm:hidden">
+      <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+        <div className="flex flex-1 justify-between sm:hidden">
           <Button
             variant="outline"
             size="sm"
@@ -447,16 +454,16 @@ export default function SessionEventsPage() {
             Next
           </Button>
         </div>
-        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-700">
-              Showing page{" "}
-              <span className="font-medium">{pagination.currentPage}</span> of{" "}
+              Showing page{' '}
+              <span className="font-medium">{pagination.currentPage}</span> of{' '}
               <span className="font-medium">{pagination.totalPages}</span>
             </p>
           </div>
           <div>
-            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+            <nav className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm">
               <Button
                 variant="outline"
                 size="sm"
@@ -482,7 +489,6 @@ export default function SessionEventsPage() {
 
   return (
     <>
-
       <PageLayout
         headerProps={{
           selectedLicencee,
@@ -492,52 +498,50 @@ export default function SessionEventsPage() {
         showToaster={false}
       >
         {/* Main Content Section: Session events display with navigation and filters */}
-        <div className="w-full mt-8">
-            {/* Navigation Section: Back button to return to sessions */}
-            <div className="mb-6">
-              <Button variant="outline" size="sm" onClick={() => router.back()}>
-                Back to Sessions
-              </Button>
+        <div className="mt-8 w-full">
+          {/* Navigation Section: Back button to return to sessions */}
+          <div className="mb-6">
+            <Button variant="outline" size="sm" onClick={() => router.back()}>
+              Back to Sessions
+            </Button>
+          </div>
+
+          {/* Header Section: Page title and description */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Session Events</h1>
+            <p className="text-gray-600">
+              Machine events for Session {sessionId} on Machine {machineId}
+            </p>
+          </div>
+
+          {/* Date Filter Section: Date range filtering for events */}
+          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              Filter Events by Date
+            </h3>
+            <DashboardDateFilters
+              onCustomRangeGo={handleFilter}
+              hideAllTime={false}
+              mode="auto"
+            />
+          </div>
+
+          {/* Error Display Section: Error messages and notifications */}
+          {error && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+              <h2 className="font-semibold text-red-800">Error</h2>
+              <p className="text-red-600">{error}</p>
             </div>
+          )}
 
-            {/* Header Section: Page title and description */}
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">
-                Session Events
-              </h1>
-              <p className="text-gray-600">
-                Machine events for Session {sessionId} on Machine {machineId}
-              </p>
-            </div>
+          {/* Desktop Events Display Section: Table view for desktop users */}
+          <div className="hidden lg:block">{renderEventsTable()}</div>
 
-            {/* Date Filter Section: Date range filtering for events */}
-            <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Filter Events by Date
-              </h3>
-              <DashboardDateFilters 
-                onCustomRangeGo={handleFilter}
-                hideAllTime={false}
-                mode="auto"
-              />
-            </div>
+          {/* Mobile Events Display Section: Card view for mobile users */}
+          <div className="block lg:hidden">{renderEventsCards()}</div>
 
-            {/* Error Display Section: Error messages and notifications */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <h2 className="text-red-800 font-semibold">Error</h2>
-                <p className="text-red-600">{error}</p>
-              </div>
-            )}
-
-            {/* Desktop Events Display Section: Table view for desktop users */}
-            <div className="hidden lg:block">{renderEventsTable()}</div>
-
-            {/* Mobile Events Display Section: Card view for mobile users */}
-            <div className="block lg:hidden">{renderEventsCards()}</div>
-            
-            {/* Pagination Section: Navigation controls for event pages */}
-            {renderPagination()}
+          {/* Pagination Section: Navigation controls for event pages */}
+          {renderPagination()}
         </div>
       </PageLayout>
     </>

@@ -55,13 +55,19 @@ class MQTTService {
   private isConnected = false;
 
   // Connection management
-  async connect(): Promise<void>
-  
+  async connect(): Promise<void>;
+
   // SMIB configuration updates
-  async sendSMIBConfigUpdate(cabinetId: string, smibConfig: SmibConfig): Promise<void>
-  
+  async sendSMIBConfigUpdate(
+    cabinetId: string,
+    smibConfig: SmibConfig
+  ): Promise<void>;
+
   // Machine control commands
-  async sendMachineControlCommand(cabinetId: string, command: string): Promise<void>
+  async sendMachineControlCommand(
+    cabinetId: string,
+    command: string
+  ): Promise<void>;
 }
 ```
 
@@ -71,13 +77,14 @@ The service uses environment variables for configuration:
 
 ```typescript
 type MQTTConfig = {
-  mqttURI: string;        // MQTT broker URI (e.g., "mqtt://localhost:1883")
-  mqttPubTopic: string;   // Topic for publishing events
-  mqttCfgTopic: string;   // Topic for configuration updates
+  mqttURI: string; // MQTT broker URI (e.g., "mqtt://localhost:1883")
+  mqttPubTopic: string; // Topic for publishing events
+  mqttCfgTopic: string; // Topic for configuration updates
 };
 ```
 
 Environment variables:
+
 - `MQTT_URI`: MQTT broker connection string
 - `MQTT_CFG_TOPIC`: Configuration topic prefix
 
@@ -90,27 +97,27 @@ SMIB configuration is structured as follows:
 ```typescript
 type SmibConfig = {
   coms: {
-    comsMode: number;        // 0 = SAS, 1 = non-SAS, 2 = IGT
-    comsRateMs: number;      // Communication rate in milliseconds
-    comsRTE: number;         // Real-time events enabled
-    comsGPC: number;         // Game protocol configuration
+    comsMode: number; // 0 = SAS, 1 = non-SAS, 2 = IGT
+    comsRateMs: number; // Communication rate in milliseconds
+    comsRTE: number; // Real-time events enabled
+    comsGPC: number; // Game protocol configuration
   };
   net: {
-    netMode: number;         // 1 = WiFi client mode
-    netStaSSID: string;      // WiFi network name
-    netStaPwd: string;       // WiFi password
-    netStaChan: number;      // WiFi channel
+    netMode: number; // 1 = WiFi client mode
+    netStaSSID: string; // WiFi network name
+    netStaPwd: string; // WiFi password
+    netStaChan: number; // WiFi channel
   };
   mqtt: {
-    mqttSecure: number;      // TLS encryption (0 = off, 1 = on)
-    mqttQOS: number;         // Quality of service level
-    mqttURI: string;         // MQTT broker address
-    mqttSubTopic: string;    // Topic for receiving commands
-    mqttPubTopic: string;    // Topic for publishing events
-    mqttCfgTopic: string;    // Topic for configuration updates
-    mqttIdleTimeS: number;   // Idle timeout in seconds
-    mqttUsername?: string;   // MQTT username
-    mqttPassword?: string;   // MQTT password
+    mqttSecure: number; // TLS encryption (0 = off, 1 = on)
+    mqttQOS: number; // Quality of service level
+    mqttURI: string; // MQTT broker address
+    mqttSubTopic: string; // Topic for receiving commands
+    mqttPubTopic: string; // Topic for publishing events
+    mqttCfgTopic: string; // Topic for configuration updates
+    mqttIdleTimeS: number; // Idle timeout in seconds
+    mqttUsername?: string; // MQTT username
+    mqttPassword?: string; // MQTT password
   };
 };
 ```
@@ -172,7 +179,7 @@ Updates SMIB configuration and sends via MQTT.
     "net": { "netMode": 1, "netStaSSID": "Casino_WiFi" },
     "mqtt": { "mqttURI": "mqtt.casino.com" }
   },
-  "machineControl": "RESTART"  // Optional
+  "machineControl": "RESTART" // Optional
 }
 ```
 
@@ -181,7 +188,9 @@ Updates SMIB configuration and sends via MQTT.
 ```json
 {
   "success": true,
-  "data": { /* updated machine object */ },
+  "data": {
+    /* updated machine object */
+  },
   "mqttSent": true
 }
 ```
@@ -198,8 +207,12 @@ Retrieves current SMIB configuration.
 {
   "success": true,
   "data": {
-    "smibConfig": { /* current configuration */ },
-    "smibVersion": { /* firmware version */ },
+    "smibConfig": {
+      /* current configuration */
+    },
+    "smibVersion": {
+      /* firmware version */
+    },
     "relayId": "e831cdfa8464"
   }
 }
@@ -219,12 +232,14 @@ The frontend uses a custom hook (`useSmibConfiguration`) to manage:
 ### Key Components
 
 #### Cabinet Details Page
+
 - **SMIB Configuration Section**: Expandable section with configuration options
 - **Edit Mode**: Toggle to enable/disable editing
 - **Save Buttons**: Individual save buttons for different configuration sections
 - **Machine Controls**: RESTART, LOCK, UNLOCK buttons
 
 #### Form Fields
+
 - **Communication Mode**: SAS/non-SAS/IGT selection
 - **Network Configuration**: WiFi SSID, password, channel
 - **MQTT Configuration**: Host, port, TLS, authentication
@@ -279,13 +294,13 @@ sas/relay/e831cdfa8464             # SAS communication for cabinet e831cdfa8464
 
 ```typescript
 // Automatic reconnection with exponential backoff
-client.on("error", (error) => {
-  console.error("MQTT connection error:", error);
+client.on('error', error => {
+  console.error('MQTT connection error:', error);
   // Automatic reconnection handled by mqtt.js
 });
 
-client.on("disconnect", () => {
-  console.warn("MQTT disconnected");
+client.on('disconnect', () => {
+  console.warn('MQTT disconnected');
   // Reconnection will be attempted automatically
 });
 ```
@@ -294,12 +309,12 @@ client.on("disconnect", () => {
 
 ```typescript
 // Error handling for failed publications
-client.publish(topic, payload, { qos: 1 }, (error) => {
+client.publish(topic, payload, { qos: 1 }, error => {
   if (error) {
-    console.error("Failed to publish:", error);
+    console.error('Failed to publish:', error);
     // Handle error (retry, log, notify user)
   } else {
-    console.log("Published successfully");
+    console.log('Published successfully');
   }
 });
 ```
@@ -316,19 +331,21 @@ client.publish(topic, payload, { qos: 1 }, (error) => {
 ### Development Testing
 
 1. **Local MQTT Broker**: Use Mosquitto for local development
+
    ```bash
    # Install Mosquitto
    sudo apt-get install mosquitto mosquitto-clients
-   
+
    # Start broker
    mosquitto -v
    ```
 
 2. **Test Client**: Use mosquitto_pub/sub for testing
+
    ```bash
    # Subscribe to configuration topics
    mosquitto_sub -h localhost -t "smib/config/+/config"
-   
+
    # Publish test message
    mosquitto_pub -h localhost -t "smib/config/test/config" -m '{"test": "message"}'
    ```

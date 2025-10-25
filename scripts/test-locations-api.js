@@ -7,24 +7,24 @@
 // Using built-in fetch (Node.js 18+)
 
 // Configuration
-const BASE_URL = "http://localhost:3000";
-const CUSTOM_START = "2025-10-01T08:00:00";
-const CUSTOM_END = "2025-10-15T08:00:00";
+const BASE_URL = 'http://localhost:3000';
+const CUSTOM_START = '2025-10-01T08:00:00';
+const CUSTOM_END = '2025-10-15T08:00:00';
 const EXPECTED_TOTAL_MONEY_IN = 13483; // For machine 1309
 
 async function testLocationsAPI() {
   try {
-    console.log("🧪 Testing Locations API for Custom Date Alignment");
-    console.log("=".repeat(60));
+    console.log('🧪 Testing Locations API for Custom Date Alignment');
+    console.log('='.repeat(60));
     console.log(`Custom Range: ${CUSTOM_START} to ${CUSTOM_END}`);
     console.log(
       `Expected Money In for machine 1309: ${EXPECTED_TOTAL_MONEY_IN}`
     );
-    console.log("");
+    console.log('');
 
     // Test Locations API
-    console.log("📋 Testing Locations API (/api/reports/locations)");
-    console.log("=".repeat(40));
+    console.log('📋 Testing Locations API (/api/reports/locations)');
+    console.log('='.repeat(40));
 
     const locationsResponse = await fetch(
       `${BASE_URL}/api/reports/locations?timePeriod=Custom&startDate=${CUSTOM_START}&endDate=${CUSTOM_END}&showAllLocations=true`
@@ -37,7 +37,7 @@ async function testLocationsAPI() {
       // Find the location that contains machine 1309
       for (const location of locationsData.data) {
         const machine1309 = location.machines?.find(
-          (m) => m.serialNumber === "1309"
+          m => m.serialNumber === '1309'
         );
 
         if (machine1309) {
@@ -61,31 +61,31 @@ async function testLocationsAPI() {
         }
       }
     } else {
-      console.log("❌ Locations API failed or returned unexpected format");
-      console.log("Response:", locationsData);
+      console.log('❌ Locations API failed or returned unexpected format');
+      console.log('Response:', locationsData);
     }
 
-    console.log("\n📋 Summary");
-    console.log("=".repeat(60));
+    console.log('\n📋 Summary');
+    console.log('='.repeat(60));
     console.log(
-      "✅ The locations page uses the same getGamingDayRangesForLocations function"
+      '✅ The locations page uses the same getGamingDayRangesForLocations function'
     );
     console.log(
-      "✅ This function was already fixed to handle custom dates correctly"
+      '✅ This function was already fixed to handle custom dates correctly'
     );
     console.log(
-      "✅ Therefore, the locations page should already be working correctly"
+      '✅ Therefore, the locations page should already be working correctly'
     );
     console.log(
-      "\n🔍 To verify manually, navigate to the Locations page in the UI and:"
+      '\n🔍 To verify manually, navigate to the Locations page in the UI and:'
     );
     console.log("   1. Select 'Custom' date range");
-    console.log("   2. Choose Oct 1, 2025 8:00 AM to Oct 15, 2025 8:00 AM");
+    console.log('   2. Choose Oct 1, 2025 8:00 AM to Oct 15, 2025 8:00 AM');
     console.log(
-      "   3. Check the financial metrics for the location containing machine 1309"
+      '   3. Check the financial metrics for the location containing machine 1309'
     );
   } catch (error) {
-    console.error("❌ Error during testing:", error);
+    console.error('❌ Error during testing:', error);
   }
 }
 

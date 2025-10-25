@@ -1,45 +1,45 @@
-"use client";
+'use client';
 
-import { type ReactElement } from "react";
+import { type ReactElement } from 'react';
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Layout components
-import PageLayout from "@/components/layout/PageLayout";
+import PageLayout from '@/components/layout/PageLayout';
 
 // Store
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { useReportsStore } from "@/lib/store/reportsStore";
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useReportsStore } from '@/lib/store/reportsStore';
 
 // Hooks
-import { useReportsNavigation } from "@/lib/hooks/navigation";
-import { useReportsTabContent } from "@/lib/hooks/data";
+import { useReportsNavigation } from '@/lib/hooks/navigation';
+import { useReportsTabContent } from '@/lib/hooks/data';
 
 // Components
-import ReportsDateFilters from "@/components/reports/common/ReportsDateFilters";
-import ReportsNavigation from "@/components/reports/common/ReportsNavigation";
+import ReportsDateFilters from '@/components/reports/common/ReportsDateFilters';
+import ReportsNavigation from '@/components/reports/common/ReportsNavigation';
 import {
   LoadingOverlay,
   AuthLoadingState,
   AccessDeniedState,
-} from "@/components/reports/common/ReportsLoadingStates";
-import Image from "next/image";
-import { IMAGES } from "@/lib/constants/images";
+} from '@/components/reports/common/ReportsLoadingStates';
+import Image from 'next/image';
+import { IMAGES } from '@/lib/constants/images';
 
 // Tab components
-import DashboardTab from "@/components/reports/tabs/DashboardTab";
-import LocationsTabWithErrorHandling from "@/components/reports/tabs/LocationsTabWithErrorHandling";
-import MachinesTab from "@/components/reports/tabs/MachinesTab";
-import MetersTab from "@/components/reports/tabs/MetersTab";
+import DashboardTab from '@/components/reports/tabs/DashboardTab';
+import LocationsTabWithErrorHandling from '@/components/reports/tabs/LocationsTabWithErrorHandling';
+import MachinesTab from '@/components/reports/tabs/MachinesTab';
+import MetersTab from '@/components/reports/tabs/MetersTab';
 
 // Constants
 import {
   REPORTS_TABS_CONFIG,
   REPORTS_ANIMATIONS,
-} from "@/lib/constants/reports";
+} from '@/lib/constants/reports';
 
 // Types
-import type { ReportView } from "@/lib/types/reports";
+import type { ReportView } from '@/lib/types/reports';
 
 /**
  * Main content component for the reports page
@@ -54,7 +54,8 @@ export default function ReportsContent() {
   const availableTabs = REPORTS_TABS_CONFIG;
   const isLoading = false;
 
-  const { activeView, handleTabChange } = useReportsNavigation(REPORTS_TABS_CONFIG);
+  const { activeView, handleTabChange } =
+    useReportsNavigation(REPORTS_TABS_CONFIG);
 
   // Tab content rendering
   const tabComponents: Record<ReportView, ReactElement> = {
@@ -83,8 +84,6 @@ export default function ReportsContent() {
     );
   };
 
-
-
   // Show loading state while authentication is loading
   if (isLoading) {
     return <AuthLoadingState />;
@@ -108,7 +107,7 @@ export default function ReportsContent() {
     >
       {/* Title and Icon */}
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+        <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">
           Reports
         </h1>
         <Image
@@ -116,7 +115,7 @@ export default function ReportsContent() {
           alt="Reports Icon"
           width={32}
           height={32}
-          className="w-6 h-6 sm:w-8 sm:h-8"
+          className="h-6 w-6 sm:h-8 sm:w-8"
         />
       </div>
 

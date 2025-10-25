@@ -6,11 +6,11 @@
  * Session sort options
  */
 export const SESSION_SORT_OPTIONS = [
-  { value: "startTime", label: "Start Time" },
-  { value: "playerName", label: "Player Name" },
-  { value: "machineId", label: "Machine ID" },
-  { value: "duration", label: "Duration" },
-  { value: "totalHandle", label: "Handle" },
+  { value: 'startTime', label: 'Start Time' },
+  { value: 'playerName', label: 'Player Name' },
+  { value: 'machineId', label: 'Machine ID' },
+  { value: 'duration', label: 'Duration' },
+  { value: 'totalHandle', label: 'Handle' },
 ] as const;
 
 /**

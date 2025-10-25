@@ -1,5 +1,5 @@
-import { gsap } from "gsap";
-import type { CollectionDocument } from "@/lib/types/collections";
+import { gsap } from 'gsap';
+import type { CollectionDocument } from '@/lib/types/collections';
 
 /**
  * Applies GSAP animation for desktop tab transitions
@@ -12,7 +12,7 @@ export function animateDesktopTabTransition(
     gsap.fromTo(
       tabContentRef.current,
       { opacity: 0, y: 20 },
-      { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }
+      { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }
     );
   }
 }
@@ -120,7 +120,7 @@ export function generateMachineMetricsData(
     // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
     // Use a helper function to check for valid non-empty strings
     const isValidString = (str: string | undefined | null): string | null => {
-      return str && typeof str === "string" && str.trim() !== ""
+      return str && typeof str === 'string' && str.trim() !== ''
         ? str.trim()
         : null;
     };
@@ -133,8 +133,8 @@ export function generateMachineMetricsData(
       `Machine ${index + 1}`;
 
     // Debug logging to see what values we're getting
-    if (process.env.NODE_ENV === "development") {
-      console.warn("Machine fallback debug:", {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Machine fallback debug:', {
         serialNumber: col.serialNumber,
         machineName: col.machineName,
         machineCustomName: col.machineCustomName,
@@ -160,12 +160,12 @@ export function generateMachineMetricsData(
       !col.sasMeters ||
       col.sasMeters.gross === undefined ||
       col.sasMeters.gross === null
-        ? "No SAS Data"
+        ? 'No SAS Data'
         : metersGross - sasGross;
 
     // Get SAS times from sasMeters
-    const sasStartTime = col.sasMeters?.sasStartTime || "-";
-    const sasEndTime = col.sasMeters?.sasEndTime || "-";
+    const sasStartTime = col.sasMeters?.sasStartTime || '-';
+    const sasEndTime = col.sasMeters?.sasEndTime || '-';
 
     return {
       id: col._id || `machine-${index}`,
@@ -175,8 +175,8 @@ export function generateMachineMetricsData(
       metersGross: metersGross.toLocaleString(),
       sasGross: sasGross.toLocaleString(),
       variation: variation.toLocaleString(),
-      sasStartTime: sasStartTime === "-" ? "-" : formatSasTime(sasStartTime),
-      sasEndTime: sasEndTime === "-" ? "-" : formatSasTime(sasEndTime),
+      sasStartTime: sasStartTime === '-' ? '-' : formatSasTime(sasStartTime),
+      sasEndTime: sasEndTime === '-' ? '-' : formatSasTime(sasEndTime),
       ramClear: col.ramClear || false,
     };
   });
@@ -196,24 +196,24 @@ export function generateMachineMetricsData(
 
 // Helper function to format SAS time
 function formatSasTime(timeString: string): string {
-  if (!timeString || timeString === "-") return "-";
+  if (!timeString || timeString === '-') return '-';
 
   try {
     const date = new Date(timeString);
-    if (isNaN(date.getTime())) return "-";
+    if (isNaN(date.getTime())) return '-';
 
     return date
-      .toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
+      .toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
         hour12: false,
       })
-      .replace(",", ",");
+      .replace(',', ',');
   } catch {
-    return "-";
+    return '-';
   }
 }

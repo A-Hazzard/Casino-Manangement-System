@@ -1,5 +1,5 @@
-import React from "react";
-import Image from "next/image";
+import React from 'react';
+import Image from 'next/image';
 import {
   Table,
   TableBody,
@@ -7,24 +7,24 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 
 // Import SVG icons for pre-rendering
-import detailsIcon from "@/public/details.svg";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import type { CollectionReportRow } from "@/lib/types/componentProps";
-import { useRouter } from "next/navigation";
+import detailsIcon from '@/public/details.svg';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import type { CollectionReportRow } from '@/lib/types/componentProps';
+import { useRouter } from 'next/navigation';
 import {
   Edit3,
   Trash2,
   AlertTriangle,
   ChevronUp,
   ChevronDown,
-} from "lucide-react";
-import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
-import { useUserStore } from "@/lib/store/userStore";
-import { hasAdminAccess, hasManagerAccess } from "@/lib/utils/permissions";
+} from 'lucide-react';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useUserStore } from '@/lib/store/userStore';
+import { hasAdminAccess, hasManagerAccess } from '@/lib/utils/permissions';
 
 type ExtendedCollectionReportTableProps = {
   data: CollectionReportRow[];
@@ -32,7 +32,7 @@ type ExtendedCollectionReportTableProps = {
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
   sortField?: keyof CollectionReportRow;
-  sortDirection?: "asc" | "desc";
+  sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
 };
 
@@ -41,8 +41,8 @@ export default function CollectionReportTable({
   reportIssues,
   onEdit,
   onDelete,
-  sortField = "time",
-  sortDirection = "desc",
+  sortField = 'time',
+  sortDirection = 'desc',
   onSort,
 }: ExtendedCollectionReportTableProps) {
   const {
@@ -50,7 +50,7 @@ export default function CollectionReportTable({
     shouldShowCurrency: _shouldShowCurrency,
   } = useCurrencyFormat();
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
+  const user = useUserStore(state => state.user);
 
   // Check if user has admin access to see issue highlights
   const isAdminUser = user?.roles ? hasAdminAccess(user.roles) : false;
@@ -59,22 +59,22 @@ export default function CollectionReportTable({
   const canEditDelete = user?.roles ? hasManagerAccess(user.roles) : false;
 
   return (
-    <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0">
+    <div className="hidden w-full min-w-0 overflow-x-auto bg-white shadow lg:block">
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
             <TableHead
-              className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
+              className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
               centered={false}
               isFirstColumn={true}
             >
               <div
                 className="flex items-center gap-1"
-                onClick={() => onSort?.("collector")}
+                onClick={() => onSort?.('collector')}
               >
                 COLLECTOR
-                {sortField === "collector" &&
-                  (sortDirection === "asc" ? (
+                {sortField === 'collector' &&
+                  (sortDirection === 'asc' ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
@@ -82,16 +82,16 @@ export default function CollectionReportTable({
               </div>
             </TableHead>
             <TableHead
-              className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
+              className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
               centered={false}
             >
               <div
                 className="flex items-center gap-1"
-                onClick={() => onSort?.("location")}
+                onClick={() => onSort?.('location')}
               >
                 LOCATION
-                {sortField === "location" &&
-                  (sortDirection === "asc" ? (
+                {sortField === 'location' &&
+                  (sortDirection === 'asc' ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
@@ -99,16 +99,16 @@ export default function CollectionReportTable({
               </div>
             </TableHead>
             <TableHead
-              className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
+              className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
               centered={true}
             >
               <div
                 className="flex items-center justify-center gap-1"
-                onClick={() => onSort?.("gross")}
+                onClick={() => onSort?.('gross')}
               >
                 GROSS
-                {sortField === "gross" &&
-                  (sortDirection === "asc" ? (
+                {sortField === 'gross' &&
+                  (sortDirection === 'asc' ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
@@ -116,16 +116,16 @@ export default function CollectionReportTable({
               </div>
             </TableHead>
             <TableHead
-              className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
+              className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
               centered={true}
             >
               <div
                 className="flex items-center justify-center gap-1"
-                onClick={() => onSort?.("machines")}
+                onClick={() => onSort?.('machines')}
               >
                 MACHINES
-                {sortField === "machines" &&
-                  (sortDirection === "asc" ? (
+                {sortField === 'machines' &&
+                  (sortDirection === 'asc' ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
@@ -133,52 +133,52 @@ export default function CollectionReportTable({
               </div>
             </TableHead>
             <TableHead
-              className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
+              className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
               centered={true}
             >
               <div
                 className="flex items-center justify-center gap-1"
-                onClick={() => onSort?.("collected")}
+                onClick={() => onSort?.('collected')}
               >
                 COLLECTED
-                {sortField === "collected" &&
-                  (sortDirection === "asc" ? (
+                {sortField === 'collected' &&
+                  (sortDirection === 'asc' ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
                   ))}
               </div>
             </TableHead>
-            <TableHead className="text-white font-semibold" centered={true}>
+            <TableHead className="font-semibold text-white" centered={true}>
               UNCOLLECTED
             </TableHead>
-            <TableHead className="text-white font-semibold" centered={true}>
+            <TableHead className="font-semibold text-white" centered={true}>
               VARIATION
             </TableHead>
-            <TableHead className="text-white font-semibold" centered={true}>
+            <TableHead className="font-semibold text-white" centered={true}>
               BALANCE
             </TableHead>
-            <TableHead className="text-white font-semibold" centered={true}>
+            <TableHead className="font-semibold text-white" centered={true}>
               LOCATION REVENUE
             </TableHead>
             <TableHead
-              className="text-white font-semibold cursor-pointer hover:bg-button/80 select-none"
+              className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
               centered={true}
             >
               <div
                 className="flex items-center justify-center gap-1"
-                onClick={() => onSort?.("time")}
+                onClick={() => onSort?.('time')}
               >
                 TIME
-                {sortField === "time" &&
-                  (sortDirection === "asc" ? (
+                {sortField === 'time' &&
+                  (sortDirection === 'asc' ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
                   ))}
               </div>
             </TableHead>
-            <TableHead className="text-white font-semibold" centered={true}>
+            <TableHead className="font-semibold text-white" centered={true}>
               DETAILS
             </TableHead>
           </TableRow>
@@ -192,11 +192,11 @@ export default function CollectionReportTable({
 
             return (
               <TableRow
-                key={`${row?.collector || "unknown"}-${
-                  row?.location || "unknown"
-                }-${row?.time || "unknown"}-${index}`}
+                key={`${row?.collector || 'unknown'}-${
+                  row?.location || 'unknown'
+                }-${row?.time || 'unknown'}-${index}`}
                 className={`hover:bg-lighterGreenHighlight ${
-                  hasIssues ? "bg-yellow-50 border-l-4 border-l-yellow-500" : ""
+                  hasIssues ? 'border-l-4 border-l-yellow-500 bg-yellow-50' : ''
                 }`}
               >
                 <TableCell
@@ -208,37 +208,37 @@ export default function CollectionReportTable({
                     {hasIssues && (
                       <AlertTriangle className="h-4 w-4 text-yellow-600" />
                     )}
-                    {row?.collector || "-"}
+                    {row?.collector || '-'}
                   </div>
                 </TableCell>
-                <TableCell centered={false}>{row?.location || "-"}</TableCell>
+                <TableCell centered={false}>{row?.location || '-'}</TableCell>
                 <TableCell centered={true}>{row?.gross || 0}</TableCell>
-                <TableCell centered={true}>{row?.machines || "0/0"}</TableCell>
+                <TableCell centered={true}>{row?.machines || '0/0'}</TableCell>
                 <TableCell centered={true}>{row?.collected || 0}</TableCell>
-                <TableCell centered={true}>{row?.uncollected || "-"}</TableCell>
+                <TableCell centered={true}>{row?.uncollected || '-'}</TableCell>
                 <TableCell centered={true}>
-                  {row?.variation || "No Variance"}
+                  {row?.variation || 'No Variance'}
                 </TableCell>
                 <TableCell centered={true}>{row?.balance || 0}</TableCell>
                 <TableCell centered={true}>
                   {row?.locationRevenue || 0}
                 </TableCell>
-                <TableCell centered={true}>{row?.time || "-"}</TableCell>
+                <TableCell centered={true}>{row?.time || '-'}</TableCell>
                 <TableCell centered={true}>
                   <div className="flex items-center gap-2">
                     {hasIssues && (
                       <Badge variant="destructive" className="text-xs">
-                        {issueCount} issue{issueCount !== 1 ? "s" : ""}
+                        {issueCount} issue{issueCount !== 1 ? 's' : ''}
                       </Badge>
                     )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 text-buttonActive hover:bg-buttonActive/10 hover:text-white group"
+                      className="group h-8 w-8 p-0 text-buttonActive hover:bg-buttonActive/10 hover:text-white"
                       onClick={() =>
                         router.push(
                           `/collection-report/report/${
-                            row?.locationReportId || ""
+                            row?.locationReportId || ''
                           }`
                         )
                       }
@@ -259,7 +259,7 @@ export default function CollectionReportTable({
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-100"
-                            onClick={() => onEdit(row?.locationReportId || "")}
+                            onClick={() => onEdit(row?.locationReportId || '')}
                             aria-label="Edit Report"
                           >
                             <Edit3 className="h-4 w-4" />
@@ -271,7 +271,7 @@ export default function CollectionReportTable({
                             size="sm"
                             className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
                             onClick={() =>
-                              onDelete(row?.locationReportId || "")
+                              onDelete(row?.locationReportId || '')
                             }
                             aria-label="Delete Report"
                           >

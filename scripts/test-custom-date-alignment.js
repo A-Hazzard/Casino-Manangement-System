@@ -11,35 +11,35 @@
  * Expected: All APIs should return the same gross value (~13483 for machine 1309)
  */
 
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 // Configuration
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/evolution-one-cms";
-const MACHINE_SERIAL = "1309";
-const CUSTOM_START = "2025-10-01T08:00:00";
-const CUSTOM_END = "2025-10-15T08:00:00";
-const BASE_URL = "http://localhost:3000";
+  process.env.MONGODB_URI || 'mongodb://localhost:27017/evolution-one-cms';
+const MACHINE_SERIAL = '1309';
+const CUSTOM_START = '2025-10-01T08:00:00';
+const CUSTOM_END = '2025-10-15T08:00:00';
+const BASE_URL = 'http://localhost:3000';
 
 async function testCustomDateAlignment() {
   let client;
 
   try {
-    console.log("🧪 Testing Custom Date Alignment Across APIs");
-    console.log("=".repeat(60));
+    console.log('🧪 Testing Custom Date Alignment Across APIs');
+    console.log('='.repeat(60));
     console.log(`Machine Serial: ${MACHINE_SERIAL}`);
     console.log(`Custom Range: ${CUSTOM_START} to ${CUSTOM_END}`);
-    console.log("");
+    console.log('');
 
     client = new MongoClient(MONGODB_URI);
     await client.connect();
-    console.log("✅ Connected to MongoDB");
+    console.log('✅ Connected to MongoDB');
 
     const db = client.db();
 
     // Step 1: Find the machine and its location
-    console.log("\n📋 Step 1: Finding Machine and Location");
-    const machine = await db.collection("machines").findOne({
+    console.log('\n📋 Step 1: Finding Machine and Location');
+    const machine = await db.collection('machines').findOne({
       $or: [
         { serialNumber: MACHINE_SERIAL },
         { origSerialNumber: MACHINE_SERIAL },
@@ -47,16 +47,16 @@ async function testCustomDateAlignment() {
     });
 
     if (!machine) {
-      console.log("❌ Machine not found!");
+      console.log('❌ Machine not found!');
       return;
     }
 
-    const location = await db.collection("gaminglocations").findOne({
+    const location = await db.collection('gaminglocations').findOne({
       _id: machine.gamingLocation,
     });
 
     if (!location) {
-      console.log("❌ Location not found!");
+      console.log('❌ Location not found!');
       return;
     }
 
@@ -65,7 +65,7 @@ async function testCustomDateAlignment() {
     console.log(`✅ Game Day Offset: ${location.gameDayOffset || 8}`);
 
     // Step 2: Calculate expected values using direct MongoDB query
-    console.log("\n📋 Step 2: Calculating Expected Values (Direct MongoDB)");
+    console.log('\n📋 Step 2: Calculating Expected Values (Direct MongoDB)');
 
     // Convert user's custom dates to UTC (add 4 hours for Trinidad UTC-4)
     const userStartDate = new Date(CUSTOM_START);
@@ -73,7 +73,7 @@ async function testCustomDateAlignment() {
     const utcStart = new Date(userStartDate.getTime() + 4 * 60 * 60 * 1000);
     const utcEnd = new Date(userEndDate.getTime() + 4 * 60 * 60 * 1000);
 
-    console.log("Date Conversion:");
+    console.log('Date Conversion:');
     console.log(
       `   User Input (Trinidad): ${userStartDate.toISOString()} to ${userEndDate.toISOString()}`
     );
@@ -95,20 +95,20 @@ async function testCustomDateAlignment() {
       {
         $group: {
           _id: null,
-          moneyIn: { $sum: "$movement.drop" },
-          moneyOut: { $sum: "$movement.totalCancelledCredits" },
-          jackpot: { $sum: "$movement.jackpot" },
-          coinIn: { $last: "$coinIn" },
-          coinOut: { $last: "$coinOut" },
-          gamesPlayed: { $last: "$gamesPlayed" },
-          gamesWon: { $last: "$gamesWon" },
+          moneyIn: { $sum: '$movement.drop' },
+          moneyOut: { $sum: '$movement.totalCancelledCredits' },
+          jackpot: { $sum: '$movement.jackpot' },
+          coinIn: { $last: '$coinIn' },
+          coinOut: { $last: '$coinOut' },
+          gamesPlayed: { $last: '$gamesPlayed' },
+          gamesWon: { $last: '$gamesWon' },
           meterCount: { $sum: 1 },
         },
       },
     ];
 
     const metersResult = await db
-      .collection("meters")
+      .collection('meters')
       .aggregate(metersPipeline)
       .toArray();
     const expectedMetrics = metersResult[0] || {
@@ -124,7 +124,7 @@ async function testCustomDateAlignment() {
 
     const expectedGross = expectedMetrics.moneyIn - expectedMetrics.moneyOut;
 
-    console.log("\n✅ Expected Metrics (Direct MongoDB Query):");
+    console.log('\n✅ Expected Metrics (Direct MongoDB Query):');
     console.log(`   Money In: ${expectedMetrics.moneyIn}`);
     console.log(`   Money Out: ${expectedMetrics.moneyOut}`);
     console.log(`   Gross: ${expectedGross}`);
@@ -133,32 +133,32 @@ async function testCustomDateAlignment() {
     console.log(`   Meter Count: ${expectedMetrics.meterCount}`);
 
     // Step 3: Test API endpoints (simulate the requests)
-    console.log("\n📋 Step 3: Testing API Endpoints");
+    console.log('\n📋 Step 3: Testing API Endpoints');
 
     // Since we can't make HTTP requests in this script, we'll simulate the API logic
     // by applying the same logic that should now be in the APIs
 
-    console.log("\n🔍 Individual Machine API Logic:");
+    console.log('\n🔍 Individual Machine API Logic:');
     console.log(
-      "   Should convert custom dates to UTC and query meters directly"
+      '   Should convert custom dates to UTC and query meters directly'
     );
     console.log(`   Expected result: Gross = ${expectedGross}`);
 
-    console.log("\n🔍 Cabinets Page API Logic:");
+    console.log('\n🔍 Cabinets Page API Logic:');
     console.log(
-      "   Should use same custom date conversion (no gaming day offset)"
+      '   Should use same custom date conversion (no gaming day offset)'
     );
     console.log(`   Expected result: Gross = ${expectedGross}`);
 
-    console.log("\n🔍 Location Details API Logic:");
+    console.log('\n🔍 Location Details API Logic:');
     console.log(
-      "   Should use same custom date conversion (no gaming day offset)"
+      '   Should use same custom date conversion (no gaming day offset)'
     );
     console.log(`   Expected result: Gross = ${expectedGross}`);
 
     // Step 4: Test with different time periods to ensure gaming day offset still works
     console.log(
-      "\n📋 Step 4: Verifying Gaming Day Offset Still Works for Predefined Periods"
+      '\n📋 Step 4: Verifying Gaming Day Offset Still Works for Predefined Periods'
     );
 
     // Test "Today" with gaming day offset
@@ -210,15 +210,15 @@ async function testCustomDateAlignment() {
       {
         $group: {
           _id: null,
-          moneyIn: { $sum: "$movement.drop" },
-          moneyOut: { $sum: "$movement.totalCancelledCredits" },
+          moneyIn: { $sum: '$movement.drop' },
+          moneyOut: { $sum: '$movement.totalCancelledCredits' },
           meterCount: { $sum: 1 },
         },
       },
     ];
 
     const gamingDayResult = await db
-      .collection("meters")
+      .collection('meters')
       .aggregate(gamingDayPipeline)
       .toArray();
     const gamingDayMetrics = gamingDayResult[0] || {
@@ -232,51 +232,51 @@ async function testCustomDateAlignment() {
     console.log(`   Gaming Day Meter Count: ${gamingDayMetrics.meterCount}`);
 
     // Step 5: Summary
-    console.log("\n📋 Step 5: Summary and Recommendations");
-    console.log("=".repeat(50));
+    console.log('\n📋 Step 5: Summary and Recommendations');
+    console.log('='.repeat(50));
 
-    console.log("\n✅ FIXES APPLIED:");
+    console.log('\n✅ FIXES APPLIED:');
     console.log(
-      "1. ✅ Individual Machine API: Fixed custom date UTC conversion"
+      '1. ✅ Individual Machine API: Fixed custom date UTC conversion'
     );
     console.log(
-      "2. ✅ Cabinets Page API: Fixed custom date handling (no gaming day offset)"
+      '2. ✅ Cabinets Page API: Fixed custom date handling (no gaming day offset)'
     );
     console.log(
-      "3. ✅ Location Details API: Fixed custom date handling (no gaming day offset)"
+      '3. ✅ Location Details API: Fixed custom date handling (no gaming day offset)'
     );
-    console.log("4. ✅ Gaming Day Range Utility: Fixed custom date case");
+    console.log('4. ✅ Gaming Day Range Utility: Fixed custom date case');
 
-    console.log("\n🎯 EXPECTED RESULTS:");
+    console.log('\n🎯 EXPECTED RESULTS:');
     console.log(`   Custom Date Range (${CUSTOM_START} to ${CUSTOM_END}):`);
     console.log(`   All APIs should return: Gross = ${expectedGross}`);
     console.log(
       `   This should match the value from machine details page (~13483)`
     );
 
-    console.log("\n🔍 VERIFICATION STEPS:");
+    console.log('\n🔍 VERIFICATION STEPS:');
     console.log(
-      "1. Test custom date range Oct 1, 2025 8:00 AM - Oct 15, 2025 8:00 AM"
+      '1. Test custom date range Oct 1, 2025 8:00 AM - Oct 15, 2025 8:00 AM'
     );
-    console.log("2. Compare values between:");
-    console.log("   - Individual machine page (machine 1309)");
-    console.log("   - Cabinets page (machine 1309)");
-    console.log("   - Location details page (machine 1309)");
-    console.log("3. All should show the same gross value");
+    console.log('2. Compare values between:');
+    console.log('   - Individual machine page (machine 1309)');
+    console.log('   - Cabinets page (machine 1309)');
+    console.log('   - Location details page (machine 1309)');
+    console.log('3. All should show the same gross value');
     console.log(
-      "4. Test other predefined periods to ensure gaming day offset still works"
+      '4. Test other predefined periods to ensure gaming day offset still works'
     );
 
-    console.log("\n⚠️  IMPORTANT NOTES:");
-    console.log("- Custom dates should NOT use gaming day offset");
+    console.log('\n⚠️  IMPORTANT NOTES:');
+    console.log('- Custom dates should NOT use gaming day offset');
     console.log(
-      "- Predefined periods (Today, Yesterday, 7d, 30d) should still use gaming day offset"
+      '- Predefined periods (Today, Yesterday, 7d, 30d) should still use gaming day offset'
     );
     console.log(
-      "- All date conversions must account for Trinidad timezone (UTC-4)"
+      '- All date conversions must account for Trinidad timezone (UTC-4)'
     );
   } catch (error) {
-    console.error("❌ Error during testing:", error);
+    console.error('❌ Error during testing:', error);
   } finally {
     if (client) {
       await client.close();

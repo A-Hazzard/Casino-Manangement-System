@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -8,15 +8,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Eye } from "lucide-react";
+} from '@/components/ui/table';
+import { Eye } from 'lucide-react';
 import {
   formatCurrency,
   formatDuration,
   formatDate,
   formatPoints,
-} from "@/lib/helpers/sessions";
-import type { Session } from "@/lib/types/sessions";
+} from '@/lib/helpers/sessions';
+import type { Session } from '@/lib/types/sessions';
 
 type SessionsTableProps = {
   sessions: Session[];
@@ -33,7 +33,7 @@ export default function SessionsTable({
 }: SessionsTableProps) {
   if (sessions.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+      <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
         <p className="text-gray-500">
           No sessions found for the selected criteria.
         </p>
@@ -42,28 +42,38 @@ export default function SessionsTable({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       {/* Desktop Table */}
-      <div className="hidden lg:block overflow-x-auto">
+      <div className="hidden overflow-x-auto lg:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-button hover:bg-button">
-              <TableHead className="text-white font-semibold">Player</TableHead>
-              <TableHead className="text-white font-semibold">Machine</TableHead>
-              <TableHead className="text-white font-semibold">Start Time</TableHead>
-              <TableHead className="text-white font-semibold">Duration</TableHead>
-              <TableHead className="text-white font-semibold">Handle</TableHead>
-              <TableHead className="text-white font-semibold">Jackpot</TableHead>
-              <TableHead className="text-white font-semibold">Points</TableHead>
-              <TableHead className="text-white font-semibold">Actions</TableHead>
+              <TableHead className="font-semibold text-white">Player</TableHead>
+              <TableHead className="font-semibold text-white">
+                Machine
+              </TableHead>
+              <TableHead className="font-semibold text-white">
+                Start Time
+              </TableHead>
+              <TableHead className="font-semibold text-white">
+                Duration
+              </TableHead>
+              <TableHead className="font-semibold text-white">Handle</TableHead>
+              <TableHead className="font-semibold text-white">
+                Jackpot
+              </TableHead>
+              <TableHead className="font-semibold text-white">Points</TableHead>
+              <TableHead className="font-semibold text-white">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sessions.map((session) => (
+            {sessions.map(session => (
               <TableRow key={session._id} className="hover:bg-gray-50">
                 <TableCell>
                   <div className="text-sm font-medium text-gray-900">
-                    {session.memberName || "Unknown Player"}
+                    {session.memberName || 'Unknown Player'}
                   </div>
                   <div className="text-sm text-gray-500">
                     ID: {session.memberId}
@@ -74,7 +84,7 @@ export default function SessionsTable({
                     {session.machineId}
                   </div>
                   <div className="text-sm text-gray-500">
-                    {session.machineName || "Unknown Machine"}
+                    {session.machineName || 'Unknown Machine'}
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-gray-900">
@@ -97,7 +107,7 @@ export default function SessionsTable({
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      onViewEvents(session._id, session.machineId || "")
+                      onViewEvents(session._id, session.machineId || '')
                     }
                     className="flex items-center space-x-1"
                   >
@@ -112,16 +122,16 @@ export default function SessionsTable({
       </div>
 
       {/* Mobile Cards */}
-      <div className="lg:hidden space-y-4 p-4">
-        {sessions.map((session) => (
+      <div className="space-y-4 p-4 lg:hidden">
+        {sessions.map(session => (
           <div
             key={session._id}
-            className="border border-gray-200 rounded-lg p-4 space-y-3"
+            className="space-y-3 rounded-lg border border-gray-200 p-4"
           >
-            <div className="flex justify-between items-start">
+            <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-medium text-gray-900">
-                  {session.memberName || "Unknown Player"}
+                  {session.memberName || 'Unknown Player'}
                 </h3>
                 <p className="text-sm text-gray-500">
                   Player ID: {session.memberId}
@@ -131,7 +141,7 @@ export default function SessionsTable({
                 size="sm"
                 variant="outline"
                 onClick={() =>
-                  onViewEvents(session._id, session.machineId || "")
+                  onViewEvents(session._id, session.machineId || '')
                 }
                 className="flex items-center space-x-1"
               >
@@ -161,7 +171,7 @@ export default function SessionsTable({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-gray-100">
+            <div className="border-t border-gray-100 pt-2">
               <span className="text-xs text-gray-500">
                 Started: {formatDate(session.startTime)}
               </span>

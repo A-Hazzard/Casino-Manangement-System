@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useUserStore } from "@/lib/store/userStore";
-import { hasPageAccess, PageName } from "@/lib/utils/permissions";
-import { hasTabAccessDb } from "@/lib/utils/permissionsDb";
+import { useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useUserStore } from '@/lib/store/userStore';
+import { hasPageAccess, PageName } from '@/lib/utils/permissions';
+import { hasTabAccessDb } from '@/lib/utils/permissionsDb';
 
 type UrlProtectionOptions = {
   page: string;
@@ -34,7 +34,7 @@ export function useUrlProtection({
     const checkPermissions = async () => {
       try {
         // Debug logging
-        if (process.env.NODE_ENV === "development") {
+        if (process.env.NODE_ENV === 'development') {
           console.warn(
             `[useUrlProtection] Checking permissions for page: ${page}`
           );
@@ -47,12 +47,12 @@ export function useUrlProtection({
         const hasPageLocal = hasPageAccess(userRoles, page as PageName);
         if (!hasPageLocal) {
           // Only redirect if user definitely doesn't have access locally
-          if (process.env.NODE_ENV === "development") {
+          if (process.env.NODE_ENV === 'development') {
             console.warn(
               `[useUrlProtection] User does not have local access to page: ${page}`
             );
           }
-          router.push(redirectPath || "/unauthorized");
+          router.push(redirectPath || '/unauthorized');
           return;
         }
 
@@ -63,9 +63,9 @@ export function useUrlProtection({
 
         // Check URL parameters for tab access
         const currentSection =
-          searchParams?.get("section") ||
-          searchParams?.get("mtab") ||
-          searchParams?.get("tab");
+          searchParams?.get('section') ||
+          searchParams?.get('mtab') ||
+          searchParams?.get('tab');
 
         if (currentSection) {
           // Check if the current tab is in the allowed tabs
@@ -76,14 +76,14 @@ export function useUrlProtection({
             const fallbackTab = defaultTab || allowedTabs[0];
             if (fallbackTab) {
               const params = new URLSearchParams(
-                searchParams?.toString() || ""
+                searchParams?.toString() || ''
               );
-              params.set("section", fallbackTab);
+              params.set('section', fallbackTab);
               router.replace(
                 `${window.location.pathname}?${params.toString()}`
               );
             } else {
-              router.push(redirectPath || "/unauthorized");
+              router.push(redirectPath || '/unauthorized');
             }
             return;
           }
@@ -91,8 +91,8 @@ export function useUrlProtection({
           // Only check database permissions for specific tabs that require it
           // Skip database check for admin users on most tabs
           if (
-            userRoles.includes("admin") ||
-            userRoles.includes("evolution admin")
+            userRoles.includes('admin') ||
+            userRoles.includes('evolution admin')
           ) {
             // Admin users have access to all tabs, skip database check
             return;
@@ -101,20 +101,20 @@ export function useUrlProtection({
           // Check if user has permission for this specific tab (database query)
           // Map currentSection to proper TabName format
           let tabName: string;
-          if (page === "administration") {
-            if (currentSection === "users") tabName = "administration-users";
-            else if (currentSection === "licensees")
-              tabName = "administration-licensees";
-            else if (currentSection === "activity-logs")
-              tabName = "administration-activity-logs";
+          if (page === 'administration') {
+            if (currentSection === 'users') tabName = 'administration-users';
+            else if (currentSection === 'licensees')
+              tabName = 'administration-licensees';
+            else if (currentSection === 'activity-logs')
+              tabName = 'administration-activity-logs';
             else return; // Unknown tab, skip permission check
-          } else if (page === "collection-report") {
-            if (currentSection === "monthly")
-              tabName = "collection-reports-monthly";
-            else if (currentSection === "manager")
-              tabName = "collection-reports-manager-schedules";
-            else if (currentSection === "collector")
-              tabName = "collection-reports-collector-schedules";
+          } else if (page === 'collection-report') {
+            if (currentSection === 'monthly')
+              tabName = 'collection-reports-monthly';
+            else if (currentSection === 'manager')
+              tabName = 'collection-reports-manager-schedules';
+            else if (currentSection === 'collector')
+              tabName = 'collection-reports-collector-schedules';
             else return; // Unknown tab, skip permission check
           } else {
             return; // No tab permissions for this page
@@ -123,12 +123,12 @@ export function useUrlProtection({
           const hasPermission = await hasTabAccessDb(
             page as PageName,
             tabName as
-              | "administration-users"
-              | "administration-licensees"
-              | "administration-activity-logs"
-              | "collection-reports-monthly"
-              | "collection-reports-manager-schedules"
-              | "collection-reports-collector-schedules"
+              | 'administration-users'
+              | 'administration-licensees'
+              | 'administration-activity-logs'
+              | 'collection-reports-monthly'
+              | 'collection-reports-manager-schedules'
+              | 'collection-reports-collector-schedules'
           );
 
           if (!hasPermission) {
@@ -136,28 +136,28 @@ export function useUrlProtection({
             const fallbackTab = defaultTab || allowedTabs[0];
             if (fallbackTab) {
               const params = new URLSearchParams(
-                searchParams?.toString() || ""
+                searchParams?.toString() || ''
               );
-              params.set("section", fallbackTab);
+              params.set('section', fallbackTab);
               router.replace(
                 `${window.location.pathname}?${params.toString()}`
               );
             } else {
-              router.push(redirectPath || "/unauthorized");
+              router.push(redirectPath || '/unauthorized');
             }
             return;
           }
         } else if (defaultTab) {
           // No section specified, redirect to default tab
-          const params = new URLSearchParams(searchParams?.toString() || "");
-          params.set("section", defaultTab);
+          const params = new URLSearchParams(searchParams?.toString() || '');
+          params.set('section', defaultTab);
           router.replace(`${window.location.pathname}?${params.toString()}`);
         }
       } catch (error) {
-        console.error("Error checking permissions:", error);
+        console.error('Error checking permissions:', error);
         // Only redirect on error if user definitely doesn't have local access
         if (!hasPageAccess(userRoles, page as PageName)) {
-          router.push(redirectPath || "/unauthorized");
+          router.push(redirectPath || '/unauthorized');
         }
       }
     };

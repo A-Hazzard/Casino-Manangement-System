@@ -3,9 +3,9 @@
  * Centralized types for all custom hook interfaces and return types
  */
 
-import { ReactElement } from "react";
-import { MembersView } from "@/shared/types/entities";
-import { ReportView } from "@/lib/types/reports";
+import { ReactElement } from 'react';
+import { MembersView } from '@/shared/types/entities';
+import { ReportView } from '@/lib/types/reports';
 
 // Animation types
 export type AnimationVariants = {
@@ -123,22 +123,22 @@ export type UseModalsReturn = {
   isEditUserModalOpen: boolean;
   isDeleteUserModalOpen: boolean;
   isViewUserModalOpen: boolean;
-  
+
   // Licensee modals
   isNewLicenseeModalOpen: boolean;
   isEditLicenseeModalOpen: boolean;
   isDeleteLicenseeModalOpen: boolean;
   isViewLicenseeModalOpen: boolean;
-  
+
   // Activity log modals
   isViewActivityLogModalOpen: boolean;
   isExportActivityLogModalOpen: boolean;
-  
+
   // Selected data
   selectedUser: UserData | null;
   selectedLicensee: LicenseeData | null;
   selectedActivityLog: ActivityLogData | null;
-  
+
   // Modal handlers
   openNewUserModal: () => void;
   closeNewUserModal: () => void;
@@ -148,7 +148,7 @@ export type UseModalsReturn = {
   closeDeleteUserModal: () => void;
   openViewUserModal: (user: UserData) => void;
   closeViewUserModal: () => void;
-  
+
   openNewLicenseeModal: () => void;
   closeNewLicenseeModal: () => void;
   openEditLicenseeModal: (licensee: LicenseeData) => void;
@@ -157,7 +157,7 @@ export type UseModalsReturn = {
   closeDeleteLicenseeModal: () => void;
   openViewLicenseeModal: (licensee: LicenseeData) => void;
   closeViewLicenseeModal: () => void;
-  
+
   openViewActivityLogModal: (activityLog: ActivityLogData) => void;
   closeViewActivityLogModal: () => void;
   openExportActivityLogModal: () => void;
@@ -181,7 +181,7 @@ export type UseCollectionReportModalsReturn = {
   isDeleteModalOpen: boolean;
   isConfirmationModalOpen: boolean;
   selectedReport: CollectionReportModalData | null;
-  
+
   openNewModal: () => void;
   closeNewModal: () => void;
   openEditModal: (report: CollectionReportModalData) => void;

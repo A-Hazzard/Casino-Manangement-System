@@ -1,7 +1,7 @@
-import sgMail from "@sendgrid/mail";
+import sgMail from '@sendgrid/mail';
 
 // Set the API key from environment variables
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
 /**
  * Sends an email using SendGrid.
@@ -21,7 +21,7 @@ export async function sendEmail(
   try {
     const msg = {
       to,
-      from: process.env.EMAIL_FROM || "", // Your verified sender email in SendGrid
+      from: process.env.EMAIL_FROM || '', // Your verified sender email in SendGrid
       subject,
       text,
       html,
@@ -31,7 +31,7 @@ export async function sendEmail(
     return { success: true };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred.";
+      error instanceof Error ? error.message : 'An unknown error occurred.';
     return {
       success: false,
       message: errorMessage,

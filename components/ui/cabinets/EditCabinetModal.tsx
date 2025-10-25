@@ -1,33 +1,33 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { gsap } from "gsap";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Cross2Icon } from "@radix-ui/react-icons";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import type { GamingMachine } from "@/shared/types/entities";
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { gsap } from 'gsap';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Cross2Icon } from '@radix-ui/react-icons';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import type { GamingMachine } from '@/shared/types/entities';
 type CabinetFormData = Partial<GamingMachine>;
-import { fetchCabinetById, updateCabinet } from "@/lib/helpers/cabinets";
-import { fetchManufacturers } from "@/lib/helpers/manufacturers";
-import { toast } from "sonner";
-import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { useUserStore } from "@/lib/store/userStore";
+import { fetchCabinetById, updateCabinet } from '@/lib/helpers/cabinets';
+import { fetchManufacturers } from '@/lib/helpers/manufacturers';
+import { toast } from 'sonner';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
 import {
   detectChanges,
   filterMeaningfulChanges,
   getChangesSummary,
-} from "@/lib/utils/changeDetection";
+} from '@/lib/utils/changeDetection';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import axios from "axios";
+} from '@/components/ui/select';
+import axios from 'axios';
 
 export const EditCabinetModal = ({
   onCabinetUpdated,
@@ -53,18 +53,18 @@ export const EditCabinetModal = ({
 
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
-  const [relayIdError, setRelayIdError] = useState<string>("");
-  const [serialNumberError, setSerialNumberError] = useState<string>("");
-  const [installedGameError, setInstalledGameError] = useState<string>("");
-  const [locationError, setLocationError] = useState<string>("");
+  const [relayIdError, setRelayIdError] = useState<string>('');
+  const [serialNumberError, setSerialNumberError] = useState<string>('');
+  const [installedGameError, setInstalledGameError] = useState<string>('');
+  const [locationError, setLocationError] = useState<string>('');
   const [accountingDenominationError, setAccountingDenominationError] =
-    useState<string>("");
+    useState<string>('');
   const [collectionMultiplierError, setCollectionMultiplierError] =
-    useState<string>("");
+    useState<string>('');
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
-    if (!user) return "Unknown User";
+    if (!user) return 'Unknown User';
 
     // Check if user has profile with firstName and lastName
     if (user.profile?.firstName && user.profile?.lastName) {
@@ -82,17 +82,17 @@ export const EditCabinetModal = ({
     }
 
     // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== "") {
+    if (user.username && user.username.trim() !== '') {
       return user.username;
     }
 
     // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== "") {
+    if (user.emailAddress && user.emailAddress.trim() !== '') {
       return user.emailAddress;
     }
 
     // Fallback
-    return "Unknown User";
+    return 'Unknown User';
   };
 
   // Activity logging is now handled via API calls
@@ -107,10 +107,10 @@ export const EditCabinetModal = ({
     changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
   ) => {
     try {
-      const response = await fetch("/api/activity-logs", {
-        method: "POST",
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
@@ -118,9 +118,9 @@ export const EditCabinetModal = ({
           resourceId,
           resourceName,
           details,
-          userId: user?._id || "unknown",
+          userId: user?._id || 'unknown',
           username: getUserDisplayName(),
-          userRole: "user",
+          userRole: 'user',
           previousData: previousData || null,
           newData: newData || null,
           changes: changes || [], // Use provided changes or empty array
@@ -128,93 +128,93 @@ export const EditCabinetModal = ({
       });
 
       if (!response.ok) {
-        console.error("Failed to log activity:", response.statusText);
+        console.error('Failed to log activity:', response.statusText);
       }
     } catch (error) {
-      console.error("Error logging activity:", error);
+      console.error('Error logging activity:', error);
     }
   };
 
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
-    if (!value) return "";
+    if (!value) return '';
 
     // Check length
     if (value.length !== 12) {
-      return "SMIB Board must be exactly 12 characters long";
+      return 'SMIB Board must be exactly 12 characters long';
     }
 
     // Check if it's hexadecimal and lowercase
     const hexPattern = /^[0-9a-f]+$/;
     if (!hexPattern.test(value)) {
-      return "SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)";
+      return 'SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)';
     }
 
     // Check if it ends with 0, 4, 8, or c
     const lastChar = value.charAt(11);
-    if (!["0", "4", "8", "c"].includes(lastChar)) {
-      return "SMIB Board must end with 0, 4, 8, or c";
+    if (!['0', '4', '8', 'c'].includes(lastChar)) {
+      return 'SMIB Board must end with 0, 4, 8, or c';
     }
 
-    return ""; // No error
+    return ''; // No error
   };
 
   // Serial Number validation function
   const validateSerialNumber = (value: string): string => {
-    if (!value) return "";
+    if (!value) return '';
 
     if (value.trim().length < 3) {
-      return "Serial number must be at least 3 characters long";
+      return 'Serial number must be at least 3 characters long';
     }
 
-    return ""; // No error
+    return ''; // No error
   };
 
   // Helper function to get display serial number
   const getDisplaySerialNumber = (cabinet: GamingMachine | null): string => {
-    if (!cabinet) return "Unknown";
+    if (!cabinet) return 'Unknown';
 
     // Check if serialNumber exists and is not just whitespace
-    if (cabinet.serialNumber && cabinet.serialNumber.trim() !== "") {
+    if (cabinet.serialNumber && cabinet.serialNumber.trim() !== '') {
       return cabinet.serialNumber;
     }
 
     // Check if custom.name exists and is not just whitespace
-    if (cabinet.custom?.name && cabinet.custom.name.trim() !== "") {
+    if (cabinet.custom?.name && cabinet.custom.name.trim() !== '') {
       return cabinet.custom.name;
     }
 
     // Check if machineId exists and is not just whitespace
-    if (cabinet.machineId && cabinet.machineId.trim() !== "") {
+    if (cabinet.machineId && cabinet.machineId.trim() !== '') {
       return cabinet.machineId;
     }
 
-    return "Unknown";
+    return 'Unknown';
   };
 
   // Helper function to check if serial number is valid (not empty or just whitespace)
   const hasValidSerialNumber = (cabinet: GamingMachine | null): boolean => {
     if (!cabinet) return false;
 
-    return Boolean(cabinet.serialNumber && cabinet.serialNumber.trim() !== "");
+    return Boolean(cabinet.serialNumber && cabinet.serialNumber.trim() !== '');
   };
 
   // Helper function to format creation date
   const formatCreationDate = (date: Date | string | undefined): string => {
-    if (!date) return "Unknown";
+    if (!date) return 'Unknown';
 
     try {
-      const dateObj = typeof date === "string" ? new Date(date) : date;
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
 
-      return dateObj.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+      return dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch {
-      return "Unknown";
+      return 'Unknown';
     }
   };
 
@@ -222,7 +222,7 @@ export const EditCabinetModal = ({
   const fetchLocations = useCallback(async () => {
     try {
       setLocationsLoading(true);
-      const response = await axios.get("/api/locations");
+      const response = await axios.get('/api/locations');
       const locationsData = response.data.locations || [];
       const mappedLocations = locationsData.map(
         (loc: Record<string, unknown>) => ({
@@ -234,8 +234,8 @@ export const EditCabinetModal = ({
       );
       setLocations(mappedLocations);
     } catch (error) {
-      console.error("Failed to fetch locations:", error);
-      toast.error("Failed to load locations");
+      console.error('Failed to fetch locations:', error);
+      toast.error('Failed to load locations');
       setLocations([]);
     } finally {
       setLocationsLoading(false);
@@ -249,8 +249,8 @@ export const EditCabinetModal = ({
       const fetchedManufacturers = await fetchManufacturers();
       setManufacturers(fetchedManufacturers);
     } catch (error) {
-      console.error("Failed to fetch manufacturers:", error);
-      toast.error("Failed to load manufacturers");
+      console.error('Failed to fetch manufacturers:', error);
+      toast.error('Failed to load manufacturers');
       setManufacturers([]);
     } finally {
       setManufacturersLoading(false);
@@ -258,17 +258,17 @@ export const EditCabinetModal = ({
   }, []);
 
   const [formData, setFormData] = useState<CabinetFormData>({
-    _id: "",
-    assetNumber: "",
-    installedGame: "",
-    gameType: "Slot",
-    accountingDenomination: "1",
-    collectionMultiplier: "1",
-    locationId: "",
-    smbId: "",
-    status: "functional",
+    _id: '',
+    assetNumber: '',
+    installedGame: '',
+    gameType: 'Slot',
+    accountingDenomination: '1',
+    collectionMultiplier: '1',
+    locationId: '',
+    smbId: '',
+    status: 'functional',
     isCronosMachine: false,
-    manufacturer: "",
+    manufacturer: '',
   });
 
   useEffect(() => {
@@ -277,19 +277,19 @@ export const EditCabinetModal = ({
       // console.log("Selected cabinet gameType:", selectedCabinet.gameType);
       const initialFormData = {
         _id: selectedCabinet._id,
-        assetNumber: selectedCabinet.assetNumber || "",
-        installedGame: selectedCabinet.installedGame || "",
-        gameType: selectedCabinet.gameType || "Slot",
+        assetNumber: selectedCabinet.assetNumber || '',
+        installedGame: selectedCabinet.installedGame || '',
+        gameType: selectedCabinet.gameType || 'Slot',
         accountingDenomination: String(
-          selectedCabinet.accountingDenomination || "1"
+          selectedCabinet.accountingDenomination || '1'
         ),
-        collectionMultiplier: selectedCabinet.collectionMultiplier || "1",
-        locationId: selectedCabinet.locationId || "",
-        smbId: selectedCabinet.smbId || "",
-        status: selectedCabinet.status || "functional",
+        collectionMultiplier: selectedCabinet.collectionMultiplier || '1',
+        locationId: selectedCabinet.locationId || '',
+        smbId: selectedCabinet.smbId || '',
+        status: selectedCabinet.status || 'functional',
         isCronosMachine: selectedCabinet.isCronosMachine || false,
-        manufacturer: selectedCabinet.manufacturer || "",
-        custom: selectedCabinet.custom || { name: "" },
+        manufacturer: selectedCabinet.manufacturer || '',
+        custom: selectedCabinet.custom || { name: '' },
         createdAt: selectedCabinet.createdAt,
       };
       // console.log("Initial form data gameType:", initialFormData.gameType);
@@ -303,7 +303,7 @@ export const EditCabinetModal = ({
       if (selectedCabinet._id && activeMetricsFilter) {
         setCabinetDataLoading(true);
         fetchCabinetById(selectedCabinet._id, activeMetricsFilter)
-          .then((cabinetDetails) => {
+          .then(cabinetDetails => {
             if (cabinetDetails) {
               // console.log("Cabinet details gameType:", cabinetDetails.gameType);
               // console.log(
@@ -311,7 +311,7 @@ export const EditCabinetModal = ({
               //   cabinetDetails.manufacturer
               // );
               // console.log("Full cabinet details:", cabinetDetails);
-              setFormData((prevData) => {
+              setFormData(prevData => {
                 // console.log(
                 //   "User modified fields:",
                 //   Array.from(userModifiedFields)
@@ -328,11 +328,11 @@ export const EditCabinetModal = ({
                   installedGame:
                     cabinetDetails.installedGame || prevData.installedGame,
                   // Only update gameType if user hasn't modified it
-                  gameType: userModifiedFields.has("gameType")
+                  gameType: userModifiedFields.has('gameType')
                     ? prevData.gameType
                     : cabinetDetails.gameType || prevData.gameType,
                   // Only update manufacturer if user hasn't modified it
-                  manufacturer: userModifiedFields.has("manufacturer")
+                  manufacturer: userModifiedFields.has('manufacturer')
                     ? prevData.manufacturer
                     : cabinetDetails.manufacturer || prevData.manufacturer,
                   accountingDenomination: String(
@@ -357,10 +357,10 @@ export const EditCabinetModal = ({
               });
             }
           })
-          .catch((error) => {
+          .catch(error => {
             // Log error for debugging in development
-            if (process.env.NODE_ENV === "development") {
-              console.error("Error fetching cabinet details:", error);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error fetching cabinet details:', error);
             }
           })
           .finally(() => {
@@ -385,14 +385,14 @@ export const EditCabinetModal = ({
           opacity: 1,
           y: 0,
           duration: 0.3,
-          ease: "power2.out",
+          ease: 'power2.out',
           overwrite: true,
         }
       );
       gsap.to(backdropRef.current, {
         opacity: 1,
         duration: 0.2,
-        ease: "power2.out",
+        ease: 'power2.out',
         overwrite: true,
       });
     }
@@ -406,13 +406,13 @@ export const EditCabinetModal = ({
       opacity: 0,
       y: -20,
       duration: 0.3,
-      ease: "power2.in",
+      ease: 'power2.in',
       overwrite: true,
     });
     gsap.to(backdropRef.current, {
       opacity: 0,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
       overwrite: true,
       onComplete: closeEditModal,
     });
@@ -422,18 +422,18 @@ export const EditCabinetModal = ({
     const { name, value } = e.target;
 
     // Auto-capitalize serial number letters
-    if (name === "assetNumber") {
+    if (name === 'assetNumber') {
       const upperCaseValue = value.toUpperCase();
 
       // Validate the serial number
       const error = validateSerialNumber(upperCaseValue);
       setSerialNumberError(error);
 
-      setFormData((prev) => ({ ...prev, [name]: upperCaseValue }));
-    } else if (name === "smbId") {
+      setFormData(prev => ({ ...prev, [name]: upperCaseValue }));
+    } else if (name === 'smbId') {
       // Special handling for SMIB Board with validation
       // Convert to lowercase and remove any non-hex characters
-      const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, "");
+      const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, '');
 
       // Limit to 12 characters
       const limitedValue = cleanValue.slice(0, 12);
@@ -442,12 +442,12 @@ export const EditCabinetModal = ({
       const error = validateSmibBoard(limitedValue);
       setRelayIdError(error);
 
-      setFormData((prev) => ({ ...prev, [name]: limitedValue }));
+      setFormData(prev => ({ ...prev, [name]: limitedValue }));
     } else {
-      if (name === "installedGame") setInstalledGameError("");
-      if (name === "accountingDenomination") setAccountingDenominationError("");
-      if (name === "collectionMultiplier") setCollectionMultiplierError("");
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      if (name === 'installedGame') setInstalledGameError('');
+      if (name === 'accountingDenomination') setAccountingDenominationError('');
+      if (name === 'collectionMultiplier') setCollectionMultiplierError('');
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
@@ -459,52 +459,52 @@ export const EditCabinetModal = ({
       // Required-field validations
       const errors: string[] = [];
       if (!formData.assetNumber || formData.assetNumber.trim().length === 0) {
-        setSerialNumberError("Serial number is required");
-        errors.push("assetNumber");
+        setSerialNumberError('Serial number is required');
+        errors.push('assetNumber');
       } else if (formData.assetNumber.trim().length < 3) {
         setSerialNumberError(
-          "Serial number must be at least 3 characters long"
+          'Serial number must be at least 3 characters long'
         );
-        errors.push("assetNumberLen");
+        errors.push('assetNumberLen');
       }
       if (
         !formData.installedGame ||
         formData.installedGame.trim().length === 0
       ) {
-        setInstalledGameError("Installed game is required");
-        errors.push("installedGame");
+        setInstalledGameError('Installed game is required');
+        errors.push('installedGame');
       }
       if (
         !formData.accountingDenomination ||
         String(formData.accountingDenomination).trim().length === 0
       ) {
-        setAccountingDenominationError("Accounting denomination is required");
-        errors.push("accountingDenomination");
+        setAccountingDenominationError('Accounting denomination is required');
+        errors.push('accountingDenomination');
       } else if (isNaN(Number(formData.accountingDenomination))) {
         setAccountingDenominationError(
-          "Accounting denomination must be a number"
+          'Accounting denomination must be a number'
         );
-        errors.push("accountingDenominationNaN");
+        errors.push('accountingDenominationNaN');
       }
       if (
         !formData.collectionMultiplier ||
         String(formData.collectionMultiplier).trim().length === 0
       ) {
-        setCollectionMultiplierError("Collection multiplier is required");
-        errors.push("collectionMultiplier");
+        setCollectionMultiplierError('Collection multiplier is required');
+        errors.push('collectionMultiplier');
       } else if (isNaN(Number(formData.collectionMultiplier))) {
-        setCollectionMultiplierError("Collection multiplier must be a number");
-        errors.push("collectionMultiplierNaN");
+        setCollectionMultiplierError('Collection multiplier must be a number');
+        errors.push('collectionMultiplierNaN');
       }
       if (!formData.locationId || formData.locationId.trim().length === 0) {
-        setLocationError("Location is required");
-        errors.push("location");
+        setLocationError('Location is required');
+        errors.push('location');
       }
       if (relayIdError) {
-        errors.push("relayId");
+        errors.push('relayId');
       }
       if (errors.length > 0) {
-        toast.error("Please fix the highlighted fields before saving");
+        toast.error('Please fix the highlighted fields before saving');
         setLoading(false);
         return;
       }
@@ -519,7 +519,7 @@ export const EditCabinetModal = ({
 
       // Only proceed if there are actual changes
       if (meaningfulChanges.length === 0) {
-        toast.info("No changes detected");
+        toast.info('No changes detected');
         setLoading(false);
         return;
       }
@@ -530,20 +530,20 @@ export const EditCabinetModal = ({
         // Log the cabinet update activity with proper change tracking
         const changesSummary = getChangesSummary(meaningfulChanges);
         await logActivity(
-          "update",
-          "machine",
+          'update',
+          'machine',
           selectedCabinet._id,
           `${
-            selectedCabinet.installedGame || selectedCabinet.game || "Unknown"
+            selectedCabinet.installedGame || selectedCabinet.game || 'Unknown'
           } - ${
             selectedCabinet.assetNumber ||
             getSerialNumberIdentifier(selectedCabinet) ||
-            "Unknown"
+            'Unknown'
           }`,
           `Updated cabinet: ${changesSummary}`,
           selectedCabinet, // Previous data
           formData, // New data
-          meaningfulChanges.map((change) => ({
+          meaningfulChanges.map(change => ({
             field: change.field,
             oldValue: change.oldValue,
             newValue: change.newValue,
@@ -563,10 +563,10 @@ export const EditCabinetModal = ({
         handleClose();
       }
     } catch (error) {
-      console.error("Error updating cabinet:", error);
+      console.error('Error updating cabinet:', error);
 
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to update cabinet";
+        error instanceof Error ? error.message : 'Failed to update cabinet';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -589,56 +589,56 @@ export const EditCabinetModal = ({
       <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-4">
         <div
           ref={modalRef}
-          className="bg-container rounded-md shadow-lg max-w-2xl w-full max-h-[98vh] overflow-visible"
-          style={{ opacity: 0, transform: "translateY(-20px)" }}
+          className="max-h-[98vh] w-full max-w-2xl overflow-visible rounded-md bg-container shadow-lg"
+          style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
-          <div className="p-3 sm:p-4 flex items-center border-b border-border">
-            <h2 className="text-xl font-semibold text-center flex-1">
+          <div className="flex items-center border-b border-border p-3 sm:p-4">
+            <h2 className="flex-1 text-center text-xl font-semibold">
               Edit {getDisplaySerialNumber(selectedCabinet)} Details
             </h2>
             <Button
               onClick={handleClose}
               variant="ghost"
-              className="text-grayHighlight hover:bg-buttonInactive/10 ml-2"
+              className="ml-2 text-grayHighlight hover:bg-buttonInactive/10"
               size="icon"
               aria-label="Close"
             >
-              <Cross2Icon className="w-5 h-5" />
+              <Cross2Icon className="h-5 w-5" />
             </Button>
           </div>
 
           {/* Form Content */}
-          <div className="px-4 sm:px-8 pb-6 sm:pb-8 max-h-[calc(98vh-120px)] overflow-visible">
-            <div className="space-y-4 max-h-[calc(98vh-180px)] overflow-y-auto">
+          <div className="max-h-[calc(98vh-120px)] overflow-visible px-4 pb-6 sm:px-8 sm:pb-8">
+            <div className="max-h-[calc(98vh-180px)] space-y-4 overflow-y-auto">
               <div className="space-y-6">
                 {/* Creation Date Display */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-medium text-gray-700">
                         Machine Created
                       </h3>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="mt-1 text-sm text-gray-600">
                         {formData.createdAt
                           ? formatCreationDate(formData.createdAt)
-                          : "Unknown"}
+                          : 'Unknown'}
                       </p>
                     </div>
                     <div className="text-right">
                       <h3 className="text-sm font-medium text-gray-700">
                         Machine ID
                       </h3>
-                      <p className="text-sm text-gray-600 mt-1 font-mono">
-                        {formData._id || "Unknown"}
+                      <p className="mt-1 font-mono text-sm text-gray-600">
+                        {formData._id || 'Unknown'}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Serial Number & Installed Game */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       Serial Number
                     </label>
                     {cabinetDataLoading ? (
@@ -651,12 +651,12 @@ export const EditCabinetModal = ({
                           value={formData.assetNumber}
                           onChange={handleChange}
                           placeholder="Enter serial number"
-                          className={`bg-container border-border ${
-                            serialNumberError ? "border-red-500" : ""
+                          className={`border-border bg-container ${
+                            serialNumberError ? 'border-red-500' : ''
                           }`}
                         />
                         {serialNumberError && (
-                          <p className="text-red-500 text-xs mt-1">
+                          <p className="mt-1 text-xs text-red-500">
                             {serialNumberError}
                           </p>
                         )}
@@ -664,7 +664,7 @@ export const EditCabinetModal = ({
                     )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       Installed Game
                     </label>
                     {cabinetDataLoading ? (
@@ -677,12 +677,12 @@ export const EditCabinetModal = ({
                           value={formData.installedGame}
                           onChange={handleChange}
                           placeholder="Enter installed game name"
-                          className={`bg-container border-border ${
-                            installedGameError ? "border-red-500" : ""
+                          className={`border-border bg-container ${
+                            installedGameError ? 'border-red-500' : ''
                           }`}
                         />
                         {installedGameError && (
-                          <p className="text-red-500 text-xs mt-1">
+                          <p className="mt-1 text-xs text-red-500">
                             {installedGameError}
                           </p>
                         )}
@@ -693,7 +693,7 @@ export const EditCabinetModal = ({
 
                 {/* Game Type */}
                 <div>
-                  <label className="text-sm font-medium text-grayHighlight block mb-2">
+                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
                     Game Type
                   </label>
                   {cabinetDataLoading ? (
@@ -701,19 +701,19 @@ export const EditCabinetModal = ({
                   ) : (
                     <Select
                       value={formData.gameType}
-                      onValueChange={(value) => {
+                      onValueChange={value => {
                         // console.log("GameType changed to:", value);
                         setUserModifiedFields(
-                          (prev) => new Set([...prev, "gameType"])
+                          prev => new Set([...prev, 'gameType'])
                         );
-                        setFormData((prev) => {
+                        setFormData(prev => {
                           const newData = { ...prev, gameType: value };
                           // console.log("New form data:", newData);
                           return newData;
                         });
                       }}
                     >
-                      <SelectTrigger className="bg-container border-border">
+                      <SelectTrigger className="border-border bg-container">
                         <SelectValue placeholder="Select Game Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -732,7 +732,7 @@ export const EditCabinetModal = ({
 
                 {/* Manufacturer */}
                 <div>
-                  <label className="text-sm font-medium text-grayHighlight block mb-2">
+                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
                     Manufacturer
                   </label>
                   {manufacturersLoading ? (
@@ -740,25 +740,25 @@ export const EditCabinetModal = ({
                   ) : (
                     <Select
                       value={formData.manufacturer}
-                      onValueChange={(value) => {
+                      onValueChange={value => {
                         // Prevent setting the disabled "no-manufacturers" value
-                        if (value !== "no-manufacturers") {
+                        if (value !== 'no-manufacturers') {
                           setUserModifiedFields(
-                            (prev) => new Set([...prev, "manufacturer"])
+                            prev => new Set([...prev, 'manufacturer'])
                           );
-                          setFormData((prev) => ({
+                          setFormData(prev => ({
                             ...prev,
                             manufacturer: value,
                           }));
                         }
                       }}
                     >
-                      <SelectTrigger className="bg-container border-border h-10">
+                      <SelectTrigger className="h-10 border-border bg-container">
                         <SelectValue placeholder="Select Manufacturer" />
                       </SelectTrigger>
                       <SelectContent>
                         {manufacturers.length > 0 ? (
-                          manufacturers.map((manufacturer) => (
+                          manufacturers.map(manufacturer => (
                             <SelectItem key={manufacturer} value={manufacturer}>
                               {manufacturer}
                             </SelectItem>
@@ -774,9 +774,9 @@ export const EditCabinetModal = ({
                 </div>
 
                 {/* Accounting Denomination & Collection Multiplier */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       Accounting Denomination
                     </label>
                     {cabinetDataLoading ? (
@@ -789,12 +789,12 @@ export const EditCabinetModal = ({
                           value={formData.accountingDenomination}
                           onChange={handleChange}
                           placeholder="Enter denomination"
-                          className={`bg-container border-border ${
-                            accountingDenominationError ? "border-red-500" : ""
+                          className={`border-border bg-container ${
+                            accountingDenominationError ? 'border-red-500' : ''
                           }`}
                         />
                         {accountingDenominationError && (
-                          <p className="text-red-500 text-xs mt-1">
+                          <p className="mt-1 text-xs text-red-500">
                             {accountingDenominationError}
                           </p>
                         )}
@@ -802,7 +802,7 @@ export const EditCabinetModal = ({
                     )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       Collection Report Multiplier
                     </label>
                     {cabinetDataLoading ? (
@@ -815,12 +815,12 @@ export const EditCabinetModal = ({
                           value={formData.collectionMultiplier}
                           onChange={handleChange}
                           placeholder="Enter multiplier value"
-                          className={`bg-container border-border ${
-                            collectionMultiplierError ? "border-red-500" : ""
+                          className={`border-border bg-container ${
+                            collectionMultiplierError ? 'border-red-500' : ''
                           }`}
                         />
                         {collectionMultiplierError && (
-                          <p className="text-red-500 text-xs mt-1">
+                          <p className="mt-1 text-xs text-red-500">
                             {collectionMultiplierError}
                           </p>
                         )}
@@ -830,9 +830,9 @@ export const EditCabinetModal = ({
                 </div>
 
                 {/* Location & SMIB Board */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       Location
                     </label>
                     {locationsLoading || cabinetDataLoading ? (
@@ -840,17 +840,17 @@ export const EditCabinetModal = ({
                     ) : (
                       <Select
                         value={formData.locationId || undefined}
-                        onValueChange={(locationId) => {
-                          setLocationError("");
-                          setFormData((prev) => ({
+                        onValueChange={locationId => {
+                          setLocationError('');
+                          setFormData(prev => ({
                             ...prev,
                             locationId: locationId,
                           }));
                         }}
                       >
                         <SelectTrigger
-                          className={`w-full bg-container border-border ${
-                            locationError ? "border-red-500" : ""
+                          className={`w-full border-border bg-container ${
+                            locationError ? 'border-red-500' : ''
                           }`}
                         >
                           <SelectValue placeholder="Select location" />
@@ -858,10 +858,10 @@ export const EditCabinetModal = ({
                         <SelectContent>
                           {locations
                             .filter(
-                              (location) =>
-                                location.id && location.id.trim() !== ""
+                              location =>
+                                location.id && location.id.trim() !== ''
                             )
-                            .map((location) => (
+                            .map(location => (
                               <SelectItem key={location.id} value={location.id}>
                                 {location.name}
                               </SelectItem>
@@ -871,7 +871,7 @@ export const EditCabinetModal = ({
                     )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       SMIB Board
                     </label>
                     {cabinetDataLoading ? (
@@ -884,13 +884,13 @@ export const EditCabinetModal = ({
                           value={formData.smbId}
                           onChange={handleChange}
                           placeholder="Enter SMIB Board"
-                          className={`bg-container border-border ${
-                            relayIdError ? "border-red-500" : ""
+                          className={`border-border bg-container ${
+                            relayIdError ? 'border-red-500' : ''
                           }`}
                           maxLength={12}
                         />
                         {relayIdError && (
-                          <p className="text-red-500 text-xs mt-1">
+                          <p className="mt-1 text-xs text-red-500">
                             {relayIdError}
                           </p>
                         )}
@@ -901,7 +901,7 @@ export const EditCabinetModal = ({
 
                 {/* Status Field */}
                 <div>
-                  <label className="text-sm font-medium text-grayHighlight block mb-2">
+                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
                     Status
                   </label>
                   {cabinetDataLoading ? (
@@ -913,8 +913,8 @@ export const EditCabinetModal = ({
                   ) : (
                     <div className="flex space-x-4">
                       {[
-                        { value: "functional", label: "Functional" },
-                        { value: "non_functional", label: "Non Functional" },
+                        { value: 'functional', label: 'Functional' },
+                        { value: 'non_functional', label: 'Non Functional' },
                       ].map(({ value, label }) => (
                         <label key={value} className="inline-flex items-center">
                           <input
@@ -922,12 +922,12 @@ export const EditCabinetModal = ({
                             name="status"
                             checked={formData.status === value}
                             onChange={() =>
-                              setFormData((prev) => ({
+                              setFormData(prev => ({
                                 ...prev,
                                 status: value,
                               }))
                             }
-                            className="w-4 h-4 text-button border-border focus:ring-button"
+                            className="h-4 w-4 border-border text-button focus:ring-button"
                           />
                           <span className="ml-2">{label}</span>
                         </label>
@@ -939,7 +939,7 @@ export const EditCabinetModal = ({
                 {/* Custom Name Field - Only show if no valid serial number */}
                 {!hasValidSerialNumber(selectedCabinet) && (
                   <div>
-                    <label className="text-sm font-medium text-grayHighlight block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
                       Custom Name <span className="text-red-500">*</span>
                     </label>
                     {cabinetDataLoading ? (
@@ -948,9 +948,9 @@ export const EditCabinetModal = ({
                       <Input
                         id="customName"
                         name="customName"
-                        value={formData.custom?.name || ""}
-                        onChange={(e) => {
-                          setFormData((prev) => ({
+                        value={formData.custom?.name || ''}
+                        onChange={e => {
+                          setFormData(prev => ({
                             ...prev,
                             custom: {
                               ...prev.custom,
@@ -959,10 +959,10 @@ export const EditCabinetModal = ({
                           }));
                         }}
                         placeholder="Enter custom name for this machine"
-                        className="bg-container border-border"
+                        className="border-border bg-container"
                       />
                     )}
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="mt-1 text-xs text-gray-500">
                       Since this machine doesn&apos;t have a valid serial
                       number, you can set a custom name to identify it.
                     </p>
@@ -972,13 +972,13 @@ export const EditCabinetModal = ({
             </div>
 
             {/* Footer */}
-            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="bg-button hover:bg-button/90 text-container px-8"
+                className="bg-button px-8 text-container hover:bg-button/90"
               >
-                {loading ? "Saving..." : "SAVE"}
+                {loading ? 'Saving...' : 'SAVE'}
               </Button>
               <Button
                 onClick={handleClose}

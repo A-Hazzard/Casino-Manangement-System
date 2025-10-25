@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   Command,
   CommandList,
@@ -8,15 +8,15 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { LocationSearchSelectProps } from "@/lib/types/location";
+} from '@/components/ui/dialog';
+import { LocationSearchSelectProps } from '@/lib/types/location';
 
 export function LocationSearchSelect({
   locations,
@@ -24,14 +24,14 @@ export function LocationSearchSelect({
   onSelect,
 }: LocationSearchSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   // Sort them alphabetically and add "All Locations" at the top
   const sorted = React.useMemo(() => {
-    const allLocationsOption = { _id: "all", name: "All Locations" };
+    const allLocationsOption = { _id: 'all', name: 'All Locations' };
     return [allLocationsOption, ...locations].sort((a, b) => {
-      if (a._id === "all") return -1;
-      if (b._id === "all") return 1;
+      if (a._id === 'all') return -1;
+      if (b._id === 'all') return 1;
       return a.name.localeCompare(b.name);
     });
   }, [locations]);
@@ -42,7 +42,7 @@ export function LocationSearchSelect({
     if (!q) return sorted;
     return [
       sorted[0], // Keep "All Locations"
-      ...sorted.slice(1).filter((loc) => loc.name.toLowerCase().includes(q)),
+      ...sorted.slice(1).filter(loc => loc.name.toLowerCase().includes(q)),
     ];
   }, [searchQuery, sorted]);
 
@@ -51,18 +51,18 @@ export function LocationSearchSelect({
     onSelect(locId);
   };
 
-  const buttonLabel = selectedLocationName || "Select Location";
+  const buttonLabel = selectedLocationName || 'Select Location';
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="border px-3 py-2 rounded-md bg-container text-foreground w-full text-left">
+        <button className="w-full rounded-md border bg-container px-3 py-2 text-left text-foreground">
           {buttonLabel}
         </button>
       </DialogTrigger>
 
-      <DialogContent className="p-0 overflow-hidden sm:max-w-[400px]">
-        <DialogHeader className="px-4 py-2 border-b border-border">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-[400px]">
+        <DialogHeader className="border-b border-border px-4 py-2">
           <DialogTitle className="text-lg font-semibold">
             Select a Location
           </DialogTitle>
@@ -79,7 +79,7 @@ export function LocationSearchSelect({
           <CommandList>
             <CommandEmpty>No matching locations.</CommandEmpty>
             <CommandGroup>
-              {filteredLocations.map((loc) => (
+              {filteredLocations.map(loc => (
                 <CommandItem
                   key={loc._id}
                   onSelect={() => handleSelect(loc._id)}

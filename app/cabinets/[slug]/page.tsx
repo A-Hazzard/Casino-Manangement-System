@@ -1,45 +1,41 @@
-"use client";
+'use client';
 
-import React, { useEffect, useRef, useState } from "react";
-import PageLayout from "@/components/layout/PageLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import PageLayout from '@/components/layout/PageLayout';
+import { useEffect, useRef, useState } from 'react';
 
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
-import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
-import { Button } from "@/components/ui/button";
-import { useCabinetDetailsData, useSmibConfiguration } from "@/lib/hooks/data";
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import { Button } from '@/components/ui/button';
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
+import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
   Pencil2Icon,
-} from "@radix-ui/react-icons";
-import { motion, AnimatePresence, Variants } from "framer-motion";
-import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
+} from '@radix-ui/react-icons';
+import { AnimatePresence, motion, Variants } from 'framer-motion';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 // GSAP import removed - animations were causing performance issues
-import RefreshButton from "@/components/ui/RefreshButton";
-import { RefreshCw } from "lucide-react";
-import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
-import { NotFoundError, NetworkError } from "@/components/ui/errors";
-import { toast } from "sonner";
+import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
+import { NetworkError, NotFoundError } from '@/components/ui/errors';
+import RefreshButton from '@/components/ui/RefreshButton';
+import { RefreshCw, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 // Extracted skeleton and error components
-import { CabinetDetailsLoadingState } from "@/components/ui/skeletons/CabinetDetailSkeletons";
+import { CabinetDetailsLoadingState } from '@/components/ui/skeletons/CabinetDetailSkeletons';
 
 // Animation variants
 const configContentVariants: Variants = {
   hidden: { opacity: 0, height: 0 },
-  visible: { opacity: 1, height: "auto" },
+  visible: { opacity: 1, height: 'auto' },
 };
 
 const itemVariants: Variants = {
@@ -66,9 +62,17 @@ function CabinetDetailPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const slug = pathname.split("/").pop() || "";
+  const slug = pathname.split('/').pop() || '';
   const [isClient, setIsClient] = useState(false);
   const hasMounted = useHasMounted();
+
+  // Get current user for permission checking
+  const { user } = useUserStore();
+  const canAccessSmibConfig =
+    user &&
+    user.roles &&
+    user.roles.length > 0 &&
+    ['technician', 'manager', 'admin', 'evo_admin'].includes(user.roles[0]);
 
   const {
     selectedLicencee,
@@ -109,44 +113,50 @@ function CabinetDetailPageContent() {
 
   const {
     smibConfigExpanded,
-    communicationMode,
-    firmwareVersion,
     isEditMode,
     mqttConfigData,
     isLoadingMqttConfig: _isLoadingMqttConfig,
     isConnectedToMqtt,
+    hasConfigBeenFetched,
     formData,
     toggleSmibConfig,
-    setEditMode,
+    // setEditMode,
     setCommunicationModeFromData,
     setFirmwareVersionFromData,
     updateFormData,
     resetFormData,
     saveConfiguration,
     fetchMqttConfig,
-    connectToConfigStream,
     disconnectFromConfigStream,
     requestLiveConfig,
+    fetchSmibConfiguration,
+    isManuallyFetching,
     publishConfigUpdate: _publishConfigUpdate,
+    updateNetworkConfig,
+    updateMqttConfig,
+    updateComsConfig,
+    // _updateOtaConfig,
+    // _updateAppConfig,
   } = useSmibConfiguration();
 
   // Initialize activeMetricsTabContent from URL on first load
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
     useState<string>(() => {
-      const section = searchParams?.get("section");
-      if (section === "live-metrics") return "Live Metrics";
-      if (section === "bill-validator") return "Bill Validator";
-      if (section === "activity-log") return "Activity Log";
-      if (section === "collection-history") return "Collection History";
-      if (section === "collection-settings") return "Collection Settings";
-      if (section === "configurations") return "Configurations";
-      return "Range Metrics"; // default
+      const section = searchParams?.get('section');
+      if (section === 'live-metrics') return 'Live Metrics';
+      if (section === 'bill-validator') return 'Bill Validator';
+      if (section === 'activity-log') return 'Activity Log';
+      if (section === 'collection-history') return 'Collection History';
+      if (section === 'collection-settings') return 'Collection Settings';
+      if (section === 'configurations') return 'Configurations';
+      return 'Range Metrics'; // default
     });
 
   // Refs for animation
   const configSectionRef = useRef<HTMLDivElement>(null);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
 
   // Update SMIB configuration when cabinet data changes
@@ -157,29 +167,7 @@ function CabinetDetailPageContent() {
       // Fetch MQTT configuration from API
       fetchMqttConfig(String(cabinet._id));
 
-      // Extract relayId from cabinet data
-      const relayId = cabinet.relayId || cabinet.smibBoard;
-      if (relayId) {
-        // Connect to live MQTT config stream
-        connectToConfigStream(relayId);
-
-        // Request initial config data after SSE connection is established
-        // Use a small delay to ensure the connection is ready
-        setTimeout(() => {
-          console.log(
-            `🔍 [PAGE] Requesting initial config for relayId: ${relayId}`
-          );
-          Promise.all([
-            requestLiveConfig(relayId, "net"), // Network config
-            requestLiveConfig(relayId, "mqtt"), // MQTT config
-            requestLiveConfig(relayId, "coms"), // Communication config
-            requestLiveConfig(relayId, "ota"), // OTA config
-            requestLiveConfig(relayId, "app"), // App config
-          ]).catch((error) => {
-            console.error("Error requesting live config:", error);
-          });
-        }, 2000); // Wait 2 seconds for SSE connection to be established
-      }
+      // Note: SMIB connection is now manual - only when user clicks "Get SMIB Configuration"
     }
 
     // Cleanup on unmount or cabinet change
@@ -191,9 +179,7 @@ function CabinetDetailPageContent() {
     setCommunicationModeFromData,
     setFirmwareVersionFromData,
     fetchMqttConfig,
-    connectToConfigStream,
     disconnectFromConfigStream,
-    requestLiveConfig,
   ]);
 
   // Note: Date filter changes are now handled by the main useEffect above
@@ -216,39 +202,39 @@ function CabinetDetailPageContent() {
 
   // Keep state in sync with URL changes (for browser back/forward)
   useEffect(() => {
-    const section = searchParams?.get("section");
+    const section = searchParams?.get('section');
     if (
-      section === "live-metrics" &&
-      activeMetricsTabContent !== "Live Metrics"
+      section === 'live-metrics' &&
+      activeMetricsTabContent !== 'Live Metrics'
     ) {
-      setActiveMetricsTabContent("Live Metrics");
+      setActiveMetricsTabContent('Live Metrics');
     } else if (
-      section === "bill-validator" &&
-      activeMetricsTabContent !== "Bill Validator"
+      section === 'bill-validator' &&
+      activeMetricsTabContent !== 'Bill Validator'
     ) {
-      setActiveMetricsTabContent("Bill Validator");
+      setActiveMetricsTabContent('Bill Validator');
     } else if (
-      section === "activity-log" &&
-      activeMetricsTabContent !== "Activity Log"
+      section === 'activity-log' &&
+      activeMetricsTabContent !== 'Activity Log'
     ) {
-      setActiveMetricsTabContent("Activity Log");
+      setActiveMetricsTabContent('Activity Log');
     } else if (
-      section === "collection-history" &&
-      activeMetricsTabContent !== "Collection History"
+      section === 'collection-history' &&
+      activeMetricsTabContent !== 'Collection History'
     ) {
-      setActiveMetricsTabContent("Collection History");
+      setActiveMetricsTabContent('Collection History');
     } else if (
-      section === "collection-settings" &&
-      activeMetricsTabContent !== "Collection Settings"
+      section === 'collection-settings' &&
+      activeMetricsTabContent !== 'Collection Settings'
     ) {
-      setActiveMetricsTabContent("Collection Settings");
+      setActiveMetricsTabContent('Collection Settings');
     } else if (
-      section === "configurations" &&
-      activeMetricsTabContent !== "Configurations"
+      section === 'configurations' &&
+      activeMetricsTabContent !== 'Configurations'
     ) {
-      setActiveMetricsTabContent("Configurations");
-    } else if (!section && activeMetricsTabContent !== "Range Metrics") {
-      setActiveMetricsTabContent("Range Metrics");
+      setActiveMetricsTabContent('Configurations');
+    } else if (!section && activeMetricsTabContent !== 'Range Metrics') {
+      setActiveMetricsTabContent('Range Metrics');
     }
   }, [searchParams, activeMetricsTabContent]);
 
@@ -258,22 +244,22 @@ function CabinetDetailPageContent() {
 
     // Update URL based on tab selection
     const sectionMap: Record<string, string> = {
-      "Range Metrics": "",
-      "Live Metrics": "live-metrics",
-      "Bill Validator": "bill-validator",
-      "Activity Log": "activity-log",
-      "Collection History": "collection-history",
-      "Collection Settings": "collection-settings",
-      Configurations: "configurations",
+      'Range Metrics': '',
+      'Live Metrics': 'live-metrics',
+      'Bill Validator': 'bill-validator',
+      'Activity Log': 'activity-log',
+      'Collection History': 'collection-history',
+      'Collection Settings': 'collection-settings',
+      Configurations: 'configurations',
     };
 
-    const params = new URLSearchParams(searchParams?.toString() || "");
+    const params = new URLSearchParams(searchParams?.toString() || '');
     const sectionValue = sectionMap[tab];
 
     if (sectionValue) {
-      params.set("section", sectionValue);
+      params.set('section', sectionValue);
     } else {
-      params.delete("section");
+      params.delete('section');
     }
 
     const newUrl = `${pathname}?${params.toString()}`;
@@ -288,8 +274,8 @@ function CabinetDetailPageContent() {
       setShowFloatingRefresh(scrollTop > 200);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // PERFORMANCE OPTIMIZATION: Remove GSAP animations that run on every data change
@@ -310,21 +296,164 @@ function CabinetDetailPageContent() {
   const handleSaveSMIBConfig = async (machineControl?: string) => {
     if (!cabinet) return;
 
-    const success = await saveConfiguration(cabinet._id, machineControl);
-    if (success) {
-      // Refresh cabinet data to show updated configuration
-      await fetchCabinetDetailsData();
+    const relayId = cabinet.relayId || cabinet.smibBoard;
+    if (!relayId) {
+      toast.error('No relay ID found for this cabinet');
+      return;
+    }
 
-      // Show success message
+    try {
+      // Handle machine control commands
       if (machineControl) {
-        toast.success(
-          `Machine control command "${machineControl}" sent successfully!`
-        );
-      } else {
-        toast.success("SMIB configuration updated successfully!");
+        const success = await saveConfiguration(cabinet._id, machineControl);
+        if (success) {
+          toast.success(
+            `Machine control command "${machineControl}" sent successfully!`
+          );
+        } else {
+          toast.error('Failed to send machine control command');
+        }
+        return;
       }
-    } else {
-      toast.error("Failed to update SMIB configuration");
+
+      // Update configurations via MQTT based on current editing section
+      const updatePromises = [];
+
+      // Update network configuration if editing network section
+      if (editingSection === 'network') {
+        if (
+          formData.networkSSID !== 'No Value Provided' ||
+          formData.networkPassword !== 'No Value Provided' ||
+          formData.networkChannel !== 'No Value Provided'
+        ) {
+          updatePromises.push(
+            updateNetworkConfig(relayId, {
+              netStaSSID:
+                formData.networkSSID !== 'No Value Provided'
+                  ? formData.networkSSID
+                  : undefined,
+              netStaPwd:
+                formData.networkPassword !== 'No Value Provided'
+                  ? formData.networkPassword
+                  : undefined,
+              netStaChan:
+                formData.networkChannel !== 'No Value Provided'
+                  ? parseInt(formData.networkChannel)
+                  : undefined,
+            })
+          );
+        }
+      }
+
+      // Update COMS configuration if editing coms section
+      if (editingSection === 'coms') {
+        if (
+          formData.comsMode !== 'No Value Provided' ||
+          formData.comsAddr !== 'No Value Provided' ||
+          formData.comsRateMs !== 'No Value Provided' ||
+          formData.comsRTE !== 'No Value Provided' ||
+          formData.comsGPC !== 'No Value Provided'
+        ) {
+          updatePromises.push(
+            updateComsConfig(relayId, {
+              comsMode:
+                formData.comsMode !== 'No Value Provided'
+                  ? parseInt(formData.comsMode)
+                  : undefined,
+              comsAddr:
+                formData.comsAddr !== 'No Value Provided'
+                  ? parseInt(formData.comsAddr)
+                  : undefined,
+              comsRateMs:
+                formData.comsRateMs !== 'No Value Provided'
+                  ? parseInt(formData.comsRateMs)
+                  : undefined,
+              comsRTE:
+                formData.comsRTE !== 'No Value Provided'
+                  ? parseInt(formData.comsRTE)
+                  : undefined,
+              comsGPC:
+                formData.comsGPC !== 'No Value Provided'
+                  ? parseInt(formData.comsGPC)
+                  : undefined,
+            })
+          );
+        }
+      }
+
+      // Update MQTT configuration if editing mqtt section
+      if (editingSection === 'mqtt') {
+        if (
+          formData.mqttPubTopic !== 'No Value Provided' ||
+          formData.mqttCfgTopic !== 'No Value Provided' ||
+          formData.mqttURI !== 'No Value Provided' ||
+          formData.mqttTLS !== 'No Value Provided' ||
+          formData.mqttIdleTimeout !== 'No Value Provided'
+        ) {
+          updatePromises.push(
+            updateMqttConfig(relayId, {
+              mqttPubTopic:
+                formData.mqttPubTopic !== 'No Value Provided'
+                  ? formData.mqttPubTopic
+                  : undefined,
+              mqttCfgTopic:
+                formData.mqttCfgTopic !== 'No Value Provided'
+                  ? formData.mqttCfgTopic
+                  : undefined,
+              mqttURI:
+                formData.mqttURI !== 'No Value Provided'
+                  ? formData.mqttURI
+                  : undefined,
+              mqttSecure:
+                formData.mqttTLS !== 'No Value Provided'
+                  ? parseInt(formData.mqttTLS)
+                  : undefined,
+              mqttIdleTimeS:
+                formData.mqttIdleTimeout !== 'No Value Provided'
+                  ? parseInt(formData.mqttIdleTimeout)
+                  : undefined,
+            })
+          );
+        }
+      }
+
+      // Execute updates for the current section
+      if (updatePromises.length > 0) {
+        console.warn(
+          `📡 [PAGE] Sending ${updatePromises.length} configuration updates for ${editingSection} section to relayId: ${relayId}`
+        );
+        await Promise.all(updatePromises);
+        toast.success(
+          `${editingSection?.toUpperCase()} configuration update sent successfully!`
+        );
+
+        // Don't immediately refresh - let the SMIB device process the update
+        // The SSE stream will receive the updated values when the SMIB responds
+        console.warn(
+          `📡 [PAGE] Configuration updates sent. Waiting for SMIB device to process and respond...`
+        );
+
+        // Optional: Add a delay and then request updated config
+        setTimeout(async () => {
+          console.warn(
+            `📡 [PAGE] Requesting updated configuration after delay...`
+          );
+          try {
+            await Promise.all([
+              requestLiveConfig(relayId, 'net'),
+              requestLiveConfig(relayId, 'mqtt'),
+              requestLiveConfig(relayId, 'coms'),
+            ]);
+          } catch (error) {
+            console.error('Error requesting updated config:', error);
+          }
+        }, 3000); // Wait 3 seconds for SMIB to process
+      } else {
+        toast.info('No configuration changes detected');
+      }
+    } catch (error) {
+      console.error('Error updating SMIB configuration:', error);
+      toast.error('Failed to update SMIB configuration');
     }
   };
 
@@ -354,11 +483,11 @@ function CabinetDetailPageContent() {
         showToaster={false}
       >
         {/* Back button */}
-        <div className="mt-4 mb-2">
+        <div className="mb-2 mt-4">
           <Button
             onClick={handleBackToCabinets}
             variant="outline"
-            className="flex items-center bg-container border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-container transition-colors duration-300"
+            className="flex items-center border-buttonActive bg-container text-buttonActive transition-colors duration-300 hover:bg-buttonActive hover:text-container"
             size="sm"
           >
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
@@ -367,7 +496,7 @@ function CabinetDetailPageContent() {
         </div>
 
         {/* Error Component */}
-        {errorType === "not-found" ? (
+        {errorType === 'not-found' ? (
           <NotFoundError
             title="Cabinet Not Found"
             message={`The cabinet "${slug}" could not be found. It may have been deleted or moved.`}
@@ -375,7 +504,7 @@ function CabinetDetailPageContent() {
             onRetry={fetchCabinetDetailsData}
             onGoBack={handleBackToCabinets}
           />
-        ) : errorType === "network" ? (
+        ) : errorType === 'network' ? (
           <NetworkError
             title="Connection Error"
             message="Unable to load cabinet details. Please check your connection and try again."
@@ -419,12 +548,12 @@ function CabinetDetailPageContent() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="mt-4 mb-2"
+            className="mb-2 mt-4"
           >
             <Button
               onClick={handleBackToCabinets}
               variant="outline"
-              className="flex items-center bg-container border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-container transition-colors duration-300"
+              className="flex items-center border-buttonActive bg-container text-buttonActive transition-colors duration-300 hover:bg-buttonActive hover:text-container"
               size="sm"
             >
               <ArrowLeftIcon className="mr-2 h-4 w-4" />
@@ -432,11 +561,11 @@ function CabinetDetailPageContent() {
             </Button>
           </motion.div>
         ) : (
-          <div className="mt-4 mb-2">
+          <div className="mb-2 mt-4">
             <Button
               onClick={handleBackToCabinets}
               variant="outline"
-              className="flex items-center bg-container border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-container transition-colors duration-300"
+              className="flex items-center border-buttonActive bg-container text-buttonActive transition-colors duration-300 hover:bg-buttonActive hover:text-container"
               size="sm"
             >
               <ArrowLeftIcon className="mr-2 h-4 w-4" />
@@ -448,17 +577,17 @@ function CabinetDetailPageContent() {
         {/* Cabinet Info Header */}
         {hasMounted ? (
           <motion.div
-            className="mt-6 mb-6 relative"
+            className="relative mb-6 mt-6"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="flex flex-col md:flex-row md:items-center justify-between">
+            <div className="flex flex-col justify-between md:flex-row md:items-center">
               <div className="mb-4 md:mb-0">
-                <h1 className="text-2xl font-bold flex items-center">
-                  Name: {cabinet ? getSerialNumberIdentifier(cabinet) : "GMID1"}
+                <h1 className="flex items-center text-2xl font-bold">
+                  Name: {cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1'}
                   <motion.button
-                    className="ml-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    className="ml-2 rounded-full p-2 transition-colors hover:bg-gray-100"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => {
@@ -467,68 +596,68 @@ function CabinetDetailPageContent() {
                       }
                     }}
                   >
-                    <Pencil2Icon className="text-button w-5 h-5" />
+                    <Pencil2Icon className="h-5 w-5 text-button" />
                   </motion.button>
                 </h1>
                 {/* Show deleted status if cabinet has deletedAt field and it's greater than year 2020 */}
                 {cabinet?.deletedAt &&
                   new Date(cabinet.deletedAt).getFullYear() > 2020 && (
-                    <div className="mt-2 mb-2">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
-                        <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
-                        DELETED -{" "}
+                    <div className="mb-2 mt-2">
+                      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
+                        <span className="mr-2 h-2 w-2 rounded-full bg-red-400"></span>
+                        DELETED -{' '}
                         {new Date(cabinet.deletedAt).toLocaleDateString()}
                       </span>
                     </div>
                   )}
-                <p className="text-grayHighlight mt-2">
-                  Manufacturer:{" "}
+                <p className="mt-2 text-grayHighlight">
+                  Manufacturer:{' '}
                   {cabinet?.gameConfig?.theoreticalRtp
-                    ? "Some Manufacturer"
-                    : "None"}
+                    ? 'Some Manufacturer'
+                    : 'None'}
                 </p>
-                <p className="text-grayHighlight mt-1">
-                  Game Type: {cabinet?.gameType || "None"}
+                <p className="mt-1 text-grayHighlight">
+                  Game Type: {cabinet?.gameType || 'None'}
                 </p>
                 <p className="mt-1">
                   <span className="text-button">
-                    {locationName === "Location Not Found" ? (
+                    {locationName === 'Location Not Found' ? (
                       <span className="text-orange-600">
                         Location Not Found
                       </span>
-                    ) : locationName === "No Location Assigned" ? (
+                    ) : locationName === 'No Location Assigned' ? (
                       <span className="text-gray-500">
                         No Location Assigned
                       </span>
                     ) : (
-                      locationName || "Unknown Location"
+                      locationName || 'Unknown Location'
                     )}
                   </span>
                   <span className="text-grayHighlight">
-                    ,{" "}
-                    {selectedLicencee === "TTG"
-                      ? "Trinidad and Tobago"
-                      : selectedLicencee === "Cabanada"
-                      ? "Guyana"
-                      : selectedLicencee === "Barbados"
-                      ? "Barbados"
-                      : "Trinidad and Tobago"}
+                    ,{' '}
+                    {selectedLicencee === 'TTG'
+                      ? 'Trinidad and Tobago'
+                      : selectedLicencee === 'Cabanada'
+                        ? 'Guyana'
+                        : selectedLicencee === 'Barbados'
+                          ? 'Barbados'
+                          : 'Trinidad and Tobago'}
                   </span>
                 </p>
               </div>
 
               {/* Only render this on client side to avoid hydration mismatch */}
               {isClient && (
-                <div className="md:absolute md:top-0 md:right-0 mt-2 md:mt-0 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2 md:absolute md:right-0 md:top-0 md:mt-0">
                   <motion.div
-                    className="flex items-center px-3 py-1.5 rounded-lg bg-container shadow-sm border"
+                    className="flex items-center rounded-lg border bg-container px-3 py-1.5 shadow-sm"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5 }}
                   >
                     <motion.div
-                      className={`w-2.5 h-2.5 rounded-full mr-2 ${
-                        isOnline ? "bg-button" : "bg-destructive"
+                      className={`mr-2 h-2.5 w-2.5 rounded-full ${
+                        isOnline ? 'bg-button' : 'bg-destructive'
                       }`}
                       animate={
                         isOnline
@@ -543,10 +672,10 @@ function CabinetDetailPageContent() {
                     ></motion.div>
                     <span
                       className={`text-sm font-semibold ${
-                        isOnline ? "text-button" : "text-destructive"
+                        isOnline ? 'text-button' : 'text-destructive'
                       }`}
                     >
-                      {isOnline ? "ONLINE" : "OFFLINE"}
+                      {isOnline ? 'ONLINE' : 'OFFLINE'}
                     </span>
                   </motion.div>
                   <RefreshButton
@@ -559,55 +688,55 @@ function CabinetDetailPageContent() {
             </div>
           </motion.div>
         ) : (
-          <div className="mt-6 mb-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between">
+          <div className="relative mb-6 mt-6">
+            <div className="flex flex-col justify-between md:flex-row md:items-center">
               <div className="mb-4 md:mb-0">
-                <h1 className="text-2xl font-bold flex items-center">
-                  Name: {cabinet ? getSerialNumberIdentifier(cabinet) : "GMID1"}
+                <h1 className="flex items-center text-2xl font-bold">
+                  Name: {cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1'}
                 </h1>
                 {/* Show deleted status if cabinet has deletedAt field and it's greater than year 2020 */}
                 {cabinet?.deletedAt &&
                   new Date(cabinet.deletedAt).getFullYear() > 2020 && (
-                    <div className="mt-2 mb-2">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
-                        <span className="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
-                        DELETED -{" "}
+                    <div className="mb-2 mt-2">
+                      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
+                        <span className="mr-2 h-2 w-2 rounded-full bg-red-400"></span>
+                        DELETED -{' '}
                         {new Date(cabinet.deletedAt).toLocaleDateString()}
                       </span>
                     </div>
                   )}
-                <p className="text-grayHighlight mt-2">
-                  Manufacturer:{" "}
+                <p className="mt-2 text-grayHighlight">
+                  Manufacturer:{' '}
                   {cabinet?.gameConfig?.theoreticalRtp
-                    ? "Some Manufacturer"
-                    : "None"}
+                    ? 'Some Manufacturer'
+                    : 'None'}
                 </p>
-                <p className="text-grayHighlight mt-1">
-                  Game Type: {cabinet?.gameType || "None"}
+                <p className="mt-1 text-grayHighlight">
+                  Game Type: {cabinet?.gameType || 'None'}
                 </p>
                 <p className="mt-1">
                   <span className="text-button">
-                    {locationName === "Location Not Found" ? (
+                    {locationName === 'Location Not Found' ? (
                       <span className="text-orange-600">
                         Location Not Found
                       </span>
-                    ) : locationName === "No Location Assigned" ? (
+                    ) : locationName === 'No Location Assigned' ? (
                       <span className="text-gray-500">
                         No Location Assigned
                       </span>
                     ) : (
-                      locationName || "Unknown Location"
+                      locationName || 'Unknown Location'
                     )}
                   </span>
                   <span className="text-grayHighlight">
-                    ,{" "}
-                    {selectedLicencee === "TTG"
-                      ? "Trinidad and Tobago"
-                      : selectedLicencee === "Cabanada"
-                      ? "Guyana"
-                      : selectedLicencee === "Barbados"
-                      ? "Barbados"
-                      : "Trinidad and Tobago"}
+                    ,{' '}
+                    {selectedLicencee === 'TTG'
+                      ? 'Trinidad and Tobago'
+                      : selectedLicencee === 'Cabanada'
+                        ? 'Guyana'
+                        : selectedLicencee === 'Barbados'
+                          ? 'Barbados'
+                          : 'Trinidad and Tobago'}
                   </span>
                 </p>
               </div>
@@ -618,25 +747,45 @@ function CabinetDetailPageContent() {
         {/* SMIB Configuration */}
         {hasMounted ? (
           <motion.div
-            className="mt-4 bg-container rounded-lg shadow-md shadow-purple-200"
+            className="mt-4 rounded-lg bg-container shadow-md shadow-purple-200"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <div className="px-6 py-4 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-semibold">SMIB Configuration</h2>
-                {/* MQTT Connection Status */}
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      isConnectedToMqtt ? "bg-green-500" : "bg-gray-400"
-                    }`}
-                  ></div>
-                  <span className="text-sm text-gray-600">
-                    {isConnectedToMqtt ? "Live" : "Offline"}
-                  </span>
-                </div>
+            <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-lg font-semibold sm:text-xl">
+                  SMIB Configuration
+                </h2>
+                {/* SMIB Connection Status - only show after user clicks Get SMIB Configuration */}
+                {hasConfigBeenFetched && (
+                  <>
+                    {isManuallyFetching ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-20 animate-pulse rounded bg-gray-200"></div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            isConnectedToMqtt
+                              ? 'animate-pulse bg-green-500'
+                              : 'bg-red-500'
+                          }`}
+                        ></div>
+                        <span
+                          className={`text-sm font-medium ${
+                            isConnectedToMqtt
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                          }`}
+                        >
+                          {isConnectedToMqtt ? 'SMIB Online' : 'SMIB Offline'}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
                 {smibConfigExpanded && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -658,71 +807,85 @@ function CabinetDetailPageContent() {
                           onClick={async () => await handleSaveSMIBConfig()}
                           variant="outline"
                           size="sm"
-                          className="h-8 px-3 text-xs bg-button text-container hover:bg-buttonActive"
+                          className="h-8 bg-button px-3 text-xs text-container hover:bg-buttonActive"
                         >
                           Save All
                         </Button>
                       </>
-                    ) : (
-                      <Button
-                        onClick={() => setEditMode(true)}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-3 text-xs"
-                      >
-                        Edit
-                      </Button>
-                    )}
+                    ) : null}
                   </motion.div>
                 )}
               </div>
-              <motion.div
-                className="cursor-pointer"
-                animate={{ rotate: smibConfigExpanded ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
-                onClick={toggleSmibConfig}
-              >
-                <ChevronDownIcon className="h-5 w-5" />
-              </motion.div>
+              <div className="flex w-full items-center justify-end sm:w-auto">
+                {hasConfigBeenFetched ? (
+                  <motion.div
+                    className="cursor-pointer"
+                    animate={{ rotate: smibConfigExpanded ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                    onClick={toggleSmibConfig}
+                  >
+                    <ChevronDownIcon className="h-5 w-5" />
+                  </motion.div>
+                ) : (
+                  <Button
+                    onClick={() =>
+                      cabinet && fetchSmibConfiguration(cabinet.relayId)
+                    }
+                    disabled={isManuallyFetching || !canAccessSmibConfig}
+                    className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4 sm:text-sm"
+                    title={
+                      !canAccessSmibConfig
+                        ? 'Access restricted to Technicians, Managers, Admins, and Evo Admins'
+                        : ''
+                    }
+                  >
+                    {isManuallyFetching ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                        <span className="hidden sm:inline">Fetching...</span>
+                        <span className="sm:hidden">Loading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="hidden sm:inline">
+                          Get SMIB Configuration
+                        </span>
+                        <span className="sm:hidden">Get SMIB Config</span>
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
 
             <motion.div
-              className="px-6 pb-2"
+              className="px-4 pb-2 sm:px-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
               {/* Responsive grid for SMIB details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 md:justify-between gap-2 md:gap-4">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4">
                 <div>
-                  <p className="text-sm text-grayHighlight">
-                    SMIB ID: {mqttConfigData?.smibId || "No Value Provided"}
-                  </p>
-                  <p className="text-sm text-grayHighlight mt-1 md:mt-0">
-                    {" "}
-                    {/* Adjust margin */}
-                    Connected to WiFi network{" "}
-                    {mqttConfigData?.networkSSID || "No Value Provided"}
+                  <p className="text-xs text-grayHighlight sm:text-sm">
+                    <span className="font-medium">SMIB ID:</span>{' '}
+                    {mqttConfigData?.smibId || 'No Value Provided'}
                   </p>
                 </div>
-                <div className="md:text-right">
-                  {" "}
-                  {/* Align text right on medium screens and up */}
-                  <p className="text-sm text-grayHighlight">
-                    Communication Mode:{" "}
+                <div className="sm:text-right">
+                  <p className="text-xs text-grayHighlight sm:text-sm">
+                    <span className="font-medium">Communication Mode:</span>{' '}
                     {cabinet?.smibConfig?.coms?.comsMode !== undefined
                       ? cabinet?.smibConfig?.coms?.comsMode === 0
-                        ? "sas"
+                        ? 'sas'
                         : cabinet?.smibConfig?.coms?.comsMode === 1
-                        ? "non sas"
-                        : "IGT"
-                      : "undefined"}
+                          ? 'non sas'
+                          : 'IGT'
+                      : 'undefined'}
                   </p>
-                  <p className="text-sm text-grayHighlight mt-1 md:mt-0">
-                    {" "}
-                    {/* Adjust margin */}
-                    Running firmware{" "}
-                    {mqttConfigData?.firmwareVersion || "No Value Provided"}
+                  <p className="mt-1 text-xs text-grayHighlight sm:mt-0 sm:text-sm">
+                    <span className="font-medium">Running firmware:</span>{' '}
+                    {mqttConfigData?.firmwareVersion || 'No Value Provided'}
                   </p>
                 </div>
               </div>
@@ -733,71 +896,24 @@ function CabinetDetailPageContent() {
               {smibConfigExpanded && (
                 <motion.div
                   ref={configSectionRef}
-                  className="px-6 pb-6 space-y-6 border-t border-gray-200 pt-4 overflow-hidden"
+                  className="space-y-6 overflow-hidden border-t border-gray-200 px-4 pb-6 pt-4 sm:px-6"
                   variants={configContentVariants}
                   initial="hidden"
                   animate="visible"
                   exit="hidden"
                 >
                   <TooltipProvider delayDuration={100}>
-                    {/* Communication Mode */}
-                    <motion.div variants={itemVariants}>
-                      <h3 className="font-medium mb-2 text-foreground">
-                        Communication Mode
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <select
-                          className={`w-60 border border-border rounded p-2 ${
-                            isEditMode
-                              ? "bg-background text-foreground cursor-pointer"
-                              : "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          }`}
-                          value={
-                            isEditMode
-                              ? formData.communicationMode
-                              : communicationMode
-                          }
-                          disabled={!isEditMode}
-                          onChange={(e) =>
-                            updateFormData("communicationMode", e.target.value)
-                          }
-                        >
-                          <option value="sas">sas</option>
-                          <option value="non sas">non sas</option>
-                          <option value="IGT">IGT</option>
-                        </select>
-                        {isEditMode && (
-                          <Button
-                            onClick={async () => await handleSaveSMIBConfig()}
-                            className="bg-button text-container hover:bg-buttonActive"
-                            size="sm"
-                          >
-                            SAVE
-                          </Button>
-                        )}
-                        {!isEditMode && (
-                          <Button
-                            onClick={() => setEditMode(true)}
-                            className="bg-button text-container hover:bg-buttonActive"
-                            size="sm"
-                          >
-                            EDIT
-                          </Button>
-                        )}
-                      </div>
-                    </motion.div>
-
-                    {/* Firmware Update */}
-                    <motion.div variants={itemVariants}>
-                      <h3 className="font-medium mb-2 text-foreground">
+                    {/* Firmware Update - Temporarily commented out */}
+                    {/* <motion.div variants={itemVariants}>
+                      <h3 className="mb-2 font-medium text-foreground">
                         Firmware Update
                       </h3>
                       <div className="flex items-center gap-2">
                         <select
-                          className={`flex-1 border border-border rounded p-2 ${
+                          className={`flex-1 rounded border border-border p-2 ${
                             isEditMode
-                              ? "bg-background text-foreground cursor-pointer"
-                              : "bg-gray-100 text-gray-500 cursor-not-allowed"
+                              ? 'cursor-pointer bg-background text-foreground'
+                              : 'cursor-not-allowed bg-gray-100 text-gray-500'
                           }`}
                           value={
                             isEditMode
@@ -805,8 +921,8 @@ function CabinetDetailPageContent() {
                               : firmwareVersion
                           }
                           disabled={!isEditMode}
-                          onChange={(e) =>
-                            updateFormData("firmwareVersion", e.target.value)
+                          onChange={e =>
+                            updateFormData('firmwareVersion', e.target.value)
                           }
                         >
                           <option value="Cloudy v1.0">Cloudy v1.0</option>
@@ -824,20 +940,11 @@ function CabinetDetailPageContent() {
                             SAVE
                           </Button>
                         )}
-                        {!isEditMode && (
-                          <Button
-                            onClick={() => setEditMode(true)}
-                            className="bg-button text-container hover:bg-buttonActive"
-                            size="sm"
-                          >
-                            EDIT
-                          </Button>
-                        )}
                       </div>
-                    </motion.div>
+                    </motion.div> */}
 
-                    {/* Machine Control Buttons - Responsive */}
-                    <motion.div
+                    {/* Machine Control Buttons - Temporarily commented out */}
+                    {/* <motion.div
                       variants={itemVariants}
                       className="flex flex-wrap gap-2 md:gap-4"
                     >
@@ -847,9 +954,9 @@ function CabinetDetailPageContent() {
                       >
                         <Button
                           variant="outline"
-                          className="border-lighterBlueHighlight text-lighterBlueHighlight hover:bg-accent w-full md:w-auto"
+                          className="w-full border-lighterBlueHighlight text-lighterBlueHighlight hover:bg-accent md:w-auto"
                           onClick={async () =>
-                            await handleSaveSMIBConfig("RESTART")
+                            await handleSaveSMIBConfig('RESTART')
                           }
                           disabled={!isEditMode}
                         >
@@ -862,9 +969,9 @@ function CabinetDetailPageContent() {
                       >
                         <Button
                           variant="outline"
-                          className="border-orangeHighlight text-orangeHighlight hover:bg-accent w-full md:w-auto"
+                          className="w-full border-orangeHighlight text-orangeHighlight hover:bg-accent md:w-auto"
                           onClick={async () =>
-                            await handleSaveSMIBConfig("UNLOCK MACHINE")
+                            await handleSaveSMIBConfig('UNLOCK MACHINE')
                           }
                           disabled={!isEditMode}
                         >
@@ -877,19 +984,19 @@ function CabinetDetailPageContent() {
                       >
                         <Button
                           variant="outline"
-                          className="border-destructive text-destructive hover:bg-accent w-full md:w-auto"
+                          className="w-full border-destructive text-destructive hover:bg-accent md:w-auto"
                           onClick={async () =>
-                            await handleSaveSMIBConfig("LOCK MACHINE")
+                            await handleSaveSMIBConfig('LOCK MACHINE')
                           }
                           disabled={!isEditMode}
                         >
                           LOCK MACHINE
                         </Button>
                       </motion.div>
-                    </motion.div>
+                    </motion.div> */}
 
-                    {/* Apply to all checkbox */}
-                    <motion.div
+                    {/* Apply to all checkbox - Temporarily commented out */}
+                    {/* <motion.div
                       variants={itemVariants}
                       className="flex items-center"
                     >
@@ -908,90 +1015,102 @@ function CabinetDetailPageContent() {
                           <p>Under maintenance</p>
                         </TooltipContent>
                       </Tooltip>
-                      <input type="checkbox" id="applyToAll" className="mr-2" />
-                      <label htmlFor="applyToAll" className="text-sm">
+                      <label htmlFor="applyToAll" className="ml-2 text-sm">
                         Apply to all SMIBs at this location (
-                        {cabinet?.locationName || "Unknown Location"})
+                        {cabinet?.locationName || 'Unknown Location'})
                       </label>
-                    </motion.div>
+                    </motion.div> */}
 
                     {/* Network/WiFi Section - Responsive */}
                     <motion.div
                       variants={itemVariants}
                       className="border-t border-border pt-6"
                     >
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="mb-4 flex items-center justify-between">
                         <h3 className="font-medium text-foreground">
                           Network/WiFi
                         </h3>
-                        {isEditMode && (
+                        {editingSection === 'network' ? (
                           <Button
-                            onClick={async () => await handleSaveSMIBConfig()}
+                            onClick={async () => {
+                              await handleSaveSMIBConfig();
+                              setEditingSection(null);
+                            }}
                             className="bg-button text-container hover:bg-buttonActive"
                             size="sm"
                           >
-                            SAVE NETWORK
+                            <span className="hidden lg:inline">SAVE NETWORK</span>
+                            <span className="lg:hidden">SAVE</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => setEditingSection('network')}
+                            className="flex items-center gap-2 bg-button text-container hover:bg-buttonActive lg:gap-2"
+                            size="sm"
+                          >
+                            <Pencil className="h-4 w-4 text-green-500 lg:hidden" />
+                            <span className="hidden lg:inline">EDIT NETWORK</span>
                           </Button>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-grayHighlight">
-                            Network Name (live):
+                            Network Name{isConnectedToMqtt ? ' (live)' : ''}:
                           </label>
-                          {isEditMode ? (
+                          {editingSection === 'network' ? (
                             <input
                               type="text"
                               value={formData.networkSSID}
-                              onChange={(e) =>
-                                updateFormData("networkSSID", e.target.value)
+                              onChange={e =>
+                                updateFormData('networkSSID', e.target.value)
                               }
-                              className="w-full border border-border rounded p-2 bg-background text-foreground"
+                              className="w-full rounded border border-border bg-background p-2 text-foreground"
                               placeholder="Enter network name"
                             />
                           ) : (
-                            <div className="text-sm truncate">
+                            <div className="truncate text-sm">
                               {formData.networkSSID ||
-                                "Device Online - Config Not Supported"}
+                                'Device Online - Config Not Supported'}
                             </div>
                           )}
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-grayHighlight">
-                            Password (live):
+                            Password{isConnectedToMqtt ? ' (live)' : ''}:
                           </label>
-                          {isEditMode ? (
+                          {editingSection === 'network' ? (
                             <input
                               type="password"
                               value={formData.networkPassword}
-                              onChange={(e) =>
+                              onChange={e =>
                                 updateFormData(
-                                  "networkPassword",
+                                  'networkPassword',
                                   e.target.value
                                 )
                               }
-                              className="w-full border border-border rounded p-2 bg-background text-foreground"
+                              className="w-full rounded border border-border bg-background p-2 text-foreground"
                               placeholder="Enter network password"
                             />
                           ) : (
                             <div className="text-sm">
                               {formData.networkPassword ||
-                                "Device Online - Config Not Supported"}
+                                'Device Online - Config Not Supported'}
                             </div>
                           )}
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-grayHighlight">
-                            Channel (live):
+                            Channel{isConnectedToMqtt ? ' (live)' : ''}:
                           </label>
-                          {isEditMode ? (
+                          {editingSection === 'network' ? (
                             <input
                               type="number"
                               value={formData.networkChannel}
-                              onChange={(e) =>
-                                updateFormData("networkChannel", e.target.value)
+                              onChange={e =>
+                                updateFormData('networkChannel', e.target.value)
                               }
-                              className="w-full border border-border rounded p-2 bg-background text-foreground"
+                              className="w-full rounded border border-border bg-background p-2 text-foreground"
                               placeholder="Enter channel"
                               min="1"
                               max="11"
@@ -999,336 +1118,313 @@ function CabinetDetailPageContent() {
                           ) : (
                             <div className="text-sm">
                               {formData.networkChannel ||
-                                "Device Online - Config Not Supported"}
+                                'Device Online - Config Not Supported'}
                             </div>
                           )}
                         </div>
                       </div>
                     </motion.div>
 
-                    {/* COMS Section - Responsive */}
-                    <motion.div
-                      variants={itemVariants}
-                      className="border-t border-border pt-6"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-medium text-foreground">COMS</h3>
-                        {isEditMode && (
-                          <Button
-                            onClick={async () => await handleSaveSMIBConfig()}
-                            className="bg-button text-container hover:bg-buttonActive"
-                            size="sm"
-                          >
-                            SAVE COMS
-                          </Button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">
-                            Communication Settings
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                Mode:
-                              </label>
-                              {isEditMode ? (
-                                <select
-                                  value={formData.comsMode || "0"}
-                                  onChange={(e) =>
-                                    updateFormData("comsMode", e.target.value)
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                >
-                                  <option value="0">SAS</option>
-                                  <option value="1">Non-SAS</option>
-                                  <option value="2">IGT</option>
-                                </select>
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.comsMode === "0"
-                                    ? "SAS"
-                                    : formData.comsMode === "1"
-                                    ? "Non-SAS"
-                                    : formData.comsMode === "2"
-                                    ? "IGT"
-                                    : formData.comsMode || "No Value Provided"}
-                                </div>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                Address:
-                              </label>
-                              {isEditMode ? (
-                                <input
-                                  type="number"
-                                  value={formData.comsAddr || ""}
-                                  onChange={(e) =>
-                                    updateFormData("comsAddr", e.target.value)
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                  placeholder="1"
-                                />
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.comsAddr || "No Value Provided"}
-                                </div>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                Rate (ms):
-                              </label>
-                              {isEditMode ? (
-                                <input
-                                  type="number"
-                                  value={formData.comsRateMs || ""}
-                                  onChange={(e) =>
-                                    updateFormData("comsRateMs", e.target.value)
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                  placeholder="200"
-                                />
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.comsRateMs || "No Value Provided"}
-                                </div>
-                              )}
-                            </div>
+                    {/* COMS and MQTT Grid - Side by Side */}
+                    <div className="grid grid-cols-1 gap-6 border-t border-border pt-6 lg:grid-cols-2">
+                      {/* COMS Section */}
+                      <motion.div variants={itemVariants}>
+                        <div className="mb-4 flex items-center justify-between">
+                          <h3 className="font-medium text-foreground">COMS</h3>
+                          {editingSection === 'coms' ? (
+                            <Button
+                              onClick={async () => {
+                                await handleSaveSMIBConfig();
+                                setEditingSection(null);
+                              }}
+                              className="bg-button text-container hover:bg-buttonActive"
+                              size="sm"
+                            >
+                              <span className="hidden lg:inline">SAVE COMS</span>
+                              <span className="lg:hidden">SAVE</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => setEditingSection('coms')}
+                              className="flex items-center gap-2 bg-button text-container hover:bg-buttonActive lg:gap-2"
+                              size="sm"
+                            >
+                              <Pencil className="h-4 w-4 text-green-500 lg:hidden" />
+                              <span className="hidden lg:inline">EDIT COMS</span>
+                            </Button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-grayHighlight">
+                              Address:
+                            </label>
+                            {editingSection === 'coms' ? (
+                              <input
+                                type="text"
+                                value={formData.comsAddr || ''}
+                                onChange={e =>
+                                  updateFormData('comsAddr', e.target.value)
+                                }
+                                className="w-full rounded border border-border bg-background p-2 text-foreground"
+                              />
+                            ) : (
+                              <div className="text-sm">
+                                {formData.comsAddr || ''}
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-grayHighlight">
+                              Polling Rate:
+                            </label>
+                            {editingSection === 'coms' ? (
+                              <input
+                                type="text"
+                                value={formData.comsRateMs || ''}
+                                onChange={e =>
+                                  updateFormData('comsRateMs', e.target.value)
+                                }
+                                className="w-full rounded border border-border bg-background p-2 text-foreground"
+                              />
+                            ) : (
+                              <div className="text-sm">
+                                {formData.comsRateMs || ''}
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-grayHighlight">
+                              RTE:
+                            </label>
+                            {editingSection === 'coms' ? (
+                              <select
+                                value={formData.comsRTE || '0'}
+                                onChange={e =>
+                                  updateFormData('comsRTE', e.target.value)
+                                }
+                                className="w-full rounded border border-border bg-background p-2 text-foreground"
+                              >
+                                <option value="0">Disabled</option>
+                                <option value="1">Enabled</option>
+                              </select>
+                            ) : (
+                              <div className="text-sm">
+                                {formData.comsRTE === '1'
+                                  ? 'Enabled'
+                                  : 'Disabled'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-grayHighlight">
+                              GPC:
+                            </label>
+                            {editingSection === 'coms' ? (
+                              <input
+                                type="text"
+                                value={formData.comsGPC || ''}
+                                onChange={e =>
+                                  updateFormData('comsGPC', e.target.value)
+                                }
+                                className="w-full rounded border border-border bg-background p-2 text-foreground"
+                              />
+                            ) : (
+                              <div className="text-sm">
+                                {formData.comsGPC || ''}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">
-                            Advanced Settings
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                RTE:
-                              </label>
-                              {isEditMode ? (
-                                <input
-                                  type="number"
-                                  value={formData.comsRTE || ""}
-                                  onChange={(e) =>
-                                    updateFormData("comsRTE", e.target.value)
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                  placeholder="0"
-                                />
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.comsRTE || "No Value Provided"}
-                                </div>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                GPC:
-                              </label>
-                              {isEditMode ? (
-                                <input
-                                  type="number"
-                                  value={formData.comsGPC || ""}
-                                  onChange={(e) =>
-                                    updateFormData("comsGPC", e.target.value)
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                  placeholder="0"
-                                />
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.comsGPC || "No Value Provided"}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
 
-                    {/* MQTT Topics Section - Responsive */}
-                    <motion.div
-                      variants={itemVariants}
-                      className="border-t border-border pt-6"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-medium text-foreground">
-                          MQTT Topics
-                        </h3>
-                        {isEditMode && (
-                          <Button
-                            onClick={async () => await handleSaveSMIBConfig()}
-                            className="bg-button text-container hover:bg-buttonActive"
-                            size="sm"
-                          >
-                            SAVE MQTT TOPICS
-                          </Button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">
-                            Topic Configuration
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                MQTT Public Topic:
-                              </label>
-                              {isEditMode ? (
-                                <input
-                                  type="text"
-                                  value={formData.mqttPubTopic || ""}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "mqttPubTopic",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                  placeholder="sas/gy/server"
-                                />
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.mqttPubTopic || "No Value Provided"}
-                                </div>
-                              )}
+                      {/* MQTT Section */}
+                      <motion.div variants={itemVariants}>
+                        <div className="mb-4 flex items-center justify-between">
+                          <h3 className="font-medium text-foreground">MQTT</h3>
+                          {editingSection === 'mqtt' ? (
+                            <Button
+                              onClick={async () => {
+                                await handleSaveSMIBConfig();
+                                setEditingSection(null);
+                              }}
+                              className="bg-button text-container hover:bg-buttonActive"
+                              size="sm"
+                            >
+                              <span className="hidden lg:inline">SAVE MQTT</span>
+                              <span className="lg:hidden">SAVE</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => setEditingSection('mqtt')}
+                              className="flex items-center gap-2 bg-button text-container hover:bg-buttonActive lg:gap-2"
+                              size="sm"
+                            >
+                              <Pencil className="h-4 w-4 text-green-500 lg:hidden" />
+                              <span className="hidden lg:inline">EDIT MQTT</span>
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                          <div>
+                            <h4 className="mb-2 text-sm font-medium">
+                              Topic Configuration
+                            </h4>
+                            <div className="space-y-2">
+                              <div className="space-y-1">
+                                <label className="text-sm font-medium text-grayHighlight">
+                                  MQTT Public Topic:
+                                </label>
+                                {editingSection === 'mqtt' ? (
+                                  <input
+                                    type="text"
+                                    value={formData.mqttPubTopic || ''}
+                                    onChange={e =>
+                                      updateFormData(
+                                        'mqttPubTopic',
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                    placeholder="sas/gy/server"
+                                  />
+                                ) : (
+                                  <div className="text-sm">
+                                    {formData.mqttPubTopic ||
+                                      'No Value Provided'}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-sm font-medium text-grayHighlight">
+                                  MQTT Config Topic:
+                                </label>
+                                {editingSection === 'mqtt' ? (
+                                  <input
+                                    type="text"
+                                    value={formData.mqttCfgTopic || ''}
+                                    onChange={e =>
+                                      updateFormData(
+                                        'mqttCfgTopic',
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                    placeholder="smib/config"
+                                  />
+                                ) : (
+                                  <div className="text-sm">
+                                    {formData.mqttCfgTopic ||
+                                      'No Value Provided'}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-sm font-medium text-grayHighlight">
+                                  MQTT URI:
+                                </label>
+                                {editingSection === 'mqtt' ? (
+                                  <input
+                                    type="text"
+                                    value={formData.mqttURI || ''}
+                                    onChange={e =>
+                                      updateFormData('mqttURI', e.target.value)
+                                    }
+                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                    placeholder="mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883"
+                                  />
+                                ) : (
+                                  <div className="text-sm">
+                                    {formData.mqttURI || 'No Value Provided'}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                MQTT Config Topic:
-                              </label>
-                              {isEditMode ? (
-                                <input
-                                  type="text"
-                                  value={formData.mqttCfgTopic || ""}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "mqttCfgTopic",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                  placeholder="smib/config"
-                                />
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.mqttCfgTopic || "No Value Provided"}
-                                </div>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                MQTT URI:
-                              </label>
-                              {isEditMode ? (
-                                <input
-                                  type="text"
-                                  value={formData.mqttURI || ""}
-                                  onChange={(e) =>
-                                    updateFormData("mqttURI", e.target.value)
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                  placeholder="mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883"
-                                />
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.mqttURI || "No Value Provided"}
-                                </div>
-                              )}
+                          </div>
+                          <div>
+                            <h4 className="mb-2 text-sm font-medium">
+                              Additional Settings
+                            </h4>
+                            <div className="space-y-2">
+                              <div className="space-y-1">
+                                <label className="text-sm font-medium text-grayHighlight">
+                                  QOS:
+                                </label>
+                                {editingSection === 'mqtt' ? (
+                                  <select
+                                    value={formData.mqttTLS || '2'}
+                                    onChange={e =>
+                                      updateFormData('mqttTLS', e.target.value)
+                                    }
+                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                  >
+                                    <option value="0">0 - At most once</option>
+                                    <option value="1">1 - At least once</option>
+                                    <option value="2">2 - Exactly once</option>
+                                  </select>
+                                ) : (
+                                  <div className="text-sm">
+                                    {formData.mqttTLS === '0'
+                                      ? '0 - At most once'
+                                      : formData.mqttTLS === '1'
+                                        ? '1 - At least once'
+                                        : formData.mqttTLS === '2'
+                                          ? '2 - Exactly once'
+                                          : formData.mqttTLS ||
+                                            'No Value Provided'}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-sm font-medium text-grayHighlight">
+                                  Idle Timeout (s):
+                                </label>
+                                {editingSection === 'mqtt' ? (
+                                  <input
+                                    type="number"
+                                    value={formData.mqttIdleTimeout || ''}
+                                    onChange={e =>
+                                      updateFormData(
+                                        'mqttIdleTimeout',
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                    placeholder="30"
+                                  />
+                                ) : (
+                                  <div className="text-sm">
+                                    {formData.mqttIdleTimeout ||
+                                      'No Value Provided'}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">
-                            Additional Settings
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                QOS:
-                              </label>
-                              {isEditMode ? (
-                                <select
-                                  value={formData.mqttTLS || "2"}
-                                  onChange={(e) =>
-                                    updateFormData("mqttTLS", e.target.value)
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                >
-                                  <option value="0">0 - At most once</option>
-                                  <option value="1">1 - At least once</option>
-                                  <option value="2">2 - Exactly once</option>
-                                </select>
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.mqttTLS === "0"
-                                    ? "0 - At most once"
-                                    : formData.mqttTLS === "1"
-                                    ? "1 - At least once"
-                                    : formData.mqttTLS === "2"
-                                    ? "2 - Exactly once"
-                                    : formData.mqttTLS || "No Value Provided"}
-                                </div>
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-grayHighlight">
-                                Idle Timeout (s):
-                              </label>
-                              {isEditMode ? (
-                                <input
-                                  type="number"
-                                  value={formData.mqttIdleTimeout || ""}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "mqttIdleTimeout",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full border border-border rounded p-2 bg-background text-foreground"
-                                  placeholder="30"
-                                />
-                              ) : (
-                                <div className="text-sm">
-                                  {formData.mqttIdleTimeout ||
-                                    "No Value Provided"}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
+                    </div>
                   </TooltipProvider>
                 </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
         ) : (
-          <div className="mt-4 bg-container rounded-lg shadow-md shadow-purple-200">
+          <div className="mt-4 rounded-lg bg-container shadow-md shadow-purple-200">
             {/* Static version of the SMIB Configuration content - make responsive */}
-            <div className="px-6 py-4 flex justify-between items-center cursor-pointer">
+            <div className="flex cursor-pointer items-center justify-between px-6 py-4">
               <h2 className="text-xl font-semibold">SMIB Configuration</h2>
               <div>
                 <ChevronDownIcon className="h-5 w-5" />
               </div>
             </div>
             <div className="px-6 pb-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 md:justify-between gap-2 md:gap-4">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:justify-between md:gap-4">
                 <div>
                   <p className="text-sm text-grayHighlight">
-                    SMIB ID: {mqttConfigData?.smibId || "No Value Provided"}
+                    SMIB ID: {mqttConfigData?.smibId || 'No Value Provided'}
                   </p>
-                  <p className="text-sm text-grayHighlight mt-1 md:mt-0">
-                    Connected to WiFi network{" "}
-                    {mqttConfigData?.networkSSID ||
-                      "Device Online - Config Not Supported"}
-                  </p>
-                  <p className="text-xs text-yellow-500 mt-1">
+                  <p className="mt-1 text-xs text-yellow-500">
                     ⚠️ Device is online but not responding to configuration
                     requests. Check SMIB device settings to enable config
                     responses.
@@ -1336,18 +1432,18 @@ function CabinetDetailPageContent() {
                 </div>
                 <div className="md:text-right">
                   <p className="text-sm text-grayHighlight">
-                    Communication Mode:{" "}
+                    Communication Mode:{' '}
                     {cabinet?.smibConfig?.coms?.comsMode !== undefined
                       ? cabinet?.smibConfig?.coms?.comsMode === 0
-                        ? "sas"
+                        ? 'sas'
                         : cabinet?.smibConfig?.coms?.comsMode === 1
-                        ? "non sas"
-                        : "IGT"
-                      : "undefined"}
+                          ? 'non sas'
+                          : 'IGT'
+                      : 'undefined'}
                   </p>
-                  <p className="text-sm text-grayHighlight mt-1 md:mt-0">
-                    Running firmware{" "}
-                    {mqttConfigData?.firmwareVersion || "No Value Provided"}
+                  <p className="mt-1 text-sm text-grayHighlight md:mt-0">
+                    Running firmware{' '}
+                    {mqttConfigData?.firmwareVersion || 'No Value Provided'}
                   </p>
                 </div>
               </div>
@@ -1358,7 +1454,7 @@ function CabinetDetailPageContent() {
         {/* Date Filters */}
         {hasMounted ? (
           <motion.div
-            className="mt-4 mb-4"
+            className="mb-4 mt-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -1370,7 +1466,7 @@ function CabinetDetailPageContent() {
             />
           </motion.div>
         ) : (
-          <div className="mt-4 mb-4">
+          <div className="mb-4 mt-4">
             <DashboardDateFilters
               hideAllTime={false}
               onCustomRangeGo={fetchCabinetDetailsData}
@@ -1380,26 +1476,26 @@ function CabinetDetailPageContent() {
         )}
 
         {/* Horizontal Slider for Mobile and Tablet - visible below lg */}
-        <div className="lg:hidden overflow-x-auto touch-pan-x pb-4 custom-scrollbar w-full p-2 rounded-md mt-4 mb-2">
-          <div className="flex space-x-2 min-w-max px-1 pb-1">
+        <div className="custom-scrollbar mb-2 mt-4 w-full touch-pan-x overflow-x-auto rounded-md p-2 pb-4 lg:hidden">
+          <div className="flex min-w-max space-x-2 px-1 pb-1">
             {[
-              "Metrics",
-              "Live Metrics",
-              "Bill Validator",
-              "Activity Log",
-              "Collection History",
-              "Collection Settings",
-            ].map((tab) => (
+              'Metrics',
+              'Live Metrics',
+              'Bill Validator',
+              'Activity Log',
+              'Collection History',
+              'Collection Settings',
+            ].map(tab => (
               <Button
                 key={tab}
                 className={`whitespace-nowrap px-4 py-2 ${
                   activeMetricsTabContent ===
-                  (tab === "Metrics" ? "Range Metrics" : tab)
-                    ? "bg-buttonActive text-container"
-                    : "bg-muted text-grayHighlight"
+                  (tab === 'Metrics' ? 'Range Metrics' : tab)
+                    ? 'bg-buttonActive text-container'
+                    : 'bg-muted text-grayHighlight'
                 }`}
                 onClick={() =>
-                  handleTabChange(tab === "Metrics" ? "Range Metrics" : tab)
+                  handleTabChange(tab === 'Metrics' ? 'Range Metrics' : tab)
                 }
               >
                 {tab}
@@ -1431,12 +1527,12 @@ function CabinetDetailPageContent() {
               <motion.button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-full bg-button p-3 text-container shadow-lg transition-colors duration-200 hover:bg-buttonActive disabled:cursor-not-allowed disabled:opacity-50"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
                 <RefreshCw
-                  className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
+                  className={`h-6 w-6 ${refreshing ? 'animate-spin' : ''}`}
                 />
               </motion.button>
             </motion.div>

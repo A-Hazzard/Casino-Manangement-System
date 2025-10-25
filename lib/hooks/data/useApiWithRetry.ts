@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useRef } from "react";
-import { AxiosResponse } from "axios";
-import { classifyError, isRetryableError } from "@/lib/utils/errorHandling";
-import type { ApiError } from "@/lib/types/errors";
+import { useState, useCallback, useRef } from 'react';
+import { AxiosResponse } from 'axios';
+import { classifyError, isRetryableError } from '@/lib/utils/errorHandling';
+import type { ApiError } from '@/lib/types/errors';
 import type {
   UseApiWithRetryOptions,
   UseApiWithRetryReturn,
-} from "@/lib/types/apiHooks";
+} from '@/lib/types/apiHooks';
 
 // Types moved to lib/types/apiHooks.ts
 
@@ -62,7 +62,7 @@ export function useApiWithRetry<T>(
               reject(new Error(`Request timed out after ${timeout}ms`));
             }, timeout);
 
-            signal.addEventListener("abort", () => {
+            signal.addEventListener('abort', () => {
               clearTimeout(timeoutId);
             });
           });
@@ -80,14 +80,14 @@ export function useApiWithRetry<T>(
         } catch (err) {
           // Check if request was aborted
           if (signal.aborted) {
-            throw new Error("Request was cancelled");
+            throw new Error('Request was cancelled');
           }
 
           const apiError = classifyError(err);
           lastError = apiError;
 
           // Log error in development
-          if (process.env.NODE_ENV === "development") {
+          if (process.env.NODE_ENV === 'development') {
             console.error(`API attempt ${attempt + 1} failed:`, {
               error: err,
               classified: apiError,
@@ -108,7 +108,7 @@ export function useApiWithRetry<T>(
 
           // Wait before retrying (exponential backoff)
           const delay = baseDelay * Math.pow(2, attempt);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await new Promise(resolve => setTimeout(resolve, delay));
           setRetryCount(attempt + 1);
         }
       }

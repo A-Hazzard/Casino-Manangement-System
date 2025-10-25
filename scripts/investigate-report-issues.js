@@ -8,30 +8,30 @@
  * Last Updated: January 17th, 2025
  */
 
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 // MongoDB connection
 const MONGODB_URI =
   process.env.MONGO_URI ||
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function investigateReportIssues() {
   const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
-    console.log("🔍 Connected to MongoDB");
+    console.log('🔍 Connected to MongoDB');
 
     const db = client.db();
-    console.log("📊 Database connected, checking collection reports...");
+    console.log('📊 Database connected, checking collection reports...');
 
     // Get the most recent collection report
     const mostRecentReport = await db
-      .collection("collectionreports")
+      .collection('collectionreports')
       .findOne({}, { sort: { timestamp: -1 } });
 
     if (!mostRecentReport) {
-      console.log("❌ No collection reports found");
+      console.log('❌ No collection reports found');
       return;
     }
 
@@ -44,7 +44,7 @@ async function investigateReportIssues() {
 
     // Get all collections for this report
     const reportCollections = await db
-      .collection("collections")
+      .collection('collections')
       .find({ locationReportId: mostRecentReport.locationReportId })
       .sort({ timestamp: 1 })
       .toArray();
@@ -76,8 +76,8 @@ async function investigateReportIssues() {
 
         if (sasStart >= sasEnd) {
           collectionIssues.push({
-            type: "SAS_TIMES_INVERTED",
-            description: "SAS start time is after or equal to end time",
+            type: 'SAS_TIMES_INVERTED',
+            description: 'SAS start time is after or equal to end time',
             details: {
               sasStartTime: collection.sasMeters.sasStartTime,
               sasEndTime: collection.sasMeters.sasEndTime,
@@ -91,8 +91,8 @@ async function investigateReportIssues() {
           !collection.sasMeters.sasEndTime
         ) {
           collectionIssues.push({
-            type: "SAS_TIMES_MISSING",
-            description: "SAS start or end time is missing",
+            type: 'SAS_TIMES_MISSING',
+            description: 'SAS start or end time is missing',
             details: {
               sasStartTime: collection.sasMeters.sasStartTime,
               sasEndTime: collection.sasMeters.sasEndTime,
@@ -101,8 +101,8 @@ async function investigateReportIssues() {
         }
       } else {
         collectionIssues.push({
-          type: "SAS_METERS_MISSING",
-          description: "SAS meters data is completely missing",
+          type: 'SAS_METERS_MISSING',
+          description: 'SAS meters data is completely missing',
           details: {},
         });
       }
@@ -144,8 +144,8 @@ async function investigateReportIssues() {
           Math.abs(collection.movement.gross - expectedGross) > 0.01
         ) {
           collectionIssues.push({
-            type: "MOVEMENT_CALCULATION_WRONG",
-            description: "Movement calculation does not match expected values",
+            type: 'MOVEMENT_CALCULATION_WRONG',
+            description: 'Movement calculation does not match expected values',
             details: {
               actual: {
                 metersIn: collection.movement.metersIn,
@@ -172,8 +172,8 @@ async function investigateReportIssues() {
         collection.prevOut === null
       ) {
         collectionIssues.push({
-          type: "PREV_METERS_ZERO_OR_UNDEFINED",
-          description: "Previous meter values are 0 or undefined",
+          type: 'PREV_METERS_ZERO_OR_UNDEFINED',
+          description: 'Previous meter values are 0 or undefined',
           details: {
             prevIn: collection.prevIn,
             prevOut: collection.prevOut,
@@ -183,11 +183,11 @@ async function investigateReportIssues() {
 
       // 4. Check Machine History Issues
       const machine = await db
-        .collection("machines")
+        .collection('machines')
         .findOne({ _id: collection.machineId });
       if (machine && machine.collectionMetersHistory) {
         const historyEntry = machine.collectionMetersHistory.find(
-          (entry) =>
+          entry =>
             entry.metersIn === collection.metersIn &&
             entry.metersOut === collection.metersOut &&
             entry.locationReportId === collection.locationReportId
@@ -195,8 +195,8 @@ async function investigateReportIssues() {
 
         if (!historyEntry) {
           collectionIssues.push({
-            type: "HISTORY_ENTRY_MISSING",
-            description: "No corresponding history entry found in machine",
+            type: 'HISTORY_ENTRY_MISSING',
+            description: 'No corresponding history entry found in machine',
             details: {
               machineId: collection.machineId,
               metersIn: collection.metersIn,
@@ -211,9 +211,9 @@ async function investigateReportIssues() {
             historyEntry.prevMetersOut !== collection.prevOut
           ) {
             collectionIssues.push({
-              type: "HISTORY_PREV_METERS_MISMATCH",
+              type: 'HISTORY_PREV_METERS_MISMATCH',
               description:
-                "History entry prevIn/prevOut does not match collection",
+                'History entry prevIn/prevOut does not match collection',
               details: {
                 collection: {
                   prevIn: collection.prevIn,
@@ -254,7 +254,7 @@ async function investigateReportIssues() {
             issue.machineId
           }):`
         );
-        issue.issues.forEach((issueDetail) => {
+        issue.issues.forEach(issueDetail => {
           console.log(
             `      - ${issueDetail.type}: ${issueDetail.description}`
           );
@@ -270,7 +270,7 @@ async function investigateReportIssues() {
       console.log(`\n✅ No issues found in the most recent report!`);
     }
   } catch (error) {
-    console.error("❌ Investigation failed:", error);
+    console.error('❌ Investigation failed:', error);
   } finally {
     await client.close();
   }

@@ -3,8 +3,8 @@
  * Handles modal visibility and state management for administration page
  */
 
-import { useState, useCallback } from "react";
-import { UserData, LicenseeData, ActivityLogData } from "@/lib/types/hooks";
+import { useState, useCallback } from 'react';
+import { UserData, LicenseeData, ActivityLogData } from '@/lib/types/hooks';
 
 type UseAdministrationModalsReturn = {
   // User modals
@@ -12,23 +12,23 @@ type UseAdministrationModalsReturn = {
   isAddUserDetailsModalOpen: boolean;
   isDeleteUserModalOpen: boolean;
   isUserActivityLogModalOpen: boolean;
-  
+
   // Licensee modals
   isAddLicenseeModalOpen: boolean;
   isEditLicenseeModalOpen: boolean;
   isDeleteLicenseeModalOpen: boolean;
   isLicenseeSuccessModalOpen: boolean;
   isPaymentStatusConfirmModalOpen: boolean;
-  
+
   // Activity log modals
   isActivityLogModalOpen: boolean;
   isPaymentHistoryModalOpen: boolean;
-  
+
   // Modal data
   selectedUser: UserData | null;
   selectedLicensee: LicenseeData | null;
   selectedActivityLog: ActivityLogData | null;
-  
+
   // User modal actions
   openUserModal: (user?: UserData) => void;
   closeUserModal: () => void;
@@ -38,7 +38,7 @@ type UseAdministrationModalsReturn = {
   closeDeleteUserModal: () => void;
   openUserActivityLogModal: (user: UserData) => void;
   closeUserActivityLogModal: () => void;
-  
+
   // Licensee modal actions
   openAddLicenseeModal: () => void;
   closeAddLicenseeModal: () => void;
@@ -50,36 +50,45 @@ type UseAdministrationModalsReturn = {
   closeLicenseeSuccessModal: () => void;
   openPaymentStatusConfirmModal: (licensee: LicenseeData) => void;
   closePaymentStatusConfirmModal: () => void;
-  
+
   // Activity log modal actions
   openActivityLogModal: (log: ActivityLogData) => void;
   closeActivityLogModal: () => void;
   openPaymentHistoryModal: (licensee: LicenseeData) => void;
   closePaymentHistoryModal: () => void;
-}
+};
 
 export function useAdministrationModals(): UseAdministrationModalsReturn {
   // User modal states
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [isAddUserDetailsModalOpen, setIsAddUserDetailsModalOpen] = useState(false);
+  const [isAddUserDetailsModalOpen, setIsAddUserDetailsModalOpen] =
+    useState(false);
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
-  const [isUserActivityLogModalOpen, setIsUserActivityLogModalOpen] = useState(false);
-  
+  const [isUserActivityLogModalOpen, setIsUserActivityLogModalOpen] =
+    useState(false);
+
   // Licensee modal states
   const [isAddLicenseeModalOpen, setIsAddLicenseeModalOpen] = useState(false);
   const [isEditLicenseeModalOpen, setIsEditLicenseeModalOpen] = useState(false);
-  const [isDeleteLicenseeModalOpen, setIsDeleteLicenseeModalOpen] = useState(false);
-  const [isLicenseeSuccessModalOpen, setIsLicenseeSuccessModalOpen] = useState(false);
-  const [isPaymentStatusConfirmModalOpen, setIsPaymentStatusConfirmModalOpen] = useState(false);
-  
+  const [isDeleteLicenseeModalOpen, setIsDeleteLicenseeModalOpen] =
+    useState(false);
+  const [isLicenseeSuccessModalOpen, setIsLicenseeSuccessModalOpen] =
+    useState(false);
+  const [isPaymentStatusConfirmModalOpen, setIsPaymentStatusConfirmModalOpen] =
+    useState(false);
+
   // Activity log modal states
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
-  const [isPaymentHistoryModalOpen, setIsPaymentHistoryModalOpen] = useState(false);
-  
+  const [isPaymentHistoryModalOpen, setIsPaymentHistoryModalOpen] =
+    useState(false);
+
   // Modal data
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [selectedLicensee, setSelectedLicensee] = useState<LicenseeData | null>(null);
-  const [selectedActivityLog, setSelectedActivityLog] = useState<ActivityLogData | null>(null);
+  const [selectedLicensee, setSelectedLicensee] = useState<LicenseeData | null>(
+    null
+  );
+  const [selectedActivityLog, setSelectedActivityLog] =
+    useState<ActivityLogData | null>(null);
 
   // User modal actions
   const openUserModal = useCallback((user?: UserData) => {
@@ -99,7 +108,6 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
   const closeAddUserDetailsModal = useCallback(() => {
     setIsAddUserDetailsModalOpen(false);
   }, []);
-
 
   const openDeleteUserModal = useCallback((user: UserData) => {
     setSelectedUser(user);
@@ -158,10 +166,13 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
     setIsLicenseeSuccessModalOpen(false);
   }, []);
 
-  const openPaymentStatusConfirmModal = useCallback((licensee: LicenseeData) => {
-    setSelectedLicensee(licensee);
-    setIsPaymentStatusConfirmModalOpen(true);
-  }, []);
+  const openPaymentStatusConfirmModal = useCallback(
+    (licensee: LicenseeData) => {
+      setSelectedLicensee(licensee);
+      setIsPaymentStatusConfirmModalOpen(true);
+    },
+    []
+  );
 
   const closePaymentStatusConfirmModal = useCallback(() => {
     setSelectedLicensee(null);
@@ -195,23 +206,23 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
     isAddUserDetailsModalOpen,
     isDeleteUserModalOpen,
     isUserActivityLogModalOpen,
-    
+
     // Licensee modals
     isAddLicenseeModalOpen,
     isEditLicenseeModalOpen,
     isDeleteLicenseeModalOpen,
     isLicenseeSuccessModalOpen,
     isPaymentStatusConfirmModalOpen,
-    
+
     // Activity log modals
     isActivityLogModalOpen,
     isPaymentHistoryModalOpen,
-    
+
     // Modal data
     selectedUser,
     selectedLicensee,
     selectedActivityLog,
-    
+
     // User modal actions
     openUserModal,
     closeUserModal,
@@ -221,7 +232,7 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
     closeDeleteUserModal,
     openUserActivityLogModal,
     closeUserActivityLogModal,
-    
+
     // Licensee modal actions
     openAddLicenseeModal,
     closeAddLicenseeModal,
@@ -233,7 +244,7 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
     closeLicenseeSuccessModal,
     openPaymentStatusConfirmModal,
     closePaymentStatusConfirmModal,
-    
+
     // Activity log modal actions
     openActivityLogModal,
     closeActivityLogModal,

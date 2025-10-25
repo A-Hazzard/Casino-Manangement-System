@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../lib/middleware/db";
-import { Collections } from "../../../lib/models/collections";
-import { CollectionReport } from "../../../lib/models/collectionReport";
-import { Machine } from "../../../lib/models/machines";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../../lib/middleware/db';
+import { Collections } from '../../../lib/models/collections';
+import { CollectionReport } from '../../../lib/models/collectionReport';
+import { Machine } from '../../../lib/models/machines';
 
 /**
  * POST /api/collection-report/[reportId]/fix-sas-times
@@ -24,7 +24,7 @@ export async function POST(
 
     if (!reportId) {
       return NextResponse.json(
-        { success: false, error: "Report ID is required" },
+        { success: false, error: 'Report ID is required' },
         { status: 400 }
       );
     }
@@ -36,7 +36,7 @@ export async function POST(
 
     if (!currentReport) {
       return NextResponse.json(
-        { success: false, error: "Collection report not found" },
+        { success: false, error: 'Collection report not found' },
         { status: 404 }
       );
     }
@@ -93,10 +93,10 @@ export async function POST(
         try {
           // Import helpers
           const { getSasTimePeriod, calculateSasMetrics } = await import(
-            "@/lib/helpers/collectionCreation"
+            '@/lib/helpers/collectionCreation'
           );
           const { calculateMovement } = await import(
-            "@/lib/utils/movementCalculation"
+            '@/lib/utils/movementCalculation'
           );
 
           // Step 4a: Fix prevIn/prevOut by finding the actual previous collection
@@ -218,7 +218,7 @@ export async function POST(
             sasMeters: {
               ...newSasMetrics,
               machine:
-                collection.sasMeters?.machine || collection.machineName || "",
+                collection.sasMeters?.machine || collection.machineName || '',
               sasStartTime: sasStartTime.toISOString(),
               sasEndTime: sasEndTime.toISOString(),
             },
@@ -230,23 +230,23 @@ export async function POST(
             await Machine.findOneAndUpdate(
               {
                 _id: machineId,
-                "collectionMetersHistory.locationReportId":
+                'collectionMetersHistory.locationReportId':
                   report.locationReportId,
               },
               {
                 $set: {
-                  "collectionMetersHistory.$[elem].metersIn":
+                  'collectionMetersHistory.$[elem].metersIn':
                     collection.metersIn || 0,
-                  "collectionMetersHistory.$[elem].metersOut":
+                  'collectionMetersHistory.$[elem].metersOut':
                     collection.metersOut || 0,
-                  "collectionMetersHistory.$[elem].timestamp": new Date(
+                  'collectionMetersHistory.$[elem].timestamp': new Date(
                     collection.timestamp
                   ),
                 },
               },
               {
                 arrayFilters: [
-                  { "elem.locationReportId": report.locationReportId },
+                  { 'elem.locationReportId': report.locationReportId },
                 ],
                 new: true,
               }
@@ -273,7 +273,7 @@ export async function POST(
             `Collection ${collection._id}: ${
               collectionError instanceof Error
                 ? collectionError.message
-                : "Unknown error"
+                : 'Unknown error'
             }`
           );
         }
@@ -288,7 +288,7 @@ export async function POST(
 
         // Get unique machine IDs from this report's collections
         const machineIds = [
-          ...new Set(reportCollections.map((c) => c.machineId).filter(Boolean)),
+          ...new Set(reportCollections.map(c => c.machineId).filter(Boolean)),
         ];
 
         for (const machineId of machineIds) {
@@ -339,8 +339,8 @@ export async function POST(
                   )
                 : undefined,
             // Sync collectionMeters with most recent collection
-            "collectionMeters.metersIn": mostRecentCollection?.metersIn || 0,
-            "collectionMeters.metersOut": mostRecentCollection?.metersOut || 0,
+            'collectionMeters.metersIn': mostRecentCollection?.metersIn || 0,
+            'collectionMeters.metersOut': mostRecentCollection?.metersOut || 0,
           });
 
           reportHistoryFixedCount += newHistory.length;
@@ -361,7 +361,7 @@ export async function POST(
           `History rebuild failed: ${
             historyError instanceof Error
               ? historyError.message
-              : "Unknown error"
+              : 'Unknown error'
           }`
         );
       }
@@ -403,12 +403,12 @@ export async function POST(
       message: `Fixed ${totalFixedCount} collections, ${totalHistoryFixedCount} history entries across ${processedReports.length} reports`,
     });
   } catch (error) {
-    console.error("Error fixing SAS times for report:", error);
+    console.error('Error fixing SAS times for report:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

@@ -1,7 +1,7 @@
 import type {
   MovementCalculation,
   PreviousCollectionMeters,
-} from "@/lib/types/collections";
+} from '@/lib/types/collections';
 
 /**
  * Calculates movement values based on current and previous meters.
@@ -33,13 +33,17 @@ export function calculateMovement(
     if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
       // Use RAM Clear meters for calculation
       // Formula: (ramClearMeters - prevMeters) + (currentMeters - 0)
-      metersIn = (ramClearMetersIn - previousMeters.metersIn) + (currentMetersIn - 0);
-      metersOut = (ramClearMetersOut - previousMeters.metersOut) + (currentMetersOut - 0);
+      metersIn =
+        ramClearMetersIn - previousMeters.metersIn + (currentMetersIn - 0);
+      metersOut =
+        ramClearMetersOut - previousMeters.metersOut + (currentMetersOut - 0);
     } else if (ramClearCoinIn !== undefined && ramClearCoinOut !== undefined) {
       // Use RAM Clear coin values for calculation (legacy)
       // Formula: (ramClearCoin - prevMeters) + (currentMeters - 0)
-      metersIn = (ramClearCoinIn - previousMeters.metersIn) + (currentMetersIn - 0);
-      metersOut = (ramClearCoinOut - previousMeters.metersOut) + (currentMetersOut - 0);
+      metersIn =
+        ramClearCoinIn - previousMeters.metersIn + (currentMetersIn - 0);
+      metersOut =
+        ramClearCoinOut - previousMeters.metersOut + (currentMetersOut - 0);
     } else {
       // Use current values directly (meters reset to 0)
       metersIn = currentMetersIn;

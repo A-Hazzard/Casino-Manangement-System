@@ -2,8 +2,8 @@
  * Financial calculation utilities for aggregating totals across locations and cabinets
  */
 
-import type { AggregatedLocation } from "@/shared/types/entities";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+import type { AggregatedLocation } from '@/shared/types/entities';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 
 export type FinancialTotals = {
   moneyIn: number;

@@ -1,7 +1,7 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { itemVariants } from "@/lib/constants/animationVariants";
-import { Button } from "@/components/ui/button";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { itemVariants } from '@/lib/constants/animationVariants';
+import { Button } from '@/components/ui/button';
 
 type ExtendedFirmwareUpdateSectionProps = {
   currentFirmwareVersion: string;
@@ -15,10 +15,10 @@ const FirmwareUpdateSection: React.FC<ExtendedFirmwareUpdateSectionProps> = ({
 
   return (
     <motion.div variants={itemVariants}>
-      <h3 className="font-medium mb-2 text-foreground">Firmware Update</h3>
+      <h3 className="mb-2 font-medium text-foreground">Firmware Update</h3>
       <div className="flex">
         <select
-          className="w-full border border-border rounded p-2 mr-2"
+          className="mr-2 w-full rounded border border-border p-2"
           value={currentFirmwareVersion}
           // onChange={(e) => setFirmwareVersion(e.target.value)}
           disabled
@@ -29,7 +29,7 @@ const FirmwareUpdateSection: React.FC<ExtendedFirmwareUpdateSectionProps> = ({
         </select>
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button
-            className="ml-auto bg-muted hover:bg-accent text-foreground border border-border"
+            className="ml-auto border border-border bg-muted text-foreground hover:bg-accent"
             disabled
           >
             ⟳
@@ -37,7 +37,7 @@ const FirmwareUpdateSection: React.FC<ExtendedFirmwareUpdateSectionProps> = ({
         </motion.div>
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button
-            className="ml-2 bg-buttonActive hover:bg-buttonActive/90 text-primary-foreground"
+            className="ml-2 bg-buttonActive text-primary-foreground hover:bg-buttonActive/90"
             disabled
           >
             UPDATE

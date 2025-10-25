@@ -1,7 +1,7 @@
-import axios from "axios";
-import type { CollectionReportData } from "@/lib/types/api";
-import type { CollectionDocument } from "@/lib/types/collections";
-import type { CollectionIssueDetails } from "@/shared/types/entities";
+import axios from 'axios';
+import type { CollectionReportData } from '@/lib/types/api';
+import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionIssueDetails } from '@/shared/types/entities';
 
 /**
  * Fetch collection report by ID
@@ -13,7 +13,7 @@ export async function fetchCollectionReportById(
     const response = await axios.get(`/api/collection-report/${reportId}`);
     return response.data;
   } catch (error) {
-    console.error(" Error fetching collection report:", error);
+    console.error(' Error fetching collection report:', error);
     throw error;
   }
 }
@@ -28,7 +28,7 @@ export async function fetchCollectionsByLocationReportId(
     const response = await axios.get(`/api/collections/by-report/${reportId}`);
     return response.data;
   } catch (error) {
-    console.error(" Error fetching collections by report ID:", error);
+    console.error(' Error fetching collections by report ID:', error);
     return [];
   }
 }
@@ -46,7 +46,7 @@ export async function syncMetersForReport(reportId: string): Promise<void> {
   try {
     await axios.post(`/api/collection-report/${reportId}/sync-meters`);
   } catch (error) {
-    console.error(" Error syncing meters:", error);
+    console.error(' Error syncing meters:', error);
     throw error;
   }
 }
@@ -77,7 +77,7 @@ export async function fixSasTimesForReport(reportId: string): Promise<{
     );
     return response.data;
   } catch (error) {
-    console.error(" Error fixing SAS times:", error);
+    console.error(' Error fixing SAS times:', error);
     throw error;
   }
 }
@@ -95,7 +95,7 @@ export async function checkSasTimeIssues(
     );
     return response.data;
   } catch (error) {
-    console.error(" Error checking SAS time issues:", error);
+    console.error(' Error checking SAS time issues:', error);
     throw error;
   }
 }
@@ -118,7 +118,7 @@ export async function refreshCollectionReportData(reportId: string): Promise<{
       collections: collectionsResponse.data,
     };
   } catch (error) {
-    console.error(" Error refreshing collection report data:", error);
+    console.error(' Error refreshing collection report data:', error);
     throw error;
   }
 }

@@ -2,7 +2,7 @@
  * Cabinet utility functions for data transformation and mapping
  */
 
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 type CabinetProps = Cabinet;
 
 /**
@@ -13,22 +13,22 @@ type CabinetProps = Cabinet;
 export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
   return {
     _id: cabinet._id,
-    serialNumber: cabinet.serialNumber || "",
-    relayId: cabinet.relayId || "",
-    game: cabinet.game || cabinet.installedGame || "",
-    assetStatus: cabinet.assetStatus || cabinet.status || "",
-    gamingLocation: cabinet.gamingLocation || cabinet.locationId || "",
+    serialNumber: cabinet.serialNumber || '',
+    relayId: cabinet.relayId || '',
+    game: cabinet.game || cabinet.installedGame || '',
+    assetStatus: cabinet.assetStatus || cabinet.status || '',
+    gamingLocation: cabinet.gamingLocation || cabinet.locationId || '',
     accountingDenomination:
       cabinet.accountingDenomination ||
       cabinet.gameConfig?.accountingDenomination ||
-      "",
+      '',
     createdAt: cabinet.createdAt || new Date(),
     updatedAt: cabinet.updatedAt || new Date(),
     // Optional fields with defaults
-    locationId: cabinet.locationId || "",
-    locationName: cabinet.locationName || "",
-    assetNumber: cabinet.assetNumber || "",
-    smbId: cabinet.smbId || cabinet.smibBoard || cabinet.relayId || "",
+    locationId: cabinet.locationId || '',
+    locationName: cabinet.locationName || '',
+    assetNumber: cabinet.assetNumber || '',
+    smbId: cabinet.smbId || cabinet.smibBoard || cabinet.relayId || '',
     moneyIn: cabinet.moneyIn || cabinet.sasMeters?.drop || 0,
     moneyOut: cabinet.moneyOut || 0,
     cancelledCredits: cabinet.cancelledCredits || cabinet.moneyOut || 0,
@@ -40,15 +40,15 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
     lastOnline: cabinet.lastOnline
       ? cabinet.lastOnline.toString()
       : cabinet.lastActivity
-      ? cabinet.lastActivity.toString()
-      : "",
-    installedGame: cabinet.installedGame || cabinet.game || "",
-    collectionMultiplier: cabinet.collectionMultiplier || "",
-    status: cabinet.status || cabinet.assetStatus || "",
-    gameType: cabinet.gameType || "",
+        ? cabinet.lastActivity.toString()
+        : '',
+    installedGame: cabinet.installedGame || cabinet.game || '',
+    collectionMultiplier: cabinet.collectionMultiplier || '',
+    status: cabinet.status || cabinet.assetStatus || '',
+    gameType: cabinet.gameType || '',
     isCronosMachine: cabinet.isCronosMachine || false,
-    cabinetType: cabinet.cabinetType || "",
-    custom: { name: cabinet.serialNumber || cabinet._id || "Unknown" },
+    cabinetType: cabinet.cabinetType || '',
+    custom: { name: cabinet.serialNumber || cabinet._id || 'Unknown' },
   };
 }
 
@@ -58,5 +58,5 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
  * @returns Array of transformed cabinet props
  */
 export function transformCabinetsToProps(cabinets: Cabinet[]): CabinetProps[] {
-  return cabinets.map((cabinet) => mapToCabinetProps(cabinet));
+  return cabinets.map(cabinet => mapToCabinetProps(cabinet));
 }

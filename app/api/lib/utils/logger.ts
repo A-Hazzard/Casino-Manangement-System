@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
+import { NextRequest } from 'next/server';
 
-import type { LogContext, LogResult } from "@/lib/types/logger";
+import type { LogContext, LogResult } from '@/lib/types/logger';
 
 class APILogger {
   private startTime: number = 0;
@@ -18,7 +18,7 @@ class APILogger {
   }
 
   private getLogLevel(success: boolean): string {
-    return success ? "INFO" : "ERROR";
+    return success ? 'INFO' : 'ERROR';
   }
 
   private formatMessage(result: LogResult): string {
@@ -40,7 +40,11 @@ class APILogger {
     return message;
   }
 
-  logSuccess(context: LogContext, message: string, data?: Record<string, unknown>): void {
+  logSuccess(
+    context: LogContext,
+    message: string,
+    data?: Record<string, unknown>
+  ): void {
     const result: LogResult = {
       success: true,
       message,
@@ -77,18 +81,16 @@ class APILogger {
       endpoint,
       method: request.method,
       ip:
-        request.headers.get("x-forwarded-for") ||
-        request.headers.get("x-real-ip") ||
-        "unknown",
-      userAgent: request.headers.get("user-agent") || "unknown",
+        request.headers.get('x-forwarded-for') ||
+        request.headers.get('x-real-ip') ||
+        'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
       params: Object.keys(params).length > 0 ? params : undefined,
     };
   }
 }
 
 export const apiLogger = new APILogger();
-
-
 
 // Decorator-style function for API endpoints
 export function withLogging<R>(
@@ -101,12 +103,12 @@ export function withLogging<R>(
 
     try {
       const result = await fn(request);
-      apiLogger.logSuccess(context, "Operation completed successfully");
+      apiLogger.logSuccess(context, 'Operation completed successfully');
       return result;
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      apiLogger.logError(context, "Operation failed", errorMessage);
+        error instanceof Error ? error.message : 'Unknown error';
+      apiLogger.logError(context, 'Operation failed', errorMessage);
       throw error;
     }
   };

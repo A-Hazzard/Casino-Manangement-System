@@ -1,20 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { getAccountingDetails } from "@/lib/helpers/accountingDetails";
-import type { BillValidatorTimePeriod } from "@/shared/types/billValidator";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { getAccountingDetails } from '@/lib/helpers/accountingDetails';
+import type { BillValidatorTimePeriod } from '@/shared/types/billValidator';
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const machineId = searchParams.get("machineId");
+    const machineId = searchParams.get('machineId');
     const timePeriod =
-      (searchParams.get("timePeriod") as BillValidatorTimePeriod) || "today";
+      (searchParams.get('timePeriod') as BillValidatorTimePeriod) || 'today';
 
     if (!machineId) {
       return NextResponse.json(
-        { success: false, error: "Machine ID is required" },
+        { success: false, error: 'Machine ID is required' },
         { status: 400 }
       );
     }
@@ -27,12 +27,12 @@ export async function GET(req: NextRequest) {
       data: accountingDetails,
     });
   } catch (error) {
-    console.error(" Accounting Details API Error:", error);
+    console.error(' Accounting Details API Error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch accounting details",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Failed to fetch accounting details',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

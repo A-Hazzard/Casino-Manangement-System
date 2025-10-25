@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
-import { AggregatedLocation } from "@/shared/types/entities";
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { AggregatedLocation } from '@/shared/types/entities';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
-} from "@radix-ui/react-icons";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from '@radix-ui/react-icons';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export type EnhancedLocationTableProps = {
   locations: AggregatedLocation[];
@@ -29,20 +29,20 @@ export type EnhancedLocationTableProps = {
 };
 
 type SortField =
-  | "locationName"
-  | "sasStatus"
-  | "totalMachines"
-  | "moneyIn"
-  | "moneyOut"
-  | "gross"
-  | "holdPercentage"
-  | "gamesPlayed";
-type SortOrder = "asc" | "desc";
+  | 'locationName'
+  | 'sasStatus'
+  | 'totalMachines'
+  | 'moneyIn'
+  | 'moneyOut'
+  | 'gross'
+  | 'holdPercentage'
+  | 'gamesPlayed';
+type SortOrder = 'asc' | 'desc';
 
 export default function EnhancedLocationTable({
   locations,
   onLocationClick,
-  className = "",
+  className = '',
   loading = false,
   error = null,
   currentPage = 1,
@@ -51,26 +51,26 @@ export default function EnhancedLocationTable({
   onPageChange,
   itemsPerPage = 10,
 }: EnhancedLocationTableProps) {
-  const [sortField, setSortField] = useState<SortField>("moneyIn");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<SortField>('moneyIn');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortOrder("desc");
+      setSortOrder('desc');
     }
   };
 
-  const filteredLocations = locations.filter((location) => {
+  const filteredLocations = locations.filter(location => {
     const q = searchTerm.toLowerCase();
-    const name = location.locationName || "";
-    const id = (location as Record<string, unknown>).location as string || "";
+    const name = location.locationName || '';
+    const id = ((location as Record<string, unknown>).location as string) || '';
     return (
-      (typeof name === "string" && name.toLowerCase().includes(q)) ||
-      (typeof id === "string" && id.toLowerCase().includes(q))
+      (typeof name === 'string' && name.toLowerCase().includes(q)) ||
+      (typeof id === 'string' && id.toLowerCase().includes(q))
     );
   });
 
@@ -79,35 +79,35 @@ export default function EnhancedLocationTable({
     let bValue: string | number;
 
     switch (sortField) {
-      case "locationName":
-        aValue = a.locationName || "";
-        bValue = b.locationName || "";
+      case 'locationName':
+        aValue = a.locationName || '';
+        bValue = b.locationName || '';
         break;
-      case "sasStatus":
+      case 'sasStatus':
         aValue = a.hasSasMachines ? 1 : 0;
         bValue = b.hasSasMachines ? 1 : 0;
         break;
-      case "totalMachines":
+      case 'totalMachines':
         aValue = a.totalMachines || 0;
         bValue = b.totalMachines || 0;
         break;
-      case "moneyIn":
+      case 'moneyIn':
         aValue = a.moneyIn || 0;
         bValue = b.moneyIn || 0;
         break;
-      case "moneyOut":
+      case 'moneyOut':
         aValue = a.moneyOut || 0;
         bValue = b.moneyOut || 0;
         break;
-      case "gross":
+      case 'gross':
         aValue = a.gross || 0;
         bValue = b.gross || 0;
         break;
-      case "holdPercentage":
+      case 'holdPercentage':
         aValue = a.moneyIn > 0 ? (a.gross / a.moneyIn) * 100 : 0;
         bValue = b.moneyIn > 0 ? (b.gross / b.moneyIn) * 100 : 0;
         break;
-      case "gamesPlayed":
+      case 'gamesPlayed':
         aValue = a.gamesPlayed || 0;
         bValue = b.gamesPlayed || 0;
         break;
@@ -116,7 +116,7 @@ export default function EnhancedLocationTable({
         bValue = 0;
     }
 
-    if (sortOrder === "asc") {
+    if (sortOrder === 'asc') {
       return aValue > bValue ? 1 : -1;
     } else {
       return aValue < bValue ? 1 : -1;
@@ -125,24 +125,24 @@ export default function EnhancedLocationTable({
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) return null;
-    return sortOrder === "asc" ? (
-      <ChevronUp className="w-4 h-4" />
+    return sortOrder === 'asc' ? (
+      <ChevronUp className="h-4 w-4" />
     ) : (
-      <ChevronDown className="w-4 h-4" />
+      <ChevronDown className="h-4 w-4" />
     );
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
   };
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat("en-US").format(num);
+    return new Intl.NumberFormat('en-US').format(num);
   };
 
   // Mobile Card Component
@@ -153,20 +153,20 @@ export default function EnhancedLocationTable({
       location.gamesPlayed > 0 ? location.moneyIn / location.gamesPlayed : 0;
 
     return (
-      <Card 
-        className={`mb-4 cursor-pointer hover:shadow-md transition-shadow ${
-          onLocationClick ? "cursor-pointer" : ""
+      <Card
+        className={`mb-4 cursor-pointer transition-shadow hover:shadow-md ${
+          onLocationClick ? 'cursor-pointer' : ''
         }`}
         onClick={() => onLocationClick?.(location.location)}
       >
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center justify-between">
+          <CardTitle className="flex items-center justify-between text-lg">
             <span className="truncate">{location.locationName}</span>
-            <Badge 
-              variant={location.hasSasMachines ? "default" : "secondary"}
+            <Badge
+              variant={location.hasSasMachines ? 'default' : 'secondary'}
               className="ml-2"
             >
-              {location.hasSasMachines ? "SAS" : "Non-SAS"}
+              {location.hasSasMachines ? 'SAS' : 'Non-SAS'}
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -178,22 +178,30 @@ export default function EnhancedLocationTable({
             </div>
             <div>
               <span className="text-gray-500">Games Played:</span>
-              <span className="ml-2 font-medium">{formatNumber(location.gamesPlayed)}</span>
+              <span className="ml-2 font-medium">
+                {formatNumber(location.gamesPlayed)}
+              </span>
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Drop (Money In):</span>
-              <span className="font-medium text-green-600">{formatCurrency(location.moneyIn)}</span>
+              <span className="font-medium text-green-600">
+                {formatCurrency(location.moneyIn)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Cancelled Credits:</span>
-              <span className="font-medium text-red-600">{formatCurrency(location.moneyOut)}</span>
+              <span className="font-medium text-red-600">
+                {formatCurrency(location.moneyOut)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Gross Revenue:</span>
-              <span className="font-medium text-blue-600">{formatCurrency(location.gross)}</span>
+              <span className="font-medium text-blue-600">
+                {formatCurrency(location.gross)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Hold %:</span>
@@ -201,7 +209,9 @@ export default function EnhancedLocationTable({
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Avg. Wager per Game:</span>
-              <span className="font-medium">{formatCurrency(avgWagerPerGame)}</span>
+              <span className="font-medium">
+                {formatCurrency(avgWagerPerGame)}
+              </span>
             </div>
           </div>
         </CardContent>
@@ -214,7 +224,7 @@ export default function EnhancedLocationTable({
     <div className="space-y-4">
       {[...Array(5)].map((_, i) => (
         <div key={i} className="animate-pulse">
-          <div className="h-16 bg-gray-200 rounded-lg"></div>
+          <div className="h-16 rounded-lg bg-gray-200"></div>
         </div>
       ))}
     </div>
@@ -228,11 +238,11 @@ export default function EnhancedLocationTable({
     const endPage = Math.min(totalPages, currentPage + 2);
 
     return (
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+      <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center text-sm text-gray-700">
           <span>
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to{" "}
-            {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}{" "}
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+            {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}{' '}
             results
           </span>
         </div>
@@ -243,7 +253,7 @@ export default function EnhancedLocationTable({
             onClick={() => onPageChange?.(1)}
             disabled={currentPage === 1}
           >
-            <DoubleArrowLeftIcon className="w-4 h-4" />
+            <DoubleArrowLeftIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
@@ -251,14 +261,14 @@ export default function EnhancedLocationTable({
             onClick={() => onPageChange?.(currentPage - 1)}
             disabled={currentPage === 1}
           >
-            <ChevronLeftIcon className="w-4 h-4" />
+            <ChevronLeftIcon className="h-4 w-4" />
           </Button>
           {[...Array(endPage - startPage + 1)].map((_, i) => {
             const page = startPage + i;
             return (
               <Button
                 key={page}
-                variant={page === currentPage ? "default" : "outline"}
+                variant={page === currentPage ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onPageChange?.(page)}
               >
@@ -272,7 +282,7 @@ export default function EnhancedLocationTable({
             onClick={() => onPageChange?.(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
-            <ChevronRightIcon className="w-4 h-4" />
+            <ChevronRightIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
@@ -280,7 +290,7 @@ export default function EnhancedLocationTable({
             onClick={() => onPageChange?.(totalPages)}
             disabled={currentPage === totalPages}
           >
-            <DoubleArrowRightIcon className="w-4 h-4" />
+            <DoubleArrowRightIcon className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -288,16 +298,16 @@ export default function EnhancedLocationTable({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow ${className}`}>
+    <div className={`rounded-lg bg-white shadow ${className}`}>
       {/* Search Bar */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="border-b border-gray-200 p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
           <Input
             type="text"
             placeholder="Search locations..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -309,23 +319,23 @@ export default function EnhancedLocationTable({
           <TableSkeleton />
         </div>
       ) : error ? (
-        <div className="text-center py-8">
-          <div className="text-red-500 text-sm mb-2">
+        <div className="py-8 text-center">
+          <div className="mb-2 text-sm text-red-500">
             Error loading locations
           </div>
-          <div className="text-gray-500 text-sm">{error}</div>
+          <div className="text-sm text-gray-500">{error}</div>
         </div>
       ) : (
         <>
           {/* Mobile Card View */}
-          <div className="md:hidden p-4">
+          <div className="p-4 md:hidden">
             {sortedLocations.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="py-8 text-center text-gray-500">
                 No locations found
               </div>
             ) : (
               <div className="space-y-4">
-                {sortedLocations.map((location) => (
+                {sortedLocations.map(location => (
                   <LocationCard key={location.location} location={location} />
                 ))}
               </div>
@@ -336,80 +346,80 @@ export default function EnhancedLocationTable({
           <div className="hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="border-b border-gray-200 bg-gray-50">
                   <tr>
                     <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("locationName")}
+                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      onClick={() => handleSort('locationName')}
                     >
                       <div className="flex items-center gap-1">
                         Location Name
-                        {getSortIcon("locationName")}
+                        {getSortIcon('locationName')}
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("sasStatus")}
+                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      onClick={() => handleSort('sasStatus')}
                     >
                       <div className="flex items-center gap-1">
                         SAS Status
-                        {getSortIcon("sasStatus")}
+                        {getSortIcon('sasStatus')}
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("totalMachines")}
+                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      onClick={() => handleSort('totalMachines')}
                     >
                       <div className="flex items-center gap-1">
                         Machines
-                        {getSortIcon("totalMachines")}
+                        {getSortIcon('totalMachines')}
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("moneyIn")}
+                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      onClick={() => handleSort('moneyIn')}
                     >
                       <div className="flex items-center gap-1">
                         Drop (Money In)
-                        {getSortIcon("moneyIn")}
+                        {getSortIcon('moneyIn')}
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("moneyOut")}
+                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      onClick={() => handleSort('moneyOut')}
                     >
                       <div className="flex items-center gap-1">
                         Cancelled Credits (Money Out)
-                        {getSortIcon("moneyOut")}
+                        {getSortIcon('moneyOut')}
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("gross")}
+                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      onClick={() => handleSort('gross')}
                     >
                       <div className="flex items-center gap-1">
                         Gross Revenue
-                        {getSortIcon("gross")}
+                        {getSortIcon('gross')}
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("holdPercentage")}
+                      className="cursor-pointer px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                      onClick={() => handleSort('holdPercentage')}
                     >
                       <div className="flex items-center gap-1">
-                        Hold %{getSortIcon("holdPercentage")}
+                        Hold %{getSortIcon('holdPercentage')}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
                       Games Played
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
                       Avg. Wager per Game
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedLocations.map((location) => {
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {sortedLocations.map(location => {
                     const holdPercentage =
                       location.moneyIn > 0
                         ? (location.gross / location.moneyIn) * 100
@@ -423,41 +433,43 @@ export default function EnhancedLocationTable({
                       <tr
                         key={location.location}
                         className={`hover:bg-gray-50 ${
-                          onLocationClick ? "cursor-pointer" : ""
+                          onLocationClick ? 'cursor-pointer' : ''
                         }`}
                         onClick={() => onLocationClick?.(location.location)}
                       >
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-4 py-3">
                           <div className="text-sm font-medium text-gray-900">
                             {location.locationName}
                           </div>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-4 py-3">
                           <Badge
-                            variant={location.hasSasMachines ? "default" : "secondary"}
+                            variant={
+                              location.hasSasMachines ? 'default' : 'secondary'
+                            }
                           >
-                            {location.hasSasMachines ? "SAS" : "Non-SAS"}
+                            {location.hasSasMachines ? 'SAS' : 'Non-SAS'}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                           {location.totalMachines}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-green-600 font-medium">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-green-600">
                           {formatCurrency(location.moneyIn)}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 font-medium">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-red-600">
                           {formatCurrency(location.moneyOut)}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-blue-600">
                           {formatCurrency(location.gross)}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                           {holdPercentage.toFixed(2)}%
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                           {formatNumber(location.gamesPlayed)}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                           {formatCurrency(avgWagerPerGame)}
                         </td>
                       </tr>

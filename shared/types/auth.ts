@@ -1,4 +1,4 @@
-import { Document } from "mongoose";
+import { Document } from 'mongoose';
 
 export type UserDocument = Document & {
   _id: string;
@@ -39,7 +39,7 @@ export type UserAuthPayload = {
   isEnabled: boolean;
   roles?: string[];
   resourcePermissions?: {
-    "gaming-locations"?: {
+    'gaming-locations'?: {
       entity: string;
       resources: string[];
     };
@@ -105,7 +105,7 @@ export type JwtPayload = {
 export type RefreshTokenPayload = {
   userId: string;
   sessionId: string;
-  type: "refresh";
+  type: 'refresh';
   iat?: number;
   exp?: number;
 };
@@ -141,7 +141,7 @@ export type LoginFormProps = {
   setRememberMe: (value: boolean) => void;
   errors: { [key: string]: string };
   message?: string;
-  messageType?: "success" | "error" | "info";
+  messageType?: 'success' | 'error' | 'info';
   loading: boolean;
   redirecting: boolean;
   handleLogin: (e: React.FormEvent) => void;

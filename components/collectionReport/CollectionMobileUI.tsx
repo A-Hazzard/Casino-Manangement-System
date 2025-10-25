@@ -1,9 +1,9 @@
-import React from "react";
-import CollectionReportCards from "@/components/collectionReport/CollectionReportCards";
-import CollectionReportCardSkeleton from "@/components/collectionReport/CollectionReportCardSkeleton";
-import CollectionReportFilters from "@/components/collectionReport/CollectionReportFilters";
-import PaginationControls from "@/components/ui/PaginationControls";
-import type { CollectionMobileUIProps } from "@/lib/types/componentProps";
+import React from 'react';
+import CollectionReportCards from '@/components/collectionReport/CollectionReportCards';
+import CollectionReportCardSkeleton from '@/components/collectionReport/CollectionReportCardSkeleton';
+import CollectionReportFilters from '@/components/collectionReport/CollectionReportFilters';
+import PaginationControls from '@/components/ui/PaginationControls';
+import type { CollectionMobileUIProps } from '@/lib/types/componentProps';
 
 const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   loading,
@@ -31,7 +31,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="lg:hidden w-full bg-white p-4 rounded-lg shadow-md mb-4 space-y-4">
+    <div className="mb-4 w-full space-y-4 rounded-lg bg-white p-4 shadow-md lg:hidden">
       {/* Filter Container - positioned at the top */}
       <CollectionReportFilters
         locations={locations}
@@ -64,7 +64,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
           </>
         ) : filteredReports.length === 0 ? (
           <div className="animate-in fade-in-0 slide-in-from-bottom-2">
-            <p className="text-center text-gray-500 py-10">
+            <p className="py-10 text-center text-gray-500">
               No collection reports found.
             </p>
           </div>
@@ -96,12 +96,12 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
             {mobileTotalPages > 1 && (
               <div
                 className="animate-in fade-in-0 slide-in-from-bottom-2"
-                style={{ animationDelay: "200ms" }}
+                style={{ animationDelay: '200ms' }}
               >
                 <PaginationControls
                   currentPage={mobilePage - 1}
                   totalPages={mobileTotalPages}
-                  setCurrentPage={(page) => onPaginateMobile(page + 1)}
+                  setCurrentPage={page => onPaginateMobile(page + 1)}
                 />
               </div>
             )}

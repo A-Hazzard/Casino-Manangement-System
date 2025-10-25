@@ -19,12 +19,14 @@
 The Evolution One CMS system implements comprehensive timezone management for Trinidad and Tobago (UTC-4). All date fields throughout the application are automatically converted from UTC (stored in the database) to Trinidad local time for display and user interaction, ensuring consistent and accurate time representation across all system components.
 
 ### Key Principles
+
 - **Consistency**: All dates displayed in Trinidad local time (UTC-4)
 - **Accuracy**: Automatic conversion between UTC storage and local display
 - **Reliability**: No daylight saving time complications
 - **Performance**: Efficient timezone conversion with minimal overhead
 
 ### System Integration
+
 - **Database Storage**: All dates stored in UTC format for consistency
 - **API Responses**: Automatic conversion to Trinidad time for frontend display
 - **Date Queries**: Frontend inputs converted to UTC for database operations
@@ -33,11 +35,13 @@ The Evolution One CMS system implements comprehensive timezone management for Tr
 ## Timezone Configuration
 
 ### Trinidad Timezone (UTC-4)
+
 - **Offset:** UTC-4 (4 hours behind UTC)
 - **No Daylight Saving Time:** Trinidad and Tobago does not observe DST
 - **Year-round consistency:** The offset remains constant throughout the year
 
 ### Current Implementation
+
 - **Database Storage:** All dates stored in UTC format
 - **API Responses:** Dates automatically converted to Trinidad time before sending to frontend
 - **Date Queries:** Frontend date inputs converted to UTC for database queries
@@ -50,35 +54,42 @@ The Evolution One CMS system implements comprehensive timezone management for Tr
 #### Key Functions
 
 **`utcToTrinidadTime(utcDate: Date): Date`**
+
 - Converts UTC dates to Trinidad local time
 - Adds 4 hours to UTC time
 - Returns new Date object in Trinidad time
 
 **`trinidadTimeToUtc(trinidadDate: Date): Date`**
+
 - Converts Trinidad local time to UTC
 - Subtracts 4 hours from Trinidad time
 - Returns new Date object in UTC
 
 **`getCurrentTrinidadTime(): Date`**
+
 - Returns current Trinidad local time
 - Useful for timestamping operations
 
 **`formatTrinidadTime(utcDate: Date, options?: Intl.DateTimeFormatOptions): string`**
+
 - Formats UTC dates as Trinidad time strings
 - Uses `en-TT` locale for proper formatting
 - Supports custom formatting options
 
 **`convertObjectDatesToTrinidadTime<T>(obj: T, dateFields?: string[]): T`**
+
 - Recursively converts all date fields in objects to Trinidad time
 - Handles nested objects and arrays
 - Automatically detects common date field names
 
 **`convertResponseToTrinidadTime<T>(data: T, additionalDateFields?: string[]): T`**
+
 - Main utility for converting API response data
 - Handles both objects and arrays
 - Converts all date fields to Trinidad time
 
 **`createTrinidadTimeDateRange(startDate: Date | string, endDate: Date | string): { $gte: Date; $lte: Date }`**
+
 - Creates MongoDB date range queries in UTC
 - Converts Trinidad time inputs to UTC for database queries
 - Returns proper MongoDB query format
@@ -88,6 +99,7 @@ The Evolution One CMS system implements comprehensive timezone management for Tr
 The system automatically detects and converts the following date fields:
 
 ### Common Date Fields
+
 - `createdAt` - Record creation timestamp
 - `updatedAt` - Record last update timestamp
 - `deletedAt` - Soft delete timestamp
@@ -96,6 +108,7 @@ The system automatically detects and converts the following date fields:
 - `date` - Generic date field
 
 ### Time-based Fields
+
 - `startTime` - Session/event start time
 - `endTime` - Session/event end time
 - `lastActivity` - Last activity timestamp
@@ -105,6 +118,7 @@ The system automatically detects and converts the following date fields:
 - `smsCodeTime` - SMS code timestamp
 
 ### Business-specific Fields
+
 - `startDate` - Contract/period start date
 - `expiryDate` - Contract/period expiry date
 - `prevStartDate` - Previous period start
@@ -126,16 +140,16 @@ All API endpoints automatically convert date fields to Trinidad time before send
 
 ```typescript
 // Example API route implementation
-import { convertResponseToTrinidadTime } from "@/app/api/lib/utils/timezone";
+import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 
 export async function GET() {
   try {
     const users = await User.find();
-    
+
     // Automatically converts all date fields to Trinidad time
     return NextResponse.json({
       success: true,
-      data: convertResponseToTrinidadTime(users)
+      data: convertResponseToTrinidadTime(users),
     });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message });
@@ -148,13 +162,13 @@ export async function GET() {
 When querying by date ranges, convert Trinidad time to UTC:
 
 ```typescript
-import { createTrinidadTimeDateRange } from "@/app/api/lib/utils/timezone";
+import { createTrinidadTimeDateRange } from '@/app/api/lib/utils/timezone';
 
 // Frontend sends Trinidad time, convert to UTC for database query
 const dateRange = createTrinidadTimeDateRange(startDate, endDate);
 
 const results = await Meters.find({
-  readAt: dateRange
+  readAt: dateRange,
 });
 ```
 
@@ -163,10 +177,13 @@ const results = await Meters.find({
 Use the timezone middleware for consistent API responses:
 
 ```typescript
-import { successResponse, paginatedResponse } from "@/app/api/lib/utils/timezoneMiddleware";
+import {
+  successResponse,
+  paginatedResponse,
+} from '@/app/api/lib/utils/timezoneMiddleware';
 
 // Automatically converts dates to Trinidad time
-return successResponse(users, "Users fetched successfully");
+return successResponse(users, 'Users fetched successfully');
 
 // For paginated responses
 return paginatedResponse(activities, pagination);
@@ -179,7 +196,7 @@ return paginatedResponse(activities, pagination);
 When users input dates in the frontend (Trinidad time), convert to UTC for API calls:
 
 ```typescript
-import { trinidadTimeToUtc } from "@/app/api/lib/utils/timezone";
+import { trinidadTimeToUtc } from '@/app/api/lib/utils/timezone';
 
 // User selects date in Trinidad time
 const userSelectedDate = new Date('2024-01-15T10:00:00');
@@ -189,7 +206,7 @@ const utcDate = trinidadTimeToUtc(userSelectedDate);
 
 // Send UTC date to API
 const response = await axios.get('/api/data', {
-  params: { startDate: utcDate.toISOString() }
+  params: { startDate: utcDate.toISOString() },
 });
 ```
 
@@ -208,16 +225,19 @@ const formattedDate = new Date(createdAt).toLocaleString('en-TT');
 ## Database Considerations
 
 ### Storage Format
+
 - **All dates stored in UTC** in MongoDB
 - **No timezone information** stored with dates
 - **Consistent UTC storage** across all collections
 
 ### Query Optimization
+
 - **Index on date fields** for efficient time-based queries
 - **UTC-based queries** for consistent performance
 - **Date range queries** use UTC boundaries
 
 ### Migration Considerations
+
 - **Existing data** remains in UTC format
 - **New data** continues to be stored in UTC
 - **No data migration** required for timezone implementation
@@ -241,7 +261,7 @@ console.log(utcTime.toISOString()); // Should be 4:59 UTC
 ### Debug Utilities
 
 ```typescript
-import { debugTimezones } from "@/app/api/lib/utils/timezone";
+import { debugTimezones } from '@/app/api/lib/utils/timezone';
 
 // Debug current timezone conversion
 debugTimezones();
@@ -256,7 +276,7 @@ debugTimezones();
 // Frontend sends Trinidad time range
 const frontendRange = {
   startDate: '2024-01-15T00:00:00',
-  endDate: '2024-01-15T23:59:59'
+  endDate: '2024-01-15T23:59:59',
 };
 
 // Convert to UTC for database query
@@ -267,7 +287,7 @@ const utcRange = createTrinidadTimeDateRange(
 
 // Query database with UTC range
 const results = await Collection.find({
-  createdAt: utcRange
+  createdAt: utcRange,
 });
 
 // Convert results back to Trinidad time
@@ -318,11 +338,13 @@ const convertedDate = safeTimezoneConversion(rawDate) || new Date();
 ## Performance Considerations
 
 ### Caching Strategy
+
 - **Timezone conversions** are lightweight operations
 - **No caching** required for conversion functions
 - **Database queries** remain efficient with UTC storage
 
 ### Memory Usage
+
 - **Minimal overhead** for timezone conversion
 - **No additional storage** requirements
 - **Efficient object traversal** for date field conversion
@@ -330,11 +352,13 @@ const convertedDate = safeTimezoneConversion(rawDate) || new Date();
 ## Compliance and Audit
 
 ### Regulatory Requirements
+
 - **Consistent timezone handling** across all financial transactions
 - **Audit trail** maintains UTC timestamps for compliance
 - **User-facing displays** show local Trinidad time for clarity
 
 ### Audit Trail
+
 - **Database logs** maintain UTC timestamps
 - **API logs** include both UTC and Trinidad time for debugging
 - **Financial reports** clearly indicate timezone used
@@ -344,14 +368,17 @@ const convertedDate = safeTimezoneConversion(rawDate) || new Date();
 ### Common Issues
 
 **Issue:** Dates showing incorrect times
+
 - **Solution:** Verify timezone conversion is applied to API responses
 - **Check:** Ensure `convertResponseToTrinidadTime` is called on all API responses
 
 **Issue:** Date range queries returning wrong results
+
 - **Solution:** Use `createTrinidadTimeDateRange` for date range queries
 - **Check:** Verify frontend dates are converted to UTC before database queries
 
 **Issue:** Inconsistent date displays
+
 - **Solution:** Ensure all date fields are included in conversion
 - **Check:** Add missing date fields to `additionalDateFields` parameter
 
@@ -359,7 +386,7 @@ const convertedDate = safeTimezoneConversion(rawDate) || new Date();
 
 ```typescript
 // Debug timezone conversion
-import { debugTimezones } from "@/app/api/lib/utils/timezone";
+import { debugTimezones } from '@/app/api/lib/utils/timezone';
 debugTimezones();
 
 // Test specific date conversion
@@ -377,6 +404,7 @@ console.log('Trinidad:', utcToTrinidadTime(testDate).toISOString());
 ## Support
 
 For timezone-related issues:
+
 1. Check that timezone utilities are properly imported
 2. Verify date fields are included in conversion lists
 3. Test timezone conversion with known UTC/Trinidad time pairs

@@ -1,6 +1,12 @@
 // Generic component prop types for reusable UI components
 
-import type { GamingMachine, CasinoMember, Location, User, MovementRequest } from "./entities";
+import type {
+  GamingMachine,
+  CasinoMember,
+  Location,
+  User,
+  MovementRequest,
+} from './entities';
 
 /**
  * Generic data table props for reusable table components
@@ -11,7 +17,7 @@ export type DataTableProps<T> = {
   onSort: (column: string) => void;
   onPageChange: (page: number) => void;
   sortOption: string;
-  sortOrder: "asc" | "desc";
+  sortOrder: 'asc' | 'desc';
   currentPage?: number;
   totalPages?: number;
   totalCount?: number;
@@ -40,7 +46,7 @@ export type DataCardProps<T> = {
   formatNumber?: (number: number) => string;
   // Common card functionality
   showActions?: boolean;
-  variant?: "default" | "compact" | "detailed";
+  variant?: 'default' | 'compact' | 'detailed';
 };
 
 /**
@@ -50,7 +56,7 @@ export type ModalProps<T> = {
   isOpen: boolean;
   onClose: () => void;
   data?: T;
-  mode: "view" | "edit" | "create" | "delete";
+  mode: 'view' | 'edit' | 'create' | 'delete';
   title: string;
   onSubmit?: (data: T) => void;
   onConfirm?: () => void;
@@ -68,7 +74,7 @@ export type FormProps<T> = {
   onCancel?: () => void;
   loading?: boolean;
   error?: string;
-  mode: "create" | "edit";
+  mode: 'create' | 'edit';
   validationSchema?: unknown; // Zod schema
   submitText?: string;
   cancelText?: string;
@@ -122,7 +128,7 @@ export type PaginationProps = {
  * Generic skeleton props for reusable skeleton components
  */
 export type SkeletonProps = {
-  variant?: "text" | "rectangular" | "circular";
+  variant?: 'text' | 'rectangular' | 'circular';
   width?: string | number;
   height?: string | number;
   className?: string;
@@ -152,7 +158,7 @@ export type EmptyStateProps = {
     label: string;
     onClick: () => void;
   };
-  variant?: "default" | "compact" | "detailed";
+  variant?: 'default' | 'compact' | 'detailed';
 };
 
 /**
@@ -178,7 +184,7 @@ export type NavigationProps = {
     disabled?: boolean;
     onClick?: () => void;
   }>;
-  variant?: "horizontal" | "vertical" | "tabs";
+  variant?: 'horizontal' | 'vertical' | 'tabs';
   onItemClick?: (item: { id: string; label: string }) => void;
 };
 
@@ -196,7 +202,7 @@ export type TabProps = {
   }>;
   activeTab: string;
   onTabChange: (tabId: string) => void;
-  variant?: "default" | "pills" | "underline";
+  variant?: 'default' | 'pills' | 'underline';
   className?: string;
 };
 
@@ -246,13 +252,13 @@ export type DropdownProps<T> = {
 export type ButtonProps = {
   children: React.ReactNode;
   onClick?: () => void;
-  type?: "button" | "submit" | "reset";
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "destructive";
-  size?: "sm" | "md" | "lg";
+  type?: 'button' | 'submit' | 'reset';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+  size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
   icon?: React.ReactNode;
-  iconPosition?: "left" | "right";
+  iconPosition?: 'left' | 'right';
   fullWidth?: boolean;
   className?: string;
 };
@@ -270,7 +276,7 @@ export type InputProps = {
   required?: boolean;
   disabled?: boolean;
   loading?: boolean;
-  type?: "text" | "email" | "password" | "number" | "tel" | "url";
+  type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url';
   maxLength?: number;
   minLength?: number;
   pattern?: string;
@@ -278,7 +284,7 @@ export type InputProps = {
   autoFocus?: boolean;
   className?: string;
   icon?: React.ReactNode;
-  iconPosition?: "left" | "right";
+  iconPosition?: 'left' | 'right';
   onClear?: () => void;
   showClear?: boolean;
 };
@@ -302,7 +308,7 @@ export type TextareaProps = {
   autoComplete?: string;
   autoFocus?: boolean;
   className?: string;
-  resize?: "none" | "both" | "horizontal" | "vertical";
+  resize?: 'none' | 'both' | 'horizontal' | 'vertical';
 };
 
 /**
@@ -344,7 +350,7 @@ export type CheckboxProps = {
   disabled?: boolean;
   indeterminate?: boolean;
   className?: string;
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
 };
 
 /**
@@ -363,7 +369,7 @@ export type RadioProps<T> = {
   required?: boolean;
   disabled?: boolean;
   className?: string;
-  orientation?: "horizontal" | "vertical";
+  orientation?: 'horizontal' | 'vertical';
 };
 
 /**
@@ -376,7 +382,7 @@ export type SwitchProps = {
   error?: string;
   required?: boolean;
   disabled?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 };
 
@@ -386,8 +392,8 @@ export type SwitchProps = {
 export type TooltipProps = {
   children: React.ReactNode;
   content: React.ReactNode;
-  placement?: "top" | "bottom" | "left" | "right";
-  trigger?: "hover" | "click" | "focus";
+  placement?: 'top' | 'bottom' | 'left' | 'right';
+  trigger?: 'hover' | 'click' | 'focus';
   disabled?: boolean;
   delay?: number;
   className?: string;
@@ -401,8 +407,8 @@ export type PopoverProps = {
   content: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
-  placement?: "top" | "bottom" | "left" | "right";
-  trigger?: "hover" | "click" | "focus";
+  placement?: 'top' | 'bottom' | 'left' | 'right';
+  trigger?: 'hover' | 'click' | 'focus';
   disabled?: boolean;
   className?: string;
   closeOnClickOutside?: boolean;
@@ -415,7 +421,7 @@ export type PopoverProps = {
 export type AlertProps = {
   title?: string;
   description?: string;
-  variant?: "default" | "destructive" | "warning" | "info" | "success";
+  variant?: 'default' | 'destructive' | 'warning' | 'info' | 'success';
   icon?: React.ReactNode;
   onClose?: () => void;
   className?: string;
@@ -428,8 +434,15 @@ export type AlertProps = {
  */
 export type BadgeProps = {
   children: React.ReactNode;
-  variant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info";
-  size?: "sm" | "md" | "lg";
+  variant?:
+    | 'default'
+    | 'secondary'
+    | 'destructive'
+    | 'outline'
+    | 'success'
+    | 'warning'
+    | 'info';
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 };
 
@@ -440,7 +453,7 @@ export type AvatarProps = {
   src?: string;
   alt?: string;
   fallback?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   children?: React.ReactNode;
 };
@@ -451,8 +464,8 @@ export type AvatarProps = {
 export type ProgressProps = {
   value: number;
   max?: number;
-  size?: "sm" | "md" | "lg";
-  variant?: "default" | "success" | "warning" | "destructive";
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'success' | 'warning' | 'destructive';
   className?: string;
   showValue?: boolean;
   animated?: boolean;
@@ -462,8 +475,8 @@ export type ProgressProps = {
  * Generic spinner props for reusable spinner components
  */
 export type SpinnerProps = {
-  size?: "sm" | "md" | "lg" | "xl";
-  variant?: "default" | "primary" | "secondary";
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+  variant?: 'default' | 'primary' | 'secondary';
   className?: string;
 };
 

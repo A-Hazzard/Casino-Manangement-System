@@ -8,14 +8,14 @@ import type {
   LocationExportData,
   TopLocationData,
   DateRange,
-} from "@/lib/types";
-import type { MachineData } from "@/shared/types/machines";
-import type { ExtendedLegacyExportData } from "@/lib/utils/exportUtils";
-import type React from "react";
+} from '@/lib/types';
+import type { MachineData } from '@/shared/types/machines';
+import type { ExtendedLegacyExportData } from '@/lib/utils/exportUtils';
+import type React from 'react';
 
 type MachineSortConfig = {
   key: keyof MachineData;
-  direction: "asc" | "desc";
+  direction: 'asc' | 'desc';
 };
 
 /**
@@ -40,7 +40,7 @@ export async function handleRefresh(
   setIsRefreshing: (refreshing: boolean) => void
 ) {
   setIsRefreshing(true);
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await new Promise(resolve => setTimeout(resolve, 1500));
   setIsRefreshing(false);
 }
 
@@ -50,10 +50,10 @@ export async function handleRefresh(
  */
 export function createTimeFilterButtons() {
   return [
-    { id: "Today", label: "Today" },
-    { id: "last7days", label: "Last 7 Days" },
-    { id: "last30days", label: "Last 30 Days" },
-    { id: "Custom", label: "Custom Range" },
+    { id: 'Today', label: 'Today' },
+    { id: 'last7days', label: 'Last 7 Days' },
+    { id: 'last30days', label: 'Last 30 Days' },
+    { id: 'Custom', label: 'Custom Range' },
   ];
 }
 
@@ -98,9 +98,9 @@ export function handleLocationSelectLocations(
   // For now, handle the first selected location if any
   if (locationIds.length > 0) {
     const locationId = locationIds[0];
-    setSelectedLocations((prev) =>
+    setSelectedLocations(prev =>
       prev.includes(locationId)
-        ? prev.filter((id) => id !== locationId)
+        ? prev.filter(id => id !== locationId)
         : [...prev, locationId]
     );
   }
@@ -131,10 +131,10 @@ export async function handleExportSASEvaluation(
   try {
     const filteredData =
       selectedLocations.length > 0
-        ? paginatedLocations.filter((loc) => {
+        ? paginatedLocations.filter(loc => {
             // Find the corresponding topLocation to get the correct locationId
             const topLocation = topLocations.find(
-              (tl) => tl.locationName === loc.locationName
+              tl => tl.locationName === loc.locationName
             );
             return topLocation
               ? selectedLocations.includes(topLocation.locationId)
@@ -143,23 +143,23 @@ export async function handleExportSASEvaluation(
         : paginatedLocations;
 
     const exportDataObj: ExtendedLegacyExportData = {
-      title: "SAS Evaluation Report",
-      subtitle: "SAS machine evaluation and performance metrics",
+      title: 'SAS Evaluation Report',
+      subtitle: 'SAS machine evaluation and performance metrics',
       headers: [
-        "Location ID",
-        "Location Name",
-        "Money In",
-        "Money Out",
-        "Gross",
-        "Total Machines",
-        "Online Machines",
-        "SAS Machines",
-        "Non-SAS Machines",
-        "Has SAS Machines",
-        "Has Non-SAS Machines",
-        "Is Local Server",
+        'Location ID',
+        'Location Name',
+        'Money In',
+        'Money Out',
+        'Gross',
+        'Total Machines',
+        'Online Machines',
+        'SAS Machines',
+        'Non-SAS Machines',
+        'Has SAS Machines',
+        'Has Non-SAS Machines',
+        'Is Local Server',
       ],
-      data: filteredData.map((loc) => [
+      data: filteredData.map(loc => [
         loc.location,
         loc.locationName,
         (loc.moneyIn || 0).toLocaleString(),
@@ -169,49 +169,49 @@ export async function handleExportSASEvaluation(
         loc.onlineMachines,
         loc.sasMachines,
         loc.nonSasMachines,
-        loc.hasSasMachines ? "Yes" : "No",
-        loc.hasNonSasMachines ? "Yes" : "No",
-        loc.isLocalServer ? "Yes" : "No",
+        loc.hasSasMachines ? 'Yes' : 'No',
+        loc.hasNonSasMachines ? 'Yes' : 'No',
+        loc.isLocalServer ? 'Yes' : 'No',
       ]),
       summary: [
-        { label: "Total Locations", value: filteredData.length.toString() },
+        { label: 'Total Locations', value: filteredData.length.toString() },
         {
-          label: "Total SAS Machines",
+          label: 'Total SAS Machines',
           value: filteredData
             .reduce((sum, loc) => sum + loc.sasMachines, 0)
             .toString(),
         },
         {
-          label: "Total Non-SAS Machines",
+          label: 'Total Non-SAS Machines',
           value: filteredData
             .reduce((sum, loc) => sum + loc.nonSasMachines, 0)
             .toString(),
         },
         {
-          label: "Total Gross Revenue",
+          label: 'Total Gross Revenue',
           value: `$${filteredData
             .reduce((sum, loc) => sum + (loc.gross || 0), 0)
             .toLocaleString()}`,
         },
       ],
       metadata: {
-        generatedBy: "Reports System",
+        generatedBy: 'Reports System',
         generatedAt: new Date().toISOString(),
         dateRange:
           selectedDateRange?.start && selectedDateRange?.end
             ? `${selectedDateRange.start.toLocaleDateString()} - ${selectedDateRange.end.toLocaleDateString()}`
             : `${activeMetricsFilter}`,
-        tab: "SAS Evaluation",
+        tab: 'SAS Evaluation',
         selectedLocations:
-          selectedLocations.length > 0 ? selectedLocations.length : "All",
+          selectedLocations.length > 0 ? selectedLocations.length : 'All',
       },
     };
 
     await exportData(exportDataObj);
-    toast.success("SAS evaluation report exported successfully");
+    toast.success('SAS evaluation report exported successfully');
   } catch (error) {
-    console.error("Error exporting SAS evaluation:", error);
-    toast.error("Failed to export SAS evaluation report");
+    console.error('Error exporting SAS evaluation:', error);
+    toast.error('Failed to export SAS evaluation report');
   }
 }
 
@@ -224,11 +224,11 @@ export function handleMachineSort(
   key: keyof MachineData,
   setSortConfig: React.Dispatch<React.SetStateAction<MachineSortConfig>>
 ) {
-  setSortConfig((prevConfig) => {
-    const newDirection: "asc" | "desc" =
-      prevConfig.key === key && prevConfig.direction === "desc"
-        ? "asc"
-        : "desc";
+  setSortConfig(prevConfig => {
+    const newDirection: 'asc' | 'desc' =
+      prevConfig.key === key && prevConfig.direction === 'desc'
+        ? 'asc'
+        : 'desc';
     return {
       key,
       direction: newDirection,
@@ -244,7 +244,7 @@ export function handleMachineSort(
  */
 export function sortEvaluationData(
   machines: MachineEvaluationData[],
-  sortConfig: { key: string; direction: "asc" | "desc" }
+  sortConfig: { key: string; direction: 'asc' | 'desc' }
 ) {
   return [...machines].sort(
     (a: MachineEvaluationData, b: MachineEvaluationData) => {
@@ -252,51 +252,51 @@ export function sortEvaluationData(
       let bValue: number | string;
 
       switch (sortConfig.key) {
-        case "locationName":
+        case 'locationName':
           aValue = a.locationName;
           bValue = b.locationName;
           break;
-        case "machineId":
+        case 'machineId':
           aValue = a.machineId;
           bValue = b.machineId;
           break;
-        case "gameTitle":
+        case 'gameTitle':
           aValue = a.gameTitle;
           bValue = b.gameTitle;
           break;
-        case "manufacturer":
+        case 'manufacturer':
           aValue = a.manufacturer;
           bValue = b.manufacturer;
           break;
-        case "handle":
+        case 'handle':
           aValue = a.coinIn || 0;
           bValue = b.coinIn || 0;
           break;
-        case "moneyIn":
+        case 'moneyIn':
           aValue = a.drop || 0;
           bValue = b.drop || 0;
           break;
-        case "netWin":
+        case 'netWin':
           aValue = a.netWin;
           bValue = b.netWin;
           break;
-        case "jackpot":
+        case 'jackpot':
           aValue = 0; // evaluationData doesn't have jackpot
           bValue = 0;
           break;
-        case "avgWagerPerGame":
+        case 'avgWagerPerGame':
           aValue = a.avgBet || 0;
           bValue = b.avgBet || 0;
           break;
-        case "actualHold":
+        case 'actualHold':
           aValue = a.actualHold || 0;
           bValue = b.actualHold || 0;
           break;
-        case "theoreticalHold":
+        case 'theoreticalHold':
           aValue = a.theoreticalHold;
           bValue = b.theoreticalHold;
           break;
-        case "gamesPlayed":
+        case 'gamesPlayed':
           aValue = a.gamesPlayed;
           bValue = b.gamesPlayed;
           break;
@@ -305,13 +305,13 @@ export function sortEvaluationData(
           bValue = b.netWin;
       }
 
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortConfig.direction === "asc"
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortConfig.direction === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
 
-      return sortConfig.direction === "asc"
+      return sortConfig.direction === 'asc'
         ? (aValue as number) - (bValue as number)
         : (bValue as number) - (aValue as number);
     }
@@ -344,18 +344,18 @@ export async function handleExportMeters(
     // Ensure we have data to export
     let machinesToExport: MachineExportData[] = [];
 
-    if (activeTab === "overview") {
+    if (activeTab === 'overview') {
       if (overviewMachines.length === 0) {
         toast.error(
-          "No overview data available to export. Please wait for data to load."
+          'No overview data available to export. Please wait for data to load.'
         );
         return;
       }
       machinesToExport = overviewMachines;
-    } else if (activeTab === "offline") {
+    } else if (activeTab === 'offline') {
       if (offlineMachines.length === 0) {
         toast.error(
-          "No offline data available to export. Please wait for data to load."
+          'No offline data available to export. Please wait for data to load.'
         );
         return;
       }
@@ -364,7 +364,7 @@ export async function handleExportMeters(
       // Default to overview data
       if (overviewMachines.length === 0) {
         toast.error(
-          "No data available to export. Please wait for data to load."
+          'No data available to export. Please wait for data to load.'
         );
         return;
       }
@@ -372,29 +372,29 @@ export async function handleExportMeters(
     }
 
     const metersData: ExtendedLegacyExportData = {
-      title: "Machines Export Report",
+      title: 'Machines Export Report',
       subtitle: `Machine performance data - ${
-        activeMetricsFilter === "Custom" &&
+        activeMetricsFilter === 'Custom' &&
         customDateRange?.startDate &&
         customDateRange?.endDate
           ? `${customDateRange.startDate.toDateString()} - ${customDateRange.endDate.toDateString()}`
           : activeMetricsFilter
       }`,
       headers: [
-        "Machine ID",
-        "Machine Name",
-        "Game Title",
-        "Location",
-        "Manufacturer",
-        "Type",
-        "Net Win",
-        "Drop",
-        "Cancelled Credits",
-        "Jackpot",
-        "Games Played",
-        "Hold %",
-        "Status",
-        "SAS Enabled",
+        'Machine ID',
+        'Machine Name',
+        'Game Title',
+        'Location',
+        'Manufacturer',
+        'Type',
+        'Net Win',
+        'Drop',
+        'Cancelled Credits',
+        'Jackpot',
+        'Games Played',
+        'Hold %',
+        'Status',
+        'SAS Enabled',
       ],
       data: machinesToExport.map((machine: MachineExportData) => [
         machine.machineId,
@@ -402,42 +402,42 @@ export async function handleExportMeters(
         machine.gameTitle,
         machine.locationName,
         machine.manufacturer,
-        "Slot", // Default type since it's not in the data
+        'Slot', // Default type since it's not in the data
         machine.netWin.toLocaleString(),
         machine.drop.toLocaleString(),
         machine.totalCancelledCredits.toLocaleString(),
-        "0", // Jackpot not available in current data
+        '0', // Jackpot not available in current data
         machine.gamesPlayed.toLocaleString(),
         (() => {
           const hold = machine.theoreticalHold;
-          if (hold === undefined) return "0%";
+          if (hold === undefined) return '0%';
           const hasDecimals = hold % 1 !== 0;
           const decimalPart = hold % 1;
           const hasSignificantDecimals = hasDecimals && decimalPart >= 0.1;
-          return hold.toFixed(hasSignificantDecimals ? 1 : 0) + "%";
+          return hold.toFixed(hasSignificantDecimals ? 1 : 0) + '%';
         })(),
-        machine.isOnline ? "Online" : "Offline",
-        machine.isSasEnabled ? "Yes" : "No",
+        machine.isOnline ? 'Online' : 'Offline',
+        machine.isSasEnabled ? 'Yes' : 'No',
       ]),
       summary: [
         {
-          label: "Total Machines",
+          label: 'Total Machines',
           value: machinesToExport.length.toString(),
         },
         {
-          label: "Online Machines",
+          label: 'Online Machines',
           value: machinesToExport
             .filter((m: MachineExportData) => m.isOnline)
             .length.toString(),
         },
         {
-          label: "Offline Machines",
+          label: 'Offline Machines',
           value: machinesToExport
             .filter((m: MachineExportData) => !m.isOnline)
             .length.toString(),
         },
         {
-          label: "Total Net Win",
+          label: 'Total Net Win',
           value: `$${machinesToExport
             .reduce(
               (sum: number, m: MachineExportData) => sum + (m.netWin || 0),
@@ -446,7 +446,7 @@ export async function handleExportMeters(
             .toLocaleString()}`,
         },
         {
-          label: "Total Drop",
+          label: 'Total Drop',
           value: `$${machinesToExport
             .reduce(
               (sum: number, m: MachineExportData) => sum + (m.drop || 0),
@@ -456,17 +456,17 @@ export async function handleExportMeters(
         },
       ],
       metadata: {
-        generatedBy: "Reports System",
+        generatedBy: 'Reports System',
         generatedAt: new Date().toISOString(),
         dateRange: activeMetricsFilter,
-        tab: "Machines",
+        tab: 'Machines',
       },
     };
 
     await exportData(metersData);
-    toast.success("Machine data exported successfully");
+    toast.success('Machine data exported successfully');
   } catch (error) {
-    console.error("Error exporting machine data:", error);
-    toast.error("Failed to export machine data");
+    console.error('Error exporting machine data:', error);
+    toast.error('Failed to export machine data');
   }
 }

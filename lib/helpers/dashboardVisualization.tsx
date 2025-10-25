@@ -5,13 +5,13 @@ import {
   ActiveFilters,
   TopPerformingData,
   ActiveTab,
-} from "@/lib/types";
-import { CustomizedLabelProps } from "@/lib/types/componentProps";
-import { RADIAN } from "@/lib/constants/uiConstants";
-import { fetchTopPerformingData } from "@/lib/helpers/topPerforming";
-import getAllGamingLocations from "@/lib/helpers/locations";
-import { TimePeriod } from "@/shared/types/common";
-import { fetchMetricsData } from "@/lib/helpers/dashboard";
+} from '@/lib/types';
+import { CustomizedLabelProps } from '@/lib/types/componentProps';
+import { RADIAN } from '@/lib/constants/uiConstants';
+import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
+import getAllGamingLocations from '@/lib/helpers/locations';
+import { TimePeriod } from '@/shared/types/common';
+import { fetchMetricsData } from '@/lib/helpers/dashboard';
 
 /**
  * Renders a customized label for pie chart visualization
@@ -28,7 +28,7 @@ export const renderCustomizedLabel = (props: CustomizedLabelProps) => {
       fill="white"
       textAnchor="middle"
       dominantBaseline="central"
-      fontSize={props.percent < 0.1 ? "12px" : "14px"}
+      fontSize={props.percent < 0.1 ? '12px' : '14px'}
       fontWeight="bold"
     >
       {(props.percent * 100).toFixed(0)}%
@@ -43,17 +43,22 @@ export const loadGamingLocations = async (
   setGamingLocations: (locations: locations) => void
 ) => {
   const locationsData = await getAllGamingLocations();
-  const validLocations = locationsData.filter(
-    (loc) => {
-      const locationWithGeoCoords = loc as typeof loc & { geoCoords?: { latitude?: number; longitude?: number; longtitude?: number } };
-      return locationWithGeoCoords.geoCoords &&
-        locationWithGeoCoords.geoCoords.latitude !== 0 &&
-        locationWithGeoCoords.geoCoords.longitude !== 0;
-    }
-  );
+  const validLocations = locationsData.filter(loc => {
+    const locationWithGeoCoords = loc as typeof loc & {
+      geoCoords?: {
+        latitude?: number;
+        longitude?: number;
+        longtitude?: number;
+      };
+    };
+    return (
+      locationWithGeoCoords.geoCoords &&
+      locationWithGeoCoords.geoCoords.latitude !== 0 &&
+      locationWithGeoCoords.geoCoords.longitude !== 0
+    );
+  });
   setGamingLocations(validLocations);
 };
-
 
 /**
  * Fetches top performing data based on active tab and filter
@@ -75,7 +80,7 @@ export const fetchTopPerformingDataHelper = async (
     const data = await fetchTopPerformingData(activeTab, activePieChartFilter);
     setTopPerformingData(data);
   } catch (error) {
-    console.error("Error fetching top-performing data:", error);
+    console.error('Error fetching top-performing data:', error);
   } finally {
     setLoadingTopPerforming(false);
   }
@@ -120,7 +125,7 @@ export const handleDashboardRefresh = async (
     );
     setTopPerformingData(topPerformingDataResult);
   } catch (error) {
-    console.error("Error refreshing data:", error);
+    console.error('Error refreshing data:', error);
   } finally {
     setRefreshing(false);
     setLoadingChartData(false);
@@ -132,9 +137,9 @@ export const handleDashboardRefresh = async (
  * Creates time filter buttons configuration
  */
 export const getTimeFilterButtons = () => [
-  { label: "Today", value: "Today" as TimePeriod },
-  { label: "Yesterday", value: "Yesterday" as TimePeriod },
-  { label: "Last 7 days", value: "7d" as TimePeriod },
-  { label: "30 days", value: "30d" as TimePeriod },
-  { label: "Custom", value: "Custom" as TimePeriod },
+  { label: 'Today', value: 'Today' as TimePeriod },
+  { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+  { label: 'Last 7 days', value: '7d' as TimePeriod },
+  { label: '30 days', value: '30d' as TimePeriod },
+  { label: 'Custom', value: 'Custom' as TimePeriod },
 ];

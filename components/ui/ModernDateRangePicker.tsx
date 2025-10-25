@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   DateRangePicker,
   type DateRange,
-} from "@/components/ui/dateRangePicker";
-import { CustomSelect } from "@/components/ui/custom-select";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dateRangePicker';
+import { CustomSelect } from '@/components/ui/custom-select';
+import { Label } from '@/components/ui/label';
 
 type ModernDateRangePickerProps = {
   value?: DateRange;
@@ -26,25 +26,25 @@ const TimePicker: React.FC<{
 }> = ({ value, onChange, label, id }) => {
   // Generate hour and minute options
   const hours = Array.from({ length: 24 }, (_, i) => ({
-    value: i.toString().padStart(2, "0"),
-    label: i.toString().padStart(2, "0"),
+    value: i.toString().padStart(2, '0'),
+    label: i.toString().padStart(2, '0'),
   }));
 
   const minutes = Array.from({ length: 60 }, (_, i) => ({
-    value: i.toString().padStart(2, "0"),
-    label: i.toString().padStart(2, "0"),
+    value: i.toString().padStart(2, '0'),
+    label: i.toString().padStart(2, '0'),
   }));
 
-  const [selectedHour, setSelectedHour] = useState(value.split(":")[0] || "00");
+  const [selectedHour, setSelectedHour] = useState(value.split(':')[0] || '00');
   const [selectedMinute, setSelectedMinute] = useState(
-    value.split(":")[1] || "00"
+    value.split(':')[1] || '00'
   );
   const [isInternalChange, setIsInternalChange] = useState(false);
 
   // Update local state when value prop changes (only if not an internal change)
   useEffect(() => {
     if (!isInternalChange) {
-      const [hour, minute] = value.split(":");
+      const [hour, minute] = value.split(':');
       if (
         hour &&
         minute &&
@@ -81,7 +81,7 @@ const TimePicker: React.FC<{
       <Label htmlFor={id} className="text-sm font-medium text-gray-700">
         {label}
       </Label>
-      <div className="flex gap-2 items-center">
+      <div className="flex items-center gap-2">
         <div className="w-20">
           <CustomSelect
             value={selectedHour}
@@ -94,7 +94,7 @@ const TimePicker: React.FC<{
             searchable={false}
           />
         </div>
-        <span className="flex items-center text-gray-500 font-bold text-lg">
+        <span className="flex items-center text-lg font-bold text-gray-500">
           :
         </span>
         <div className="w-20">
@@ -123,19 +123,19 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   enableTimeInputs = false,
 }) => {
   // Time input states - Default to 8 AM for both start and end time
-  const [startTime, setStartTime] = useState("08:00");
-  const [endTime, setEndTime] = useState("08:00");
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('08:00');
 
   // Initialize time values from the date range if available
   useEffect(() => {
     if (value?.from) {
-      const hours = value.from.getHours().toString().padStart(2, "0");
-      const minutes = value.from.getMinutes().toString().padStart(2, "0");
+      const hours = value.from.getHours().toString().padStart(2, '0');
+      const minutes = value.from.getMinutes().toString().padStart(2, '0');
       setStartTime(`${hours}:${minutes}`);
     }
     if (value?.to) {
-      const hours = value.to.getHours().toString().padStart(2, "0");
-      const minutes = value.to.getMinutes().toString().padStart(2, "0");
+      const hours = value.to.getHours().toString().padStart(2, '0');
+      const minutes = value.to.getMinutes().toString().padStart(2, '0');
       setEndTime(`${hours}:${minutes}`);
     }
   }, [value]);
@@ -144,24 +144,24 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   const handleDateRangeChange = (range?: DateRange) => {
     if (range?.from && range?.to) {
       // Apply start time to the from date
-      const [startHours, startMinutes] = startTime.split(":").map(Number);
+      const [startHours, startMinutes] = startTime.split(':').map(Number);
       const newFromDate = new Date(range.from);
       newFromDate.setHours(startHours, startMinutes, 0, 0);
 
       // Apply end time to the to date
-      const [endHours, endMinutes] = endTime.split(":").map(Number);
+      const [endHours, endMinutes] = endTime.split(':').map(Number);
       const newToDate = new Date(range.to);
       newToDate.setHours(endHours, endMinutes, 59, 999);
 
       // Validate that the dates are valid
       if (isNaN(newFromDate.getTime()) || isNaN(newToDate.getTime())) {
-        console.warn("Invalid date created, skipping update");
+        console.warn('Invalid date created, skipping update');
         return;
       }
 
       // Validate that start date is not after end date
       if (newFromDate > newToDate) {
-        console.warn("Start date cannot be after end date, skipping update");
+        console.warn('Start date cannot be after end date, skipping update');
         return;
       }
 
@@ -171,12 +171,12 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
       });
     } else if (range?.from) {
       // Handle partial selection (only from date selected)
-      const [startHours, startMinutes] = startTime.split(":").map(Number);
+      const [startHours, startMinutes] = startTime.split(':').map(Number);
       const newFromDate = new Date(range.from);
       newFromDate.setHours(startHours, startMinutes, 0, 0);
 
       if (isNaN(newFromDate.getTime())) {
-        console.warn("Invalid date created, skipping update");
+        console.warn('Invalid date created, skipping update');
         return;
       }
 
@@ -191,29 +191,29 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   };
 
   // Handle time change and update the date range
-  const handleTimeChange = (timeType: "start" | "end", time: string) => {
+  const handleTimeChange = (timeType: 'start' | 'end', time: string) => {
     // Only process time changes if we have valid dates
     if (!value?.from || !value?.to) {
-      console.warn("Cannot set time without valid date range, skipping update");
+      console.warn('Cannot set time without valid date range, skipping update');
       return;
     }
 
     // Validate that the existing dates are valid
     if (isNaN(value.from.getTime()) || isNaN(value.to.getTime())) {
-      console.warn("Invalid date range, cannot set time, skipping update");
+      console.warn('Invalid date range, cannot set time, skipping update');
       return;
     }
 
-    if (timeType === "start") {
+    if (timeType === 'start') {
       setStartTime(time);
-      const [hours, minutes] = time.split(":").map(Number);
+      const [hours, minutes] = time.split(':').map(Number);
 
       const newFromDate = new Date(value.from);
       newFromDate.setHours(hours, minutes, 0, 0);
 
       // Validate that start date is not after end date
       if (newFromDate > value.to) {
-        console.warn("Start time cannot be after end date, skipping update");
+        console.warn('Start time cannot be after end date, skipping update');
         return;
       }
 
@@ -223,14 +223,14 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
       });
     } else {
       setEndTime(time);
-      const [hours, minutes] = time.split(":").map(Number);
+      const [hours, minutes] = time.split(':').map(Number);
 
       const newToDate = new Date(value.to);
       newToDate.setHours(hours, minutes, 59, 999);
 
       // Validate that end date is not before start date
       if (newToDate < value.from) {
-        console.warn("End time cannot be before start date, skipping update");
+        console.warn('End time cannot be before start date, skipping update');
         return;
       }
 
@@ -242,16 +242,16 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 py-3 px-4 rounded-b-lg bg-gray-50">
+    <div className="flex flex-col gap-4 rounded-b-lg bg-gray-50 px-4 py-3">
       {/* Date Range Picker */}
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button
-          className="bg-button text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
+          className="rounded-lg bg-button px-3 py-1.5 text-xs font-semibold text-white"
           onClick={onSetLastMonth}
         >
           Last Month
         </button>
-        <div style={{ width: "fit-content" }}>
+        <div style={{ width: 'fit-content' }}>
           <DateRangePicker
             value={value}
             onChange={handleDateRangeChange}
@@ -263,21 +263,21 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
 
       {/* Time Inputs - Only show if enableTimeInputs is true */}
       {enableTimeInputs && value?.from && value?.to && (
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 p-4 bg-white rounded-lg border border-gray-200">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:gap-6">
           <TimePicker
             value={startTime}
-            onChange={(time) => handleTimeChange("start", time)}
+            onChange={time => handleTimeChange('start', time)}
             label="Start Time"
             id="start-time"
           />
 
-          <div className="flex items-center text-gray-500 font-medium text-lg">
+          <div className="flex items-center text-lg font-medium text-gray-500">
             to
           </div>
 
           <TimePicker
             value={endTime}
-            onChange={(time) => handleTimeChange("end", time)}
+            onChange={time => handleTimeChange('end', time)}
             label="End Time"
             id="end-time"
           />
@@ -287,14 +287,14 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
       {/* Action Buttons */}
       <div className="flex items-center justify-center gap-2">
         <button
-          className="bg-lighterBlueHighlight text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
+          className="rounded-lg bg-lighterBlueHighlight px-3 py-1.5 text-xs font-semibold text-white"
           onClick={onGo}
           disabled={!value?.from || !value?.to}
         >
           Go
         </button>
         <button
-          className="bg-gray-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-600"
+          className="rounded-lg bg-gray-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-600"
           onClick={onCancel}
         >
           Cancel

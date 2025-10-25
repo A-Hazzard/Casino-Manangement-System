@@ -49,16 +49,16 @@ export function formatTrinidadTime(
 ): string {
   const trinidadTime = utcToTrinidadTime(utcDate);
   const defaultOptions: Intl.DateTimeFormatOptions = {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     hour12: true,
   };
 
-  return trinidadTime.toLocaleString("en-TT", {
+  return trinidadTime.toLocaleString('en-TT', {
     ...defaultOptions,
     ...options,
   });
@@ -70,39 +70,38 @@ export function formatTrinidadTime(
  * @param dateFields - Array of field names that contain dates
  * @returns Object with date fields converted to Trinidad time
  */
-export function convertObjectDatesToTrinidadTime<T extends Record<string, unknown>>(
-  obj: T,
-  dateFields: string[] = []
-): T {
-  if (!obj || typeof obj !== "object") return obj;
+export function convertObjectDatesToTrinidadTime<
+  T extends Record<string, unknown>,
+>(obj: T, dateFields: string[] = []): T {
+  if (!obj || typeof obj !== 'object') return obj;
 
   // Common date field names found in our models
   const commonDateFields = [
-    "createdAt",
-    "updatedAt",
-    "deletedAt",
-    "readAt",
-    "timestamp",
-    "date",
-    "startTime",
-    "endTime",
-    "lastActivity",
-    "lastLogin",
-    "lastPwUpdatedAt",
-    "lastfplAwardAt",
-    "smsCodeTime",
-    "startDate",
-    "expiryDate",
-    "prevStartDate",
-    "prevExpiryDate",
-    "previousCollectionTime",
-    "collectionTime",
-    "lastBillMeterAt",
-    "lastSasMeterAt",
-    "lastMaintenanceDate",
-    "nextMaintenanceDate",
-    "lastAutoLogoutTime",
-    "asOf",
+    'createdAt',
+    'updatedAt',
+    'deletedAt',
+    'readAt',
+    'timestamp',
+    'date',
+    'startTime',
+    'endTime',
+    'lastActivity',
+    'lastLogin',
+    'lastPwUpdatedAt',
+    'lastfplAwardAt',
+    'smsCodeTime',
+    'startDate',
+    'expiryDate',
+    'prevStartDate',
+    'prevExpiryDate',
+    'previousCollectionTime',
+    'collectionTime',
+    'lastBillMeterAt',
+    'lastSasMeterAt',
+    'lastMaintenanceDate',
+    'nextMaintenanceDate',
+    'lastAutoLogoutTime',
+    'asOf',
   ];
 
   const allDateFields = [...new Set([...commonDateFields, ...dateFields])];
@@ -117,7 +116,7 @@ export function convertObjectDatesToTrinidadTime<T extends Record<string, unknow
     // Handle nested objects
     if (
       converted[field] &&
-      typeof converted[field] === "object" &&
+      typeof converted[field] === 'object' &&
       !Array.isArray(converted[field])
     ) {
       converted[field] = convertObjectDatesToTrinidadTime(
@@ -129,11 +128,14 @@ export function convertObjectDatesToTrinidadTime<T extends Record<string, unknow
     // Handle arrays of objects
     if (Array.isArray(converted[field])) {
       converted[field] = converted[field].map((item: unknown) =>
-        typeof item === "object" && item instanceof Date
+        typeof item === 'object' && item instanceof Date
           ? utcToTrinidadTime(item)
-          : typeof item === "object" && item !== null
-          ? convertObjectDatesToTrinidadTime(item as Record<string, unknown>, dateFields)
-          : item
+          : typeof item === 'object' && item !== null
+            ? convertObjectDatesToTrinidadTime(
+                item as Record<string, unknown>,
+                dateFields
+              )
+            : item
       );
     }
   }
@@ -147,15 +149,12 @@ export function convertObjectDatesToTrinidadTime<T extends Record<string, unknow
  * @param dateFields - Additional date field names to convert
  * @returns Array with all date fields converted to Trinidad time
  */
-export function convertArrayDatesToTrinidadTime<T extends Record<string, unknown>>(
-  array: T[],
-  dateFields: string[] = []
-): T[] {
+export function convertArrayDatesToTrinidadTime<
+  T extends Record<string, unknown>,
+>(array: T[], dateFields: string[] = []): T[] {
   if (!Array.isArray(array)) return array;
 
-  return array.map((item) =>
-    convertObjectDatesToTrinidadTime(item, dateFields)
-  );
+  return array.map(item => convertObjectDatesToTrinidadTime(item, dateFields));
 }
 
 /**
@@ -168,8 +167,8 @@ export function createTrinidadDateRangeFilter(
   startDate: Date | string,
   endDate: Date | string
 ): { $gte: Date; $lte: Date } {
-  const start = typeof startDate === "string" ? new Date(startDate) : startDate;
-  const end = typeof endDate === "string" ? new Date(endDate) : endDate;
+  const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
+  const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
 
   return {
     $gte: trinidadTimeToUtc(start),
@@ -189,7 +188,7 @@ export function convertResponseToTrinidadTime<T>(
 ): T {
   if (Array.isArray(data)) {
     return convertArrayDatesToTrinidadTime(data, additionalDateFields) as T;
-  } else if (data && typeof data === "object") {
+  } else if (data && typeof data === 'object') {
     return convertObjectDatesToTrinidadTime(
       data as Record<string, unknown>,
       additionalDateFields
@@ -206,7 +205,7 @@ export function debugTimezones(): void {
   const now = new Date();
   const trinidadTime = utcToTrinidadTime(now);
 
-  console.warn("🕐 Timezone Debug:");
+  console.warn('🕐 Timezone Debug:');
   console.warn(`   UTC Time: ${now.toISOString()}`);
   console.warn(`   Trinidad Time: ${formatTrinidadTime(now)}`);
   console.warn(`   Trinidad Time (Direct): ${trinidadTime.toISOString()}`);

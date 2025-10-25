@@ -1,7 +1,7 @@
-import React from "react";
-import CollectorScheduleFilters from "@/components/collectionReport/CollectorScheduleFilters";
-import CollectorScheduleTable from "@/components/collectionReport/CollectorScheduleTable";
-import { CollectorScheduleDesktopUIProps } from "@/lib/types/componentProps";
+import React from 'react';
+import CollectorScheduleFilters from '@/components/collectionReport/CollectorScheduleFilters';
+import CollectorScheduleTable from '@/components/collectionReport/CollectorScheduleTable';
+import { CollectorScheduleDesktopUIProps } from '@/lib/types/componentProps';
 
 const CollectorDesktopUI: React.FC<CollectorScheduleDesktopUIProps> = ({
   selectedLocation,
@@ -17,7 +17,7 @@ const CollectorDesktopUI: React.FC<CollectorScheduleDesktopUIProps> = ({
   loadingCollectorSchedules,
 }) => {
   return (
-    <div className="hidden md:block bg-white rounded-lg shadow-md">
+    <div className="hidden rounded-lg bg-white shadow-md md:block">
       <CollectorScheduleFilters
         selectedLocation={selectedLocation}
         onLocationChange={onLocationChange}
@@ -30,7 +30,7 @@ const CollectorDesktopUI: React.FC<CollectorScheduleDesktopUIProps> = ({
         onResetFilters={onResetFilters}
         loading={loadingCollectorSchedules}
       />
-      <div className="mt-4 px-4 pb-4 space-y-4">
+      <div className="mt-4 space-y-4 px-4 pb-4">
         <CollectorScheduleTable
           data={collectorSchedules}
           loading={loadingCollectorSchedules}

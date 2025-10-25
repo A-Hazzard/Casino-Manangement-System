@@ -1,35 +1,35 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
-    loader: "default",
+    loader: 'default',
   },
   async redirects() {
     return [
       {
-        source: "/collection",
-        destination: "/collection-report",
+        source: '/collection',
+        destination: '/collection-report',
         permanent: true,
       },
       {
-        source: "/collections",
-        destination: "/collection-report",
+        source: '/collections',
+        destination: '/collection-report',
         permanent: true,
       },
       {
-        source: "/collection-reports",
-        destination: "/collection-report",
+        source: '/collection-reports',
+        destination: '/collection-report',
         permanent: true,
       },
       {
-        source: "/login/",
-        destination: "/login",
+        source: '/login/',
+        destination: '/login',
         permanent: true,
       },
     ];
   },
-  webpack: (config) => {
+  webpack: config => {
     // Fix for react-day-picker and SendGrid internal module resolution issues
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -61,8 +61,8 @@ const nextConfig: NextConfig = {
     // Ignore SendGrid modules that use Node.js APIs in client-side code
     config.externals = config.externals || [];
     config.externals.push({
-      "@sendgrid/helpers": "commonjs @sendgrid/helpers",
-      "@sendgrid/mail": "commonjs @sendgrid/mail",
+      '@sendgrid/helpers': 'commonjs @sendgrid/helpers',
+      '@sendgrid/mail': 'commonjs @sendgrid/mail',
     });
 
     return config;

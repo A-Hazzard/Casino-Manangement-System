@@ -1,7 +1,7 @@
-import { getMetrics } from "@/lib/helpers/metrics";
-import { ActiveFilters, dashboardData } from "../types";
-import { TimePeriod } from "@shared/types";
-import type { CollectionDocument } from "@/lib/types/collections";
+import { getMetrics } from '@/lib/helpers/metrics';
+import { ActiveFilters, dashboardData } from '../types';
+import { TimePeriod } from '@shared/types';
+import type { CollectionDocument } from '@/lib/types/collections';
 
 /**
  * Handles a change in the active dashboard filter.
@@ -27,16 +27,16 @@ export async function handleFilterChange(
   setActiveFilters(newFilters); //  Now correctly updating state!
 
   const label = (
-    filterKey === "last7days"
-      ? "7d"
-      : filterKey === "last30days"
-      ? "30d"
-      : filterKey.charAt(0).toUpperCase() + filterKey.slice(1)
+    filterKey === 'last7days'
+      ? '7d'
+      : filterKey === 'last30days'
+        ? '30d'
+        : filterKey.charAt(0).toUpperCase() + filterKey.slice(1)
   ) as TimePeriod;
 
   setActiveMetricsFilter(label);
 
-  setShowDatePicker(filterKey === "Custom");
+  setShowDatePicker(filterKey === 'Custom');
 }
 
 /**
@@ -56,18 +56,18 @@ export async function switchFilter(
     // If setActiveFilters is provided, update the filter state
     if (setActiveFilters) {
       const newFilters: ActiveFilters = {
-        Today: filter === "Today",
-        Yesterday: filter === "Yesterday",
-        last7days: filter === "7d",
-        last30days: filter === "30d",
-        Custom: filter === "Custom",
+        Today: filter === 'Today',
+        Yesterday: filter === 'Yesterday',
+        last7days: filter === '7d',
+        last30days: filter === '30d',
+        Custom: filter === 'Custom',
       };
       setActiveFilters(newFilters);
     }
 
     // If setShowDatePicker is provided, update date picker visibility
     if (setShowDatePicker) {
-      setShowDatePicker(filter === "Custom");
+      setShowDatePicker(filter === 'Custom');
     }
 
     const data: dashboardData[] = await getMetrics(
@@ -80,9 +80,9 @@ export async function switchFilter(
     if (data.length > 0) {
       setChartData(data);
       setTotals({
-        xValue: "total",
-        day: "total",
-        time: "total",
+        xValue: 'total',
+        day: 'total',
+        time: 'total',
         moneyIn: data.reduce((acc, cur) => acc + cur.moneyIn, 0),
         moneyOut: data.reduce((acc, cur) => acc + cur.moneyOut, 0),
         gross: data.reduce((acc, cur) => acc + cur.gross, 0),
@@ -90,12 +90,12 @@ export async function switchFilter(
         geoCoords: undefined,
       });
     } else {
-      console.warn("🚨 No metrics data returned");
+      console.warn('🚨 No metrics data returned');
       setTotals(null);
       setChartData([]);
     }
   } catch (error) {
-    console.error("🚨 Error fetching metrics:", error);
+    console.error('🚨 Error fetching metrics:', error);
   }
 }
 
@@ -107,7 +107,7 @@ export async function switchFilter(
  */
 export function formatNumber(value: number): string {
   if (isNaN(value)) {
-    return "$0";
+    return '$0';
   }
 
   // Check if the value has meaningful decimal places
@@ -115,9 +115,9 @@ export function formatNumber(value: number): string {
   const decimalPart = value % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
     maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
   }).format(value);
@@ -133,10 +133,10 @@ export function formatNumber(value: number): string {
  */
 export function formatNumberWithCurrency(
   value: number,
-  currency: string = "USD"
+  currency: string = 'USD'
 ): string {
   if (isNaN(value)) {
-    return "$0";
+    return '$0';
   }
 
   // Check if the value has meaningful decimal places
@@ -144,8 +144,8 @@ export function formatNumberWithCurrency(
   const decimalPart = value % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
     currency: currency,
     minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
     maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
@@ -175,7 +175,7 @@ export function calculateVariation(col: CollectionDocument): number | string {
     col.sasMeters.gross === undefined ||
     col.sasMeters.gross === null
   ) {
-    return "No SAS Data";
+    return 'No SAS Data';
   }
   return (col.movement.gross || 0) - calculateSasGross(col);
 }
@@ -186,8 +186,8 @@ export function calculateVariation(col: CollectionDocument): number | string {
  * @returns The SAS start and end times, each on a new line.
  */
 export function formatSasTimes(col: CollectionDocument): string {
-  if (!col.sasMeters) return "-";
-  return `${col.sasMeters.sasStartTime || "-"}\n${
-    col.sasMeters.sasEndTime || "-"
+  if (!col.sasMeters) return '-';
+  return `${col.sasMeters.sasStartTime || '-'}\n${
+    col.sasMeters.sasEndTime || '-'
   }`;
 }

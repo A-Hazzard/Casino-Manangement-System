@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { Suspense } from "react";
+import { Suspense } from 'react';
 
 // Components
-import MembersContent from "@/components/members/MembersContent";
-import { MembersPageSkeleton } from "@/components/ui/skeletons/MembersSkeletons";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import MembersContent from '@/components/members/MembersContent';
+import { MembersPageSkeleton } from '@/components/ui/skeletons/MembersSkeletons';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 /**
  * Members Page

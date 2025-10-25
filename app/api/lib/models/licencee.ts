@@ -1,4 +1,4 @@
-import { model, models, Schema } from "mongoose";
+import { model, models, Schema } from 'mongoose';
 
 const LicenceeSchema = new Schema(
   {
@@ -12,7 +12,7 @@ const LicenceeSchema = new Schema(
     prevExpiryDate: { type: Date },
     isPaid: { type: Boolean },
     licenseKey: { type: String, unique: true, required: true },
-    status: { type: String, default: "active" },
+    status: { type: String, default: 'active' },
     deletedAt: { type: Date, default: null },
     createdAt: { type: Date },
     updatedAt: { type: Date },
@@ -28,4 +28,4 @@ const LicenceeSchema = new Schema(
 LicenceeSchema.index({ status: 1 });
 
 export const Licencee =
-  models.Licencee || model("Licencee", LicenceeSchema, "licencees");
+  models.Licencee || model('Licencee', LicenceeSchema, 'licencees');

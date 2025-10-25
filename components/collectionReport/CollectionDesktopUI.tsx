@@ -1,9 +1,9 @@
-import React from "react";
-import CollectionReportTable from "@/components/collectionReport/CollectionReportTable";
-import CollectionReportTableSkeleton from "@/components/collectionReport/CollectionReportTableSkeleton";
-import CollectionReportFilters from "@/components/collectionReport/CollectionReportFilters";
-import type { CollectionDesktopUIProps } from "@/lib/types/componentProps";
-import PaginationControls from "@/components/ui/PaginationControls";
+import React from 'react';
+import CollectionReportTable from '@/components/collectionReport/CollectionReportTable';
+import CollectionReportTableSkeleton from '@/components/collectionReport/CollectionReportTableSkeleton';
+import CollectionReportFilters from '@/components/collectionReport/CollectionReportFilters';
+import type { CollectionDesktopUIProps } from '@/lib/types/componentProps';
+import PaginationControls from '@/components/ui/PaginationControls';
 
 const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   loading,
@@ -55,14 +55,14 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
       </div>
 
       {/* Table Content - directly below filters */}
-      <div className="bg-white shadow w-full min-w-0">
+      <div className="w-full min-w-0 bg-white shadow">
         {loading ? (
           <div className="animate-in fade-in-0 slide-in-from-bottom-2">
             <CollectionReportTableSkeleton />
           </div>
         ) : filteredReports.length === 0 ? (
           <div className="animate-in fade-in-0 slide-in-from-bottom-2">
-            <p className="text-center text-gray-500 py-10">
+            <p className="py-10 text-center text-gray-500">
               No collection reports found.
             </p>
           </div>
@@ -86,16 +86,16 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
 
       {/* Pagination - below table */}
       {!loading && filteredReports.length > 0 && (
-        <div className="flex flex-col items-center mt-4 space-y-3">
+        <div className="mt-4 flex flex-col items-center space-y-3">
           {desktopTotalPages > 1 && (
             <div
               className="animate-in fade-in-0 slide-in-from-bottom-2"
-              style={{ animationDelay: "200ms" }}
+              style={{ animationDelay: '200ms' }}
             >
               <PaginationControls
                 currentPage={desktopPage - 1}
                 totalPages={desktopTotalPages}
-                setCurrentPage={(page) => onPaginateDesktop(page + 1)}
+                setCurrentPage={page => onPaginateDesktop(page + 1)}
               />
             </div>
           )}

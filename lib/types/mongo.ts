@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
+import { ObjectId } from 'mongodb';
 import type {
   DateRangeFilter,
   RegexFilter as DbRegexFilter,
@@ -13,7 +13,7 @@ import type {
   MeterData,
   CollectionMetersHistoryEntry,
   BillValidatorData,
-} from "@shared/types";
+} from '@shared/types';
 
 // Re-export shared database types
 export type {
@@ -36,7 +36,7 @@ export type RegexFilter = DbRegexFilter;
 // Create more specific nested query types
 export type StringIdQuery = {
   gamingLocation?: string | ObjectId;
-  "Custom.gamingLocation"?: string | ObjectId;
+  'Custom.gamingLocation'?: string | ObjectId;
   serialNumber?: RegexFilter;
   relayId?: RegexFilter;
   smibBoard?: RegexFilter;
@@ -49,13 +49,11 @@ export type NestedOrQuery = {
 // Specific query type for cabinet queries with required fields
 export type CabinetsQuery = {
   gamingLocation?: string | ObjectId | RegexFilter;
-  "Custom.gamingLocation"?: string | ObjectId | RegexFilter;
+  'Custom.gamingLocation'?: string | ObjectId | RegexFilter;
   deletedAt?: ArrayFilter;
   $or?: Array<StringIdQuery | NestedOrQuery>;
-  "rel.licencee"?: string;
+  'rel.licencee'?: string;
 };
-
-
 
 // Type for machine documents from MongoDB
 export type MachineDocument = {

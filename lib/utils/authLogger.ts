@@ -1,5 +1,5 @@
-import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import type { AuthLogEntry } from "@/lib/types/authLogger";
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import type { AuthLogEntry } from '@/lib/types/authLogger';
 
 export class AuthLogger {
   private static instance: AuthLogger;
@@ -30,8 +30,8 @@ export class AuthLogger {
         userId,
         email,
         details,
-        ipAddress: ipAddress || "unknown",
-        userAgent: userAgent || "unknown",
+        ipAddress: ipAddress || 'unknown',
+        userAgent: userAgent || 'unknown',
         timestamp: new Date(),
         success,
         errorMessage,
@@ -41,7 +41,7 @@ export class AuthLogger {
       // Log to activity logger
       await logActivity({
         action,
-        details: `${details}${errorMessage ? ` - Error: ${errorMessage}` : ""}`,
+        details: `${details}${errorMessage ? ` - Error: ${errorMessage}` : ''}`,
         ipAddress: logEntry.ipAddress,
         userAgent: logEntry.userAgent,
         metadata: {
@@ -54,14 +54,14 @@ export class AuthLogger {
       });
 
       // Also log to console for development
-      if (process.env.NODE_ENV === "development") {
-        console.warn("Auth Event:", {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Auth Event:', {
           ...logEntry,
           timestamp: logEntry.timestamp.toISOString(),
         });
       }
     } catch (error) {
-      console.error("Failed to log auth event:", error);
+      console.error('Failed to log auth event:', error);
     }
   }
 
@@ -73,7 +73,7 @@ export class AuthLogger {
     errorMessage?: string,
     metadata?: Record<string, unknown>
   ): Promise<void> {
-    const action = success ? "login_success" : "login_failed";
+    const action = success ? 'login_success' : 'login_failed';
     const details = success
       ? `Successful login attempt for ${email}`
       : `Failed login attempt for ${email}`;
@@ -99,7 +99,7 @@ export class AuthLogger {
     metadata?: Record<string, unknown>
   ): Promise<void> {
     await this.logAuthEvent(
-      "logout",
+      'logout',
       `User ${email} logged out`,
       true,
       userId,
@@ -119,7 +119,7 @@ export class AuthLogger {
     userAgent: string,
     errorMessage?: string
   ): Promise<void> {
-    const action = success ? "token_refresh_success" : "token_refresh_failed";
+    const action = success ? 'token_refresh_success' : 'token_refresh_failed';
     const details = success
       ? `Token refreshed successfully for ${email}`
       : `Token refresh failed for ${email}`;
@@ -144,8 +144,8 @@ export class AuthLogger {
     errorMessage?: string
   ): Promise<void> {
     const action = success
-      ? "password_reset_requested"
-      : "password_reset_failed";
+      ? 'password_reset_requested'
+      : 'password_reset_failed';
     const details = success
       ? `Password reset requested for ${email}`
       : `Password reset failed for ${email}`;
@@ -170,7 +170,7 @@ export class AuthLogger {
     metadata?: Record<string, unknown>
   ): Promise<void> {
     await this.logAuthEvent(
-      "account_locked",
+      'account_locked',
       `Account locked for ${email}: ${reason}`,
       false,
       undefined,
@@ -190,7 +190,7 @@ export class AuthLogger {
     metadata?: Record<string, unknown>
   ): Promise<void> {
     await this.logAuthEvent(
-      "account_unlocked",
+      'account_unlocked',
       `Account unlocked for ${email}`,
       true,
       userId,
@@ -211,14 +211,14 @@ export class AuthLogger {
     userAgent: string
   ): Promise<void> {
     await this.logAuthEvent(
-      "permission_denied",
+      'permission_denied',
       `Access denied to ${resource} for ${email} (action: ${action})`,
       false,
       userId,
       email,
       ipAddress,
       userAgent,
-      "Insufficient permissions",
+      'Insufficient permissions',
       { resource, attemptedAction: action }
     );
   }
@@ -231,7 +231,7 @@ export class AuthLogger {
     metadata?: Record<string, unknown>
   ): Promise<void> {
     await this.logAuthEvent(
-      "suspicious_activity",
+      'suspicious_activity',
       `Suspicious activity detected: ${activity} for ${email}`,
       false,
       undefined,

@@ -3,10 +3,10 @@
  * Handles the header section with title, filters, and refresh functionality
  */
 
-import { RefreshCw } from "lucide-react";
-import { motion } from "framer-motion";
-import RefreshButton from "@/components/ui/RefreshButton";
-import DashboardDateFilters from "./DashboardDateFilters";
+import { RefreshCw } from 'lucide-react';
+import { motion } from 'framer-motion';
+import RefreshButton from '@/components/ui/RefreshButton';
+import DashboardDateFilters from './DashboardDateFilters';
 type DashboardHeaderProps = {
   loadingChartData: boolean;
   refreshing: boolean;
@@ -42,12 +42,12 @@ export const DashboardHeader = ({
         {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-48 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-64 animate-pulse rounded bg-gray-200" />
           </div>
           <div className="flex gap-2">
-            <div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />
-            <div className="h-10 w-10 bg-gray-200 rounded animate-pulse" />
+            <div className="h-10 w-32 animate-pulse rounded bg-gray-200" />
+            <div className="h-10 w-10 animate-pulse rounded bg-gray-200" />
           </div>
         </div>
       </div>
@@ -65,7 +65,7 @@ export const DashboardHeader = ({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">
+          <p className="mt-1 text-gray-600">
             Overview of your gaming operations and performance metrics
           </p>
         </div>
@@ -84,7 +84,7 @@ export const DashboardHeader = ({
 
       {/* Date Filters */}
       <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <DashboardDateFilters
             disabled={loadingChartData}
             hideAllTime={false}

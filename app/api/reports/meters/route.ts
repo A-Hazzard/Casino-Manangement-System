@@ -1,26 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { shouldApplyCurrencyConversion } from "@/lib/helpers/currencyConversion";
-import { convertFromUSD } from "@/lib/helpers/rates";
-import type { CurrencyCode } from "@/shared/types/currency";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import { convertFromUSD } from '@/lib/helpers/rates';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
   try {
     const { searchParams } = new URL(req.url);
-    const locations = searchParams.get("locations");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const search = searchParams.get("search") || "";
-    const licencee = searchParams.get("licencee");
+    const locations = searchParams.get('locations');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const licencee = searchParams.get('licencee');
     const displayCurrency =
-      (searchParams.get("currency") as CurrencyCode) || "USD";
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     if (!locations) {
       return NextResponse.json(
-        { error: "Locations parameter is required" },
+        { error: 'Locations parameter is required' },
         { status: 400 }
       );
     }
@@ -28,13 +28,13 @@ export async function GET(req: NextRequest) {
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
-        { error: "DB connection failed" },
+        { error: 'DB connection failed' },
         { status: 500 }
       );
     }
 
     // Parse locations (comma-separated)
-    const locationList = locations.split(",").map((loc) => loc.trim());
+    const locationList = locations.split(',').map(loc => loc.trim());
 
     // Parse date range
     let start: Date, end: Date;
@@ -53,23 +53,23 @@ export async function GET(req: NextRequest) {
     const machineMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
 
     // Add location filter if specific locations are selected
-    if (locationList.length > 0 && !locationList.includes("all")) {
+    if (locationList.length > 0 && !locationList.includes('all')) {
       machineMatchStage.gamingLocation = { $in: locationList };
     }
 
     // Get machines data for the selected locations
     let machinesData = await db
-      .collection("machines")
+      .collection('machines')
       .find(machineMatchStage)
       .project({
         _id: 1,
         serialNumber: 1,
-        "Custom.name": 1,
+        'Custom.name': 1,
         gamingLocation: 1,
         sasMeters: 1,
         lastActivity: 1,
@@ -78,18 +78,18 @@ export async function GET(req: NextRequest) {
       .toArray();
 
     // Filter by licensee if provided
-    if (licencee && licencee !== "all") {
+    if (licencee && licencee !== 'all') {
       const licenseeLocations = await db
-        .collection("gaminglocations")
-        .find({ "rel.licencee": licencee })
+        .collection('gaminglocations')
+        .find({ 'rel.licencee': licencee })
         .project({ _id: 1 })
         .toArray();
 
-      const licenseeLocationIds = licenseeLocations.map((loc) =>
+      const licenseeLocationIds = licenseeLocations.map(loc =>
         loc._id.toString()
       );
 
-      machinesData = machinesData.filter((machine) =>
+      machinesData = machinesData.filter(machine =>
         licenseeLocationIds.includes(
           (machine as unknown as { gamingLocation: string }).gamingLocation
         )
@@ -98,11 +98,11 @@ export async function GET(req: NextRequest) {
 
     // Get all gaming locations for name resolution and gaming day offset
     const locationsData = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .find({
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date("2020-01-01") } },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
         ],
       })
       .project({ _id: 1, name: 1, gameDayOffset: 1 })
@@ -204,7 +204,7 @@ export async function GET(req: NextRequest) {
       const machinesByLocation = new Map();
       machinesData.forEach((machine: Record<string, unknown>) => {
         const locationId =
-          (machine.gamingLocation as string)?.toString() || "unknown";
+          (machine.gamingLocation as string)?.toString() || 'unknown';
         if (!machinesByLocation.has(locationId)) {
           machinesByLocation.set(locationId, []);
         }
@@ -241,7 +241,7 @@ export async function GET(req: NextRequest) {
             },
           };
 
-          const latestMeter = await db.collection("meters").findOne(query, {
+          const latestMeter = await db.collection('meters').findOne(query, {
             sort: { createdAt: -1 }, // Most recent first
             projection: {
               machine: 1,
@@ -275,18 +275,18 @@ export async function GET(req: NextRequest) {
       (machine: Record<string, unknown>) => {
         const locationName = machine.gamingLocation
           ? locationMap.get(machine.gamingLocation.toString()) ||
-            "Unknown Location"
-          : "Unknown Location";
+            'Unknown Location'
+          : 'Unknown Location';
 
         // Machine ID display per specification: prefer serialNumber, fallback to custom.name
-        const serialNumber = machine.serialNumber?.toString().trim() || "";
+        const serialNumber = machine.serialNumber?.toString().trim() || '';
         const customName =
           (machine.Custom as Record<string, unknown>)?.name
             ?.toString()
-            .trim() || "";
+            .trim() || '';
 
         // Display logic per specification
-        let machineId = "";
+        let machineId = '';
 
         if (serialNumber) {
           // Prefer serialNumber (primary)
@@ -404,7 +404,7 @@ export async function GET(req: NextRequest) {
           attPaidCredits: handPaidCredits,
           gamesPlayed: gamesPlayed,
           location: locationName,
-          locationId: machine.gamingLocation?.toString() || "",
+          locationId: machine.gamingLocation?.toString() || '',
           createdAt: machine.lastActivity,
           machineDocumentId: machineDocumentId, // Include for search functionality
         };
@@ -423,9 +423,9 @@ export async function GET(req: NextRequest) {
               (item as Record<string, unknown>).machineDocumentId
           );
 
-          const serialNumber = machineData?.serialNumber || "";
+          const serialNumber = machineData?.serialNumber || '';
           const customName =
-            (machineData?.Custom as Record<string, unknown>)?.name || "";
+            (machineData?.Custom as Record<string, unknown>)?.name || '';
 
           return (
             (item.machineId as string).toLowerCase().includes(searchLower) ||
@@ -455,10 +455,10 @@ export async function GET(req: NextRequest) {
 
     if (shouldApplyCurrencyConversion(licencee)) {
       console.warn(
-        "🔍 REPORTS METERS - Applying currency conversion for All Licensee mode"
+        '🔍 REPORTS METERS - Applying currency conversion for All Licensee mode'
       );
       // Convert financial fields from USD to display currency
-      convertedData = paginatedData.map((item) => {
+      convertedData = paginatedData.map(item => {
         const itemAsRecord = item as unknown as Record<string, unknown>;
         const convertedItem = { ...item };
         const convertedAsRecord = convertedItem as unknown as Record<
@@ -468,15 +468,15 @@ export async function GET(req: NextRequest) {
 
         // Convert top-level financial fields
         [
-          "drop",
-          "totalCancelledCredits",
-          "gross",
-          "coinIn",
-          "coinOut",
-          "jackpot",
-          "currentCredits",
-        ].forEach((field) => {
-          if (typeof itemAsRecord[field] === "number") {
+          'drop',
+          'totalCancelledCredits',
+          'gross',
+          'coinIn',
+          'coinOut',
+          'jackpot',
+          'currentCredits',
+        ].forEach(field => {
+          if (typeof itemAsRecord[field] === 'number') {
             convertedAsRecord[field] = convertFromUSD(
               itemAsRecord[field] as number,
               displayCurrency
@@ -487,20 +487,20 @@ export async function GET(req: NextRequest) {
         // Handle nested movement object
         if (
           itemAsRecord.movement &&
-          typeof itemAsRecord.movement === "object"
+          typeof itemAsRecord.movement === 'object'
         ) {
           const movement = itemAsRecord.movement as Record<string, unknown>;
           const convertedMovement = { ...movement };
           [
-            "drop",
-            "totalCancelledCredits",
-            "gross",
-            "coinIn",
-            "coinOut",
-            "jackpot",
-            "currentCredits",
-          ].forEach((field) => {
-            if (typeof movement[field] === "number") {
+            'drop',
+            'totalCancelledCredits',
+            'gross',
+            'coinIn',
+            'coinOut',
+            'jackpot',
+            'currentCredits',
+          ].forEach(field => {
+            if (typeof movement[field] === 'number') {
               convertedMovement[field] = convertFromUSD(
                 movement[field] as number,
                 displayCurrency
@@ -540,7 +540,7 @@ export async function GET(req: NextRequest) {
       err instanceof Error ? err.message : err
     );
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Server Error" },
+      { error: err instanceof Error ? err.message : 'Server Error' },
       { status: 500 }
     );
   }

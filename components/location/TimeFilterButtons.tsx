@@ -1,7 +1,7 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { TimePeriod } from "@/lib/types/api";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { TimePeriod } from '@/lib/types/api';
 
 type ExtendedTimeFilterButtonsProps = {
   activeMetricsFilter: TimePeriod;
@@ -13,11 +13,11 @@ type ExtendedTimeFilterButtonsProps = {
 };
 
 const filterOptions = [
-  { label: "Today", value: "Today" as TimePeriod },
-  { label: "Yesterday", value: "Yesterday" as TimePeriod },
-  { label: "Last 7 days", value: "7d" as TimePeriod },
-  { label: "30 days", value: "30d" as TimePeriod },
-  { label: "Custom", value: "Custom" as TimePeriod },
+  { label: 'Today', value: 'Today' as TimePeriod },
+  { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+  { label: 'Last 7 days', value: '7d' as TimePeriod },
+  { label: '30 days', value: '30d' as TimePeriod },
+  { label: 'Custom', value: 'Custom' as TimePeriod },
 ];
 
 export default function TimeFilterButtons({
@@ -33,24 +33,24 @@ export default function TimeFilterButtons({
 
   return (
     <motion.div
-      className="mb-6 no-scrollbar"
+      className="no-scrollbar mb-6"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       <div className="flex space-x-3">
-        {filterOptions.map((filter) => (
+        {filterOptions.map(filter => (
           <motion.div
             key={filter.label}
             whileHover={{ scale: isLoading ? 1 : 1.05 }}
             whileTap={{ scale: isLoading ? 1 : 0.95 }}
           >
             <Button
-              className={`px-4 py-2 rounded-full whitespace-nowrap ${
+              className={`whitespace-nowrap rounded-full px-4 py-2 ${
                 activeMetricsFilter === filter.value
-                  ? "bg-buttonActive text-white"
-                  : "bg-button text-white hover:bg-buttonActive"
-              } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  ? 'bg-buttonActive text-white'
+                  : 'bg-button text-white hover:bg-buttonActive'
+              } ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
               onClick={() => {
                 // Prevent changing filter if already loading
                 if (isLoading) {
@@ -75,7 +75,7 @@ export default function TimeFilterButtons({
               disabled={isLoading}
             >
               {metricsLoading && activeMetricsFilter === filter.value ? (
-                <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
+                <span className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
               ) : null}
               {filter.label}
             </Button>

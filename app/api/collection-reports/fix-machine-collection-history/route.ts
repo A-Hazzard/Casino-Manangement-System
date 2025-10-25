@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { Collections } from "../../lib/models/collections";
-import { Machine } from "../../lib/models/machines";
-import { getUserIdFromServer, getUserById } from "../../lib/helpers/users";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { Collections } from '../../lib/models/collections';
+import { Machine } from '../../lib/models/machines';
+import { getUserIdFromServer, getUserById } from '../../lib/helpers/users';
 
 /**
  * Enhanced collection history fix script that:
@@ -14,36 +14,36 @@ import { getUserIdFromServer, getUserById } from "../../lib/helpers/users";
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    console.warn("🔧 Starting enhanced collection history fix process...");
+    console.warn('🔧 Starting enhanced collection history fix process...');
 
     // Parse request body to get machine ID (optional - if not provided, fix all machines)
     const body = await request.json().catch(() => ({}));
     const targetMachineId = body.machineId || null;
 
     // Check authentication (skip in development mode)
-    if (process.env.NODE_ENV !== "development") {
+    if (process.env.NODE_ENV !== 'development') {
       const userId = await getUserIdFromServer();
       if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
       const user = await getUserById(userId);
       if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
       // Check if user has admin access
       if (
-        !user.roles?.includes("admin") &&
-        !user.roles?.includes("evolution admin")
+        !user.roles?.includes('admin') &&
+        !user.roles?.includes('evolution admin')
       ) {
         return NextResponse.json(
-          { error: "Insufficient permissions" },
+          { error: 'Insufficient permissions' },
           { status: 403 }
         );
       }
     } else {
-      console.warn("⚠️ Running in development mode - skipping authentication");
+      console.warn('⚠️ Running in development mode - skipping authentication');
     }
 
     // Get machines to process
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         console.warn(`🎯 Processing specific machine: ${targetMachineId}`);
       } else {
         return NextResponse.json(
-          { error: "Machine not found" },
+          { error: 'Machine not found' },
           { status: 404 }
         );
       }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Process each machine
     for (const machine of machinesToProcess) {
       totalMachinesProcessed++;
-      const machineId = String((machine as Record<string, unknown>)._id || "");
+      const machineId = String((machine as Record<string, unknown>)._id || '');
       const machineData = machine as Record<string, unknown>;
       const machineName = String(
         machineData.serialNumber ||
@@ -121,14 +121,14 @@ export async function POST(request: NextRequest) {
           console.warn(
             `   ⚠️ No actual collections found - clearing collection history`
           );
-          issues.push("No actual collections found");
+          issues.push('No actual collections found');
 
           // Clear the collection history if no actual collections exist
           await Machine.findByIdAndUpdate(machineId, {
             $unset: { collectionMetersHistory: 1 },
           });
 
-          actions.push("Cleared empty collection history");
+          actions.push('Cleared empty collection history');
           continue;
         }
 
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
         if (historyAnalysis.hasIssues) {
           issues.push(...historyAnalysis.issues);
           console.warn(
-            `   ⚠️ Found issues: ${historyAnalysis.issues.join(", ")}`
+            `   ⚠️ Found issues: ${historyAnalysis.issues.join(', ')}`
           );
 
           // Check for duplicate collections and remove them first
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
 
             // Remove duplicate collections from database
             for (const duplicateGroup of duplicateCollections) {
-              const idsToRemove = duplicateGroup.duplicates.map((d) => d._id);
+              const idsToRemove = duplicateGroup.duplicates.map(d => d._id);
               await Collections.deleteMany({ _id: { $in: idsToRemove } });
               console.warn(
                 `   ✅ Removed ${duplicateGroup.duplicates.length} duplicates for timestamp ${duplicateGroup.timestamp}`
@@ -248,8 +248,8 @@ export async function POST(request: NextRequest) {
                 ? previousCollection.collectionTime ||
                   previousCollection.timestamp
                 : undefined,
-              "collectionMeters.metersIn": expectedMetersIn,
-              "collectionMeters.metersOut": expectedMetersOut,
+              'collectionMeters.metersIn': expectedMetersIn,
+              'collectionMeters.metersOut': expectedMetersOut,
               updatedAt: new Date(),
             },
           });
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
           totalHistoryEntriesRebuilt += historyEntriesRebuilt;
         } else {
           console.warn(`   ✅ No issues found - history is accurate`);
-          actions.push("No issues found - history is accurate");
+          actions.push('No issues found - history is accurate');
         }
 
         detailedResults.push({
@@ -291,7 +291,7 @@ export async function POST(request: NextRequest) {
             `Error: ${
               machineError instanceof Error
                 ? machineError.message
-                : "Unknown error"
+                : 'Unknown error'
             }`,
           ],
           actions: [],
@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.warn("\n🎉 Enhanced Collection History Fix Complete!");
+    console.warn('\n🎉 Enhanced Collection History Fix Complete!');
     console.warn(`   Total machines processed: ${totalMachinesProcessed}`);
     console.warn(`   Machines fixed: ${totalMachinesFixed}`);
     console.warn(`   Total duplicates removed: ${totalDuplicatesRemoved}`);
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Enhanced collection history fix completed successfully",
+      message: 'Enhanced collection history fix completed successfully',
       summary: {
         totalMachinesProcessed,
         machinesFixed: totalMachinesFixed,
@@ -321,12 +321,12 @@ export async function POST(request: NextRequest) {
       detailedResults,
     });
   } catch (error) {
-    console.error("❌ Error in enhanced collection history fix:", error);
+    console.error('❌ Error in enhanced collection history fix:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fix collection history",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: 'Failed to fix collection history',
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -348,7 +348,7 @@ function analyzeCollectionHistory(
 
   // Check for duplicate timestamps in history
   const timestampCounts = new Map<string, number>();
-  currentHistory.forEach((entry) => {
+  currentHistory.forEach(entry => {
     const timestampValue = entry.timestamp;
     const timestamp = new Date(String(timestampValue)).toISOString();
     timestampCounts.set(timestamp, (timestampCounts.get(timestamp) || 0) + 1);
@@ -367,13 +367,13 @@ function analyzeCollectionHistory(
 
   // Check if history entries match actual collections
   const actualCollectionMap = new Map();
-  actualCollections.forEach((collection) => {
+  actualCollections.forEach(collection => {
     const key = `${collection.locationReportId}_${collection.metersIn}_${collection.metersOut}`;
     actualCollectionMap.set(key, collection);
   });
 
   const historyMap = new Map();
-  currentHistory.forEach((entry) => {
+  currentHistory.forEach(entry => {
     const key = `${entry.locationReportId}_${entry.metersIn}_${entry.metersOut}`;
     historyMap.set(key, entry);
   });
@@ -427,7 +427,7 @@ function analyzeCollectionHistory(
 
   if (!isChronologicallyCorrect) {
     hasIssues = true;
-    issues.push("History entries are not in chronological order");
+    issues.push('History entries are not in chronological order');
   }
 
   // Check previous meter values accuracy
@@ -466,7 +466,7 @@ function findDuplicateCollections(
 }> {
   // Group collections by timestamp
   const timestampGroups: Record<string, Array<Record<string, unknown>>> = {};
-  actualCollections.forEach((collection) => {
+  actualCollections.forEach(collection => {
     const timestampValue = collection.timestamp;
     const timestamp = new Date(String(timestampValue)).toISOString();
     if (!timestampGroups[timestamp]) {
@@ -482,7 +482,7 @@ function findDuplicateCollections(
     keepEntry: Record<string, unknown>;
   }> = [];
 
-  Object.keys(timestampGroups).forEach((timestamp) => {
+  Object.keys(timestampGroups).forEach(timestamp => {
     const entries = timestampGroups[timestamp];
     if (entries.length > 1) {
       // Sort entries by priority:
@@ -491,10 +491,10 @@ function findDuplicateCollections(
       // 3. Entries with earlier creation time
       const sortedEntries = entries.sort((a, b) => {
         // Prefer entries with locationReportId
-        const aLocationReportId = String(a.locationReportId || "");
-        const bLocationReportId = String(b.locationReportId || "");
-        const aHasReport = aLocationReportId && aLocationReportId.trim() !== "";
-        const bHasReport = bLocationReportId && bLocationReportId.trim() !== "";
+        const aLocationReportId = String(a.locationReportId || '');
+        const bLocationReportId = String(b.locationReportId || '');
+        const aHasReport = aLocationReportId && aLocationReportId.trim() !== '';
+        const bHasReport = bLocationReportId && bLocationReportId.trim() !== '';
 
         if (aHasReport && !bHasReport) return -1;
         if (!aHasReport && bHasReport) return 1;
@@ -553,7 +553,7 @@ function rebuildHistoryFromCollections(
       prevMetersIn: prevMetersIn,
       prevMetersOut: prevMetersOut,
       timestamp: collection.collectionTime || collection.timestamp,
-      locationReportId: collection.locationReportId || "",
+      locationReportId: collection.locationReportId || '',
       createdAt: collection.createdAt || collection.timestamp,
     };
   });

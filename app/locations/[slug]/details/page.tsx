@@ -1,53 +1,53 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import PageLayout from "@/components/layout/PageLayout";
-import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import PageLayout from '@/components/layout/PageLayout';
+import { motion, AnimatePresence } from 'framer-motion';
+import { RefreshCw } from 'lucide-react';
 
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
-import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
-import { Button } from "@/components/ui/button";
-import { useRouter, useParams } from "next/navigation";
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { Button } from '@/components/ui/button';
+import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
-} from "@radix-ui/react-icons";
-import { formatCurrency } from "@/lib/utils";
-import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
-import { getFinancialColorClass } from "@/lib/utils/financialColors";
-import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
-import Link from "next/link";
-import LocationInfoSkeleton from "@/components/location/LocationInfoSkeleton";
-import AccountingDetails from "@/components/cabinetDetails/AccountingDetails";
-import { fetchLocationDetails, fetchCabinets } from "@/lib/helpers/locations";
-import MetricsSummary from "@/components/locationDetails/MetricsSummary";
-import CabinetTable from "@/components/ui/cabinets/CabinetTable";
-import CabinetCard from "@/components/ui/cabinets/CabinetCard";
-import { TimePeriod } from "@/lib/types/api";
-import RefreshButton from "@/components/ui/RefreshButton";
-import type { LocationInfo, ExtendedCabinetDetail } from "@/lib/types/pages";
-import { fetchAllGamingLocations } from "@/lib/helpers/locations";
-import { fetchLocationDetailsById } from "@/lib/helpers/locations";
+} from '@radix-ui/react-icons';
+import { formatCurrency } from '@/lib/utils';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import Link from 'next/link';
+import LocationInfoSkeleton from '@/components/location/LocationInfoSkeleton';
+import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
+import { fetchLocationDetails, fetchCabinets } from '@/lib/helpers/locations';
+import MetricsSummary from '@/components/locationDetails/MetricsSummary';
+import CabinetTable from '@/components/ui/cabinets/CabinetTable';
+import CabinetCard from '@/components/ui/cabinets/CabinetCard';
+import { TimePeriod } from '@/lib/types/api';
+import RefreshButton from '@/components/ui/RefreshButton';
+import type { LocationInfo, ExtendedCabinetDetail } from '@/lib/types/pages';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import { fetchLocationDetailsById } from '@/lib/helpers/locations';
 // import type { GamingMachine } from "@/shared/types/entities";
 type CabinetSortOption =
-  | "assetNumber"
-  | "locationName"
-  | "moneyIn"
-  | "moneyOut"
-  | "jackpot"
-  | "gross"
-  | "cancelledCredits"
-  | "game"
-  | "smbId"
-  | "serialNumber"
-  | "lastOnline";
-import { mapToCabinetProps } from "@/lib/utils/cabinet";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
+  | 'assetNumber'
+  | 'locationName'
+  | 'moneyIn'
+  | 'moneyOut'
+  | 'jackpot'
+  | 'gross'
+  | 'cancelledCredits'
+  | 'game'
+  | 'smbId'
+  | 'serialNumber'
+  | 'lastOnline';
+import { mapToCabinetProps } from '@/lib/utils/cabinet';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 
 export default function LocationDetailsPage() {
   const params = useParams();
@@ -66,7 +66,7 @@ export default function LocationDetailsPage() {
 
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [cabinets, setCabinets] = useState<ExtendedCabinetDetail[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [filteredCabinets, setFilteredCabinets] = useState<
     ExtendedCabinetDetail[]
   >([]);
@@ -74,15 +74,15 @@ export default function LocationDetailsPage() {
   const itemsPerPage = 10;
 
   // Sorting state
-  const [sortOption, setSortOption] = useState<CabinetSortOption>("moneyIn");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Cabinet actions store
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   // State for AccountingDetails
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
-    useState("Range Metrics");
+    useState('Range Metrics');
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [selectedCabinet, setSelectedCabinet] =
     useState<ExtendedCabinetDetail | null>(null);
@@ -102,15 +102,15 @@ export default function LocationDetailsPage() {
   // Sorting and pagination logic
   const handleColumnSort = (column: CabinetSortOption) => {
     if (sortOption === column) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortOption(column);
-      setSortOrder("desc");
+      setSortOrder('desc');
     }
   };
 
   const sorted = [...filteredCabinets].sort((a, b) => {
-    const order = sortOrder === "desc" ? -1 : 1;
+    const order = sortOrder === 'desc' ? -1 : 1;
     const aValue = a[sortOption] || 0;
     const bValue = b[sortOption] || 0;
     return (aValue > bValue ? 1 : -1) * order;
@@ -149,9 +149,8 @@ export default function LocationDetailsPage() {
         // If location data is null or the name is the slug (fallback), it means the location doesn't exist for this licensee
         if (!locationData.data || locationData.name === slug) {
           // Try to get the first available location for this licensee
-          const formattedLocations = await fetchAllGamingLocations(
-            selectedLicencee
-          );
+          const formattedLocations =
+            await fetchAllGamingLocations(selectedLicencee);
 
           if (formattedLocations.length > 0) {
             // Current location doesn't belong to new licensee, redirect to first available
@@ -165,7 +164,7 @@ export default function LocationDetailsPage() {
           }
         }
       } catch (error) {
-        console.error("Error handling licencee change:", error);
+        console.error('Error handling licencee change:', error);
       }
     };
 
@@ -180,7 +179,7 @@ export default function LocationDetailsPage() {
     // Only proceed if we have a valid activeMetricsFilter - no fallback
     if (!activeMetricsFilter) {
       console.warn(
-        "⚠️ No activeMetricsFilter available in location details, skipping data fetch"
+        '⚠️ No activeMetricsFilter available in location details, skipping data fetch'
       );
       setCabinets([]);
       setFilteredCabinets([]);
@@ -209,7 +208,7 @@ export default function LocationDetailsPage() {
         setFilteredCabinets(cabinets);
         setSelectedCabinet(cabinets[0] || null);
       } catch (error) {
-        console.error("Error initializing page:", error);
+        console.error('Error initializing page:', error);
         // Set empty arrays on error to prevent loading states
         setCabinets([]);
         setFilteredCabinets([]);
@@ -230,7 +229,7 @@ export default function LocationDetailsPage() {
       // Only proceed if we have a valid activeMetricsFilter - no fallback
       if (!activeMetricsFilter) {
         console.warn(
-          "⚠️ No activeMetricsFilter available during refresh in location details, skipping data fetch"
+          '⚠️ No activeMetricsFilter available during refresh in location details, skipping data fetch'
         );
         setCabinets([]);
         setFilteredCabinets([]);
@@ -256,7 +255,7 @@ export default function LocationDetailsPage() {
       setFilteredCabinets(cabinets);
       setSelectedCabinet(cabinets[0] || null);
     } catch (error) {
-      console.error("Error refreshing data:", error);
+      console.error('Error refreshing data:', error);
       // Set empty arrays on error to prevent loading states
       setCabinets([]);
       setFilteredCabinets([]);
@@ -275,8 +274,8 @@ export default function LocationDetailsPage() {
       setShowFloatingRefresh(scrollTop > 200);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Utility function for proper alphabetical and numerical sorting
@@ -286,13 +285,13 @@ export default function LocationDetailsPage() {
         a.assetNumber ||
         a.smbId ||
         a.serialNumber ||
-        ""
+        ''
       ).toString();
       const nameB = (
         b.assetNumber ||
         b.smbId ||
         b.serialNumber ||
-        ""
+        ''
       ).toString();
 
       // Extract the base name and number parts
@@ -327,7 +326,7 @@ export default function LocationDetailsPage() {
     } else {
       const searchLower = searchTerm.toLowerCase();
       const filtered = cabinets.filter(
-        (cabinet) =>
+        cabinet =>
           cabinet.assetNumber?.toLowerCase().includes(searchLower) ||
           cabinet.smbId?.toLowerCase().includes(searchLower) ||
           cabinet.serialNumber?.toLowerCase().includes(searchLower) ||
@@ -358,11 +357,11 @@ export default function LocationDetailsPage() {
         mainClassName="flex flex-col flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden"
         showToaster={false}
       >
-        <div className="flex items-center mb-6">
+        <div className="mb-6 flex items-center">
           <Link href="/locations" className="mr-4">
             <Button
               variant="ghost"
-              className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+              className="rounded-full border border-gray-200 p-2 hover:bg-gray-100"
             >
               <ArrowLeftIcon className="h-5 w-5" />
             </Button>
@@ -379,22 +378,22 @@ export default function LocationDetailsPage() {
         </div>
 
         {/* Time Period Filter Buttons */}
-        <div className="mb-6 overflow-x-auto hide-scrollbar">
-          <div className="flex flex-wrap gap-2 min-w-max">
+        <div className="hide-scrollbar mb-6 overflow-x-auto">
+          <div className="flex min-w-max flex-wrap gap-2">
             {[
-              { label: "Today", value: "Today" as TimePeriod },
-              { label: "Yesterday", value: "Yesterday" as TimePeriod },
-              { label: "Last 7 days", value: "7d" as TimePeriod },
-              { label: "30 days", value: "30d" as TimePeriod },
-              { label: "All Time", value: "All Time" as TimePeriod },
-            ].map((filter) => (
+              { label: 'Today', value: 'Today' as TimePeriod },
+              { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+              { label: 'Last 7 days', value: '7d' as TimePeriod },
+              { label: '30 days', value: '30d' as TimePeriod },
+              { label: 'All Time', value: 'All Time' as TimePeriod },
+            ].map(filter => (
               <Button
                 key={filter.value}
                 onClick={() => setActiveMetricsFilter(filter.value)}
-                className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
                   activeMetricsFilter === filter.value
-                    ? "bg-buttonActive text-white"
-                    : "bg-button text-white hover:bg-button/90"
+                    ? 'bg-buttonActive text-white'
+                    : 'bg-button text-white hover:bg-button/90'
                 }`}
                 disabled={metricsLoading}
               >
@@ -405,38 +404,38 @@ export default function LocationDetailsPage() {
         </div>
 
         {locationInfo ? (
-          <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mb-6 rounded-lg bg-white p-4 shadow-sm md:p-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div>
-                <h2 className="text-lg font-semibold mb-4">
+                <h2 className="mb-4 text-lg font-semibold">
                   Location Information
                 </h2>
                 <div className="space-y-2">
                   <p>
-                    <span className="font-medium">Name:</span>{" "}
+                    <span className="font-medium">Name:</span>{' '}
                     {locationInfo.name}
                   </p>
                   <p>
-                    <span className="font-medium">Address:</span>{" "}
-                    {locationInfo.address || "-"}
+                    <span className="font-medium">Address:</span>{' '}
+                    {locationInfo.address || '-'}
                   </p>
                   <p>
-                    <span className="font-medium">Licensee:</span>{" "}
-                    {locationInfo.licencee || "-"}
+                    <span className="font-medium">Licensee:</span>{' '}
+                    {locationInfo.licencee || '-'}
                   </p>
                 </div>
               </div>
 
               <div>
-                <h2 className="text-lg font-semibold mb-4">Metrics</h2>
+                <h2 className="mb-4 text-lg font-semibold">Metrics</h2>
                 <div className="grid grid-cols-1 gap-2">
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-sm text-gray-500">Total Cabinets</p>
                     <p className="text-lg font-semibold">
                       {cabinets?.length || 0}
                     </p>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-sm text-gray-500">Money In</p>
                     <p
                       className={`text-lg font-semibold ${getFinancialColorClass(
@@ -451,7 +450,7 @@ export default function LocationDetailsPage() {
                         : formatCurrency(locationInfo.moneyIn || 0)}
                     </p>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-sm text-gray-500">Money Out</p>
                     <p
                       className={`text-lg font-semibold ${getFinancialColorClass(
@@ -470,9 +469,9 @@ export default function LocationDetailsPage() {
               </div>
 
               <div>
-                <h2 className="text-lg font-semibold mb-4">Performance</h2>
+                <h2 className="mb-4 text-lg font-semibold">Performance</h2>
                 <div className="grid grid-cols-1 gap-2">
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-sm text-gray-500">Gross</p>
                     <p
                       className={`text-lg font-semibold ${getFinancialColorClass(
@@ -482,7 +481,7 @@ export default function LocationDetailsPage() {
                       {formatCurrency(locationInfo.gross || 0)}
                     </p>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-sm text-gray-500">Net</p>
                     <p
                       className={`text-lg font-semibold ${getFinancialColorClass(
@@ -496,20 +495,20 @@ export default function LocationDetailsPage() {
               </div>
 
               <div>
-                <h2 className="text-lg font-semibold mb-4">Cabinet Status</h2>
+                <h2 className="mb-4 text-lg font-semibold">Cabinet Status</h2>
                 <div className="grid grid-cols-1 gap-2">
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-sm text-gray-500">Online Cabinets</p>
                     <p className="text-lg font-semibold">
-                      {cabinets?.filter((cabinet) => cabinet.isOnline).length ||
+                      {cabinets?.filter(cabinet => cabinet.isOnline).length ||
                         0}
                     </p>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-sm text-gray-500">Offline Cabinets</p>
                     <p className="text-lg font-semibold">
-                      {cabinets?.filter((cabinet) => !cabinet.isOnline)
-                        .length || 0}
+                      {cabinets?.filter(cabinet => !cabinet.isOnline).length ||
+                        0}
                     </p>
                   </div>
                 </div>
@@ -524,26 +523,26 @@ export default function LocationDetailsPage() {
           <MetricsSummary location={locationInfo} cabinets={cabinets} />
         )}
         {/* Search and Filter Bar */}
-        <div className="flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
-          <div className="relative flex-1 max-w-md min-w-0">
+        <div className="mt-4 flex items-center gap-4 rounded-b-none rounded-t-lg bg-buttonActive p-4">
+          <div className="relative min-w-0 max-w-md flex-1">
             <input
               type="text"
               placeholder="Search machines..."
-              className="w-full pr-10 bg-white border border-gray-300 rounded-md h-9 px-3 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
         {/* Cabinet Table and Cards - Exact same as cabinets page */}
         {filteredCabinets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-md">
-            <div className="text-gray-500 text-lg mb-2">No Data Available</div>
-            <div className="text-gray-400 text-sm text-center">
+          <div className="flex flex-col items-center justify-center rounded-lg bg-white p-8 shadow-md">
+            <div className="mb-2 text-lg text-gray-500">No Data Available</div>
+            <div className="text-center text-sm text-gray-400">
               {searchTerm
-                ? "No cabinets match your search criteria."
-                : "No cabinets available for this location."}
+                ? 'No cabinets match your search criteria.'
+                : 'No cabinets available for this location.'}
             </div>
           </div>
         ) : (
@@ -555,21 +554,19 @@ export default function LocationDetailsPage() {
                 loading={metricsLoading}
                 sortOption={sortOption}
                 sortOrder={sortOrder}
-                onSort={(column) =>
-                  handleColumnSort(column as CabinetSortOption)
-                }
+                onSort={column => handleColumnSort(column as CabinetSortOption)}
                 onPageChange={setCurrentPage}
-                onEdit={(cabinetProps) => {
+                onEdit={cabinetProps => {
                   // Find the original cabinet
                   const cabinet = paginatedCabinets.find(
-                    (c) => c._id === cabinetProps._id
+                    c => c._id === cabinetProps._id
                   );
                   if (cabinet) handleEdit(cabinet);
                 }}
-                onDelete={(cabinetProps) => {
+                onDelete={cabinetProps => {
                   // Find the original cabinet
                   const cabinet = paginatedCabinets.find(
-                    (c) => c._id === cabinetProps._id
+                    c => c._id === cabinetProps._id
                   );
                   if (cabinet) handleDelete(cabinet);
                 }}
@@ -577,19 +574,19 @@ export default function LocationDetailsPage() {
             </div>
 
             {/* Mobile Card View - Only show on small screens */}
-            <div className="block md:hidden mt-4 px-1 sm:px-2 space-y-3 sm:space-y-4 w-full max-w-full">
-              {paginatedCabinets.map((cabinet) => (
+            <div className="mt-4 block w-full max-w-full space-y-3 px-1 sm:space-y-4 sm:px-2 md:hidden">
+              {paginatedCabinets.map(cabinet => (
                 <CabinetCard
                   key={cabinet._id}
                   _id={cabinet._id}
-                  assetNumber={cabinet.assetNumber || ""}
-                  game={cabinet.game || ""}
+                  assetNumber={cabinet.assetNumber || ''}
+                  game={cabinet.game || ''}
                   smbId={
-                    cabinet.smbId || cabinet.smibBoard || cabinet.relayId || ""
+                    cabinet.smbId || cabinet.smibBoard || cabinet.relayId || ''
                   }
                   serialNumber={getSerialNumberIdentifier(cabinet)}
-                  locationId={cabinet.locationId || ""}
-                  locationName={cabinet.locationName || ""}
+                  locationId={cabinet.locationId || ''}
+                  locationName={cabinet.locationName || ''}
                   moneyIn={cabinet.moneyIn || 0}
                   moneyOut={cabinet.moneyOut || 0}
                   cancelledCredits={cabinet.moneyOut || 0}
@@ -598,11 +595,11 @@ export default function LocationDetailsPage() {
                   lastOnline={
                     cabinet.lastOnline instanceof Date
                       ? cabinet.lastOnline.toISOString()
-                      : typeof cabinet.lastOnline === "string"
-                      ? cabinet.lastOnline
-                      : undefined
+                      : typeof cabinet.lastOnline === 'string'
+                        ? cabinet.lastOnline
+                        : undefined
                   }
-                  installedGame={cabinet.installedGame || cabinet.game || ""}
+                  installedGame={cabinet.installedGame || cabinet.game || ''}
                   onEdit={() => handleEdit(cabinet)}
                   onDelete={() => handleDelete(cabinet)}
                 />
@@ -617,44 +614,44 @@ export default function LocationDetailsPage() {
                   size="icon"
                   onClick={() => setCurrentPage(0)}
                   disabled={currentPage === 0}
-                  className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                  className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
                 >
                   <DoubleArrowLeftIcon className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
                   disabled={currentPage === 0}
-                  className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                  className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
                 >
                   <ChevronLeftIcon className="h-4 w-4" />
                 </Button>
-                <span className="text-gray-700 text-sm">Page</span>
+                <span className="text-sm text-gray-700">Page</span>
                 <input
                   type="number"
                   min={1}
                   max={totalPages}
                   value={currentPage + 1}
-                  onChange={(e) => {
+                  onChange={e => {
                     let val = Number(e.target.value);
                     if (isNaN(val)) val = 1;
                     if (val < 1) val = 1;
                     if (val > totalPages) val = totalPages;
                     setCurrentPage(val - 1);
                   }}
-                  className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+                  className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
                   aria-label="Page number"
                 />
-                <span className="text-gray-700 text-sm">of {totalPages}</span>
+                <span className="text-sm text-gray-700">of {totalPages}</span>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages - 1, p + 1))
+                    setCurrentPage(p => Math.min(totalPages - 1, p + 1))
                   }
                   disabled={currentPage === totalPages - 1}
-                  className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                  className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
                 >
                   <ChevronRightIcon className="h-4 w-4" />
                 </Button>
@@ -663,7 +660,7 @@ export default function LocationDetailsPage() {
                   size="icon"
                   onClick={() => setCurrentPage(totalPages - 1)}
                   disabled={currentPage === totalPages - 1}
-                  className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+                  className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
                 >
                   <DoubleArrowRightIcon className="h-4 w-4" />
                 </Button>
@@ -695,12 +692,12 @@ export default function LocationDetailsPage() {
               <motion.button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-full bg-button p-3 text-container shadow-lg transition-colors duration-200 hover:bg-buttonActive disabled:cursor-not-allowed disabled:opacity-50"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
                 <RefreshCw
-                  className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
+                  className={`h-6 w-6 ${refreshing ? 'animate-spin' : ''}`}
                 />
               </motion.button>
             </motion.div>

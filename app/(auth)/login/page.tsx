@@ -1,39 +1,39 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { loginUser } from "@/lib/helpers/clientAuth";
-import { useAuth } from "@/lib/hooks/useAuth";
-import { useUserStore } from "@/lib/store/userStore";
-import { getDefaultRedirectPathFromRoles } from "@/lib/utils/roleBasedRedirect";
-import { checkForDatabaseMismatch } from "@/lib/utils/databaseMismatch";
-import LiquidGradient from "@/components/ui/LiquidGradient";
-import LoginForm from "@/components/auth/LoginForm";
-import { LoginPageSkeleton } from "@/components/ui/skeletons/LoginSkeletons";
-import PasswordUpdateModal from "@/components/ui/PasswordUpdateModal";
-import ProfileValidationModal from "@/components/ui/ProfileValidationModal";
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { loginUser } from '@/lib/helpers/clientAuth';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useUserStore } from '@/lib/store/userStore';
+import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
+import { checkForDatabaseMismatch } from '@/lib/utils/databaseMismatch';
+import LiquidGradient from '@/components/ui/LiquidGradient';
+import LoginForm from '@/components/auth/LoginForm';
+import { LoginPageSkeleton } from '@/components/ui/skeletons/LoginSkeletons';
+import PasswordUpdateModal from '@/components/ui/PasswordUpdateModal';
+import ProfileValidationModal from '@/components/ui/ProfileValidationModal';
 
 // Import images as variables for better performance
-import EOSLogo from "/public/EOS_Logo.png";
-import SlotMachineImage from "/public/slotMachine.png";
+import EOSLogo from '/public/EOS_Logo.png';
+import SlotMachineImage from '/public/slotMachine.png';
 
 export default function LoginPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { setUser, clearUser } = useUserStore();
   const [isMounted, setIsMounted] = useState(false);
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{
     identifier?: string;
     password?: string;
   }>({});
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<
-    "error" | "success" | "info" | undefined
+    'error' | 'success' | 'info' | undefined
   >(undefined);
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -51,17 +51,17 @@ export default function LoginPage() {
     firstName: string;
     lastName: string;
   }>({
-    username: "",
-    firstName: "",
-    lastName: "",
+    username: '',
+    firstName: '',
+    lastName: '',
   });
 
   useEffect(() => {
     setIsMounted(true);
 
     // Load saved identifier if "Remember Me" was checked
-    const savedIdentifier = localStorage.getItem("rememberedIdentifier");
-    const wasRemembered = localStorage.getItem("rememberMe") === "true";
+    const savedIdentifier = localStorage.getItem('rememberedIdentifier');
+    const wasRemembered = localStorage.getItem('rememberMe') === 'true';
 
     if (savedIdentifier && wasRemembered) {
       setIdentifier(savedIdentifier);
@@ -73,13 +73,13 @@ export default function LoginPage() {
       const hasMismatch = await checkForDatabaseMismatch();
       if (hasMismatch) {
         setMessage(
-          "Database environment has changed. Please login again to continue."
+          'Database environment has changed. Please login again to continue.'
         );
-        setMessageType("info");
+        setMessageType('info');
 
         // Clear any existing form data
-        setIdentifier("");
-        setPassword("");
+        setIdentifier('');
+        setPassword('');
         setRememberMe(false);
       }
     };
@@ -92,12 +92,12 @@ export default function LoginPage() {
     // Skip this auto-redirect if we're in the middle of a manual login process
     if (redirecting) {
       console.warn(
-        "⏭️ Skipping useEffect redirect - manual redirect in progress"
+        '⏭️ Skipping useEffect redirect - manual redirect in progress'
       );
       return;
     }
 
-    console.warn("🔄 Login page redirect check (useEffect):", {
+    console.warn('🔄 Login page redirect check (useEffect):', {
       user: user
         ? { _id: user._id, email: user.emailAddress, roles: user.roles }
         : null,
@@ -116,26 +116,26 @@ export default function LoginPage() {
 
       // Prevent redirecting to login page (infinite loop protection)
       if (
-        redirectPath === "/login" ||
-        redirectPath === "/login/" ||
-        redirectPath === "/"
+        redirectPath === '/login' ||
+        redirectPath === '/login/' ||
+        redirectPath === '/'
       ) {
         console.warn(
-          "🚨 Redirect path is login page or root, skipping redirect to prevent infinite loop"
+          '🚨 Redirect path is login page or root, skipping redirect to prevent infinite loop'
         );
         setHasRedirected(true); // Mark as redirected to prevent further attempts
         return;
       }
 
       console.warn(
-        "🔄 User already logged in (useEffect), redirecting to:",
+        '🔄 User already logged in (useEffect), redirecting to:',
         redirectPath
       );
       setHasRedirected(true); // Prevent infinite redirects
 
       // Use a small delay to ensure state is updated
       setTimeout(() => {
-        console.warn("⏰ Executing useEffect redirect now...");
+        console.warn('⏰ Executing useEffect redirect now...');
         router.replace(redirectPath);
       }, 100);
     }
@@ -144,14 +144,14 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); // Prevent form submission and page refresh
     setErrors({});
-    setMessage("");
+    setMessage('');
     setMessageType(undefined);
 
     let valid = true;
     if (!identifier) {
-      setErrors((prev) => ({
+      setErrors(prev => ({
         ...prev,
-        identifier: "Enter email or username.",
+        identifier: 'Enter email or username.',
       }));
       valid = false;
     }
@@ -166,17 +166,17 @@ export default function LoginPage() {
     try {
       // Save or clear identifier based on "Remember Me" checkbox
       if (rememberMe) {
-        localStorage.setItem("rememberedIdentifier", identifier);
-        localStorage.setItem("rememberMe", "true");
+        localStorage.setItem('rememberedIdentifier', identifier);
+        localStorage.setItem('rememberMe', 'true');
       } else {
-        localStorage.removeItem("rememberedIdentifier");
-        localStorage.removeItem("rememberMe");
+        localStorage.removeItem('rememberedIdentifier');
+        localStorage.removeItem('rememberMe');
       }
 
       const response = await loginUser({ identifier, password });
 
       // Debug: Log the full response
-      console.warn("🔍 Login API Response:", {
+      console.warn('🔍 Login API Response:', {
         success: response.success,
         hasUser: !!response.user,
         hasToken: !!response.token,
@@ -203,9 +203,9 @@ export default function LoginPage() {
         if (response.requiresProfileUpdate && response.invalidProfileFields) {
           setInvalidProfileFields(response.invalidProfileFields);
           setCurrentUserData({
-            username: response.user?.username || "",
-            firstName: response.user?.profile?.firstName || "",
-            lastName: response.user?.profile?.lastName || "",
+            username: response.user?.username || '',
+            firstName: response.user?.profile?.firstName || '',
+            lastName: response.user?.profile?.lastName || '',
           });
           setShowProfileValidationModal(true);
           setLoading(false);
@@ -214,14 +214,14 @@ export default function LoginPage() {
 
         // Verify we have user data from the API response
         if (!response.user) {
-          setMessage("Login failed - no user data received from server");
-          setMessageType("error");
+          setMessage('Login failed - no user data received from server');
+          setMessageType('error');
           setLoading(false);
           return;
         }
 
         console.warn(
-          "📝 Credentials validated, now verifying token and setting user store..."
+          '📝 Credentials validated, now verifying token and setting user store...'
         );
 
         // Set redirecting FIRST to prevent the useEffect redirect from interfering
@@ -233,14 +233,14 @@ export default function LoginPage() {
           const originalError = console.error;
           console.error = () => {}; // Temporarily disable console.error
 
-          const testResponse = await fetch("/api/test-current-user");
+          const testResponse = await fetch('/api/test-current-user');
           const testData = await testResponse.json();
 
           // Restore console.error
           console.error = originalError;
 
           // Debug: Log cookie verification result
-          console.warn("🍪 Cookie Verification Result:", {
+          console.warn('🍪 Cookie Verification Result:', {
             status: testResponse.status,
             success: testData.success,
             userId: testData.userId,
@@ -249,12 +249,12 @@ export default function LoginPage() {
 
           if (!testData.success || !testData.userId) {
             console.error(
-              "❌ Token verification failed - cookies not set properly"
+              '❌ Token verification failed - cookies not set properly'
             );
             setMessage(
-              "Login failed - session could not be established. Please try again."
+              'Login failed - session could not be established. Please try again.'
             );
-            setMessageType("error");
+            setMessageType('error');
             setRedirecting(false);
             clearUser();
             setLoading(false);
@@ -262,15 +262,15 @@ export default function LoginPage() {
           }
 
           console.warn(
-            "✅ Token verified successfully, userId from cookie:",
+            '✅ Token verified successfully, userId from cookie:',
             testData.userId
           );
         } catch (error) {
-          console.error("❌ Token verification request failed:", error);
+          console.error('❌ Token verification request failed:', error);
           setMessage(
-            "Login failed - unable to verify session. Please try again."
+            'Login failed - unable to verify session. Please try again.'
           );
-          setMessageType("error");
+          setMessageType('error');
           setRedirecting(false);
           clearUser();
           setLoading(false);
@@ -281,34 +281,34 @@ export default function LoginPage() {
         setUser(response.user);
 
         // Wait a moment to ensure the store is updated
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         // Verify that the user was actually set in the store
         const storeUser = useUserStore.getState().user;
         if (!storeUser) {
-          console.error("❌ Failed to set user in store");
-          setMessage("Login failed - unable to set user session");
-          setMessageType("error");
+          console.error('❌ Failed to set user in store');
+          setMessage('Login failed - unable to set user session');
+          setMessageType('error');
           setRedirecting(false);
           setLoading(false);
           return;
         }
 
-        console.warn("✅ User store updated successfully:", {
+        console.warn('✅ User store updated successfully:', {
           userId: storeUser._id,
           email: storeUser.emailAddress,
         });
 
         // Only show success message after everything is verified
-        setMessage("Login successful. Redirecting...");
-        setMessageType("success");
+        setMessage('Login successful. Redirecting...');
+        setMessageType('success');
 
         // Get redirect path based on user roles
         const redirectPath = getDefaultRedirectPathFromRoles(
           response.user?.roles || []
         );
 
-        console.warn("🚀 Login fully verified, redirecting to:", redirectPath);
+        console.warn('🚀 Login fully verified, redirecting to:', redirectPath);
 
         // Mark that we've handled the redirect
         setHasRedirected(true);
@@ -316,31 +316,31 @@ export default function LoginPage() {
         // First, clean the URL by removing error parameters
         // This ensures we don't keep the database_mismatch parameter in history
         if (window.location.search) {
-          console.warn("🧹 Cleaning URL parameters before redirect...");
-          window.history.replaceState({}, "", "/login");
+          console.warn('🧹 Cleaning URL parameters before redirect...');
+          window.history.replaceState({}, '', '/login');
         }
 
         // Use window.location.href for a hard redirect
         // This ensures clean navigation and clears any lingering state
         setTimeout(() => {
-          console.warn("⏰ Executing redirect now to:", redirectPath);
-          console.warn("🔐 Final state check before redirect:", {
+          console.warn('⏰ Executing redirect now to:', redirectPath);
+          console.warn('🔐 Final state check before redirect:', {
             userInStore: !!useUserStore.getState().user,
-            cookies: document.cookie.includes("token"),
+            cookies: document.cookie.includes('token'),
             redirectPath,
           });
           window.location.href = redirectPath;
         }, 800);
       } else {
         const backendMsg =
-          response.message || "Invalid email or password. Please try again.";
+          response.message || 'Invalid email or password. Please try again.';
         setMessage(backendMsg);
-        setMessageType("error");
+        setMessageType('error');
       }
     } catch {
-      const fallbackMsg = "An unexpected error occurred. Please try again.";
+      const fallbackMsg = 'An unexpected error occurred. Please try again.';
       setMessage(fallbackMsg);
-      setMessageType("error");
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
@@ -348,16 +348,16 @@ export default function LoginPage() {
 
   const handlePasswordUpdate = async (newPassword: string) => {
     // TODO: Implement password update API call
-    if (process.env.NODE_ENV === "development") {
-      console.warn("Password update requested:", newPassword);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Password update requested:', newPassword);
     }
     setShowPasswordUpdateModal(false);
-    setMessage("Password updated successfully. Redirecting...");
-    setMessageType("success");
+    setMessage('Password updated successfully. Redirecting...');
+    setMessageType('success');
     setRedirecting(true);
     const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
 
-    console.warn("🔑 Password updated, redirecting to:", redirectPath);
+    console.warn('🔑 Password updated, redirecting to:', redirectPath);
 
     // Use router.push for redirects
     setTimeout(() => {
@@ -371,16 +371,16 @@ export default function LoginPage() {
     lastName: string;
   }) => {
     // TODO: Implement profile update API call
-    if (process.env.NODE_ENV === "development") {
-      console.warn("Profile update requested:", data);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Profile update requested:', data);
     }
     setShowProfileValidationModal(false);
-    setMessage("Profile updated successfully. Redirecting...");
-    setMessageType("success");
+    setMessage('Profile updated successfully. Redirecting...');
+    setMessageType('success');
     setRedirecting(true);
     const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
 
-    console.warn("👤 Profile updated, redirecting to:", redirectPath);
+    console.warn('👤 Profile updated, redirecting to:', redirectPath);
 
     // Use router.push for redirects
     setTimeout(() => {
@@ -396,9 +396,9 @@ export default function LoginPage() {
     <>
       <LiquidGradient />
       <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
-        <div className="w-full max-w-4xl overflow-hidden rounded-2xl shadow-2xl bg-white">
+        <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
           <div className="flex flex-col md:flex-row">
-            <div className="w-full md:w-1/2 p-12">
+            <div className="w-full p-12 md:w-1/2">
               <div className="mx-auto w-full max-w-sm">
                 <div className="text-center">
                   <Image
@@ -428,7 +428,7 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            <div className="relative w-full md:w-1/2 min-h-[250px] md:min-h-0">
+            <div className="relative min-h-[250px] w-full md:min-h-0 md:w-1/2">
               <Image
                 src={SlotMachineImage}
                 alt="Casino Slot Machine"
@@ -436,12 +436,12 @@ export default function LoginPage() {
                 priority
                 sizes="(max-width: 768px) 100vw, 50vw"
                 style={{
-                  objectFit: "cover",
+                  objectFit: 'cover',
                 }}
               />
               <div className="absolute inset-0" />
               <div className="absolute bottom-10 left-10 pr-4">
-                <h2 className="text-2xl font-bold text-white whitespace-nowrap">
+                <h2 className="whitespace-nowrap text-2xl font-bold text-white">
                   Casino Management System
                 </h2>
               </div>

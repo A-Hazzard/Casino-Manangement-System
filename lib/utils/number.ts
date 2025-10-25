@@ -5,18 +5,21 @@
  * @param currency - The currency code (e.g., 'USD'). Defaults to 'USD'.
  * @returns A formatted currency string (e.g., "$1,234" or "$1,234.56").
  */
-export const formatCurrency = (amount: number, currency: string = "USD"): string => {
+export const formatCurrency = (
+  amount: number,
+  currency: string = 'USD'
+): string => {
   if (isNaN(amount)) {
-    return "";
+    return '';
   }
-  
+
   // Check if the amount has meaningful decimal places
   const hasDecimals = amount % 1 !== 0;
   const decimalPart = amount % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-  
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
     currency: currency,
     minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
     maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
@@ -31,15 +34,15 @@ export const formatCurrency = (amount: number, currency: string = "USD"): string
  */
 export const formatNumber = (value: number): string => {
   if (isNaN(value)) {
-    return "0";
+    return '0';
   }
-  
+
   // Check if the value has meaningful decimal places
   const hasDecimals = value % 1 !== 0;
   const decimalPart = value % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-  
-  return new Intl.NumberFormat("en-US", {
+
+  return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
     maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
   }).format(value);
@@ -51,6 +54,9 @@ export const formatNumber = (value: number): string => {
  * @param currency - The currency code (e.g., 'USD'). Defaults to 'USD'.
  * @returns A formatted currency string.
  */
-export const formatCurrencyLegacy = (amount: number, currency: string = "USD"): string => {
+export const formatCurrencyLegacy = (
+  amount: number,
+  currency: string = 'USD'
+): string => {
   return formatCurrency(amount, currency);
-}; 
+};

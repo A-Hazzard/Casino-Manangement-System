@@ -1,21 +1,21 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { ChevronDown } from "lucide-react";
-import { MonthlyDatePicker } from "@/components/ui/MonthlyDatePicker";
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { ChevronDown } from 'lucide-react';
+import { MonthlyDatePicker } from '@/components/ui/MonthlyDatePicker';
 
-import type { MonthlyMobileUIProps } from "@/lib/types/componentProps";
+import type { MonthlyMobileUIProps } from '@/lib/types/componentProps';
 import {
   exportMonthlyReportPDF,
   exportMonthlyReportExcel,
-} from "@/lib/utils/export";
-import PaginationControls from "@/components/ui/PaginationControls";
+} from '@/lib/utils/export';
+import PaginationControls from '@/components/ui/PaginationControls';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -31,7 +31,6 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
   monthlyDetails,
   monthlyLoading,
 }) => {
-
   const [currentPage, setCurrentPage] = useState(1);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
 
@@ -48,22 +47,20 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
     setCurrentPage(pageNumber);
   };
 
-
-
   return (
-    <div className="md:hidden w-full px-2 sm:px-4 pb-4">
-      <div className="mx-auto max-w-xl bg-white p-3 sm:p-4 rounded-lg shadow-lg space-y-4">
+    <div className="w-full px-2 pb-4 sm:px-4 md:hidden">
+      <div className="mx-auto max-w-xl space-y-4 rounded-lg bg-white p-3 shadow-lg sm:p-4">
         <div className="grid grid-cols-2 gap-3">
           <Select
             value={monthlyLocation}
             onValueChange={onMonthlyLocationChange}
           >
-            <SelectTrigger className="bg-gray-50 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-md focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 py-2 px-2.5 truncate">
+            <SelectTrigger className="truncate rounded-md border border-gray-300 bg-gray-50 px-2.5 py-2 text-xs text-gray-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 sm:text-sm">
               <SelectValue placeholder="Select Location" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Locations</SelectItem>
-              {allLocationNames.map((loc) => (
+              {allLocationNames.map(loc => (
                 <SelectItem
                   key={loc}
                   value={loc}
@@ -78,16 +75,16 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
           <div className="relative">
             <Button
               variant="outline"
-              className="bg-gray-200 hover:bg-gray-300 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-md py-2 px-2.5 flex items-center justify-center gap-1 truncate"
-              onClick={() => setShowExportDropdown((v) => !v)}
+              className="flex items-center justify-center gap-1 truncate rounded-md border border-gray-300 bg-gray-200 px-2.5 py-2 text-xs text-gray-700 hover:bg-gray-300 sm:text-sm"
+              onClick={() => setShowExportDropdown(v => !v)}
               type="button"
             >
               EXPORT <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
             {showExportDropdown && (
-              <div className="absolute z-20 right-0 mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg">
+              <div className="absolute right-0 z-20 mt-1 w-32 rounded-md border border-gray-200 bg-white shadow-lg">
                 <button
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
                   onClick={async () => {
                     setShowExportDropdown(false);
                     await exportMonthlyReportPDF(
@@ -99,7 +96,7 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
                   Export PDF
                 </button>
                 <button
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
                   onClick={() => {
                     setShowExportDropdown(false);
                     exportMonthlyReportExcel(monthlySummary, monthlyDetails);
@@ -126,29 +123,29 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
         </div>
 
         {monthlyLoading ? (
-          <div className="animate-pulse h-32 bg-gray-200 rounded-lg w-full" />
+          <div className="h-32 w-full animate-pulse rounded-lg bg-gray-200" />
         ) : (
-          <div className="bg-blue-500 text-white rounded-lg shadow-md p-4 space-y-2">
-            <h2 className="text-xl font-bold text-center">
-              {monthlyLocation !== "all"
+          <div className="space-y-2 rounded-lg bg-blue-500 p-4 text-white shadow-md">
+            <h2 className="text-center text-xl font-bold">
+              {monthlyLocation !== 'all'
                 ? `${monthlyLocation} - Summary`
-                : "All Locations Total"}
+                : 'All Locations Total'}
             </h2>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-center pt-1">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1 text-center">
               {[
-                { label: "DROP", value: monthlySummary.drop },
+                { label: 'DROP', value: monthlySummary.drop },
                 {
-                  label: "CANCELLED CREDITS",
+                  label: 'CANCELLED CREDITS',
                   value: monthlySummary.cancelledCredits,
                 },
-                { label: "GROSS", value: monthlySummary.gross },
-                { label: "SAS GROSS", value: monthlySummary.sasGross },
-              ].map((item) => (
+                { label: 'GROSS', value: monthlySummary.gross },
+                { label: 'SAS GROSS', value: monthlySummary.sasGross },
+              ].map(item => (
                 <div key={item.label}>
-                  <div className="text-xs font-semibold opacity-90 tracking-wider uppercase">
+                  <div className="text-xs font-semibold uppercase tracking-wider opacity-90">
                     {item.label}
                   </div>
-                  <div className="text-lg font-medium truncate">
+                  <div className="truncate text-lg font-medium">
                     {item.value}
                   </div>
                 </div>
@@ -158,49 +155,49 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
         )}
 
         {monthlyLoading ? (
-          <div className="space-y-3 mt-4">
-            {[1, 2].map((i) => (
+          <div className="mt-4 space-y-3">
+            {[1, 2].map(i => (
               <div
                 key={i}
-                className="animate-pulse h-36 bg-gray-200 rounded-lg w-full"
+                className="h-36 w-full animate-pulse rounded-lg bg-gray-200"
               />
             ))}
           </div>
         ) : currentCardsToDisplay.length === 0 && !monthlyLoading ? null : (
           <>
-            <div className="space-y-4 mt-4">
+            <div className="mt-4 space-y-4">
               {currentCardsToDisplay.map((detail, index) => (
                 <div
                   key={index}
-                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden"
+                  className="overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
                 >
-                  <div className="bg-lighterBlueHighlight text-white px-4 py-3 font-semibold text-md rounded-t-lg truncate">
+                  <div className="text-md truncate rounded-t-lg bg-lighterBlueHighlight px-4 py-3 font-semibold text-white">
                     Location: {detail.location}
                   </div>
-                  <div className="p-4 flex flex-col gap-2 text-sm">
+                  <div className="flex flex-col gap-2 p-4 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-700 font-medium">Drop:</span>
-                      <span className="font-semibold text-right">
+                      <span className="font-medium text-gray-700">Drop:</span>
+                      <span className="text-right font-semibold">
                         {detail.drop}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-700 font-medium">Win:</span>
-                      <span className="font-semibold text-right">
+                      <span className="font-medium text-gray-700">Win:</span>
+                      <span className="text-right font-semibold">
                         {detail.win}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-700 font-medium">Gross:</span>
-                      <span className="font-semibold text-right">
+                      <span className="font-medium text-gray-700">Gross:</span>
+                      <span className="text-right font-semibold">
                         {detail.gross}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-700 font-medium">
+                      <span className="font-medium text-gray-700">
                         SAS Gross:
                       </span>
-                      <span className="font-semibold text-right">
+                      <span className="text-right font-semibold">
                         {detail.sasGross}
                       </span>
                     </div>
@@ -213,13 +210,13 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
               <PaginationControls
                 currentPage={currentPage - 1}
                 totalPages={totalPages}
-                setCurrentPage={(page) => handlePaginate(page + 1)}
+                setCurrentPage={page => handlePaginate(page + 1)}
               />
             )}
             {currentCardsToDisplay.length > 0 && (
-              <p className="text-center text-gray-500 text-xs mt-2">
-                Showing {firstItemIndex + 1} -{" "}
-                {Math.min(lastItemIndex, monthlyDetails.length)} of{" "}
+              <p className="mt-2 text-center text-xs text-gray-500">
+                Showing {firstItemIndex + 1} -{' '}
+                {Math.min(lastItemIndex, monthlyDetails.length)} of{' '}
                 {monthlyDetails.length} records
               </p>
             )}

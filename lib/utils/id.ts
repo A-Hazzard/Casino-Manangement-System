@@ -3,7 +3,7 @@
  * This ensures consistency with MongoDB's ObjectId format while storing as strings
  */
 export async function generateMongoId(): Promise<string> {
-  const mongoose = await import("mongoose");
+  const mongoose = await import('mongoose');
   return new mongoose.default.Types.ObjectId().toHexString();
 }
 
@@ -12,6 +12,6 @@ export async function generateMongoId(): Promise<string> {
  * Alternative method using dynamic import
  */
 export async function generateMongoIdAsync(): Promise<string> {
-  const mongoose = await import("mongoose");
+  const mongoose = await import('mongoose');
   return new mongoose.default.Types.ObjectId().toHexString();
 }

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../../lib/middleware/db";
-import { Collections } from "../../../lib/models/collections";
-import { CollectionReport } from "../../../lib/models/collectionReport";
-import { Machine } from "../../../lib/models/machines";
-import { getUserIdFromServer, getUserById } from "../../../lib/helpers/users";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../../lib/middleware/db';
+import { Collections } from '../../../lib/models/collections';
+import { CollectionReport } from '../../../lib/models/collectionReport';
+import { Machine } from '../../../lib/models/machines';
+import { getUserIdFromServer, getUserById } from '../../../lib/helpers/users';
 
 /**
  * Fix collection history issues for a specific collection report
@@ -19,29 +19,29 @@ export async function POST(
     console.warn(`🔧 Starting fix-collection-history for report: ${reportId}`);
 
     // Check authentication (skip in development mode)
-    if (process.env.NODE_ENV !== "development") {
+    if (process.env.NODE_ENV !== 'development') {
       const userId = await getUserIdFromServer();
       if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
       const user = await getUserById(userId);
       if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
       // Check if user has admin access
       if (
-        !user.roles?.includes("admin") &&
-        !user.roles?.includes("evolution admin")
+        !user.roles?.includes('admin') &&
+        !user.roles?.includes('evolution admin')
       ) {
         return NextResponse.json(
-          { error: "Insufficient permissions" },
+          { error: 'Insufficient permissions' },
           { status: 403 }
         );
       }
     } else {
-      console.warn("⚠️ Running in development mode - skipping authentication");
+      console.warn('⚠️ Running in development mode - skipping authentication');
     }
 
     // Find the report
@@ -50,7 +50,7 @@ export async function POST(
     });
 
     if (!report) {
-      return NextResponse.json({ error: "Report not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 
     console.warn(
@@ -64,7 +64,7 @@ export async function POST(
 
     if (reportCollections.length === 0) {
       return NextResponse.json(
-        { error: "No collections found for this report" },
+        { error: 'No collections found for this report' },
         { status: 404 }
       );
     }
@@ -72,7 +72,7 @@ export async function POST(
     console.warn(`📊 Found ${reportCollections.length} collections in report`);
 
     // Get unique machine IDs from this report
-    const machineIds = [...new Set(reportCollections.map((c) => c.machineId))];
+    const machineIds = [...new Set(reportCollections.map(c => c.machineId))];
 
     let totalHistoryRebuilt = 0;
     let machinesFixedCount = 0;
@@ -179,12 +179,12 @@ export async function POST(
           );
 
           // Use raw MongoDB driver instead of Mongoose to ensure update works
-          const mongoose = await import("mongoose");
+          const mongoose = await import('mongoose');
           const db = mongoose.default.connection.db;
-          if (!db) throw new Error("Database connection not available");
+          if (!db) throw new Error('Database connection not available');
 
           const updateResult = await db
-            .collection("machines")
+            .collection('machines')
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .updateOne({ _id: machineId } as any, {
               $set: {
@@ -200,9 +200,9 @@ export async function POST(
                         ].timestamp
                       )
                     : undefined,
-                "collectionMeters.metersIn":
+                'collectionMeters.metersIn':
                   mostRecentCollection?.metersIn || 0,
-                "collectionMeters.metersOut":
+                'collectionMeters.metersOut':
                   mostRecentCollection?.metersOut || 0,
                 updatedAt: new Date(),
               },
@@ -244,7 +244,7 @@ export async function POST(
       }
     }
 
-    console.warn("🎉 Fix Collection History Complete!");
+    console.warn('🎉 Fix Collection History Complete!');
     console.warn(`   Total machines in report: ${machineIds.length}`);
     console.warn(`   Machines with issues: ${machinesWithIssues}`);
     console.warn(`   Machines fixed: ${machinesFixedCount}`);
@@ -252,7 +252,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: "Collection history fix completed successfully",
+      message: 'Collection history fix completed successfully',
       summary: {
         totalMachinesInReport: machineIds.length,
         machinesWithIssues: machinesWithIssues,
@@ -261,12 +261,12 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("❌ Error in fix-collection-history:", error);
+    console.error('❌ Error in fix-collection-history:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fix collection history",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: 'Failed to fix collection history',
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

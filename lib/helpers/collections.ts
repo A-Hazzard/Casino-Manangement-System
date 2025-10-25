@@ -1,5 +1,5 @@
-import axios from "axios";
-import type { CollectionDocument } from "@/lib/types/collections";
+import axios from 'axios';
+import type { CollectionDocument } from '@/lib/types/collections';
 
 /**
  * Fetches collections by locationReportId.
@@ -26,7 +26,7 @@ export async function updateCollection(
   updateData: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
   try {
-    console.warn("📡 updateCollection called with:", {
+    console.warn('📡 updateCollection called with:', {
       collectionId,
       updateDataKeys: Object.keys(updateData),
     });
@@ -36,7 +36,7 @@ export async function updateCollection(
       updateData
     );
 
-    console.warn("📡 updateCollection response:", data);
+    console.warn('📡 updateCollection response:', data);
 
     // The API returns { success: true, data: updatedCollection }
     // Extract the actual collection data from the response
@@ -47,7 +47,7 @@ export async function updateCollection(
     // Fallback: if the response structure is different, return the data directly
     return data as CollectionDocument;
   } catch (error) {
-    console.error(" updateCollection error:", error);
+    console.error(' updateCollection error:', error);
     throw error;
   }
 }
@@ -73,15 +73,15 @@ export async function deleteCollectionsByReportId(
 }> {
   try {
     console.warn(
-      "🗑️ deleteCollectionsByReportId called with:",
+      '🗑️ deleteCollectionsByReportId called with:',
       locationReportId
     );
 
-    const { data } = await axios.delete("/api/collections/delete-by-report", {
+    const { data } = await axios.delete('/api/collections/delete-by-report', {
       data: { locationReportId },
     });
 
-    console.warn("🗑️ deleteCollectionsByReportId response:", data);
+    console.warn('🗑️ deleteCollectionsByReportId response:', data);
 
     return {
       success: data.success,
@@ -90,7 +90,7 @@ export async function deleteCollectionsByReportId(
       updatedMachines: data.updatedMachines,
     };
   } catch (error) {
-    console.error(" deleteCollectionsByReportId error:", error);
+    console.error(' deleteCollectionsByReportId error:', error);
     throw error;
   }
 }

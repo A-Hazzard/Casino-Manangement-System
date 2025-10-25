@@ -3,11 +3,11 @@
  * Handles pagination state, navigation, and page management
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback } from 'react';
 import type {
   UseLocationPaginationProps,
   UseLocationPaginationReturn,
-} from "@/lib/types/locationPagination";
+} from '@/lib/types/locationPagination';
 
 export function useLocationPagination({
   totalPages,

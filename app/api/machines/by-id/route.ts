@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { Machine } from "@/app/api/lib/models/machines";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
 
 /**
  * GET /api/machines/[id]
@@ -20,15 +20,15 @@ export async function GET(
       _id: id,
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     }).select(
-      "_id serialNumber game gamingLocation assetStatus cabinetType createdAt updatedAt"
+      '_id serialNumber game gamingLocation assetStatus cabinetType createdAt updatedAt'
     );
 
     if (!machine) {
       return NextResponse.json(
-        { success: false, error: "Machine not found" },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
@@ -38,22 +38,22 @@ export async function GET(
       data: machine,
     });
   } catch (error) {
-    console.error("Error fetching machine:", error);
+    console.error('Error fetching machine:', error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch machine" },
+      { success: false, error: 'Failed to fetch machine' },
       { status: 500 }
     );
   }
 }
 
 export function POST() {
-  return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
 
 export function PUT() {
-  return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
 
 export function DELETE() {
-  return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
+  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }

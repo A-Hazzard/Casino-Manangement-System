@@ -1,7 +1,7 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { ArrowLeftIcon } from '@radix-ui/react-icons';
 
 type ExtendedBackButtonProps = {
   locationName: string;
@@ -18,11 +18,11 @@ export const BackButton: React.FC<ExtendedBackButtonProps> = ({
     <Button
       onClick={handleBackToLocation}
       variant="outline"
-      className="flex items-center bg-white border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-white transition-colors duration-300"
+      className="flex items-center border-buttonActive bg-white text-buttonActive transition-colors duration-300 hover:bg-buttonActive hover:text-white"
       size="sm"
     >
       <ArrowLeftIcon className="mr-2 h-4 w-4" />
-      Back to {locationName || "Location"}
+      Back to {locationName || 'Location'}
     </Button>
   );
 
@@ -32,14 +32,14 @@ export const BackButton: React.FC<ExtendedBackButtonProps> = ({
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
-        className="mt-4 mb-2"
+        className="mb-2 mt-4"
       >
         {buttonContent}
       </motion.div>
     );
   }
 
-  return <div className="mt-4 mb-2">{buttonContent}</div>;
+  return <div className="mb-2 mt-4">{buttonContent}</div>;
 };
 
 export default BackButton;

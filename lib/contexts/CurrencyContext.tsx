@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, {
   createContext,
@@ -6,13 +6,13 @@ import React, {
   useState,
   useCallback,
   useEffect,
-} from "react";
+} from 'react';
 import type {
   CurrencyCode,
   CurrencyContextType,
-} from "@/shared/types/currency";
-import { formatAmount, convertCurrency } from "@/lib/helpers/rates";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+} from '@/shared/types/currency';
+import { formatAmount, convertCurrency } from '@/lib/helpers/rates';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 interface CurrencyProviderProps {
   children: React.ReactNode;
@@ -25,7 +25,7 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(
 
 export function CurrencyProvider({
   children,
-  initialCurrency = "USD",
+  initialCurrency = 'USD',
 }: CurrencyProviderProps) {
   const [displayCurrency, setDisplayCurrency] =
     useState<CurrencyCode>(initialCurrency);
@@ -33,7 +33,7 @@ export function CurrencyProvider({
 
   // Determine if we're in "All Licensee" mode
   const isAllLicensee =
-    !selectedLicencee || selectedLicencee === "all" || selectedLicencee === "";
+    !selectedLicencee || selectedLicencee === 'all' || selectedLicencee === '';
 
   // Update isAllLicensee based on current licensee selection
   // This should be called from components that know the current licensee
@@ -46,8 +46,8 @@ export function CurrencyProvider({
     setDisplayCurrency(currency);
 
     // Store in localStorage for persistence
-    if (typeof window !== "undefined") {
-      localStorage.setItem("evolution-currency", currency);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('evolution-currency', currency);
     }
   }, []);
 
@@ -67,13 +67,13 @@ export function CurrencyProvider({
 
   // Load currency from localStorage on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       const savedCurrency = localStorage.getItem(
-        "evolution-currency"
+        'evolution-currency'
       ) as CurrencyCode;
       if (
         savedCurrency &&
-        ["USD", "TTD", "GYD", "BBD"].includes(savedCurrency)
+        ['USD', 'TTD', 'GYD', 'BBD'].includes(savedCurrency)
       ) {
         setDisplayCurrency(savedCurrency);
       }
@@ -99,7 +99,7 @@ export function CurrencyProvider({
 export function useCurrency(): CurrencyContextType {
   const context = useContext(CurrencyContext);
   if (context === undefined) {
-    throw new Error("useCurrency must be used within a CurrencyProvider");
+    throw new Error('useCurrency must be used within a CurrencyProvider');
   }
   return context;
 }

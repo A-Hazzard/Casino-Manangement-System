@@ -1,38 +1,38 @@
-import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import Image from "next/image";
-import { X, Trash2, Edit3, Save, XCircle } from "lucide-react";
-import type { User, ResourcePermissions } from "@/lib/types/administration";
-import type { LocationSelectItem } from "@/lib/types/location";
-import { fetchAllGamingLocations } from "@/lib/helpers/locations";
-import { fetchCountries } from "@/lib/helpers/countries";
-import type { Country } from "@/lib/helpers/countries";
-import gsap from "gsap";
-import defaultAvatar from "@/public/defaultAvatar.svg";
-import cameraIcon from "@/public/cameraIcon.svg";
-import CircleCropModal from "@/components/ui/image/CircleCropModal";
-import { toast } from "sonner";
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import Image from 'next/image';
+import { X, Trash2, Edit3, Save, XCircle } from 'lucide-react';
+import type { User, ResourcePermissions } from '@/lib/types/administration';
+import type { LocationSelectItem } from '@/lib/types/location';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import { fetchCountries } from '@/lib/helpers/countries';
+import type { Country } from '@/lib/helpers/countries';
+import gsap from 'gsap';
+import defaultAvatar from '@/public/defaultAvatar.svg';
+import cameraIcon from '@/public/cameraIcon.svg';
+import CircleCropModal from '@/components/ui/image/CircleCropModal';
+import { toast } from 'sonner';
 import {
   detectChanges,
   filterMeaningfulChanges,
   getChangesSummary,
-} from "@/lib/utils/changeDetection";
+} from '@/lib/utils/changeDetection';
 import {
   validatePasswordStrength,
   getPasswordStrengthLabel,
-} from "@/lib/utils/validation";
+} from '@/lib/utils/validation';
 
 const ROLE_OPTIONS = [
-  { label: "Evolution Admin", value: "evolution admin" },
-  { label: "Administrator", value: "admin" },
-  { label: "Manager", value: "manager" },
-  { label: "Location Admin", value: "location admin" },
-  { label: "Technician", value: "technician" },
-  { label: "Collector", value: "collector" },
-  { label: "Collector Meters", value: "collector meters" },
+  { label: 'Evolution Admin', value: 'evolution admin' },
+  { label: 'Administrator', value: 'admin' },
+  { label: 'Manager', value: 'manager' },
+  { label: 'Location Admin', value: 'location admin' },
+  { label: 'Technician', value: 'technician' },
+  { label: 'Collector', value: 'collector' },
+  { label: 'Collector Meters', value: 'collector meters' },
 ];
 
 export type UserModalProps = {
@@ -65,29 +65,29 @@ export default function UserModal({
 
   // Form state for profile details
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    middleName: "",
-    otherName: "",
-    gender: "",
-    street: "",
-    town: "",
-    region: "",
-    country: "",
-    postalCode: "",
-    dateOfBirth: "",
-    idType: "",
-    idNumber: "",
-    notes: "",
-    profilePicture: "",
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    otherName: '',
+    gender: '',
+    street: '',
+    town: '',
+    region: '',
+    country: '',
+    postalCode: '',
+    dateOfBirth: '',
+    idType: '',
+    idNumber: '',
+    notes: '',
+    profilePicture: '',
   });
 
   // Form state for roles and permissions
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
-    label: "Very Weak",
+    label: 'Very Weak',
     feedback: [] as string[],
     requirements: {
       length: false,
@@ -100,7 +100,7 @@ export default function UserModal({
   const [roles, setRoles] = useState<string[]>([]);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
-  const [locationSearch, setLocationSearch] = useState("");
+  const [locationSearch, setLocationSearch] = useState('');
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
 
@@ -113,25 +113,25 @@ export default function UserModal({
     if (user) {
       setIsLoading(false);
       setFormData({
-        firstName: user.profile?.firstName || "",
-        lastName: user.profile?.lastName || "",
-        middleName: user.profile?.middleName || "",
-        otherName: user.profile?.otherName || "",
-        gender: user.profile?.gender || "",
-        street: user.profile?.address?.street || "",
-        town: user.profile?.address?.town || "",
-        region: user.profile?.address?.region || "",
-        country: user.profile?.address?.country || "",
-        postalCode: user.profile?.address?.postalCode || "",
-        dateOfBirth: user.profile?.identification?.dateOfBirth || "",
-        idType: user.profile?.identification?.idType || "",
-        idNumber: user.profile?.identification?.idNumber || "",
-        notes: user.profile?.identification?.notes || "",
-        profilePicture: user.profilePicture || "",
+        firstName: user.profile?.firstName || '',
+        lastName: user.profile?.lastName || '',
+        middleName: user.profile?.middleName || '',
+        otherName: user.profile?.otherName || '',
+        gender: user.profile?.gender || '',
+        street: user.profile?.address?.street || '',
+        town: user.profile?.address?.town || '',
+        region: user.profile?.address?.region || '',
+        country: user.profile?.address?.country || '',
+        postalCode: user.profile?.address?.postalCode || '',
+        dateOfBirth: user.profile?.identification?.dateOfBirth || '',
+        idType: user.profile?.identification?.idType || '',
+        idNumber: user.profile?.identification?.idNumber || '',
+        notes: user.profile?.identification?.notes || '',
+        profilePicture: user.profilePicture || '',
       });
       setRoles(user.roles || []);
       setSelectedLocationIds(
-        user.resourcePermissions?.["gaming-locations"]?.resources || []
+        user.resourcePermissions?.['gaming-locations']?.resources || []
       );
     } else if (open) {
       setIsLoading(true);
@@ -140,18 +140,18 @@ export default function UserModal({
 
   // Load locations
   useEffect(() => {
-    fetchAllGamingLocations().then((locs) => {
-      const formattedLocs = locs.map((loc) => {
-        let _id = "";
-        if ("id" in loc && typeof loc.id === "string") _id = loc.id;
-        else if ("_id" in loc && typeof loc._id === "string") _id = loc._id;
+    fetchAllGamingLocations().then(locs => {
+      const formattedLocs = locs.map(loc => {
+        let _id = '';
+        if ('id' in loc && typeof loc.id === 'string') _id = loc.id;
+        else if ('_id' in loc && typeof loc._id === 'string') _id = loc._id;
         return { _id, name: loc.name };
       });
       setLocations(formattedLocs);
 
       // Check if all locations are selected
       const userLocationIds =
-        user?.resourcePermissions?.["gaming-locations"]?.resources || [];
+        user?.resourcePermissions?.['gaming-locations']?.resources || [];
       if (userLocationIds.length > 0 && formattedLocs.length > 0) {
         setAllLocationsSelected(
           userLocationIds.length === formattedLocs.length
@@ -169,7 +169,7 @@ export default function UserModal({
 
         // Remove duplicates based on country name using Map for better performance
         const uniqueCountriesMap = new Map();
-        countriesData.forEach((country) => {
+        countriesData.forEach(country => {
           if (!uniqueCountriesMap.has(country.name)) {
             uniqueCountriesMap.set(country.name, country);
           }
@@ -178,8 +178,8 @@ export default function UserModal({
 
         setCountries(uniqueCountries as unknown as Country[]);
       } catch (error) {
-        console.error("Failed to fetch countries:", error);
-        toast.error("Failed to load countries");
+        console.error('Failed to fetch countries:', error);
+        toast.error('Failed to load countries');
       } finally {
         setCountriesLoading(false);
       }
@@ -195,12 +195,12 @@ export default function UserModal({
       gsap.fromTo(
         modalRef.current,
         { y: 100, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
       );
       gsap.fromTo(
         backdropRef.current,
         { opacity: 0 },
-        { opacity: 1, duration: 0.3, ease: "power2.out" }
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
       );
     }
   }, [open]);
@@ -209,11 +209,11 @@ export default function UserModal({
   useEffect(() => {
     if (!open) {
       setIsEditMode(false);
-      setPassword("");
-      setConfirmPassword("");
+      setPassword('');
+      setConfirmPassword('');
       setPasswordStrength({
         score: 0,
-        label: "Very Weak",
+        label: 'Very Weak',
         feedback: [],
         requirements: {
           length: false,
@@ -239,7 +239,7 @@ export default function UserModal({
     } else {
       setPasswordStrength({
         score: 0,
-        label: "Very Weak",
+        label: 'Very Weak',
         feedback: [],
         requirements: {
           length: false,
@@ -253,7 +253,7 @@ export default function UserModal({
   }, [password]);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [field]: value,
     }));
@@ -263,7 +263,7 @@ export default function UserModal({
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         setRawImageSrc(e.target?.result as string);
         setIsCropOpen(true);
       };
@@ -272,18 +272,18 @@ export default function UserModal({
   };
 
   const handleRemoveProfilePicture = () => {
-    setFormData((prev) => ({ ...prev, profilePicture: "" }));
+    setFormData(prev => ({ ...prev, profilePicture: '' }));
   };
 
   const handleCropComplete = (croppedImageUrl: string) => {
-    setFormData((prev) => ({ ...prev, profilePicture: croppedImageUrl }));
+    setFormData(prev => ({ ...prev, profilePicture: croppedImageUrl }));
     setIsCropOpen(false);
     setRawImageSrc(null);
   };
 
   const handleRoleChange = (role: string, checked: boolean) => {
-    setRoles((prev) =>
-      checked ? [...prev, role] : prev.filter((r) => r !== role)
+    setRoles(prev =>
+      checked ? [...prev, role] : prev.filter(r => r !== role)
     );
   };
 
@@ -300,7 +300,7 @@ export default function UserModal({
   };
 
   const handleLocationRemove = (id: string) => {
-    const newSelectedIds = selectedLocationIds.filter((locId) => locId !== id);
+    const newSelectedIds = selectedLocationIds.filter(locId => locId !== id);
     setSelectedLocationIds(newSelectedIds);
     setAllLocationsSelected(false);
   };
@@ -308,25 +308,25 @@ export default function UserModal({
   const handleAllLocationsChange = (checked: boolean) => {
     setAllLocationsSelected(checked);
     if (checked) {
-      setSelectedLocationIds(locations.map((loc) => loc._id));
+      setSelectedLocationIds(locations.map(loc => loc._id));
     } else {
       setSelectedLocationIds([]);
     }
   };
 
-  const filteredLocations = locations.filter((loc) =>
+  const filteredLocations = locations.filter(loc =>
     loc.name.toLowerCase().includes(locationSearch.toLowerCase())
   );
 
   const handleSave = () => {
     if (password && password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error('Passwords do not match');
       return;
     }
 
     // Validate that we have a user to update
     if (!user) {
-      toast.error("No user selected for update");
+      toast.error('No user selected for update');
       return;
     }
 
@@ -361,8 +361,8 @@ export default function UserModal({
       password: password || undefined,
       resourcePermissions: {
         ...(user?.resourcePermissions || {}),
-        "gaming-locations": {
-          entity: "gaming-locations" as const,
+        'gaming-locations': {
+          entity: 'gaming-locations' as const,
           resources: selectedLocationIds,
         },
       },
@@ -370,19 +370,19 @@ export default function UserModal({
 
     // Validate that the form data has been properly structured
     if (!updatedUser.profile) {
-      toast.error("Failed to structure user data properly");
+      toast.error('Failed to structure user data properly');
       return;
     }
 
     // Validate required fields
-    if (!formData.firstName || formData.firstName.trim() === "") {
-      toast.error("First name is required");
+    if (!formData.firstName || formData.firstName.trim() === '') {
+      toast.error('First name is required');
       return;
     }
 
     // Validate email if it exists in the user object
     if (user.email && !/\S+@\S+\.\S+/.test(user.email)) {
-      toast.error("Please enter a valid email address");
+      toast.error('Please enter a valid email address');
       return;
     }
 
@@ -392,7 +392,7 @@ export default function UserModal({
       if (!passwordValidation.isValid) {
         toast.error(
           `Password requirements not met: ${passwordValidation.feedback.join(
-            ", "
+            ', '
           )}`
         );
         return;
@@ -405,58 +405,58 @@ export default function UserModal({
 
     // Only proceed if there are actual changes
     if (meaningfulChanges.length === 0) {
-      toast.info("No changes detected");
+      toast.info('No changes detected');
       return;
     }
 
     // Log the changes for debugging
-    if (process.env.NODE_ENV === "development") {
-      console.warn("Detected changes:", meaningfulChanges);
-      console.warn("Changes summary:", getChangesSummary(meaningfulChanges));
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Detected changes:', meaningfulChanges);
+      console.warn('Changes summary:', getChangesSummary(meaningfulChanges));
     }
 
     onSave(updatedUser);
 
     setIsEditMode(false);
-    setPassword("");
-    setConfirmPassword("");
+    setPassword('');
+    setConfirmPassword('');
   };
 
   const handleCancelEdit = () => {
     // Reset form data to original user data
     if (user) {
       setFormData({
-        firstName: user.profile?.firstName || "",
-        lastName: user.profile?.lastName || "",
-        middleName: user.profile?.middleName || "",
-        otherName: user.profile?.otherName || "",
-        gender: user.profile?.gender || "",
-        street: user.profile?.address?.street || "",
-        town: user.profile?.address?.town || "",
-        region: user.profile?.address?.region || "",
-        country: user.profile?.address?.country || "",
-        postalCode: user.profile?.address?.postalCode || "",
-        dateOfBirth: user.profile?.identification?.dateOfBirth || "",
-        idType: user.profile?.identification?.idType || "",
-        idNumber: user.profile?.identification?.idNumber || "",
-        notes: user.profile?.identification?.notes || "",
-        profilePicture: user.profilePicture || "",
+        firstName: user.profile?.firstName || '',
+        lastName: user.profile?.lastName || '',
+        middleName: user.profile?.middleName || '',
+        otherName: user.profile?.otherName || '',
+        gender: user.profile?.gender || '',
+        street: user.profile?.address?.street || '',
+        town: user.profile?.address?.town || '',
+        region: user.profile?.address?.region || '',
+        country: user.profile?.address?.country || '',
+        postalCode: user.profile?.address?.postalCode || '',
+        dateOfBirth: user.profile?.identification?.dateOfBirth || '',
+        idType: user.profile?.identification?.idType || '',
+        idNumber: user.profile?.identification?.idNumber || '',
+        notes: user.profile?.identification?.notes || '',
+        profilePicture: user.profilePicture || '',
       });
       setRoles(user.roles || []);
       setSelectedLocationIds(
-        user.resourcePermissions?.["gaming-locations"]?.resources || []
+        user.resourcePermissions?.['gaming-locations']?.resources || []
       );
     }
     setIsEditMode(false);
-    setPassword("");
-    setConfirmPassword("");
+    setPassword('');
+    setConfirmPassword('');
   };
 
   if (!open || !user) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
         <div
           ref={backdropRef}
           className="absolute inset-0 bg-black/50"
@@ -464,39 +464,39 @@ export default function UserModal({
         />
         <div
           ref={modalRef}
-          className="relative w-full h-full lg:max-w-4xl lg:max-h-[95vh] lg:rounded-2xl bg-white flex flex-col overflow-y-auto animate-in p-4 lg:p-10 border border-border"
+          className="relative flex h-full w-full flex-col overflow-y-auto border border-border bg-white p-4 animate-in lg:max-h-[95vh] lg:max-w-4xl lg:rounded-2xl lg:p-10"
           style={{ opacity: 1 }}
         >
           {/* Header with close button and edit toggle */}
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">
-              {isEditMode ? "Edit User Details" : "User Details"}
+              {isEditMode ? 'Edit User Details' : 'User Details'}
             </h2>
             <div className="flex items-center gap-2">
               {!isEditMode && (
                 <Button
                   onClick={() => setIsEditMode(true)}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+                  className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                 >
-                  <Edit3 className="w-4 h-4" />
+                  <Edit3 className="h-4 w-4" />
                   Edit
                 </Button>
               )}
               <button
-                className="bg-white rounded-full p-2 shadow hover:bg-gray-100"
+                className="rounded-full bg-white p-2 shadow hover:bg-gray-100"
                 onClick={onClose}
                 aria-label="Close"
               >
-                <X className="w-6 h-6 text-gray-700" />
+                <X className="h-6 w-6 text-gray-700" />
               </button>
             </div>
           </div>
 
-          <div className="w-full flex flex-col gap-8">
+          <div className="flex w-full flex-col gap-8">
             {/* Top section: Profile pic + username/email (left), user info fields (right) */}
-            <div className="w-full flex flex-col lg:flex-row lg:gap-12 items-start lg:items-center">
+            <div className="flex w-full flex-col items-start lg:flex-row lg:items-center lg:gap-12">
               {/* Left: Profile pic, username, and email */}
-              <div className="w-full lg:w-1/3 flex flex-col items-center lg:items-start justify-center">
+              <div className="flex w-full flex-col items-center justify-center lg:w-1/3 lg:items-start">
                 <div className="relative mb-4 flex justify-center">
                   <Image
                     src={
@@ -507,13 +507,13 @@ export default function UserModal({
                     alt="Avatar"
                     width={160}
                     height={160}
-                    className="rounded-full bg-gray-200 border-4 border-container"
+                    className="rounded-full border-4 border-container bg-gray-200"
                   />
                   {isEditMode && (
                     <>
                       <button
                         type="button"
-                        className="absolute bottom-4 right-4 rounded-full border-2 border-border shadow flex items-center justify-center bg-transparent hover:bg-gray-100 transition-colors"
+                        className="absolute bottom-4 right-4 flex items-center justify-center rounded-full border-2 border-border bg-transparent shadow transition-colors hover:bg-gray-100"
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <Image
@@ -527,37 +527,37 @@ export default function UserModal({
                       {(formData.profilePicture || user.profilePicture) && (
                         <button
                           type="button"
-                          className="absolute top-2 right-2 rounded-full bg-red-500 text-white p-1 hover:bg-red-600 transition-colors"
+                          className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white transition-colors hover:bg-red-600"
                           onClick={handleRemoveProfilePicture}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                     </>
                   )}
                 </div>
-                <div className="w-full flex flex-col items-center lg:items-start space-y-4">
+                <div className="flex w-full flex-col items-center space-y-4 lg:items-start">
                   <div className="w-full">
-                    <label className="block text-sm font-semibold mb-1 text-gray-900">
+                    <label className="mb-1 block text-sm font-semibold text-gray-900">
                       Username:
                     </label>
                     {isLoading ? (
                       <Skeleton className="h-12 w-full" />
                     ) : (
-                      <div className="w-full text-gray-700 text-center lg:text-left">
-                        {user?.username || "Not specified"}
+                      <div className="w-full text-center text-gray-700 lg:text-left">
+                        {user?.username || 'Not specified'}
                       </div>
                     )}
                   </div>
                   <div className="w-full">
-                    <label className="block text-sm font-semibold mb-1 text-gray-900">
+                    <label className="mb-1 block text-sm font-semibold text-gray-900">
                       Email Address:
                     </label>
                     {isLoading ? (
                       <Skeleton className="h-12 w-full" />
                     ) : (
-                      <div className="w-full text-gray-700 text-center lg:text-left">
-                        {user?.email || "Not specified"}
+                      <div className="w-full text-center text-gray-700 lg:text-left">
+                        {user?.email || 'Not specified'}
                       </div>
                     )}
                   </div>
@@ -572,12 +572,12 @@ export default function UserModal({
               </div>
 
               {/* Right: User info fields */}
-              <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 lg:mt-0">
+              <div className="mt-6 grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:mt-0 lg:w-2/3">
                 {isLoading ? (
                   <>
                     {Array.from({ length: 12 }).map((_, index) => (
                       <div key={index}>
-                        <Skeleton className="h-4 w-20 mb-1" />
+                        <Skeleton className="mb-1 h-4 w-20" />
                         <Skeleton className="h-12 w-full" />
                       </div>
                     ))}
@@ -585,93 +585,93 @@ export default function UserModal({
                 ) : (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                      <label className="mb-1 block text-sm font-semibold text-gray-900">
                         First Name:
                       </label>
                       {isEditMode ? (
                         <input
-                          className="w-full rounded-md p-3 bg-white border border-border"
+                          className="w-full rounded-md border border-border bg-white p-3"
                           value={formData.firstName}
-                          onChange={(e) =>
-                            handleInputChange("firstName", e.target.value)
+                          onChange={e =>
+                            handleInputChange('firstName', e.target.value)
                           }
                           placeholder="Enter First Name"
                           required
                         />
                       ) : (
                         <div className="w-full text-gray-700">
-                          {formData.firstName || "Not specified"}
+                          {formData.firstName || 'Not specified'}
                         </div>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                      <label className="mb-1 block text-sm font-semibold text-gray-900">
                         Last Name:
                       </label>
                       {isEditMode ? (
                         <input
-                          className="w-full rounded-md p-3 bg-white border border-border"
+                          className="w-full rounded-md border border-border bg-white p-3"
                           value={formData.lastName}
-                          onChange={(e) =>
-                            handleInputChange("lastName", e.target.value)
+                          onChange={e =>
+                            handleInputChange('lastName', e.target.value)
                           }
                           placeholder="Enter Last Name"
                           required
                         />
                       ) : (
                         <div className="w-full text-gray-700">
-                          {formData.lastName || "Not specified"}
+                          {formData.lastName || 'Not specified'}
                         </div>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                      <label className="mb-1 block text-sm font-semibold text-gray-900">
                         Middle Name:
                       </label>
                       {isEditMode ? (
                         <input
-                          className="w-full rounded-md p-3 bg-white border border-border"
+                          className="w-full rounded-md border border-border bg-white p-3"
                           value={formData.middleName}
-                          onChange={(e) =>
-                            handleInputChange("middleName", e.target.value)
+                          onChange={e =>
+                            handleInputChange('middleName', e.target.value)
                           }
                           placeholder="Enter Middle Name"
                         />
                       ) : (
                         <div className="w-full text-gray-700">
-                          {formData.middleName || "Not specified"}
+                          {formData.middleName || 'Not specified'}
                         </div>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                      <label className="mb-1 block text-sm font-semibold text-gray-900">
                         Other Name:
                       </label>
                       {isEditMode ? (
                         <input
-                          className="w-full rounded-md p-3 bg-white border border-border"
+                          className="w-full rounded-md border border-border bg-white p-3"
                           value={formData.otherName}
-                          onChange={(e) =>
-                            handleInputChange("otherName", e.target.value)
+                          onChange={e =>
+                            handleInputChange('otherName', e.target.value)
                           }
                           placeholder="Enter Other Name"
                         />
                       ) : (
                         <div className="w-full text-gray-700">
-                          {formData.otherName || "Not specified"}
+                          {formData.otherName || 'Not specified'}
                         </div>
                       )}
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-semibold mb-1 text-gray-900">
+                      <label className="mb-1 block text-sm font-semibold text-gray-900">
                         Gender:
                       </label>
                       {isEditMode ? (
                         <select
-                          className="w-full rounded-md p-3 bg-white border border-border"
+                          className="w-full rounded-md border border-border bg-white p-3"
                           value={formData.gender}
-                          onChange={(e) =>
-                            handleInputChange("gender", e.target.value)
+                          onChange={e =>
+                            handleInputChange('gender', e.target.value)
                           }
                           required
                         >
@@ -685,7 +685,7 @@ export default function UserModal({
                           {formData.gender
                             ? formData.gender.charAt(0).toUpperCase() +
                               formData.gender.slice(1)
-                            : "Not specified"}
+                            : 'Not specified'}
                         </div>
                       )}
                     </div>
@@ -695,79 +695,77 @@ export default function UserModal({
             </div>
 
             {/* Address Section */}
-            <hr className="my-6 border-gray-400 w-full" />
-            <div className="w-full flex flex-col items-center">
-              <h3 className="text-2xl font-bold text-center mb-4 text-gray-900">
+            <hr className="my-6 w-full border-gray-400" />
+            <div className="flex w-full flex-col items-center">
+              <h3 className="mb-4 text-center text-2xl font-bold text-gray-900">
                 Address
               </h3>
-              <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid w-full max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     Street:
                   </label>
                   {isEditMode ? (
                     <input
-                      className="w-full rounded-md p-3 bg-white border border-border"
+                      className="w-full rounded-md border border-border bg-white p-3"
                       value={formData.street}
-                      onChange={(e) =>
-                        handleInputChange("street", e.target.value)
+                      onChange={e =>
+                        handleInputChange('street', e.target.value)
                       }
                       placeholder="Enter Street"
                     />
                   ) : (
                     <div className="w-full text-gray-700">
-                      {formData.street || "Not specified"}
+                      {formData.street || 'Not specified'}
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     Town:
                   </label>
                   {isEditMode ? (
                     <input
-                      className="w-full rounded-md p-3 bg-white border border-border"
+                      className="w-full rounded-md border border-border bg-white p-3"
                       value={formData.town}
-                      onChange={(e) =>
-                        handleInputChange("town", e.target.value)
-                      }
+                      onChange={e => handleInputChange('town', e.target.value)}
                       placeholder="Enter Town"
                     />
                   ) : (
                     <div className="w-full text-gray-700">
-                      {formData.town || "Not specified"}
+                      {formData.town || 'Not specified'}
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     Region:
                   </label>
                   {isEditMode ? (
                     <input
-                      className="w-full rounded-md p-3 bg-white border border-border"
+                      className="w-full rounded-md border border-border bg-white p-3"
                       value={formData.region}
-                      onChange={(e) =>
-                        handleInputChange("region", e.target.value)
+                      onChange={e =>
+                        handleInputChange('region', e.target.value)
                       }
                       placeholder="Enter Region"
                     />
                   ) : (
                     <div className="w-full text-gray-700">
-                      {formData.region || "Not specified"}
+                      {formData.region || 'Not specified'}
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     Country:
                   </label>
                   {isEditMode ? (
                     <select
-                      className="w-full rounded-md p-3 bg-white border border-border"
+                      className="w-full rounded-md border border-border bg-white p-3"
                       value={formData.country}
-                      onChange={(e) =>
-                        handleInputChange("country", e.target.value)
+                      onChange={e =>
+                        handleInputChange('country', e.target.value)
                       }
                     >
                       <option value="">Select Country</option>
@@ -776,7 +774,7 @@ export default function UserModal({
                           Loading countries...
                         </option>
                       ) : (
-                        countries.map((country) => (
+                        countries.map(country => (
                           <option key={country._id} value={country._id}>
                             {country.name}
                           </option>
@@ -785,29 +783,28 @@ export default function UserModal({
                     </select>
                   ) : (
                     <div className="w-full text-gray-700">
-                      {countries.find((c) => c._id === formData.country)
-                        ?.name ||
+                      {countries.find(c => c._id === formData.country)?.name ||
                         formData.country ||
-                        "Not specified"}
+                        'Not specified'}
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     Postal Code:
                   </label>
                   {isEditMode ? (
                     <input
-                      className="w-full rounded-md p-3 bg-white border border-border"
+                      className="w-full rounded-md border border-border bg-white p-3"
                       value={formData.postalCode}
-                      onChange={(e) =>
-                        handleInputChange("postalCode", e.target.value)
+                      onChange={e =>
+                        handleInputChange('postalCode', e.target.value)
                       }
                       placeholder="Enter Postal Code"
                     />
                   ) : (
                     <div className="w-full text-gray-700">
-                      {formData.postalCode || "Not specified"}
+                      {formData.postalCode || 'Not specified'}
                     </div>
                   )}
                 </div>
@@ -815,86 +812,84 @@ export default function UserModal({
             </div>
 
             {/* Identification Section */}
-            <hr className="my-6 border-gray-400 w-full" />
-            <div className="w-full flex flex-col items-center">
-              <h3 className="text-2xl font-bold text-center mb-4 text-gray-900">
+            <hr className="my-6 w-full border-gray-400" />
+            <div className="flex w-full flex-col items-center">
+              <h3 className="mb-4 text-center text-2xl font-bold text-gray-900">
                 Identification
               </h3>
-              <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid w-full max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     D.O.B:
                   </label>
                   {isEditMode ? (
                     <input
-                      className="w-full rounded-md p-3 bg-white border border-border"
+                      className="w-full rounded-md border border-border bg-white p-3"
                       value={formData.dateOfBirth}
-                      onChange={(e) =>
-                        handleInputChange("dateOfBirth", e.target.value)
+                      onChange={e =>
+                        handleInputChange('dateOfBirth', e.target.value)
                       }
                       placeholder="YYYY-MM-DD"
                       type="date"
                     />
                   ) : (
                     <div className="w-full text-gray-700">
-                      {formData.dateOfBirth || "Not specified"}
+                      {formData.dateOfBirth || 'Not specified'}
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     ID Type:
                   </label>
                   {isEditMode ? (
                     <input
-                      className="w-full rounded-md p-3 bg-white border border-border"
+                      className="w-full rounded-md border border-border bg-white p-3"
                       value={formData.idType}
-                      onChange={(e) =>
-                        handleInputChange("idType", e.target.value)
+                      onChange={e =>
+                        handleInputChange('idType', e.target.value)
                       }
                       placeholder="Enter ID Type"
                     />
                   ) : (
                     <div className="w-full text-gray-700">
-                      {formData.idType || "Not specified"}
+                      {formData.idType || 'Not specified'}
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     ID Number:
                   </label>
                   {isEditMode ? (
                     <input
-                      className="w-full rounded-md p-3 bg-white border border-border"
+                      className="w-full rounded-md border border-border bg-white p-3"
                       value={formData.idNumber}
-                      onChange={(e) =>
-                        handleInputChange("idNumber", e.target.value)
+                      onChange={e =>
+                        handleInputChange('idNumber', e.target.value)
                       }
                       placeholder="Enter ID Number"
                     />
                   ) : (
                     <div className="w-full text-gray-700">
-                      {formData.idNumber || "Not specified"}
+                      {formData.idNumber || 'Not specified'}
                     </div>
                   )}
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold mb-1 text-gray-900">
+                  <label className="mb-1 block text-sm font-semibold text-gray-900">
                     Notes:
                   </label>
                   {isEditMode ? (
                     <textarea
-                      className="w-full rounded-md p-3 min-h-[56px] bg-white border border-border"
+                      className="min-h-[56px] w-full rounded-md border border-border bg-white p-3"
                       value={formData.notes}
-                      onChange={(e) =>
-                        handleInputChange("notes", e.target.value)
-                      }
+                      onChange={e => handleInputChange('notes', e.target.value)}
                       placeholder="Enter Notes"
                     />
                   ) : (
                     <div className="w-full text-gray-700">
-                      {formData.notes || "No notes"}
+                      {formData.notes || 'No notes'}
                     </div>
                   )}
                 </div>
@@ -904,9 +899,9 @@ export default function UserModal({
             {/* Roles & Permissions Section */}
             {
               <>
-                <hr className="my-6 border-gray-400 w-full" />
-                <div className="w-full flex flex-col items-center">
-                  <h3 className="text-2xl font-bold text-center mb-4 text-gray-900">
+                <hr className="my-6 w-full border-gray-400" />
+                <div className="flex w-full flex-col items-center">
+                  <h3 className="mb-4 text-center text-2xl font-bold text-gray-900">
                     Roles & Permissions
                   </h3>
                   <div className="w-full max-w-3xl space-y-6">
@@ -920,9 +915,9 @@ export default function UserModal({
                           <Input
                             type="password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={e => setPassword(e.target.value)}
                             placeholder="Leave blank to keep current password"
-                            className="rounded-md mt-1"
+                            className="mt-1 rounded-md"
                           />
                           {password && (
                             <div className="mt-2 space-y-2">
@@ -932,17 +927,17 @@ export default function UserModal({
                                   Strength:
                                 </span>
                                 <div className="flex gap-1">
-                                  {[1, 2, 3, 4, 5].map((level) => (
+                                  {[1, 2, 3, 4, 5].map(level => (
                                     <div
                                       key={level}
                                       className={`h-2 w-8 rounded ${
                                         level <= passwordStrength.score
                                           ? passwordStrength.score <= 2
-                                            ? "bg-red-500"
+                                            ? 'bg-red-500'
                                             : passwordStrength.score === 3
-                                            ? "bg-yellow-500"
-                                            : "bg-green-500"
-                                          : "bg-gray-200"
+                                              ? 'bg-yellow-500'
+                                              : 'bg-green-500'
+                                          : 'bg-gray-200'
                                       }`}
                                     />
                                   ))}
@@ -950,10 +945,10 @@ export default function UserModal({
                                 <span
                                   className={`text-sm font-medium ${
                                     passwordStrength.score <= 2
-                                      ? "text-red-600"
+                                      ? 'text-red-600'
                                       : passwordStrength.score === 3
-                                      ? "text-yellow-600"
-                                      : "text-green-600"
+                                        ? 'text-yellow-600'
+                                        : 'text-green-600'
                                   }`}
                                 >
                                   {passwordStrength.label}
@@ -961,74 +956,74 @@ export default function UserModal({
                               </div>
 
                               {/* Password Requirements */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+                              <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
                                 <div
                                   className={`flex items-center gap-2 ${
                                     passwordStrength.requirements.length
-                                      ? "text-green-600"
-                                      : "text-red-600"
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
                                   }`}
                                 >
                                   <span>
                                     {passwordStrength.requirements.length
-                                      ? "✓"
-                                      : "✗"}
+                                      ? '✓'
+                                      : '✗'}
                                   </span>
                                   <span>At least 8 characters</span>
                                 </div>
                                 <div
                                   className={`flex items-center gap-2 ${
                                     passwordStrength.requirements.uppercase
-                                      ? "text-green-600"
-                                      : "text-red-600"
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
                                   }`}
                                 >
                                   <span>
                                     {passwordStrength.requirements.uppercase
-                                      ? "✓"
-                                      : "✗"}
+                                      ? '✓'
+                                      : '✗'}
                                   </span>
                                   <span>Uppercase letter</span>
                                 </div>
                                 <div
                                   className={`flex items-center gap-2 ${
                                     passwordStrength.requirements.lowercase
-                                      ? "text-green-600"
-                                      : "text-red-600"
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
                                   }`}
                                 >
                                   <span>
                                     {passwordStrength.requirements.lowercase
-                                      ? "✓"
-                                      : "✗"}
+                                      ? '✓'
+                                      : '✗'}
                                   </span>
                                   <span>Lowercase letter</span>
                                 </div>
                                 <div
                                   className={`flex items-center gap-2 ${
                                     passwordStrength.requirements.number
-                                      ? "text-green-600"
-                                      : "text-red-600"
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
                                   }`}
                                 >
                                   <span>
                                     {passwordStrength.requirements.number
-                                      ? "✓"
-                                      : "✗"}
+                                      ? '✓'
+                                      : '✗'}
                                   </span>
                                   <span>Number</span>
                                 </div>
                                 <div
                                   className={`flex items-center gap-2 ${
                                     passwordStrength.requirements.special
-                                      ? "text-green-600"
-                                      : "text-orange-600"
+                                      ? 'text-green-600'
+                                      : 'text-orange-600'
                                   }`}
                                 >
                                   <span>
                                     {passwordStrength.requirements.special
-                                      ? "✓"
-                                      : "!"}
+                                      ? '✓'
+                                      : '!'}
                                   </span>
                                   <span>Special character</span>
                                 </div>
@@ -1043,31 +1038,31 @@ export default function UserModal({
                           <Input
                             type="password"
                             value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            onChange={e => setConfirmPassword(e.target.value)}
                             placeholder="Confirm new password"
-                            className={`rounded-md mt-1 ${
+                            className={`mt-1 rounded-md ${
                               confirmPassword &&
                               password &&
                               password !== confirmPassword
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                                 : confirmPassword &&
-                                  password &&
-                                  password === confirmPassword
-                                ? "border-green-500 focus:border-green-500 focus:ring-green-500"
-                                : ""
+                                    password &&
+                                    password === confirmPassword
+                                  ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                                  : ''
                             }`}
                           />
                           {confirmPassword &&
                             password &&
                             password !== confirmPassword && (
-                              <p className="text-red-600 text-sm mt-1">
+                              <p className="mt-1 text-sm text-red-600">
                                 Passwords do not match
                               </p>
                             )}
                           {confirmPassword &&
                             password &&
                             password === confirmPassword && (
-                              <p className="text-green-600 text-sm mt-1">
+                              <p className="mt-1 text-sm text-green-600">
                                 Passwords match
                               </p>
                             )}
@@ -1077,20 +1072,20 @@ export default function UserModal({
 
                     {/* Roles Section */}
                     <div>
-                      <h4 className="text-lg font-semibold text-gray-900 text-center mb-4">
+                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
                         Roles
                       </h4>
                       {isEditMode ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 justify-items-center">
-                          {ROLE_OPTIONS.map((role) => (
+                        <div className="grid grid-cols-2 justify-items-center gap-3 md:grid-cols-3 md:gap-4">
+                          {ROLE_OPTIONS.map(role => (
                             <label
                               key={role.value}
-                              className="flex items-center gap-2 cursor-pointer text-gray-900 text-base font-medium"
+                              className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900"
                             >
                               <Checkbox
                                 id={role.value}
                                 checked={roles.includes(role.value)}
-                                onCheckedChange={(checked) =>
+                                onCheckedChange={checked =>
                                   handleRoleChange(role.value, checked === true)
                                 }
                                 className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
@@ -1105,12 +1100,12 @@ export default function UserModal({
                             {roles && roles.length > 0
                               ? roles
                                   .map(
-                                    (role) =>
-                                      ROLE_OPTIONS.find((r) => r.value === role)
+                                    role =>
+                                      ROLE_OPTIONS.find(r => r.value === role)
                                         ?.label
                                   )
-                                  .join(", ")
-                              : "No roles assigned"}
+                                  .join(', ')
+                              : 'No roles assigned'}
                           </div>
                         </div>
                       )}
@@ -1118,7 +1113,7 @@ export default function UserModal({
 
                     {/* Locations Section */}
                     <div>
-                      <h4 className="text-lg font-semibold text-gray-900 text-center mb-4">
+                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
                         Allowed Locations
                       </h4>
 
@@ -1126,10 +1121,10 @@ export default function UserModal({
                         <>
                           {/* All Locations Checkbox */}
                           <div className="mb-3">
-                            <label className="flex items-center gap-2 cursor-pointer text-gray-900 text-base font-medium">
+                            <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                               <Checkbox
                                 checked={allLocationsSelected}
-                                onCheckedChange={(checked) =>
+                                onCheckedChange={checked =>
                                   handleAllLocationsChange(checked === true)
                                 }
                                 className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
@@ -1141,7 +1136,7 @@ export default function UserModal({
                           <div className="relative mb-2">
                             <Input
                               value={locationSearch}
-                              onChange={(e) => {
+                              onChange={e => {
                                 setLocationSearch(e.target.value);
                                 setLocationDropdownOpen(true);
                               }}
@@ -1154,8 +1149,8 @@ export default function UserModal({
                               }
                               placeholder={
                                 allLocationsSelected
-                                  ? "All locations are selected"
-                                  : "Select Location.."
+                                  ? 'All locations are selected'
+                                  : 'Select Location..'
                               }
                               className="w-full rounded-md pr-10"
                               autoComplete="off"
@@ -1165,19 +1160,19 @@ export default function UserModal({
                             {!allLocationsSelected &&
                               locationDropdownOpen &&
                               (filteredLocations.length > 0 ||
-                                locationSearch === "") && (
-                                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
+                                locationSearch === '') && (
+                                <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
                                   {(locationSearch
                                     ? filteredLocations
                                     : locations
-                                  ).map((loc) => (
+                                  ).map(loc => (
                                     <button
                                       key={loc._id}
                                       type="button"
-                                      className="w-full text-left px-4 py-2 hover:bg-blue-100 text-gray-900"
+                                      className="w-full px-4 py-2 text-left text-gray-900 hover:bg-blue-100"
                                       onClick={() => {
                                         handleLocationSelect(loc._id);
-                                        setLocationSearch("");
+                                        setLocationSearch('');
                                         setLocationDropdownOpen(false);
                                       }}
                                     >
@@ -1189,35 +1184,35 @@ export default function UserModal({
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {allLocationsSelected ? (
-                              <span className="bg-green-500 text-white rounded-full px-4 py-2 flex items-center text-sm font-medium">
-                                All Locations Selected ({locations.length}{" "}
+                              <span className="flex items-center rounded-full bg-green-500 px-4 py-2 text-sm font-medium text-white">
+                                All Locations Selected ({locations.length}{' '}
                                 locations)
                                 <button
-                                  className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
+                                  className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
                                   onClick={() =>
                                     handleAllLocationsChange(false)
                                   }
                                   type="button"
                                   title="Remove all locations"
                                 >
-                                  <X className="w-4 h-4" />
+                                  <X className="h-4 w-4" />
                                 </button>
                               </span>
                             ) : (
-                              selectedLocationIds.map((id) => {
-                                const loc = locations.find((l) => l._id === id);
+                              selectedLocationIds.map(id => {
+                                const loc = locations.find(l => l._id === id);
                                 return loc ? (
                                   <span
                                     key={id}
-                                    className="bg-blue-400 text-white rounded-full px-3 py-1 flex items-center text-sm"
+                                    className="flex items-center rounded-full bg-blue-400 px-3 py-1 text-sm text-white"
                                   >
                                     {loc.name}
                                     <button
-                                      className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
+                                      className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
                                       onClick={() => handleLocationRemove(id)}
                                       type="button"
                                     >
-                                      <X className="w-4 h-4" />
+                                      <X className="h-4 w-4" />
                                     </button>
                                   </span>
                                 ) : null;
@@ -1231,14 +1226,14 @@ export default function UserModal({
                             {allLocationsSelected
                               ? `All Locations (${locations.length} locations)`
                               : selectedLocationIds.length > 0
-                              ? selectedLocationIds
-                                  .map(
-                                    (id) =>
-                                      locations.find((l) => l._id === id)?.name
-                                  )
-                                  .filter(Boolean)
-                                  .join(", ")
-                              : "No locations assigned"}
+                                ? selectedLocationIds
+                                    .map(
+                                      id =>
+                                        locations.find(l => l._id === id)?.name
+                                    )
+                                    .filter(Boolean)
+                                    .join(', ')
+                                : 'No locations assigned'}
                           </div>
                         </div>
                       )}
@@ -1250,24 +1245,24 @@ export default function UserModal({
           </div>
 
           {/* Action buttons */}
-          <div className="flex justify-center lg:justify-end mt-8 gap-4">
+          <div className="mt-8 flex justify-center gap-4 lg:justify-end">
             {isEditMode ? (
               <>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleCancelEdit}
-                  className="flex items-center gap-2 px-8 py-3 rounded-md text-lg font-semibold"
+                  className="flex items-center gap-2 rounded-md px-8 py-3 text-lg font-semibold"
                 >
-                  <XCircle className="w-4 h-4" />
+                  <XCircle className="h-4 w-4" />
                   Cancel
                 </Button>
                 <Button
                   type="button"
                   onClick={handleSave}
-                  className="flex items-center gap-2 bg-button text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-buttonActive"
+                  className="flex items-center gap-2 rounded-md bg-button px-8 py-3 text-lg font-semibold text-white hover:bg-buttonActive"
                 >
-                  <Save className="w-4 h-4" />
+                  <Save className="h-4 w-4" />
                   Save Changes
                 </Button>
               </>
@@ -1276,7 +1271,7 @@ export default function UserModal({
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="px-8 py-3 rounded-md text-lg font-semibold"
+                className="rounded-md px-8 py-3 text-lg font-semibold"
               >
                 Close
               </Button>

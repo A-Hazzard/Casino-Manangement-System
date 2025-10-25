@@ -1,16 +1,16 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { itemVariants } from "@/lib/constants/animationVariants";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { itemVariants } from '@/lib/constants/animationVariants';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   WifiIcon,
   EthernetPortIcon as EthernetIcon,
   SaveIcon,
   Loader2Icon,
-} from "lucide-react";
-import type { SmibConfig } from "@/shared/types/entities";
+} from 'lucide-react';
+import type { SmibConfig } from '@/shared/types/entities';
 
 type ExtendedCommunicationModeSectionProps = {
   smibConfig?: SmibConfig;
@@ -28,71 +28,71 @@ const CommunicationModeSection: React.FC<
   ExtendedCommunicationModeSectionProps
 > = ({ smibConfig, initialCommunicationMode, onSave, isLoading, error }) => {
   const [currentMode, setCurrentMode] = useState(initialCommunicationMode);
-  const [ssid, setSsid] = useState(smibConfig?.net?.netStaSSID || "");
-  const [password, setPassword] = useState(smibConfig?.net?.netStaPwd || "");
+  const [ssid, setSsid] = useState(smibConfig?.net?.netStaSSID || '');
+  const [password, setPassword] = useState(smibConfig?.net?.netStaPwd || '');
 
   // useEffect to update local state if smibConfig or initialCommunicationMode changes from parent
   React.useEffect(() => {
     setCurrentMode(initialCommunicationMode);
-    setSsid(smibConfig?.net?.netStaSSID || "");
-    setPassword(smibConfig?.net?.netStaPwd || "");
+    setSsid(smibConfig?.net?.netStaSSID || '');
+    setPassword(smibConfig?.net?.netStaPwd || '');
   }, [initialCommunicationMode, smibConfig]);
 
   const handleSave = () => {
     onSave({
       communicationMode: currentMode,
-      netStaSSID: currentMode === "wifi" ? ssid : undefined,
-      netStaPassword: currentMode === "wifi" ? password : undefined,
+      netStaSSID: currentMode === 'wifi' ? ssid : undefined,
+      netStaPassword: currentMode === 'wifi' ? password : undefined,
     });
   };
 
   return (
     <motion.div variants={itemVariants} className="space-y-6">
       <h4 className="text-lg font-medium">Communication Mode</h4>
-      <div className="flex space-x-2 mb-4">
+      <div className="mb-4 flex space-x-2">
         <Button
-          variant={currentMode === "ethernet" ? "default" : "outline"}
-          onClick={() => setCurrentMode("ethernet")}
+          variant={currentMode === 'ethernet' ? 'default' : 'outline'}
+          onClick={() => setCurrentMode('ethernet')}
           className={`flex-1 ${
-            currentMode === "ethernet"
-              ? "bg-buttonActive hover:bg-buttonActive/90"
-              : "border-border text-textPrimary hover:bg-muted"
+            currentMode === 'ethernet'
+              ? 'bg-buttonActive hover:bg-buttonActive/90'
+              : 'text-textPrimary border-border hover:bg-muted'
           }`}
           disabled={isLoading}
         >
-          <EthernetIcon className="w-5 h-5 mr-2" /> Ethernet
+          <EthernetIcon className="mr-2 h-5 w-5" /> Ethernet
         </Button>
         <Button
-          variant={currentMode === "wifi" ? "default" : "outline"}
-          onClick={() => setCurrentMode("wifi")}
+          variant={currentMode === 'wifi' ? 'default' : 'outline'}
+          onClick={() => setCurrentMode('wifi')}
           className={`flex-1 ${
-            currentMode === "wifi"
-              ? "bg-buttonActive hover:bg-buttonActive/90"
-              : "border-border text-textPrimary hover:bg-muted"
+            currentMode === 'wifi'
+              ? 'bg-buttonActive hover:bg-buttonActive/90'
+              : 'text-textPrimary border-border hover:bg-muted'
           }`}
           disabled={isLoading}
         >
-          <WifiIcon className="w-5 h-5 mr-2" /> WiFi
+          <WifiIcon className="mr-2 h-5 w-5" /> WiFi
         </Button>
       </div>
 
-      {currentMode === "wifi" && (
+      {currentMode === 'wifi' && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
+          animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="space-y-4 pt-4 border-t border-border"
+          className="space-y-4 border-t border-border pt-4"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-2">
             <div>
               <Label htmlFor="ssid">Staff WiFi Name (SSID)</Label>
               <Input
                 id="ssid"
                 value={ssid}
-                onChange={(e) => setSsid(e.target.value)}
+                onChange={e => setSsid(e.target.value)}
                 disabled={isLoading}
                 placeholder="Enter SSID"
-                className="bg-input text-textPrimary"
+                className="text-textPrimary bg-input"
               />
             </div>
             <div>
@@ -101,10 +101,10 @@ const CommunicationModeSection: React.FC<
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 disabled={isLoading}
                 placeholder="Enter Password"
-                className="bg-input text-textPrimary"
+                className="text-textPrimary bg-input"
               />
             </div>
           </div>
@@ -119,10 +119,10 @@ const CommunicationModeSection: React.FC<
           className="bg-button text-white hover:bg-buttonActive"
         >
           {isLoading ? (
-            <Loader2Icon className="w-5 h-5 animate-spin mr-2" />
+            <Loader2Icon className="mr-2 h-5 w-5 animate-spin" />
           ) : (
-            <SaveIcon className="w-5 h-5 mr-2" />
-          )}{" "}
+            <SaveIcon className="mr-2 h-5 w-5" />
+          )}{' '}
           Save Changes
         </Button>
       </div>

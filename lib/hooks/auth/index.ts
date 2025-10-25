@@ -3,4 +3,4 @@
  * Centralized exports for all authentication-related hooks
  */
 
-export { useAuth } from "./useAuth";
+export { useAuth } from './useAuth';

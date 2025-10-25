@@ -1,5 +1,5 @@
-import mongoose, { Schema } from "mongoose";
-import type { ICollectionReport } from "@/lib/types/api";
+import mongoose, { Schema } from 'mongoose';
+import type { ICollectionReport } from '@/lib/types/api';
 
 const collectionReportSchema = new Schema<ICollectionReport>(
   {
@@ -40,4 +40,4 @@ const collectionReportSchema = new Schema<ICollectionReport>(
 // Create the model if it doesn't exist or use the existing one
 export const CollectionReport =
   (mongoose.models?.CollectionReport as mongoose.Model<ICollectionReport>) ||
-  mongoose.model<ICollectionReport>("CollectionReport", collectionReportSchema);
+  mongoose.model<ICollectionReport>('CollectionReport', collectionReportSchema);

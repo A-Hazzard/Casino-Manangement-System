@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { getUserById, getUserIdFromServer } from "@/app/api/lib/helpers/users";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { getUserById, getUserIdFromServer } from '@/app/api/lib/helpers/users';
 
 /**
  * GET /api/auth/current-user
@@ -12,7 +12,7 @@ export async function GET(_request: NextRequest) {
     // Get user ID from JWT token
     const userId = await getUserIdFromServer();
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Connect to database
@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest) {
     const user = await getUserById(userId);
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Return the current user data from database
@@ -30,9 +30,9 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({
       success: true,
       user: {
-        id: user._id?.toString() || "",
-        username: user.username || "",
-        emailAddress: user.emailAddress || "",
+        id: user._id?.toString() || '',
+        username: user.username || '',
+        emailAddress: user.emailAddress || '',
         profile: user.profile || {},
         roles: user.roles || [],
         isEnabled: user.isEnabled ?? true,
@@ -42,14 +42,14 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error(" Error fetching current user:", error);
-    console.error(" Error details:", {
-      message: error instanceof Error ? error.message : "Unknown error",
+    console.error(' Error fetching current user:', error);
+    console.error(' Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       name: error instanceof Error ? error.name : undefined,
     });
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

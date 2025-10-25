@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   LineChart,
@@ -12,15 +12,15 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type ChartDataPoint = {
   [key: string]: string | number | null | undefined;
 };
 
 type SimpleChartProps = {
-  type: "line" | "bar" | "area";
+  type: 'line' | 'bar' | 'area';
   title: string;
   icon: React.ReactNode;
   data: ChartDataPoint[];
@@ -35,8 +35,8 @@ export default function SimpleChart({
   icon,
   data,
   dataKey,
-  color = "#8884d8",
-  formatter = (value) => (value as number)?.toLocaleString() ?? "0",
+  color = '#8884d8',
+  formatter = value => (value as number)?.toLocaleString() ?? '0',
 }: SimpleChartProps) {
   // Format large numbers for Y-axis
   const formatYAxis = (tickItem: number) => {
@@ -49,7 +49,7 @@ export default function SimpleChart({
   };
   const renderChart = () => {
     switch (type) {
-      case "line":
+      case 'line':
         return (
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -64,7 +64,7 @@ export default function SimpleChart({
             />
           </LineChart>
         );
-      case "bar":
+      case 'bar':
         return (
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -74,7 +74,7 @@ export default function SimpleChart({
             <Bar dataKey={dataKey} fill={color} />
           </BarChart>
         );
-      case "area":
+      case 'area':
         return (
           <AreaChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -92,7 +92,7 @@ export default function SimpleChart({
         );
       default:
         return (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex h-full items-center justify-center text-gray-500">
             Invalid chart type
           </div>
         );

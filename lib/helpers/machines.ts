@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 type MachineStats = {
   onlineMachines: number;
@@ -23,7 +23,7 @@ export async function fetchMachineStats(
     const response = await axios.get(url);
 
     if (!response.data || !response.data.stats) {
-      console.error("No stats data returned from API");
+      console.error('No stats data returned from API');
       return { onlineMachines: 0, totalMachines: 0, offlineMachines: 0 };
     }
 
@@ -34,7 +34,7 @@ export async function fetchMachineStats(
       offlineMachines: (totalMachines || 0) - (onlineMachines || 0),
     };
   } catch (error) {
-    console.error("Error fetching machine stats:", error);
+    console.error('Error fetching machine stats:', error);
     return { onlineMachines: 0, totalMachines: 0, offlineMachines: 0 };
   }
-} 
+}

@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
-import { useAuth } from "../auth";
-import type { MembersView, MembersTab } from "@/shared/types/entities";
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { useAuth } from '../auth';
+import type { MembersView, MembersTab } from '@/shared/types/entities';
 
 /**
  * Custom hook for managing members navigation logic
@@ -15,9 +15,9 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
   const { user, isAuthenticated } = useAuth();
 
   // Get current section from URL or default to "members"
-  const currentSection = searchParams?.get("section") || "members";
+  const currentSection = searchParams?.get('section') || 'members';
   const [activeTab, setActiveTab] = useState<MembersView>(
-    (currentSection as MembersView) || "members"
+    (currentSection as MembersView) || 'members'
   );
 
   /**
@@ -29,11 +29,11 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
       setActiveTab(newSection);
 
       // Update URL with section parameter
-      const params = new URLSearchParams(searchParams?.toString() || "");
-      if (newSection === "members") {
-        params.delete("section"); // Remove section param for default
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      if (newSection === 'members') {
+        params.delete('section'); // Remove section param for default
       } else {
-        params.set("section", newSection);
+        params.set('section', newSection);
       }
 
       const newUrl = `${pathname}?${params.toString()}`;
@@ -46,11 +46,11 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
    * Update active tab when URL changes
    */
   useEffect(() => {
-    const section = searchParams?.get("section");
-    if (section === "summary-report") {
-      setActiveTab("summary-report");
+    const section = searchParams?.get('section');
+    if (section === 'summary-report') {
+      setActiveTab('summary-report');
     } else {
-      setActiveTab("members");
+      setActiveTab('members');
     }
   }, [searchParams]);
 
@@ -67,7 +67,7 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
    */
   const handleTabClick = useCallback(
     (tabId: string) => {
-      const targetTab = availableTabs.find((tab) => tab.id === tabId);
+      const targetTab = availableTabs.find(tab => tab.id === tabId);
       if (!targetTab) {
         toast.error("You don't have permission to access this section");
         return;

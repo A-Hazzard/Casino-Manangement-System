@@ -1,9 +1,9 @@
-import { Machine } from "@/app/api/lib/models/machines";
-import { Collections } from "@/app/api/lib/models/collections";
-import { calculateMovement } from "@/lib/utils/movementCalculation";
-import type { CreateCollectionReportPayload } from "@/lib/types/api";
-import type { CollectionReportMachineEntry } from "@/lib/types/collections";
-import type { GamingMachine as MachineType } from "@/shared/types/entities";
+import { Machine } from '@/app/api/lib/models/machines';
+import { Collections } from '@/app/api/lib/models/collections';
+import { calculateMovement } from '@/lib/utils/movementCalculation';
+import type { CreateCollectionReportPayload } from '@/lib/types/api';
+import type { CollectionReportMachineEntry } from '@/lib/types/collections';
+import type { GamingMachine as MachineType } from '@/shared/types/entities';
 
 /**
  * Calculates totalDrop, totalCancelled, totalGross, and totalSasGross for a collection report.
@@ -70,7 +70,7 @@ export async function calculateCollectionReportTotals(
     if (collections.length > 0) {
       console.warn(
         `📋 Sample SAS metrics from collections:`,
-        collections.map((c) => ({
+        collections.map(c => ({
           machineId: c.machineId,
           drop: c.sasMeters?.drop,
           cancelled: c.sasMeters?.totalCancelledCredits,

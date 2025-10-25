@@ -1,43 +1,43 @@
 /**
  * Fix Collection History for All Machines
- * 
+ *
  * Purpose: Automatically repairs collectionMetersHistory entries across all
  * machines by properly setting timestamps and removing invalid entries.
- * 
+ *
  * What it does:
  * - Finds all machines with collectionMetersHistory
  * - Validates and fixes timestamp format issues
  * - Removes duplicate or invalid history entries
  * - Updates machine documents with corrected history
  * - Reports success/failure statistics
- * 
+ *
  * Use case: Mass cleanup of collection history data after system changes
- * 
+ *
  * Last Updated: October 10th, 2025
  */
 
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 // MongoDB connection
 const MONGO_URI =
   process.env.MONGO_URI ||
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function fixCollectionHistory() {
   const client = new MongoClient(MONGO_URI);
 
   try {
     await client.connect();
-    console.log("✅ Connected to MongoDB");
+    console.log('✅ Connected to MongoDB');
 
     const db = client.db();
 
     console.log(`\n🔧 FIXING COLLECTION HISTORY FOR ALL MACHINES`);
-    console.log("=".repeat(80));
+    console.log('='.repeat(80));
 
     // Find all machines that have collectionMetersHistory
     const machines = await db
-      .collection("machines")
+      .collection('machines')
       .find({
         collectionMetersHistory: { $exists: true, $not: { $size: 0 } },
       })
@@ -76,7 +76,7 @@ async function fixCollectionHistory() {
           }
 
           // Find the actual collection for this history entry
-          const collection = await db.collection("collections").findOne({
+          const collection = await db.collection('collections').findOne({
             locationReportId: historyEntry.locationReportId,
             machineId: machine._id.toString(),
           });
@@ -113,11 +113,11 @@ async function fixCollectionHistory() {
               updateOne: {
                 filter: {
                   _id: machine._id,
-                  "collectionMetersHistory._id": historyEntry._id,
+                  'collectionMetersHistory._id': historyEntry._id,
                 },
                 update: {
                   $set: {
-                    "collectionMetersHistory.$.timestamp": new Date(
+                    'collectionMetersHistory.$.timestamp': new Date(
                       collection.timestamp
                     ),
                   },
@@ -130,7 +130,7 @@ async function fixCollectionHistory() {
 
         if (updateOperations.length > 0) {
           const result = await db
-            .collection("machines")
+            .collection('machines')
             .bulkWrite(updateOperations);
           console.log(
             `   ✅ Fixed ${result.modifiedCount} history entries for this machine`
@@ -155,8 +155,8 @@ async function fixCollectionHistory() {
 
     // Verify the fix by checking TTRHP022 again
     console.log(`\n🔍 VERIFICATION - Checking TTRHP022:`);
-    const machine = await db.collection("machines").findOne({
-      serialNumber: "TTRHP022",
+    const machine = await db.collection('machines').findOne({
+      serialNumber: 'TTRHP022',
     });
 
     if (machine && machine.collectionMetersHistory) {
@@ -166,18 +166,18 @@ async function fixCollectionHistory() {
           `   ${index + 1}. ${
             entry.timestamp
               ? new Date(entry.timestamp).toLocaleString()
-              : "null"
-          } (${entry.locationReportId || "no report ID"})`
+              : 'null'
+          } (${entry.locationReportId || 'no report ID'})`
         );
       });
 
       // Check for duplicates again
       const timestamps = machine.collectionMetersHistory
-        .map((entry) => entry.timestamp)
-        .filter((timestamp) => timestamp);
+        .map(entry => entry.timestamp)
+        .filter(timestamp => timestamp);
 
       const timestampCounts = {};
-      timestamps.forEach((timestamp) => {
+      timestamps.forEach(timestamp => {
         const dateStr = new Date(timestamp).toLocaleDateString();
         timestampCounts[dateStr] = (timestampCounts[dateStr] || 0) + 1;
       });
@@ -192,10 +192,10 @@ async function fixCollectionHistory() {
       });
     }
   } catch (error) {
-    console.error("❌ Error during fix:", error);
+    console.error('❌ Error during fix:', error);
   } finally {
     await client.close();
-    console.log("\n✅ Fix complete. Connection closed.");
+    console.log('\n✅ Fix complete. Connection closed.');
   }
 }
 

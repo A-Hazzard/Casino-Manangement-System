@@ -1,4 +1,4 @@
-import type { MembersTab } from "@/shared/types/entities";
+import type { MembersTab } from '@/shared/types/entities';
 
 /**
  * Configuration for members tabs
@@ -6,16 +6,16 @@ import type { MembersTab } from "@/shared/types/entities";
  */
 export const MEMBERS_TABS_CONFIG: MembersTab[] = [
   {
-    id: "members",
-    label: "Members List",
-    icon: "users",
-    description: "View and manage all members",
+    id: 'members',
+    label: 'Members List',
+    icon: 'users',
+    description: 'View and manage all members',
   },
   {
-    id: "summary-report",
-    label: "Summary Report",
-    icon: "bar-chart",
-    description: "Analytics and member insights",
+    id: 'summary-report',
+    label: 'Summary Report',
+    icon: 'bar-chart',
+    description: 'Analytics and member insights',
   },
 ];
 

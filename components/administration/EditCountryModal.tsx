@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import type { EditCountryModalProps } from "@/lib/types/components";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import type { EditCountryModalProps } from '@/lib/types/components';
 
 export default function EditCountryModal({
   isOpen,
@@ -19,19 +19,19 @@ export default function EditCountryModal({
   country,
 }: EditCountryModalProps) {
   const [formState, setFormState] = useState({
-    name: "",
-    alpha2: "",
-    alpha3: "",
-    isoNumeric: "",
+    name: '',
+    alpha2: '',
+    alpha3: '',
+    isoNumeric: '',
   });
 
   useEffect(() => {
     if (country) {
       setFormState({
-        name: country.name || "",
-        alpha2: country.alpha2 || "",
-        alpha3: country.alpha3 || "",
-        isoNumeric: country.isoNumeric || "",
+        name: country.name || '',
+        alpha2: country.alpha2 || '',
+        alpha3: country.alpha3 || '',
+        isoNumeric: country.isoNumeric || '',
       });
     }
   }, [country]);
@@ -50,7 +50,7 @@ export default function EditCountryModal({
       !formState.alpha3 ||
       !formState.isoNumeric
     ) {
-      alert("All fields are required");
+      alert('All fields are required');
       return;
     }
     // Handle save logic here
@@ -70,7 +70,7 @@ export default function EditCountryModal({
               id="name"
               type="text"
               name="name"
-              value={formState.name || ""}
+              value={formState.name || ''}
               onChange={handleChange}
               required
             />
@@ -82,7 +82,7 @@ export default function EditCountryModal({
                 id="alpha2"
                 type="text"
                 name="alpha2"
-                value={formState.alpha2 || ""}
+                value={formState.alpha2 || ''}
                 onChange={handleChange}
                 maxLength={2}
                 required
@@ -94,7 +94,7 @@ export default function EditCountryModal({
                 id="alpha3"
                 type="text"
                 name="alpha3"
-                value={formState.alpha3 || ""}
+                value={formState.alpha3 || ''}
                 onChange={handleChange}
                 maxLength={3}
                 required
@@ -106,7 +106,7 @@ export default function EditCountryModal({
                 id="isoNumeric"
                 type="text"
                 name="isoNumeric"
-                value={formState.isoNumeric || ""}
+                value={formState.isoNumeric || ''}
                 onChange={handleChange}
                 maxLength={3}
                 required

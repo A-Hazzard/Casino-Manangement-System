@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 /**
  * Get the previous collection meters for a machine at a specific point in time
@@ -14,19 +14,19 @@ export async function getPreviousCollectionMetersAtTime(
 ): Promise<{ prevIn: number; prevOut: number } | null> {
   try {
     // Query for the most recent collection for this machine BEFORE the given timestamp
-    const response = await axios.get("/api/collections", {
+    const response = await axios.get('/api/collections', {
       params: {
         machineId: machineId,
         beforeTimestamp: timestamp.toISOString(),
         limit: 1,
-        sortBy: "timestamp",
-        sortOrder: "desc",
+        sortBy: 'timestamp',
+        sortOrder: 'desc',
       },
     });
 
     const collections = response.data;
 
-    console.warn("Historical previous collection query:", {
+    console.warn('Historical previous collection query:', {
       machineId,
       timestamp: timestamp.toISOString(),
       foundCollections: collections?.length || 0,
@@ -50,11 +50,11 @@ export async function getPreviousCollectionMetersAtTime(
 
     // No previous collection found - this is the first collection for this machine
     console.warn(
-      "No previous collection found for machine, using prevIn=0, prevOut=0"
+      'No previous collection found for machine, using prevIn=0, prevOut=0'
     );
     return { prevIn: 0, prevOut: 0 };
   } catch (error) {
-    console.error("Error fetching previous collection meters:", error);
+    console.error('Error fetching previous collection meters:', error);
     // On error, return null to indicate we should fall back to default behavior
     return null;
   }

@@ -6,26 +6,26 @@
  * Does NOT fix any issues - only reports them
  */
 
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 // Configuration
 const MONGODB_URI =
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function comprehensiveValidation() {
   let client;
 
   try {
-    console.log("🔍 Starting Comprehensive Validation Report...\n");
+    console.log('🔍 Starting Comprehensive Validation Report...\n');
 
     client = new MongoClient(MONGODB_URI);
     await client.connect();
-    console.log("✅ Connected to MongoDB\n");
+    console.log('✅ Connected to MongoDB\n');
 
     const db = client.db();
-    const Collections = db.collection("collections");
-    const CollectionReports = db.collection("collectionreports");
-    const Machines = db.collection("machines");
+    const Collections = db.collection('collections');
+    const CollectionReports = db.collection('collectionreports');
+    const Machines = db.collection('machines');
 
     // Get all collections and reports
     const allCollections = await Collections.find({}).toArray();
@@ -47,7 +47,7 @@ async function comprehensiveValidation() {
     const issuesDetails = [];
 
     // 1. Validate Collections
-    console.log("🔍 Validating Collections...\n");
+    console.log('🔍 Validating Collections...\n');
 
     for (const collection of allCollections) {
       const collectionIssues = [];
@@ -62,7 +62,7 @@ async function comprehensiveValidation() {
 
         if (startTime >= endTime) {
           collectionIssues.push({
-            type: "invertedSasTimes",
+            type: 'invertedSasTimes',
             message: `SAS start time (${startTime.toISOString()}) is not before end time (${endTime.toISOString()})`,
           });
           issuesByType.invertedSasTimes++;
@@ -90,7 +90,7 @@ async function comprehensiveValidation() {
             collection.prevOut !== expectedPrevOut
           ) {
             collectionIssues.push({
-              type: "prevMetersMismatch",
+              type: 'prevMetersMismatch',
               message: `Prev meters mismatch: expected In=${expectedPrevIn}, Out=${expectedPrevOut}, got In=${collection.prevIn}, Out=${collection.prevOut}`,
             });
             issuesByType.prevMetersMismatch++;
@@ -99,7 +99,7 @@ async function comprehensiveValidation() {
           // No previous collection, should be 0
           if (collection.prevIn !== 0 || collection.prevOut !== 0) {
             collectionIssues.push({
-              type: "prevMetersMismatch",
+              type: 'prevMetersMismatch',
               message: `No previous collection found but prevIn=${collection.prevIn}, prevOut=${collection.prevOut} (should be 0)`,
             });
             issuesByType.prevMetersMismatch++;
@@ -149,7 +149,7 @@ async function comprehensiveValidation() {
           Math.abs(collection.movement.gross - expectedGross) > 0.01
         ) {
           collectionIssues.push({
-            type: "movementCalculationMismatch",
+            type: 'movementCalculationMismatch',
             message: `Movement calculation mismatch: expected In=${expectedMetersInMovement}, Out=${expectedMetersOutMovement}, Gross=${expectedGross}, got In=${collection.movement.metersIn}, Out=${collection.movement.metersOut}, Gross=${collection.movement.gross}`,
           });
           issuesByType.movementCalculationMismatch++;
@@ -181,7 +181,7 @@ async function comprehensiveValidation() {
 
               if (!isCreatedAtVsTimestamp) {
                 collectionIssues.push({
-                  type: "historyTimestampMismatch",
+                  type: 'historyTimestampMismatch',
                   message: `History timestamp mismatch: history=${timestamp.toISOString()}, collection=${
                     collection.timestamp
                   }, diff=${timeDiffMinutes.toFixed(1)}min`,
@@ -198,7 +198,7 @@ async function comprehensiveValidation() {
           collectionId: collection._id,
           reportId: collection.reportId,
           machineName:
-            collection.machineName || collection.machineCustomName || "Unknown",
+            collection.machineName || collection.machineCustomName || 'Unknown',
           timestamp: collection.timestamp,
           issues: collectionIssues,
         });
@@ -207,7 +207,7 @@ async function comprehensiveValidation() {
     }
 
     // 2. Validate Collection Reports
-    console.log("🔍 Validating Collection Reports...\n");
+    console.log('🔍 Validating Collection Reports...\n');
 
     for (const report of allReports) {
       const reportCollections = await Collections.find({
@@ -229,7 +229,7 @@ async function comprehensiveValidation() {
       ) {
         issuesDetails.push({
           reportId: report.locationReportId,
-          type: "grossConsistencyIssues",
+          type: 'grossConsistencyIssues',
           message: `Report gross mismatch: stored=${
             report.gross
           }, calculated=${expectedReportGross}, diff=${Math.abs(
@@ -242,7 +242,7 @@ async function comprehensiveValidation() {
     }
 
     // 3. Cross-validate with Cabinets page data (sample check)
-    console.log("🔍 Cross-validating with Cabinets data...\n");
+    console.log('🔍 Cross-validating with Cabinets data...\n');
 
     // Get a sample of recent reports for cross-validation
     const recentReports = allReports.slice(0, 5);
@@ -266,14 +266,14 @@ async function comprehensiveValidation() {
 
         // Find machines in this report
         const machineIds = [
-          ...new Set(reportCollections.map((c) => c.machineId)),
+          ...new Set(reportCollections.map(c => c.machineId)),
         ];
 
         for (const machineId of machineIds) {
           // This is a simplified check - in reality, you'd need to query the cabinets API
           // with the same time period filters to compare
           const machineCollections = reportCollections.filter(
-            (c) => c.machineId === machineId
+            c => c.machineId === machineId
           );
           const machineGross = machineCollections.reduce(
             (sum, c) => sum + (c.movement?.gross || 0),
@@ -287,9 +287,9 @@ async function comprehensiveValidation() {
     }
 
     // 4. Generate Summary Report
-    console.log("=".repeat(80));
-    console.log("📊 COMPREHENSIVE VALIDATION SUMMARY");
-    console.log("=".repeat(80));
+    console.log('='.repeat(80));
+    console.log('📊 COMPREHENSIVE VALIDATION SUMMARY');
+    console.log('='.repeat(80));
 
     console.log(`\n📈 OVERALL STATISTICS:`);
     console.log(`   Total Collections: ${allCollections.length}`);
@@ -297,13 +297,13 @@ async function comprehensiveValidation() {
     console.log(`   Total Issues Found: ${totalIssues}`);
     console.log(
       `   Collections with Issues: ${
-        issuesDetails.filter((i) => i.collectionId).length
+        issuesDetails.filter(i => i.collectionId).length
       }`
     );
     console.log(
       `   Reports with Issues: ${
         issuesDetails.filter(
-          (i) => i.reportId && i.type === "grossConsistencyIssues"
+          i => i.reportId && i.type === 'grossConsistencyIssues'
         ).length
       }`
     );
@@ -330,12 +330,12 @@ async function comprehensiveValidation() {
       for (const issue of issuesDetails.slice(0, 10)) {
         // Show first 10 issues
         console.log(
-          `\n   ${issue.collectionId ? "Collection" : "Report"}: ${
+          `\n   ${issue.collectionId ? 'Collection' : 'Report'}: ${
             issue.collectionId || issue.reportId
           }`
         );
-        console.log(`   Machine: ${issue.machineName || "N/A"}`);
-        console.log(`   Timestamp: ${issue.timestamp || "N/A"}`);
+        console.log(`   Machine: ${issue.machineName || 'N/A'}`);
+        console.log(`   Timestamp: ${issue.timestamp || 'N/A'}`);
         if (issue.issues) {
           for (const subIssue of issue.issues) {
             console.log(`     - ${subIssue.type}: ${subIssue.message}`);
@@ -351,13 +351,13 @@ async function comprehensiveValidation() {
     }
 
     console.log(`\n📅 Report Generated: ${new Date().toISOString()}`);
-    console.log("=".repeat(80));
+    console.log('='.repeat(80));
   } catch (error) {
-    console.error("❌ Error during validation:", error);
+    console.error('❌ Error during validation:', error);
   } finally {
     if (client) {
       await client.close();
-      console.log("\n🔌 Disconnected from MongoDB");
+      console.log('\n🔌 Disconnected from MongoDB');
     }
   }
 }

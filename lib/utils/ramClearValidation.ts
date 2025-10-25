@@ -52,12 +52,12 @@ export function validateRamClearMeters(
 
   // Basic input validation
   if (isNaN(currentMetersIn) || isNaN(currentMetersOut)) {
-    errors.push("Meter values must be valid numbers");
+    errors.push('Meter values must be valid numbers');
     return { isValid: false, warnings, errors };
   }
 
   if (isNaN(prevIn) || isNaN(prevOut)) {
-    errors.push("Previous meter values must be valid numbers");
+    errors.push('Previous meter values must be valid numbers');
     return { isValid: false, warnings, errors };
   }
 
@@ -66,14 +66,14 @@ export function validateRamClearMeters(
     // Current meters should be HIGHER than previous meters
     if (currentMetersIn <= prevIn) {
       warnings.push(
-        "Meters In should be higher than previous reading when RAM Clear is unchecked. " +
+        'Meters In should be higher than previous reading when RAM Clear is unchecked. ' +
           `Current: ${currentMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
       );
     }
 
     if (currentMetersOut <= prevOut) {
       warnings.push(
-        "Meters Out should be higher than previous reading when RAM Clear is unchecked. " +
+        'Meters Out should be higher than previous reading when RAM Clear is unchecked. ' +
           `Current: ${currentMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
       );
     }
@@ -85,14 +85,14 @@ export function validateRamClearMeters(
     // This is a WARNING, not an error - allows submission but warns user
     if (currentMetersIn >= prevIn) {
       warnings.push(
-        "Meters In should be lower than previous reading when RAM Clear is checked. " +
+        'Meters In should be lower than previous reading when RAM Clear is checked. ' +
           `Current: ${currentMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
       );
     }
 
     if (currentMetersOut >= prevOut) {
       warnings.push(
-        "Meters Out should be lower than previous reading when RAM Clear is checked. " +
+        'Meters Out should be lower than previous reading when RAM Clear is checked. ' +
           `Current: ${currentMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
       );
     }
@@ -102,14 +102,14 @@ export function validateRamClearMeters(
       // RAM Clear coin values are usually HIGHER than or equal to previous values
       if (ramClearCoinIn < prevIn) {
         warnings.push(
-          "RAM Clear Coin In is usually higher than previous reading. " +
+          'RAM Clear Coin In is usually higher than previous reading. ' +
             `RAM Clear Coin: ${ramClearCoinIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
         );
       }
 
       if (ramClearCoinOut < prevOut) {
         warnings.push(
-          "RAM Clear Coin Out is usually higher than previous reading. " +
+          'RAM Clear Coin Out is usually higher than previous reading. ' +
             `RAM Clear Coin: ${ramClearCoinOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
         );
       }
@@ -120,14 +120,14 @@ export function validateRamClearMeters(
       // RAM Clear meters should be higher than or equal to previous values
       if (ramClearMetersIn < prevIn) {
         warnings.push(
-          "RAM Clear Meters In should be higher than or equal to previous reading. " +
+          'RAM Clear Meters In should be higher than or equal to previous reading. ' +
             `RAM Clear Meters: ${ramClearMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
         );
       }
 
       if (ramClearMetersOut < prevOut) {
         warnings.push(
-          "RAM Clear Meters Out should be higher than or equal to previous reading. " +
+          'RAM Clear Meters Out should be higher than or equal to previous reading. ' +
             `RAM Clear Meters: ${ramClearMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
         );
       }
@@ -135,14 +135,14 @@ export function validateRamClearMeters(
       // RAM Clear meters should be higher than current meters
       if (ramClearMetersIn < currentMetersIn) {
         warnings.push(
-          "RAM Clear Meters In should be higher than current meters. " +
+          'RAM Clear Meters In should be higher than current meters. ' +
             `RAM Clear Meters: ${ramClearMetersIn.toLocaleString()}, Current: ${currentMetersIn.toLocaleString()}`
         );
       }
 
       if (ramClearMetersOut < currentMetersOut) {
         warnings.push(
-          "RAM Clear Meters Out should be higher than current meters. " +
+          'RAM Clear Meters Out should be higher than current meters. ' +
             `RAM Clear Meters: ${ramClearMetersOut.toLocaleString()}, Current: ${currentMetersOut.toLocaleString()}`
         );
       }
@@ -151,11 +151,11 @@ export function validateRamClearMeters(
 
   // Additional validation for negative values
   if (currentMetersIn < 0) {
-    errors.push("Meters In cannot be negative");
+    errors.push('Meters In cannot be negative');
   }
 
   if (currentMetersOut < 0) {
-    errors.push("Meters Out cannot be negative");
+    errors.push('Meters Out cannot be negative');
   }
 
   return {
@@ -175,7 +175,7 @@ export function calculateRamClearMovement(params: RamClearValidationParams): {
   movementIn: number;
   movementOut: number;
   gross: number;
-  calculationMethod: "standard" | "ramClear";
+  calculationMethod: 'standard' | 'ramClear';
 } {
   const {
     currentMetersIn,
@@ -189,13 +189,13 @@ export function calculateRamClearMovement(params: RamClearValidationParams): {
 
   let movementIn: number;
   let movementOut: number;
-  let calculationMethod: "standard" | "ramClear";
+  let calculationMethod: 'standard' | 'ramClear';
 
   if (!ramClear) {
     // Standard calculation: current - previous
     movementIn = currentMetersIn - prevIn;
     movementOut = currentMetersOut - prevOut;
-    calculationMethod = "standard";
+    calculationMethod = 'standard';
   } else {
     // RAM Clear calculation
     if (ramClearCoinIn !== undefined && ramClearCoinOut !== undefined) {
@@ -207,7 +207,7 @@ export function calculateRamClearMovement(params: RamClearValidationParams): {
       movementIn = currentMetersIn;
       movementOut = currentMetersOut;
     }
-    calculationMethod = "ramClear";
+    calculationMethod = 'ramClear';
   }
 
   const gross = movementOut - movementIn;
@@ -230,14 +230,14 @@ export function getRamClearValidationMessage(
   result: RamClearValidationResult
 ): string {
   if (result.errors.length > 0) {
-    return result.errors.join("\n");
+    return result.errors.join('\n');
   }
 
   if (result.warnings.length > 0) {
-    return result.warnings.join("\n");
+    return result.warnings.join('\n');
   }
 
-  return "";
+  return '';
 }
 
 /**

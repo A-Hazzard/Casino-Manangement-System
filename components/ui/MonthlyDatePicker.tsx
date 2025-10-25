@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { DateRange as RDPDateRange } from "react-day-picker";
+} from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { DateRange as RDPDateRange } from 'react-day-picker';
 
 type MonthlyDatePickerProps = {
   value?: RDPDateRange;
@@ -43,17 +43,17 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
   // Format display value to show month and year
   const displayValue = React.useMemo(() => {
     if (value?.from && value?.to) {
-      const fromMonth = format(value.from, "MMMM yyyy");
-      const toMonth = format(value.to, "MMMM yyyy");
+      const fromMonth = format(value.from, 'MMMM yyyy');
+      const toMonth = format(value.to, 'MMMM yyyy');
 
       if (fromMonth === toMonth) {
         return fromMonth;
       }
       return `${fromMonth} - ${toMonth}`;
     } else if (value?.from) {
-      return format(value.from, "MMMM yyyy");
+      return format(value.from, 'MMMM yyyy');
     }
-    return "Select month";
+    return 'Select month';
   }, [value]);
 
   // Handle date selection - automatically set to full month
@@ -101,9 +101,9 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 py-3 px-4 rounded-b-lg bg-gray-50">
+    <div className="flex flex-wrap items-center justify-center gap-2 rounded-b-lg bg-gray-50 px-4 py-3">
       <Button
-        className="bg-button text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
+        className="rounded-lg bg-button px-3 py-1.5 text-xs font-semibold text-white"
         onClick={handleLastMonth}
         disabled={disabled}
       >
@@ -135,16 +135,16 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
             fromYear={2020}
             toYear={new Date().getFullYear()}
             classNames={{
-              caption: "text-buttonActive font-semibold",
-              day_selected: "bg-button text-white",
-              day_today: "border-orangeHighlight",
+              caption: 'text-buttonActive font-semibold',
+              day_selected: 'bg-button text-white',
+              day_today: 'border-orangeHighlight',
             }}
           />
         </PopoverContent>
       </Popover>
 
       <Button
-        className="bg-lighterBlueHighlight text-white px-3 py-1.5 rounded-lg text-xs font-semibold"
+        className="rounded-lg bg-lighterBlueHighlight px-3 py-1.5 text-xs font-semibold text-white"
         onClick={onGo}
         disabled={!value?.from || !value?.to || disabled}
       >
@@ -152,7 +152,7 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
       </Button>
 
       <Button
-        className="bg-gray-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-600"
+        className="rounded-lg bg-gray-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-600"
         onClick={onCancel}
         disabled={disabled}
       >

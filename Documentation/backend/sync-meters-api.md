@@ -1,6 +1,5 @@
 # Sync Meters API Documentation
 
-
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** October 15th, 2025  
 **Version:** 2.0.0
@@ -13,13 +12,12 @@
 - **Time Period**: Uses SAS time periods from collection data
 - **Data Sources**: Meters collection with movement calculations
 
-
 ## Overview
 
 The Sync Meters functionality is a critical feature that recalculates SAS (Slot Accounting System) metrics for collection reports based on meter data within specific time periods. This ensures that collection reports have accurate financial data that matches the actual meter readings from slot machines.
 
-
 ### System Architecture
+
 - **Database**: MongoDB with Mongoose ODM
 - **Authentication**: JWT-based authentication
 - **Data Processing**: Movement calculation from meter data
@@ -28,9 +26,11 @@ The Sync Meters functionality is a critical feature that recalculates SAS (Slot 
 ## API Endpoint
 
 ### POST `/api/collection-report/[reportId]/sync-meters`
+
 **Purpose**: Recalculates SAS metrics for collections based on meter data within SAS time periods
 
 **URL Parameters:**
+
 - `reportId` - The collection report ID to sync (passed as URL parameter)
 
 **Request Body**: No body required (reportId comes from URL)
@@ -54,11 +54,13 @@ The sync meters feature addresses the following business needs:
 **Purpose**: Recalculates SAS metrics for collections based on meter data within SAS time periods
 
 **URL Parameters**:
+
 - `reportId`: The collection report ID to sync (passed as URL parameter)
 
 **Request Body**: No body required (reportId comes from URL)
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -146,14 +148,15 @@ The sync meters feature addresses the following business needs:
 }
 ```
 
-
 ## How It Works
 
 ### 1. Find Collection Report
+
 - Takes a `reportId` parameter from URL to identify which collection report to sync
 - Finds the collection report by `locationReportId` in the `collectionreports` collection
 
 ### 2. Find All Collections
+
 - Finds all collections associated with that report using the `locationReportId` field
 - Both `collectionreports` and `collections` have this field for linking
 
@@ -162,29 +165,34 @@ The sync meters feature addresses the following business needs:
 ## How It Works (Updated Flow)
 
 ### 1. **Find Collection Report**
+
 - Takes a `reportId` parameter from URL to identify which collection report to sync
 - Finds the collection report by `locationReportId` in the `collectionreports` collection
 
 ### 2. **Find All Collections**
+
 - Finds all collections associated with that report using the `locationReportId` field
 - Both `collectionreports` and `collections` have this field for linking
 
 ### 3. **Process Each Collection**
+
 For each collection in the report:
 
 **a. Get Machine Data**: Extracts the `machineId` from the collection
 
-**b. Determine SAS Time Period**: 
-   - Uses `sasMeters.sasStartTime` and `sasMeters.sasEndTime` if available
-   - Falls back to default 24-hour period if not specified
+**b. Determine SAS Time Period**:
+
+- Uses `sasMeters.sasStartTime` and `sasMeters.sasEndTime` if available
+- Falls back to default 24-hour period if not specified
 
 **c. Fetch ALL Meters Within SAS Period**: Finds all meter readings for the machine within the time period using `readAt` field
 
-**d. Calculate Movement (First→Last Meter)**: 
-   - **Primary Method**: Calculate movement by comparing first and last meters in the period
-   - **Drop Movement**: `lastMeter.movement.drop - firstMeter.movement.drop`
-   - **Cancelled Movement**: `lastMeter.movement.totalCancelledCredits - firstMeter.movement.totalCancelledCredits`
-   - **SAS Gross**: `dropMovement - cancelledMovement`
+**d. Calculate Movement (First→Last Meter)**:
+
+- **Primary Method**: Calculate movement by comparing first and last meters in the period
+- **Drop Movement**: `lastMeter.movement.drop - firstMeter.movement.drop`
+- **Cancelled Movement**: `lastMeter.movement.totalCancelledCredits - firstMeter.movement.totalCancelledCredits`
+- **SAS Gross**: `dropMovement - cancelledMovement`
 
 **e. Aggregate SAS Totals**: Sum all calculated movements for the report
 
@@ -192,22 +200,24 @@ For each collection in the report:
 
 **g. Update Machine Collection Meters**: Updates machine's collection meter history if needed
 
-
 ### 4. Update Collection Report Totals
 
 ### 4. **Update Collection Report Totals**
+
 Updates the main collection report with aggregated totals:
+
 - `totalDrop`: Sum of all collection drop movements
-- `totalCancelled`: Sum of all collection cancelled movements  
+- `totalCancelled`: Sum of all collection cancelled movements
 - `totalGross`: Sum of all collection gross values
 - `totalSasGross`: Same as totalGross
 - `lastSyncedAt`: Timestamp of the sync operation
 
-
 ### 5. Return Success with Statistics
 
 ### 5. **Return Success with Statistics**
+
 Returns detailed information about the sync operation including:
+
 - Number of collections processed and updated
 - Report-level totals
 - Individual collection results with movement calculations
@@ -215,11 +225,13 @@ Returns detailed information about the sync operation including:
 ## Database Relationships
 
 ### Collections → Meters
+
 - **Collections** contain `machineId` field that references machines
 - **Meters** contain `machine` field that references the same machines
 - **Time Period**: Meters are filtered by `readAt` field within the SAS time period
 
 ### Data Flow
+
 ```
 Collection Report
     ↓ (locationReportId)
@@ -232,10 +244,10 @@ Meters (filtered by readAt within SAS time period)
 Updated sasMeters in Collections
 ```
 
-
 ## Financial Calculations
 
 ### Movement Calculation Formulas
+
 ```
 Drop Movement = Last Meter Drop - First Meter Drop
 Cancelled Movement = Last Meter Cancelled - First Meter Cancelled
@@ -243,6 +255,7 @@ SAS Gross = Drop Movement - Cancelled Movement
 ```
 
 ### Time Period Logic
+
 ```
 SAS Period Start = sasMeters.sasStartTime (if available)
 SAS Period End = sasMeters.sasEndTime (if available)
@@ -250,6 +263,7 @@ Fallback Period = 24 hours ending at current time
 ```
 
 ### Aggregation Formulas
+
 ```
 Report Total Drop = Sum of all collection drop movements
 Report Total Cancelled = Sum of all collection cancelled movements
@@ -259,55 +273,60 @@ Report Total Gross = Sum of all collection gross values
 ## Data Models
 
 ### Collection Report Model
+
 ```typescript
 {
-  _id: string;                          // Report identifier
-  locationReportId: string;             // Unique report identifier
-  totalDrop: number;                    // Total drop amount
-  totalCancelled: number;               // Total cancelled credits
-  totalGross: number;                   // Total gross revenue
-  totalSasGross: number;                // Total SAS gross
-  lastSyncedAt: Date;                   // Last sync timestamp
+  _id: string; // Report identifier
+  locationReportId: string; // Unique report identifier
+  totalDrop: number; // Total drop amount
+  totalCancelled: number; // Total cancelled credits
+  totalGross: number; // Total gross revenue
+  totalSasGross: number; // Total SAS gross
+  lastSyncedAt: Date; // Last sync timestamp
 }
 ```
 
 ### Collection Model
+
 ```typescript
 {
-  _id: string;                          // Collection identifier
-  machineId: string;                    // Machine identifier
-  locationReportId: string;             // Parent report ID
+  _id: string; // Collection identifier
+  machineId: string; // Machine identifier
+  locationReportId: string; // Parent report ID
   sasMeters: {
-    drop: number;                       // SAS drop amount
-    totalCancelledCredits: number;      // SAS cancelled credits
-    gross: number;                      // SAS gross amount
-    sasStartTime: string;               // SAS period start time
-    sasEndTime: string;                 // SAS period end time
-  };
+    drop: number; // SAS drop amount
+    totalCancelledCredits: number; // SAS cancelled credits
+    gross: number; // SAS gross amount
+    sasStartTime: string; // SAS period start time
+    sasEndTime: string; // SAS period end time
+  }
 }
 ```
 
 ### Meter Model
+
 ```typescript
 {
-  _id: string;                          // Meter identifier
-  machine: string;                      // Machine identifier
-  readAt: Date;                         // Meter reading timestamp
+  _id: string; // Meter identifier
+  machine: string; // Machine identifier
+  readAt: Date; // Meter reading timestamp
   movement: {
-    drop: number;                       // Drop amount at reading
-    totalCancelledCredits: number;      // Cancelled credits at reading
-  };
+    drop: number; // Drop amount at reading
+    totalCancelledCredits: number; // Cancelled credits at reading
+  }
 }
 ```
 
 ## Business Rules
 
 ### Time Period Logic
+
 1. **Primary**: Use `sasMeters.sasStartTime` and `sasMeters.sasEndTime` if available
 2. **Fallback**: Default to 24-hour period ending at current time
 3. **Validation**: Ensure start time is before end time
 
 ### Calculation Rules
+
 1. **Movement Calculation (Primary Method)**: Calculate actual movement by comparing first and last meters
    - **Drop Movement**: `lastMeter.movement.drop - firstMeter.movement.drop`
    - **Cancelled Movement**: `lastMeter.movement.totalCancelledCredits - firstMeter.movement.totalCancelledCredits`
@@ -317,6 +336,7 @@ Report Total Gross = Sum of all collection gross values
 4. **Primary vs Verification**: Use movement calculation as primary, aggregation for verification
 
 ### Data Integrity
+
 1. **Machine Validation**: Skip collections without valid `machineId`
 2. **Meter Validation**: Skip machines with no meter data in the time period
 3. **Update Validation**: Only update collections where meter data was found
@@ -331,7 +351,7 @@ Report Total Gross = Sum of all collection gross values
 
 ```typescript
 // Using the helper function
-import { syncMetersForReport } from "@/lib/helpers/collectionReportDetailPageData";
+import { syncMetersForReport } from '@/lib/helpers/collectionReportDetailPageData';
 
 const handleSync = async (reportId: string) => {
   try {
@@ -339,7 +359,7 @@ const handleSync = async (reportId: string) => {
     // Refresh the page data after sync
     await refreshCollectionReportData(reportId);
   } catch (error) {
-    console.error("Error syncing meters:", error);
+    console.error('Error syncing meters:', error);
   }
 };
 ```
@@ -347,11 +367,13 @@ const handleSync = async (reportId: string) => {
 ### Direct API Call
 
 ```typescript
-import axios from "axios";
+import axios from 'axios';
 
 const syncMeters = async (reportId: string) => {
-  const response = await axios.post(`/api/collection-report/${reportId}/sync-meters`);
-  
+  const response = await axios.post(
+    `/api/collection-report/${reportId}/sync-meters`
+  );
+
   if (response.data.success) {
     console.log(`Synced ${response.data.data.updatedCollections} collections`);
     console.log(`Report totals updated:`, response.data.data.reportTotals);
@@ -364,6 +386,7 @@ const syncMeters = async (reportId: string) => {
 ### Common Error Scenarios
 
 1. **Missing Report ID**
+
    ```json
    {
      "success": false,
@@ -372,6 +395,7 @@ const syncMeters = async (reportId: string) => {
    ```
 
 2. **No Collections Found**
+
    ```json
    {
      "success": false,
@@ -389,8 +413,6 @@ const syncMeters = async (reportId: string) => {
 
 ### Error Recovery
 
-
-
 - **Partial Updates**: If some collections fail to update, others may still succeed
 - **Logging**: All errors are logged with detailed information
 - **Graceful Degradation**: The system continues processing other collections even if one fails
@@ -398,8 +420,6 @@ const syncMeters = async (reportId: string) => {
 ## Performance Considerations
 
 ### Optimization Strategies
-
-
 
 1. **Indexed Queries**: Uses database indexes on:
    - `locationReportId` in Collections
@@ -411,19 +431,17 @@ const syncMeters = async (reportId: string) => {
 
 ### Monitoring
 
-
-
 - **Processing Time**: Logs the time taken to process each collection
 - **Success Rate**: Tracks how many collections were successfully updated
 - **Data Volume**: Reports the number of meter records processed
 
-
 ## API Usage Examples
 
 ### Frontend Integration
+
 ```typescript
 // Using the helper function
-import { syncMetersForReport } from "@/lib/helpers/collectionReportDetailPageData";
+import { syncMetersForReport } from '@/lib/helpers/collectionReportDetailPageData';
 
 const handleSync = async (reportId: string) => {
   try {
@@ -431,18 +449,21 @@ const handleSync = async (reportId: string) => {
     // Refresh the page data after sync
     await refreshCollectionReportData(reportId);
   } catch (error) {
-    console.error("Error syncing meters:", error);
+    console.error('Error syncing meters:', error);
   }
 };
 ```
 
 ### Direct API Call
+
 ```typescript
-import axios from "axios";
+import axios from 'axios';
 
 const syncMeters = async (reportId: string) => {
-  const response = await axios.post(`/api/collection-report/${reportId}/sync-meters`);
-  
+  const response = await axios.post(
+    `/api/collection-report/${reportId}/sync-meters`
+  );
+
   if (response.data.success) {
     console.log(`Synced ${response.data.data.updatedCollections} collections`);
     console.log(`Report totals updated:`, response.data.data.reportTotals);
@@ -478,15 +499,11 @@ const syncMeters = async (reportId: string) => {
 
 ### Related APIs
 
-
-
 - **Collection Reports**: `/api/collection-report/[reportId]`
 - **Collections**: `/api/collections`
 - **Meters**: `/api/metrics/meters`
 
 ### Related Components
-
-
 
 - **SyncButton**: UI component for triggering sync operations
 - **CollectionReportPage**: Page that displays sync results
@@ -499,17 +516,19 @@ const syncMeters = async (reportId: string) => {
 3. **Input Validation**: Validates report ID before processing
 4. **Rate Limiting**: Consider implementing rate limiting for sync operations
 
-
 ## Troubleshooting
 
 ### Common Issues
+
 1. **No Updates**: Check if meter data exists for the time period
 2. **Slow Performance**: Verify database indexes are in place
 3. **Incorrect Calculations**: Validate meter data integrity
 4. **Missing Collections**: Ensure collections have valid `machineId` values
 
 ### Debug Information
+
 The API provides detailed debug information in the response:
+
 - Number of collections processed
 - Number of collections updated
 - Individual results for each collection
@@ -531,13 +550,10 @@ The API provides detailed debug information in the response:
 
 ### Performance Improvements
 
-
-
 1. **Parallel Processing**: Process multiple collections concurrently
 2. **Caching**: Cache meter data to reduce database queries
 3. **Compression**: Compress large meter datasets
 4. **Pagination**: Handle large collections with pagination
-
 
 ---
 
@@ -555,6 +571,7 @@ The API provides detailed debug information in the response:
 ### Debug Information
 
 The API provides detailed debug information in the response:
+
 - Number of collections processed
 - Number of collections updated
 - Individual results for each collection

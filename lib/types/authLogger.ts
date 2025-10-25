@@ -10,11 +10,3 @@ export type AuthLogEntry = {
   errorMessage?: string;
   metadata?: Record<string, unknown>;
 };
-
-
-
-
-
-
-
-

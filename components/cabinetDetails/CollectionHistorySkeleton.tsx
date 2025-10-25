@@ -1,5 +1,5 @@
-import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -7,13 +7,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export const CollectionHistorySkeleton = () => (
   <div className="w-full">
     {/* Desktop Table View Skeleton */}
-    <div className="hidden lg:block w-full">
+    <div className="hidden w-full lg:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -53,7 +53,7 @@ export const CollectionHistorySkeleton = () => (
     </div>
 
     {/* Mobile Cards View Skeleton */}
-    <div className="lg:hidden space-y-4 w-full">
+    <div className="w-full space-y-4 lg:hidden">
       {Array.from({ length: 5 }).map((_, index) => (
         <Card key={index}>
           <CardHeader className="pb-3">
@@ -82,7 +82,7 @@ export const CollectionHistorySkeleton = () => (
               </div>
             </div>
             <div className="text-center">
-              <Skeleton className="h-3 w-24 mx-auto" />
+              <Skeleton className="mx-auto h-3 w-24" />
             </div>
             <Skeleton className="h-8 w-full" />
           </CardContent>
@@ -91,7 +91,7 @@ export const CollectionHistorySkeleton = () => (
     </div>
 
     {/* Pagination Skeleton */}
-    <div className="flex justify-center items-center mt-6 gap-2">
+    <div className="mt-6 flex items-center justify-center gap-2">
       {Array.from({ length: 5 }).map((_, index) => (
         <Skeleton key={index} className="h-8 w-8" />
       ))}

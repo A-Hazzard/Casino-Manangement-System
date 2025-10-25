@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Cross2Icon } from "@radix-ui/react-icons";
-import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
+import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Cross2Icon } from '@radix-ui/react-icons';
+import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { NewCabinetFormData } from "@/shared/types/entities";
-import { createCabinet } from "@/lib/helpers/cabinets";
-import { fetchManufacturers } from "@/lib/helpers/manufacturers";
-import { toast } from "sonner";
-import { PCDateTimePicker } from "@/components/ui/pc-date-time-picker";
-import { useUserStore } from "@/lib/store/userStore";
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { NewCabinetFormData } from '@/shared/types/entities';
+import { createCabinet } from '@/lib/helpers/cabinets';
+import { fetchManufacturers } from '@/lib/helpers/manufacturers';
+import { toast } from 'sonner';
+import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
+import { useUserStore } from '@/lib/store/userStore';
 
 type NewCabinetModalProps = {
   locations?: { _id: string; name: string }[];
@@ -39,15 +39,15 @@ export const NewCabinetModal = ({
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
-  const [relayIdError, setRelayIdError] = useState<string>("");
-  const [serialNumberError, setSerialNumberError] = useState<string>("");
+  const [relayIdError, setRelayIdError] = useState<string>('');
+  const [serialNumberError, setSerialNumberError] = useState<string>('');
   const [collectionTime, setCollectionTime] = useState<Date>(new Date());
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
-    if (!user) return "Unknown User";
+    if (!user) return 'Unknown User';
 
     // Check if user has profile with firstName and lastName
     if (user.profile?.firstName && user.profile?.lastName) {
@@ -65,17 +65,17 @@ export const NewCabinetModal = ({
     }
 
     // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== "") {
+    if (user.username && user.username.trim() !== '') {
       return user.username;
     }
 
     // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== "") {
+    if (user.emailAddress && user.emailAddress.trim() !== '') {
       return user.emailAddress;
     }
 
     // Fallback
-    return "Unknown User";
+    return 'Unknown User';
   };
 
   // Activity logging is now handled via API calls
@@ -89,10 +89,10 @@ export const NewCabinetModal = ({
     newData?: Record<string, unknown> | null
   ) => {
     try {
-      const response = await fetch("/api/activity-logs", {
-        method: "POST",
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
@@ -100,9 +100,9 @@ export const NewCabinetModal = ({
           resourceId,
           resourceName,
           details,
-          userId: user?._id || "unknown",
+          userId: user?._id || 'unknown',
           username: getUserDisplayName(),
-          userRole: "user",
+          userRole: 'user',
           previousData: previousData || null,
           newData: newData || null,
           changes: [], // Will be calculated by the API
@@ -110,72 +110,72 @@ export const NewCabinetModal = ({
       });
 
       if (!response.ok) {
-        console.error("Failed to log activity:", response.statusText);
+        console.error('Failed to log activity:', response.statusText);
       }
     } catch (error) {
-      console.error("Error logging activity:", error);
+      console.error('Error logging activity:', error);
     }
   };
 
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
-    if (!value) return "";
+    if (!value) return '';
 
     // Check length
     if (value.length !== 12) {
-      return "SMIB Board must be exactly 12 characters long";
+      return 'SMIB Board must be exactly 12 characters long';
     }
 
     // Check if it's hexadecimal and lowercase
     const hexPattern = /^[0-9a-f]+$/;
     if (!hexPattern.test(value)) {
-      return "SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)";
+      return 'SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)';
     }
 
     // Check if it ends with 0, 4, 8, or c
     const lastChar = value.charAt(11);
-    if (!["0", "4", "8", "c"].includes(lastChar)) {
-      return "SMIB Board must end with 0, 4, 8, or c";
+    if (!['0', '4', '8', 'c'].includes(lastChar)) {
+      return 'SMIB Board must end with 0, 4, 8, or c';
     }
 
-    return ""; // No error
+    return ''; // No error
   };
 
   // Serial number validation function
   const validateSerialNumber = (value: string): string => {
-    if (!value) return "";
+    if (!value) return '';
 
     // Check length
     if (value.length < 3) {
-      return "Serial number must be at least 3 characters long";
+      return 'Serial number must be at least 3 characters long';
     }
 
-    return ""; // No error
+    return ''; // No error
   };
 
   const [formData, setFormData] = useState<NewCabinetFormData>({
-    serialNumber: "",
-    game: "",
-    gameType: "Slot",
+    serialNumber: '',
+    game: '',
+    gameType: 'Slot',
     isCronosMachine: false,
-    accountingDenomination: "",
-    cabinetType: "Standing",
-    assetStatus: "functional",
-    gamingLocation: locationId || "",
-    relayId: "",
-    manufacturer: "",
+    accountingDenomination: '',
+    cabinetType: 'Standing',
+    assetStatus: 'functional',
+    gamingLocation: locationId || '',
+    relayId: '',
+    manufacturer: '',
     collectionSettings: {
-      multiplier: "1",
+      multiplier: '1',
       lastCollectionTime: collectionTime.toISOString().slice(0, 16),
-      lastMetersIn: "0",
-      lastMetersOut: "0",
+      lastMetersIn: '0',
+      lastMetersOut: '0',
     },
   });
 
   // Update gaming location when locationId changes
   useEffect(() => {
     if (locationId) {
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
         gamingLocation: locationId,
       }));
@@ -187,7 +187,7 @@ export const NewCabinetModal = ({
       // Reset collection time to current date/time when modal opens
       const currentDateTime = new Date();
       setCollectionTime(currentDateTime);
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
         collectionSettings: {
           ...prev.collectionSettings,
@@ -202,8 +202,8 @@ export const NewCabinetModal = ({
           const fetchedManufacturers = await fetchManufacturers();
           setManufacturers(fetchedManufacturers);
         } catch (error) {
-          console.error("Failed to fetch manufacturers:", error);
-          toast.error("Failed to load manufacturers");
+          console.error('Failed to fetch manufacturers:', error);
+          toast.error('Failed to load manufacturers');
         } finally {
           setManufacturersLoading(false);
         }
@@ -218,14 +218,14 @@ export const NewCabinetModal = ({
           opacity: 1,
           y: 0,
           duration: 0.3,
-          ease: "power2.out",
+          ease: 'power2.out',
           overwrite: true,
         }
       );
       gsap.to(backdropRef.current, {
         opacity: 1,
         duration: 0.2,
-        ease: "power2.out",
+        ease: 'power2.out',
         overwrite: true,
       });
     }
@@ -236,13 +236,13 @@ export const NewCabinetModal = ({
       opacity: 0,
       y: -20,
       duration: 0.3,
-      ease: "power2.in",
+      ease: 'power2.in',
       overwrite: true,
     });
     gsap.to(backdropRef.current, {
       opacity: 0,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
       overwrite: true,
       onComplete: closeCabinetModal,
     });
@@ -256,7 +256,7 @@ export const NewCabinetModal = ({
       const smibError = validateSmibBoard(formData.relayId);
       if (smibError) {
         setRelayIdError(smibError);
-        toast.error("Please fix the SMIB Board validation errors");
+        toast.error('Please fix the SMIB Board validation errors');
         setLoading(false);
         return;
       }
@@ -265,7 +265,7 @@ export const NewCabinetModal = ({
       const serialError = validateSerialNumber(formData.serialNumber);
       if (serialError) {
         setSerialNumberError(serialError);
-        toast.error("Please fix the serial number validation errors");
+        toast.error('Please fix the serial number validation errors');
         setLoading(false);
         return;
       }
@@ -277,25 +277,25 @@ export const NewCabinetModal = ({
       if (success) {
         // Log the cabinet creation activity
         await logActivity(
-          "create",
-          "machine",
-          formData.serialNumber || "Unknown",
+          'create',
+          'machine',
+          formData.serialNumber || 'Unknown',
           `${formData.game} - ${formData.serialNumber}`,
           `Created new cabinet: ${formData.game} (${formData.serialNumber}) at location ${formData.gamingLocation}`,
           null, // No previous data for creation
           formData // New data
         );
 
-        toast.success("Cabinet created successfully!");
+        toast.success('Cabinet created successfully!');
         handleClose();
         // Reset form after successful submission
         resetForm();
         onCreated?.(); // Call the onCreated callback
       }
     } catch (err) {
-      console.error("Failed to create cabinet:", err);
+      console.error('Failed to create cabinet:', err);
       const errorMessage =
-        err instanceof Error ? err.message : "Failed to create cabinet";
+        err instanceof Error ? err.message : 'Failed to create cabinet';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -304,38 +304,38 @@ export const NewCabinetModal = ({
 
   const resetForm = () => {
     setFormData({
-      serialNumber: "",
-      game: "",
-      gameType: "Slot",
+      serialNumber: '',
+      game: '',
+      gameType: 'Slot',
       isCronosMachine: false,
-      accountingDenomination: "",
-      cabinetType: "Standing",
-      assetStatus: "functional",
-      gamingLocation: locationId || "",
-      relayId: "",
-      manufacturer: "",
+      accountingDenomination: '',
+      cabinetType: 'Standing',
+      assetStatus: 'functional',
+      gamingLocation: locationId || '',
+      relayId: '',
+      manufacturer: '',
       collectionSettings: {
-        multiplier: "1",
+        multiplier: '1',
         lastCollectionTime: collectionTime.toISOString().slice(0, 16),
-        lastMetersIn: "0",
-        lastMetersOut: "0",
+        lastMetersIn: '0',
+        lastMetersOut: '0',
       },
     });
 
     setCollectionTime(new Date()); // Reset to current date/time
-    setRelayIdError(""); // Clear any validation errors
-    setSerialNumberError(""); // Clear any validation errors
+    setRelayIdError(''); // Clear any validation errors
+    setSerialNumberError(''); // Clear any validation errors
   };
 
   // Define a consistent change handler to fix the typing issues
   const handleInputChange = (
-    field: keyof Omit<NewCabinetFormData, "collectionSettings">,
+    field: keyof Omit<NewCabinetFormData, 'collectionSettings'>,
     value: string
   ) => {
     // Special handling for SMIB Board with validation
-    if (field === "relayId") {
+    if (field === 'relayId') {
       // Convert to lowercase and remove any non-hex characters
-      const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, "");
+      const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, '');
 
       // Limit to 12 characters
       const limitedValue = cleanValue.slice(0, 12);
@@ -348,7 +348,7 @@ export const NewCabinetModal = ({
         ...prev,
         [field]: limitedValue,
       }));
-    } else if (field === "serialNumber") {
+    } else if (field === 'serialNumber') {
       // Auto-capitalize serial number letters
       const upperCaseValue = value.toUpperCase();
 
@@ -389,7 +389,7 @@ export const NewCabinetModal = ({
   };
 
   const handleCollectionSettingChange = (
-    field: keyof NewCabinetFormData["collectionSettings"],
+    field: keyof NewCabinetFormData['collectionSettings'],
     value: string
   ) => {
     setFormData((prev: NewCabinetFormData) => ({
@@ -426,11 +426,11 @@ export const NewCabinetModal = ({
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="bg-container rounded-md shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          style={{ opacity: 0, transform: "translateY(-20px)" }}
+          className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-md bg-container shadow-lg"
+          style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-border flex justify-between items-center">
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
             <h2 className="text-xl font-semibold">New Cabinet</h2>
             <Button variant="ghost" size="icon" onClick={handleClose}>
               <Cross2Icon className="h-4 w-4" />
@@ -442,67 +442,65 @@ export const NewCabinetModal = ({
             <div className="space-y-6">
               {/* Basic Information Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-buttonActive border-b border-border pb-2">
+                <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">
                   Basic Information
                 </h3>
 
                 {/* Serial Number & Installed Game */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium text-buttonActive block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-buttonActive">
                       Serial Number <span className="text-red-500">*</span>
                     </label>
                     <Input
                       id="serialNumber"
                       placeholder="Enter Serial Number"
                       value={formData.serialNumber}
-                      onChange={(e) =>
-                        handleInputChange("serialNumber", e.target.value)
+                      onChange={e =>
+                        handleInputChange('serialNumber', e.target.value)
                       }
-                      className={`bg-container border-border h-10 ${
-                        serialNumberError ? "border-red-500" : ""
+                      className={`h-10 border-border bg-container ${
+                        serialNumberError ? 'border-red-500' : ''
                       }`}
                     />
                     {serialNumberError ? (
-                      <p className="text-red-500 text-xs mt-1">
+                      <p className="mt-1 text-xs text-red-500">
                         {serialNumberError}
                       </p>
                     ) : (
-                      <p className="text-gray-500 text-xs mt-1">
+                      <p className="mt-1 text-xs text-gray-500">
                         Enter the serial number for this cabinet
                       </p>
                     )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-buttonActive block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-buttonActive">
                       Installed Game <span className="text-red-500">*</span>
                     </label>
                     <Input
                       id="game"
                       placeholder="Enter Game Name"
                       value={formData.game}
-                      onChange={(e) =>
-                        handleInputChange("game", e.target.value)
-                      }
-                      className="bg-container border-border h-10"
+                      onChange={e => handleInputChange('game', e.target.value)}
+                      className="h-10 border-border bg-container"
                     />
                   </div>
                 </div>
 
                 {/* Game Type & Cabinet Type */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium text-buttonActive block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-buttonActive">
                       Game Type <span className="text-red-500">*</span>
                     </label>
                     <Select
                       value={formData.gameType}
-                      onValueChange={(value) => {
+                      onValueChange={value => {
                         // console.log("NewCabinet GameType changed to:", value);
-                        handleSelectChange("gameType", value);
+                        handleSelectChange('gameType', value);
                       }}
                     >
-                      <SelectTrigger className="bg-container border-border">
+                      <SelectTrigger className="border-border bg-container">
                         <SelectValue placeholder="Select Game Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -518,16 +516,16 @@ export const NewCabinetModal = ({
                     </Select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-buttonActive block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-buttonActive">
                       Cabinet Type <span className="text-red-500">*</span>
                     </label>
                     <Select
                       value={formData.cabinetType}
-                      onValueChange={(value) =>
-                        handleSelectChange("cabinetType", value)
+                      onValueChange={value =>
+                        handleSelectChange('cabinetType', value)
                       }
                     >
-                      <SelectTrigger className="bg-container border-border">
+                      <SelectTrigger className="border-border bg-container">
                         <SelectValue placeholder="Select Cabinet Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -541,27 +539,27 @@ export const NewCabinetModal = ({
 
                 {/* Manufacturer */}
                 <div>
-                  <label className="text-sm font-medium text-buttonActive block mb-2">
+                  <label className="mb-2 block text-sm font-medium text-buttonActive">
                     Manufacturer
                   </label>
                   {manufacturersLoading ? (
-                    <div className="h-10 bg-gray-100 rounded-md animate-pulse" />
+                    <div className="h-10 animate-pulse rounded-md bg-gray-100" />
                   ) : (
                     <Select
                       value={formData.manufacturer}
-                      onValueChange={(value) => {
+                      onValueChange={value => {
                         // Prevent setting the disabled "no-manufacturers" value
-                        if (value !== "no-manufacturers") {
-                          handleSelectChange("manufacturer", value);
+                        if (value !== 'no-manufacturers') {
+                          handleSelectChange('manufacturer', value);
                         }
                       }}
                     >
-                      <SelectTrigger className="bg-container border-border h-10">
+                      <SelectTrigger className="h-10 border-border bg-container">
                         <SelectValue placeholder="Select Manufacturer" />
                       </SelectTrigger>
                       <SelectContent>
                         {manufacturers.length > 0 ? (
-                          manufacturers.map((manufacturer) => (
+                          manufacturers.map(manufacturer => (
                             <SelectItem key={manufacturer} value={manufacturer}>
                               {manufacturer}
                             </SelectItem>
@@ -594,21 +592,21 @@ export const NewCabinetModal = ({
                 {/* Accounting Denomination (Conditional) */}
                 {formData.isCronosMachine && (
                   <div>
-                    <label className="text-sm font-medium text-buttonActive block mb-2">
-                      Accounting Denomination (Only Cronos){" "}
+                    <label className="mb-2 block text-sm font-medium text-buttonActive">
+                      Accounting Denomination (Only Cronos){' '}
                       <span className="text-red-500">*</span>
                     </label>
                     <Input
                       id="accountingDenomination"
                       placeholder="The denomination the machine uses when sending meter values"
                       value={formData.accountingDenomination}
-                      onChange={(e) =>
+                      onChange={e =>
                         handleInputChange(
-                          "accountingDenomination",
+                          'accountingDenomination',
                           e.target.value
                         )
                       }
-                      className="bg-container border-border h-10"
+                      className="h-10 border-border bg-container"
                     />
                   </div>
                 )}
@@ -616,41 +614,41 @@ export const NewCabinetModal = ({
 
               {/* Location & Configuration Section */}
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-buttonActive border-b border-border pb-2">
+                <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">
                   Location & Configuration
                 </h3>
 
                 {/* Location & SMIB Board */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div>
                     {locationId ? (
                       <div className="space-y-1">
-                        <span className="text-sm font-medium text-buttonActive block">
+                        <span className="block text-sm font-medium text-buttonActive">
                           Location
                         </span>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                          <span className="text-sm text-gray-700 font-medium">
-                            {currentLocationName || "Selected Location"}
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                          <span className="text-sm font-medium text-gray-700">
+                            {currentLocationName || 'Selected Location'}
                           </span>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <label className="text-sm font-medium text-buttonActive block mb-2">
+                        <label className="mb-2 block text-sm font-medium text-buttonActive">
                           Location
                         </label>
                         <Select
                           value={formData.gamingLocation}
-                          onValueChange={(value) =>
-                            handleSelectChange("gamingLocation", value)
+                          onValueChange={value =>
+                            handleSelectChange('gamingLocation', value)
                           }
                         >
-                          <SelectTrigger className="bg-container border-border h-10">
+                          <SelectTrigger className="h-10 border-border bg-container">
                             <SelectValue placeholder="Select Location" />
                           </SelectTrigger>
                           <SelectContent>
                             {locations && locations.length > 0 ? (
-                              locations.map((location) => (
+                              locations.map(location => (
                                 <SelectItem
                                   key={location._id}
                                   value={location._id}
@@ -669,27 +667,27 @@ export const NewCabinetModal = ({
                     )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-buttonActive block mb-2">
+                    <label className="mb-2 block text-sm font-medium text-buttonActive">
                       SMIB Board <span className="text-red-500">*</span>
                     </label>
                     <Input
                       id="relayId"
                       placeholder="Enter Relay ID"
                       value={formData.relayId}
-                      onChange={(e) =>
-                        handleInputChange("relayId", e.target.value)
+                      onChange={e =>
+                        handleInputChange('relayId', e.target.value)
                       }
-                      className={`bg-container border-border ${
-                        relayIdError ? "border-red-500" : ""
+                      className={`border-border bg-container ${
+                        relayIdError ? 'border-red-500' : ''
                       }`}
                       maxLength={12}
                     />
                     {relayIdError && (
-                      <p className="text-red-500 text-xs mt-1">
+                      <p className="mt-1 text-xs text-red-500">
                         {relayIdError}
                       </p>
                     )}
-                    <p className="text-gray-500 text-xs mt-1">
+                    <p className="mt-1 text-xs text-gray-500">
                       Must be 12 characters, lowercase hex, ending with 0, 4, 8,
                       or c
                     </p>
@@ -698,16 +696,16 @@ export const NewCabinetModal = ({
 
                 {/* Status */}
                 <div>
-                  <label className="text-sm font-medium text-buttonActive block mb-2">
+                  <label className="mb-2 block text-sm font-medium text-buttonActive">
                     Status <span className="text-red-500">*</span>
                   </label>
                   <Select
                     value={formData.assetStatus}
-                    onValueChange={(value) =>
-                      handleSelectChange("assetStatus", value)
+                    onValueChange={value =>
+                      handleSelectChange('assetStatus', value)
                     }
                   >
-                    <SelectTrigger className="bg-container border-border">
+                    <SelectTrigger className="border-border bg-container">
                       <SelectValue placeholder="Select Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -721,30 +719,30 @@ export const NewCabinetModal = ({
               </div>
 
               {/* Collection Settings */}
-              <div className="border-t border-border pt-4 mt-4">
-                <h3 className="text-sm font-medium text-buttonActive mb-4">
+              <div className="mt-4 border-t border-border pt-4">
+                <h3 className="mb-4 text-sm font-medium text-buttonActive">
                   Collection Settings
                 </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div>
-                    <label className="text-sm font-medium block mb-2">
+                    <label className="mb-2 block text-sm font-medium">
                       Collection Report Multiplier
                     </label>
                     <Input
                       id="multiplier"
                       placeholder="Enter multiplier (default: 1)"
                       value={formData.collectionSettings.multiplier}
-                      onChange={(e) =>
+                      onChange={e =>
                         handleCollectionSettingChange(
-                          "multiplier",
+                          'multiplier',
                           e.target.value
                         )
                       }
-                      className="bg-container border-border h-10"
+                      className="h-10 border-border bg-container"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium block mb-2">
+                    <label className="mb-2 block text-sm font-medium">
                       Last Collection Time
                     </label>
                     <PCDateTimePicker
@@ -755,37 +753,37 @@ export const NewCabinetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium block mb-2">
+                    <label className="mb-2 block text-sm font-medium">
                       Last Meters In
                     </label>
                     <Input
                       id="metersIn"
                       placeholder="Enter last meters in"
                       value={formData.collectionSettings.lastMetersIn}
-                      onChange={(e) =>
+                      onChange={e =>
                         handleCollectionSettingChange(
-                          "lastMetersIn",
+                          'lastMetersIn',
                           e.target.value
                         )
                       }
-                      className="bg-container border-border h-10"
+                      className="h-10 border-border bg-container"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium block mb-2">
+                    <label className="mb-2 block text-sm font-medium">
                       Last Meters Out
                     </label>
                     <Input
                       id="metersOut"
                       placeholder="Enter last meters out"
                       value={formData.collectionSettings.lastMetersOut}
-                      onChange={(e) =>
+                      onChange={e =>
                         handleCollectionSettingChange(
-                          "lastMetersOut",
+                          'lastMetersOut',
                           e.target.value
                         )
                       }
-                      className="bg-container border-border h-10"
+                      className="h-10 border-border bg-container"
                     />
                   </div>
                 </div>
@@ -793,13 +791,13 @@ export const NewCabinetModal = ({
             </div>
 
             {/* Footer */}
-            <div className="flex justify-center space-x-3 mt-8">
+            <div className="mt-8 flex justify-center space-x-3">
               <Button
                 onClick={handleSubmit}
-                className="bg-button hover:bg-button/90 text-container px-8"
+                className="bg-button px-8 text-container hover:bg-button/90"
                 disabled={loading}
               >
-                {loading ? "Creating..." : "Save"}
+                {loading ? 'Creating...' : 'Save'}
               </Button>
               <Button
                 onClick={handleClose}

@@ -3,35 +3,35 @@
  * Handles search term, location filter, and filter logic
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from 'react';
 import type {
   UseCabinetFiltersProps,
   UseCabinetFiltersReturn,
-} from "@/lib/types/cabinetFilters";
+} from '@/lib/types/cabinetFilters';
 
 export function useCabinetFilters({
   onFiltersChange,
 }: UseCabinetFiltersProps = {}): UseCabinetFiltersReturn {
   // Search and filter state
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
-  const [selectedGameType, setSelectedGameType] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("All");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [selectedGameType, setSelectedGameType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
 
   // Clear all filters
   const clearFilters = useCallback(() => {
-    setSearchTerm("");
-    setSelectedLocation("all");
-    setSelectedGameType("all");
-    setSelectedStatus("All");
+    setSearchTerm('');
+    setSelectedLocation('all');
+    setSelectedGameType('all');
+    setSelectedStatus('All');
   }, []);
 
   // Check if any filters are active
   const hasActiveFilters =
-    searchTerm.trim() !== "" ||
-    selectedLocation !== "all" ||
-    selectedGameType !== "all" ||
-    selectedStatus !== "All";
+    searchTerm.trim() !== '' ||
+    selectedLocation !== 'all' ||
+    selectedGameType !== 'all' ||
+    selectedStatus !== 'All';
 
   // Handle search term changes
   const handleSearchTermChange = useCallback((term: string) => {

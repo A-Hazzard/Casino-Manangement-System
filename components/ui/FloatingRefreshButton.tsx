@@ -3,8 +3,8 @@
  * Displays a floating refresh button that appears on scroll
  */
 
-import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw } from "lucide-react";
+import { motion, AnimatePresence } from 'framer-motion';
+import { RefreshCw } from 'lucide-react';
 
 type FloatingRefreshButtonProps = {
   show: boolean;
@@ -30,12 +30,12 @@ export const FloatingRefreshButton = ({
           <motion.button
             onClick={onRefresh}
             disabled={refreshing}
-            className="bg-button text-container p-3 rounded-full shadow-lg hover:bg-buttonActive transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-full bg-button p-3 text-container shadow-lg transition-colors duration-200 hover:bg-buttonActive disabled:cursor-not-allowed disabled:opacity-50"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
             <RefreshCw
-              className={`w-6 h-6 ${refreshing ? "animate-spin" : ""}`}
+              className={`h-6 w-6 ${refreshing ? 'animate-spin' : ''}`}
             />
           </motion.button>
         </motion.div>

@@ -6,7 +6,7 @@
 
 function calculate30Days() {
   // Simulate October 16th, 2025
-  const nowUtc = new Date("2025-10-16T15:00:00.000Z"); // 11 AM Trinidad
+  const nowUtc = new Date('2025-10-16T15:00:00.000Z'); // 11 AM Trinidad
   const timezoneOffset = -4;
   const gameDayStartHour = 8;
 
@@ -38,18 +38,18 @@ function calculate30Days() {
   const startTrinidad = new Date(rangeStart.getTime() - 4 * 60 * 60 * 1000);
   const endTrinidad = new Date(rangeEnd.getTime() - 4 * 60 * 60 * 1000);
 
-  console.log("📅 Last 30 Days (October 16th, 2025)");
-  console.log("=".repeat(50));
-  console.log("");
-  console.log("Trinidad Time:");
+  console.log('📅 Last 30 Days (October 16th, 2025)');
+  console.log('='.repeat(50));
+  console.log('');
+  console.log('Trinidad Time:');
   console.log(
-    `  Start: ${startTrinidad.toISOString().split("T")[0]} at 8:00:00 AM`
+    `  Start: ${startTrinidad.toISOString().split('T')[0]} at 8:00:00 AM`
   );
   console.log(
-    `  End:   ${endTrinidad.toISOString().split("T")[0]} at 7:59:59.999 AM`
+    `  End:   ${endTrinidad.toISOString().split('T')[0]} at 7:59:59.999 AM`
   );
-  console.log("");
-  console.log("Database Query (UTC):");
+  console.log('');
+  console.log('Database Query (UTC):');
   console.log(`  Start: ${rangeStart.toISOString()}`);
   console.log(`  End:   ${rangeEnd.toISOString()}`);
 }

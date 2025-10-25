@@ -6,13 +6,13 @@
 export function formatPhoneNumber(
   phoneNumber: string | null | undefined
 ): string {
-  if (!phoneNumber) return "N/A";
+  if (!phoneNumber) return 'N/A';
 
   // Remove all non-digit characters
-  const cleaned = phoneNumber.replace(/\D/g, "");
+  const cleaned = phoneNumber.replace(/\D/g, '');
 
   // If it's empty after cleaning, return N/A
-  if (cleaned.length === 0) return "N/A";
+  if (cleaned.length === 0) return 'N/A';
 
   // Format based on length
   switch (cleaned.length) {
@@ -46,6 +46,6 @@ export function isValidPhoneNumber(
 ): boolean {
   if (!phoneNumber) return false;
 
-  const cleaned = phoneNumber.replace(/\D/g, "");
+  const cleaned = phoneNumber.replace(/\D/g, '');
   return cleaned.length >= 7 && cleaned.length <= 15;
 }

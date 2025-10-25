@@ -1,5 +1,5 @@
 // Shared common types used across frontend and backend
-import { Types } from "mongoose";
+import { Types } from 'mongoose';
 
 // Generic API response type
 export type ApiResponse<T = unknown> = {
@@ -17,14 +17,14 @@ export type DateRange = {
 
 // Time period type for analytics
 export type TimePeriod =
-  | "Today"
-  | "Yesterday"
-  | "last7days"
-  | "7d"
-  | "last30days"
-  | "30d"
-  | "All Time"
-  | "Custom";
+  | 'Today'
+  | 'Yesterday'
+  | 'last7days'
+  | '7d'
+  | 'last30days'
+  | '30d'
+  | 'All Time'
+  | 'Custom';
 
 // MongoDB related types
 export type MongooseId = string | Types.ObjectId;
@@ -66,7 +66,7 @@ export type QueryFilter = {
 
 // API params type
 export type ApiParamsType = {
-  timePeriod: "Today" | "Yesterday" | "7d" | "30d" | "All Time" | "Custom";
+  timePeriod: 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
   licencee: string;
 };
 
@@ -76,10 +76,10 @@ export type PipelineStage = {
 };
 
 // Performance status
-export type PerformanceStatus = "good" | "average" | "poor";
+export type PerformanceStatus = 'good' | 'average' | 'poor';
 
 // Sort direction
-export type SortDirection = "asc" | "desc";
+export type SortDirection = 'asc' | 'desc';
 
 // Additional MongoDB types
 export type DateRangeFilter = {

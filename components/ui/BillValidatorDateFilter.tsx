@@ -1,26 +1,28 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { ModernDateRangePicker } from "@/components/ui/ModernDateRangePicker";
-import { TimePeriod } from "@/app/api/lib/types";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
+import { TimePeriod } from '@/app/api/lib/types';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { TimePicker } from "@mui/x-date-pickers/TimePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import type { DateRange as RDPDateRange } from "react-day-picker";
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 export type BillValidatorDateFilterProps = {
   onDateRangeChange?: (dateRange: { from: Date; to: Date } | undefined) => void;
   onTimePeriodChange?: (timePeriod: TimePeriod) => void;
-  onTimeRangeChange?: (timeRange: { startTime: string; endTime: string } | undefined) => void;
+  onTimeRangeChange?: (
+    timeRange: { startTime: string; endTime: string } | undefined
+  ) => void;
   onDenominationChange?: (denomination: string) => void;
   denomination?: string;
   uniqueDenominations?: number[];
@@ -32,29 +34,33 @@ export default function BillValidatorDateFilter({
   onTimePeriodChange,
   onTimeRangeChange,
   onDenominationChange,
-  denomination = "all",
+  denomination = 'all',
   uniqueDenominations = [],
   disabled = false,
 }: BillValidatorDateFilterProps) {
-  const [activeFilter, setActiveFilter] = useState<TimePeriod>("7d");
+  const [activeFilter, setActiveFilter] = useState<TimePeriod>('7d');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const [pendingCustomDateRange, setPendingCustomDateRange] = useState<RDPDateRange>();
-  const [timeRange, setTimeRange] = useState<{ startTime: string; endTime: string }>({
-    startTime: "",
-    endTime: "",
+  const [pendingCustomDateRange, setPendingCustomDateRange] =
+    useState<RDPDateRange>();
+  const [timeRange, setTimeRange] = useState<{
+    startTime: string;
+    endTime: string;
+  }>({
+    startTime: '',
+    endTime: '',
   });
 
   const timeFilterButtons: { label: string; value: TimePeriod }[] = [
-    { label: "Today", value: "Today" as TimePeriod },
-    { label: "Yesterday", value: "Yesterday" as TimePeriod },
-    { label: "Last 7 Days", value: "7d" as TimePeriod },
-    { label: "Last 30 Days", value: "30d" as TimePeriod },
-    { label: "All Time", value: "All Time" as TimePeriod },
-    { label: "Custom", value: "Custom" as TimePeriod },
+    { label: 'Today', value: 'Today' as TimePeriod },
+    { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
+    { label: 'Last 7 Days', value: '7d' as TimePeriod },
+    { label: 'Last 30 Days', value: '30d' as TimePeriod },
+    { label: 'All Time', value: 'All Time' as TimePeriod },
+    { label: 'Custom', value: 'Custom' as TimePeriod },
   ];
 
   const handleFilterClick = (filter: TimePeriod) => {
-    if (filter === "Custom") {
+    if (filter === 'Custom') {
       setShowCustomPicker(true);
     } else {
       setShowCustomPicker(false);
@@ -69,13 +75,13 @@ export default function BillValidatorDateFilter({
       // Convert dates to proper timezone format
       const startDate = new Date(pendingCustomDateRange.from);
       startDate.setHours(0, 0, 0, 0);
-      
+
       const endDate = new Date(pendingCustomDateRange.to);
       endDate.setHours(23, 59, 59, 999);
-      
-      setActiveFilter("Custom");
+
+      setActiveFilter('Custom');
       setShowCustomPicker(false);
-      onTimePeriodChange?.("Custom");
+      onTimePeriodChange?.('Custom');
       onDateRangeChange?.({ from: startDate, to: endDate });
     }
   };
@@ -92,39 +98,48 @@ export default function BillValidatorDateFilter({
     setPendingCustomDateRange({ from: firstDay, to: lastDay });
   };
 
-  const handleTimeRangeChange = (field: 'startTime' | 'endTime', value: string) => {
+  const handleTimeRangeChange = (
+    field: 'startTime' | 'endTime',
+    value: string
+  ) => {
     const newTimeRange = { ...timeRange, [field]: value };
     setTimeRange(newTimeRange);
-    
+
     // Only call the callback if both times are set or both are empty
-    if ((newTimeRange.startTime && newTimeRange.endTime) || 
-        (!newTimeRange.startTime && !newTimeRange.endTime)) {
-      onTimeRangeChange?.(newTimeRange.startTime && newTimeRange.endTime ? newTimeRange : undefined);
+    if (
+      (newTimeRange.startTime && newTimeRange.endTime) ||
+      (!newTimeRange.startTime && !newTimeRange.endTime)
+    ) {
+      onTimeRangeChange?.(
+        newTimeRange.startTime && newTimeRange.endTime
+          ? newTimeRange
+          : undefined
+      );
     }
   };
 
   const clearTimeRange = () => {
-    setTimeRange({ startTime: "", endTime: "" });
+    setTimeRange({ startTime: '', endTime: '' });
     onTimeRangeChange?.(undefined);
   };
 
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div className="flex w-full flex-col gap-3">
       {/* Date Filter Controls */}
-      <div className="flex flex-wrap items-center gap-2 w-full">
+      <div className="flex w-full flex-wrap items-center gap-2">
         {/* Desktop Filter Buttons */}
-        <div className="hidden md:flex items-center gap-2">
-          {timeFilterButtons.map((button) => (
+        <div className="hidden items-center gap-2 md:flex">
+          {timeFilterButtons.map(button => (
             <Button
               key={button.value}
-              variant={activeFilter === button.value ? "default" : "outline"}
+              variant={activeFilter === button.value ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleFilterClick(button.value)}
               disabled={disabled}
               className={
                 activeFilter === button.value
-                  ? "bg-buttonActive text-container"
-                  : "bg-container text-grayHighlight border-buttonActive hover:bg-buttonActive hover:text-container"
+                  ? 'bg-buttonActive text-container'
+                  : 'border-buttonActive bg-container text-grayHighlight hover:bg-buttonActive hover:text-container'
               }
             >
               {button.label}
@@ -133,17 +148,17 @@ export default function BillValidatorDateFilter({
         </div>
 
         {/* Mobile Filter Dropdown */}
-        <div className="md:hidden w-full">
+        <div className="w-full md:hidden">
           <Select
             value={activeFilter}
-            onValueChange={(value) => handleFilterClick(value as TimePeriod)}
+            onValueChange={value => handleFilterClick(value as TimePeriod)}
             disabled={disabled}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select time period" />
             </SelectTrigger>
             <SelectContent>
-              {timeFilterButtons.map((button) => (
+              {timeFilterButtons.map(button => (
                 <SelectItem key={button.value} value={button.value}>
                   {button.label}
                 </SelectItem>
@@ -154,7 +169,7 @@ export default function BillValidatorDateFilter({
       </div>
 
       {/* Time Range Filter */}
-      <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg">
+      <div className="flex flex-col gap-2 rounded-lg bg-gray-50 p-3">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">Time Range (Optional)</Label>
           <Button
@@ -167,19 +182,25 @@ export default function BillValidatorDateFilter({
           </Button>
         </div>
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             <div>
               <TimePicker
                 label="Start Time"
-                value={timeRange.startTime ? new Date(`2000-01-01T${timeRange.startTime}`) : null}
-                onChange={(newValue) => {
-                  const timeString = newValue ? newValue.toTimeString().slice(0, 5) : "";
+                value={
+                  timeRange.startTime
+                    ? new Date(`2000-01-01T${timeRange.startTime}`)
+                    : null
+                }
+                onChange={newValue => {
+                  const timeString = newValue
+                    ? newValue.toTimeString().slice(0, 5)
+                    : '';
                   handleTimeRangeChange('startTime', timeString);
                 }}
                 disabled={disabled}
                 slotProps={{
                   textField: {
-                    size: "small",
+                    size: 'small',
                     sx: {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '6px',
@@ -211,23 +232,29 @@ export default function BillValidatorDateFilter({
                           color: '#3b82f6',
                         },
                       },
-                    }
-                  }
+                    },
+                  },
                 }}
               />
             </div>
             <div>
               <TimePicker
                 label="End Time"
-                value={timeRange.endTime ? new Date(`2000-01-01T${timeRange.endTime}`) : null}
-                onChange={(newValue) => {
-                  const timeString = newValue ? newValue.toTimeString().slice(0, 5) : "";
+                value={
+                  timeRange.endTime
+                    ? new Date(`2000-01-01T${timeRange.endTime}`)
+                    : null
+                }
+                onChange={newValue => {
+                  const timeString = newValue
+                    ? newValue.toTimeString().slice(0, 5)
+                    : '';
                   handleTimeRangeChange('endTime', timeString);
                 }}
                 disabled={disabled}
                 slotProps={{
                   textField: {
-                    size: "small",
+                    size: 'small',
                     sx: {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '6px',
@@ -259,15 +286,15 @@ export default function BillValidatorDateFilter({
                           color: '#3b82f6',
                         },
                       },
-                    }
-                  }
+                    },
+                  },
                 }}
               />
             </div>
             <div>
               <Select
                 value={denomination}
-                onValueChange={(value) => onDenominationChange?.(value)}
+                onValueChange={value => onDenominationChange?.(value)}
                 disabled={disabled}
               >
                 <SelectTrigger className="h-10">
@@ -275,7 +302,7 @@ export default function BillValidatorDateFilter({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Denominations</SelectItem>
-                  {uniqueDenominations.map((denom) => (
+                  {uniqueDenominations.map(denom => (
                     <SelectItem key={denom} value={denom.toString()}>
                       ${denom}
                     </SelectItem>

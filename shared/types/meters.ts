@@ -40,4 +40,4 @@ export type MetersReportFilters = {
   page?: number;
   limit?: number;
   search?: string;
-}; 
+};

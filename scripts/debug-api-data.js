@@ -1,25 +1,25 @@
-const http = require("http");
+const http = require('http');
 
-async function makeRequest(url, method = "GET") {
+async function makeRequest(url, method = 'GET') {
   return new Promise((resolve, reject) => {
     const options = {
-      hostname: "localhost",
+      hostname: 'localhost',
       port: 3000,
       path: url,
       method: method,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     };
 
-    const req = http.request(options, (res) => {
-      let data = "";
+    const req = http.request(options, res => {
+      let data = '';
 
-      res.on("data", (chunk) => {
+      res.on('data', chunk => {
         data += chunk;
       });
 
-      res.on("end", () => {
+      res.on('end', () => {
         try {
           const response = JSON.parse(data);
           resolve({ status: res.statusCode, data: response });
@@ -29,7 +29,7 @@ async function makeRequest(url, method = "GET") {
       });
     });
 
-    req.on("error", (error) => {
+    req.on('error', error => {
       reject(error);
     });
 
@@ -38,18 +38,18 @@ async function makeRequest(url, method = "GET") {
 }
 
 async function debugApiData() {
-  console.log("🔍 Debugging API data...\n");
+  console.log('🔍 Debugging API data...\n');
 
   try {
     // Get the machine data directly from the API
     const response = await makeRequest(
-      "/api/machines/5769366190e560cdab9b8e51?timePeriod=All%20Time"
+      '/api/machines/5769366190e560cdab9b8e51?timePeriod=All%20Time'
     );
-    console.log("Machine API response status:", response.status);
+    console.log('Machine API response status:', response.status);
 
     if (response.status === 200 && response.data.success) {
       const machine = response.data.data;
-      console.log("\n📋 Machine data from API:");
+      console.log('\n📋 Machine data from API:');
       console.log(`  serialNumber: ${machine.serialNumber}`);
       console.log(`  _id: ${machine._id}`);
 
@@ -70,14 +70,14 @@ async function debugApiData() {
           console.log(`      metersOut: ${entry.metersOut}`);
         });
       } else {
-        console.log("  No collectionMetersHistory in API response");
+        console.log('  No collectionMetersHistory in API response');
       }
     } else {
-      console.log("❌ Failed to get machine data from API");
-      console.log("Response:", response.data);
+      console.log('❌ Failed to get machine data from API');
+      console.log('Response:', response.data);
     }
   } catch (error) {
-    console.error("❌ Error:", error.message || error);
+    console.error('❌ Error:', error.message || error);
   }
 }
 

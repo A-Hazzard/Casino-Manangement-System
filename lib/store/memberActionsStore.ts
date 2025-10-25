@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import { CasinoMember as Member } from "@/shared/types/entities";
+import { create } from 'zustand';
+import { CasinoMember as Member } from '@/shared/types/entities';
 
 // This is a store for member actions (edit/delete)
 
@@ -36,13 +36,13 @@ const dummyState: MemberActionsState = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<MemberActionsState>((set) => ({
+  return create<MemberActionsState>(set => ({
     selectedMember: {},
     isEditModalOpen: false,
     isDeleteModalOpen: false,
-    openEditModal: (member) =>
+    openEditModal: member =>
       set({ selectedMember: member, isEditModalOpen: true }),
-    openDeleteModal: (member) =>
+    openDeleteModal: member =>
       set({ selectedMember: member, isDeleteModalOpen: true }),
     closeEditModal: () => set({ isEditModalOpen: false }),
     closeDeleteModal: () => set({ isDeleteModalOpen: false }),
@@ -62,4 +62,4 @@ const getClientStore = () => {
 
 // Use this store only on client side
 export const useMemberActionsStore =
-  typeof window !== "undefined" ? getClientStore() : create(() => dummyState);
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

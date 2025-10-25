@@ -3,7 +3,7 @@
  * Replaces moment/dayjs usage with native JavaScript date formatting
  */
 
-import type { DateFormatOptions, DateInput } from "@shared/types/dateFormat";
+import type { DateFormatOptions, DateInput } from '@shared/types/dateFormat';
 
 // Re-export shared types for convenience
 export type { DateFormatOptions, DateInput };
@@ -19,10 +19,11 @@ export function formatDate(
   options: DateFormatOptions = {}
 ): string {
   try {
-    const dateObj = typeof date === 'string' || typeof date === 'number' 
-      ? new Date(date) 
-      : date;
-    
+    const dateObj =
+      typeof date === 'string' || typeof date === 'number'
+        ? new Date(date)
+        : date;
+
     if (isNaN(dateObj.getTime())) {
       throw new Error('Invalid date');
     }
@@ -31,7 +32,7 @@ export function formatDate(
       options.locale || 'en-US',
       options
     );
-    
+
     return formatter.format(dateObj);
   } catch (error) {
     console.warn('Date formatting error:', error);
@@ -46,7 +47,7 @@ export function formatDisplayDate(date: DateInput): string {
   return formatDate(date, {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
+    day: 'numeric',
   });
 }
 
@@ -60,7 +61,7 @@ export function formatDisplayDateTime(date: DateInput): string {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
   });
 }
 
@@ -71,7 +72,7 @@ export function formatTime(date: DateInput): string {
   return formatDate(date, {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
   });
 }
 
@@ -82,7 +83,7 @@ export function formatISODate(date: DateInput): string {
   return formatDate(date, {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit'
+    day: '2-digit',
   }).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2');
 }
 
@@ -90,10 +91,11 @@ export function formatISODate(date: DateInput): string {
  * Format date for database storage (e.g., "2024-01-15T14:30:00.000Z")
  */
 export function formatForDatabase(date: DateInput): string {
-  const dateObj = typeof date === 'string' || typeof date === 'number' 
-    ? new Date(date) 
-    : date;
-  
+  const dateObj =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+
   return dateObj.toISOString();
 }
 
@@ -102,10 +104,11 @@ export function formatForDatabase(date: DateInput): string {
  */
 export function formatRelativeTime(date: DateInput): string {
   const now = new Date();
-  const dateObj = typeof date === 'string' || typeof date === 'number' 
-    ? new Date(date) 
-    : date;
-  
+  const dateObj =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+
   const diffInMs = now.getTime() - dateObj.getTime();
   const diffInSeconds = Math.floor(diffInMs / 1000);
   const diffInMinutes = Math.floor(diffInSeconds / 60);
@@ -145,10 +148,11 @@ export function parseDate(dateString: string): Date | null {
  */
 export function isToday(date: DateInput): boolean {
   const today = new Date();
-  const dateObj = typeof date === 'string' || typeof date === 'number' 
-    ? new Date(date) 
-    : date;
-  
+  const dateObj =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+
   return dateObj.toDateString() === today.toDateString();
 }
 
@@ -158,10 +162,11 @@ export function isToday(date: DateInput): boolean {
 export function isYesterday(date: DateInput): boolean {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const dateObj = typeof date === 'string' || typeof date === 'number' 
-    ? new Date(date) 
-    : date;
-  
+  const dateObj =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+
   return dateObj.toDateString() === yesterday.toDateString();
 }
 
@@ -169,10 +174,11 @@ export function isYesterday(date: DateInput): boolean {
  * Get start of day (00:00:00)
  */
 export function startOfDay(date: DateInput): Date {
-  const dateObj = typeof date === 'string' || typeof date === 'number' 
-    ? new Date(date) 
-    : date;
-  
+  const dateObj =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+
   const newDate = new Date(dateObj);
   newDate.setHours(0, 0, 0, 0);
   return newDate;
@@ -182,12 +188,12 @@ export function startOfDay(date: DateInput): Date {
  * Get end of day (23:59:59)
  */
 export function endOfDay(date: DateInput): Date {
-  const dateObj = typeof date === 'string' || typeof date === 'number' 
-    ? new Date(date) 
-    : date;
-  
+  const dateObj =
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
+
   const newDate = new Date(dateObj);
   newDate.setHours(23, 59, 59, 999);
   return newDate;
-} 
- 
+}

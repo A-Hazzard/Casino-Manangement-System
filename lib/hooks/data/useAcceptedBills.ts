@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from 'react';
 import type {
   AcceptedBill,
   BillValidatorTimePeriod,
-} from "@/shared/types/billValidator";
+} from '@/shared/types/billValidator';
 
 type UseAcceptedBillsProps = {
   machineId: string;
@@ -24,7 +24,7 @@ type UseAcceptedBillsReturn = {
  */
 export const useAcceptedBills = ({
   machineId,
-  timePeriod = "today",
+  timePeriod = 'today',
   enabled = true,
 }: UseAcceptedBillsProps): UseAcceptedBillsReturn => {
   const [acceptedBills, setAcceptedBills] = useState<AcceptedBill[]>([]);
@@ -59,9 +59,9 @@ export const useAcceptedBills = ({
         setAcceptedBills([]);
       }
     } catch (err) {
-      console.error("Error fetching accepted bills:", err);
+      console.error('Error fetching accepted bills:', err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch accepted bills"
+        err instanceof Error ? err.message : 'Failed to fetch accepted bills'
       );
       setAcceptedBills([]);
     } finally {

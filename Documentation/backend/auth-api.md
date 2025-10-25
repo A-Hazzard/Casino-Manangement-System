@@ -1,12 +1,12 @@
 # Authentication API Documentation
 
-
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** October 29th, 2025
 
 ## Quick Search Guide
 
 Use **Ctrl+F** to find these key topics:
+
 - **user login** - What happens when a user logs in
 - **token validation** - How JWT tokens are validated and managed
 - **password reset** - How password reset process works
@@ -31,6 +31,7 @@ The Authentication API provides secure user authentication and session managemen
    - Updates user's last login timestamp
 
 2. **User Model Fields**:
+
 ```typescript
 User {
   _id: string;                    // Unique user identifier
@@ -57,6 +58,7 @@ User {
    - Returns user data and success message
 
 4. **JWT Token Structure**:
+
 ```typescript
 JWT_PAYLOAD {
   userId: string;                 // User's unique identifier
@@ -91,6 +93,7 @@ JWT_PAYLOAD {
    - Returns user ID for authenticated requests
 
 2. **Token Validation Response**:
+
 ```typescript
 TokenValidationResponse {
   userId: string;                 // Authenticated user's ID
@@ -117,9 +120,11 @@ TokenValidationResponse {
 **Author:** Aaron Hazzard - Senior Software Engineer
 
 ## Overview
+
 The Authentication API provides secure user authentication and session management for the Evolution One CMS system. It handles user login, logout, token validation, and password reset functionality.
 
 ## Base URL
+
 ```
 /api/auth
 ```
@@ -127,9 +132,11 @@ The Authentication API provides secure user authentication and session managemen
 ## Endpoints
 
 ### POST /api/auth/login
+
 Authenticates a user and issues an HTTP-only token cookie.
 
 **Request Body:**
+
 ```json
 {
   "emailAddress": "user@example.com",
@@ -138,6 +145,7 @@ Authenticates a user and issues an HTTP-only token cookie.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -155,6 +163,7 @@ Authenticates a user and issues an HTTP-only token cookie.
 ```
 
 **Response (Error - 400):**
+
 ```json
 {
   "success": false,
@@ -163,6 +172,7 @@ Authenticates a user and issues an HTTP-only token cookie.
 ```
 
 **Response (Error - 401):**
+
 ```json
 {
   "success": false,
@@ -171,20 +181,24 @@ Authenticates a user and issues an HTTP-only token cookie.
 ```
 
 **Cookies Set:**
+
 - `token`: HTTP-only cookie with JWT token (48-hour expiration)
 
 **Used By:**
+
 - `/login` page - User authentication form
 - Global authentication context - Session management
 
 ---
 
 ### POST /api/auth/logout
+
 Logs out the current user by clearing the authentication token.
 
 **Request Body:** None required
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -193,20 +207,24 @@ Logs out the current user by clearing the authentication token.
 ```
 
 **Cookies Cleared:**
+
 - `token`: HTTP-only cookie is expired
 
 **Used By:**
+
 - Header component - Logout button
 - Global authentication context - Session cleanup
 
 ---
 
 ### GET /api/auth/token
+
 Validates the current user's token and returns user information.
 
 **Request Body:** None required
 
 **Response (Success - 200):**
+
 ```json
 {
   "userId": "user_id"
@@ -214,6 +232,7 @@ Validates the current user's token and returns user information.
 ```
 
 **Response (Error - 401):**
+
 ```json
 {
   "error": "Unauthorized"
@@ -221,15 +240,18 @@ Validates the current user's token and returns user information.
 ```
 
 **Used By:**
+
 - Global authentication context - Token validation
 - Protected routes - Access control
 
 ---
 
 ### POST /api/auth/forgot-password
+
 Initiates password reset process for a user.
 
 **Request Body:**
+
 ```json
 {
   "emailAddress": "user@example.com"
@@ -237,6 +259,7 @@ Initiates password reset process for a user.
 ```
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -245,6 +268,7 @@ Initiates password reset process for a user.
 ```
 
 **Response (Error - 404):**
+
 ```json
 {
   "success": false,
@@ -253,16 +277,19 @@ Initiates password reset process for a user.
 ```
 
 **Used By:**
+
 - `/login` page - Forgot password form
 
 ---
 
 ### POST /api/auth/clear-token
+
 Manually clears the authentication token (admin function).
 
 **Request Body:** None required
 
 **Response (Success - 200):**
+
 ```json
 {
   "success": true,
@@ -271,6 +298,7 @@ Manually clears the authentication token (admin function).
 ```
 
 **Used By:**
+
 - Administration panel - User management
 - Debug/testing purposes
 
@@ -285,18 +313,21 @@ Manually clears the authentication token (admin function).
 - **SameSite Protection**: CSRF protection through SameSite attribute
 
 ### Password Security
+
 - **bcrypt Hashing**: Passwords hashed with bcrypt algorithm
 - **Salt Rounds**: 12 salt rounds for password hashing
 - **Minimum Requirements**: Enforced password strength requirements
 - **Account Lockout**: Account locked after failed login attempts
 
 ### Input Validation
+
 - **Email Validation**: RFC-compliant email format validation
 - **Password Validation**: Minimum strength requirements enforced
 - **SQL Injection Prevention**: Parameterized queries used throughout
 - **XSS Protection**: Input sanitization and output escaping
 
 ### Rate Limiting
+
 - **Login Attempts**: Rate limiting on login endpoints
 - **Password Reset**: Rate limiting on password reset requests
 - **API Endpoints**: Rate limiting on all authentication endpoints
@@ -309,78 +340,92 @@ Manually clears the authentication token (admin function).
 **Base URL:** `/api/auth`
 
 #### POST /api/auth/login
+
 **What it does**: Authenticates a user and issues an HTTP-only token cookie
 **Database Operations**:
+
 - Queries `users` collection by email address
 - Validates password using bcrypt comparison
 - Updates `lastLogin` timestamp
 - Resets `failedLoginAttempts` on successful login
-**Request Fields**: `emailAddress`, `password`
-**Response Fields**: User object with token and success message
-**Used By**: Login page, authentication forms
+  **Request Fields**: `emailAddress`, `password`
+  **Response Fields**: User object with token and success message
+  **Used By**: Login page, authentication forms
 
 #### POST /api/auth/logout
+
 **What it does**: Logs out the current user by clearing the authentication token
 **Database Operations**:
+
 - Clears HTTP-only cookie from client
 - Logs logout activity
 - Updates session status
-**Request Fields**: None required (uses cookie)
-**Response Fields**: Success confirmation message
-**Used By**: Header component, logout functionality
+  **Request Fields**: None required (uses cookie)
+  **Response Fields**: Success confirmation message
+  **Used By**: Header component, logout functionality
 
 #### GET /api/auth/token
+
 **What it does**: Validates the current user's token and returns user information
 **Database Operations**:
+
 - Extracts JWT token from HTTP-only cookie
 - Validates token signature and expiration
 - Returns user ID if valid
-**Request Fields**: None required (uses cookie)
-**Response Fields**: User ID and validation status
-**Used By**: Global authentication context, protected routes
+  **Request Fields**: None required (uses cookie)
+  **Response Fields**: User ID and validation status
+  **Used By**: Global authentication context, protected routes
 
 #### POST /api/auth/forgot-password
+
 **What it does**: Initiates password reset process for a user
 **Database Operations**:
+
 - Validates email address format
 - Checks if user exists in database
 - Generates password reset token
 - Logs password reset request
-**Request Fields**: `emailAddress`
-**Response Fields**: Success message (regardless of user existence)
-**Used By**: Login page, password reset forms
+  **Request Fields**: `emailAddress`
+  **Response Fields**: Success message (regardless of user existence)
+  **Used By**: Login page, password reset forms
 
 #### POST /api/auth/clear-token
+
 **What it does**: Manually clears the authentication token (admin function)
 **Database Operations**:
+
 - Clears HTTP-only cookie from client
 - Logs manual token clearing
 - Updates session status
-**Request Fields**: None required (uses cookie)
-**Response Fields**: Success confirmation message
-**Used By**: Administration panel, debug functions
+  **Request Fields**: None required (uses cookie)
+  **Response Fields**: Success confirmation message
+  **Used By**: Administration panel, debug functions
 
 ## Error Handling
 
 ### Login Error Scenarios
+
 - **Invalid Credentials**: Wrong email or password
 - **Account Locked**: Too many failed login attempts
 - **Account Not Found**: Email address doesn't exist
 - **Invalid Format**: Malformed email or password
 
 ### Token Error Scenarios
+
 - **Token Expired**: JWT token has exceeded 48-hour limit
 - **Invalid Token**: Malformed or tampered token
 - **Missing Token**: No authentication token provided
 - **Token Validation Failed**: Signature verification failed
 
 ### Password Reset Error Scenarios
+
 - **Invalid Email**: Malformed email address format
 - **User Not Found**: Email address doesn't exist in system
 - **Rate Limited**: Too many reset requests from same IP
 - **Reset Token Expired**: Password reset token has expired
 
 ### Error Response Format
+
 ```json
 {
   "success": false,
@@ -392,6 +437,7 @@ Manually clears the authentication token (admin function).
 ## Session Management
 
 ### Session Lifecycle
+
 1. **Login**: User authenticates and receives JWT token
 2. **Active Session**: Token valid for 48 hours
 3. **Token Refresh**: Automatic token validation on requests
@@ -399,6 +445,7 @@ Manually clears the authentication token (admin function).
 5. **Expiration**: Token automatically expires after 48 hours
 
 ### Session Security
+
 - **HTTP-Only Cookies**: Prevents XSS attacks on tokens
 - **Secure Cookies**: HTTPS-only in production
 - **SameSite Protection**: CSRF protection
@@ -408,53 +455,52 @@ Manually clears the authentication token (admin function).
 ## Database Operations
 
 ### User Authentication Queries
+
 ```javascript
 // Find user by email
-db.users.findOne({ emailAddress: email })
+db.users.findOne({ emailAddress: email });
 
 // Update last login
 db.users.updateOne(
   { _id: userId },
   { $set: { lastLogin: new Date(), failedLoginAttempts: 0 } }
-)
+);
 
 // Increment failed login attempts
-db.users.updateOne(
-  { _id: userId },
-  { $inc: { failedLoginAttempts: 1 } }
-)
+db.users.updateOne({ _id: userId }, { $inc: { failedLoginAttempts: 1 } });
 
 // Lock account after failed attempts
-db.users.updateOne(
-  { _id: userId },
-  { $set: { accountLocked: true } }
-)
+db.users.updateOne({ _id: userId }, { $set: { accountLocked: true } });
 ```
 
 ### Password Hashing
+
 ```javascript
 // Hash password with bcrypt
-const hashedPassword = await bcrypt.hash(password, 12)
+const hashedPassword = await bcrypt.hash(password, 12);
 
 // Compare password with hash
-const isValidPassword = await bcrypt.compare(password, hashedPassword)
+const isValidPassword = await bcrypt.compare(password, hashedPassword);
 ```
 
 ## Security Best Practices
 
 ### Authentication Security
+
 - **Strong Passwords**: Minimum 8 characters with complexity requirements
 - **Account Lockout**: Lock account after 5 failed login attempts
 - **Session Timeout**: 48-hour automatic session expiration
 - **Secure Cookies**: HTTP-only, secure, SameSite cookies
 
 ### Data Protection
+
 - **Password Hashing**: bcrypt with 12 salt rounds
 - **Input Validation**: Comprehensive validation of all inputs
 - **SQL Injection Prevention**: Parameterized queries throughout
 - **XSS Protection**: Output sanitization and escaping
 
 ### Audit and Monitoring
+
 - **Login Logging**: All login attempts logged with IP and timestamp
 - **Failed Attempt Tracking**: Failed login attempts tracked per user
 - **Password Reset Logging**: All password reset requests logged
@@ -463,12 +509,14 @@ const isValidPassword = await bcrypt.compare(password, hashedPassword)
 ## Performance Considerations
 
 ### Database Optimization
+
 - **Indexing**: Proper indexes on `emailAddress` field
 - **Query Optimization**: Efficient user lookup queries
 - **Connection Pooling**: Optimized database connections
 - **Caching**: User data caching for frequent lookups
 
 ### API Performance
+
 - **Token Validation**: Fast JWT signature verification
 - **Rate Limiting**: Efficient rate limiting implementation
 - **Response Compression**: Compressed responses for large data
@@ -477,12 +525,14 @@ const isValidPassword = await bcrypt.compare(password, hashedPassword)
 ## Compliance and Audit
 
 ### Regulatory Compliance
+
 - **Data Protection**: GDPR-compliant user data handling
 - **Audit Trails**: Complete audit trail for all authentication events
 - **Data Retention**: Configurable data retention policies
 - **Security Standards**: Industry-standard security practices
 
 ### Monitoring and Alerting
+
 - **Failed Login Alerts**: Alerts for suspicious login patterns
 - **Account Lockout Notifications**: Notifications for account lockouts
 - **Password Reset Monitoring**: Monitoring of password reset requests
@@ -494,12 +544,14 @@ const isValidPassword = await bcrypt.compare(password, hashedPassword)
 - **Path Restriction**: Cookies restricted to root path
 
 ### Input Validation
+
 - **Email Validation**: RFC-compliant email format validation
 - **Password Validation**: Minimum strength requirements
 - **SQL Injection Protection**: Parameterized queries
 - **XSS Protection**: Input sanitization
 
 ### Error Handling
+
 - **Generic Error Messages**: No sensitive information leaked
 - **Rate Limiting**: Protection against brute force attacks
 - **Logging**: Secure error logging without sensitive data
@@ -507,6 +559,7 @@ const isValidPassword = await bcrypt.compare(password, hashedPassword)
 ## Database Models
 
 ### User Model
+
 ```typescript
 type User = {
   _id: string;
@@ -521,7 +574,7 @@ type User = {
   failedLoginAttempts: number;
   createdAt: Date;
   updatedAt: Date;
-}
+};
 ```
 
 ## Authentication Flow
@@ -536,13 +589,13 @@ type User = {
 
 ## Error Codes
 
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 400 | Bad Request (Invalid input) |
-| 401 | Unauthorized (Invalid credentials) |
-| 404 | Not Found (User not found) |
-| 500 | Internal Server Error |
+| Status Code | Description                        |
+| ----------- | ---------------------------------- |
+| 200         | Success                            |
+| 400         | Bad Request (Invalid input)        |
+| 401         | Unauthorized (Invalid credentials) |
+| 404         | Not Found (User not found)         |
+| 500         | Internal Server Error              |
 
 ## Dependencies
 

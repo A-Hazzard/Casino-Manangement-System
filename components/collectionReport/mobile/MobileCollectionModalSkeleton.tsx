@@ -1,13 +1,13 @@
-import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 
 export function MobileCollectionModalSkeleton() {
   return (
     <Dialog open={true}>
-      <DialogContent className="md:hidden max-w-full h-full max-h-full p-0 flex flex-col bg-container">
+      <DialogContent className="flex h-full max-h-full max-w-full flex-col bg-container p-0 md:hidden">
         {/* Header Skeleton */}
-        <DialogHeader className="p-4 pb-2 border-b border-gray-200 bg-white">
+        <DialogHeader className="border-b border-gray-200 bg-white p-4 pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Skeleton className="h-8 w-8 rounded" />
@@ -18,11 +18,11 @@ export function MobileCollectionModalSkeleton() {
         </DialogHeader>
 
         {/* Content Skeleton */}
-        <div className="flex-1 overflow-hidden p-4 space-y-4">
+        <div className="flex-1 space-y-4 overflow-hidden p-4">
           {/* Title Section */}
-          <div className="text-center space-y-2">
-            <Skeleton className="h-6 w-40 mx-auto" />
-            <Skeleton className="h-4 w-56 mx-auto" />
+          <div className="space-y-2 text-center">
+            <Skeleton className="mx-auto h-6 w-40" />
+            <Skeleton className="mx-auto h-4 w-56" />
           </div>
 
           {/* Search Input */}
@@ -30,10 +30,10 @@ export function MobileCollectionModalSkeleton() {
 
           {/* Cards Grid */}
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[1, 2, 3, 4, 5].map(i => (
               <div
                 key={i}
-                className="bg-white p-4 rounded-lg border border-gray-200 space-y-3"
+                className="space-y-3 rounded-lg border border-gray-200 bg-white p-4"
               >
                 {/* Card Header */}
                 <div className="flex items-center gap-3">
@@ -52,7 +52,7 @@ export function MobileCollectionModalSkeleton() {
                 </div>
 
                 {/* Card Footer */}
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <div className="flex gap-2">
                     <Skeleton className="h-4 w-16" />
                     <Skeleton className="h-4 w-20" />
@@ -71,11 +71,11 @@ export function MobileCollectionModalSkeleton() {
 // Location Selector Skeleton
 export function LocationSelectorSkeleton() {
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4 p-4">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <Skeleton className="h-6 w-32 mx-auto" />
-        <Skeleton className="h-4 w-48 mx-auto" />
+      <div className="space-y-2 text-center">
+        <Skeleton className="mx-auto h-6 w-32" />
+        <Skeleton className="mx-auto h-4 w-48" />
       </div>
 
       {/* Search Input */}
@@ -83,10 +83,10 @@ export function LocationSelectorSkeleton() {
 
       {/* Location Cards */}
       <div className="space-y-3">
-        {[1, 2, 3, 4].map((i) => (
+        {[1, 2, 3, 4].map(i => (
           <div
             key={i}
-            className="bg-white p-4 rounded-lg border border-gray-200"
+            className="rounded-lg border border-gray-200 bg-white p-4"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 space-y-2">
@@ -112,18 +112,18 @@ export function LocationSelectorSkeleton() {
 // Machine Selector Skeleton
 export function MachineSelectorSkeleton() {
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4 p-4">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <Skeleton className="h-6 w-40 mx-auto" />
-        <Skeleton className="h-4 w-56 mx-auto" />
+      <div className="space-y-2 text-center">
+        <Skeleton className="mx-auto h-6 w-40" />
+        <Skeleton className="mx-auto h-4 w-56" />
       </div>
 
       {/* Search Input */}
       <Skeleton className="h-12 w-full rounded-lg" />
 
       {/* Status Bar */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <Skeleton className="h-4 w-32" />
         <div className="flex gap-4">
           <Skeleton className="h-4 w-20" />
@@ -133,10 +133,10 @@ export function MachineSelectorSkeleton() {
 
       {/* Machine Cards */}
       <div className="space-y-3">
-        {[1, 2, 3, 4, 5].map((i) => (
+        {[1, 2, 3, 4, 5].map(i => (
           <div
             key={i}
-            className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+            className="overflow-hidden rounded-lg border border-gray-200 bg-white"
           >
             <div className="p-4">
               <div className="flex items-center justify-between">
@@ -169,9 +169,9 @@ export function MachineSelectorSkeleton() {
 // Machine Data Form Skeleton
 export function MachineDataFormSkeleton() {
   return (
-    <div className="p-4 space-y-6">
+    <div className="space-y-6 p-4">
       {/* Machine Header */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-full" />
           <div className="space-y-2">
@@ -210,7 +210,7 @@ export function MachineDataFormSkeleton() {
           <Skeleton className="h-5 w-5 rounded" />
           <Skeleton className="h-4 w-32" />
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
+        <div className="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
           <div className="flex items-center gap-2">
             <Skeleton className="h-4 w-4" />
             <Skeleton className="h-4 w-48" />
@@ -248,14 +248,14 @@ export function CollectedMachinesListSkeleton() {
   return (
     <div className="fixed inset-0 z-[100] md:hidden">
       <div className="absolute inset-0 bg-black bg-opacity-50" />
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col">
+      <div className="absolute bottom-0 left-0 right-0 flex max-h-[85vh] flex-col rounded-t-2xl bg-white shadow-2xl">
         {/* Handle Bar */}
-        <div className="flex justify-center pt-3 pb-2">
-          <Skeleton className="w-12 h-1 rounded-full" />
+        <div className="flex justify-center pb-2 pt-3">
+          <Skeleton className="h-1 w-12 rounded-full" />
         </div>
 
         {/* Header */}
-        <div className="px-4 pb-4 border-b border-gray-200">
+        <div className="border-b border-gray-200 px-4 pb-4">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <Skeleton className="h-6 w-40" />
@@ -266,30 +266,30 @@ export function CollectedMachinesListSkeleton() {
         </div>
 
         {/* Financial Summary */}
-        <div className="p-4 bg-gray-50 border-b border-gray-200">
-          <Skeleton className="h-4 w-32 mb-3" />
+        <div className="border-b border-gray-200 bg-gray-50 p-4">
+          <Skeleton className="mb-3 h-4 w-32" />
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="space-y-1">
-              <Skeleton className="h-8 w-16 mx-auto" />
-              <Skeleton className="h-3 w-20 mx-auto" />
+              <Skeleton className="mx-auto h-8 w-16" />
+              <Skeleton className="mx-auto h-3 w-20" />
             </div>
             <div className="space-y-1">
-              <Skeleton className="h-8 w-16 mx-auto" />
-              <Skeleton className="h-3 w-20 mx-auto" />
+              <Skeleton className="mx-auto h-8 w-16" />
+              <Skeleton className="mx-auto h-3 w-20" />
             </div>
             <div className="space-y-1">
-              <Skeleton className="h-8 w-16 mx-auto" />
-              <Skeleton className="h-3 w-20 mx-auto" />
+              <Skeleton className="mx-auto h-8 w-16" />
+              <Skeleton className="mx-auto h-3 w-20" />
             </div>
           </div>
         </div>
 
         {/* Machines List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {[1, 2, 3].map((i) => (
+        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          {[1, 2, 3].map(i => (
             <div
               key={i}
-              className="bg-white border border-gray-200 rounded-lg p-4 space-y-3"
+              className="space-y-3 rounded-lg border border-gray-200 bg-white p-4"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1 space-y-2">
@@ -321,7 +321,7 @@ export function CollectedMachinesListSkeleton() {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 bg-white">
+        <div className="border-t border-gray-200 bg-white p-4">
           <Skeleton className="h-12 w-full rounded-lg" />
         </div>
       </div>

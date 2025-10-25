@@ -1,4 +1,4 @@
-import { Licencee } from "@/app/api/lib/models/licencee";
+import { Licencee } from '@/app/api/lib/models/licencee';
 
 // Helper function to generate a unique license key
 export function generateLicenseKey(): string {

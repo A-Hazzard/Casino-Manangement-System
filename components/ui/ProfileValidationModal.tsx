@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -11,13 +11,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { AlertTriangle } from "lucide-react";
+} from '@/components/ui/dialog';
+import { AlertTriangle } from 'lucide-react';
 import {
   validateProfileField,
   validateNameField,
   containsPhonePattern,
-} from "@/lib/utils/validation";
+} from '@/lib/utils/validation';
 
 type ProfileValidationModalProps = {
   open: boolean;
@@ -63,38 +63,38 @@ export default function ProfileValidationModal({
     const newErrors: Record<string, string> = {};
 
     if (!formData.username) {
-      newErrors.username = "Username is required";
+      newErrors.username = 'Username is required';
     } else if (!validateProfileField(formData.username)) {
       if (containsPhonePattern(formData.username)) {
         newErrors.username =
-          "Username cannot be a phone number. Please use a proper username.";
+          'Username cannot be a phone number. Please use a proper username.';
       } else {
         newErrors.username =
-          "Username contains invalid characters. Only letters, numbers, spaces, hyphens, and apostrophes are allowed.";
+          'Username contains invalid characters. Only letters, numbers, spaces, hyphens, and apostrophes are allowed.';
       }
     }
 
     if (!formData.firstName) {
-      newErrors.firstName = "First name is required";
+      newErrors.firstName = 'First name is required';
     } else if (!validateNameField(formData.firstName)) {
       if (containsPhonePattern(formData.firstName)) {
         newErrors.firstName =
-          "First name cannot be a phone number. Please use your actual first name.";
+          'First name cannot be a phone number. Please use your actual first name.';
       } else {
         newErrors.firstName =
-          "First name contains invalid characters. Only letters and spaces are allowed.";
+          'First name contains invalid characters. Only letters and spaces are allowed.';
       }
     }
 
     if (!formData.lastName) {
-      newErrors.lastName = "Last name is required";
+      newErrors.lastName = 'Last name is required';
     } else if (!validateNameField(formData.lastName)) {
       if (containsPhonePattern(formData.lastName)) {
         newErrors.lastName =
-          "Last name cannot be a phone number. Please use your actual last name.";
+          'Last name cannot be a phone number. Please use your actual last name.';
       } else {
         newErrors.lastName =
-          "Last name contains invalid characters. Only letters and spaces are allowed.";
+          'Last name contains invalid characters. Only letters and spaces are allowed.';
       }
     }
 
@@ -107,8 +107,8 @@ export default function ProfileValidationModal({
       await onUpdate(formData);
       onClose();
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Profile update error:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Profile update error:', error);
       }
     }
   };
@@ -129,19 +129,19 @@ export default function ProfileValidationModal({
       const fieldValue = formData[field as keyof typeof formData];
       if (containsPhonePattern(fieldValue)) {
         switch (field) {
-          case "username":
-            return "Username cannot be a phone number. Please use a proper username.";
-          case "firstName":
-            return "First name cannot be a phone number. Please use your actual first name.";
-          case "lastName":
-            return "Last name cannot be a phone number. Please use your actual last name.";
+          case 'username':
+            return 'Username cannot be a phone number. Please use a proper username.';
+          case 'firstName':
+            return 'First name cannot be a phone number. Please use your actual first name.';
+          case 'lastName':
+            return 'Last name cannot be a phone number. Please use your actual last name.';
           default:
-            return "This field cannot be a phone number.";
+            return 'This field cannot be a phone number.';
         }
       }
       return `This field contains special characters that are not allowed.`;
     }
-    return "";
+    return '';
   };
 
   return (
@@ -166,15 +166,15 @@ export default function ProfileValidationModal({
               <Input
                 id="username"
                 value={formData.username}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, username: e.target.value }))
+                onChange={e =>
+                  setFormData(prev => ({ ...prev, username: e.target.value }))
                 }
-                className={getFieldError("username") ? "border-red-500" : ""}
+                className={getFieldError('username') ? 'border-red-500' : ''}
                 placeholder="Enter username"
               />
-              {getFieldError("username") && (
+              {getFieldError('username') && (
                 <p className="text-sm text-red-500">
-                  {getFieldError("username")}
+                  {getFieldError('username')}
                 </p>
               )}
             </div>
@@ -187,18 +187,18 @@ export default function ProfileValidationModal({
               <Input
                 id="firstName"
                 value={formData.firstName}
-                onChange={(e) =>
-                  setFormData((prev) => ({
+                onChange={e =>
+                  setFormData(prev => ({
                     ...prev,
                     firstName: e.target.value,
                   }))
                 }
-                className={getFieldError("firstName") ? "border-red-500" : ""}
+                className={getFieldError('firstName') ? 'border-red-500' : ''}
                 placeholder="Enter first name"
               />
-              {getFieldError("firstName") && (
+              {getFieldError('firstName') && (
                 <p className="text-sm text-red-500">
-                  {getFieldError("firstName")}
+                  {getFieldError('firstName')}
                 </p>
               )}
             </div>
@@ -211,15 +211,15 @@ export default function ProfileValidationModal({
               <Input
                 id="lastName"
                 value={formData.lastName}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, lastName: e.target.value }))
+                onChange={e =>
+                  setFormData(prev => ({ ...prev, lastName: e.target.value }))
                 }
-                className={getFieldError("lastName") ? "border-red-500" : ""}
+                className={getFieldError('lastName') ? 'border-red-500' : ''}
                 placeholder="Enter last name"
               />
-              {getFieldError("lastName") && (
+              {getFieldError('lastName') && (
                 <p className="text-sm text-red-500">
-                  {getFieldError("lastName")}
+                  {getFieldError('lastName')}
                 </p>
               )}
             </div>
@@ -230,7 +230,7 @@ export default function ProfileValidationModal({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Updating..." : "Update Profile"}
+              {loading ? 'Updating...' : 'Update Profile'}
             </Button>
           </DialogFooter>
         </form>

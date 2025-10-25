@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { Collections } from "@/app/api/lib/models/collections";
-import { Machine } from "@/app/api/lib/models/machines";
-import { calculateSasMetrics } from "@/lib/helpers/collectionCreation";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Collections } from '@/app/api/lib/models/collections';
+import { Machine } from '@/app/api/lib/models/machines';
+import { calculateSasMetrics } from '@/lib/helpers/collectionCreation';
 
-type RepairMode = "dry-run" | "commit";
+type RepairMode = 'dry-run' | 'commit';
 
 /**
  * Normalize timestamp to 8AM Trinidad time (12:00 UTC)
@@ -21,11 +21,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const mode = (searchParams.get("mode") as RepairMode) || "dry-run";
-    const locationReportId = searchParams.get("locationReportId") || undefined;
-    const machineId = searchParams.get("machineId") || undefined;
-    const startDateParam = searchParams.get("startDate");
-    const endDateParam = searchParams.get("endDate");
+    const mode = (searchParams.get('mode') as RepairMode) || 'dry-run';
+    const locationReportId = searchParams.get('locationReportId') || undefined;
+    const machineId = searchParams.get('machineId') || undefined;
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
 
     const filter: Record<string, unknown> = {};
     if (locationReportId) filter.locationReportId = locationReportId;
@@ -109,19 +109,19 @@ export async function POST(req: NextRequest) {
         changed,
       });
 
-      if (mode === "commit" && changed) {
+      if (mode === 'commit' && changed) {
         await Collections.updateOne(
           { _id: c._id },
           {
             $set: {
               timestamp: normalizedTimestamp, // Normalize collection timestamp to 8AM Trinidad
-              "sasMeters.drop": sas.drop,
-              "sasMeters.totalCancelledCredits": sas.totalCancelledCredits,
-              "sasMeters.gross": sas.gross,
-              "sasMeters.gamesPlayed": sas.gamesPlayed,
-              "sasMeters.jackpot": sas.jackpot,
-              "sasMeters.sasStartTime": sas.sasStartTime,
-              "sasMeters.sasEndTime": sas.sasEndTime,
+              'sasMeters.drop': sas.drop,
+              'sasMeters.totalCancelledCredits': sas.totalCancelledCredits,
+              'sasMeters.gross': sas.gross,
+              'sasMeters.gamesPlayed': sas.gamesPlayed,
+              'sasMeters.jackpot': sas.jackpot,
+              'sasMeters.sasStartTime': sas.sasStartTime,
+              'sasMeters.sasEndTime': sas.sasEndTime,
             },
           }
         );
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
       success: true,
       mode,
       count: results.length,
-      changed: results.filter((r) => r.changed).length,
+      changed: results.filter(r => r.changed).length,
       results,
     });
   } catch (error) {

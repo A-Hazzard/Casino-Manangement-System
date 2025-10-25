@@ -23,12 +23,14 @@
 The Locations page provides comprehensive casino location management, including location overview, cabinet management, and performance analytics for each casino location. This page serves as the central hub for managing all casino locations and their associated operations with real-time monitoring and detailed analytics.
 
 ### Key Principles
+
 - **Location Management**: Complete CRUD operations for casino locations
 - **Performance Analytics**: Real-time location performance monitoring
 - **Cabinet Integration**: Seamless cabinet management within locations
 - **Financial Tracking**: Location-specific financial metrics and reporting
 
 ### File Information
+
 - **File:** `app/locations/page.tsx`
 - **URL Pattern:** `/locations`
 - **Component Type:** Location Management Page
@@ -36,12 +38,14 @@ The Locations page provides comprehensive casino location management, including 
 - **Access Level:** All authenticated users
 
 ### System Integration
+
 - **Location Management**: Complete location lifecycle management
 - **Cabinet Operations**: Cabinet management within location context
 - **Financial Analytics**: Location-specific financial performance tracking
 - **Collection Systems**: Integration with collection and reporting systems
 
 ## Main Features
+
 - **Location Management:**
   - View, search, sort, add, edit, and delete casino locations.
   - Real-time location performance metrics.
@@ -67,6 +71,7 @@ The Locations page provides comprehensive casino location management, including 
 ## Technical Architecture
 
 ### Core Components
+
 - **Main Page:** `app/locations/page.tsx` - Entry point with location management
 - **Layout Components:**
   - `components/layout/Header.tsx` - Top navigation header
@@ -84,6 +89,7 @@ The Locations page provides comprehensive casino location management, including 
   - `components/ui/CabinetTableSkeleton.tsx` - Cabinet loading skeleton
 
 ### State Management
+
 - **Global Store:** `lib/store/dashboardStore.ts` - Licensee and filter state
 - **Location Actions Store:** `lib/store/locationActionsStore.ts` - Location CRUD operations
 - **Local State:** React `useState` hooks for UI state
@@ -95,6 +101,7 @@ The Locations page provides comprehensive casino location management, including 
   - Modal states for various operations
 
 ### Data Flow
+
 1. **Initial Load:** Fetches locations data on component mount
 2. **Search/Filter:** Filters locations based on search terms and criteria
 3. **Sorting:** Sorts locations based on selected columns and direction
@@ -105,6 +112,7 @@ The Locations page provides comprehensive casino location management, including 
 ### API Integration
 
 #### Location Management Endpoints
+
 - **GET `/api/locations`** - Fetches all locations
   - Parameters: `licensee` (optional)
   - Returns: `{ locations: Location[] }`
@@ -122,16 +130,19 @@ The Locations page provides comprehensive casino location management, including 
   - Returns: `{ success: true }`
 
 #### Location Aggregation Endpoints
+
 - **GET `/api/locationAggregation`** - Fetches aggregated location data
   - Parameters: `timePeriod`, `licensee`, `filters`
   - Returns: Array of aggregated location objects with metrics
 
 #### Cabinet Management Endpoints
+
 - **GET `/api/locations/[locationId]`** - Fetches cabinets for specific location
   - Parameters: `locationId`, `timePeriod`, `licensee`
   - Returns: Array of cabinet objects for the location
 
 #### Data Processing
+
 - **Locations Helper:** `lib/helpers/locations.ts` - Location management utilities
   - `fetchLocationsData()` - Fetches aggregated location data
   - `getAllGamingLocations()` - Fetches all gaming locations
@@ -143,6 +154,7 @@ The Locations page provides comprehensive casino location management, including 
 ### Key Dependencies
 
 #### Frontend Libraries
+
 - **React Hooks:** `useState`, `useEffect`, `useCallback`, `useMemo` - State management
 - **Next.js:** `useRouter`, `usePathname` - Navigation and routing
 - **Axios:** HTTP client for API calls
@@ -151,6 +163,7 @@ The Locations page provides comprehensive casino location management, including 
 - **Sonner:** Toast notifications for user feedback
 
 #### Type Definitions
+
 - **Location Types:** `lib/types/location.ts` - Location management types
   - `AggregatedLocation`, `LocationData`, `LocationFilter`, `LocationSortOption`
 - **Cabinet Types:** `lib/types/cabinets.ts` - Cabinet management types
@@ -158,6 +171,7 @@ The Locations page provides comprehensive casino location management, including 
 - **Shared Types:** `@shared/types` - Core type definitions
 
 #### Utility Functions
+
 - **Auth Utils:** `lib/utils/auth.ts` - Authentication utilities
   - `getAuthHeaders()` - Gets authentication headers for API calls
 - **Number Utils:** `lib/utils/number.ts` - Number formatting
@@ -166,6 +180,7 @@ The Locations page provides comprehensive casino location management, including 
   - `DateRange` - Date range type for filtering
 
 ### Component Hierarchy
+
 ```
 LocationsPage (app/locations/page.tsx)
 ├── Sidebar (components/layout/Sidebar.tsx)
@@ -183,6 +198,7 @@ LocationsPage (app/locations/page.tsx)
 ```
 
 ### Business Logic
+
 - **Location Management:** Complete CRUD operations for casino locations
 - **Performance Analytics:** Aggregated metrics per location
 - **Cabinet Integration:** Location-specific cabinet management
@@ -191,18 +207,21 @@ LocationsPage (app/locations/page.tsx)
 - **Pagination:** Efficient data display with configurable page sizes
 
 ### Security Features
+
 - **Authentication:** Secure API calls with authentication headers
 - **Authorization:** Role-based access to location operations
 - **Input Validation:** Comprehensive validation for all form inputs
 - **Data Sanitization:** Safe handling of user input
 
 ### Error Handling
+
 - **API Failures:** Graceful degradation with user-friendly error messages
 - **Network Issues:** Retry logic and fallback error states
 - **Loading States:** Skeleton loaders and loading indicators
 - **Toast Notifications:** User feedback for all operations
 
 ### Performance Optimizations
+
 - **Memoization:** `useMemo` for expensive computations (filtering, sorting, pagination)
 - **Conditional Rendering:** Separate desktop/mobile layouts
 - **Efficient Filtering:** Optimized search and filter algorithms
@@ -218,21 +237,25 @@ The locations page is like a **map of all your casino locations** with performan
 #### **Location Management Section**
 
 **🏢 What Locations Are**
+
 - **Collection**: Queries the `gaminglocations` collection in the database
 - **Fields Used**: `_id`, `name`, `address`, `rel.licencee`, `geoCoords`, `profitShare`
 - **Simple Explanation**: These are your casino locations - like different branches of a business, each with their own slot machines and performance data
 
 **📊 Location Performance Metrics**
+
 - **Collection**: Aggregates data from `meters` collection by location
 - **Fields Used**: `coinIn`, `coinOut`, `drop`, `totalCancelledCredits`, `gross`
 - **Simple Explanation**: Shows how much money each casino location is making - like a profit report for each branch
 
 **🔍 How Location Search Works**
+
 - **Collection**: Filters the `gaminglocations` collection
 - **Fields Used**: Searches by `name`, `address.street`, `address.city`
 - **Simple Explanation**: Like finding a specific store in a chain - you can search by location name or address
 
 **📍 Location Details**
+
 - **Collection**: Queries `gaminglocations` collection by ID
 - **Fields Used**: `name`, `address`, `geoCoords`, `profitShare`, `collectionBalance`
 - **Simple Explanation**: Shows detailed information about each casino location, including address and financial data
@@ -240,11 +263,13 @@ The locations page is like a **map of all your casino locations** with performan
 #### **Cabinet Integration**
 
 **🎰 Cabinets per Location**
+
 - **Collection**: Queries `machines` collection filtered by `gamingLocation`
 - **Fields Used**: `gamingLocation` (references `gaminglocations._id`)
 - **Simple Explanation**: Shows all the slot machines at each casino location - like inventory for each store
 
 **📈 Cabinet Performance by Location**
+
 - **Collection**: Aggregates `meters` data grouped by `gamingLocation`
 - **Fields Used**: Groups by location, sums up financial metrics
 - **Simple Explanation**: Shows how much money each location's machines are making collectively
@@ -252,16 +277,19 @@ The locations page is like a **map of all your casino locations** with performan
 #### **Performance Analytics**
 
 **💰 Financial Metrics**
+
 - **Collection**: Aggregates `meters` collection by location
 - **Fields Used**: `coinIn`, `coinOut`, `drop`, `gross` per location
 - **Simple Explanation**: Shows total revenue, expenses, and profit for each casino location
 
 **🖥️ Machine Status**
+
 - **Collection**: Queries `machines` collection with status filtering
 - **Fields Used**: `lastActivity`, `assetStatus`, `deletedAt` per location
 - **Simple Explanation**: Shows how many machines are working vs. offline at each location
 
 **📊 Location Ranking**
+
 - **Collection**: Aggregates and sorts `meters` data by location
 - **Fields Used**: Sorts by `totalDrop` or other financial metrics
 - **Simple Explanation**: Shows which locations are performing best financially
@@ -269,6 +297,7 @@ The locations page is like a **map of all your casino locations** with performan
 #### **Database Queries Explained**
 
 **For Location List:**
+
 ```javascript
 // Queries the gaminglocations collection
 // Filters by: licensee (optional)
@@ -276,6 +305,7 @@ The locations page is like a **map of all your casino locations** with performan
 ```
 
 **For Location Performance:**
+
 ```javascript
 // Queries meters collection
 // Groups by: gamingLocation
@@ -284,6 +314,7 @@ The locations page is like a **map of all your casino locations** with performan
 ```
 
 **For Location Details:**
+
 ```javascript
 // Queries gaminglocations collection by ID
 // Joins with machines collection for cabinet count
@@ -291,6 +322,7 @@ The locations page is like a **map of all your casino locations** with performan
 ```
 
 **For Location Search:**
+
 ```javascript
 // Queries gaminglocations collection
 // Filters by: name, address fields
@@ -300,24 +332,28 @@ The locations page is like a **map of all your casino locations** with performan
 #### **Why This Matters for Casino Operations**
 
 **🏢 Location Management Benefits:**
+
 - **Multi-location Oversight**: Manage multiple casino locations from one system
 - **Performance Comparison**: See which locations are most profitable
 - **Resource Allocation**: Decide where to invest in new machines or improvements
 - **Geographic Planning**: Understand performance by region or market
 
 **📊 Performance Analytics Benefits:**
+
 - **Financial Tracking**: Know exactly how much each location is making
 - **Machine Optimization**: See which locations need more or better machines
 - **Market Analysis**: Compare performance across different markets
 - **Investment Decisions**: Make data-driven decisions about location expansion
 
 **🎰 Cabinet Integration Benefits:**
+
 - **Inventory Management**: Know how many machines each location has
 - **Maintenance Planning**: Track machine status across locations
 - **Performance Analysis**: See which locations have the best-performing machines
 - **Capacity Planning**: Know when locations need more machines
 
 **📍 Operational Benefits:**
+
 - **Centralized Management**: Control all locations from one dashboard
 - **Real-time Monitoring**: See live performance data for all locations
 - **Reporting**: Generate reports for management and regulators
@@ -332,71 +368,96 @@ The locations page essentially **gives you a bird's-eye view of your entire casi
 **Current Implementation Analysis:**
 
 #### **Location Money In (Drop) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  moneyIn: { $sum: "$movement.drop" }
+  moneyIn: {
+    $sum: '$movement.drop';
+  }
   ```
 - **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
 - **Business Context**: Total physical cash inserted across all machines at location
 - **Aggregation**: Sums across all machines at location within date range
 
 #### **Location Money Out (Total Cancelled Credits) ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  moneyOut: { $sum: "$movement.totalCancelledCredits" }
+  moneyOut: {
+    $sum: '$movement.totalCancelledCredits';
+  }
   ```
 - **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
 - **Business Context**: Total credits paid out to players at location (vouchers + hand-paid)
 - **Aggregation**: Sums across all machines at location within date range
 
 #### **Location Gross Revenue ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
-  gross: { $subtract: ["$moneyIn", "$moneyOut"] }
+  gross: {
+    $subtract: ['$moneyIn', '$moneyOut'];
+  }
   // Where: moneyIn = Σ(movement.drop), moneyOut = Σ(movement.totalCancelledCredits)
   ```
 - **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
 - **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` per location
 
 #### **Machine Count Calculations ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Total machines at location
   { $match: { gamingLocation: locationId, deletedAt: { $exists: false } } }
   // Online machines at location
   { $match: { lastActivity: { $gte: recentThreshold } } }
   ```
-- **Business Logic**: 
+- **Business Logic**:
   - **Total**: Count of non-deleted machines at location
   - **Online**: Count of machines with recent activity (< 3 minutes)
   - **Offline**: Total - Online
 - ✅ **CONSISTENT** - Standard machine status calculation per location
 
 #### **Location Search Logic ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   $or: [
     { name: { $regex: searchTerm, $options: 'i' } },
-    { "address.street": { $regex: searchTerm, $options: 'i' } },
-    { "address.city": { $regex: searchTerm, $options: 'i' } }
-  ]
+    { 'address.street': { $regex: searchTerm, $options: 'i' } },
+    { 'address.city': { $regex: searchTerm, $options: 'i' } },
+  ];
   ```
 - **Business Logic**: Case-insensitive search across location name and address fields
 - ✅ **COMPREHENSIVE** - Covers all relevant searchable location fields
 
 #### **Location Ranking Logic ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Sort by performance metrics
-  { $sort: { gross: -1 } }        // By gross revenue
-  { $sort: { moneyIn: -1 } }      // By money in (drop)
-  { $sort: { totalMachines: -1 } } // By machine count
+  {
+    $sort: {
+      gross: -1;
+    }
+  } // By gross revenue
+  {
+    $sort: {
+      moneyIn: -1;
+    }
+  } // By money in (drop)
+  {
+    $sort: {
+      totalMachines: -1;
+    }
+  } // By machine count
   ```
 - **Financial Guide**: Uses `drop` and `gross` for ranking ✅ **MATCHES**
 - **Business Logic**: Ranks locations by financial performance
 
 #### **Cabinet Performance by Location ✅**
-- **Current Implementation**: 
+
+- **Current Implementation**:
   ```javascript
   // Aggregates cabinet data by location
   { $group: {
@@ -412,6 +473,7 @@ The locations page essentially **gives you a bird's-eye view of your entire casi
 ### Mathematical Formulas Summary
 
 #### **Core Location Metrics**
+
 ```
 Location Money In = Σ(movement.drop) across all machines at location
 Location Money Out = Σ(movement.totalCancelledCredits) across all machines at location
@@ -419,6 +481,7 @@ Location Gross Revenue = Location Money In - Location Money Out
 ```
 
 #### **Machine Status by Location**
+
 ```
 Total Machines = COUNT(machines WHERE gamingLocation = locationId AND deletedAt IS NULL)
 Online Machines = COUNT(machines WHERE gamingLocation = locationId AND lastActivity >= currentTime - 3min)
@@ -426,13 +489,15 @@ Offline Machines = Total Machines - Online Machines
 ```
 
 #### **Location Performance Ranking**
+
 ```
 Top Performing Locations = ORDER BY gross DESC
-Revenue Ranking = ORDER BY moneyIn DESC  
+Revenue Ranking = ORDER BY moneyIn DESC
 Machine Count Ranking = ORDER BY totalMachines DESC
 ```
 
 #### **Cabinet Aggregation by Location**
+
 ```
 Location Cabinet Count = COUNT(machines WHERE gamingLocation = locationId)
 Location Cabinet Revenue = Σ(movement.drop) WHERE gamingLocation = locationId
@@ -440,10 +505,11 @@ Location Cabinet Gross = Σ(movement.drop - movement.totalCancelledCredits) WHER
 ```
 
 #### **Search Algorithm**
+
 ```
-Location Search = FIND(locations WHERE 
+Location Search = FIND(locations WHERE
   name CONTAINS searchTerm OR
-  address.street CONTAINS searchTerm OR 
+  address.street CONTAINS searchTerm OR
   address.city CONTAINS searchTerm
 ) CASE_INSENSITIVE
 ```
@@ -451,13 +517,15 @@ Location Search = FIND(locations WHERE
 ### Data Validation & Error Handling
 
 #### **Input Validation ✅**
+
 - **Location ID**: Validates MongoDB ObjectId format
 - **Search Terms**: Sanitizes input to prevent injection attacks
 - **Date Ranges**: Validates ISO date format for filtering
 - **Pagination**: Validates numeric page and limit parameters
 
 #### **Data Integrity ✅**
+
 - **Null Handling**: Uses `$ifNull` operators to default missing values to 0
 - **Deleted Locations**: Filters out soft-deleted locations (`deletedAt` exists)
 - **Missing Coordinates**: Gracefully handles locations without geo coordinates
-- **Financial Validation**: Prevents negative financial calculations 
+- **Financial Validation**: Prevents negative financial calculations

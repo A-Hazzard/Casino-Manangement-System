@@ -1,19 +1,19 @@
-import * as React from "react";
-import { format } from "date-fns";
+import * as React from 'react';
+import { format } from 'date-fns';
 import {
   DayPicker,
   SelectRangeEventHandler,
   type DateRange as RDPDateRange,
-} from "react-day-picker";
-import "react-day-picker/dist/style.css"; // Ensure base styles are loaded
+} from 'react-day-picker';
+import 'react-day-picker/dist/style.css'; // Ensure base styles are loaded
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"; // Assuming you have shadcn/ui popover
-import { Button } from "@/components/ui/button"; // Assuming you have shadcn/ui button
-import { CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils"; // For conditional class names
+} from '@/components/ui/popover'; // Assuming you have shadcn/ui popover
+import { Button } from '@/components/ui/button'; // Assuming you have shadcn/ui button
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils'; // For conditional class names
 
 // Simple Error Boundary for DayPicker
 class ErrorBoundary extends React.Component<
@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component<
           <p>Date picker encountered an error. Please try again.</p>
           <button
             onClick={() => this.setState({ hasError: false })}
-            className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm"
+            className="mt-2 rounded bg-blue-500 px-3 py-1 text-sm text-white"
           >
             Retry
           </button>
@@ -72,7 +72,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   className,
   disabled,
   maxDate,
-  placeholder = "Pick a date range",
+  placeholder = 'Pick a date range',
   numberOfMonths = 1,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -81,26 +81,26 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     if (!value) {
       return { from: undefined, to: undefined };
     }
-    
+
     // Validate that dates exist and are valid
     const hasValidFrom = value.from && !isNaN(value.from.getTime());
     const hasValidTo = value.to && !isNaN(value.to.getTime());
-    
+
     // If we have both valid dates, return the range
     if (hasValidFrom && hasValidTo) {
       return { from: value.from, to: value.to };
     }
-    
+
     // If we only have a valid from date, return partial range (this is important for showing selected date)
     if (hasValidFrom) {
       return { from: value.from, to: undefined };
     }
-    
+
     // If we only have a valid to date (shouldn't happen but handle it)
     if (hasValidTo) {
       return { from: undefined, to: value.to };
     }
-    
+
     // If neither is valid, return empty range
     return { from: undefined, to: undefined };
   }, [value]);
@@ -128,19 +128,19 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         }
         // If same date, show single date
         if (safeValue.from.getTime() === safeValue.to.getTime()) {
-          return format(safeValue.from, "MMM d, yyyy");
+          return format(safeValue.from, 'MMM d, yyyy');
         }
         // If different dates, show range
-        return `${format(safeValue.from, "MMM d, yyyy")} - ${format(
+        return `${format(safeValue.from, 'MMM d, yyyy')} - ${format(
           safeValue.to,
-          "MMM d, yyyy"
+          'MMM d, yyyy'
         )}`;
       } else if (safeValue.from) {
         // Validate date before formatting
         if (isNaN(safeValue.from.getTime())) {
           return placeholder;
         }
-        return format(safeValue.from, "MMM d, yyyy");
+        return format(safeValue.from, 'MMM d, yyyy');
       }
       return placeholder;
     } catch (error) {
@@ -153,10 +153,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant={"outline"}
+          variant={'outline'}
           className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground",
+            'w-full justify-start text-left font-normal',
+            !value && 'text-muted-foreground',
             className
           )}
           disabled={disabled}
@@ -177,8 +177,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               disabled === true
                 ? true
                 : maxDate
-                ? [{ after: maxDate }]
-                : undefined
+                  ? [{ after: maxDate }]
+                  : undefined
             }
             initialFocus={isOpen}
             showOutsideDays

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useRef } from "react";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import { useRef } from 'react';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -10,12 +10,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { LocationTableProps } from "@/lib/types/location";
+} from '@/components/ui/table';
+import { LocationTableProps } from '@/lib/types/location';
 
-import React from "react";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+import React from 'react';
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 const LocationTable: React.FC<LocationTableProps> = ({
   locations,
@@ -35,68 +35,68 @@ const LocationTable: React.FC<LocationTableProps> = ({
   return (
     <>
       <div className="overflow-x-auto bg-white shadow">
-        <Table ref={tableRef} className="table-fixed w-full">
+        <Table ref={tableRef} className="w-full table-fixed">
           <TableHeader>
             <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
               <TableHead
-                className="text-white font-semibold cursor-pointer relative"
-                onClick={() => onSort("locationName")}
+                className="relative cursor-pointer font-semibold text-white"
+                onClick={() => onSort('locationName')}
                 isFirstColumn={true}
               >
                 <span>LOCATION NAME</span>
-                {sortOption === "locationName" && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
-                    {sortOrder === "desc" ? "▼" : "▲"}
+                {sortOption === 'locationName' && (
+                  <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                    {sortOrder === 'desc' ? '▼' : '▲'}
                   </span>
                 )}
               </TableHead>
               <TableHead
-                className="text-white font-semibold cursor-pointer relative"
-                onClick={() => onSort("moneyIn")}
+                className="relative cursor-pointer font-semibold text-white"
+                onClick={() => onSort('moneyIn')}
               >
                 <span>MONEY IN</span>
-                {sortOption === "moneyIn" && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
-                    {sortOrder === "desc" ? "▼" : "▲"}
+                {sortOption === 'moneyIn' && (
+                  <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                    {sortOrder === 'desc' ? '▼' : '▲'}
                   </span>
                 )}
               </TableHead>
               <TableHead
-                className="text-white font-semibold cursor-pointer relative"
-                onClick={() => onSort("moneyOut")}
+                className="relative cursor-pointer font-semibold text-white"
+                onClick={() => onSort('moneyOut')}
               >
                 <span>MONEY OUT</span>
-                {sortOption === "moneyOut" && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
-                    {sortOrder === "desc" ? "▼" : "▲"}
+                {sortOption === 'moneyOut' && (
+                  <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                    {sortOrder === 'desc' ? '▼' : '▲'}
                   </span>
                 )}
               </TableHead>
               <TableHead
-                className="text-white font-semibold cursor-pointer relative"
-                onClick={() => onSort("gross")}
+                className="relative cursor-pointer font-semibold text-white"
+                onClick={() => onSort('gross')}
               >
                 <span>GROSS</span>
-                {sortOption === "gross" && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs sort-icon">
-                    {sortOrder === "desc" ? "▼" : "▲"}
+                {sortOption === 'gross' && (
+                  <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                    {sortOrder === 'desc' ? '▼' : '▲'}
                   </span>
                 )}
               </TableHead>
-              <TableHead className="text-white font-semibold">
+              <TableHead className="font-semibold text-white">
                 ACTIONS
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {locations.map((loc) => {
+            {locations.map(loc => {
               const location = loc as Record<string, unknown>;
               return (
                 <TableRow
                   key={location.locationName as string}
                   className="cursor-pointer hover:bg-muted"
-                  onClick={(e) => {
-                    if (!(e.target as HTMLElement).closest("td:last-child")) {
+                  onClick={e => {
+                    if (!(e.target as HTMLElement).closest('td:last-child')) {
                       handleRowClick(location.location as string);
                     }
                   }}
@@ -105,14 +105,14 @@ const LocationTable: React.FC<LocationTableProps> = ({
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">
                         {(location.locationName as string) ||
-                          "Unknown Location"}
+                          'Unknown Location'}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>{formatCurrency(loc.moneyIn || 0)}</TableCell>
                   <TableCell>{formatCurrency(loc.moneyOut || 0)}</TableCell>
                   <TableCell>
-                    <span className="text-green-600 font-semibold">
+                    <span className="font-semibold text-green-600">
                       {formatCurrency(loc.gross || 0)}
                     </span>
                   </TableCell>
@@ -121,35 +121,35 @@ const LocationTable: React.FC<LocationTableProps> = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
-                          onAction("edit", loc);
+                          onAction('edit', loc);
                         }}
-                        className="p-1 h-8 w-8 hover:bg-accent"
+                        className="h-8 w-8 p-1 hover:bg-accent"
                       >
                         <Image
                           src={editIcon}
                           alt="Edit"
                           width={16}
                           height={16}
-                          className="w-4 h-4"
+                          className="h-4 w-4"
                         />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
-                          onAction("delete", loc);
+                          onAction('delete', loc);
                         }}
-                        className="p-1 h-8 w-8 hover:bg-accent"
+                        className="h-8 w-8 p-1 hover:bg-accent"
                       >
                         <Image
                           src={deleteIcon}
                           alt="Delete"
                           width={16}
                           height={16}
-                          className="w-4 h-4"
+                          className="h-4 w-4"
                         />
                       </Button>
                     </div>

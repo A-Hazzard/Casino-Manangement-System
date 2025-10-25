@@ -1,9 +1,8 @@
-import { create } from "zustand";
-
+import { create } from 'zustand';
 
 // This is a store for firmware actions (delete modal)
 
-import type { FirmwareActionsState } from "@/lib/types/store";
+import type { FirmwareActionsState } from '@/lib/types/store';
 
 // Re-export frontend-specific types for convenience
 export type { FirmwareActionsState };
@@ -21,15 +20,15 @@ const dummyState: FirmwareActionsState = {
 
 // Make sure store is created only on client-side
 const createStore = () => {
-  return create<FirmwareActionsState>((set) => ({
+  return create<FirmwareActionsState>(set => ({
     selectedFirmware: null,
     isDeleteModalOpen: false,
     isDownloadModalOpen: false,
-    openDeleteModal: (firmware) =>
+    openDeleteModal: firmware =>
       set({ selectedFirmware: firmware, isDeleteModalOpen: true }),
     closeDeleteModal: () =>
       set({ selectedFirmware: null, isDeleteModalOpen: false }),
-    openDownloadModal: (firmware) =>
+    openDownloadModal: firmware =>
       set({ selectedFirmware: firmware, isDownloadModalOpen: true }),
     closeDownloadModal: () =>
       set({ selectedFirmware: null, isDownloadModalOpen: false }),
@@ -49,4 +48,4 @@ const getClientStore = () => {
 
 // Use this store only on client side
 export const useFirmwareActionsStore =
-  typeof window !== "undefined" ? getClientStore() : create(() => dummyState); 
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

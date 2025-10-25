@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -12,9 +12,9 @@ interface CurrencyIndicatorProps {
  * Component that displays the current currency being used
  * Only shows when "All Licensee" is selected
  */
-export function CurrencyIndicator({ 
-  className = "", 
-  showLabel = true 
+export function CurrencyIndicator({
+  className = '',
+  showLabel = true,
 }: CurrencyIndicatorProps) {
   const { getCurrencyInfo, shouldShowCurrency } = useCurrencyFormat();
 
@@ -26,7 +26,9 @@ export function CurrencyIndicator({
   const currencyInfo = getCurrencyInfo();
 
   return (
-    <div className={`flex items-center gap-1 text-sm text-gray-600 ${className}`}>
+    <div
+      className={`flex items-center gap-1 text-sm text-gray-600 ${className}`}
+    >
       {showLabel && <span>Currency:</span>}
       <span className="font-medium">{currencyInfo.symbol}</span>
       <span className="text-xs text-gray-500">({currencyInfo.code})</span>

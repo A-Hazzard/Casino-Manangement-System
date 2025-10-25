@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get("licencee");
-    
+    const licencee = searchParams.get('licencee');
+
     // Build query filter
     const matchStage: Record<string, unknown> = {};
-    
-    if (licencee && licencee !== "all") {
+
+    if (licencee && licencee !== 'all') {
       // Add licensee filtering if needed
       matchStage.licencee = licencee;
     }
@@ -27,9 +27,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(summary);
   } catch (error) {
-    console.error("Members summary API error:", error);
+    console.error('Members summary API error:', error);
     return NextResponse.json(
-      { error: "Failed to fetch members summary" },
+      { error: 'Failed to fetch members summary' },
       { status: 500 }
     );
   }

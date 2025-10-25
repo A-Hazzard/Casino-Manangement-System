@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { usePathname } from "next/navigation";
-import { useEffect } from "react";
-import AppSidebar from "@/components/layout/AppSidebar";
-import { SidebarOverlay } from "@/components/ui/sidebar";
-import { setupAxiosInterceptors } from "@/lib/utils/axiosInterceptor";
+import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import AppSidebar from '@/components/layout/AppSidebar';
+import { SidebarOverlay } from '@/components/ui/sidebar';
+import { setupAxiosInterceptors } from '@/lib/utils/axiosInterceptor';
 
 export default function GlobalSidebarWrapper() {
   const pathname = usePathname();
@@ -14,7 +14,7 @@ export default function GlobalSidebarWrapper() {
     setupAxiosInterceptors();
   }, []);
 
-  if (pathname === "/login") return null;
+  if (pathname === '/login') return null;
   return (
     <>
       <AppSidebar />

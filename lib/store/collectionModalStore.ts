@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import type { CollectionDocument } from "@/lib/types/collections";
-import type { CollectionReportMachineSummary } from "@/lib/types/api";
+import { create } from 'zustand';
+import type { CollectionDocument } from '@/lib/types/collections';
+import type { CollectionReportMachineSummary } from '@/lib/types/api';
 
 type CollectionModalState = {
   // Location state
@@ -53,28 +53,28 @@ type CollectionModalState = {
   ) => void;
   setCollectionTime: (time: Date) => void;
   setFinancials: (
-    financials: Partial<CollectionModalState["financials"]>
+    financials: Partial<CollectionModalState['financials']>
   ) => void;
   resetState: () => void;
 };
 
 const initialFinancials = {
-  taxes: "0",
-  advance: "0",
-  variance: "0",
-  varianceReason: "",
-  amountToCollect: "0",
-  collectedAmount: "",
-  balanceCorrection: "0",
-  balanceCorrectionReason: "",
-  previousBalance: "0",
-  reasonForShortagePayment: "",
+  taxes: '0',
+  advance: '0',
+  variance: '0',
+  varianceReason: '',
+  amountToCollect: '0',
+  collectedAmount: '',
+  balanceCorrection: '0',
+  balanceCorrectionReason: '',
+  previousBalance: '0',
+  reasonForShortagePayment: '',
 };
 
-export const useCollectionModalStore = create<CollectionModalState>((set) => ({
+export const useCollectionModalStore = create<CollectionModalState>(set => ({
   // Initial state
   selectedLocationId: undefined,
-  selectedLocationName: "",
+  selectedLocationName: '',
   lockedLocationId: undefined,
   availableMachines: [],
   collectedMachines: [],
@@ -87,47 +87,47 @@ export const useCollectionModalStore = create<CollectionModalState>((set) => ({
   setSelectedLocation: (locationId, locationName) =>
     set({ selectedLocationId: locationId, selectedLocationName: locationName }),
 
-  setLockedLocation: (locationId) => set({ lockedLocationId: locationId }),
+  setLockedLocation: locationId => set({ lockedLocationId: locationId }),
 
-  setAvailableMachines: (machines) => set({ availableMachines: machines }),
+  setAvailableMachines: machines => set({ availableMachines: machines }),
 
-  setCollectedMachines: (machines) => set({ collectedMachines: machines }),
+  setCollectedMachines: machines => set({ collectedMachines: machines }),
 
-  addCollectedMachine: (machine) =>
-    set((state) => ({
+  addCollectedMachine: machine =>
+    set(state => ({
       collectedMachines: [...state.collectedMachines, machine],
     })),
 
-  removeCollectedMachine: (machineId) =>
-    set((state) => ({
+  removeCollectedMachine: machineId =>
+    set(state => ({
       collectedMachines: state.collectedMachines.filter(
-        (m) => m._id !== machineId
+        m => m._id !== machineId
       ),
     })),
 
   updateCollectedMachine: (machineId, updates) =>
-    set((state) => ({
-      collectedMachines: state.collectedMachines.map((m) =>
+    set(state => ({
+      collectedMachines: state.collectedMachines.map(m =>
         m._id === machineId ? { ...m, ...updates } : m
       ),
     })),
 
-  setSelectedMachineId: (machineId) => set({ selectedMachineId: machineId }),
+  setSelectedMachineId: machineId => set({ selectedMachineId: machineId }),
 
-  setSelectedMachineData: (machineData) =>
+  setSelectedMachineData: machineData =>
     set({ selectedMachineData: machineData }),
 
-  setCollectionTime: (time) => set({ collectionTime: time }),
+  setCollectionTime: time => set({ collectionTime: time }),
 
-  setFinancials: (financials) =>
-    set((state) => ({
+  setFinancials: financials =>
+    set(state => ({
       financials: { ...state.financials, ...financials },
     })),
 
   resetState: () =>
     set({
       selectedLocationId: undefined,
-      selectedLocationName: "",
+      selectedLocationName: '',
       lockedLocationId: undefined,
       availableMachines: [],
       collectedMachines: [],

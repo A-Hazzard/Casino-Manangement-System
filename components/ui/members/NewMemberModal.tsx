@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import axios from "axios";
-import { toast } from "sonner";
-import { X, UserPlus } from "lucide-react";
-import { useUserStore } from "@/lib/store/userStore";
+import { useEffect, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { X, UserPlus } from 'lucide-react';
+import { useUserStore } from '@/lib/store/userStore';
 
 type NewMemberModalProps = {
   isOpen: boolean;
@@ -28,7 +28,7 @@ export default function NewMemberModal({
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
-    if (!user) return "Unknown User";
+    if (!user) return 'Unknown User';
 
     // Check if user has profile with firstName and lastName
     if (user.profile?.firstName && user.profile?.lastName) {
@@ -46,17 +46,17 @@ export default function NewMemberModal({
     }
 
     // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== "") {
+    if (user.username && user.username.trim() !== '') {
       return user.username;
     }
 
     // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== "") {
+    if (user.emailAddress && user.emailAddress.trim() !== '') {
       return user.emailAddress;
     }
 
     // Fallback
-    return "Unknown User";
+    return 'Unknown User';
   };
 
   // Activity logging is now handled via API calls
@@ -70,10 +70,10 @@ export default function NewMemberModal({
     newData?: Record<string, unknown> | null
   ) => {
     try {
-      const response = await fetch("/api/activity-logs", {
-        method: "POST",
+      const response = await fetch('/api/activity-logs', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action,
@@ -81,9 +81,9 @@ export default function NewMemberModal({
           resourceId,
           resourceName,
           details,
-          userId: user?._id || "unknown",
+          userId: user?._id || 'unknown',
           username: getUserDisplayName(),
-          userRole: "user",
+          userRole: 'user',
           previousData: previousData || null,
           newData: newData || null,
           changes: [], // Will be calculated by the API
@@ -91,24 +91,24 @@ export default function NewMemberModal({
       });
 
       if (!response.ok) {
-        console.error("Failed to log activity:", response.statusText);
+        console.error('Failed to log activity:', response.statusText);
       }
     } catch (error) {
-      console.error("Error logging activity:", error);
+      console.error('Error logging activity:', error);
     }
   };
 
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phoneNumber: "",
-    occupation: "",
-    address: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    occupation: '',
+    address: '',
     points: 0,
     uaccount: 0,
-    username: "",
-    pin: "0000",
+    username: '',
+    pin: '0000',
   });
 
   useEffect(() => {
@@ -120,7 +120,7 @@ export default function NewMemberModal({
           opacity: 1,
           y: 0,
           duration: 0.3,
-          ease: "power2.out",
+          ease: 'power2.out',
           overwrite: true,
         }
       );
@@ -128,7 +128,7 @@ export default function NewMemberModal({
       gsap.to(backdropRef.current, {
         opacity: 1,
         duration: 0.2,
-        ease: "power2.out",
+        ease: 'power2.out',
         overwrite: true,
       });
     }
@@ -139,7 +139,7 @@ export default function NewMemberModal({
       opacity: 0,
       y: -20,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
       onComplete: () => {
         onClose();
       },
@@ -148,13 +148,13 @@ export default function NewMemberModal({
     gsap.to(backdropRef.current, {
       opacity: 0,
       duration: 0.2,
-      ease: "power2.in",
+      ease: 'power2.in',
     });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [name]: value,
     }));
@@ -162,13 +162,13 @@ export default function NewMemberModal({
 
   const handleSubmit = async () => {
     if (!formData.firstName || !formData.lastName || !formData.username) {
-      toast.error("Please fill in all required fields");
+      toast.error('Please fill in all required fields');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await axios.post("/api/members", {
+      const response = await axios.post('/api/members', {
         profile: {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -188,8 +188,8 @@ export default function NewMemberModal({
 
         // Log the creation activity
         await logActivity(
-          "create",
-          "member",
+          'create',
+          'member',
           createdMember._id || formData.username,
           `${formData.firstName} ${formData.lastName}`,
           `Created new member: ${formData.firstName} ${formData.lastName} with username: ${formData.username}`,
@@ -197,28 +197,28 @@ export default function NewMemberModal({
           createdMember // New data
         );
 
-        toast.success("Member created successfully");
+        toast.success('Member created successfully');
         onMemberCreated();
         handleClose();
         // Reset form
         setFormData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          phoneNumber: "",
-          occupation: "",
-          address: "",
+          firstName: '',
+          lastName: '',
+          email: '',
+          phoneNumber: '',
+          occupation: '',
+          address: '',
           points: 0,
           uaccount: 0,
-          username: "",
-          pin: "0000",
+          username: '',
+          pin: '0000',
         });
       } else {
-        toast.error("Failed to create member");
+        toast.error('Failed to create member');
       }
     } catch (error) {
-      console.error("Error creating member:", error);
-      toast.error("Failed to create member");
+      console.error('Error creating member:', error);
+      toast.error('Failed to create member');
     } finally {
       setLoading(false);
     }
@@ -231,7 +231,7 @@ export default function NewMemberModal({
       {/* Backdrop */}
       <div
         ref={backdropRef}
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        className="fixed inset-0 z-40 bg-black bg-opacity-50"
         onClick={handleClose}
       />
 
@@ -239,18 +239,18 @@ export default function NewMemberModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto"
+          className="mx-auto max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl"
         >
           {/* Header */}
-          <div className="bg-button text-white p-6 rounded-t-lg">
+          <div className="rounded-t-lg bg-button p-6 text-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 bg-white bg-opacity-20 rounded-full">
-                  <UserPlus className="w-6 h-6 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white bg-opacity-20">
+                  <UserPlus className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">Create New Member</h2>
-                  <p className="text-white text-opacity-90 text-sm">
+                  <p className="text-sm text-white text-opacity-90">
                     Add a new member to the system
                   </p>
                 </div>
@@ -261,7 +261,7 @@ export default function NewMemberModal({
                 onClick={handleClose}
                 className="text-white hover:bg-white hover:bg-opacity-20"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </Button>
             </div>
           </div>
@@ -270,12 +270,12 @@ export default function NewMemberModal({
           <div className="p-6">
             <div className="space-y-6">
               {/* Basic Information Section */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-button rounded-full"></div>
+              <div className="rounded-lg bg-gray-50 p-4">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-800">
+                  <div className="h-2 w-2 rounded-full bg-button"></div>
                   Basic Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label
                       htmlFor="firstName"
@@ -289,7 +289,7 @@ export default function NewMemberModal({
                       value={formData.firstName}
                       onChange={handleInputChange}
                       placeholder="Enter first name"
-                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                      className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                       required
                     />
                   </div>
@@ -306,7 +306,7 @@ export default function NewMemberModal({
                       value={formData.lastName}
                       onChange={handleInputChange}
                       placeholder="Enter last name"
-                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                      className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                       required
                     />
                   </div>
@@ -324,19 +324,19 @@ export default function NewMemberModal({
                     value={formData.username}
                     onChange={handleInputChange}
                     placeholder="Enter username"
-                    className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                    className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                     required
                   />
                 </div>
               </div>
 
               {/* Contact Information Section */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-button rounded-full"></div>
+              <div className="rounded-lg bg-gray-50 p-4">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-800">
+                  <div className="h-2 w-2 rounded-full bg-button"></div>
                   Contact Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label
                       htmlFor="email"
@@ -351,7 +351,7 @@ export default function NewMemberModal({
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="Enter email address"
-                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                      className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                     />
                   </div>
                   <div className="space-y-2">
@@ -367,7 +367,7 @@ export default function NewMemberModal({
                       value={formData.phoneNumber}
                       onChange={handleInputChange}
                       placeholder="Enter phone number"
-                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                      className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                     />
                   </div>
                 </div>
@@ -384,7 +384,7 @@ export default function NewMemberModal({
                     value={formData.address}
                     onChange={handleInputChange}
                     placeholder="Enter address"
-                    className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                    className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                   />
                 </div>
                 <div className="mt-4 space-y-2">
@@ -400,18 +400,18 @@ export default function NewMemberModal({
                     value={formData.occupation}
                     onChange={handleInputChange}
                     placeholder="Enter occupation"
-                    className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                    className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                   />
                 </div>
               </div>
 
               {/* Account Information Section */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-button rounded-full"></div>
+              <div className="rounded-lg bg-gray-50 p-4">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-800">
+                  <div className="h-2 w-2 rounded-full bg-button"></div>
                   Account Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label
                       htmlFor="points"
@@ -426,7 +426,7 @@ export default function NewMemberModal({
                       value={formData.points}
                       onChange={handleInputChange}
                       placeholder="0"
-                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                      className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                     />
                   </div>
                   <div className="space-y-2">
@@ -443,7 +443,7 @@ export default function NewMemberModal({
                       value={formData.uaccount}
                       onChange={handleInputChange}
                       placeholder="0.00"
-                      className="border-gray-300 focus:ring-buttonActive focus:border-buttonActive"
+                      className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
                     />
                   </div>
                 </div>
@@ -452,7 +452,7 @@ export default function NewMemberModal({
           </div>
 
           {/* Footer */}
-          <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t">
+          <div className="rounded-b-lg border-t bg-gray-50 px-6 py-4">
             <div className="flex justify-end gap-3">
               <Button
                 variant="outline"
@@ -464,16 +464,16 @@ export default function NewMemberModal({
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="bg-button hover:bg-buttonActive text-white"
+                className="bg-button text-white hover:bg-buttonActive"
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                     Creating...
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <UserPlus className="w-4 h-4" />
+                    <UserPlus className="h-4 w-4" />
                     Create Member
                   </div>
                 )}

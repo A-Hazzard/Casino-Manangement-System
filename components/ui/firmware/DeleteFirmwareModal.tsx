@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import axios from "axios";
-import { Button } from "@/components/ui/button";
-import { Cross1Icon } from "@radix-ui/react-icons";
-import Image from "next/image";
-import { useFirmwareActionsStore } from "@/lib/store/firmwareActionsStore";
-import { toast } from "sonner";
-import deleteIcon from "@/public/deleteIcon.svg";
+import { useEffect, useRef, useState } from 'react';
+import axios from 'axios';
+import { Button } from '@/components/ui/button';
+import { Cross1Icon } from '@radix-ui/react-icons';
+import Image from 'next/image';
+import { useFirmwareActionsStore } from '@/lib/store/firmwareActionsStore';
+import { toast } from 'sonner';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 export const DeleteFirmwareModal = ({
   onDeleteComplete,
 }: {
   onDeleteComplete: () => void;
 }) => {
-  const { isDeleteModalOpen, selectedFirmware, closeDeleteModal } = useFirmwareActionsStore();
+  const { isDeleteModalOpen, selectedFirmware, closeDeleteModal } =
+    useFirmwareActionsStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-
 
   useEffect(() => {
     if (isDeleteModalOpen) {
@@ -38,15 +38,15 @@ export const DeleteFirmwareModal = ({
 
       await axios.delete(`/api/firmwares/${selectedFirmware._id}`);
 
-      toast.success("Firmware deleted successfully!");
+      toast.success('Firmware deleted successfully!');
       handleClose();
       onDeleteComplete();
     } catch (error) {
       // Log error for debugging in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error deleting firmware:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error deleting firmware:', error);
       }
-      toast.error("Failed to delete firmware. Please try again.");
+      toast.error('Failed to delete firmware. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -68,10 +68,10 @@ export const DeleteFirmwareModal = ({
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="bg-container rounded-md shadow-lg max-w-md w-full"
+          className="w-full max-w-md rounded-md bg-container shadow-lg"
         >
-          <div className="p-4 border-b border-border">
-            <div className="flex justify-between items-center">
+          <div className="border-b border-border p-4">
+            <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-buttonActive">
                 Delete Firmware
               </h2>
@@ -80,18 +80,18 @@ export const DeleteFirmwareModal = ({
                 onClick={handleClose}
                 className="text-grayHighlight hover:bg-buttonInactive/10"
               >
-                <Cross1Icon className="w-5 h-5" />
+                <Cross1Icon className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
           <div className="p-6">
             <div className="text-center">
-              <div className="flex justify-center mb-4">
+              <div className="mb-4 flex justify-center">
                 <Image src={deleteIcon} alt="Delete" width={64} height={64} />
               </div>
-              <p className="text-lg font-semibold text-grayHighlight mb-4">
-                Are you sure you want to delete{" "}
+              <p className="mb-4 text-lg font-semibold text-grayHighlight">
+                Are you sure you want to delete{' '}
                 <span className="font-bold text-buttonActive">
                   {selectedFirmware.product} {selectedFirmware.version}
                 </span>
@@ -104,14 +104,14 @@ export const DeleteFirmwareModal = ({
             </div>
           </div>
 
-          <div className="p-4 border-t border-border">
+          <div className="border-t border-border p-4">
             <div className="flex justify-center space-x-4">
               <Button
                 onClick={handleDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={loading}
               >
-                {loading ? "Deleting..." : "Delete"}
+                {loading ? 'Deleting...' : 'Delete'}
               </Button>
               <Button
                 onClick={handleClose}

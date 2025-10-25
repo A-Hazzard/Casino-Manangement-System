@@ -1,4 +1,4 @@
-export type CollectionView = "collection" | "monthly" | "manager" | "collector";
+export type CollectionView = 'collection' | 'monthly' | 'manager' | 'collector';
 
 export type CollectionTab = {
   id: CollectionView;

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import { Plus } from "lucide-react";
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import { Plus } from 'lucide-react';
 
 import {
   Select,
@@ -11,9 +11,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 
-import type { CabinetSortOption } from "@/lib/hooks/data";
+import type { CabinetSortOption } from '@/lib/hooks/data';
 
 type CabinetsFiltersProps = {
   searchTerm: string;
@@ -23,8 +23,8 @@ type CabinetsFiltersProps = {
   locations: { _id: string; name: string }[];
   sortOption: CabinetSortOption;
   setSortOption: (option: CabinetSortOption) => void;
-  sortOrder: "asc" | "desc";
-  setSortOrder: (order: "asc" | "desc") => void;
+  sortOrder: 'asc' | 'desc';
+  setSortOrder: (order: 'asc' | 'desc') => void;
   onAddCabinet: () => void;
   onAddMovementRequest: () => void;
   onUploadSmibData: () => void;
@@ -56,7 +56,7 @@ export default function CabinetsFilters({
           <Input
             placeholder="Search cabinets..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
             className="pl-10 md:w-64"
             disabled={loading}
           />
@@ -73,7 +73,7 @@ export default function CabinetsFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Locations</SelectItem>
-            {locations.map((location) => (
+            {locations.map(location => (
               <SelectItem key={location._id} value={location._id}>
                 {location.name}
               </SelectItem>
@@ -84,7 +84,7 @@ export default function CabinetsFilters({
         {/* Sort Options */}
         <Select
           value={sortOption}
-          onValueChange={(value) => setSortOption(value as CabinetSortOption)}
+          onValueChange={value => setSortOption(value as CabinetSortOption)}
           disabled={loading}
         >
           <SelectTrigger className="md:w-48">
@@ -99,14 +99,13 @@ export default function CabinetsFilters({
           </SelectContent>
         </Select>
 
-
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
           disabled={loading}
         >
-          {sortOrder === "asc" ? "↑" : "↓"}
+          {sortOrder === 'asc' ? '↑' : '↓'}
         </Button>
       </div>
 
@@ -128,11 +127,7 @@ export default function CabinetsFilters({
           Movement Request
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={onUploadSmibData}
-          disabled={loading}
-        >
+        <Button variant="outline" onClick={onUploadSmibData} disabled={loading}>
           Upload SMIB Data
         </Button>
       </div>

@@ -1,6 +1,7 @@
 # Administration Page
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Main Features](#main-features)
 - [Technical Architecture](#technical-architecture)
@@ -21,12 +22,14 @@ The Administration page provides comprehensive user and licensee management for 
 **Version:** 2.0.0
 
 ### File Information
+
 - **File:** `app/administration/page.tsx`
 - **URL Pattern:** `/administration`
 - **Component Type:** Administrative Management Page
 - **Authentication:** Required (Admin Role)
 
 ## Main Features
+
 - **User Management:**
   - View, search, sort, add, edit, and delete users
   - Assign roles and permissions with granular control
@@ -70,6 +73,7 @@ The Administration page provides comprehensive user and licensee management for 
 ## Technical Architecture
 
 ### Core Components
+
 - **Main Page:** `app/administration/page.tsx` - Entry point with dual-section management
 - **Layout Components:**
   - `components/layout/Header.tsx` - Top navigation header
@@ -103,6 +107,7 @@ The Administration page provides comprehensive user and licensee management for 
   - `components/ui/image/ImageUpload.tsx` - Image upload with preview
 
 ### State Management
+
 - **Local State:** React `useState` hooks for complex form and UI state
 - **Key State Properties:**
   - `allUsers`, `allLicensees` - Data arrays
@@ -116,6 +121,7 @@ The Administration page provides comprehensive user and licensee management for 
   - Profile picture states (upload, crop, preview)
 
 ### Data Flow
+
 1. **Initial Load:** Fetches users and licensees on component mount
 2. **Search/Filter:** Filters data based on search terms and criteria
 3. **Sorting:** Sorts data based on selected columns
@@ -127,6 +133,7 @@ The Administration page provides comprehensive user and licensee management for 
 ### API Integration
 
 #### User Management Endpoints
+
 - **GET `/api/users`** - Fetches all users with profile data
   - Returns: `{ users: User[] }` with complete user profiles including profile pictures
   - **Logging:** Comprehensive API logging with duration and context
@@ -144,6 +151,7 @@ The Administration page provides comprehensive user and licensee management for 
   - **Logging:** Deletion confirmation with user context
 
 #### Licensee Management Endpoints
+
 - **GET `/api/licensees`** - Fetches all licensees
   - Returns: `{ licensees: Licensee[] }`
   - **Logging:** Access logging with filtering context
@@ -161,6 +169,7 @@ The Administration page provides comprehensive user and licensee management for 
   - **Logging:** Deletion logging with licensee context
 
 #### Activity Logging Endpoints
+
 - **GET `/api/activity-logs`** - Retrieves activity logs with filtering
   - Query Parameters: `entityType`, `actionType`, `actor`, `startDate`, `endDate`
   - Returns: `{ activityLogs: ActivityLog[] }`
@@ -171,6 +180,7 @@ The Administration page provides comprehensive user and licensee management for 
   - **Logging:** Creation logging for audit trail entries
 
 #### Data Processing
+
 - **Administration Helper:** `lib/helpers/administration.ts` - User management utilities
   - `fetchUsers()` - Fetches user data from API
   - `updateUser()` - Updates user via API
@@ -189,6 +199,7 @@ The Administration page provides comprehensive user and licensee management for 
 ### Key Dependencies
 
 #### Frontend Libraries
+
 - **React Hooks:** `useState`, `useEffect`, `useMemo` - State management and side effects
 - **Next.js:** `usePathname`, `Image` - Navigation and image optimization
 - **Axios:** HTTP client for API calls
@@ -197,6 +208,7 @@ The Administration page provides comprehensive user and licensee management for 
 - **React Image Crop:** Image cropping functionality for profile pictures
 
 #### Type Definitions
+
 - **Administration Types:** `lib/types/administration.ts` - User management types
   - `User`, `SortKey`, `ResourcePermissions`, `UserDetailsModalProps`
 - **Licensee Types:** `lib/types/licensee.ts` - Licensee management types
@@ -208,6 +220,7 @@ The Administration page provides comprehensive user and licensee management for 
   - `LogContext`, `LogResult`
 
 #### Utility Functions
+
 - **Validation Utils:** `lib/utils/validation.ts` - Form validation
   - `validateEmail()` - Email format validation
   - `validatePassword()` - Password strength validation
@@ -218,6 +231,7 @@ The Administration page provides comprehensive user and licensee management for 
   - `validateImageFile()` - Image file validation
 
 ### Component Hierarchy
+
 ```
 AdministrationPage (app/administration/page.tsx)
 ├── Sidebar (components/layout/Sidebar.tsx)
@@ -250,6 +264,7 @@ AdministrationPage (app/administration/page.tsx)
 ```
 
 ### Business Logic
+
 - **User Management:** Complete CRUD operations with role-based permissions
 - **Licensee Management:** Licensee lifecycle management with payment tracking
 - **Search & Filtering:** Real-time search across multiple fields
@@ -261,6 +276,7 @@ AdministrationPage (app/administration/page.tsx)
 - **Enhanced Location Selection:** Improved location management with "Select All" functionality
 
 ### Security Features
+
 - **Role-Based Access:** Granular permissions for different user types
 - **Resource Permissions:** Location and module-specific access controls
 - **Input Validation:** Comprehensive validation for all form inputs
@@ -269,6 +285,7 @@ AdministrationPage (app/administration/page.tsx)
 - **Profile Picture Security:** Secure image upload and storage with validation
 
 ### Error Handling
+
 - **API Failures:** Graceful degradation with user-friendly error messages
 - **Validation Errors:** Real-time feedback for form validation
 - **Network Issues:** Retry logic and fallback error states
@@ -277,6 +294,7 @@ AdministrationPage (app/administration/page.tsx)
 - **Image Upload Errors:** Validation and error handling for profile pictures
 
 ### Performance Optimizations
+
 - **Memoization:** `useMemo` for expensive computations (filtering, sorting, pagination)
 - **Conditional Rendering:** Separate desktop/mobile layouts
 - **Efficient Filtering:** Optimized search and filter algorithms
@@ -288,6 +306,7 @@ AdministrationPage (app/administration/page.tsx)
 ## Recent Enhancements
 
 ### Profile Picture Management (Latest)
+
 - **Circular Image Cropping:** Industry-standard circular profile picture cropping
 - **Upload Functionality:** Drag-and-drop and file picker support
 - **Image Validation:** File type, size, and format validation
@@ -295,6 +314,7 @@ AdministrationPage (app/administration/page.tsx)
 - **Storage Integration:** Secure storage and retrieval of profile pictures
 
 ### Enhanced API Logging (Latest)
+
 - **Structured Logging:** Comprehensive logging for all API endpoints
 - **Performance Tracking:** Request duration and timing information
 - **Context Capture:** User identification, IP addresses, and request details
@@ -302,6 +322,7 @@ AdministrationPage (app/administration/page.tsx)
 - **Error Tracking:** Detailed error logging with context
 
 ### Mobile Responsiveness Improvements (Latest)
+
 - **Responsive Text Sizing:** Adaptive font sizes for different screen sizes
 - **Mobile Navigation:** Optimized navigation for mobile devices
 - **Touch-Friendly Controls:** Improved touch targets and interactions
@@ -317,26 +338,31 @@ The administration page is like a **control center for managing people and busin
 #### **User Management Section**
 
 **👥 What Users Are**
+
 - **Collection**: Queries the `users` collection in the database
 - **Fields Used**: `username`, `email`, `roles`, `profile`, `isEnabled`, `profilePicture`
 - **Simple Explanation**: These are the people who can log into your casino management system - like managers, collectors, and administrators
 
 **🔍 How User Search Works**
+
 - **Collection**: Filters the `users` collection
 - **Fields Used**: Searches by `username` or `email`
 - **Simple Explanation**: Like searching through a phone book - you type a name or email and it shows matching users
 
 **📝 Adding New Users**
+
 - **Collection**: Creates new records in the `users` collection
 - **Fields Used**: `username`, `email`, `password`, `roles`, `profile`, `profilePicture`
 - **Simple Explanation**: Like creating a new employee account - you fill out their details, upload a profile picture, and assign what they're allowed to do
 
 **🔐 User Permissions System**
+
 - **Collection**: Updates `resourcePermissions` field in `users` collection
 - **Fields Used**: `roles`, `resourcePermissions`, `allowedLocations`
 - **Simple Explanation**: Like giving someone keys to different rooms - you decide which parts of the system they can access
 
 **🖼️ Profile Picture Management**
+
 - **Collection**: Stores profile pictures in the `users` collection
 - **Fields Used**: `profilePicture` - URL or base64 encoded image
 - **Simple Explanation**: Like adding a photo to an employee ID - users can upload, crop, and manage their profile pictures
@@ -344,16 +370,19 @@ The administration page is like a **control center for managing people and busin
 #### **Licensee Management Section**
 
 **🏢 What Licensees Are**
+
 - **Collection**: Queries the `licencees` collection
 - **Fields Used**: `name`, `country`, `licenseKey`, `isPaid`, `expiryDate`
 - **Simple Explanation**: These are the casino businesses that pay to use your system - like different casino locations or companies
 
 **💰 Payment Tracking**
+
 - **Collection**: Updates `isPaid` and `expiryDate` fields in `licencees` collection
 - **Fields Used**: `isPaid`, `expiryDate`, `prevExpiryDate`
 - **Simple Explanation**: Tracks whether each casino business has paid their monthly fee and when their license expires
 
 **📅 License Management**
+
 - **Collection**: Manages `startDate`, `expiryDate` in `licencees` collection
 - **Fields Used**: `startDate`, `expiryDate`, `prevStartDate`, `prevExpiryDate`
 - **Simple Explanation**: Like managing subscription dates - tracks when each casino's license starts and ends
@@ -361,16 +390,19 @@ The administration page is like a **control center for managing people and busin
 #### **Activity Logging System**
 
 **📋 What Gets Logged**
+
 - **Collection**: Creates records in `activityLogs` collection
 - **Fields Used**: `actor`, `actionType`, `entityType`, `entity`, `changes`, `timestamp`
 - **Simple Explanation**: Like a security camera that records everything - who did what, when, and what changed
 
 **🔍 How Activity Logs Work**
+
 - **Collection**: Queries `activityLogs` collection with filters
 - **Fields Used**: Filters by `entityType`, `actionType`, `actor.id`, `timestamp`
 - **Simple Explanation**: Like reviewing security footage - you can see who made changes, when, and what they changed
 
 **📊 API Logging**
+
 - **Collection**: Logs all API requests and responses
 - **Fields Used**: `timestamp`, `duration`, `method`, `endpoint`, `status`, `user`, `ip`
 - **Simple Explanation**: Like a detailed logbook - records every system interaction with timing and context
@@ -378,6 +410,7 @@ The administration page is like a **control center for managing people and busin
 #### **Database Queries Explained**
 
 **For User Management:**
+
 ```javascript
 // Queries the users collection
 // Filters by: licensee (optional)
@@ -385,6 +418,7 @@ The administration page is like a **control center for managing people and busin
 ```
 
 **For Licensee Management:**
+
 ```javascript
 // Queries the licencees collection
 // Filters by: licensee (optional)
@@ -392,6 +426,7 @@ The administration page is like a **control center for managing people and busin
 ```
 
 **For Activity Logs:**
+
 ```javascript
 // Queries the activityLogs collection
 // Filters by: entity type, action type, actor, date range
@@ -399,6 +434,7 @@ The administration page is like a **control center for managing people and busin
 ```
 
 **For API Logging:**
+
 ```javascript
 // Logs all API requests and responses
 // Includes: timing, user context, request details, response status
@@ -408,6 +444,7 @@ The administration page is like a **control center for managing people and busin
 #### **Why This Matters for Casino Operations**
 
 **👥 User Management Benefits:**
+
 - **Security**: Control who can access your system
 - **Roles**: Give different people different permissions (managers vs. collectors)
 - **Audit Trail**: Know who made what changes and when
@@ -415,12 +452,14 @@ The administration page is like a **control center for managing people and busin
 - **Profile Pictures**: Visual identification and professional appearance
 
 **🏢 Licensee Management Benefits:**
+
 - **Revenue Tracking**: Know which casinos have paid their fees
 - **License Compliance**: Track when licenses expire
 - **Business Relationships**: Manage multiple casino clients
 - **Payment History**: See payment patterns and overdue accounts
 
 **📋 Activity Logging Benefits:**
+
 - **Security**: Track all system changes for security
 - **Compliance**: Meet regulatory requirements for audit trails
 - **Troubleshooting**: See what went wrong and who was involved
@@ -428,10 +467,11 @@ The administration page is like a **control center for managing people and busin
 - **Performance Monitoring**: Track system performance and usage patterns
 
 **📊 API Logging Benefits:**
+
 - **Audit Compliance**: Complete audit trail for regulatory requirements
 - **Security Monitoring**: Track suspicious activity and access patterns
 - **Performance Optimization**: Identify slow operations and bottlenecks
 - **Troubleshooting**: Detailed logs for debugging and issue resolution
 - **Operational Transparency**: Full visibility into system operations
 
-The administration page essentially **manages the people and businesses** that use your casino management system, ensuring proper access control, payment tracking, security compliance, and operational transparency through comprehensive logging and audit trails. 
+The administration page essentially **manages the people and businesses** that use your casino management system, ensuring proper access control, payment tracking, security compliance, and operational transparency through comprehensive logging and audit trails.

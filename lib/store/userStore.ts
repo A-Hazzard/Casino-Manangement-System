@@ -1,7 +1,7 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import type { UserAuthPayload } from "@/shared/types/auth";
-import { clearUserCache } from "@/lib/utils/userCache";
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import type { UserAuthPayload } from '@/shared/types/auth';
+import { clearUserCache } from '@/lib/utils/userCache';
 
 type UserStore = {
   user: UserAuthPayload | null;
@@ -15,10 +15,10 @@ type UserStore = {
 const createStore = () => {
   return create<UserStore>()(
     persist(
-      (set) => ({
+      set => ({
         user: null,
         isInitialized: false,
-        setUser: (user) => {
+        setUser: user => {
           set({ user });
           // Clear cache when user data changes to ensure fresh data
           if (user) {
@@ -30,12 +30,12 @@ const createStore = () => {
           // Clear cache when user is logged out
           clearUserCache();
         },
-        setInitialized: (initialized) => set({ isInitialized: initialized }),
+        setInitialized: initialized => set({ isInitialized: initialized }),
       }),
       {
-        name: "user-auth-store", // Customize this name
+        name: 'user-auth-store', // Customize this name
         storage: createJSONStorage(() => {
-          if (typeof window !== "undefined") {
+          if (typeof window !== 'undefined') {
             return localStorage;
           }
           return {
@@ -59,7 +59,7 @@ const getClientStore = () => {
 };
 
 export const useUserStore =
-  typeof window !== "undefined"
+  typeof window !== 'undefined'
     ? getClientStore()!
     : create<UserStore>(() => ({
         user: null,

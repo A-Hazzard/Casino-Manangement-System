@@ -1,4 +1,4 @@
-import { model, models, Schema } from "mongoose";
+import { model, models, Schema } from 'mongoose';
 
 export const machineSchema = new Schema(
   {
@@ -111,6 +111,8 @@ export const machineSchema = new Schema(
         mqttPubTopic: String,
         mqttCfgTopic: String,
         mqttIdleTimeS: Number,
+        mqttUsername: String,
+        mqttPassword: String,
       },
       net: {
         netMode: Number,
@@ -126,7 +128,6 @@ export const machineSchema = new Schema(
         comsGPC: Number,
       },
       ota: {
-        // Added: OTA (Over-The-Air) configuration
         otaURL: String,
       },
     },
@@ -217,4 +218,4 @@ machineSchema.index({ isSasMachine: 1 });
 machineSchema.index({ serialNumber: 1 });
 machineSchema.index({ lastSasMeterAt: -1 });
 
-export const Machine = models["machines"] ?? model("machines", machineSchema);
+export const Machine = models['machines'] ?? model('machines', machineSchema);

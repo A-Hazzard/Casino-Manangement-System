@@ -17,7 +17,7 @@ export type ChangeItem = {
 export function detectChanges(
   oldObject: Record<string, unknown>,
   newObject: Record<string, unknown>,
-  basePath = ""
+  basePath = ''
 ): ChangeItem[] {
   const changes: ChangeItem[] = [];
 
@@ -131,7 +131,7 @@ function isEqual(a: unknown, b: unknown): boolean {
 function isObject(value: unknown): value is Record<string, unknown> {
   return (
     value !== null &&
-    typeof value === "object" &&
+    typeof value === 'object' &&
     !Array.isArray(value) &&
     !(value instanceof Date)
   );
@@ -144,11 +144,11 @@ export function formatChangeItem(change: ChangeItem): string {
   const { field, oldValue, newValue } = change;
 
   const formatValue = (value: unknown): string => {
-    if (value === null) return "null";
-    if (value === undefined) return "undefined";
-    if (typeof value === "string") return `"${value}"`;
-    if (typeof value === "boolean") return value.toString();
-    if (typeof value === "number") return value.toString();
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+    if (typeof value === 'string') return `"${value}"`;
+    if (typeof value === 'boolean') return value.toString();
+    if (typeof value === 'number') return value.toString();
     if (Array.isArray(value)) return `[${value.length} items]`;
     if (isObject(value)) return `{${Object.keys(value).length} properties}`;
     return String(value);
@@ -164,11 +164,11 @@ export function formatChangeItem(change: ChangeItem): string {
  * Filter out empty or meaningless changes
  */
 export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
-  return changes.filter((change) => {
+  return changes.filter(change => {
     const { oldValue, newValue } = change;
 
     // Filter out changes where both values are empty strings
-    if (oldValue === "" && newValue === "") return false;
+    if (oldValue === '' && newValue === '') return false;
 
     // Filter out changes where both values are null/undefined
     if (
@@ -197,9 +197,9 @@ export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
  * Get a summary of changes for activity log description
  */
 export function getChangesSummary(changes: ChangeItem[]): string {
-  if (changes.length === 0) return "No changes detected";
+  if (changes.length === 0) return 'No changes detected';
   if (changes.length === 1) return `1 change: ${formatChangeItem(changes[0])}`;
 
-  const fieldNames = changes.map((c) => c.field).join(", ");
+  const fieldNames = changes.map(c => c.field).join(', ');
   return `${changes.length} changes: ${fieldNames}`;
 }

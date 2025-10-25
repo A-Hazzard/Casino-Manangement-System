@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
 /**
  * Clears all authentication tokens and cookies
@@ -7,24 +7,24 @@ import { NextResponse } from "next/server";
 export async function POST() {
   const response = NextResponse.json({
     success: true,
-    message: "All tokens cleared successfully. Please login again.",
+    message: 'All tokens cleared successfully. Please login again.',
   });
 
   // Clear all token-related cookies
   const cookiesToClear = [
-    "token",
-    "refreshToken",
-    "sessionId",
-    "user-auth-store", // localStorage key that might be set as cookie
+    'token',
+    'refreshToken',
+    'sessionId',
+    'user-auth-store', // localStorage key that might be set as cookie
   ];
 
-  cookiesToClear.forEach((cookieName) => {
-    response.cookies.set(cookieName, "", {
+  cookiesToClear.forEach(cookieName => {
+    response.cookies.set(cookieName, '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 0, // Expire immediately
-      path: "/",
+      path: '/',
     });
   });
 

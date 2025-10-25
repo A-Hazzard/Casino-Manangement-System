@@ -3,16 +3,16 @@
  * Handles loading, error states, and data management for location details page
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from 'react';
 import {
   fetchLocationDetails,
   fetchCabinets,
   fetchAllGamingLocations,
-} from "@/lib/helpers/locations";
-import { toast } from "sonner";
-import type { LocationInfo } from "@/lib/types/pages";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-import type { DateRange } from "react-day-picker";
+} from '@/lib/helpers/locations';
+import { toast } from 'sonner';
+import type { LocationInfo } from '@/lib/types/pages';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import type { DateRange } from 'react-day-picker';
 
 type UseLocationDetailsProps = {
   locationSlug: string;
@@ -75,8 +75,8 @@ export const useLocationDetails = ({
   // Load location details with proper error handling and logging
   const loadLocationDetails = useCallback(async () => {
     try {
-      console.warn("Loading location details for slug:", locationSlug);
-      console.warn("Loading with filters:", {
+      console.warn('Loading location details for slug:', locationSlug);
+      console.warn('Loading with filters:', {
         selectedLicencee,
         activeMetricsFilter,
         customDateRange: customDateRange
@@ -96,12 +96,12 @@ export const useLocationDetails = ({
       );
 
       if (!locationData) {
-        console.error("No location data received for slug:", locationSlug);
-        setError("Location not found");
+        console.error('No location data received for slug:', locationSlug);
+        setError('Location not found');
         return;
       }
 
-      console.warn("Successfully loaded location details:", {
+      console.warn('Successfully loaded location details:', {
         locationId: locationData._id,
         locationName: locationData.name,
         totalCabinets: locationData.cabinets?.length || 0,
@@ -109,11 +109,11 @@ export const useLocationDetails = ({
 
       setLocationInfo(locationData);
     } catch (error) {
-      console.error("Error loading location details:", error);
+      console.error('Error loading location details:', error);
       setError(
         error instanceof Error
           ? error.message
-          : "Failed to load location details"
+          : 'Failed to load location details'
       );
     } finally {
       setLoading(false);
@@ -123,21 +123,21 @@ export const useLocationDetails = ({
   // Load cabinets for the location
   const loadCabinets = useCallback(async () => {
     try {
-      console.warn("Loading cabinets for location:", locationSlug);
+      console.warn('Loading cabinets for location:', locationSlug);
 
       const cabinetsData = await fetchCabinets(locationSlug, selectedLicencee);
 
       if (!Array.isArray(cabinetsData)) {
-        console.error("Cabinets data is not an array:", cabinetsData);
+        console.error('Cabinets data is not an array:', cabinetsData);
         setCabinets([]);
         return;
       }
 
-      console.warn("Successfully loaded cabinets:", cabinetsData.length);
+      console.warn('Successfully loaded cabinets:', cabinetsData.length);
       setCabinets(cabinetsData);
 
       // Update pagination
-      setPagination((prev) => ({
+      setPagination(prev => ({
         ...prev,
         totalCount: cabinetsData.length,
         totalPages: Math.ceil(cabinetsData.length / prev.limit),
@@ -145,7 +145,7 @@ export const useLocationDetails = ({
         hasPrevPage: prev.page > 1,
       }));
     } catch (error) {
-      console.error("Error loading cabinets:", error);
+      console.error('Error loading cabinets:', error);
       setCabinets([]);
     }
   }, [locationSlug, selectedLicencee]);
@@ -153,7 +153,7 @@ export const useLocationDetails = ({
   // Load all locations for navigation
   const loadAllLocations = useCallback(async () => {
     try {
-      console.warn("Loading all locations for navigation");
+      console.warn('Loading all locations for navigation');
       const locationsData = await fetchAllGamingLocations();
 
       if (Array.isArray(locationsData)) {
@@ -165,26 +165,26 @@ export const useLocationDetails = ({
           })
         );
         setAllLocations(mappedLocations);
-        console.warn("Successfully loaded locations:", locationsData.length);
+        console.warn('Successfully loaded locations:', locationsData.length);
       } else {
-        console.error("Locations data is not an array:", locationsData);
+        console.error('Locations data is not an array:', locationsData);
         setAllLocations([]);
       }
     } catch (error) {
-      console.error("Error loading locations:", error);
+      console.error('Error loading locations:', error);
       setAllLocations([]);
     }
   }, []);
 
   // Refresh location details
   const refreshLocationDetails = useCallback(async () => {
-    console.warn("Refreshing location details for slug:", locationSlug);
+    console.warn('Refreshing location details for slug:', locationSlug);
     await Promise.all([
       loadLocationDetails(),
       loadCabinets(),
       loadAllLocations(),
     ]);
-    toast.success("Location details refreshed successfully");
+    toast.success('Location details refreshed successfully');
   }, [loadLocationDetails, loadCabinets, loadAllLocations, locationSlug]);
 
   // Effect hooks for data loading

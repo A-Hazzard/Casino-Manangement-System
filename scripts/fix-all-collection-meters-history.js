@@ -1,20 +1,20 @@
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 
 const MONGODB_URI =
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
 
 async function fixAllCollectionMetersHistory() {
   const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
-    console.log("Connected to MongoDB");
+    console.log('Connected to MongoDB');
 
-    const db = client.db("sas-prod-local");
-    const machinesCollection = db.collection("machines");
-    const collectionsCollection = db.collection("collections");
+    const db = client.db('sas-prod-local');
+    const machinesCollection = db.collection('machines');
+    const collectionsCollection = db.collection('collections');
 
-    console.log("\n🔧 Fixing all collectionMetersHistory issues...\n");
+    console.log('\n🔧 Fixing all collectionMetersHistory issues...\n');
 
     // Find all machines with collectionMetersHistory
     const machinesWithHistory = await machinesCollection
@@ -137,8 +137,8 @@ async function fixAllCollectionMetersHistory() {
                   )
                 : undefined,
             // Sync collectionMeters with most recent collection
-            "collectionMeters.metersIn": mostRecentCollection?.metersIn || 0,
-            "collectionMeters.metersOut": mostRecentCollection?.metersOut || 0,
+            'collectionMeters.metersIn': mostRecentCollection?.metersIn || 0,
+            'collectionMeters.metersOut': mostRecentCollection?.metersOut || 0,
           },
         }
       );
@@ -169,20 +169,20 @@ async function fixAllCollectionMetersHistory() {
           {
             $size: {
               $filter: {
-                input: "$collectionMetersHistory",
+                input: '$collectionMetersHistory',
                 cond: {
                   $and: [
                     {
                       $ne: [
-                        { $arrayElemAt: ["$$ROOT.collectionMetersHistory", 0] },
-                        "$$this",
+                        { $arrayElemAt: ['$$ROOT.collectionMetersHistory', 0] },
+                        '$$this',
                       ],
                     }, // Not first entry
                     {
                       $or: [
-                        { $eq: ["$$this.prevIn", 0] },
-                        { $eq: ["$$this.prevIn", null] },
-                        { $not: { $ifNull: ["$$this.prevIn", false] } },
+                        { $eq: ['$$this.prevIn', 0] },
+                        { $eq: ['$$this.prevIn', null] },
+                        { $not: { $ifNull: ['$$this.prevIn', false] } },
                       ],
                     },
                   ],
@@ -205,10 +205,10 @@ async function fixAllCollectionMetersHistory() {
       );
     }
   } catch (error) {
-    console.error("Error:", error);
+    console.error('Error:', error);
   } finally {
     await client.close();
-    console.log("\n✅ Fix operation complete");
+    console.log('\n✅ Fix operation complete');
   }
 }
 

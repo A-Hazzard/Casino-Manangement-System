@@ -2,7 +2,7 @@
  * Utility functions for displaying machine information
  */
 
-import React from "react";
+import React from 'react';
 
 /**
  * Generic machine type that covers different machine objects
@@ -26,18 +26,18 @@ type MachineLike = {
  * @returns Formatted string for display
  */
 export function formatMachineDisplayName(machine: MachineLike): string {
-  const serialNumber = machine.serialNumber || machine.assetNumber || "N/A";
+  const serialNumber = machine.serialNumber || machine.assetNumber || 'N/A';
   const customName = machine.custom?.name;
   const game = machine.game || machine.installedGame;
 
   // Build the bracket content
   const bracketParts: string[] = [];
 
-  if (customName && customName.trim() !== "") {
+  if (customName && customName.trim() !== '') {
     bracketParts.push(customName);
   }
 
-  if (game && game.trim() !== "") {
+  if (game && game.trim() !== '') {
     bracketParts.push(game);
   }
 
@@ -45,7 +45,7 @@ export function formatMachineDisplayName(machine: MachineLike): string {
   if (bracketParts.length === 0) {
     return serialNumber;
   } else {
-    return `${serialNumber} (${bracketParts.join(", ")})`;
+    return `${serialNumber} (${bracketParts.join(', ')})`;
   }
 }
 
@@ -59,18 +59,18 @@ export function formatMachineDisplayName(machine: MachineLike): string {
 export function formatMachineDisplayNameWithBold(
   machine: MachineLike
 ): React.JSX.Element {
-  const serialNumber = machine.serialNumber || machine.assetNumber || "N/A";
+  const serialNumber = machine.serialNumber || machine.assetNumber || 'N/A';
   const customName = machine.custom?.name;
   const game = machine.game || machine.installedGame;
 
   // Build the bracket content
   const bracketParts: string[] = [];
 
-  if (customName && customName.trim() !== "") {
+  if (customName && customName.trim() !== '') {
     bracketParts.push(customName);
   }
 
-  if (game && game.trim() !== "") {
+  if (game && game.trim() !== '') {
     bracketParts.push(game);
   }
 
@@ -80,9 +80,9 @@ export function formatMachineDisplayNameWithBold(
   } else {
     return (
       <>
-        {serialNumber}{" "}
-        <span className="font-semibold break-words">
-          ({bracketParts.join(", ")})
+        {serialNumber}{' '}
+        <span className="break-words font-semibold">
+          ({bracketParts.join(', ')})
         </span>
       </>
     );

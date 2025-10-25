@@ -1,12 +1,12 @@
-import mongoose from "mongoose";
-import { ActivityLog } from "../models/activityLog";
+import mongoose from 'mongoose';
+import { ActivityLog } from '../models/activityLog';
 import type {
   ActivityLog as ActivityLogType,
   ActivityLogActor,
   ActivityLogEntity,
   ActivityLogChange,
   ActivityLogQueryParams,
-} from "../types/activityLog";
+} from '../types/activityLog';
 
 /**
  * Simple activity logger for auth events and other simple logging needs
@@ -25,27 +25,27 @@ export async function logActivity(params: {
       _id: new mongoose.Types.ObjectId().toString(),
       timestamp: new Date(),
       // Required fields - use provided user info or fallback to system
-      userId: params.userId || "system",
-      username: params.username || "system",
+      userId: params.userId || 'system',
+      username: params.username || 'system',
       action: params.action.toLowerCase(),
-      resource: "session",
-      resourceId: "auth",
-      resourceName: "Authentication",
+      resource: 'session',
+      resourceId: 'auth',
+      resourceName: 'Authentication',
       // Optional fields
       details: params.details,
-      ipAddress: params.ipAddress || "unknown",
-      userAgent: params.userAgent || "unknown",
+      ipAddress: params.ipAddress || 'unknown',
+      userAgent: params.userAgent || 'unknown',
       // Legacy fields for backward compatibility
       actor: {
-        id: params.userId || "system",
-        email: params.username || "system@system.com",
-        role: "user",
+        id: params.userId || 'system',
+        email: params.username || 'system@system.com',
+        role: 'user',
       },
       actionType: params.action.toUpperCase(),
-      entityType: "Auth",
+      entityType: 'Auth',
       entity: {
-        id: "auth",
-        name: "Authentication",
+        id: 'auth',
+        name: 'Authentication',
       },
       description: params.details,
       changes: [],
@@ -57,9 +57,9 @@ export async function logActivity(params: {
       updatedAt: new Date(),
     });
 
-    console.warn("Activity logged:", activityLog._id);
+    console.warn('Activity logged:', activityLog._id);
   } catch (error) {
-    console.error("Failed to log activity:", error);
+    console.error('Failed to log activity:', error);
   }
 }
 
@@ -143,8 +143,8 @@ export async function getActivityLogs(params: ActivityLogQueryParams): Promise<{
     actorId,
     startDate,
     endDate,
-    limit = "20",
-    skip = "0",
+    limit = '20',
+    skip = '0',
   } = params;
 
   // Build query
@@ -159,7 +159,7 @@ export async function getActivityLogs(params: ActivityLogQueryParams): Promise<{
   }
 
   if (actorId) {
-    query["actor.id"] = actorId;
+    query['actor.id'] = actorId;
   }
 
   if (startDate || endDate) {
@@ -250,10 +250,10 @@ export function generateDescription(
 
   // Custom: If payment status was changed, call it out specifically
   if (changes && changes.length > 0) {
-    const paymentChange = changes.find((c) => c.field === "isPaid");
+    const paymentChange = changes.find(c => c.field === 'isPaid');
     if (paymentChange) {
-      const oldStatus = paymentChange.oldValue ? "Paid" : "Unpaid";
-      const newStatus = paymentChange.newValue ? "Paid" : "Unpaid";
+      const oldStatus = paymentChange.oldValue ? 'Paid' : 'Unpaid';
+      const newStatus = paymentChange.newValue ? 'Paid' : 'Unpaid';
       const paymentDescription = `${actorEmail} updated the payment status for ${entity} "${entityName}" from "${oldStatus}" to "${newStatus}"`;
       return paymentDescription;
     }
@@ -265,14 +265,14 @@ export function generateDescription(
 
   let fallbackDescription: string;
   switch (action) {
-    case "create":
+    case 'create':
       fallbackDescription = `${actorEmail} created a new ${entity} "${entityName}"`;
       break;
-    case "delete":
+    case 'delete':
       fallbackDescription = `${actorEmail} deleted the ${entity} "${entityName}"`;
       break;
-    case "update":
-    case "edit":
+    case 'update':
+    case 'edit':
       fallbackDescription = `${actorEmail} updated the ${entity} "${entityName}"`;
       break;
     default:

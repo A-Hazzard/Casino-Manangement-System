@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useAuth } from "@/lib/hooks/useAuth";
-import type React from "react";
+import { useAuth } from '@/lib/hooks/useAuth';
+import type React from 'react';
 
 type AuthProviderProps = {
   children: React.ReactNode;

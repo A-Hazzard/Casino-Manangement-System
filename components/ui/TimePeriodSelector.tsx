@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { getTimeFilterButtons } from "@/lib/helpers/dashboard";
-import type { TimePeriod } from "@shared/types";
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { getTimeFilterButtons } from '@/lib/helpers/dashboard';
+import type { TimePeriod } from '@shared/types';
 
 export function TimePeriodSelector() {
   const {
@@ -15,20 +15,16 @@ export function TimePeriodSelector() {
   const timeFilterButtons = getTimeFilterButtons();
 
   return (
-    <div className="flex lg:hidden justify-center my-4">
+    <div className="my-4 flex justify-center lg:hidden">
       <select
-        className={`px-4 py-2 rounded-full text-sm bg-buttonActive text-white ${
-          loadingChartData || refreshing
-            ? "opacity-50 cursor-not-allowed"
-            : ""
+        className={`rounded-full bg-buttonActive px-4 py-2 text-sm text-white ${
+          loadingChartData || refreshing ? 'cursor-not-allowed opacity-50' : ''
         }`}
         value={activeMetricsFilter}
-        onChange={(e) =>
-          setActiveMetricsFilter(e.target.value as TimePeriod)
-        }
+        onChange={e => setActiveMetricsFilter(e.target.value as TimePeriod)}
         disabled={loadingChartData || refreshing}
       >
-        {timeFilterButtons.map((filter) => (
+        {timeFilterButtons.map(filter => (
           <option key={filter.value} value={filter.value}>
             {filter.label}
           </option>
@@ -36,4 +32,4 @@ export function TimePeriodSelector() {
       </select>
     </div>
   );
-} 
+}

@@ -1,11 +1,11 @@
-import React from "react";
+import React from 'react';
 
 /**
  * Skeleton component for monthly table loading state
  */
 export const MonthlyTableSkeleton = () => (
-  <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse">
-    <table className="w-full min-w-0 text-sm text-left">
+  <div className="hidden w-full min-w-0 animate-pulse overflow-x-auto bg-white shadow lg:block">
+    <table className="w-full min-w-0 text-left text-sm">
       <thead className="bg-button text-white">
         <tr>
           <th className="px-4 py-2 font-bold">LOCATION</th>
@@ -20,7 +20,7 @@ export const MonthlyTableSkeleton = () => (
           <tr key={i} className="border-b">
             {Array.from({ length: 5 }).map((_, j) => (
               <td key={j} className="px-4 py-3">
-                <div className="h-5 bg-gray-200 rounded w-full" />
+                <div className="h-5 w-full rounded bg-gray-200" />
               </td>
             ))}
           </tr>
@@ -34,8 +34,8 @@ export const MonthlyTableSkeleton = () => (
  * Skeleton component for monthly summary loading state
  */
 export const MonthlySummarySkeleton = () => (
-  <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse mb-0">
-    <table className="w-full min-w-0 text-sm text-left">
+  <div className="mb-0 hidden w-full min-w-0 animate-pulse overflow-x-auto bg-white shadow lg:block">
+    <table className="w-full min-w-0 text-left text-sm">
       <thead className="bg-button text-white">
         <tr>
           <th className="px-4 py-2 font-bold">DROP</th>
@@ -48,7 +48,7 @@ export const MonthlySummarySkeleton = () => (
         <tr>
           {Array.from({ length: 4 }).map((_, j) => (
             <td key={j} className="px-4 py-3">
-              <div className="h-5 bg-gray-200 rounded w-full" />
+              <div className="h-5 w-full rounded bg-gray-200" />
             </td>
           ))}
         </tr>
@@ -61,8 +61,8 @@ export const MonthlySummarySkeleton = () => (
  * Skeleton component for manager table loading state
  */
 export const ManagerTableSkeleton = () => (
-  <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0 animate-pulse">
-    <table className="w-full min-w-0 text-sm text-left">
+  <div className="hidden w-full min-w-0 animate-pulse overflow-x-auto bg-white shadow lg:block">
+    <table className="w-full min-w-0 text-left text-sm">
       <thead className="bg-button text-white">
         <tr>
           <th className="px-4 py-2 font-bold">COLLECTOR</th>
@@ -78,7 +78,7 @@ export const ManagerTableSkeleton = () => (
           <tr key={i} className="border-b">
             {Array.from({ length: 6 }).map((_, j) => (
               <td key={j} className="px-4 py-3">
-                <div className="h-5 bg-gray-200 rounded w-full" />
+                <div className="h-5 w-full rounded bg-gray-200" />
               </td>
             ))}
           </tr>
@@ -94,7 +94,7 @@ export const ManagerTableSkeleton = () => (
 export const CardSkeleton = () => (
   <div className="animate-pulse space-y-4">
     {[...Array(2)].map((_, i) => (
-      <div key={i} className="bg-gray-200 rounded-lg h-24 w-full" />
+      <div key={i} className="h-24 w-full rounded-lg bg-gray-200" />
     ))}
   </div>
 );

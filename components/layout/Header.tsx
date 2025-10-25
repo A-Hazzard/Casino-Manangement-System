@@ -1,21 +1,21 @@
-"use client";
-import { HeaderProps } from "@/lib/types/componentProps";
-import { ExitIcon } from "@radix-ui/react-icons";
-import { PanelLeft } from "lucide-react";
-import { usePathname, useParams, useRouter } from "next/navigation";
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { logoutUser } from "@/lib/helpers/clientAuth";
-import LicenceeSelect from "@/components/ui/LicenceeSelect";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
-import { fetchMetricsData } from "@/lib/helpers/dashboard";
-import { ClientOnly } from "@/components/ui/ClientOnly";
-import { useUserStore } from "@/lib/store/userStore";
-import { shouldShowNavigationLink } from "@/lib/utils/permissions";
-import { useCurrency } from "@/lib/contexts/CurrencyContext";
-import CurrencyFilter from "@/components/filters/CurrencyFilter";
+'use client';
+import { HeaderProps } from '@/lib/types/componentProps';
+import { ExitIcon } from '@radix-ui/react-icons';
+import { PanelLeft } from 'lucide-react';
+import { usePathname, useParams, useRouter } from 'next/navigation';
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { logoutUser } from '@/lib/helpers/clientAuth';
+import LicenceeSelect from '@/components/ui/LicenceeSelect';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { fetchMetricsData } from '@/lib/helpers/dashboard';
+import { ClientOnly } from '@/components/ui/ClientOnly';
+import { useUserStore } from '@/lib/store/userStore';
+import { shouldShowNavigationLink } from '@/lib/utils/permissions';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import CurrencyFilter from '@/components/filters/CurrencyFilter';
 
 export default function Header({
   selectedLicencee,
@@ -58,14 +58,14 @@ export default function Header({
 
     // Update currency context based on licensee selection
     const isAllLicensee =
-      !newLicensee || newLicensee === "all" || newLicensee === "";
+      !newLicensee || newLicensee === 'all' || newLicensee === '';
     if (isAllLicensee) {
       // Reset to USD when "All Licensee" is selected
-      setDisplayCurrency("USD");
+      setDisplayCurrency('USD');
     }
 
     // If we're on the dashboard and have an active filter, refresh data
-    if (pathname === "/" && activeMetricsFilter) {
+    if (pathname === '/' && activeMetricsFilter) {
       setLoadingChartData(true);
       try {
         await fetchMetricsData(
@@ -79,8 +79,8 @@ export default function Header({
           displayCurrency
         );
       } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Error refreshing data after licensee change:", error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error refreshing data after licensee change:', error);
         }
       } finally {
         setLoadingChartData(false);
@@ -90,50 +90,50 @@ export default function Header({
 
   // Check if the current path is related to locations
   const isLocationPath =
-    pathname === "/locations" || pathname.startsWith("/locations/");
+    pathname === '/locations' || pathname.startsWith('/locations/');
 
   // Check if the current path is related to cabinets
   const isCabinetPath =
-    pathname === "/cabinets" || pathname.startsWith("/cabinets/");
+    pathname === '/cabinets' || pathname.startsWith('/cabinets/');
 
   // Check if the current path is related to reports
   const isReportsPath =
-    pathname === "/reports" || pathname.startsWith("/reports/");
+    pathname === '/reports' || pathname.startsWith('/reports/');
 
   // Check if the current path is related to members
   const isMembersPath =
-    pathname === "/members" || pathname.startsWith("/members/");
+    pathname === '/members' || pathname.startsWith('/members/');
 
   // Check if the current path is related to sessions
   const isSessionsPath =
-    pathname === "/sessions" || pathname.startsWith("/sessions/");
+    pathname === '/sessions' || pathname.startsWith('/sessions/');
 
   // Check if the current path is the specific location details page
   const isSpecificLocationPath =
-    pathname.startsWith("/locations/") &&
+    pathname.startsWith('/locations/') &&
     params.slug &&
-    !pathname.includes("/details");
+    !pathname.includes('/details');
 
   return (
-    <ClientOnly fallback={<div className="h-16 bg-gray-100 animate-pulse" />}>
-      <div className={`flex flex-col gap-2 ${containerPaddingMobile || ""}`}>
+    <ClientOnly fallback={<div className="h-16 animate-pulse bg-gray-100" />}>
+      <div className={`flex flex-col gap-2 ${containerPaddingMobile || ''}`}>
         {/* Header Section: Main header with title and licensee selector */}
-        <header className="flex flex-col p-0 w-full">
+        <header className="flex w-full flex-col p-0">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
-          <div className="flex items-center justify-between w-full">
+          <div className="flex w-full items-center justify-between">
             {/* Left side: Menu button and title */}
             <div className="flex items-center">
               {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
               <SidebarTrigger
                 className={cn(
-                  "md:hidden cursor-pointer text-foreground p-2 relative z-20",
-                  isOpen && "invisible"
+                  'relative z-20 cursor-pointer p-2 text-foreground md:hidden',
+                  isOpen && 'invisible'
                 )}
                 aria-label="Toggle sidebar"
               >
                 <PanelLeft className="h-6 w-6" suppressHydrationWarning />
               </SidebarTrigger>
-              <h1 className="text-base xl:text-xl ml-0 pl-2 text-left sm:ml-0 md:ml-0">
+              <h1 className="ml-0 pl-2 text-left text-base sm:ml-0 md:ml-0 xl:text-xl">
                 Evolution CMS
               </h1>
             </div>
@@ -142,7 +142,7 @@ export default function Header({
             {!hideLicenceeFilter && (
               <div className="flex items-center gap-2">
                 <LicenceeSelect
-                  selected={selectedLicencee || ""}
+                  selected={selectedLicencee || ''}
                   onChange={handleLicenseeChange}
                   disabled={disabled}
                 />
@@ -152,7 +152,7 @@ export default function Header({
                   disabled={disabled}
                   onCurrencyChange={() => {
                     // Trigger data refresh when currency changes
-                    if (pathname === "/" && activeMetricsFilter) {
+                    if (pathname === '/' && activeMetricsFilter) {
                       setLoadingChartData(true);
                       fetchMetricsData(
                         activeMetricsFilter,
@@ -173,7 +173,7 @@ export default function Header({
                   disabled={disabled}
                   onCurrencyChange={() => {
                     // Trigger data refresh when currency changes
-                    if (pathname === "/" && activeMetricsFilter) {
+                    if (pathname === '/' && activeMetricsFilter) {
                       setLoadingChartData(true);
                       fetchMetricsData(
                         activeMetricsFilter,
@@ -201,32 +201,32 @@ export default function Header({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                  className="fixed inset-0 z-40 bg-black bg-opacity-50"
                   onClick={() => setMobileMenuOpen(false)}
                 />
                 {/* Mobile Menu Panel: Slide-out navigation menu */}
                 <motion.div
-                  initial={{ x: "-100%" }}
+                  initial={{ x: '-100%' }}
                   animate={{ x: 0 }}
-                  exit={{ x: "-100%" }}
-                  transition={{ type: "tween", duration: 0.3 }}
-                  className="fixed left-0 top-0 h-full w-80 bg-container shadow-xl z-[100] flex flex-col"
+                  exit={{ x: '-100%' }}
+                  transition={{ type: 'tween', duration: 0.3 }}
+                  className="fixed left-0 top-0 z-[100] flex h-full w-80 flex-col bg-container shadow-xl"
                 >
                   {/* Mobile Navigation Menu: Navigation buttons for mobile users */}
-                  <div className="flex flex-col h-full p-6 space-y-4">
+                  <div className="flex h-full flex-col space-y-4 p-6">
                     {/* Dashboard Navigation Button */}
-                    {shouldShowNavigationLink(userRoles, "dashboard") && (
+                    {shouldShowNavigationLink(userRoles, 'dashboard') && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className={`flex items-center justify-center w-full p-4 rounded-lg ${
-                          pathname === "/"
-                            ? "bg-buttonActive text-container shadow-md"
-                            : "bg-muted text-foreground hover:bg-accent"
+                        className={`flex w-full items-center justify-center rounded-lg p-4 ${
+                          pathname === '/'
+                            ? 'bg-buttonActive text-container shadow-md'
+                            : 'bg-muted text-foreground hover:bg-accent'
                         }`}
                         onClick={() => {
-                          router.push("/");
+                          router.push('/');
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -235,18 +235,18 @@ export default function Header({
                     )}
 
                     {/* Locations button */}
-                    {shouldShowNavigationLink(userRoles, "locations") && (
+                    {shouldShowNavigationLink(userRoles, 'locations') && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                        className={`flex w-full items-center justify-center rounded-lg p-4 ${
                           isLocationPath
-                            ? "bg-buttonActive text-container shadow-md"
-                            : "bg-muted text-foreground hover:bg-accent"
+                            ? 'bg-buttonActive text-container shadow-md'
+                            : 'bg-muted text-foreground hover:bg-accent'
                         }`}
                         onClick={() => {
-                          router.push("/locations");
+                          router.push('/locations');
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -255,18 +255,18 @@ export default function Header({
                     )}
 
                     {/* Cabinets button */}
-                    {shouldShowNavigationLink(userRoles, "machines") && (
+                    {shouldShowNavigationLink(userRoles, 'machines') && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                        className={`flex w-full items-center justify-center rounded-lg p-4 ${
                           isCabinetPath
-                            ? "bg-buttonActive text-container shadow-md"
-                            : "bg-muted text-foreground hover:bg-accent"
+                            ? 'bg-buttonActive text-container shadow-md'
+                            : 'bg-muted text-foreground hover:bg-accent'
                         }`}
                         onClick={() => {
-                          router.push("/cabinets");
+                          router.push('/cabinets');
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -277,19 +277,19 @@ export default function Header({
                     {/* Collection Reports button */}
                     {shouldShowNavigationLink(
                       userRoles,
-                      "collection-report"
+                      'collection-report'
                     ) && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4 }}
-                        className={`flex items-center justify-center w-full p-4 rounded-lg ${
-                          pathname === "/collection-report"
-                            ? "bg-buttonActive text-container shadow-md"
-                            : "bg-muted text-foreground hover:bg-accent"
+                        className={`flex w-full items-center justify-center rounded-lg p-4 ${
+                          pathname === '/collection-report'
+                            ? 'bg-buttonActive text-container shadow-md'
+                            : 'bg-muted text-foreground hover:bg-accent'
                         }`}
                         onClick={() => {
-                          router.push("/collection-report");
+                          router.push('/collection-report');
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -300,18 +300,18 @@ export default function Header({
                     )}
 
                     {/* Administration button */}
-                    {shouldShowNavigationLink(userRoles, "administration") && (
+                    {shouldShowNavigationLink(userRoles, 'administration') && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 }}
-                        className={`flex items-center justify-center w-full p-4 rounded-lg ${
-                          pathname === "/administration"
-                            ? "bg-buttonActive text-container shadow-md"
-                            : "bg-muted text-foreground hover:bg-accent"
+                        className={`flex w-full items-center justify-center rounded-lg p-4 ${
+                          pathname === '/administration'
+                            ? 'bg-buttonActive text-container shadow-md'
+                            : 'bg-muted text-foreground hover:bg-accent'
                         }`}
                         onClick={() => {
-                          router.push("/administration");
+                          router.push('/administration');
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -322,18 +322,18 @@ export default function Header({
                     )}
 
                     {/* Reports button */}
-                    {shouldShowNavigationLink(userRoles, "dashboard") && (
+                    {shouldShowNavigationLink(userRoles, 'dashboard') && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.6 }}
-                        className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                        className={`flex w-full items-center justify-center rounded-lg p-4 ${
                           isReportsPath
-                            ? "bg-buttonActive text-container shadow-md"
-                            : "bg-muted text-foreground hover:bg-accent"
+                            ? 'bg-buttonActive text-container shadow-md'
+                            : 'bg-muted text-foreground hover:bg-accent'
                         }`}
                         onClick={() => {
-                          router.push("/reports");
+                          router.push('/reports');
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -342,18 +342,18 @@ export default function Header({
                     )}
 
                     {/* Members button */}
-                    {shouldShowNavigationLink(userRoles, "members") && (
+                    {shouldShowNavigationLink(userRoles, 'members') && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.7 }}
-                        className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                        className={`flex w-full items-center justify-center rounded-lg p-4 ${
                           isMembersPath
-                            ? "bg-buttonActive text-container shadow-md"
-                            : "bg-muted text-foreground hover:bg-accent"
+                            ? 'bg-buttonActive text-container shadow-md'
+                            : 'bg-muted text-foreground hover:bg-accent'
                         }`}
                         onClick={() => {
-                          router.push("/members");
+                          router.push('/members');
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -364,18 +364,18 @@ export default function Header({
                     {/* Members Summary button removed */}
 
                     {/* Sessions button */}
-                    {shouldShowNavigationLink(userRoles, "sessions") && (
+                    {shouldShowNavigationLink(userRoles, 'sessions') && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.8 }}
-                        className={`flex items-center justify-center w-full p-4 rounded-lg ${
+                        className={`flex w-full items-center justify-center rounded-lg p-4 ${
                           isSessionsPath
-                            ? "bg-buttonActive text-container shadow-md"
-                            : "bg-muted text-foreground hover:bg-accent"
+                            ? 'bg-buttonActive text-container shadow-md'
+                            : 'bg-muted text-foreground hover:bg-accent'
                         }`}
                         onClick={() => {
-                          router.push("/sessions");
+                          router.push('/sessions');
                           setMobileMenuOpen(false);
                         }}
                       >
@@ -384,13 +384,13 @@ export default function Header({
                     )}
 
                     {/* Mobile Currency Selector - only show when "All Licensee" is selected */}
-                    <div className="mt-6 p-4 border-t border-gray-200">
+                    <div className="mt-6 border-t border-gray-200 p-4">
                       <CurrencyFilter
                         className="w-full"
                         disabled={disabled}
                         onCurrencyChange={() => {
                           // Trigger data refresh when currency changes
-                          if (pathname === "/" && activeMetricsFilter) {
+                          if (pathname === '/' && activeMetricsFilter) {
                             setLoadingChartData(true);
                             fetchMetricsData(
                               activeMetricsFilter,
@@ -417,12 +417,12 @@ export default function Header({
                       await logoutUser();
                       clearUser();
                       setMobileMenuOpen(false);
-                      router.push("/login");
+                      router.push('/login');
                     }}
-                    className="mt-auto mb-10 mx-auto p-4 flex items-center space-x-2 text-grayHighlight hover:text-buttonActive"
+                    className="mx-auto mb-10 mt-auto flex items-center space-x-2 p-4 text-grayHighlight hover:text-buttonActive"
                     aria-label="Logout"
                   >
-                    <ExitIcon className="w-6 h-6" suppressHydrationWarning />
+                    <ExitIcon className="h-6 w-6" suppressHydrationWarning />
                     <span className="font-medium">Logout</span>
                   </motion.button>
                 </motion.div>
@@ -434,7 +434,7 @@ export default function Header({
           {pageTitle && (
             <div className="flex flex-col space-y-6 xl:flex-row">
               <div className="flex flex-col space-y-2">
-                <h1 className="mb-2 text-2xl sm:text-3xl font-bold text-gray-800">
+                <h1 className="mb-2 text-2xl font-bold text-gray-800 sm:text-3xl">
                   {pageTitle}
                 </h1>
                 {isSpecificLocationPath && (

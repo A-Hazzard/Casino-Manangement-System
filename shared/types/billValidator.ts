@@ -62,11 +62,11 @@ export type BillValidatorOptions = {
 
 // Time Period for filtering
 export type BillValidatorTimePeriod =
-  | "today"
-  | "yesterday"
-  | "7d"
-  | "30d"
-  | "custom";
+  | 'today'
+  | 'yesterday'
+  | '7d'
+  | '30d'
+  | 'custom';
 
 // Bill Validator Form Data (for collection)
 export type BillValidatorFormData = {

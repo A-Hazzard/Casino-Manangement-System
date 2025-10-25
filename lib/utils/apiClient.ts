@@ -1,13 +1,13 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
-import { classifyError, type ApiError } from "./errorHandling";
-import { showErrorNotification } from "./errorNotifications";
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { classifyError, type ApiError } from './errorHandling';
+import { showErrorNotification } from './errorNotifications';
 
 /**
  * Enhanced axios instance with error handling
  */
 const apiClient = axios.create({
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
 });
 
@@ -15,11 +15,11 @@ const apiClient = axios.create({
  * Request interceptor to add common headers
  */
 apiClient.interceptors.request.use(
-  (config) => {
+  config => {
     // Add any common headers here
     return config;
   },
-  (error) => {
+  error => {
     return Promise.reject(error);
   }
 );
@@ -40,7 +40,7 @@ apiClient.interceptors.response.use(
       apiError.isConnectionError ||
       apiError.isNetworkError
     ) {
-      showErrorNotification(apiError, "API Request");
+      showErrorNotification(apiError, 'API Request');
     }
 
     return Promise.reject(apiError);
@@ -72,7 +72,7 @@ export class ApiClient {
 
         // Wait before retrying (exponential backoff)
         const delay = baseDelay * Math.pow(2, attempt);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 

@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, Bell } from "lucide-react";
-import { ReportsPageSkeleton } from "@/components/ui/skeletons/ReportsSkeletons";
-import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, Bell } from 'lucide-react';
+import { ReportsPageSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
+import { useRouter } from 'next/navigation';
 
 type LoadingOverlayProps = {
   isLoading: boolean;
-}
+};
 
 type AuthLoadingProps = Record<string, never>;
 
@@ -25,15 +25,15 @@ export function LoadingOverlay({ isLoading }: LoadingOverlayProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 flex items-center justify-center"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-sm"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
-            className="bg-white rounded-lg p-6 shadow-xl flex items-center gap-3"
+            className="flex items-center gap-3 rounded-lg bg-white p-6 shadow-xl"
           >
-            <RefreshCw className="w-6 h-6 animate-spin text-buttonActive" />
+            <RefreshCw className="h-6 w-6 animate-spin text-buttonActive" />
             <span className="text-lg font-medium">Loading reports...</span>
           </motion.div>
         </motion.div>
@@ -55,20 +55,20 @@ export function AuthLoadingState({}: AuthLoadingProps) {
 export function AccessDeniedState({}: AccessDeniedProps) {
   const router = useRouter();
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center max-w-md mx-auto p-6">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Bell className="w-8 h-8 text-red-600" />
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="mx-auto max-w-md p-6 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+          <Bell className="h-8 w-8 text-red-600" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="mb-2 text-xl font-semibold text-gray-900">
           Access Restricted
         </h2>
-        <p className="text-gray-600 mb-4">
+        <p className="mb-4 text-gray-600">
           You don&apos;t have permission to access any reports. Please contact
           your administrator for access.
         </p>
         <Button
-          onClick={() => (router.push("/"))}
+          onClick={() => router.push('/')}
           className="bg-buttonActive hover:bg-buttonActive/90"
         >
           Return to Dashboard

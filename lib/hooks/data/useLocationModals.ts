@@ -3,11 +3,11 @@
  * Handles modal visibility, actions, and state management for locations page
  */
 
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
-import { AggregatedLocation } from "@/shared/types/common";
-import type { UseLocationModalsReturn } from "@/lib/types/locationModals";
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useLocationActionsStore } from '@/lib/store/locationActionsStore';
+import { AggregatedLocation } from '@/shared/types/common';
+import type { UseLocationModalsReturn } from '@/lib/types/locationModals';
 
 export function useLocationModals(): UseLocationModalsReturn {
   const router = useRouter();
@@ -33,10 +33,10 @@ export function useLocationModals(): UseLocationModalsReturn {
   );
 
   const handleTableAction = useCallback(
-    (action: "edit" | "delete", location: AggregatedLocation) => {
-      if (action === "edit") {
+    (action: 'edit' | 'delete', location: AggregatedLocation) => {
+      if (action === 'edit') {
         openEditModal(location);
-      } else if (action === "delete") {
+      } else if (action === 'delete') {
         openDeleteModal(location);
       }
     },

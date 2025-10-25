@@ -12,21 +12,21 @@ export function getClientIP(request: Request): string {
 
   // Check various headers in order of preference
   const ipHeaders = [
-    "x-forwarded-for",
-    "x-real-ip",
-    "x-client-ip",
-    "cf-connecting-ip", // Cloudflare
-    "x-cluster-client-ip",
-    "x-forwarded",
-    "forwarded-for",
-    "forwarded",
+    'x-forwarded-for',
+    'x-real-ip',
+    'x-client-ip',
+    'cf-connecting-ip', // Cloudflare
+    'x-cluster-client-ip',
+    'x-forwarded',
+    'forwarded-for',
+    'forwarded',
   ];
 
   for (const header of ipHeaders) {
     const value = headers.get(header);
     if (value) {
       // x-forwarded-for can contain multiple IPs, take the first one
-      const ip = value.split(",")[0].trim();
+      const ip = value.split(',')[0].trim();
       if (isValidIP(ip)) {
         return ip;
       }
@@ -41,7 +41,7 @@ export function getClientIP(request: Request): string {
   }
 
   // If no IP found, return unknown
-  return "unknown";
+  return 'unknown';
 }
 
 /**
@@ -69,11 +69,11 @@ export function getIPInfo(request: Request): {
   userAgent: string;
 } {
   const ip = getClientIP(request);
-  const userAgent = request.headers.get("user-agent") || "unknown";
+  const userAgent = request.headers.get('user-agent') || 'unknown';
 
   // Check if IP is local/private
   const isLocal = isLocalIP(ip);
-  const isPublic = !isLocal && ip !== "unknown";
+  const isPublic = !isLocal && ip !== 'unknown';
 
   return {
     ip,
@@ -87,7 +87,7 @@ export function getIPInfo(request: Request): {
  * Check if an IP address is local/private
  */
 function isLocalIP(ip: string): boolean {
-  if (ip === "unknown" || ip === "::1" || ip === "127.0.0.1") {
+  if (ip === 'unknown' || ip === '::1' || ip === '127.0.0.1') {
     return true;
   }
 
@@ -100,7 +100,7 @@ function isLocalIP(ip: string): boolean {
     /^127\./, // 127.0.0.0/8 (loopback)
   ];
 
-  return privateRanges.some((range) => range.test(ip));
+  return privateRanges.some(range => range.test(ip));
 }
 
 /**
@@ -111,8 +111,8 @@ export function formatIPForDisplay(ipInfo: {
   isLocal: boolean;
   isPublic: boolean;
 }): string {
-  if (ipInfo.ip === "unknown") {
-    return "Unknown";
+  if (ipInfo.ip === 'unknown') {
+    return 'Unknown';
   }
 
   if (ipInfo.isLocal) {

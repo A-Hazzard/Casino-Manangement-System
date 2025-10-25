@@ -1,5 +1,5 @@
-import axios from "axios";
-import type { CasinoMember as Member } from "@/shared/types/entities";
+import axios from 'axios';
+import type { CasinoMember as Member } from '@/shared/types/entities';
 // Activity logging removed - handled via API calls
 
 export type MembersQueryOptions = {
@@ -7,7 +7,7 @@ export type MembersQueryOptions = {
   limit?: number;
   search?: string;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
+  sortOrder?: 'asc' | 'desc';
   licencee?: string;
 };
 
@@ -32,9 +32,9 @@ export async function fetchMembersData(
     const {
       page = 1,
       limit = 10,
-      search = "",
-      sortBy = "name",
-      sortOrder = "asc",
+      search = '',
+      sortBy = 'name',
+      sortOrder = 'asc',
       licencee,
     } = options;
 
@@ -47,8 +47,8 @@ export async function fetchMembersData(
     });
 
     // Add licencee filter if provided
-    if (licencee && licencee !== "All Licensees") {
-      params.append("licencee", licencee);
+    if (licencee && licencee !== 'All Licensees') {
+      params.append('licencee', licencee);
     }
 
     const response = await axios.get(`/api/members?${params.toString()}`);
@@ -56,7 +56,7 @@ export async function fetchMembersData(
     if (response.data.success && response.data.data) {
       return response.data.data;
     } else {
-      console.error("Invalid response format:", response.data);
+      console.error('Invalid response format:', response.data);
       return {
         members: [],
         pagination: {
@@ -69,7 +69,7 @@ export async function fetchMembersData(
       };
     }
   } catch (error) {
-    console.error(" Error fetching members data:", error);
+    console.error(' Error fetching members data:', error);
     return {
       members: [],
       pagination: {
@@ -91,7 +91,7 @@ export async function fetchMemberById(memberId: string): Promise<Member> {
     const response = await axios.get(`/api/members/${memberId}`);
     return response.data;
   } catch (error) {
-    console.error(" Error fetching member by ID:", error);
+    console.error(' Error fetching member by ID:', error);
     throw error;
   }
 }
@@ -103,13 +103,13 @@ export async function createMember(
   memberData: Partial<Member>
 ): Promise<Member> {
   try {
-    const response = await axios.post("/api/members", memberData);
+    const response = await axios.post('/api/members', memberData);
 
     // Activity logging removed - handled via API calls
 
     return response.data;
   } catch (error) {
-    console.error(" Error creating member:", error);
+    console.error(' Error creating member:', error);
     throw error;
   }
 }
@@ -128,7 +128,7 @@ export async function updateMember(
 
     return response.data;
   } catch (error) {
-    console.error(" Error updating member:", error);
+    console.error(' Error updating member:', error);
     throw error;
   }
 }
@@ -142,7 +142,7 @@ export async function deleteMember(memberId: string): Promise<void> {
 
     // Activity logging removed - handled via API calls
   } catch (error) {
-    console.error(" Error deleting member:", error);
+    console.error(' Error deleting member:', error);
     throw error;
   }
 }
@@ -159,8 +159,8 @@ export async function searchMembers(
       search: searchTerm,
     });
 
-    if (licencee && licencee !== "All Licensees") {
-      params.append("licencee", licencee);
+    if (licencee && licencee !== 'All Licensees') {
+      params.append('licencee', licencee);
     }
 
     const response = await axios.get(
@@ -168,7 +168,7 @@ export async function searchMembers(
     );
     return response.data;
   } catch (error) {
-    console.error(" Error searching members:", error);
+    console.error(' Error searching members:', error);
     return [];
   }
 }

@@ -1,4 +1,4 @@
-import type { MachineData as SharedMachineData } from "@/shared/types/machines";
+import type { MachineData as SharedMachineData } from '@/shared/types/machines';
 
 // Use the shared MachineData type for consistency
 export type MachineData = SharedMachineData;
@@ -14,7 +14,7 @@ export type MachinesEvaluationTabProps = {
   // Sorting
   sortConfig: {
     key: keyof MachineData;
-    direction: "asc" | "desc";
+    direction: 'asc' | 'desc';
   };
 
   // Actions

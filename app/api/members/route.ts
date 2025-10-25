@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { Member } from "@/app/api/lib/models/members";
-import { logActivity } from "@/app/api/lib/helpers/activityLogger";
-import { getUserFromServer } from "../lib/helpers/users";
-import { getClientIP } from "@/lib/utils/ipAddress";
-import type { PipelineStage } from "mongoose";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Member } from '@/app/api/lib/models/members';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '../lib/helpers/users';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import type { PipelineStage } from 'mongoose';
 import {
   getCurrencyFromQuery,
   applyCurrencyConversionToMetrics,
   shouldApplyCurrencyConversion,
-} from "@/app/api/lib/helpers/currencyHelper";
+} from '@/app/api/lib/helpers/currencyHelper';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,25 +17,25 @@ export async function GET(request: NextRequest) {
 
     // Get query parameters for filtering and pagination
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const sortBy = searchParams.get("sortBy") || "createdAt";
-    const sortOrder = searchParams.get("sortOrder") || "desc";
+    const search = searchParams.get('search') || '';
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const sortBy = searchParams.get('sortBy') || 'createdAt';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     // Date filters
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     // Win/Loss filter
-    const winLossFilter = searchParams.get("winLossFilter"); // "positive", "negative", "all"
+    const winLossFilter = searchParams.get('winLossFilter'); // "positive", "negative", "all"
 
     // Location filter
-    const locationFilter = searchParams.get("locationFilter");
+    const locationFilter = searchParams.get('locationFilter');
 
     // Currency parameters
     const displayCurrency = getCurrencyFromQuery(searchParams);
-    const licencee = searchParams.get("licencee") || null;
+    const licencee = searchParams.get('licencee') || null;
 
     // Build optimized query
     const query: Record<string, unknown> = {};
@@ -43,10 +43,10 @@ export async function GET(request: NextRequest) {
     // Search by member name, username, or ID
     if (search) {
       query.$or = [
-        { "profile.firstName": { $regex: search, $options: "i" } },
-        { "profile.lastName": { $regex: search, $options: "i" } },
-        { username: { $regex: search, $options: "i" } },
-        { _id: { $regex: search, $options: "i" } },
+        { 'profile.firstName': { $regex: search, $options: 'i' } },
+        { 'profile.lastName': { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } },
+        { _id: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -63,27 +63,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Location filter
-    if (locationFilter && locationFilter !== "all") {
+    if (locationFilter && locationFilter !== 'all') {
       query.gamingLocation = locationFilter;
     }
 
     // Build optimized sort options with indexing considerations
     const sort: Record<string, number> = {};
-    if (sortBy === "name") {
-      sort["profile.firstName"] = sortOrder === "asc" ? 1 : -1;
-      sort["profile.lastName"] = sortOrder === "asc" ? 1 : -1;
-    } else if (sortBy === "playerId") {
-      sort["_id"] = sortOrder === "asc" ? 1 : -1;
-    } else if (sortBy === "lastSession") {
-      sort["createdAt"] = sortOrder === "asc" ? 1 : -1;
-    } else if (sortBy === "winLoss") {
-      sort["winLoss"] = sortOrder === "asc" ? 1 : -1;
-    } else if (sortBy === "joined") {
-      sort["createdAt"] = sortOrder === "asc" ? 1 : -1;
-    } else if (sortBy === "location") {
-      sort["locationName"] = sortOrder === "asc" ? 1 : -1;
+    if (sortBy === 'name') {
+      sort['profile.firstName'] = sortOrder === 'asc' ? 1 : -1;
+      sort['profile.lastName'] = sortOrder === 'asc' ? 1 : -1;
+    } else if (sortBy === 'playerId') {
+      sort['_id'] = sortOrder === 'asc' ? 1 : -1;
+    } else if (sortBy === 'lastSession') {
+      sort['createdAt'] = sortOrder === 'asc' ? 1 : -1;
+    } else if (sortBy === 'winLoss') {
+      sort['winLoss'] = sortOrder === 'asc' ? 1 : -1;
+    } else if (sortBy === 'joined') {
+      sort['createdAt'] = sortOrder === 'asc' ? 1 : -1;
+    } else if (sortBy === 'location') {
+      sort['locationName'] = sortOrder === 'asc' ? 1 : -1;
     } else {
-      sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+      sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
     }
 
     // Use aggregation pipeline to get members with location names and win/loss data
@@ -95,37 +95,37 @@ export async function GET(request: NextRequest) {
     // Stage 2: Join members with gaming locations to get location names
     pipeline.push({
       $lookup: {
-        from: "gaminglocations",
-        localField: "gamingLocation",
-        foreignField: "_id",
-        as: "locationInfo",
+        from: 'gaminglocations',
+        localField: 'gamingLocation',
+        foreignField: '_id',
+        as: 'locationInfo',
       },
     });
 
     // Stage 3: Join members with their machine sessions to calculate financial metrics
     pipeline.push({
       $lookup: {
-        from: "machinesessions",
-        localField: "_id",
-        foreignField: "memberId",
-        as: "sessions",
+        from: 'machinesessions',
+        localField: '_id',
+        foreignField: 'memberId',
+        as: 'sessions',
       },
     });
 
     // Stage 4: Calculate financial metrics from all member sessions
     pipeline.push({
       $addFields: {
-        locationName: { $arrayElemAt: ["$locationInfo.name", 0] },
+        locationName: { $arrayElemAt: ['$locationInfo.name', 0] },
         // Calculate total money in from all sessions (sum of drop values)
         totalMoneyIn: {
           $reduce: {
-            input: "$sessions",
+            input: '$sessions',
             initialValue: 0,
             in: {
               $add: [
-                "$$value",
+                '$$value',
                 {
-                  $ifNull: [{ $toDouble: "$$this.endMeters.movement.drop" }, 0],
+                  $ifNull: [{ $toDouble: '$$this.endMeters.movement.drop' }, 0],
                 },
               ],
             },
@@ -134,16 +134,16 @@ export async function GET(request: NextRequest) {
         // Calculate total money out from all sessions (sum of cancelled credits)
         totalMoneyOut: {
           $reduce: {
-            input: "$sessions",
+            input: '$sessions',
             initialValue: 0,
             in: {
               $add: [
-                "$$value",
+                '$$value',
                 {
                   $ifNull: [
                     {
                       $toDouble:
-                        "$$this.endMeters.movement.totalCancelledCredits",
+                        '$$this.endMeters.movement.totalCancelledCredits',
                     },
                     0,
                   ],
@@ -155,14 +155,14 @@ export async function GET(request: NextRequest) {
         // Calculate total handle from all sessions (sum of coin in values)
         totalHandle: {
           $reduce: {
-            input: "$sessions",
+            input: '$sessions',
             initialValue: 0,
             in: {
               $add: [
-                "$$value",
+                '$$value',
                 {
                   $ifNull: [
-                    { $toDouble: "$$this.endMeters.movement.coinIn" },
+                    { $toDouble: '$$this.endMeters.movement.coinIn' },
                     0,
                   ],
                 },
@@ -176,26 +176,26 @@ export async function GET(request: NextRequest) {
     // Stage 5: Calculate win/loss and gross revenue (Money In - Money Out)
     pipeline.push({
       $addFields: {
-        winLoss: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] },
-        grossRevenue: { $subtract: ["$totalMoneyIn", "$totalMoneyOut"] },
+        winLoss: { $subtract: ['$totalMoneyIn', '$totalMoneyOut'] },
+        grossRevenue: { $subtract: ['$totalMoneyIn', '$totalMoneyOut'] },
       },
     });
 
     // Stage 6: Filter by win/loss criteria if specified
-    if (winLossFilter && winLossFilter !== "all") {
-      if (winLossFilter === "positive") {
+    if (winLossFilter && winLossFilter !== 'all') {
+      if (winLossFilter === 'positive') {
         pipeline.push({
           $match: {
             winLoss: { $gt: 0 },
           },
         });
-      } else if (winLossFilter === "negative") {
+      } else if (winLossFilter === 'negative') {
         pipeline.push({
           $match: {
             winLoss: { $lt: 0 },
           },
         });
-      } else if (winLossFilter === "zero") {
+      } else if (winLossFilter === 'zero') {
         pipeline.push({
           $match: {
             winLoss: { $eq: 0 },
@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
     // Stage 9: Get total count for pagination (reuse pipeline without pagination)
     const countPipeline = [
       ...pipeline,
-      { $count: "total" } as Record<string, unknown>,
+      { $count: 'total' } as Record<string, unknown>,
     ];
     const countResult = await Member.aggregate(
       countPipeline as unknown as PipelineStage[]
@@ -251,10 +251,10 @@ export async function GET(request: NextRequest) {
     );
 
     // Debug: Log some sample member info if needed
-    if (members.length > 0 && process.env.NODE_ENV === "development") {
+    if (members.length > 0 && process.env.NODE_ENV === 'development') {
       console.warn(
-        "Sample member info:",
-        members.slice(0, 2).map((m) => ({
+        'Sample member info:',
+        members.slice(0, 2).map(m => ({
           memberId: m._id,
           name: `${m.profile?.firstName} ${m.profile?.lastName}`,
           locationName: m.locationName,
@@ -288,9 +288,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Error fetching members:", error);
+    console.error('Error fetching members:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -305,7 +305,7 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!body.profile?.firstName || !body.profile?.lastName || !body.username) {
       return NextResponse.json(
-        { error: "First name, last name, and username are required" },
+        { error: 'First name, last name, and username are required' },
         { status: 400 }
       );
     }
@@ -314,7 +314,7 @@ export async function POST(request: NextRequest) {
     const existingMember = await Member.findOne({ username: body.username });
     if (existingMember) {
       return NextResponse.json(
-        { error: "Username already exists" },
+        { error: 'Username already exists' },
         { status: 400 }
       );
     }
@@ -325,22 +325,22 @@ export async function POST(request: NextRequest) {
       profile: {
         firstName: body.profile.firstName,
         lastName: body.profile.lastName,
-        email: body.profile.email || "",
-        occupation: body.profile.occupation || "",
-        address: body.profile.address || "",
-        gender: "",
-        dob: "",
+        email: body.profile.email || '',
+        occupation: body.profile.occupation || '',
+        address: body.profile.address || '',
+        gender: '',
+        dob: '',
         indentification: {
-          number: "",
-          type: "",
+          number: '',
+          type: '',
         },
       },
       username: body.username,
-      phoneNumber: body.phoneNumber || "",
+      phoneNumber: body.phoneNumber || '',
       points: body.points || 0,
       uaccount: body.uaccount || 0,
-      pin: body.pin || "0000",
-      gamingLocation: body.gamingLocation || "default", // Allow specifying gaming location
+      pin: body.pin || '0000',
+      gamingLocation: body.gamingLocation || 'default', // Allow specifying gaming location
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -353,59 +353,59 @@ export async function POST(request: NextRequest) {
     if (currentUser && currentUser.emailAddress) {
       try {
         const createChanges = [
-          { field: "username", oldValue: null, newValue: body.username },
+          { field: 'username', oldValue: null, newValue: body.username },
           {
-            field: "firstName",
+            field: 'firstName',
             oldValue: null,
             newValue: body.profile.firstName,
           },
           {
-            field: "lastName",
+            field: 'lastName',
             oldValue: null,
             newValue: body.profile.lastName,
           },
           {
-            field: "email",
+            field: 'email',
             oldValue: null,
-            newValue: body.profile.email || "",
+            newValue: body.profile.email || '',
           },
           {
-            field: "phoneNumber",
+            field: 'phoneNumber',
             oldValue: null,
-            newValue: body.phoneNumber || "",
+            newValue: body.phoneNumber || '',
           },
           {
-            field: "gamingLocation",
+            field: 'gamingLocation',
             oldValue: null,
-            newValue: body.gamingLocation || "default",
+            newValue: body.gamingLocation || 'default',
           },
         ];
 
         await logActivity({
-          action: "CREATE",
+          action: 'CREATE',
           details: `Created new member "${body.profile.firstName} ${body.profile.lastName}" with username "${body.username}"`,
           ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get("user-agent") || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || "user",
-            resource: "member",
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'member',
             resourceId: newMember._id,
             resourceName: `${body.profile.firstName} ${body.profile.lastName}`,
             changes: createChanges,
           },
         });
       } catch (logError) {
-        console.error("Failed to log activity:", logError);
+        console.error('Failed to log activity:', logError);
       }
     }
 
     return NextResponse.json(newMember, { status: 201 });
   } catch (error) {
-    console.error("Error creating member:", error);
+    console.error('Error creating member:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -2,7 +2,7 @@
  * Utility functions for handling errors gracefully in the application
  */
 
-import type { ApiError } from "@/lib/types/errors";
+import type { ApiError } from '@/lib/types/errors';
 
 // Re-export for use in other files
 export type { ApiError };
@@ -12,7 +12,7 @@ export type { ApiError };
  */
 export function classifyError(error: unknown): ApiError {
   // Handle Axios errors with response status
-  if (error && typeof error === "object" && "response" in error) {
+  if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as {
       response?: { status?: number; statusText?: string };
     };
@@ -22,7 +22,7 @@ export function classifyError(error: unknown): ApiError {
     if (status === 503) {
       return {
         message:
-          "Service temporarily unavailable. The server may be experiencing high load. Please try again in a moment.",
+          'Service temporarily unavailable. The server may be experiencing high load. Please try again in a moment.',
         status: 503,
         isConnectionError: true,
       };
@@ -31,7 +31,7 @@ export function classifyError(error: unknown): ApiError {
     if (status && status >= 500) {
       return {
         message: `Server error (${status}): ${
-          statusText || "Internal server error"
+          statusText || 'Internal server error'
         }`,
         status,
         isConnectionError: true,
@@ -40,14 +40,14 @@ export function classifyError(error: unknown): ApiError {
 
     if (status === 404) {
       return {
-        message: "The requested resource was not found.",
+        message: 'The requested resource was not found.',
         status: 404,
       };
     }
 
     if (status && status >= 400) {
       return {
-        message: `Request failed (${status}): ${statusText || "Bad request"}`,
+        message: `Request failed (${status}): ${statusText || 'Bad request'}`,
         status,
       };
     }
@@ -57,9 +57,9 @@ export function classifyError(error: unknown): ApiError {
     const message = error.message.toLowerCase();
 
     // Handle timeout errors
-    if (message.includes("timeout") || message.includes("econnaborted")) {
+    if (message.includes('timeout') || message.includes('econnaborted')) {
       return {
-        message: "Request timed out. The server may be experiencing high load.",
+        message: 'Request timed out. The server may be experiencing high load.',
         isTimeoutError: true,
         isConnectionError: true,
       };
@@ -67,32 +67,32 @@ export function classifyError(error: unknown): ApiError {
 
     // MongoDB connection errors
     if (
-      message.includes("mongonetworktimeouterror") ||
-      (message.includes("connection") && message.includes("timed out"))
+      message.includes('mongonetworktimeouterror') ||
+      (message.includes('connection') && message.includes('timed out'))
     ) {
       return {
         message:
-          "Database connection timed out. The server may be experiencing high load.",
+          'Database connection timed out. The server may be experiencing high load.',
         isTimeoutError: true,
         isConnectionError: true,
       };
     }
 
     if (
-      message.includes("mongoserverselectionerror") ||
-      message.includes("server selection")
+      message.includes('mongoserverselectionerror') ||
+      message.includes('server selection')
     ) {
       return {
         message:
-          "Unable to connect to the database server. Please check your connection.",
+          'Unable to connect to the database server. Please check your connection.',
         isConnectionError: true,
       };
     }
 
-    if (message.includes("network") || message.includes("fetch")) {
+    if (message.includes('network') || message.includes('fetch')) {
       return {
         message:
-          "Network error occurred. Please check your internet connection.",
+          'Network error occurred. Please check your internet connection.',
         isNetworkError: true,
       };
     }
@@ -103,12 +103,12 @@ export function classifyError(error: unknown): ApiError {
     };
   }
 
-  if (typeof error === "string") {
+  if (typeof error === 'string') {
     return { message: error };
   }
 
   return {
-    message: "An unexpected error occurred",
+    message: 'An unexpected error occurred',
   };
 }
 
@@ -132,23 +132,23 @@ export function isRetryableError(error: ApiError): boolean {
  */
 export function getUserFriendlyErrorMessage(error: ApiError): string {
   if (error.isTimeoutError) {
-    return "The request is taking longer than expected. This usually happens when the server is busy. Please try again in a moment.";
+    return 'The request is taking longer than expected. This usually happens when the server is busy. Please try again in a moment.';
   }
 
   if (error.isConnectionError) {
-    return "Unable to connect to our servers. Please check your internet connection and try again.";
+    return 'Unable to connect to our servers. Please check your internet connection and try again.';
   }
 
   if (error.isNetworkError) {
-    return "Network error occurred. Please check your internet connection and try again.";
+    return 'Network error occurred. Please check your internet connection and try again.';
   }
 
   if (error.status === 500) {
-    return "Server error occurred. Our team has been notified. Please try again later.";
+    return 'Server error occurred. Our team has been notified. Please try again later.';
   }
 
   if (error.status === 401) {
-    return "Your session has expired. Please log in again.";
+    return 'Your session has expired. Please log in again.';
   }
 
   if (error.status === 403) {
@@ -156,10 +156,10 @@ export function getUserFriendlyErrorMessage(error: ApiError): string {
   }
 
   if (error.status === 404) {
-    return "The requested resource was not found.";
+    return 'The requested resource was not found.';
   }
 
-  return error.message || "An unexpected error occurred. Please try again.";
+  return error.message || 'An unexpected error occurred. Please try again.';
 }
 
 /**
@@ -190,7 +190,7 @@ export function createRetryFunction<T>(
 
         // Exponential backoff: 1s, 2s, 4s, 8s...
         const delay = baseDelay * Math.pow(2, attempt);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
@@ -205,8 +205,8 @@ export function handleApiError(error: unknown): ApiError {
   const classifiedError = classifyError(error);
 
   // Log error in development
-  if (process.env.NODE_ENV === "development") {
-    console.error("API Error:", {
+  if (process.env.NODE_ENV === 'development') {
+    console.error('API Error:', {
       original: error,
       classified: classifiedError,
     });
@@ -221,7 +221,7 @@ export function handleApiError(error: unknown): ApiError {
 export function createTimeoutPromise<T>(
   promise: Promise<T>,
   timeoutMs: number,
-  timeoutMessage: string = "Request timed out"
+  timeoutMessage: string = 'Request timed out'
 ): Promise<T> {
   return Promise.race([
     promise,

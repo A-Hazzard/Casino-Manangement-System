@@ -1,21 +1,21 @@
-import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { fetchAllGamingLocations } from "@/lib/helpers/locations";
-import type { User, ResourcePermissions } from "@/lib/types/administration";
-import type { LocationSelectItem } from "@/lib/types/location";
-import { X } from "lucide-react";
-import gsap from "gsap";
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import type { User, ResourcePermissions } from '@/lib/types/administration';
+import type { LocationSelectItem } from '@/lib/types/location';
+import { X } from 'lucide-react';
+import gsap from 'gsap';
 
 const ROLE_OPTIONS = [
-  { label: "Evolution Admin", value: "evolution admin" },
-  { label: "Administrator", value: "admin" },
-  { label: "Manager", value: "manager" },
-  { label: "Location Admin", value: "location admin" },
-  { label: "Technician", value: "technician" },
-  { label: "Collector", value: "collector" },
-  { label: "Collector Meters", value: "collector meters" },
+  { label: 'Evolution Admin', value: 'evolution admin' },
+  { label: 'Administrator', value: 'admin' },
+  { label: 'Manager', value: 'manager' },
+  { label: 'Location Admin', value: 'location admin' },
+  { label: 'Technician', value: 'technician' },
+  { label: 'Collector', value: 'collector' },
+  { label: 'Collector Meters', value: 'collector meters' },
 ];
 
 export type RolesPermissionsModalProps = {
@@ -38,14 +38,14 @@ export default function RolesPermissionsModal({
 }: RolesPermissionsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [roles, setRoles] = useState<string[]>(user?.roles || []);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>(
-    user?.resourcePermissions?.["gaming-locations"]?.resources || []
+    user?.resourcePermissions?.['gaming-locations']?.resources || []
   );
-  const [locationSearch, setLocationSearch] = useState("");
+  const [locationSearch, setLocationSearch] = useState('');
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
 
@@ -53,10 +53,10 @@ export default function RolesPermissionsModal({
     if (open) {
       setRoles(user?.roles || []);
       const userLocationIds =
-        user?.resourcePermissions?.["gaming-locations"]?.resources || [];
+        user?.resourcePermissions?.['gaming-locations']?.resources || [];
       setSelectedLocationIds(userLocationIds);
-      setPassword("");
-      setConfirmPassword("");
+      setPassword('');
+      setConfirmPassword('');
 
       // Check if all locations are selected
       if (userLocationIds.length > 0 && locations.length > 0) {
@@ -68,18 +68,18 @@ export default function RolesPermissionsModal({
   }, [open, user, locations]);
 
   useEffect(() => {
-    fetchAllGamingLocations().then((locs) => {
-      const formattedLocs = locs.map((loc) => {
-        let _id = "";
-        if ("id" in loc && typeof loc.id === "string") _id = loc.id;
-        else if ("_id" in loc && typeof loc._id === "string") _id = loc._id;
+    fetchAllGamingLocations().then(locs => {
+      const formattedLocs = locs.map(loc => {
+        let _id = '';
+        if ('id' in loc && typeof loc.id === 'string') _id = loc.id;
+        else if ('_id' in loc && typeof loc._id === 'string') _id = loc._id;
         return { _id, name: loc.name };
       });
       setLocations(formattedLocs);
 
       // Check if all locations are selected
       const userLocationIds =
-        user?.resourcePermissions?.["gaming-locations"]?.resources || [];
+        user?.resourcePermissions?.['gaming-locations']?.resources || [];
       if (userLocationIds.length > 0 && formattedLocs.length > 0) {
         setAllLocationsSelected(
           userLocationIds.length === formattedLocs.length
@@ -93,19 +93,19 @@ export default function RolesPermissionsModal({
       gsap.fromTo(
         modalRef.current,
         { y: 100, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
       );
       gsap.fromTo(
         backdropRef.current,
         { opacity: 0 },
-        { opacity: 1, duration: 0.3, ease: "power2.out" }
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
       );
     }
   }, [open]);
 
   const handleRoleChange = (role: string, checked: boolean) => {
-    setRoles((prev) =>
-      checked ? [...prev, role] : prev.filter((r) => r !== role)
+    setRoles(prev =>
+      checked ? [...prev, role] : prev.filter(r => r !== role)
     );
   };
 
@@ -122,7 +122,7 @@ export default function RolesPermissionsModal({
   };
 
   const handleLocationRemove = (id: string) => {
-    const newSelectedIds = selectedLocationIds.filter((locId) => locId !== id);
+    const newSelectedIds = selectedLocationIds.filter(locId => locId !== id);
     setSelectedLocationIds(newSelectedIds);
     setAllLocationsSelected(false);
   };
@@ -131,20 +131,20 @@ export default function RolesPermissionsModal({
     setAllLocationsSelected(checked);
     if (checked) {
       // Select all locations
-      setSelectedLocationIds(locations.map((loc) => loc._id));
+      setSelectedLocationIds(locations.map(loc => loc._id));
     } else {
       // Deselect all locations
       setSelectedLocationIds([]);
     }
   };
 
-  const filteredLocations = locations.filter((loc) =>
+  const filteredLocations = locations.filter(loc =>
     loc.name.toLowerCase().includes(locationSearch.toLowerCase())
   );
 
   const handleSave = () => {
     if (password && password !== confirmPassword) {
-      alert("Passwords do not match");
+      alert('Passwords do not match');
       return;
     }
     onSave({
@@ -153,8 +153,8 @@ export default function RolesPermissionsModal({
       password: password || undefined,
       resourcePermissions: {
         ...(user?.resourcePermissions || {}),
-        "gaming-locations": {
-          entity: "gaming-locations",
+        'gaming-locations': {
+          entity: 'gaming-locations',
           resources: selectedLocationIds,
         },
       },
@@ -164,7 +164,7 @@ export default function RolesPermissionsModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
@@ -172,18 +172,18 @@ export default function RolesPermissionsModal({
       />
       <div
         ref={modalRef}
-        className="bg-container shadow-lg flex flex-col gap-6 animate-in w-full max-w-lg mx-auto md:relative md:rounded-2xl md:p-10 md:my-0 md:top-0 md:left-0 md:bottom-auto md:right-auto md:max-h-none md:overflow-visible absolute bottom-0 left-0 right-0 rounded-t-2xl p-6 max-h-[90vh] overflow-y-auto"
+        className="absolute bottom-0 left-0 right-0 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col gap-6 overflow-y-auto rounded-t-2xl bg-container p-6 shadow-lg animate-in md:relative md:bottom-auto md:left-0 md:right-auto md:top-0 md:my-0 md:max-h-none md:overflow-visible md:rounded-2xl md:p-10"
         style={{ opacity: 1 }}
       >
         {/* Close button */}
         <button
-          className="absolute top-4 right-4 md:top-6 md:right-6 z-10 bg-white rounded-full p-2 shadow hover:bg-gray-100"
+          className="absolute right-4 top-4 z-10 rounded-full bg-white p-2 shadow hover:bg-gray-100 md:right-6 md:top-6"
           onClick={onClose}
           aria-label="Close"
         >
-          <X className="w-6 h-6 text-gray-700" />
+          <X className="h-6 w-6 text-gray-700" />
         </button>
-        <h2 className="text-2xl md:text-3xl font-bold text-center text-buttonActive mb-2">
+        <h2 className="mb-2 text-center text-2xl font-bold text-buttonActive md:text-3xl">
           Roles & Permissions
         </h2>
         <div className="flex flex-col gap-4">
@@ -192,7 +192,7 @@ export default function RolesPermissionsModal({
             <Input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               placeholder="Password"
               className="rounded-md"
             />
@@ -204,25 +204,25 @@ export default function RolesPermissionsModal({
             <Input
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={e => setConfirmPassword(e.target.value)}
               placeholder="Confirm Password"
               className="rounded-md"
             />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-buttonActive text-center mb-2">
+            <h3 className="mb-2 text-center text-lg font-semibold text-buttonActive">
               Roles
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 justify-items-center">
-              {ROLE_OPTIONS.map((role) => (
+            <div className="grid grid-cols-2 justify-items-center gap-3 md:grid-cols-3 md:gap-4">
+              {ROLE_OPTIONS.map(role => (
                 <label
                   key={role.value}
-                  className="flex items-center gap-2 cursor-pointer text-buttonActive text-base font-medium"
+                  className="flex cursor-pointer items-center gap-2 text-base font-medium text-buttonActive"
                 >
                   <Checkbox
                     id={role.value}
                     checked={roles.includes(role.value)}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       handleRoleChange(role.value, checked === true)
                     }
                     className="border-2 border-buttonActive text-buttonActive focus:ring-buttonActive"
@@ -233,16 +233,16 @@ export default function RolesPermissionsModal({
             </div>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-buttonActive text-center mb-2">
+            <h3 className="mb-2 text-center text-lg font-semibold text-buttonActive">
               Allowed Locations
             </h3>
 
             {/* All Locations Checkbox */}
             <div className="mb-3">
-              <label className="flex items-center gap-2 cursor-pointer text-buttonActive text-base font-medium">
+              <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-buttonActive">
                 <Checkbox
                   checked={allLocationsSelected}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={checked =>
                     handleAllLocationsChange(checked === true)
                   }
                   className="border-2 border-buttonActive text-buttonActive focus:ring-buttonActive"
@@ -254,7 +254,7 @@ export default function RolesPermissionsModal({
             <div className="relative mb-2">
               <Input
                 value={locationSearch}
-                onChange={(e) => {
+                onChange={e => {
                   setLocationSearch(e.target.value);
                   setLocationDropdownOpen(true);
                 }}
@@ -264,8 +264,8 @@ export default function RolesPermissionsModal({
                 }
                 placeholder={
                   allLocationsSelected
-                    ? "All locations are selected"
-                    : "Select Location.."
+                    ? 'All locations are selected'
+                    : 'Select Location..'
                 }
                 className="w-full rounded-md pr-10"
                 autoComplete="off"
@@ -274,17 +274,17 @@ export default function RolesPermissionsModal({
               {/* Dropdown of filtered locations, or all if no search */}
               {!allLocationsSelected &&
                 locationDropdownOpen &&
-                (filteredLocations.length > 0 || locationSearch === "") && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
+                (filteredLocations.length > 0 || locationSearch === '') && (
+                  <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
                     {(locationSearch ? filteredLocations : locations).map(
-                      (loc) => (
+                      loc => (
                         <button
                           key={loc._id}
                           type="button"
-                          className="w-full text-left px-4 py-2 hover:bg-blue-100 text-gray-900"
+                          className="w-full px-4 py-2 text-left text-gray-900 hover:bg-blue-100"
                           onClick={() => {
                             handleLocationSelect(loc._id);
-                            setLocationSearch("");
+                            setLocationSearch('');
                             setLocationDropdownOpen(false);
                           }}
                         >
@@ -297,32 +297,32 @@ export default function RolesPermissionsModal({
             </div>
             <div className="flex flex-wrap gap-2">
               {allLocationsSelected ? (
-                <span className="bg-green-500 text-white rounded-full px-4 py-2 flex items-center text-sm font-medium">
+                <span className="flex items-center rounded-full bg-green-500 px-4 py-2 text-sm font-medium text-white">
                   All Locations Selected ({locations.length} locations)
                   <button
-                    className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
+                    className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
                     onClick={() => handleAllLocationsChange(false)}
                     type="button"
                     title="Remove all locations"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="h-4 w-4" />
                   </button>
                 </span>
               ) : (
-                selectedLocationIds.map((id) => {
-                  const loc = locations.find((l) => l._id === id);
+                selectedLocationIds.map(id => {
+                  const loc = locations.find(l => l._id === id);
                   return loc ? (
                     <span
                       key={id}
-                      className="bg-blue-400 text-white rounded-full px-3 py-1 flex items-center text-sm"
+                      className="flex items-center rounded-full bg-blue-400 px-3 py-1 text-sm text-white"
                     >
                       {loc.name}
                       <button
-                        className="ml-2 text-white hover:text-gray-200 flex items-center justify-center"
+                        className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
                         onClick={() => handleLocationRemove(id)}
                         type="button"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="h-4 w-4" />
                       </button>
                     </span>
                   ) : null;
@@ -330,9 +330,9 @@ export default function RolesPermissionsModal({
               )}
             </div>
           </div>
-          <div className="flex justify-center mt-4">
+          <div className="mt-4 flex justify-center">
             <Button
-              className="bg-button text-white px-10 py-2 rounded-md text-lg font-semibold hover:bg-buttonActive w-full md:w-auto"
+              className="w-full rounded-md bg-button px-10 py-2 text-lg font-semibold text-white hover:bg-buttonActive md:w-auto"
               onClick={handleSave}
             >
               SAVE

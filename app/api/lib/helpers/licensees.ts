@@ -1,10 +1,10 @@
-import { NextRequest } from "next/server";
-import { Licencee } from "../models/licencee";
-import { logActivity, calculateChanges } from "./activityLogger";
-import { getUserFromServer } from "./users";
-import { getClientIP } from "@/lib/utils/ipAddress";
-import { generateUniqueLicenseKey } from "../utils/licenseKey";
-import { generateMongoId } from "@/lib/utils/id";
+import { NextRequest } from 'next/server';
+import { Licencee } from '../models/licencee';
+import { logActivity, calculateChanges } from './activityLogger';
+import { getUserFromServer } from './users';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { generateUniqueLicenseKey } from '../utils/licenseKey';
+import { generateMongoId } from '@/lib/utils/id';
 
 /**
  * Formats licensees data for frontend consumption, ensuring isPaid status is always defined
@@ -12,9 +12,9 @@ import { generateMongoId } from "@/lib/utils/id";
 export function formatLicenseesForResponse(
   licensees: Record<string, unknown>[]
 ) {
-  return licensees.map((licensee) => {
+  return licensees.map(licensee => {
     let isPaid = licensee.isPaid;
-    if (typeof isPaid === "undefined") {
+    if (typeof isPaid === 'undefined') {
       if (licensee.expiryDate) {
         isPaid = new Date(licensee.expiryDate as string | Date) > new Date();
       } else {
@@ -38,7 +38,7 @@ export async function getAllLicensees() {
     {
       $or: [
         { deletedAt: null },
-        { deletedAt: { $lt: new Date("2020-01-01") } },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     },
     {
@@ -90,7 +90,7 @@ export async function createLicensee(
   const licensee = await Licencee.create({
     _id: newId,
     name,
-    description: description || "",
+    description: description || '',
     country,
     startDate: finalStartDate,
     expiryDate: finalExpiryDate,
@@ -101,36 +101,36 @@ export async function createLicensee(
   if (currentUser && currentUser.emailAddress) {
     try {
       const createChanges = [
-        { field: "name", oldValue: null, newValue: name },
-        { field: "description", oldValue: null, newValue: description || "" },
-        { field: "country", oldValue: null, newValue: country },
-        { field: "licenseKey", oldValue: null, newValue: licenseKey },
-        { field: "startDate", oldValue: null, newValue: finalStartDate },
-        { field: "expiryDate", oldValue: null, newValue: finalExpiryDate },
+        { field: 'name', oldValue: null, newValue: name },
+        { field: 'description', oldValue: null, newValue: description || '' },
+        { field: 'country', oldValue: null, newValue: country },
+        { field: 'licenseKey', oldValue: null, newValue: licenseKey },
+        { field: 'startDate', oldValue: null, newValue: finalStartDate },
+        { field: 'expiryDate', oldValue: null, newValue: finalExpiryDate },
         {
-          field: "isPaid",
+          field: 'isPaid',
           oldValue: null,
           newValue: finalExpiryDate ? finalExpiryDate > new Date() : false,
         },
       ];
 
       await logActivity({
-        action: "CREATE",
+        action: 'CREATE',
         details: `Created new licensee "${name}" in ${country}`,
         ipAddress: getClientIP(request) || undefined,
-        userAgent: request.headers.get("user-agent") || undefined,
+        userAgent: request.headers.get('user-agent') || undefined,
         metadata: {
           userId: currentUser._id as string,
           userEmail: currentUser.emailAddress as string,
-          userRole: (currentUser.roles as string[])?.[0] || "user",
-          resource: "licensee",
+          userRole: (currentUser.roles as string[])?.[0] || 'user',
+          resource: 'licensee',
           resourceId: newId,
           resourceName: name,
           changes: createChanges,
         },
       });
     } catch (logError) {
-      console.error("Failed to log activity:", logError);
+      console.error('Failed to log activity:', logError);
     }
   }
 
@@ -181,7 +181,7 @@ export async function updateLicensee(
   } | null;
 
   if (!originalLicensee) {
-    throw new Error("Licensee not found");
+    throw new Error('Licensee not found');
   }
 
   const updateData: Record<string, unknown> = { lastEdited: new Date() };
@@ -224,11 +224,11 @@ export async function updateLicensee(
   });
 
   if (!updated) {
-    throw new Error("Licensee not found");
+    throw new Error('Licensee not found');
   }
 
   const updatedLicensee = updated.toObject();
-  if (typeof updatedLicensee.isPaid === "undefined") {
+  if (typeof updatedLicensee.isPaid === 'undefined') {
     if (updatedLicensee.expiryDate) {
       updatedLicensee.isPaid =
         new Date(updatedLicensee.expiryDate) > new Date();
@@ -240,11 +240,11 @@ export async function updateLicensee(
   if (currentUser && currentUser.emailAddress) {
     try {
       const oldIsPaid =
-        typeof originalLicensee.isPaid === "undefined"
+        typeof originalLicensee.isPaid === 'undefined'
           ? false
           : originalLicensee.isPaid;
       const newIsPaid =
-        typeof updateData.isPaid === "undefined"
+        typeof updateData.isPaid === 'undefined'
           ? oldIsPaid
           : updateData.isPaid;
 
@@ -287,24 +287,24 @@ export async function updateLicensee(
       );
 
       await logActivity({
-        action: "UPDATE",
+        action: 'UPDATE',
         details: `Updated licensee "${
           (updateData.name as string) || originalLicensee.name
         }"`,
         ipAddress: getClientIP(request) || undefined,
-        userAgent: request.headers.get("user-agent") || undefined,
+        userAgent: request.headers.get('user-agent') || undefined,
         metadata: {
           userId: currentUser._id as string,
           userEmail: currentUser.emailAddress as string,
-          userRole: (currentUser.roles as string[])?.[0] || "user",
-          resource: "licensee",
+          userRole: (currentUser.roles as string[])?.[0] || 'user',
+          resource: 'licensee',
           resourceId: _id,
           resourceName: (updateData.name as string) || originalLicensee.name,
           changes: changes,
         },
       });
     } catch (logError) {
-      console.error("Failed to log activity:", logError);
+      console.error('Failed to log activity:', logError);
     }
   }
 
@@ -319,7 +319,7 @@ export async function deleteLicensee(_id: string, request: NextRequest) {
   const licenseeToDelete = await Licencee.findById(_id);
 
   if (!licenseeToDelete) {
-    throw new Error("Licensee not found");
+    throw new Error('Licensee not found');
   }
 
   const deleted = await Licencee.findByIdAndUpdate(
@@ -329,67 +329,67 @@ export async function deleteLicensee(_id: string, request: NextRequest) {
   );
 
   if (!deleted) {
-    throw new Error("Licensee not found");
+    throw new Error('Licensee not found');
   }
 
   if (currentUser && currentUser.emailAddress) {
     try {
       const deleteChanges = [
-        { field: "name", oldValue: licenseeToDelete.name, newValue: null },
+        { field: 'name', oldValue: licenseeToDelete.name, newValue: null },
         {
-          field: "description",
-          oldValue: licenseeToDelete.description || "",
+          field: 'description',
+          oldValue: licenseeToDelete.description || '',
           newValue: null,
         },
         {
-          field: "country",
+          field: 'country',
           oldValue: licenseeToDelete.country,
           newValue: null,
         },
         {
-          field: "licenseKey",
+          field: 'licenseKey',
           oldValue: licenseeToDelete.licenseKey,
           newValue: null,
         },
         {
-          field: "startDate",
+          field: 'startDate',
           oldValue: licenseeToDelete.startDate,
           newValue: null,
         },
         {
-          field: "expiryDate",
+          field: 'expiryDate',
           oldValue: licenseeToDelete.expiryDate,
           newValue: null,
         },
         {
-          field: "isPaid",
+          field: 'isPaid',
           oldValue:
             licenseeToDelete.isPaid !== undefined
               ? licenseeToDelete.isPaid
               : licenseeToDelete.expiryDate
-              ? new Date(licenseeToDelete.expiryDate) > new Date()
-              : false,
+                ? new Date(licenseeToDelete.expiryDate) > new Date()
+                : false,
           newValue: null,
         },
       ];
 
       await logActivity({
-        action: "DELETE",
+        action: 'DELETE',
         details: `Deleted licensee "${licenseeToDelete.name}"`,
         ipAddress: getClientIP(request) || undefined,
-        userAgent: request.headers.get("user-agent") || undefined,
+        userAgent: request.headers.get('user-agent') || undefined,
         metadata: {
           userId: currentUser._id as string,
           userEmail: currentUser.emailAddress as string,
-          userRole: (currentUser.roles as string[])?.[0] || "user",
-          resource: "licensee",
+          userRole: (currentUser.roles as string[])?.[0] || 'user',
+          resource: 'licensee',
           resourceId: _id,
           resourceName: licenseeToDelete.name,
           changes: deleteChanges,
         },
       });
     } catch (logError) {
-      console.error("Failed to log activity:", logError);
+      console.error('Failed to log activity:', logError);
     }
   }
 

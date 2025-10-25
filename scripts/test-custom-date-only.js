@@ -1,14 +1,14 @@
 // Using built-in fetch (Node.js 18+)
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = 'http://localhost:3000';
 
 async function testCustomDateOnly() {
   try {
-    const machineId = "5769366190e560cdab9b8e51";
-    const startDate = "2025-10-15";
-    const endDate = "2025-10-16";
+    const machineId = '5769366190e560cdab9b8e51';
+    const startDate = '2025-10-15';
+    const endDate = '2025-10-16';
 
-    console.log("🔍 Testing Custom Date Range for Machine 1309");
+    console.log('🔍 Testing Custom Date Range for Machine 1309');
     console.log(`📅 Start Date: ${startDate}, End Date: ${endDate}\n`);
 
     // Test Bill Validator API
@@ -23,7 +23,7 @@ async function testCustomDateOnly() {
     );
     const metricsData = await metricsResponse.json();
 
-    console.log("📊 BILL VALIDATOR API:");
+    console.log('📊 BILL VALIDATOR API:');
     console.log(
       `   Total: $${
         (billValidatorData.data?.totalKnownAmount || 0) +
@@ -32,11 +32,11 @@ async function testCustomDateOnly() {
     );
     console.log(`   Bills Found: ${billValidatorData.totalBills || 0}`);
 
-    console.log("\n📊 METRICS API:");
+    console.log('\n📊 METRICS API:');
     console.log(`   Money In: $${metricsData.data?.moneyIn || 0}`);
-    console.log(`   Meters Found: ${metricsData.data?.meterCount || "N/A"}`);
+    console.log(`   Meters Found: ${metricsData.data?.meterCount || 'N/A'}`);
 
-    console.log("\n🔍 COMPARISON:");
+    console.log('\n🔍 COMPARISON:');
     const billTotal =
       (billValidatorData.data?.totalKnownAmount || 0) +
       (billValidatorData.data?.totalUnknownAmount || 0);
@@ -44,12 +44,12 @@ async function testCustomDateOnly() {
     console.log(`   Difference: $${billTotal - metricsTotal}`);
 
     if (Math.abs(billTotal - metricsTotal) < 0.01) {
-      console.log("   ✅ Values match!");
+      console.log('   ✅ Values match!');
     } else {
-      console.log("   ❌ Mismatch detected!");
+      console.log('   ❌ Mismatch detected!');
     }
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error('❌ Error:', error);
   }
 }
 

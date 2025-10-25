@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models } from 'mongoose';
 
 const MetersSchema = new Schema(
   {
@@ -9,11 +9,13 @@ const MetersSchema = new Schema(
     machine: { type: String, required: true },
     location: { type: String, required: true },
     locationSession: { type: String, required: true }, // Added based on example
-    viewingAccountDenomination: { // Added based on example
+    viewingAccountDenomination: {
+      // Added based on example
       drop: { type: Number, default: 0 },
       totalCancelledCredits: { type: Number, default: 0 },
     },
-    movement: { // Updated based on example, removed extra fields
+    movement: {
+      // Updated based on example, removed extra fields
       coinIn: { type: Number, default: 0 },
       coinOut: { type: Number, default: 0 },
       totalCancelledCredits: { type: Number, default: 0 },
@@ -54,4 +56,4 @@ MetersSchema.index({ locationSession: 1, readAt: 1 }); // Added index for new fi
  * Mongoose model for meter readings, including references to machines and locations, and all meter fields.
  * Exported as 'Meters' for use in API routes and data access layers.
  */
-export const Meters = models.Meters || model("Meters", MetersSchema);
+export const Meters = models.Meters || model('Meters', MetersSchema);

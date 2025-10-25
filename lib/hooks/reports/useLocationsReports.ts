@@ -1,6 +1,6 @@
-import { useEffect, useCallback, useMemo } from "react";
-import { useAnalyticsDataStore } from "@/lib/store/reportsDataStore";
-import axios from "axios";
+import { useEffect, useCallback, useMemo } from 'react';
+import { useAnalyticsDataStore } from '@/lib/store/reportsDataStore';
+import axios from 'axios';
 
 export function useLocationsAnalytics() {
   const { setLocations, setLocationComparisons, setLastUpdated, locations } =
@@ -31,15 +31,15 @@ export function useLocationsAnalytics() {
       setIsLoading();
       setError();
       try {
-        const response = await axios.get("/api/analytics/locations");
+        const response = await axios.get('/api/analytics/locations');
         if (response.data?.success) {
           setLocations(response.data?.data || []);
-          setLastUpdated("locations");
+          setLastUpdated('locations');
         } else {
           setError();
         }
       } catch (err) {
-        console.error("Failed to fetch locations data:", err);
+        console.error('Failed to fetch locations data:', err);
         setError();
       } finally {
         setIsLoading();
@@ -58,8 +58,8 @@ export function useLocationsAnalytics() {
 
       // Here you could add a loading state specific to the comparison
       try {
-        const response = await axios.get("/api/analytics/locations", {
-          params: { locationIds: selectedLocationIds.join(",") },
+        const response = await axios.get('/api/analytics/locations', {
+          params: { locationIds: selectedLocationIds.join(',') },
         });
         if (response.data.success) {
           // The API returns a single object if one ID is passed, so we ensure it's always an array
@@ -71,7 +71,7 @@ export function useLocationsAnalytics() {
           setError();
         }
       } catch (err) {
-        console.error("Failed to fetch location comparison data:", err);
+        console.error('Failed to fetch location comparison data:', err);
         setError();
       }
     };

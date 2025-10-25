@@ -1,5 +1,4 @@
-
-import type { CountryDetailsModalProps } from "@/lib/types/components";
+import type { CountryDetailsModalProps } from '@/lib/types/components';
 
 export default function CountryDetailsModal({
   isOpen,
@@ -9,15 +8,15 @@ export default function CountryDetailsModal({
   if (!isOpen || !country) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+      <div className="relative w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
         <button
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
+          className="absolute right-3 top-3 text-gray-400 hover:text-gray-700"
           onClick={onClose}
           aria-label="Close"
         >
           ×
         </button>
-        <h2 className="text-2xl font-bold mb-4">Country Details</h2>
+        <h2 className="mb-4 text-2xl font-bold">Country Details</h2>
         <div className="space-y-2">
           <div>
             <span className="font-semibold">Name:</span> {country.name}

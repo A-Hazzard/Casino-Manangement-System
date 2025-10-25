@@ -1,10 +1,10 @@
-import { SignJWT } from "jose";
-import { getUserByEmail, getUserByUsername } from "./users";
-import { sendEmail } from "../../lib/utils/email";
-import type { UserAuthPayload } from "@/shared/types";
-import { comparePassword } from "../utils/password";
-import type { AuthResult } from "@/shared/types";
-import { getCurrentDbConnectionString, getJwtSecret } from "@/lib/utils/auth";
+import { SignJWT } from 'jose';
+import { getUserByEmail, getUserByUsername } from './users';
+import { sendEmail } from '../../lib/utils/email';
+import type { UserAuthPayload } from '@/shared/types';
+import { comparePassword } from '../utils/password';
+import type { AuthResult } from '@/shared/types';
+import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 
 /**
  * Validates user credentials and generates a JWT token on success.
@@ -21,17 +21,17 @@ export async function authenticateUser(
   const user = /\S+@\S+\.\S+/.test(identifier)
     ? await getUserByEmail(identifier)
     : await getUserByUsername(identifier);
-  if (!user) return { success: false, message: "User not found." };
+  if (!user) return { success: false, message: 'User not found.' };
 
-  const isMatch = await comparePassword(password, user.password || "");
-  if (!isMatch) return { success: false, message: "Incorrect password." };
+  const isMatch = await comparePassword(password, user.password || '');
+  if (!isMatch) return { success: false, message: 'Incorrect password.' };
 
   const userObject = user.toObject({ getters: true });
 
   const jwtPayload = {
     _id: userObject._id.toString(),
     emailAddress: userObject.emailAddress,
-    username: String(userObject.username || ""),
+    username: String(userObject.username || ''),
     isEnabled: userObject.isEnabled,
     roles: userObject.roles || [],
     permissions: userObject.permissions || [],
@@ -44,14 +44,14 @@ export async function authenticateUser(
       timestamp: Date.now(),
     },
   })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("48h")
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('48h')
     .sign(new TextEncoder().encode(getJwtSecret()));
 
   const userPayload: UserAuthPayload = {
     _id: userObject._id.toString(),
     emailAddress: userObject.emailAddress,
-    username: String(userObject.username || ""),
+    username: String(userObject.username || ''),
     isEnabled: userObject.isEnabled,
     profile: userObject.profile || undefined,
   };
@@ -70,17 +70,17 @@ export async function sendResetPasswordEmail(
 ): Promise<AuthResult> {
   const user = await getUserByEmail(email);
   if (!user) {
-    return { success: false, message: "User not found." };
+    return { success: false, message: 'User not found.' };
   }
 
   const resetToken = await new SignJWT({ userId: user._id })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("15m")
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('15m')
     .sign(new TextEncoder().encode(getJwtSecret()));
 
   const resetUrl = `/reset-password?token=${resetToken}`;
 
-  const subject = "Password Reset Instructions";
+  const subject = 'Password Reset Instructions';
   const text = `Reset your password using the following link: ${resetUrl}`;
   const html = `<p>Please click <a href="${resetUrl}">here</a> to reset your password.</p>`;
 
@@ -88,6 +88,6 @@ export async function sendResetPasswordEmail(
   if (emailResult.success) {
     return { success: true };
   } else {
-    return { success: false, message: "Failed to send email." };
+    return { success: false, message: 'Failed to send email.' };
   }
 }

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useCallback } from "react";
-import { classifyError, type ApiError } from "@/lib/utils/errorHandling";
-import { showErrorNotification } from "@/lib/utils/errorNotifications";
+import { useCallback } from 'react';
+import { classifyError, type ApiError } from '@/lib/utils/errorHandling';
+import { showErrorNotification } from '@/lib/utils/errorNotifications';
 
 /**
  * Global error handler hook that can be used across all components
@@ -13,8 +13,8 @@ export function useGlobalErrorHandler() {
     const apiError = classifyError(error);
 
     // Log error in development
-    if (process.env.NODE_ENV === "development") {
-      console.error(`Global Error Handler - ${context || "Unknown"}:`, {
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`Global Error Handler - ${context || 'Unknown'}:`, {
         original: error,
         classified: apiError,
       });
@@ -63,7 +63,7 @@ export function useGlobalErrorHandler() {
             if (attempt === 0) {
               console.warn(
                 `${
-                  context || "API call"
+                  context || 'API call'
                 } temporarily unavailable (503). Retrying...`
               );
             }
@@ -72,7 +72,7 @@ export function useGlobalErrorHandler() {
               // Only retry 503 errors twice
               console.warn(
                 `${
-                  context || "API call"
+                  context || 'API call'
                 } still unavailable after retries. Returning empty data.`
               );
               return { data: [] as T }; // Return empty array for metrics
@@ -88,7 +88,7 @@ export function useGlobalErrorHandler() {
           // Wait before retrying (exponential backoff with longer delays for 503)
           const baseDelay = lastError.status === 503 ? 2000 : 1000;
           const delay = baseDelay * Math.pow(2, attempt);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
 

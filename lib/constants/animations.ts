@@ -12,7 +12,7 @@ export const pageVariants = {
     opacity: 1,
     transition: {
       duration: 0.5,
-      when: "beforeChildren",
+      when: 'beforeChildren',
       staggerChildren: 0.1,
     },
   },
@@ -32,7 +32,7 @@ export const itemVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      type: "spring",
+      type: 'spring',
       damping: 12,
       stiffness: 200,
     },
@@ -52,7 +52,7 @@ export const hoverScaleVariants = {
   hover: {
     scale: 1.03,
     transition: {
-      type: "spring",
+      type: 'spring',
       stiffness: 400,
       damping: 10,
     },
@@ -72,7 +72,7 @@ export const spinnerVariants = {
     transition: {
       duration: 1,
       repeat: Infinity,
-      ease: "linear",
+      ease: 'linear',
     },
   },
 };

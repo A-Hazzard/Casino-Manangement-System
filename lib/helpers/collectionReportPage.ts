@@ -1,14 +1,14 @@
-import { gsap } from "gsap";
+import { gsap } from 'gsap';
 import type {
   CollectionReportRow,
   SchedulerTableRow,
-} from "@/lib/types/componentProps";
-import type { CollectionView } from "@/lib/types/collection";
-import type { CollectionDocument } from "@/lib/types/collections";
-import { formatDateString } from "@/lib/utils/dateUtils";
-import { fetchSchedulersWithFilters } from "@/lib/helpers/schedulers";
-import type { LocationSelectItem } from "@/lib/types/location";
-import type { DateRange as RDPDateRange } from "react-day-picker";
+} from '@/lib/types/componentProps';
+import type { CollectionView } from '@/lib/types/collection';
+import type { CollectionDocument } from '@/lib/types/collections';
+import { formatDateString } from '@/lib/utils/dateUtils';
+import { fetchSchedulersWithFilters } from '@/lib/helpers/schedulers';
+import type { LocationSelectItem } from '@/lib/types/location';
+import type { DateRange as RDPDateRange } from 'react-day-picker';
 import { parse } from 'date-fns';
 
 /**
@@ -43,17 +43,17 @@ export function syncStateWithURL(
   activeTab: CollectionView,
   setActiveTab: (tab: CollectionView) => void
 ) {
-  const section = searchParams?.get("section");
-  if (section === "monthly" && activeTab !== "monthly") {
-    setActiveTab("monthly");
-  } else if (section === "manager" && activeTab !== "manager") {
-    setActiveTab("manager");
-  } else if (section === "collector" && activeTab !== "collector") {
-    setActiveTab("collector");
-  } else if (section === "collection" && activeTab !== "collection") {
-    setActiveTab("collection");
-  } else if (!section && activeTab !== "collection") {
-    setActiveTab("collection");
+  const section = searchParams?.get('section');
+  if (section === 'monthly' && activeTab !== 'monthly') {
+    setActiveTab('monthly');
+  } else if (section === 'manager' && activeTab !== 'manager') {
+    setActiveTab('manager');
+  } else if (section === 'collector' && activeTab !== 'collector') {
+    setActiveTab('collector');
+  } else if (section === 'collection' && activeTab !== 'collection') {
+    setActiveTab('collection');
+  } else if (!section && activeTab !== 'collection') {
+    setActiveTab('collection');
   }
 }
 
@@ -73,7 +73,7 @@ export function handlePaginationWithAnimation(
   animatePagination: (ref: React.RefObject<HTMLDivElement | null>) => void
 ) {
   setPage(pageNumber);
-  if (activeTab === "collection") {
+  if (activeTab === 'collection') {
     animatePagination(paginationRef);
   }
 }
@@ -89,9 +89,9 @@ export function resetSchedulerFilters(
   setSelectedCollector: (collector: string) => void,
   setSelectedStatus: (status: string) => void
 ) {
-  setSelectedSchedulerLocation("all");
-  setSelectedCollector("all");
-  setSelectedStatus("all");
+  setSelectedSchedulerLocation('all');
+  setSelectedCollector('all');
+  setSelectedStatus('all');
 }
 
 /**
@@ -105,9 +105,9 @@ export function resetCollectorFilters(
   setSelectedCollectorFilter: (filter: string) => void,
   setSelectedCollectorStatus: (status: string) => void
 ) {
-  setSelectedCollectorLocation("all");
-  setSelectedCollectorFilter("all");
-  setSelectedCollectorStatus("all");
+  setSelectedCollectorLocation('all');
+  setSelectedCollectorFilter('all');
+  setSelectedCollectorStatus('all');
 }
 
 /**
@@ -127,7 +127,7 @@ export function animatePagination(
         scale: 1,
         opacity: 1,
         duration,
-        ease: "back.out(1.7)",
+        ease: 'back.out(1.7)',
       }
     );
   }
@@ -141,7 +141,7 @@ export function animateTableRows(
   tableRef: React.RefObject<HTMLDivElement | null>
 ) {
   if (tableRef.current) {
-    const tableRows = tableRef.current.querySelectorAll("tbody tr");
+    const tableRows = tableRef.current.querySelectorAll('tbody tr');
     gsap.fromTo(
       tableRows,
       { opacity: 0, y: 15 },
@@ -150,7 +150,7 @@ export function animateTableRows(
         y: 0,
         duration: 0.4,
         stagger: 0.05,
-        ease: "power2.out",
+        ease: 'power2.out',
       }
     );
   }
@@ -163,21 +163,21 @@ export function animateTableRows(
 export function animateCards(cardsRef: React.RefObject<HTMLDivElement | null>) {
   // Early return if ref is not available
   if (!cardsRef?.current) {
-    console.warn("animateCards: cardsRef.current is not available");
+    console.warn('animateCards: cardsRef.current is not available');
     return;
   }
 
   try {
     // Use a more robust selector and add safety checks
-    const cards = cardsRef.current.querySelectorAll(".card-item");
-    
+    const cards = cardsRef.current.querySelectorAll('.card-item');
+
     // Convert to array and filter out any null/undefined elements
-    const validCards = Array.from(cards).filter(card => 
-      card && card instanceof Element && card.isConnected
+    const validCards = Array.from(cards).filter(
+      card => card && card instanceof Element && card.isConnected
     );
 
     if (validCards.length === 0) {
-      console.warn("animateCards: No valid card elements found");
+      console.warn('animateCards: No valid card elements found');
       return;
     }
 
@@ -187,41 +187,41 @@ export function animateCards(cardsRef: React.RefObject<HTMLDivElement | null>) {
     // Apply animation with error handling
     gsap.fromTo(
       validCards,
-      { 
-        opacity: 0, 
-        scale: 0.95, 
+      {
+        opacity: 0,
+        scale: 0.95,
         y: 15,
         // Ensure elements are initially hidden
-        visibility: "hidden"
+        visibility: 'hidden',
       },
       {
         opacity: 1,
         scale: 1,
         y: 0,
-        visibility: "visible",
+        visibility: 'visible',
         duration: 0.3,
         stagger: 0.05,
-        ease: "back.out(1.5)",
+        ease: 'back.out(1.5)',
         onComplete: () => {
           // Clean up any inline styles that might interfere
           validCards.forEach(card => {
             if (card instanceof HTMLElement) {
-              card.style.visibility = "";
+              card.style.visibility = '';
             }
           });
-        }
+        },
       }
     );
   } catch (error) {
-    console.error("animateCards: GSAP animation failed:", error);
+    console.error('animateCards: GSAP animation failed:', error);
     // Fallback: ensure cards are visible even if animation fails
     if (cardsRef.current) {
-      const cards = cardsRef.current.querySelectorAll(".card-item");
+      const cards = cardsRef.current.querySelectorAll('.card-item');
       cards.forEach(card => {
         if (card instanceof HTMLElement) {
-          card.style.opacity = "1";
-          card.style.transform = "none";
-          card.style.visibility = "visible";
+          card.style.opacity = '1';
+          card.style.transform = 'none';
+          card.style.visibility = 'visible';
         }
       });
     }
@@ -239,7 +239,7 @@ export function animateContentTransition(
     gsap.fromTo(
       contentRef.current,
       { opacity: 0, y: 20 },
-      { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }
+      { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
     );
   }
 }
@@ -258,10 +258,10 @@ export function filterCollectionReports(
   locations: LocationSelectItem[],
   dateRange?: RDPDateRange
 ): CollectionReportRow[] {
-  return reports.filter((r) => {
+  return reports.filter(r => {
     const matchesLocation =
-      selectedLocation === "all" ||
-      r.location === locations.find((l) => l._id === selectedLocation)?.name;
+      selectedLocation === 'all' ||
+      r.location === locations.find(l => l._id === selectedLocation)?.name;
     const matchesSearch =
       !search ||
       r.collector.toLowerCase().includes(search.toLowerCase()) ||
@@ -281,14 +281,17 @@ export function filterCollectionReports(
         reportDate = null;
       }
       if (reportDate) {
-        matchesDate = reportDate >= dateRange.from && reportDate <= dateRange.to;
+        matchesDate =
+          reportDate >= dateRange.from && reportDate <= dateRange.to;
       } else {
         // If parsing fails, include the item (fail open)
         matchesDate = true;
       }
     }
 
-    return matchesLocation && matchesSearch && matchesUncollected && matchesDate;
+    return (
+      matchesLocation && matchesSearch && matchesUncollected && matchesDate
+    );
   });
 }
 
@@ -335,23 +338,23 @@ export async function fetchAndFormatSchedulers(
   collectors: string[];
 }> {
   const locationName =
-    selectedSchedulerLocation !== "all"
-      ? locations.find((loc) => loc._id === selectedSchedulerLocation)?.name
+    selectedSchedulerLocation !== 'all'
+      ? locations.find(loc => loc._id === selectedSchedulerLocation)?.name
       : undefined;
 
   const data = await fetchSchedulersWithFilters({
     location: locationName,
-    collector: selectedCollector !== "all" ? selectedCollector : undefined,
-    status: selectedStatus !== "all" ? selectedStatus : undefined,
+    collector: selectedCollector !== 'all' ? selectedCollector : undefined,
+    status: selectedStatus !== 'all' ? selectedStatus : undefined,
   });
 
   // Extract unique collectors for filter dropdown
   const uniqueCollectors = Array.from(
-    new Set(data.map((item) => item.collector))
+    new Set(data.map(item => item.collector))
   ).filter(Boolean);
 
   // Format scheduler data for table
-  const formattedData: SchedulerTableRow[] = data.map((item) => ({
+  const formattedData: SchedulerTableRow[] = data.map(item => ({
     id: item._id,
     collector: item.collector,
     location: item.location,

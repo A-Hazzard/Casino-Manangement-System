@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import type { CollectionView, CollectionTab } from "@/lib/types/collection";
-import { useUserStore } from "@/lib/store/userStore";
-import { hasTabAccess } from "@/lib/utils/permissions";
+import { motion } from 'framer-motion';
+import type { CollectionView, CollectionTab } from '@/lib/types/collection';
+import { useUserStore } from '@/lib/store/userStore';
+import { hasTabAccess } from '@/lib/utils/permissions';
 
 type Props = {
   tabs: CollectionTab[];
@@ -22,23 +22,23 @@ export default function CollectionNavigation({
   const userRoles = user?.roles || [];
 
   // Filter tabs based on user permissions
-  const accessibleTabs = tabs.filter((tab) => {
+  const accessibleTabs = tabs.filter(tab => {
     switch (tab.id) {
-      case "collection":
+      case 'collection':
         return true; // All users with collection-report access can see this
-      case "monthly":
-        return hasTabAccess(userRoles, "collection-reports", "monthly");
-      case "manager":
+      case 'monthly':
+        return hasTabAccess(userRoles, 'collection-reports', 'monthly');
+      case 'manager':
         return hasTabAccess(
           userRoles,
-          "collection-reports",
-          "manager-schedules"
+          'collection-reports',
+          'manager-schedules'
         );
-      case "collector":
+      case 'collector':
         return hasTabAccess(
           userRoles,
-          "collection-reports",
-          "collector-schedules"
+          'collection-reports',
+          'collector-schedules'
         );
       default:
         return true;
@@ -46,17 +46,17 @@ export default function CollectionNavigation({
   });
 
   return (
-    <div className="border-b border-gray-200 bg-white rounded-lg shadow-sm">
+    <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop - md: and above */}
-      <nav className="hidden md:flex space-x-1 md:space-x-2 lg:space-x-8 px-1 md:px-2 lg:px-6">
-        {accessibleTabs.map((tab) => (
+      <nav className="hidden space-x-1 px-1 md:flex md:space-x-2 md:px-2 lg:space-x-8 lg:px-6">
+        {accessibleTabs.map(tab => (
           <motion.button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`navigation-button flex items-center space-x-0.5 md:space-x-1 lg:space-x-2 py-1 md:py-2 lg:py-4 px-0.5 md:px-1 lg:px-2 border-b-2 font-medium text-xs xl:text-sm whitespace-nowrap transition-all duration-200 cursor-pointer ${
+            className={`navigation-button flex cursor-pointer items-center space-x-0.5 whitespace-nowrap border-b-2 px-0.5 py-1 text-xs font-medium transition-all duration-200 md:space-x-1 md:px-1 md:py-2 lg:space-x-2 lg:px-2 lg:py-4 xl:text-sm ${
               activeView === tab.id
-                ? "border-buttonActive text-buttonActive bg-buttonActive/5"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? 'border-buttonActive bg-buttonActive/5 text-buttonActive'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
             }`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -70,14 +70,14 @@ export default function CollectionNavigation({
       </nav>
 
       {/* Mobile - below md: */}
-      <div className="md:hidden px-4 py-2">
+      <div className="px-4 py-2 md:hidden">
         <select
           value={activeView}
-          onChange={(e) => onChange(e.target.value as CollectionView)}
-          className="navigation-button w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive cursor-pointer"
+          onChange={e => onChange(e.target.value as CollectionView)}
+          className="navigation-button w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
           disabled={isLoading}
         >
-          {accessibleTabs.map((t) => (
+          {accessibleTabs.map(t => (
             <option key={t.id} value={t.id}>
               {t.label}
             </option>

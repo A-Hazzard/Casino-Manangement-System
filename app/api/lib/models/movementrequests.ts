@@ -1,5 +1,5 @@
-import mongoose, { Schema } from "mongoose";
-import type { MovementRequest as MovementRequestType } from "@/lib/types/movementRequests";
+import mongoose, { Schema } from 'mongoose';
+import type { MovementRequest as MovementRequestType } from '@/lib/types/movementRequests';
 
 const movementRequestSchema = new Schema<MovementRequestType>(
   {
@@ -25,7 +25,7 @@ const movementRequestSchema = new Schema<MovementRequestType>(
     cabinetIn: { type: String },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "in progress"],
+      enum: ['pending', 'approved', 'rejected', 'in progress'],
       required: true,
     },
     timestamp: { type: Date, required: true },
@@ -41,4 +41,4 @@ const movementRequestSchema = new Schema<MovementRequestType>(
 
 export const MovementRequest =
   (mongoose.models?.MovementRequest as mongoose.Model<MovementRequestType>) ||
-  mongoose.model<MovementRequestType>("MovementRequest", movementRequestSchema);
+  mongoose.model<MovementRequestType>('MovementRequest', movementRequestSchema);

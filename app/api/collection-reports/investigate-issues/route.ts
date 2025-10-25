@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { Collections } from "../../lib/models/collections";
-import { CollectionReport } from "../../lib/models/collectionReport";
-import { Machine } from "../../lib/models/machines";
-import { getUserIdFromServer, getUserById } from "../../lib/helpers/users";
-import { HistoryEntry } from "@/lib/types/fixReport";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { Collections } from '../../lib/models/collections';
+import { CollectionReport } from '../../lib/models/collectionReport';
+import { Machine } from '../../lib/models/machines';
+import { getUserIdFromServer, getUserById } from '../../lib/helpers/users';
+import { HistoryEntry } from '@/lib/types/fixReport';
 
 /**
  * Investigation API for Collection Report Issues
@@ -18,26 +18,26 @@ import { HistoryEntry } from "@/lib/types/fixReport";
 export async function GET(_request: NextRequest) {
   try {
     await connectDB();
-    console.warn("🔍 Starting collection report investigation...");
+    console.warn('🔍 Starting collection report investigation...');
 
     // Check authentication
-    if (process.env.NODE_ENV !== "development") {
+    if (process.env.NODE_ENV !== 'development') {
       const userId = await getUserIdFromServer();
       if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
       const user = await getUserById(userId);
       if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
       if (
-        !user.roles?.includes("admin") &&
-        !user.roles?.includes("evolution admin")
+        !user.roles?.includes('admin') &&
+        !user.roles?.includes('evolution admin')
       ) {
         return NextResponse.json(
-          { error: "Insufficient permissions" },
+          { error: 'Insufficient permissions' },
           { status: 403 }
         );
       }
@@ -50,7 +50,7 @@ export async function GET(_request: NextRequest) {
 
     if (!mostRecentReport) {
       return NextResponse.json(
-        { error: "No collection reports found" },
+        { error: 'No collection reports found' },
         { status: 404 }
       );
     }
@@ -96,8 +96,8 @@ export async function GET(_request: NextRequest) {
 
         if (sasStart >= sasEnd) {
           collectionIssues.push({
-            type: "SAS_TIMES_INVERTED",
-            description: "SAS start time is after or equal to end time",
+            type: 'SAS_TIMES_INVERTED',
+            description: 'SAS start time is after or equal to end time',
             details: {
               sasStartTime: collection.sasMeters.sasStartTime,
               sasEndTime: collection.sasMeters.sasEndTime,
@@ -111,8 +111,8 @@ export async function GET(_request: NextRequest) {
           !collection.sasMeters.sasEndTime
         ) {
           collectionIssues.push({
-            type: "SAS_TIMES_MISSING",
-            description: "SAS start or end time is missing",
+            type: 'SAS_TIMES_MISSING',
+            description: 'SAS start or end time is missing',
             details: {
               sasStartTime: collection.sasMeters.sasStartTime,
               sasEndTime: collection.sasMeters.sasEndTime,
@@ -121,8 +121,8 @@ export async function GET(_request: NextRequest) {
         }
       } else {
         collectionIssues.push({
-          type: "SAS_METERS_MISSING",
-          description: "SAS meters data is completely missing",
+          type: 'SAS_METERS_MISSING',
+          description: 'SAS meters data is completely missing',
           details: {},
         });
       }
@@ -164,8 +164,8 @@ export async function GET(_request: NextRequest) {
           Math.abs(collection.movement.gross - expectedGross) > 0.01
         ) {
           collectionIssues.push({
-            type: "MOVEMENT_CALCULATION_WRONG",
-            description: "Movement calculation does not match expected values",
+            type: 'MOVEMENT_CALCULATION_WRONG',
+            description: 'Movement calculation does not match expected values',
             details: {
               actual: {
                 metersIn: collection.movement.metersIn,
@@ -192,8 +192,8 @@ export async function GET(_request: NextRequest) {
         collection.prevOut === null
       ) {
         collectionIssues.push({
-          type: "PREV_METERS_ZERO_OR_UNDEFINED",
-          description: "Previous meter values are 0 or undefined",
+          type: 'PREV_METERS_ZERO_OR_UNDEFINED',
+          description: 'Previous meter values are 0 or undefined',
           details: {
             prevIn: collection.prevIn,
             prevOut: collection.prevOut,
@@ -219,8 +219,8 @@ export async function GET(_request: NextRequest) {
 
         if (!historyEntry) {
           collectionIssues.push({
-            type: "HISTORY_ENTRY_MISSING",
-            description: "No corresponding history entry found in machine",
+            type: 'HISTORY_ENTRY_MISSING',
+            description: 'No corresponding history entry found in machine',
             details: {
               machineId: collection.machineId,
               metersIn: collection.metersIn,
@@ -235,9 +235,9 @@ export async function GET(_request: NextRequest) {
             historyEntry.prevMetersOut !== collection.prevOut
           ) {
             collectionIssues.push({
-              type: "HISTORY_PREV_METERS_MISMATCH",
+              type: 'HISTORY_PREV_METERS_MISMATCH',
               description:
-                "History entry prevIn/prevOut does not match collection",
+                'History entry prevIn/prevOut does not match collection',
               details: {
                 collection: {
                   prevIn: collection.prevIn,
@@ -290,10 +290,10 @@ export async function GET(_request: NextRequest) {
       summary: summary,
     });
   } catch (error) {
-    console.error("❌ Investigation failed:", error);
+    console.error('❌ Investigation failed:', error);
     return NextResponse.json(
       {
-        error: "Investigation failed",
+        error: 'Investigation failed',
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }

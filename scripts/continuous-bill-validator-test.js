@@ -1,9 +1,9 @@
-const { MongoClient } = require("mongodb");
+const { MongoClient } = require('mongodb');
 // Using built-in fetch (Node.js 18+)
 
 const MONGODB_URI =
-  "mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin";
-const BASE_URL = "http://localhost:3000";
+  'mongodb://sunny1:87ydaiuhdsia2e@192.168.8.2:32018/sas-prod-local?authSource=admin';
+const BASE_URL = 'http://localhost:3000';
 
 async function testBillValidatorAlignment() {
   const client = new MongoClient(MONGODB_URI);
@@ -12,15 +12,15 @@ async function testBillValidatorAlignment() {
     await client.connect();
     const db = client.db();
 
-    console.log("🔍 Continuous Bill Validator vs Metrics Alignment Test");
-    console.log("📅 Testing Machine 1309 (ID: 5769366190e560cdab9b8e51)");
+    console.log('🔍 Continuous Bill Validator vs Metrics Alignment Test');
+    console.log('📅 Testing Machine 1309 (ID: 5769366190e560cdab9b8e51)');
 
-    const machineId = "5769366190e560cdab9b8e51";
+    const machineId = '5769366190e560cdab9b8e51';
 
     // Get machine and location info
-    const machine = await db.collection("machines").findOne({ _id: machineId });
+    const machine = await db.collection('machines').findOne({ _id: machineId });
     const location = await db
-      .collection("gaminglocations")
+      .collection('gaminglocations')
       .findOne({ _id: machine.locationId });
     const gameDayOffset = location?.gameDayOffset || 0;
 
@@ -29,7 +29,7 @@ async function testBillValidatorAlignment() {
     );
 
     // Test multiple time periods
-    const timePeriods = ["Today", "Yesterday", "7d", "30d", "All Time"];
+    const timePeriods = ['Today', 'Yesterday', '7d', '30d', 'All Time'];
 
     let allTestsPassed = true;
 
@@ -69,7 +69,7 @@ async function testBillValidatorAlignment() {
             // Show detailed breakdown for failed tests
             if (billValidatorData.data.denominations) {
               console.log(`   Bill Validator Breakdown:`);
-              billValidatorData.data.denominations.forEach((denom) => {
+              billValidatorData.data.denominations.forEach(denom => {
                 if (denom.quantity > 0) {
                   console.log(
                     `     ${denom.label}: ${denom.quantity} bills = $${denom.subtotal}`
@@ -94,8 +94,8 @@ async function testBillValidatorAlignment() {
     console.log(`\n📊 Testing Custom Date Range (Oct 15-16, 2025)...`);
 
     try {
-      const startDate = "2025-10-15";
-      const endDate = "2025-10-16";
+      const startDate = '2025-10-15';
+      const endDate = '2025-10-16';
 
       const billValidatorResponse = await fetch(
         `${BASE_URL}/api/bill-validator/${machineId}?timePeriod=Custom&startDate=${startDate}&endDate=${endDate}`
@@ -148,7 +148,7 @@ async function testBillValidatorAlignment() {
 
     return allTestsPassed;
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error('❌ Error:', error);
     return false;
   } finally {
     await client.close();

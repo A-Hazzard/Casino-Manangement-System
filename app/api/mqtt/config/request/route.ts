@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { mqttService } from "@/lib/services/mqttService";
+import { NextRequest, NextResponse } from 'next/server';
+import { mqttService } from '@/lib/services/mqttService';
 
 /**
  * POST /api/mqtt/config/request
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     if (!relayId) {
       console.log(`❌ [API] Missing relayId in request`);
       return NextResponse.json(
-        { success: false, error: "relayId is required" },
+        { success: false, error: 'relayId is required' },
         { status: 400 }
       );
     }
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (!component) {
       console.log(`❌ [API] Missing component in request`);
       return NextResponse.json(
-        { success: false, error: "component is required" },
+        { success: false, error: 'component is required' },
         { status: 400 }
       );
     }
@@ -52,11 +52,11 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("❌ [API] Error requesting MQTT config:", error);
+    console.error('❌ [API] Error requesting MQTT config:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
@@ -71,15 +71,15 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     success: true,
-    message: "MQTT Config Request API",
+    message: 'MQTT Config Request API',
     usage: {
       request:
         'POST /api/mqtt/config/request with { "relayId": "string", "component": "string" }',
-      components: ["mqtt", "ota", "coms", "net", "app"],
+      components: ['mqtt', 'ota', 'coms', 'net', 'app'],
     },
     example: {
-      relayId: "e831cdfa8384",
-      component: "mqtt",
+      relayId: 'e831cdfa8384',
+      component: 'mqtt',
     },
   });
 }

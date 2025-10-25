@@ -2,7 +2,7 @@ import type {
   ReportsLocationData,
   PaginationInfo,
   ReportsLocationsResponse,
-} from "@shared/types/reports";
+} from '@shared/types/reports';
 
 // Re-export shared types for convenience
 export type { ReportsLocationData, PaginationInfo, ReportsLocationsResponse };
@@ -21,7 +21,7 @@ export type ReportQuery = {
 export type ReportGenerationRequest = {
   reportType: string;
   filters: ReportQuery;
-  format: "pdf" | "csv" | "excel";
+  format: 'pdf' | 'csv' | 'excel';
   userId: string;
 };
 
@@ -33,7 +33,7 @@ export type LogisticsEntry = {
   fromLocationName?: string;
   toLocationName: string;
   moveDate: string | Date;
-  status: "completed" | "pending" | "in-progress" | "cancelled";
+  status: 'completed' | 'pending' | 'in-progress' | 'cancelled';
   movedBy: string;
   reason: string;
 };
@@ -52,7 +52,7 @@ export type MachineAnalytics = {
 // Report configuration type for report generation
 export type ReportConfig = {
   title: string;
-  reportType: "locationPerformance" | "machineRevenue" | "fullFinancials";
+  reportType: 'locationPerformance' | 'machineRevenue' | 'fullFinancials';
   category: string;
   dateRange: {
     start: Date;
@@ -64,7 +64,7 @@ export type ReportConfig = {
     locationIds?: string[];
     manufacturers?: string[];
   };
-  chartType: "bar" | "line" | "table";
+  chartType: 'bar' | 'line' | 'table';
   exportFormat: string;
   includeCharts: boolean;
   includeSummary: boolean;
@@ -79,7 +79,7 @@ export type MachineMovementRecord = {
   toLocationId: string;
   toLocationName: string;
   moveDate: Date;
-  status: "pending" | "in-progress" | "completed" | "cancelled";
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   movedBy: string;
   reason: string;
   createdAt: Date;
@@ -172,9 +172,9 @@ export type KpiMetric = {
   name: string;
   value: number;
   change?: number;
-  changeType?: "increase" | "decrease" | "neutral";
-  trend?: "up" | "down" | "neutral";
-  format: "currency" | "percentage" | "number";
+  changeType?: 'increase' | 'decrease' | 'neutral';
+  trend?: 'up' | 'down' | 'neutral';
+  format: 'currency' | 'percentage' | 'number';
   description?: string;
 };
 
@@ -185,7 +185,7 @@ export type CasinoLocation = {
   totalMachines: number;
   onlineMachines: number;
   revenue: number;
-  performance: "good" | "average" | "poor";
+  performance: 'good' | 'average' | 'poor';
   lastUpdated: Date;
 };
 
@@ -201,7 +201,7 @@ export type GamingMachine = {
   totalCancelledCredits: number;
   jackpot: number;
   gamesPlayed: number;
-  performance: "good" | "average" | "poor";
+  performance: 'good' | 'average' | 'poor';
   isOnline: boolean;
 };
 
@@ -215,20 +215,20 @@ export type ChartDataPoint = {
 
 // Report store types
 export type ReportType =
-  | "locationPerformance"
-  | "machineRevenue"
-  | "fullFinancials"
-  | "customerActivity"
-  | "dailyCounts"
-  | "activeCustomers"
-  | "locationStats"
-  | "machinePerformance"
-  | "terminalCounts";
+  | 'locationPerformance'
+  | 'machineRevenue'
+  | 'fullFinancials'
+  | 'customerActivity'
+  | 'dailyCounts'
+  | 'activeCustomers'
+  | 'locationStats'
+  | 'machinePerformance'
+  | 'terminalCounts';
 
 export type ReportStep = {
   id: string;
   name: string;
-  status: "pending" | "in-progress" | "completed" | "error";
+  status: 'pending' | 'in-progress' | 'completed' | 'error';
   progress: number;
   message?: string;
   data?: unknown;
@@ -239,22 +239,22 @@ export type ScheduledReport = {
   name: string;
   config: {
     title: string;
-    reportType: "machineRevenue" | "locationPerformance" | "customerActivity";
+    reportType: 'machineRevenue' | 'locationPerformance' | 'customerActivity';
     category: string;
     dateRange: {
       start: Date;
       end: Date;
     };
-    timeGranularity: "daily" | "weekly" | "monthly";
+    timeGranularity: 'daily' | 'weekly' | 'monthly';
     filters: Record<string, unknown>;
     fields: string[];
-    chartType: "table" | "bar" | "line";
-    exportFormat: "pdf" | "excel" | "csv";
+    chartType: 'table' | 'bar' | 'line';
+    exportFormat: 'pdf' | 'excel' | 'csv';
     includeCharts: boolean;
     includeSummary: boolean;
   };
   schedule: {
-    frequency: "daily" | "weekly" | "monthly";
+    frequency: 'daily' | 'weekly' | 'monthly';
     time: string;
     timezone: string;
     dayOfWeek?: number;
@@ -264,11 +264,11 @@ export type ScheduledReport = {
   recipients: Array<{
     email: string;
     role: string;
-    deliveryMethod: "email";
+    deliveryMethod: 'email';
   }>;
   lastRun: string;
   nextRun: string;
-  status: "active" | "paused" | "error";
+  status: 'active' | 'paused' | 'error';
   createdBy: string;
   createdAt: string;
 };
@@ -320,7 +320,7 @@ export type VoucherMetrics = {
 
 export type Alert = {
   message: string;
-  severity: "low" | "medium" | "high" | "critical";
+  severity: 'low' | 'medium' | 'high' | 'critical';
   timestamp?: Date;
   locationId?: string;
   machineId?: string;
@@ -348,7 +348,7 @@ export type ReportData = {
 export type Reportable = Record<string, unknown>;
 
 // Report navigation types
-export type ReportView = "machines" | "locations" | "meters" | "dashboard";
+export type ReportView = 'machines' | 'locations' | 'meters' | 'dashboard';
 
 export type ReportTab = {
   id: ReportView;
@@ -396,7 +396,7 @@ export type RecentAudit = {
 // Dashboard widget types
 export type DashboardWidget = {
   id: string;
-  type: "chart" | "table" | "metric" | "alert";
+  type: 'chart' | 'table' | 'metric' | 'alert';
   title: string;
   config: Record<string, unknown>;
   data: unknown;
@@ -416,7 +416,7 @@ export type UserReportPreferences = {
     alerts: boolean;
   };
   exportPreferences: {
-    defaultFormat: "pdf" | "excel" | "csv";
+    defaultFormat: 'pdf' | 'excel' | 'csv';
     includeCharts: boolean;
     includeSummary: boolean;
   };
@@ -425,7 +425,7 @@ export type UserReportPreferences = {
 // Report generation status
 export type ReportGenerationStatus = {
   id: string;
-  status: "pending" | "in-progress" | "completed" | "failed";
+  status: 'pending' | 'in-progress' | 'completed' | 'failed';
   progress: number;
   message?: string;
   startTime: Date;
@@ -451,7 +451,7 @@ export type PerformanceComparison = {
     {
       value: number;
       percentage: number;
-      trend: "up" | "down" | "neutral";
+      trend: 'up' | 'down' | 'neutral';
     }
   >;
 };

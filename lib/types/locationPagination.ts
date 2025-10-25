@@ -14,5 +14,3 @@ export type UseLocationPaginationReturn = {
   canGoNext: boolean;
   resetToFirstPage: () => void;
 };
-
-

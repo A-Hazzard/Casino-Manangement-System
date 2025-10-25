@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { Types } from 'mongoose';
 
 export type Firmware = {
   _id: string;
@@ -13,4 +13,4 @@ export type Firmware = {
   deletedAt?: string | null;
 };
 
-export type NewFirmware = Omit<Firmware, "_id" | "createdAt" | "updatedAt">;
+export type NewFirmware = Omit<Firmware, '_id' | 'createdAt' | 'updatedAt'>;

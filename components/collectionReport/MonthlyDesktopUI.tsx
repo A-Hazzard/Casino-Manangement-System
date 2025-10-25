@@ -1,13 +1,13 @@
-import React from "react";
-import { MonthlyDatePicker } from "@/components/ui/MonthlyDatePicker";
-import MonthlyReportSummaryTable from "@/components/collectionReport/MonthlyReportSummaryTable";
-import MonthlyReportDetailsTable from "@/components/collectionReport/MonthlyReportDetailsTable";
-import type { MonthlyDesktopUIProps } from "@/lib/types/componentProps";
+import React from 'react';
+import { MonthlyDatePicker } from '@/components/ui/MonthlyDatePicker';
+import MonthlyReportSummaryTable from '@/components/collectionReport/MonthlyReportSummaryTable';
+import MonthlyReportDetailsTable from '@/components/collectionReport/MonthlyReportDetailsTable';
+import type { MonthlyDesktopUIProps } from '@/lib/types/componentProps';
 import {
   exportMonthlyReportPDF,
   exportMonthlyReportExcel,
-} from "@/lib/utils/export";
-import PaginationControls from "@/components/ui/PaginationControls";
+} from '@/lib/utils/export';
+import PaginationControls from '@/components/ui/PaginationControls';
 
 const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
   allLocationNames,
@@ -31,30 +31,30 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
   };
 
   return (
-    <div className="hidden md:block bg-white rounded-lg shadow-md space-y-4">
+    <div className="hidden space-y-4 rounded-lg bg-white shadow-md md:block">
       {/* Controls Bar */}
-      <div className="bg-buttonActive rounded-t-lg p-4 flex flex-col md:flex-row md:items-center gap-4">
+      <div className="flex flex-col gap-4 rounded-t-lg bg-buttonActive p-4 md:flex-row md:items-center">
         <select
-          className="px-4 py-2 rounded-md text-sm w-full md:w-auto bg-white text-black border-none focus:ring-2 focus:ring-buttonActive"
+          className="w-full rounded-md border-none bg-white px-4 py-2 text-sm text-black focus:ring-2 focus:ring-buttonActive md:w-auto"
           value={monthlyLocation}
-          onChange={(e) => onMonthlyLocationChange(e.target.value)}
+          onChange={e => onMonthlyLocationChange(e.target.value)}
         >
           <option value="all">All Locations</option>
-          {allLocationNames.map((loc) => (
+          {allLocationNames.map(loc => (
             <option key={loc} value={loc}>
               {loc}
             </option>
           ))}
         </select>
-        <div className="flex gap-2 ml-auto w-full md:w-auto justify-end">
+        <div className="ml-auto flex w-full justify-end gap-2 md:w-auto">
           <button
-            className="bg-lighterBlueHighlight text-white px-4 py-2 rounded-md font-semibold text-sm"
+            className="rounded-md bg-lighterBlueHighlight px-4 py-2 text-sm font-semibold text-white"
             onClick={handleExportPDF}
           >
             EXPORT PDF
           </button>
           <button
-            className="bg-lighterBlueHighlight text-white px-4 py-2 rounded-md font-semibold text-sm"
+            className="rounded-md bg-lighterBlueHighlight px-4 py-2 text-sm font-semibold text-white"
             onClick={() =>
               exportMonthlyReportExcel(monthlySummary, monthlyDetails)
             }
@@ -77,20 +77,20 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
       />
 
       {/* Content Area */}
-      <div className="px-4 pb-4 space-y-4">
-        <h2 className="text-xl font-bold mt-4 text-center">
-          {monthlyLocation !== "all"
+      <div className="space-y-4 px-4 pb-4">
+        <h2 className="mt-4 text-center text-xl font-bold">
+          {monthlyLocation !== 'all'
             ? `${monthlyLocation} - Summary`
-            : "All Locations Total"}
+            : 'All Locations Total'}
         </h2>
         {monthlyLoading ? (
-          <div className="animate-pulse h-24 bg-gray-200 rounded w-full" />
+          <div className="h-24 w-full animate-pulse rounded bg-gray-200" />
         ) : (
           <MonthlyReportSummaryTable summary={monthlySummary} />
         )}
 
         {monthlyLoading ? (
-          <div className="animate-pulse h-40 bg-gray-200 rounded w-full mt-4" />
+          <div className="mt-4 h-40 w-full animate-pulse rounded bg-gray-200" />
         ) : monthlyCurrentItems.length === 0 && !monthlyLoading ? null : (
           <>
             <MonthlyReportDetailsTable details={monthlyCurrentItems} />
@@ -98,7 +98,7 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
               <PaginationControls
                 currentPage={monthlyPage - 1}
                 totalPages={monthlyTotalPages}
-                setCurrentPage={(page) => onPaginateMonthly(page + 1)}
+                setCurrentPage={page => onPaginateMonthly(page + 1)}
               />
             )}
           </>

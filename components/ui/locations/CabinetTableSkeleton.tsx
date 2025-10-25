@@ -1,61 +1,61 @@
-import React from "react";
-import { ChevronDownIcon } from "@radix-ui/react-icons";
+import React from 'react';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
 
 export const CabinetTableSkeleton: React.FC = () => (
   <div className="w-full overflow-x-auto">
-    <table className="table-fixed w-full border-collapse text-left">
+    <table className="w-full table-fixed border-collapse text-left">
       <thead className="bg-button text-white">
         <tr>
           {/* Match headers from CabinetTable */}
-          <th className="relative p-3 text-sm w-[25%]">
+          <th className="relative w-[25%] p-3 text-sm">
             <div className="flex items-center">
               <span className="font-semibold">ASSET NUMBER</span>
-              <div className="w-4 h-4 ml-1 text-white">
-                <ChevronDownIcon className="w-full h-full" />
+              <div className="ml-1 h-4 w-4 text-white">
+                <ChevronDownIcon className="h-full w-full" />
               </div>
             </div>
           </th>
-          <th className="relative p-3 text-sm w-[20%]">
+          <th className="relative w-[20%] p-3 text-sm">
             <div className="flex items-center">
               <span className="font-semibold">LOCATION</span>
-              <div className="w-4 h-4 ml-1 text-white">
-                <ChevronDownIcon className="w-full h-full" />
+              <div className="ml-1 h-4 w-4 text-white">
+                <ChevronDownIcon className="h-full w-full" />
               </div>
             </div>
           </th>
-          <th className="relative p-3 text-sm text-center">
+          <th className="relative p-3 text-center text-sm">
             <div className="flex items-center justify-center">
               <span className="font-semibold">MONEY IN</span>
-              <div className="w-4 h-4 ml-1 text-white">
-                <ChevronDownIcon className="w-full h-full" />
+              <div className="ml-1 h-4 w-4 text-white">
+                <ChevronDownIcon className="h-full w-full" />
               </div>
             </div>
           </th>
-          <th className="relative p-3 text-sm text-center">
+          <th className="relative p-3 text-center text-sm">
             <div className="flex items-center justify-center">
               <span className="font-semibold">MONEY OUT</span>
-              <div className="w-4 h-4 ml-1 text-white">
-                <ChevronDownIcon className="w-full h-full" />
+              <div className="ml-1 h-4 w-4 text-white">
+                <ChevronDownIcon className="h-full w-full" />
               </div>
             </div>
           </th>
-          <th className="relative p-3 text-sm text-center">
+          <th className="relative p-3 text-center text-sm">
             <div className="flex items-center justify-center">
               <span className="font-semibold">JACKPOT</span>
-              <div className="w-4 h-4 ml-1 text-white">
-                <ChevronDownIcon className="w-full h-full" />
+              <div className="ml-1 h-4 w-4 text-white">
+                <ChevronDownIcon className="h-full w-full" />
               </div>
             </div>
           </th>
-          <th className="relative p-3 text-sm text-center">
+          <th className="relative p-3 text-center text-sm">
             <div className="flex items-center justify-center">
               <span className="font-semibold">GROSS</span>
-              <div className="w-4 h-4 ml-1 text-white">
-                <ChevronDownIcon className="w-full h-full" />
+              <div className="ml-1 h-4 w-4 text-white">
+                <ChevronDownIcon className="h-full w-full" />
               </div>
             </div>
           </th>
-          <th className="p-3 text-sm text-center">
+          <th className="p-3 text-center text-sm">
             <span className="font-semibold">ACTIONS</span>
           </th>
         </tr>
@@ -67,34 +67,34 @@ export const CabinetTableSkeleton: React.FC = () => (
             className="border-b border-gray-200 hover:bg-gray-50"
           >
             {/* Asset/Status Column */}
-            <td className="p-3 bg-white text-sm align-top border-r border-gray-200">
-              <div className="h-4 w-3/4 mb-1 bg-gray-200 rounded"></div>
-              <div className="h-3 w-1/2 mb-1 bg-gray-200 rounded"></div>
-              <div className="h-3 w-1/3 mb-2 bg-gray-200 rounded"></div>
-              <div className="h-4 w-16 mb-1 bg-gray-200 rounded"></div>
-              <div className="h-3 w-24 bg-gray-200 rounded"></div>
+            <td className="border-r border-gray-200 bg-white p-3 align-top text-sm">
+              <div className="mb-1 h-4 w-3/4 rounded bg-gray-200"></div>
+              <div className="mb-1 h-3 w-1/2 rounded bg-gray-200"></div>
+              <div className="mb-2 h-3 w-1/3 rounded bg-gray-200"></div>
+              <div className="mb-1 h-4 w-16 rounded bg-gray-200"></div>
+              <div className="h-3 w-24 rounded bg-gray-200"></div>
             </td>
             {/* Location Column */}
-            <td className="p-3 bg-white text-sm align-middle border-r border-gray-200">
-              <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
+            <td className="border-r border-gray-200 bg-white p-3 align-middle text-sm">
+              <div className="h-4 w-5/6 rounded bg-gray-200"></div>
             </td>
             {/* Financial Columns (Centered) */}
             {[...Array(4)].map((_, colIndex) => (
               <td
                 key={colIndex}
-                className="p-3 bg-white text-sm align-middle text-center border-r border-gray-200"
+                className="border-r border-gray-200 bg-white p-3 text-center align-middle text-sm"
               >
-                <div className="h-4 w-3/4 mx-auto bg-gray-200 rounded"></div>
+                <div className="mx-auto h-4 w-3/4 rounded bg-gray-200"></div>
               </td>
             ))}
             {/* Actions Column (Centered) */}
-            <td className="p-3 bg-white text-sm align-middle text-center">
+            <td className="bg-white p-3 text-center align-middle text-sm">
               <div className="flex items-center justify-center gap-2">
-                <div className="h-7 w-7 bg-gray-200 rounded flex items-center justify-center">
-                  <div className="w-4 h-4 bg-gray-300 rounded"></div>
+                <div className="flex h-7 w-7 items-center justify-center rounded bg-gray-200">
+                  <div className="h-4 w-4 rounded bg-gray-300"></div>
                 </div>
-                <div className="h-7 w-7 bg-gray-200 rounded flex items-center justify-center">
-                  <div className="w-4 h-4 bg-gray-300 rounded"></div>
+                <div className="flex h-7 w-7 items-center justify-center rounded bg-gray-200">
+                  <div className="h-4 w-4 rounded bg-gray-300"></div>
                 </div>
               </div>
             </td>

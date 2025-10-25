@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Users,
   TrendingUp,
@@ -14,7 +14,7 @@ import {
   PieChart,
   BarChart3,
   Download,
-} from "lucide-react";
+} from 'lucide-react';
 
 // UI Components
 import {
@@ -23,19 +23,23 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Store
-import { useReportsStore } from "@/lib/store/reportsStore";
+import { useReportsStore } from '@/lib/store/reportsStore';
 
 // Utils
-import { exportData } from "@/lib/utils/exportUtils";
+import { exportData } from '@/lib/utils/exportUtils';
 
 // Types
-import type { CustomerMetrics, CustomerDemographic, LoyaltyTier } from "@/lib/types/reports";
+import type {
+  CustomerMetrics,
+  CustomerDemographic,
+  LoyaltyTier,
+} from '@/lib/types/reports';
 
 // TODO: Replace with MongoDB data fetching
 const sampleCustomerMetrics: CustomerMetrics = {
@@ -47,7 +51,6 @@ const sampleCustomerMetrics: CustomerMetrics = {
   averageSpend: 0,
   topSpenders: [],
 };
-
 
 const customerDemographics: CustomerDemographic[] = [];
 const loyaltyTiers: LoyaltyTier[] = [];
@@ -61,7 +64,7 @@ export default function CustomersTab() {
     selectedDateRange,
   } = useReportsStore();
 
-  const [activeSubTab, setActiveSubTab] = useState("overview");
+  const [activeSubTab, setActiveSubTab] = useState('overview');
 
   useEffect(() => {
     // TODO: Implement MongoDB data fetching
@@ -75,64 +78,66 @@ export default function CustomersTab() {
   const handleExportData = async () => {
     try {
       const exportDataObj = {
-        title: "Customer Analytics Report",
-        subtitle: "Customer activity, demographics, and behavior analysis",
+        title: 'Customer Analytics Report',
+        subtitle: 'Customer activity, demographics, and behavior analysis',
         headers: [
-          "Customer ID",
-          "Total Spend",
-          "Visits",
-          "Avg Spend per Visit",
-          "Status",
+          'Customer ID',
+          'Total Spend',
+          'Visits',
+          'Avg Spend per Visit',
+          'Status',
         ],
-        data: metrics.topSpenders.map((customer: CustomerMetrics["topSpenders"][number]) => [
-          customer.customerId,
-          `$${customer.totalSpend.toLocaleString()}`,
-          customer.visits.toString(),
-          `$${(customer.totalSpend / customer.visits).toFixed(2)}`,
-          "Active",
-        ]),
+        data: metrics.topSpenders.map(
+          (customer: CustomerMetrics['topSpenders'][number]) => [
+            customer.customerId,
+            `$${customer.totalSpend.toLocaleString()}`,
+            customer.visits.toString(),
+            `$${(customer.totalSpend / customer.visits).toFixed(2)}`,
+            'Active',
+          ]
+        ),
         summary: [
           {
-            label: "Total Customers",
+            label: 'Total Customers',
             value: metrics.totalCustomers.toLocaleString(),
           },
           {
-            label: "Active Customers",
+            label: 'Active Customers',
             value: metrics.activeCustomers.toLocaleString(),
           },
           {
-            label: "New Customers",
+            label: 'New Customers',
             value: metrics.newCustomers.toLocaleString(),
           },
           {
-            label: "Returning Customers",
+            label: 'Returning Customers',
             value: metrics.returningCustomers.toLocaleString(),
           },
           {
-            label: "Average Session Time",
+            label: 'Average Session Time',
             value: `${metrics.averageSessionTime} minutes`,
           },
           {
-            label: "Average Spend",
+            label: 'Average Spend',
             value: `$${metrics.averageSpend.toFixed(2)}`,
           },
         ],
         metadata: {
-          generatedBy: "Evolution1 CMS - Customer Analytics",
+          generatedBy: 'Evolution1 CMS - Customer Analytics',
           generatedAt: new Date().toISOString(),
           dateRange: selectedDateRange
             ? `${selectedDateRange.start?.toDateString()} - ${selectedDateRange.end?.toDateString()}`
-            : "All time",
+            : 'All time',
         },
       };
 
       await exportData(exportDataObj);
-      toast.success("Customer analytics data exported successfully");
+      toast.success('Customer analytics data exported successfully');
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      console.error("Failed to export customer data:", errorMessage);
-      toast.error("Failed to export customer data");
+        error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Failed to export customer data:', errorMessage);
+      toast.error('Failed to export customer data');
     }
   };
 
@@ -140,49 +145,49 @@ export default function CustomersTab() {
 
   const kpiCards = [
     {
-      title: "Total Customers",
+      title: 'Total Customers',
       value: metrics.totalCustomers.toLocaleString(),
-      change: "+5.2%",
-      trend: "up" as const,
+      change: '+5.2%',
+      trend: 'up' as const,
       icon: Users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
     },
     {
-      title: "Active Customers",
+      title: 'Active Customers',
       value: metrics.activeCustomers.toLocaleString(),
-      change: "+12.3%",
-      trend: "up" as const,
+      change: '+12.3%',
+      trend: 'up' as const,
       icon: UserCheck,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
     },
     {
-      title: "New Customers",
+      title: 'New Customers',
       value: metrics.newCustomers.toLocaleString(),
-      change: "+8.7%",
-      trend: "up" as const,
+      change: '+8.7%',
+      trend: 'up' as const,
       icon: UserPlus,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
     },
     {
-      title: "Avg. Session Time",
+      title: 'Avg. Session Time',
       value: `${metrics.averageSessionTime} min`,
-      change: "-2.1%",
-      trend: "down" as const,
+      change: '-2.1%',
+      trend: 'down' as const,
       icon: Clock,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
     },
     {
-      title: "Avg. Spend",
+      title: 'Avg. Spend',
       value: `$${metrics.averageSpend.toFixed(2)}`,
-      change: "+15.4%",
-      trend: "up" as const,
+      change: '+15.4%',
+      trend: 'up' as const,
       icon: DollarSign,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
     },
   ];
 
@@ -190,17 +195,17 @@ export default function CustomersTab() {
     return (
       <div className="space-y-6">
         {/* Loading skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className="h-32 bg-gray-200 rounded-lg animate-pulse"
+              className="h-32 animate-pulse rounded-lg bg-gray-200"
             />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-64 bg-gray-200 rounded-lg animate-pulse" />
-          <div className="h-64 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
         </div>
       </div>
     );
@@ -214,7 +219,7 @@ export default function CustomersTab() {
       className="space-y-6"
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
             Customer Analytics
@@ -224,13 +229,13 @@ export default function CustomersTab() {
           </p>
         </div>
         <Button onClick={handleExportData} className="flex items-center gap-2">
-          <Download className="w-4 h-4" />
+          <Download className="h-4 w-4" />
           Export Data
         </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
         {kpiCards.map((kpi, index) => (
           <motion.div
             key={kpi.title}
@@ -238,14 +243,14 @@ export default function CustomersTab() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="transition-shadow hover:shadow-md">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
-                    <kpi.icon className={`w-6 h-6 ${kpi.color}`} />
+                  <div className={`rounded-lg p-2 ${kpi.bgColor}`}>
+                    <kpi.icon className={`h-6 w-6 ${kpi.color}`} />
                   </div>
                   <Badge
-                    variant={kpi.trend === "up" ? "default" : "destructive"}
+                    variant={kpi.trend === 'up' ? 'default' : 'destructive'}
                     className="text-xs"
                   >
                     {kpi.change}
@@ -255,7 +260,7 @@ export default function CustomersTab() {
                   <p className="text-2xl font-bold text-gray-900">
                     {kpi.value}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">{kpi.title}</p>
+                  <p className="mt-1 text-sm text-gray-600">{kpi.title}</p>
                 </div>
               </CardContent>
             </Card>
@@ -270,39 +275,39 @@ export default function CustomersTab() {
         className="space-y-4"
       >
         {/* Desktop Navigation */}
-        <TabsList className="hidden md:grid w-full grid-cols-4 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        <TabsList className="mb-6 hidden w-full grid-cols-4 rounded-lg bg-gray-100 p-2 shadow-sm md:grid">
           <TabsTrigger
             value="overview"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Overview
           </TabsTrigger>
           <TabsTrigger
             value="demographics"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Demographics
           </TabsTrigger>
           <TabsTrigger
             value="loyalty"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Loyalty Tiers
           </TabsTrigger>
           <TabsTrigger
             value="behavior"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Behavior
           </TabsTrigger>
         </TabsList>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden mb-6">
+        <div className="mb-6 md:hidden">
           <select
             value={activeSubTab}
-            onChange={(e) => setActiveSubTab(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+            onChange={e => setActiveSubTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
           >
             <option value="overview">Overview</option>
             <option value="demographics">Demographics</option>
@@ -312,12 +317,12 @@ export default function CustomersTab() {
         </div>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Top Spenders */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
+                  <TrendingUp className="h-5 w-5" />
                   Top Spenders
                 </CardTitle>
                 <CardDescription>
@@ -327,33 +332,41 @@ export default function CustomersTab() {
               <CardContent>
                 <div className="space-y-4">
                   {metrics.topSpenders.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8">
-                      No customer data available - MongoDB implementation pending
+                    <p className="py-8 text-center text-gray-500">
+                      No customer data available - MongoDB implementation
+                      pending
                     </p>
                   ) : (
-                    metrics.topSpenders.map((customer: CustomerMetrics["topSpenders"][number], index: number) => (
-                      <div
-                        key={customer.customerId}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-buttonActive text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                            {index + 1}
+                    metrics.topSpenders.map(
+                      (
+                        customer: CustomerMetrics['topSpenders'][number],
+                        index: number
+                      ) => (
+                        <div
+                          key={customer.customerId}
+                          className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-buttonActive text-sm font-semibold text-white">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <p className="font-medium">
+                                {customer.customerId}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {customer.visits} visits
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{customer.customerId}</p>
-                            <p className="text-sm text-gray-600">
-                              {customer.visits} visits
+                          <div className="text-right">
+                            <p className="font-semibold text-green-600">
+                              ${customer.totalSpend.toLocaleString()}
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-green-600">
-                            ${customer.totalSpend.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))
+                      )
+                    )
                   )}
                 </div>
               </CardContent>
@@ -363,7 +376,7 @@ export default function CustomersTab() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
+                  <Activity className="h-5 w-5" />
                   Activity Timeline
                 </CardTitle>
                 <CardDescription>
@@ -373,19 +386,19 @@ export default function CustomersTab() {
               <CardContent>
                 <div className="space-y-4">
                   {[
-                    { time: "6AM - 12PM", customers: 1234, percentage: 20 },
-                    { time: "12PM - 6PM", customers: 3456, percentage: 45 },
-                    { time: "6PM - 12AM", customers: 2345, percentage: 30 },
-                    { time: "12AM - 6AM", customers: 385, percentage: 5 },
-                  ].map((period) => (
+                    { time: '6AM - 12PM', customers: 1234, percentage: 20 },
+                    { time: '12PM - 6PM', customers: 3456, percentage: 45 },
+                    { time: '6PM - 12AM', customers: 2345, percentage: 30 },
+                    { time: '12AM - 6AM', customers: 385, percentage: 5 },
+                  ].map(period => (
                     <div key={period.time} className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>{period.time}</span>
                         <span>{period.customers} customers</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 w-full rounded-full bg-gray-200">
                         <div
-                          className="bg-buttonActive h-2 rounded-full transition-all duration-300"
+                          className="h-2 rounded-full bg-buttonActive transition-all duration-300"
                           style={{ width: `${period.percentage}%` }}
                         />
                       </div>
@@ -398,12 +411,12 @@ export default function CustomersTab() {
         </TabsContent>
 
         <TabsContent value="demographics" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Age Demographics */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <PieChart className="w-5 h-5" />
+                  <PieChart className="h-5 w-5" />
                   Age Demographics
                 </CardTitle>
                 <CardDescription>
@@ -413,8 +426,9 @@ export default function CustomersTab() {
               <CardContent>
                 <div className="space-y-4">
                   {customerDemographics.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8">
-                      No demographic data available - MongoDB implementation pending
+                    <p className="py-8 text-center text-gray-500">
+                      No demographic data available - MongoDB implementation
+                      pending
                     </p>
                   ) : (
                     customerDemographics.map((d: CustomerDemographic) => {
@@ -424,7 +438,7 @@ export default function CustomersTab() {
                           className="flex items-center justify-between"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-4 h-4 bg-buttonActive rounded" />
+                            <div className="h-4 w-4 rounded bg-buttonActive" />
                             <span className="font-medium">{d.ageGroup}</span>
                           </div>
                           <div className="text-right">
@@ -452,14 +466,14 @@ export default function CustomersTab() {
               <CardContent>
                 <div className="space-y-4">
                   {[
-                    { gender: "Male", count: 8456, percentage: 55 },
-                    { gender: "Female", count: 6234, percentage: 40 },
+                    { gender: 'Male', count: 8456, percentage: 55 },
+                    { gender: 'Female', count: 6234, percentage: 40 },
                     {
-                      gender: "Other/Prefer not to say",
+                      gender: 'Other/Prefer not to say',
                       count: 730,
                       percentage: 5,
                     },
-                  ].map((item) => (
+                  ].map(item => (
                     <div
                       key={item.gender}
                       className="flex items-center justify-between"
@@ -485,7 +499,7 @@ export default function CustomersTab() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
+                <BarChart3 className="h-5 w-5" />
                 Loyalty Tier Distribution
               </CardTitle>
               <CardDescription>
@@ -493,11 +507,12 @@ export default function CustomersTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {loyaltyTiers.length === 0 ? (
-                  <div className="col-span-full text-center py-8">
+                  <div className="col-span-full py-8 text-center">
                     <p className="text-gray-500">
-                      No loyalty tier data available - MongoDB implementation pending
+                      No loyalty tier data available - MongoDB implementation
+                      pending
                     </p>
                   </div>
                 ) : (
@@ -505,17 +520,17 @@ export default function CustomersTab() {
                     return (
                       <div
                         key={t.tier}
-                        className="text-center p-4 border rounded-lg"
+                        className="rounded-lg border p-4 text-center"
                       >
                         <div
-                          className={`w-16 h-16 ${t.color} rounded-full mx-auto mb-3 flex items-center justify-center`}
+                          className={`h-16 w-16 ${t.color} mx-auto mb-3 flex items-center justify-center rounded-full`}
                         >
-                          <span className="text-white font-bold text-lg">
+                          <span className="text-lg font-bold text-white">
                             {t.tier[0]}
                           </span>
                         </div>
-                        <h3 className="font-semibold text-lg">{t.tier}</h3>
-                        <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mt-1 break-words">
+                        <h3 className="text-lg font-semibold">{t.tier}</h3>
+                        <p className="mt-1 break-words text-lg font-bold text-gray-900 sm:text-xl lg:text-2xl">
                           {t.count.toLocaleString()}
                         </p>
                         <p className="text-sm text-gray-600">
@@ -531,7 +546,7 @@ export default function CustomersTab() {
         </TabsContent>
 
         <TabsContent value="behavior" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Visit Frequency */}
             <Card>
               <CardHeader>
@@ -543,15 +558,15 @@ export default function CustomersTab() {
               <CardContent>
                 <div className="space-y-4">
                   {[
-                    { frequency: "Daily", customers: 1542, percentage: 10 },
-                    { frequency: "Weekly", customers: 4626, percentage: 30 },
-                    { frequency: "Monthly", customers: 6168, percentage: 40 },
+                    { frequency: 'Daily', customers: 1542, percentage: 10 },
+                    { frequency: 'Weekly', customers: 4626, percentage: 30 },
+                    { frequency: 'Monthly', customers: 6168, percentage: 40 },
                     {
-                      frequency: "Occasionally",
+                      frequency: 'Occasionally',
                       customers: 3084,
                       percentage: 20,
                     },
-                  ].map((item) => (
+                  ].map(item => (
                     <div key={item.frequency} className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{item.frequency}</span>
@@ -560,9 +575,9 @@ export default function CustomersTab() {
                           {item.percentage}%)
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 w-full rounded-full bg-gray-200">
                         <div
-                          className="bg-buttonActive h-2 rounded-full transition-all duration-300"
+                          className="h-2 rounded-full bg-buttonActive transition-all duration-300"
                           style={{ width: `${item.percentage}%` }}
                         />
                       </div>
@@ -583,11 +598,11 @@ export default function CustomersTab() {
               <CardContent>
                 <div className="space-y-4">
                   {[
-                    { game: "Slot Machines", players: 12336, percentage: 80 },
-                    { game: "Table Games", players: 1854, percentage: 12 },
-                    { game: "Video Poker", players: 926, percentage: 6 },
-                    { game: "Other", players: 304, percentage: 2 },
-                  ].map((item) => (
+                    { game: 'Slot Machines', players: 12336, percentage: 80 },
+                    { game: 'Table Games', players: 1854, percentage: 12 },
+                    { game: 'Video Poker', players: 926, percentage: 6 },
+                    { game: 'Other', players: 304, percentage: 2 },
+                  ].map(item => (
                     <div
                       key={item.game}
                       className="flex items-center justify-between"

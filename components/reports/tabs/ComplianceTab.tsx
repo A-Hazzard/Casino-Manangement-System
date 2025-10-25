@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Shield,
   CheckCircle,
@@ -12,7 +12,7 @@ import {
   FileText,
   Calendar,
   Download,
-} from "lucide-react";
+} from 'lucide-react';
 
 // UI Components
 import {
@@ -21,20 +21,24 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Store
-import { useReportsStore } from "@/lib/store/reportsStore";
+import { useReportsStore } from '@/lib/store/reportsStore';
 
 // Utils
-import { exportData } from "@/lib/utils/exportUtils";
+import { exportData } from '@/lib/utils/exportUtils';
 
 // Types
-import type { ComplianceMetrics, ComplianceCategory, RecentAudit } from "@/lib/types/reports";
+import type {
+  ComplianceMetrics,
+  ComplianceCategory,
+  RecentAudit,
+} from '@/lib/types/reports';
 
 // TODO: Replace with MongoDB data fetching
 const sampleComplianceMetrics: ComplianceMetrics = {
@@ -50,7 +54,6 @@ const sampleComplianceMetrics: ComplianceMetrics = {
   upcomingDeadlines: [],
 };
 
-
 const complianceCategories: ComplianceCategory[] = [];
 const recentAudits: RecentAudit[] = [];
 
@@ -63,7 +66,7 @@ export default function ComplianceTab() {
     selectedDateRange,
   } = useReportsStore();
 
-  const [activeSubTab, setActiveSubTab] = useState("overview");
+  const [activeSubTab, setActiveSubTab] = useState('overview');
 
   useEffect(() => {
     // Load compliance metrics when component mounts
@@ -77,15 +80,15 @@ export default function ComplianceTab() {
   const handleExportData = async () => {
     try {
       const exportDataObj = {
-        title: "Compliance Management Report",
-        subtitle: "Regulatory compliance tracking and audit documentation",
+        title: 'Compliance Management Report',
+        subtitle: 'Regulatory compliance tracking and audit documentation',
         headers: [
-          "Category",
-          "Score (%)",
-          "Passed Checks",
-          "Failed Checks",
-          "Pending Checks",
-          "Status",
+          'Category',
+          'Score (%)',
+          'Passed Checks',
+          'Failed Checks',
+          'Pending Checks',
+          'Status',
         ],
 
         data: complianceCategories.map((c: ComplianceCategory) => {
@@ -96,51 +99,51 @@ export default function ComplianceTab() {
             (c.totalChecks - c.checksPassed).toString(),
             c.pendingChecks.toString(),
             c.score >= 90
-              ? "Excellent"
+              ? 'Excellent'
               : c.score >= 80
-              ? "Good"
-              : "Needs Attention",
+                ? 'Good'
+                : 'Needs Attention',
           ];
         }),
         summary: [
           {
-            label: "Overall Compliance Score",
+            label: 'Overall Compliance Score',
             value: `${metrics.complianceScore.toFixed(1)}%`,
           },
           {
-            label: "Total Checks Passed",
+            label: 'Total Checks Passed',
             value: metrics.passedChecks.toString(),
           },
           {
-            label: "Total Checks Failed",
+            label: 'Total Checks Failed',
             value: metrics.failedChecks.toString(),
           },
           {
-            label: "Critical Issues",
+            label: 'Critical Issues',
             value: metrics.criticalIssues.toString(),
           },
           {
-            label: "Resolved Issues",
+            label: 'Resolved Issues',
             value: metrics.resolvedIssues.toString(),
           },
-          { label: "Pending Issues", value: metrics.pendingIssues.toString() },
+          { label: 'Pending Issues', value: metrics.pendingIssues.toString() },
         ],
         metadata: {
-          generatedBy: "Evolution1 CMS - Compliance Management",
+          generatedBy: 'Evolution1 CMS - Compliance Management',
           generatedAt: new Date().toISOString(),
           dateRange: selectedDateRange
             ? `${selectedDateRange.start?.toDateString()} - ${selectedDateRange.end?.toDateString()}`
-            : "All time",
+            : 'All time',
         },
       };
 
       await exportData(exportDataObj);
-      toast.success("Compliance management data exported successfully");
+      toast.success('Compliance management data exported successfully');
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      console.error("Failed to export compliance data:", errorMessage);
-      toast.error("Failed to export compliance data");
+        error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Failed to export compliance data:', errorMessage);
+      toast.error('Failed to export compliance data');
     }
   };
 
@@ -148,43 +151,43 @@ export default function ComplianceTab() {
 
   const kpiCards = [
     {
-      title: "Compliance Score",
+      title: 'Compliance Score',
       value: `${metrics.complianceScore.toFixed(1)}%`,
       icon: Shield,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
     },
     {
-      title: "Passed Checks",
+      title: 'Passed Checks',
       value: metrics.passedChecks.toString(),
       icon: CheckCircle,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
     },
     {
-      title: "Failed Checks",
+      title: 'Failed Checks',
       value: metrics.failedChecks.toString(),
       icon: XCircle,
-      color: "text-red-600",
-      bgColor: "bg-red-50",
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
     },
     {
-      title: "Critical Issues",
+      title: 'Critical Issues',
       value: metrics.criticalIssues.toString(),
       icon: AlertTriangle,
-      color: "text-red-600",
-      bgColor: "bg-red-50",
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
     },
   ];
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="h-32 bg-gray-200 rounded-lg animate-pulse"
+              className="h-32 animate-pulse rounded-lg bg-gray-200"
             />
           ))}
         </div>
@@ -200,7 +203,7 @@ export default function ComplianceTab() {
       className="space-y-6"
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
             Compliance Management
@@ -210,13 +213,13 @@ export default function ComplianceTab() {
           </p>
         </div>
         <Button onClick={handleExportData} className="flex items-center gap-2">
-          <Download className="w-4 h-4" />
+          <Download className="h-4 w-4" />
           Export Report
         </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((kpi, index) => (
           <motion.div
             key={kpi.title}
@@ -224,11 +227,11 @@ export default function ComplianceTab() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="transition-shadow hover:shadow-md">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
-                    <kpi.icon className={`w-6 h-6 ${kpi.color}`} />
+                  <div className={`rounded-lg p-2 ${kpi.bgColor}`}>
+                    <kpi.icon className={`h-6 w-6 ${kpi.color}`} />
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
@@ -250,33 +253,33 @@ export default function ComplianceTab() {
         className="space-y-4"
       >
         {/* Desktop Navigation */}
-        <TabsList className="hidden md:grid w-full grid-cols-3 mb-6 bg-gray-100 p-2 rounded-lg shadow-sm">
+        <TabsList className="mb-6 hidden w-full grid-cols-3 rounded-lg bg-gray-100 p-2 shadow-sm md:grid">
           <TabsTrigger
             value="overview"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Overview
           </TabsTrigger>
           <TabsTrigger
             value="audits"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Recent Audits
           </TabsTrigger>
           <TabsTrigger
             value="deadlines"
-            className="flex-1 bg-white rounded px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
+            className="flex-1 rounded bg-white px-4 py-3 text-sm font-medium transition-all hover:bg-gray-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md"
           >
             Deadlines
           </TabsTrigger>
         </TabsList>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden mb-6">
+        <div className="mb-6 md:hidden">
           <select
             value={activeSubTab}
-            onChange={(e) => setActiveSubTab(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base font-semibold bg-white shadow-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+            onChange={e => setActiveSubTab(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
           >
             <option value="overview">Overview</option>
             <option value="audits">Recent Audits</option>
@@ -285,12 +288,12 @@ export default function ComplianceTab() {
         </div>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Compliance by Category */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
+                  <Shield className="h-5 w-5" />
                   Compliance by Category
                 </CardTitle>
                 <CardDescription>
@@ -300,42 +303,45 @@ export default function ComplianceTab() {
               <CardContent>
                 <div className="space-y-4">
                   {complianceCategories.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8">
-                      No compliance data available - MongoDB implementation pending
+                    <p className="py-8 text-center text-gray-500">
+                      No compliance data available - MongoDB implementation
+                      pending
                     </p>
                   ) : (
                     complianceCategories.map((c: ComplianceCategory) => {
                       return (
                         <div key={c.category} className="space-y-2">
-                          <div className="flex justify-between items-center">
+                          <div className="flex items-center justify-between">
                             <span className="font-medium">{c.category}</span>
                             <Badge
                               variant={
                                 c.score >= 90
-                                  ? "default"
+                                  ? 'default'
                                   : c.score >= 80
-                                  ? "secondary"
-                                  : "destructive"
+                                    ? 'secondary'
+                                    : 'destructive'
                               }
                             >
                               {c.score}%
                             </Badge>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="h-2 w-full rounded-full bg-gray-200">
                             <div
                               className={`h-2 rounded-full transition-all duration-300 ${
                                 c.score >= 90
-                                  ? "bg-green-500"
+                                  ? 'bg-green-500'
                                   : c.score >= 80
-                                  ? "bg-yellow-500"
-                                  : "bg-red-500"
+                                    ? 'bg-yellow-500'
+                                    : 'bg-red-500'
                               }`}
                               style={{ width: `${c.score}%` }}
                             />
                           </div>
                           <div className="flex justify-between text-xs text-gray-600">
                             <span>Passed: {c.checksPassed}</span>
-                            <span>Failed: {c.totalChecks - c.checksPassed}</span>
+                            <span>
+                              Failed: {c.totalChecks - c.checksPassed}
+                            </span>
                             <span>Pending: {c.pendingChecks}</span>
                           </div>
                         </div>
@@ -350,7 +356,7 @@ export default function ComplianceTab() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
+                  <Clock className="h-5 w-5" />
                   Issue Resolution
                 </CardTitle>
                 <CardDescription>
@@ -359,32 +365,32 @@ export default function ComplianceTab() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
                     <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <CheckCircle className="h-5 w-5 text-green-600" />
                       <span className="font-medium">Resolved Issues</span>
                     </div>
-                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words">
+                    <span className="break-words text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
                       {metrics.resolvedIssues}
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                  <div className="flex items-center justify-between rounded-lg bg-red-50 p-3">
                     <div className="flex items-center gap-3">
-                      <AlertTriangle className="w-5 h-5 text-red-600" />
+                      <AlertTriangle className="h-5 w-5 text-red-600" />
                       <span className="font-medium">Critical Issues</span>
                     </div>
-                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 break-words">
+                    <span className="break-words text-lg font-bold text-red-600 sm:text-xl lg:text-2xl">
                       {metrics.criticalIssues}
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center justify-between rounded-lg bg-blue-50 p-3">
                     <div className="flex items-center gap-3">
-                      <Clock className="w-5 h-5 text-blue-600" />
+                      <Clock className="h-5 w-5 text-blue-600" />
                       <span className="font-medium">Avg. Resolution Time</span>
                     </div>
-                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 break-words">
+                    <span className="break-words text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
                       {metrics.averageResolutionTime} days
                     </span>
                   </div>
@@ -398,7 +404,7 @@ export default function ComplianceTab() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
+                <FileText className="h-5 w-5" />
                 Recent Audits
               </CardTitle>
               <CardDescription>
@@ -408,7 +414,7 @@ export default function ComplianceTab() {
             <CardContent>
               <div className="space-y-4">
                 {recentAudits.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">
+                  <p className="py-8 text-center text-gray-500">
                     No audit data available - MongoDB implementation pending
                   </p>
                 ) : (
@@ -416,49 +422,49 @@ export default function ComplianceTab() {
                     return (
                       <div
                         key={a.id}
-                        className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+                        className="rounded-lg border p-4 transition-shadow hover:shadow-md"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-semibold text-lg">
+                            <div className="mb-2 flex items-center gap-3">
+                              <h3 className="text-lg font-semibold">
                                 {a.type}
                               </h3>
                               <Badge
                                 variant={
-                                  a.status === "passed"
-                                    ? "default"
-                                    : "destructive"
+                                  a.status === 'passed'
+                                    ? 'default'
+                                    : 'destructive'
                                 }
                               >
                                 {a.status}
                               </Badge>
                               <Badge
                                 variant={
-                                  a.severity === "low"
-                                    ? "secondary"
-                                    : a.severity === "medium"
-                                    ? "outline"
-                                    : "destructive"
+                                  a.severity === 'low'
+                                    ? 'secondary'
+                                    : a.severity === 'medium'
+                                      ? 'outline'
+                                      : 'destructive'
                                 }
                               >
                                 {a.severity} risk
                               </Badge>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                            <div className="grid grid-cols-1 gap-4 text-sm text-gray-600 md:grid-cols-3">
                               <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
+                                <Calendar className="h-4 w-4" />
                                 <span>
                                   {new Date(a.date).toLocaleDateString()}
                                 </span>
                               </div>
                               <div>
-                                <span className="font-medium">Auditor:</span>{" "}
+                                <span className="font-medium">Auditor:</span>{' '}
                                 {a.auditor}
                               </div>
                               <div>
-                                <span className="font-medium">Findings:</span>{" "}
+                                <span className="font-medium">Findings:</span>{' '}
                                 {a.findings}
                               </div>
                             </div>
@@ -477,7 +483,7 @@ export default function ComplianceTab() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
+                <Calendar className="h-5 w-5" />
                 Upcoming Deadlines
               </CardTitle>
               <CardDescription>
@@ -486,41 +492,50 @@ export default function ComplianceTab() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {metrics.upcomingDeadlines.map((deadline: { requirement: string; deadline: string; status: string }, index: number) => (
-                  <div
-                    key={index}
-                    className={`p-4 border-l-4 rounded-lg ${
-                      deadline.status === "on-track"
-                        ? "border-l-green-500 bg-green-50"
-                        : deadline.status === "at-risk"
-                        ? "border-l-yellow-500 bg-yellow-50"
-                        : "border-l-red-500 bg-red-50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          {deadline.requirement}
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Due:{" "}
-                          {new Date(deadline.deadline).toLocaleDateString()}
-                        </p>
+                {metrics.upcomingDeadlines.map(
+                  (
+                    deadline: {
+                      requirement: string;
+                      deadline: string;
+                      status: string;
+                    },
+                    index: number
+                  ) => (
+                    <div
+                      key={index}
+                      className={`rounded-lg border-l-4 p-4 ${
+                        deadline.status === 'on-track'
+                          ? 'border-l-green-500 bg-green-50'
+                          : deadline.status === 'at-risk'
+                            ? 'border-l-yellow-500 bg-yellow-50'
+                            : 'border-l-red-500 bg-red-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold">
+                            {deadline.requirement}
+                          </h3>
+                          <p className="mt-1 text-sm text-gray-600">
+                            Due:{' '}
+                            {new Date(deadline.deadline).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            deadline.status === 'on-track'
+                              ? 'default'
+                              : deadline.status === 'at-risk'
+                                ? 'secondary'
+                                : 'destructive'
+                          }
+                        >
+                          {deadline.status}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={
-                          deadline.status === "on-track"
-                            ? "default"
-                            : deadline.status === "at-risk"
-                            ? "secondary"
-                            : "destructive"
-                        }
-                      >
-                        {deadline.status}
-                      </Badge>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </CardContent>
           </Card>

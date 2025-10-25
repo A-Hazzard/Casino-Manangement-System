@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from "react";
-import Image from "next/image";
-import editIcon from "@/public/editIcon.svg";
-import deleteIcon from "@/public/deleteIcon.svg";
+import React, { useEffect, useRef } from 'react';
+import Image from 'next/image';
+import editIcon from '@/public/editIcon.svg';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 // Pre-render the icons for better performance
 const EditIcon = () => (
@@ -14,8 +14,8 @@ const DeleteIcon = () => (
 import {
   getStatusColor,
   formatMovementRequestDate,
-} from "@/lib/utils/movementRequests";
-import { MovementRequest } from "@/lib/types/movementRequests";
+} from '@/lib/utils/movementRequests';
+import { MovementRequest } from '@/lib/types/movementRequests';
 
 export type MovementRequestCardProps = {
   request: MovementRequest;
@@ -48,58 +48,58 @@ export default function MovementRequestCard({
   return (
     <div
       ref={cardRef}
-      className="bg-white shadow-sm rounded-lg p-4 w-full mx-auto relative border border-gray-100 mb-4 max-w-full overflow-hidden"
+      className="relative mx-auto mb-4 w-full max-w-full overflow-hidden rounded-lg border border-gray-100 bg-white p-4 shadow-sm"
     >
-      <div className="flex justify-between items-center mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <h3
-          className="text-sm font-semibold truncate flex-1 pr-2"
+          className="flex-1 truncate pr-2 text-sm font-semibold"
           title={request.createdBy}
         >
           {request.createdBy}
         </h3>
         <button
           onClick={() => onEdit(request)}
-          className="text-green-500 flex-shrink-0"
+          className="flex-shrink-0 text-green-500"
         >
           <EditIcon />
         </button>
       </div>
       <div className="mb-3 space-y-1">
         <p
-          className="text-xs text-gray-600 truncate"
+          className="truncate text-xs text-gray-600"
           title={`From: ${
             locationsMap[request.locationFrom] || request.locationFrom
           }`}
         >
-          <span className="font-medium">From:</span>{" "}
+          <span className="font-medium">From:</span>{' '}
           {locationsMap[request.locationFrom] || request.locationFrom}
         </p>
         <p
-          className="text-xs text-gray-600 truncate"
+          className="truncate text-xs text-gray-600"
           title={`To: ${
             locationsMap[request.locationTo] || request.locationTo
           }`}
         >
-          <span className="font-medium">To:</span>{" "}
+          <span className="font-medium">To:</span>{' '}
           {locationsMap[request.locationTo] || request.locationTo}
         </p>
         <p
-          className="text-xs text-gray-600 truncate"
+          className="truncate text-xs text-gray-600"
           title={`Cabinet: ${request.cabinetIn}`}
         >
           <span className="font-medium">Cabinet:</span> {request.cabinetIn}
         </p>
         <p
-          className="text-xs text-gray-600 truncate"
+          className="truncate text-xs text-gray-600"
           title={`Date: ${formatMovementRequestDate(request.timestamp)}`}
         >
-          <span className="font-medium">Date:</span>{" "}
+          <span className="font-medium">Date:</span>{' '}
           {formatMovementRequestDate(request.timestamp)}
         </p>
       </div>
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <span
-          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full truncate max-w-[120px] ${getStatusColor(
+          className={`inline-flex max-w-[120px] truncate rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
             request.status
           )}`}
           title={request.status}
@@ -108,7 +108,7 @@ export default function MovementRequestCard({
         </span>
         <button
           onClick={() => onDelete(request)}
-          className="text-red-500 flex-shrink-0"
+          className="flex-shrink-0 text-red-500"
         >
           <DeleteIcon />
         </button>

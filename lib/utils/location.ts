@@ -1,7 +1,7 @@
 /**
  * Location utilities for map centering and geolocation
  */
-import axios from "axios";
+import axios from 'axios';
 
 // Default coordinates for different regions (fallback if geolocation fails)
 const REGION_CENTERS: Record<string, [number, number]> = {
@@ -81,12 +81,12 @@ const REGION_CENTERS: Record<string, [number, number]> = {
 export const getUserCountryCode = async (): Promise<string> => {
   try {
     // Use ipapi.co for free IP geolocation (no API key required)
-    const response = await axios.get("https://ipapi.co/json/");
+    const response = await axios.get('https://ipapi.co/json/');
     const data = response.data;
-    return data.country_code || "DEFAULT";
+    return data.country_code || 'DEFAULT';
   } catch (error) {
-    console.warn("Failed to get user location, using default:", error);
-    return "DEFAULT";
+    console.warn('Failed to get user location, using default:', error);
+    return 'DEFAULT';
   }
 };
 
@@ -99,7 +99,7 @@ export const getDefaultMapCenter = async (): Promise<[number, number]> => {
     const center = REGION_CENTERS[countryCode] || REGION_CENTERS.DEFAULT;
     return center;
   } catch (error) {
-    console.warn("Failed to get default map center, using US center:", error);
+    console.warn('Failed to get default map center, using US center:', error);
     return REGION_CENTERS.DEFAULT;
   }
 };
@@ -116,11 +116,11 @@ export const getDefaultMapCenterSync = (): [number, number] => {
  * Licensee to country mapping
  */
 const LICENSEE_COUNTRY_MAP: Record<string, string> = {
-  TTG: "TT", // TTG -> Trinidad and Tobago
-  Cabana: "GY", // Cabana -> Guyana
-  Barbados: "BB", // Barbados -> Barbados
-  all: "TT", // All Licensees -> Trinidad (default)
-  "": "TT", // Empty/undefined -> Trinidad (default)
+  TTG: 'TT', // TTG -> Trinidad and Tobago
+  Cabana: 'GY', // Cabana -> Guyana
+  Barbados: 'BB', // Barbados -> Barbados
+  all: 'TT', // All Licensees -> Trinidad (default)
+  '': 'TT', // Empty/undefined -> Trinidad (default)
 };
 
 /**
@@ -129,7 +129,7 @@ const LICENSEE_COUNTRY_MAP: Record<string, string> = {
 export const getMapCenterByLicensee = (
   selectedLicencee?: string
 ): [number, number] => {
-  const countryCode = LICENSEE_COUNTRY_MAP[selectedLicencee || ""] || "TT";
+  const countryCode = LICENSEE_COUNTRY_MAP[selectedLicencee || ''] || 'TT';
   const center = REGION_CENTERS[countryCode] || REGION_CENTERS.DEFAULT;
   return center;
 };

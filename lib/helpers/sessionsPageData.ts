@@ -1,9 +1,9 @@
-import axios from "axios";
+import axios from 'axios';
 import type {
   MachineEvent,
   PaginationData,
   FilterData,
-} from "@/lib/types/sessions";
+} from '@/lib/types/sessions';
 
 export type SessionEventsQueryOptions = {
   page?: number;
@@ -44,19 +44,19 @@ export async function fetchSessionEvents(
     });
 
     if (eventType) {
-      params.append("eventType", eventType);
+      params.append('eventType', eventType);
     }
 
     if (event) {
-      params.append("event", event);
+      params.append('event', event);
     }
 
     if (game) {
-      params.append("game", game);
+      params.append('game', game);
     }
 
     if (filterDate) {
-      params.append("filterDate", filterDate);
+      params.append('filterDate', filterDate);
     }
 
     const response = await axios.get(
@@ -66,11 +66,11 @@ export async function fetchSessionEvents(
     if (response.data.success && response.data.data) {
       return response.data.data;
     } else {
-      console.error("Invalid response format:", response.data);
-      throw new Error("Invalid response format");
+      console.error('Invalid response format:', response.data);
+      throw new Error('Invalid response format');
     }
   } catch (error) {
-    console.error(" Error fetching session events:", error);
+    console.error(' Error fetching session events:', error);
     throw error;
   }
 }
@@ -85,7 +85,7 @@ export async function fetchSessionDetails(
     const response = await axios.get(`/api/sessions/${sessionId}`);
     return response.data;
   } catch (error) {
-    console.error(" Error fetching session details:", error);
+    console.error(' Error fetching session details:', error);
     throw error;
   }
 }
@@ -100,7 +100,7 @@ export async function fetchMachineDetails(
     const response = await axios.get(`/api/machines/${machineId}`);
     return response.data;
   } catch (error) {
-    console.error(" Error fetching machine details:", error);
+    console.error(' Error fetching machine details:', error);
     throw error;
   }
 }
@@ -118,7 +118,7 @@ export async function fetchSessionEventsFilters(
     );
     return response.data;
   } catch (error) {
-    console.error(" Error fetching session events filters:", error);
+    console.error(' Error fetching session events filters:', error);
     return {
       eventTypes: [],
       events: [],
@@ -139,28 +139,28 @@ export async function exportSessionEvents(
     const params = new URLSearchParams();
 
     if (options.eventType) {
-      params.append("eventType", options.eventType);
+      params.append('eventType', options.eventType);
     }
     if (options.event) {
-      params.append("event", options.event);
+      params.append('event', options.event);
     }
     if (options.game) {
-      params.append("game", options.game);
+      params.append('game', options.game);
     }
     if (options.filterDate) {
-      params.append("filterDate", options.filterDate);
+      params.append('filterDate', options.filterDate);
     }
 
     const response = await axios.get(
       `/api/sessions/${sessionId}/${machineId}/events/export?${params.toString()}`,
       {
-        responseType: "blob",
+        responseType: 'blob',
       }
     );
 
     return response.data;
   } catch (error) {
-    console.error(" Error exporting session events:", error);
+    console.error(' Error exporting session events:', error);
     throw error;
   }
 }

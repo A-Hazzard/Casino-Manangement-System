@@ -1,6 +1,6 @@
-import React from "react";
-import { calculatePieChartLabelPosition } from "@/lib/utils/components";
-import { CustomizedLabelProps } from "@/lib/types/componentProps";
+import React from 'react';
+import { calculatePieChartLabelPosition } from '@/lib/utils/components';
+import { CustomizedLabelProps } from '@/lib/types/componentProps';
 
 // Use the defined type from componentProps
 const PieChartLabel = (props: CustomizedLabelProps) => {
@@ -14,9 +14,9 @@ const PieChartLabel = (props: CustomizedLabelProps) => {
   );
 
   const svgTextAnchor = textAnchor as unknown as
-    | "start"
-    | "middle"
-    | "end"
+    | 'start'
+    | 'middle'
+    | 'end'
     | undefined;
 
   return (

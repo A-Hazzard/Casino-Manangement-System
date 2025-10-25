@@ -3,29 +3,28 @@
  * Handles tab switching, content rendering, and animation states
  */
 
-import { useCallback, useMemo } from "react";
-import { 
-  UseMembersTabContentProps, 
+import { useCallback, useMemo } from 'react';
+import {
+  UseMembersTabContentProps,
   UseMembersTabContentReturn,
-  TabAnimationProps 
-} from "@/lib/types/hooks";
+  TabAnimationProps,
+} from '@/lib/types/hooks';
 
 export function useMembersTabContent({
   activeTab,
   animations,
   tabComponents,
 }: UseMembersTabContentProps): UseMembersTabContentReturn {
-  
   // Get animation props for current tab
   const getTabAnimationProps = useCallback((): TabAnimationProps => {
     return {
       key: activeTab,
       variants: animations.tabVariants,
-      initial: "initial",
-      animate: "animate",
-      exit: "exit",
+      initial: 'initial',
+      animate: 'animate',
+      exit: 'exit',
       transition: { duration: 0.2 },
-      className: "h-full",
+      className: 'h-full',
     };
   }, [activeTab, animations.tabVariants]);
 
