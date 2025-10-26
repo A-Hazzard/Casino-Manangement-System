@@ -1,8 +1,8 @@
 # Cabinet Details Page Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 20th, 2025  
-**Version:** 2.0.0
+**Last Updated:** October 26th, 2025  
+**Version:** 2.1.0
 
 ## Quick Search Guide
 
@@ -337,7 +337,25 @@ Collection {
 
 ### What is SMIB?
 
-SMIB (Slot Machine Interface Board) is the communication interface between the slot machine and the casino management system. It handles all data communication, machine control, and network connectivity.
+SMIB (Slot Machine Interface Board) is the communication interface between the slot machine and the casino management system. It handles all data communication, machine control, network connectivity, and real-time updates through MQTT protocol.
+
+### SMIB Configuration Management
+
+The system uses **Server-Sent Events (SSE)** for real-time SMIB configuration updates:
+
+1. **SSE Connection**: Establishes live connection to MQTT stream
+2. **Configuration Requests**: Requests current config from SMIB device
+3. **Live Updates**: Receives real-time configuration responses
+4. **Form Synchronization**: Updates UI with live SMIB data
+
+**Implementation:**
+- **Frontend Hook**: `lib/hooks/data/useSmibConfiguration.ts`
+- **SSE Endpoint**: `GET /api/mqtt/config/subscribe?relayId=[relayId]`
+- **Request Endpoint**: `POST /api/mqtt/config/request`
+- **Publish Endpoint**: `POST /api/mqtt/config/publish`
+- **Config Endpoint**: `GET /api/mqtt/config?cabinetId=[cabinetId]`
+
+**See Also:** [MQTT Integration Documentation](./mqtt-integration.md) for complete MQTT/SSE implementation details.
 
 ### SMIB Configuration Model Fields
 
@@ -346,6 +364,7 @@ SMIBConfig {
   // Communication Settings
   coms: {
     comsMode: number;             // 0 = SAS, 1 = non-SAS, 2 = IGT protocol
+    comsAddr: number;             // Communication address
     comsRateMs: number;           // Communication rate in milliseconds
     comsRTE: number;              // Real-time events enabled (1 = yes, 0 = no)
     comsGPC: number;              // Game protocol configuration
@@ -353,7 +372,7 @@ SMIBConfig {
 
   // Network Configuration
   net: {
-    netMode: number;              // 1 = WiFi client mode, 0 = Ethernet
+    netMode: number;              // 0 = WiFi client mode, 1 = Ethernet
     netStaSSID: string;           // WiFi network name
     netStaPwd: string;            // WiFi password
     netStaChan: number;           // WiFi channel number
@@ -363,18 +382,75 @@ SMIBConfig {
   mqtt: {
     mqttSecure: number;           // TLS encryption (0 = off, 1 = on)
     mqttQOS: number;              // Quality of service level (0, 1, or 2)
-    mqttURI: string;              // MQTT broker address
+    mqttURI: string;              // MQTT broker URI with credentials
     mqttSubTopic: string;         // Topic for receiving commands
     mqttPubTopic: string;         // Topic for publishing events
     mqttCfgTopic: string;         // Topic for configuration updates
     mqttIdleTimeS: number;        // Idle timeout in seconds
+    mqttUsername?: string;        // MQTT username (optional)
+    mqttPassword?: string;        // MQTT password (optional)
+  },
 
-    metersIn: 800,      // Money movement tracking
-    metersOut: 600,
-    gross: 200
+  // OTA (Over-The-Air) Configuration
+  ota?: {
+    otaURL: string;               // Firmware update server URL
+  },
+
+  // App Configuration
+  app?: {
+    // Application-specific settings
+    [key: string]: unknown;
   }
 }
 ```
+
+### SMIB Configuration State Management
+
+```typescript
+// Connection State
+isConnectedToMqtt: boolean;        // SSE connection active
+hasReceivedRealSmibData: boolean;  // Received actual SMIB data
+isLoadingMqttConfig: boolean;      // Loading database config
+hasConfigBeenFetched: boolean;     // Initial fetch complete
+
+// Form State
+formData: {
+  // Network fields
+  networkSSID: string;
+  networkPassword: string;
+  networkChannel: string;
+  
+  // MQTT fields
+  mqttHost: string;
+  mqttPort: string;
+  mqttTLS: string;
+  mqttQOS: string;
+  mqttIdleTimeout: string;
+  mqttPubTopic: string;
+  mqttCfgTopic: string;
+  mqttURI: string;
+  
+  // COMS fields
+  comsMode: string;
+  comsAddr: string;
+  comsRateMs: string;
+  comsRTE: string;
+  comsGPC: string;
+}
+```
+
+### SMIB Configuration Workflow
+
+1. **Page Load**: Cabinet details page loads with cabinet data
+2. **SSE Connection**: Establishes EventSource connection to `/api/mqtt/config/subscribe`
+3. **Database Fetch**: Fetches stored configuration from `/api/mqtt/config`
+4. **Live Request**: Requests live config from SMIB via `/api/mqtt/config/request`
+5. **SMIB Response**: SMIB device responds via MQTT → SSE stream
+6. **Form Update**: Updates form with live SMIB data
+7. **User Edit**: User modifies configuration fields
+8. **Save**: Publishes updates via `/api/cabinets/[cabinetId]/smib-config`
+9. **MQTT Publish**: Backend publishes to SMIB via MQTT
+10. **Confirmation**: SMIB applies config and may send confirmation
 
 ### SMIB Communication Modes
 
@@ -608,6 +684,7 @@ Machine (Many) ←→ (1) Location
 - `GET /api/machines/[id]` - Get specific machine data
 - `PATCH /api/machines/[id]` - Update machine configuration
 - `GET /api/machines/by-id/events` - Get machine event logs
+- `GET /api/machines/by-id/collection-history` - Get collection meters history
 
 ### Bill Validator
 
@@ -624,8 +701,18 @@ Machine (Many) ←→ (1) Location
 
 ### SMIB Configuration
 
-- `POST /api/machines/[id]/smib-config` - Update SMIB settings
-- `POST /api/machines/[id]/commands` - Send machine commands
+- `POST /api/cabinets/[cabinetId]/smib-config` - Update SMIB settings and send via MQTT
+- `GET /api/cabinets/[cabinetId]/smib-config` - Get current SMIB configuration
+- `GET /api/mqtt/config?cabinetId=[cabinetId]` - Get formatted MQTT config values
+
+### MQTT Live Configuration (SSE)
+
+- `GET /api/mqtt/config/subscribe?relayId=[relayId]` - SSE stream for live MQTT updates
+- `POST /api/mqtt/config/request` - Request live config from SMIB device
+- `POST /api/mqtt/config/publish` - Publish config updates to SMIB device
+- `POST /api/mqtt/test` - Test MQTT connectivity and messaging
+
+**See Also:** [MQTT Integration Documentation](./mqtt-integration.md) for complete API and implementation details.
 
 ## Security and Compliance
 
@@ -1308,9 +1395,11 @@ const summary = await Collection.aggregate([
 - **Player Management**: Enhanced player tracking and rewards
 - **Regulatory Systems**: Automated compliance reporting
 
-### **Integration Opportunities**
+## Related Documentation
 
-- **Accounting Systems**: Direct financial data export
-- **Security Systems**: Integration with casino surveillance
-- **Player Management**: Enhanced player tracking and rewards
-- **Regulatory Systems**: Automated compliance reporting
+- [MQTT Integration](./mqtt-integration.md) - Frontend MQTT and SSE implementation
+- [MQTT Architecture](../backend/mqtt-architecture.md) - Backend MQTT architecture
+- [MQTT Implementation](../backend/mqtt-implementation.md) - Backend MQTT details
+- [Cabinets API](../backend/cabinets-api.md) - Backend cabinet API documentation
+- [Bill Validator System](../backend/bill-validator-calculation-system.md) - Bill validator calculations
+- [Machines Page](./machines.md) - Cabinets listing page documentation

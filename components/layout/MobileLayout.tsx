@@ -1,27 +1,30 @@
-'use client';
+"use client";
 
-import MapPreview from '@/components/ui/MapPreview';
-import { MobileLayoutProps } from '@/lib/types/componentProps';
-import type { TopPerformingItem } from '@/lib/types';
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
-import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
-import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
-import { RefreshButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
-import Chart from '@/components/ui/dashboard/Chart';
-import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
-import { RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import MapPreview from "@/components/ui/MapPreview";
+import { MobileLayoutProps } from "@/lib/types/componentProps";
+import type { TopPerformingItem } from "@/lib/types";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import {
+  DashboardChartSkeleton,
+} from "@/components/ui/skeletons/DashboardSkeletons";
+import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
+import { RefreshButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
+import Chart from "@/components/ui/dashboard/Chart";
+import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
+import { RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function MobileLayout(props: MobileLayoutProps) {
+
   const NoDataMessage = ({ message }: { message: string }) => (
     <div
-      className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md"
+      className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md"
       suppressHydrationWarning
     >
-      <div className="mb-2 text-lg text-gray-500">No Data Available</div>
-      <div className="text-center text-sm text-gray-400">{message}</div>
+      <div className="text-gray-500 text-lg mb-2">No Data Available</div>
+      <div className="text-gray-400 text-sm text-center">{message}</div>
     </div>
   );
 
@@ -40,7 +43,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
       setMachineStatsLoading(true);
       try {
         const params = new URLSearchParams();
-        params.append('licensee', 'all'); // Get all machines
+        params.append("licensee", "all"); // Get all machines
 
         const res = await axios.get(
           `/api/analytics/machines/stats?${params.toString()}`
@@ -76,7 +79,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
   const offlineCount = machineStats?.offlineMachines || 0;
 
   return (
-    <div className="space-y-6 xl:hidden">
+    <div className="xl:hidden space-y-6">
       {/* Date Filter Controls (mobile) */}
       <div className="flex flex-wrap items-center gap-2">
         <DashboardDateFilters
@@ -100,10 +103,10 @@ export default function MobileLayout(props: MobileLayoutProps) {
           <RefreshButtonSkeleton />
         ) : (
           <div
-            className={`flex cursor-pointer select-none items-center gap-2 rounded-md bg-buttonActive px-4 py-2 text-white transition-opacity ${
+            className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
               props.loadingChartData || props.refreshing
-                ? 'cursor-not-allowed opacity-50'
-                : 'hover:bg-buttonActive/90'
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-buttonActive/90"
             }`}
             onClick={() => {
               if (!(props.loadingChartData || props.refreshing))
@@ -114,7 +117,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
             role="button"
           >
             <RefreshCw
-              className={`h-4 w-4 ${props.refreshing ? 'animate-spin' : ''}`}
+              className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
               aria-hidden="true"
             />
             <span className="font-semibold">Refresh</span>
@@ -140,8 +143,8 @@ export default function MobileLayout(props: MobileLayoutProps) {
       )}
 
       {props.loadingChartData ? (
-        <div className="relative w-full rounded-lg bg-container p-4 shadow-md">
-          <div className="skeleton-bg mt-2 h-48 w-full animate-pulse rounded-lg"></div>
+        <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
+          <div className="mt-2 h-48 w-full rounded-lg skeleton-bg animate-pulse"></div>
         </div>
       ) : (
         <MapPreview gamingLocations={props.gamingLocations} />
@@ -151,25 +154,25 @@ export default function MobileLayout(props: MobileLayoutProps) {
       {props.loadingTopPerforming ? (
         <div className="space-y-2">
           <h2 className="text-lg">Top Performing</h2>
-          <div className="relative flex w-full flex-col rounded-lg rounded-tl-3xl rounded-tr-3xl bg-container shadow-md">
+          <div className="relative flex flex-col bg-container w-full rounded-lg rounded-tl-3xl rounded-tr-3xl shadow-md">
             <div className="flex">
-              <div className="w-full rounded-tl-xl rounded-tr-3xl bg-gray-100 px-4 py-2"></div>
-              <div className="w-full rounded-tr-3xl bg-gray-100 px-4 py-2"></div>
+              <div className="w-full px-4 py-2 rounded-tr-3xl rounded-tl-xl bg-gray-100"></div>
+              <div className="w-full px-4 py-2 rounded-tr-3xl bg-gray-100"></div>
             </div>
-            <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
+            <div className="p-6 mb-0 rounded-lg rounded-tr-3xl rounded-tl-none shadow-sm bg-container">
+              <div className="flex justify-between items-center mb-4">
                 {/* Skeleton for sort by select */}
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
-                  {[1, 2, 3].map(i => (
+                  {[1, 2, 3].map((i) => (
                     <div key={i} className="flex items-center space-x-2">
-                      <div className="h-4 w-4 animate-pulse rounded-full bg-gray-200"></div>
-                      <div className="h-4 w-24 animate-pulse rounded bg-gray-200"></div>
+                      <div className="w-4 h-4 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
                     </div>
                   ))}
                 </div>
-                <div className="h-40 w-40 animate-pulse rounded-full bg-gray-200"></div>
+                <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse"></div>
               </div>
             </div>
           </div>
@@ -181,58 +184,58 @@ export default function MobileLayout(props: MobileLayoutProps) {
           <h2 className="text-lg">Top Performing</h2>
           <div
             className={`relative flex flex-col ${
-              props.activeTab === 'locations'
-                ? 'bg-container'
-                : 'bg-buttonActive'
+              props.activeTab === "locations"
+                ? "bg-container"
+                : "bg-buttonActive"
             } w-full rounded-lg rounded-tl-3xl rounded-tr-3xl shadow-md`}
           >
             <div className="flex">
               <button
-                className={`w-full rounded-tl-xl rounded-tr-3xl px-4 py-2 ${
-                  props.activeTab === 'locations'
-                    ? 'bg-buttonActive text-white'
-                    : 'bg-container'
+                className={`w-full px-4 py-2 rounded-tr-3xl rounded-tl-xl ${
+                  props.activeTab === "locations"
+                    ? "bg-buttonActive text-white"
+                    : "bg-container"
                 } ${
-                  props.activeTab !== 'locations' && props.loadingTopPerforming
-                    ? 'cursor-not-allowed'
-                    : ''
+                  props.activeTab !== "locations" && props.loadingTopPerforming
+                    ? "cursor-not-allowed"
+                    : ""
                 }`}
                 onClick={() => {
                   if (
-                    props.activeTab !== 'locations' &&
+                    props.activeTab !== "locations" &&
                     props.loadingTopPerforming
                   )
                     return;
-                  props.setActiveTab('locations');
+                  props.setActiveTab("locations");
                 }}
               >
                 Locations
               </button>
               <button
-                className={`w-full rounded-tr-3xl px-4 py-2 ${
-                  props.activeTab === 'Cabinets'
-                    ? 'bg-buttonActive text-white'
-                    : 'bg-container'
+                className={`w-full px-4 py-2 rounded-tr-3xl ${
+                  props.activeTab === "Cabinets"
+                    ? "bg-buttonActive text-white"
+                    : "bg-container"
                 } ${
-                  props.activeTab !== 'Cabinets' && props.loadingTopPerforming
-                    ? 'cursor-not-allowed'
-                    : ''
+                  props.activeTab !== "Cabinets" && props.loadingTopPerforming
+                    ? "cursor-not-allowed"
+                    : ""
                 }`}
                 onClick={() => {
                   if (
-                    props.activeTab !== 'Cabinets' &&
+                    props.activeTab !== "Cabinets" &&
                     props.loadingTopPerforming
                   )
                     return;
-                  props.setActiveTab('Cabinets');
+                  props.setActiveTab("Cabinets");
                 }}
               >
                 Cabinets
               </button>
             </div>
 
-            <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
+            <div className="p-6 mb-0 rounded-lg rounded-tr-3xl rounded-tl-none shadow-sm bg-container">
+              <div className="flex justify-between items-center mb-4">
                 {/* Removed sort by select input on mobile */}
               </div>
               <div className="flex items-center justify-between">
@@ -244,7 +247,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                         className="flex items-center space-x-2 text-sm"
                       >
                         <div
-                          className="h-4 w-4 rounded-full"
+                          className="w-4 h-4 rounded-full"
                           style={{ backgroundColor: item.color }}
                         ></div>
                         <span>{item.name}</span>

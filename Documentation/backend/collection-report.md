@@ -12,7 +12,6 @@ The backend handles collection report creation, SAS metrics calculation, machine
 ## Database Schema
 
 ### Collections Collection (Machine-Level Entries)
-
 ```typescript
 {
   _id: string;
@@ -55,7 +54,6 @@ The backend handles collection report creation, SAS metrics calculation, machine
 ```
 
 ### Collection Report Collection (Location-Level)
-
 ```typescript
 {
   _id: string;
@@ -88,7 +86,6 @@ The backend handles collection report creation, SAS metrics calculation, machine
 ```
 
 ### Machine Collection Meters
-
 ```typescript
 {
   collectionMeters: {
@@ -112,11 +109,9 @@ The backend handles collection report creation, SAS metrics calculation, machine
 ## API Endpoints
 
 ### POST /api/collections
-
 **Purpose**: Create a new collection with calculated metrics
 
 **Flow**:
-
 1. Validate payload (machineId, location, collector, meters)
 2. Get machine details
 3. Get previous collection meters from `machine.collectionMeters`
@@ -133,11 +128,9 @@ The backend handles collection report creation, SAS metrics calculation, machine
 **Important**: Does NOT update `machine.collectionMeters` or create history entries. These operations happen when report is finalized.
 
 ### POST /api/collectionReport
-
 **Purpose**: Create a new collection report (finalize collections)
 
 **Flow**:
-
 1. Check for existing report on same gaming day
 2. Validate required fields
 3. Calculate totals from all collections
@@ -154,11 +147,9 @@ The backend handles collection report creation, SAS metrics calculation, machine
 **Critical**: This is when `collectionMetersHistory` entries are created, not during collection creation.
 
 ### GET /api/collectionReport
-
 **Purpose**: Fetch collection reports with filtering
 
 **Features**:
-
 - Time period filtering (Today, Yesterday, last7days, last30days, Custom)
 - Date range filtering with gaming day offset support
 - Location and licensee filtering
@@ -166,7 +157,6 @@ The backend handles collection report creation, SAS metrics calculation, machine
 - Locations with machines query
 
 **Parameters**:
-
 - `timePeriod`: Predefined time period
 - `startDate` & `endDate`: Custom date range
 - `locationName`: Filter by specific location
@@ -176,18 +166,15 @@ The backend handles collection report creation, SAS metrics calculation, machine
 **File**: `app/api/collectionReport/route.ts`
 
 ### PUT /api/collectionReport/[reportId]
-
 **Purpose**: Update existing collection report
 
 **Flow**:
-
 1. Validate report exists
 2. Update financial fields
 3. Recalculate totals if needed
 4. Log activity
 
 **Editable Fields**:
-
 - Financial amounts (taxes, advance, variance, collected amount)
 - Balance corrections and reasons
 - Collection notes
@@ -195,11 +182,9 @@ The backend handles collection report creation, SAS metrics calculation, machine
 **File**: `app/api/collection-report/[reportId]/route.ts`
 
 ### DELETE /api/collection-report/[reportId]
-
 **Purpose**: Delete collection report and revert machine meters
 
 **Flow**:
-
 1. Find all collections for the report
 2. For each collection:
    - Find previous collection for the machine
@@ -214,11 +199,9 @@ The backend handles collection report creation, SAS metrics calculation, machine
 **Critical**: Properly reverts machine state to before report was created.
 
 ### PUT /api/collections/[id]
-
 **Purpose**: Update existing collection
 
 **Flow**:
-
 1. Validate collection exists
 2. Recalculate SAS metrics
 3. Recalculate movement values
@@ -231,16 +214,13 @@ The backend handles collection report creation, SAS metrics calculation, machine
 **Important**: Uses `$set` with `arrayFilters` to update existing history entries, preventing duplicates.
 
 ### GET /api/collection-reports/check-all-issues
-
 **Purpose**: Check for data inconsistencies
 
 **Parameters**:
-
 - `reportId`: Check specific report
 - `machineId`: Check specific machine
 
 **Checks Performed**:
-
 1. Movement calculation mismatches (precision tolerance 0.1)
 2. Inverted SAS times
 3. Previous meter mismatches
@@ -248,7 +228,6 @@ The backend handles collection report creation, SAS metrics calculation, machine
 5. Collection history duplicate dates
 
 **Returns**:
-
 ```typescript
 {
   success: boolean;
@@ -266,16 +245,13 @@ The backend handles collection report creation, SAS metrics calculation, machine
 **File**: `app/api/collection-reports/check-all-issues/route.ts`
 
 ### POST /api/collection-reports/fix-report
-
 **Purpose**: Fix detected issues in report or machine
 
 **Parameters**:
-
 - `reportId`: Fix specific report
 - `machineId`: Fix specific machine
 
 **Fix Operations**:
-
 1. Movement recalculation
 2. SAS time correction
 3. Previous meter updates
@@ -284,7 +260,6 @@ The backend handles collection report creation, SAS metrics calculation, machine
 6. Update machine collection meters
 
 **Returns**:
-
 ```typescript
 {
   success: boolean;
@@ -296,9 +271,9 @@ The backend handles collection report creation, SAS metrics calculation, machine
       prevMetersFixed: number;
       historyEntriesFixed: number;
       machineHistoryFixed: number;
-    }
+    };
     errors: [];
-  }
+  };
 }
 ```
 
@@ -309,9 +284,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
 ### Collection Creation (`lib/helpers/collectionCreation.ts`)
 
 #### `createCollectionWithCalculations`
-
 Orchestrates complete collection creation:
-
 - Validates payload
 - Gets SAS time period
 - Calculates SAS metrics
@@ -319,47 +292,40 @@ Orchestrates complete collection creation:
 - Returns all calculated data
 
 **Does NOT**:
-
 - Update machine.collectionMeters
 - Create collectionMetersHistory entries
 - These operations happen during report finalization
 
 #### `calculateMovement`
-
 Calculates movement values:
-
 ```typescript
 // Standard
-movementIn = currentMetersIn - prevIn;
-movementOut = currentMetersOut - prevOut;
-gross = movementIn - movementOut;
+movementIn = currentMetersIn - prevIn
+movementOut = currentMetersOut - prevOut
+gross = movementIn - movementOut
 
 // RAM Clear (with ramClearMeters)
-movementIn = ramClearMetersIn - prevIn + (currentMetersIn - 0);
-movementOut = ramClearMetersOut - prevOut + (currentMetersOut - 0);
-gross = movementIn - movementOut;
+movementIn = (ramClearMetersIn - prevIn) + (currentMetersIn - 0)
+movementOut = (ramClearMetersOut - prevOut) + (currentMetersOut - 0)
+gross = movementIn - movementOut
 
 // RAM Clear (without ramClearMeters)
-movementIn = currentMetersIn;
-movementOut = currentMetersOut;
-gross = movementIn - movementOut;
+movementIn = currentMetersIn
+movementOut = currentMetersOut
+gross = movementIn - movementOut
 ```
 
 All values rounded to 2 decimal places.
 
 #### `getSasTimePeriod`
-
 Determines SAS time window:
-
 - Queries for previous collection time
 - Uses current collection time as end
 - Handles custom SAS start times
 - Validates time ranges (start must be before end)
 
 #### `calculateSasMetrics`
-
 Calculates SAS metrics from historical data:
-
 - Queries `sashourly` collection for time period
 - Aggregates drop, cancelled credits, gross
 - Rounds all values to 2 decimal places
@@ -368,9 +334,7 @@ Calculates SAS metrics from historical data:
 ### Collection Report Calculations (`app/api/lib/helpers/collectionReportCalculations.ts`)
 
 #### `calculateCollectionReportTotals`
-
 Calculates totals for collection reports:
-
 - Queries all collections for report
 - Sums movement data (drop, cancelled, gross)
 - Sums SAS data (drop, cancelled, gross)
@@ -380,15 +344,12 @@ Calculates totals for collection reports:
 ## SAS Time Window
 
 ### Concept
-
 The SAS time window defines the period for SAS metrics aggregation:
-
 - **Start Time**: Previous collection time for the machine
 - **End Time**: Current collection time
 - **Purpose**: Ensures accurate comparison between meter and SAS data
 
 ### Implementation
-
 - Stored in `collections.sasMeters.sasStartTime` and `sasMeters.sasEndTime`
 - Used to query `sashourly` collection for metrics
 - Validated to ensure start is before end
@@ -396,7 +357,6 @@ The SAS time window defines the period for SAS metrics aggregation:
 ### Movement vs SAS
 
 **Movement-Based Metrics:**
-
 - Use meter deltas between two points
 - Baseline: `prevIn`, `prevOut` (preserved from creation)
 - Current: `metersIn`, `metersOut`
@@ -404,14 +364,12 @@ The SAS time window defines the period for SAS metrics aggregation:
 - Gross: `movement.gross`
 
 **SAS-Based Metrics:**
-
 - Use SAS protocol data for time window
 - Drop: `sasMeters.drop`
 - Cancelled: `sasMeters.totalCancelledCredits`
 - Gross: `sasMeters.gross`
 
 **Why Both:**
-
 - Provides data integrity validation
 - Variance analysis for discrepancies
 - Operational insights
@@ -419,17 +377,14 @@ The SAS time window defines the period for SAS metrics aggregation:
 ## Collection Meters History
 
 ### Purpose
-
 Tracks historical meter readings for each machine across all collections.
 
 ### When Created
-
 - Created ONLY when collection report is finalized
 - NOT created when machine is added to list
 - One entry per machine per report
 
 ### Structure
-
 ```typescript
 {
   _id: ObjectId;
@@ -443,7 +398,6 @@ Tracks historical meter readings for each machine across all collections.
 ```
 
 ### Maintenance
-
 - Updated when collection is edited (using `$set` with `arrayFilters`)
 - Removed when collection report is deleted
 - Cleaned up when orphaned (no matching report/collection)
@@ -452,7 +406,6 @@ Tracks historical meter readings for each machine across all collections.
 ## Issue Detection Logic
 
 ### Movement Validation
-
 ```typescript
 const expectedMovementIn = currentMetersIn - prevIn;
 const actualMovementIn = collection.movement.metersIn;
@@ -464,7 +417,6 @@ if (diff > 0.1) {
 ```
 
 ### SAS Time Validation
-
 ```typescript
 const sasStart = new Date(collection.sasMeters.sasStartTime);
 const sasEnd = new Date(collection.sasMeters.sasEndTime);
@@ -475,12 +427,8 @@ if (sasStart >= sasEnd) {
 ```
 
 ### Previous Meter Validation
-
 ```typescript
-const previousCollection = await findPreviousCollection(
-  machineId,
-  currentTimestamp
-);
+const previousCollection = await findPreviousCollection(machineId, currentTimestamp);
 const expectedPrevIn = previousCollection?.metersIn || 0;
 
 if (Math.abs(collection.prevIn - expectedPrevIn) > 0.1) {
@@ -489,7 +437,6 @@ if (Math.abs(collection.prevIn - expectedPrevIn) > 0.1) {
 ```
 
 ### History Validation
-
 ```typescript
 // Orphaned entry check
 const collectionsExist = await Collections.findOne({ locationReportId });
@@ -509,7 +456,6 @@ if (dateGroups.some(group => group.length > 1)) {
 ## Data Flow
 
 ### Collection Creation
-
 ```
 Frontend: User enters meter data
     ↓
@@ -527,7 +473,6 @@ Return collection to frontend
 ```
 
 ### Report Finalization
-
 ```
 Frontend: User clicks "Create Report"
     ↓
@@ -546,7 +491,6 @@ Return success to frontend
 ```
 
 ### Report Deletion
-
 ```
 Frontend: User deletes report
     ↓
@@ -566,15 +510,12 @@ Return success to frontend
 ## Key Implementation Details
 
 ### Collection Meters Update Timing
-
 **When machine is added to list**:
-
 - Collection created with empty `locationReportId`
 - Machine.collectionMeters NOT updated
 - collectionMetersHistory NOT created
 
 **When report is created**:
-
 - All collections updated with `locationReportId`
 - Machine.collectionMeters updated to current values
 - collectionMetersHistory entries created
@@ -583,48 +524,38 @@ Return success to frontend
 **Why**: Prevents premature updates and duplicate history entries.
 
 ### Edit Behavior
-
 **When editing a collection**:
-
 - Uses ORIGINAL `prevIn`/`prevOut` values (preserved from creation)
 - Recalculates movement with these baseline values
 - Updates existing `collectionMetersHistory` entry (not create new)
 - Maintains data consistency
 
 ### RAM Clear Handling
-
 **With ramClearMetersIn/Out**:
-
 ```
 movement.metersIn = (ramClearMetersIn - prevIn) + (currentMetersIn - 0)
 movement.metersOut = (ramClearMetersOut - prevOut) + (currentMetersOut - 0)
 ```
 
 **Without ramClearMetersIn/Out**:
-
 ```
 movement.metersIn = currentMetersIn
 movement.metersOut = currentMetersOut
 ```
 
 ### SAS Time Window
-
 **Calculation**:
-
 - `sasStartTime`: Previous collection time for machine
 - `sasEndTime`: Current collection time
 - **Validation**: sasStartTime must be < sasEndTime
 
 **Usage**:
-
 - Queries `sashourly` collection for time period
 - Aggregates SAS metrics (drop, cancelled, gross)
 - All values rounded to 2 decimal places
 
 ### Location Aggregations
-
 **From Collections to Collection Report**:
-
 - `totalDrop` = sum of `movement.metersIn`
 - `totalCancelled` = sum of `movement.metersOut`
 - `totalGross` = sum of `movement.gross`
@@ -634,30 +565,24 @@ movement.metersOut = currentMetersOut
 ## Issue Detection System
 
 ### Movement Calculation Validation
-
 **Check**: Stored movement values vs calculated values
 **Precision**: Tolerance of 0.1 for floating-point comparisons
 **Scenarios**: Standard and RAM Clear collections
 
 ### SAS Time Validation
-
 **Check**: sasStartTime < sasEndTime
 **Fix**: Corrects inverted time ranges using proper logic
 
 ### Previous Meter Validation
-
 **Check**: prevIn/prevOut match actual previous collection
 **Fix**: Updates to correct previous meter values
 
 ### Collection History Validation
-
 **Orphaned Entries**:
-
 - Checks if both Collections and CollectionReport exist for locationReportId
 - Removes entries with no matching documents
 
 **Duplicate Dates**:
-
 - Groups history entries by date (without time)
 - Identifies multiple entries for same date
 - Keeps most accurate entry (matched with collection data)
@@ -666,7 +591,6 @@ movement.metersOut = currentMetersOut
 ## Fix Operations
 
 ### Movement Fix
-
 ```typescript
 // Recalculate movement
 const expectedMovement = calculateMovement(
@@ -685,12 +609,11 @@ await Collections.findByIdAndUpdate(collectionId, {
     'movement.metersIn': expectedMovement.metersIn,
     'movement.metersOut': expectedMovement.metersOut,
     'movement.gross': expectedMovement.gross,
-  },
+  }
 });
 ```
 
 ### SAS Time Fix
-
 ```typescript
 // Get correct SAS times
 const { sasStartTime, sasEndTime } = await getSasTimePeriod(
@@ -704,23 +627,22 @@ await Collections.findByIdAndUpdate(collectionId, {
   $set: {
     'sasMeters.sasStartTime': sasStartTime,
     'sasMeters.sasEndTime': sasEndTime,
-  },
+  }
 });
 ```
 
 ### History Cleanup
-
 ```typescript
 // Remove orphaned entries
 const validEntries = [];
 for (const entry of collectionMetersHistory) {
   const hasCollections = await Collections.findOne({
-    locationReportId: entry.locationReportId,
+    locationReportId: entry.locationReportId
   });
   const hasReport = await CollectionReport.findOne({
-    locationReportId: entry.locationReportId,
+    locationReportId: entry.locationReportId
   });
-
+  
   if (hasCollections && hasReport) {
     validEntries.push(entry);
   }
@@ -731,42 +653,36 @@ const dateGroups = groupByDate(validEntries);
 for (const [date, entries] of dateGroups) {
   if (entries.length > 1) {
     const bestEntry = selectBestEntry(entries);
-    validEntries = validEntries.filter(
-      e => getDate(e.timestamp) !== date || e === bestEntry
+    validEntries = validEntries.filter(e => 
+      getDate(e.timestamp) !== date || e === bestEntry
     );
   }
 }
 
 // Update machine
 await Machine.findByIdAndUpdate(machineId, {
-  $set: { collectionMetersHistory: validEntries },
+  $set: { collectionMetersHistory: validEntries }
 });
 ```
 
 ## Data Consistency
 
 ### Atomic Operations
-
 All critical operations use atomic updates:
-
 - Collection creation
 - Report finalization
 - Meter updates
 - History management
 
 ### Validation
-
 Comprehensive validation at all levels:
-
 - Input validation
 - Business logic validation
 - Data consistency validation
 - Time range validation
 
 ### Error Handling
-
 Proper error handling throughout:
-
 - Clear error messages
 - Rollback on failures
 - Comprehensive logging
@@ -775,20 +691,17 @@ Proper error handling throughout:
 ## Performance Optimization
 
 ### Database Queries
-
 - Proper indexing on frequently queried fields
 - Aggregation pipelines for complex queries
 - Efficient filtering at database level
 - Minimize round trips to database
 
 ### Caching
-
 - Strategic caching of frequently accessed data
 - Cache invalidation on data changes
 - Reduced database load
 
 ### Data Processing
-
 - Process data in batches where appropriate
 - Optimize aggregation queries
 - Use efficient data structures
@@ -796,28 +709,24 @@ Proper error handling throughout:
 ## Best Practices
 
 ### Code Organization
-
 - Separate concerns into focused helper functions
 - Use consistent naming conventions
 - Implement proper error handling
 - Maintain comprehensive logging
 
 ### Database Operations
-
 - Use atomic operations for critical updates
 - Implement proper indexing
 - Validate data before operations
 - Use aggregation pipelines for complex queries
 
 ### API Design
-
 - Consistent response formats
 - Proper HTTP status codes
 - Clear error messages
 - Comprehensive validation
 
 ### Security
-
 - Input sanitization
 - Authentication checks
 - Authorization enforcement

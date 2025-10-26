@@ -1,11 +1,11 @@
-import axios from 'axios';
 import type { GamingMachine } from '@/shared/types/entities';
+import axios from 'axios';
 type NewCabinetFormData = Partial<GamingMachine>;
 type CabinetFormData = Partial<GamingMachine>;
 
-import { DateRange } from 'react-day-picker';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import { DateRange } from 'react-day-picker';
 // Activity logging removed - handled via API calls
 
 import type { GamingMachine as CabinetDetails } from '@/shared/types/entities';
@@ -65,31 +65,43 @@ export const fetchCabinets = async (
       url += `?${queryParams.join('&')}`;
     }
 
+    console.warn('[FETCH CABINETS] Requesting:', url);
     const response = await axios.get(url, {
       headers: getAuthHeaders(),
     });
 
+    console.warn('[FETCH CABINETS] Response status:', response.status);
+    console.warn('[FETCH CABINETS] Response data type:', typeof response.data);
+    
     // Check if the response contains a data property with an array
     if (response.status === 200) {
       if (response.data && response.data.success === true) {
         // API response follows { success: true, data: [...] } format
-        return Array.isArray(response.data.data) ? response.data.data : [];
+        const cabinets = Array.isArray(response.data.data) ? response.data.data : [];
+        console.warn('[FETCH CABINETS] Success format - returning', cabinets.length, 'cabinets');
+        return cabinets;
       } else if (response.data && Array.isArray(response.data)) {
         // API response is a direct array
+        console.warn('[FETCH CABINETS] Array format - returning', response.data.length, 'cabinets');
         return response.data;
       } else {
         // Unexpected response format
-        console.warn('Unexpected API response format:', response.data);
+        console.error('❌ [FETCH CABINETS] Unexpected API response format:', response.data);
         return [];
       }
     }
 
     // If the response indicates failure or data is missing
+    console.error('❌ [FETCH CABINETS] Failed status:', response.status);
     throw new Error(
       `Failed to fetch cabinets data. Status: ${response.status}`
     );
   } catch (error) {
-    console.error('Error fetching cabinets:', error);
+    console.error('❌ [FETCH CABINETS] Error fetching cabinets:', error);
+    if (error instanceof Error) {
+      console.error('   Error message:', error.message);
+      console.error('   Error stack:', error.stack);
+    }
     // Return empty array instead of throwing to prevent skeleton loader from showing indefinitely
     return [];
   }

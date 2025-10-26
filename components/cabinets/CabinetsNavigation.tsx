@@ -14,14 +14,12 @@ type Props = {
   tabs: CabinetTab[];
   activeSection: CabinetSection;
   onChange: (section: CabinetSection) => void;
-  isLoading?: boolean;
 };
 
 export default function CabinetsNavigation({
   tabs,
   activeSection,
   onChange,
-  isLoading = false,
 }: Props) {
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
@@ -38,7 +36,6 @@ export default function CabinetsNavigation({
             }`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            disabled={isLoading}
             type="button"
           >
             <span className="text-lg">{tab.icon}</span>
@@ -53,7 +50,6 @@ export default function CabinetsNavigation({
           value={activeSection}
           onChange={e => onChange(e.target.value as CabinetSection)}
           className="navigation-button w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
-          disabled={isLoading}
         >
           {tabs.map(t => (
             <option key={t.id} value={t.id}>

@@ -13,14 +13,15 @@
 - [Security Features](#security-features)
 - [Performance Optimization](#performance-optimization)
 - [Error Handling](#error-handling)
+- [Related Documentation](#related-documentation)
 
 ## Overview
 
-The Cabinets page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, configuration, and operational controls. This page serves as the central hub for managing all gaming cabinets across casino locations.
+The Cabinets page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, SMIB configuration with live MQTT updates, and operational controls. This page serves as the central hub for managing all gaming cabinets across casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 6th, 2025  
-**Version:** 2.0.0
+**Last Updated:** October 26th, 2025  
+**Version:** 2.1.0
 
 ### File Information
 
@@ -566,3 +567,12 @@ Cabinet Search = FIND(machines WHERE
 3. **Performance Metrics**: Confirm cabinet ranking algorithms use appropriate financial metrics
 
 **Note**: Most cabinet calculations align with the financial metrics guide, but collection meters require clarification.
+
+## Related Documentation
+
+- [Cabinet Details](./machine-details.md) - Individual cabinet management and configuration
+- [MQTT Integration](./mqtt-integration.md) - Real-time SMIB configuration with SSE
+- [Cabinets API](../backend/cabinets-api.md) - Backend cabinet API documentation
+- [MQTT Architecture](../backend/mqtt-architecture.md) - MQTT system architecture
+- [SMIB Management](./machine-details.md#smib-configuration) - SMIB configuration details
+- [Financial Metrics Guide](../financial-metrics-guide.md) - Financial calculations reference

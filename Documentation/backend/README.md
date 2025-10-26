@@ -18,8 +18,8 @@
 This directory contains comprehensive documentation for all backend API routes in the Evolution One CMS system. The documentation is organized by functionality and provides detailed information about endpoints, request/response formats, and usage patterns.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 10th, 2025  
-**Version:** 2.0.0
+**Last Updated:** October 26th, 2025  
+**Version:** 2.1.0
 
 ## Documentation Structure
 
@@ -29,14 +29,28 @@ This directory contains comprehensive documentation for all backend API routes i
 - **[Reports API](reports-api.md)** - Backend reporting and aggregation endpoints
 - **[Meters Report API](meters-report-api.md)** - Machine-level meter readings and performance data
 - **[Analytics API](analytics-api.md)** - Dashboard analytics and metrics endpoints
-- **[Collections API](collections-api.md)** - Collection reports and financial data management
+- **[Collections API](collection-report.md)** - Collection reports and financial data management
+- **[Collection Report Details](collection-report-details.md)** - Detailed collection report implementation
 - **[Members API](members-api.md)** - Member management and session tracking
 - **[Sessions API](sessions-api.md)** - Gaming session management and analytics
-- **[Locations & Machines API](locations-machines-api.md)** - Location and machine management
+- **[Locations API](locations-api.md)** - Gaming location management
+- **[Machines API](machines-api.md)** - Machine/cabinet management
+- **[Cabinets API](cabinets-api.md)** - Cabinet details and SMIB configuration
 - **[Authentication API](auth-api.md)** - User authentication and security endpoints
 - **[Administration API](administration-api.md)** - User management and system administration
 - **[Operations API](operations-api.md)** - Operations management and metrics tracking
-- **[System Configuration API](system-config-api.md)** - System configuration and settings
+
+### MQTT & Real-Time Communication
+
+- **[MQTT Architecture](mqtt-architecture.md)** - MQTT system architecture and design patterns
+- **[MQTT Implementation](mqtt-implementation.md)** - Detailed MQTT implementation with API endpoints
+- **[MQTT Protocols](mqtt-protocols.md)** - Protocol specifications and message formats
+
+### System Documentation
+
+- **[Gaming Day Offset System](gaming-day-offset-system.md)** - Gaming day calculation and filtering
+- **[SAS GROSS Calculation](sas-gross-calculation-system.md)** - SAS metrics calculation
+- **[Bill Validator System](bill-validator-calculation-system.md)** - Bill validator data processing
 
 ### API Categories
 
@@ -282,11 +296,30 @@ const response = await axios.post(
 - Error code documentation
 - Usage patterns and examples
 
+## MQTT Integration Overview
+
+The system includes comprehensive MQTT integration for real-time SMIB device communication:
+
+- **Publish-Subscribe Model**: Uses MQTT pub/sub for device communication
+- **Server-Sent Events**: SSE for frontend live updates
+- **Callback Routing**: Message routing by relayId for targeted delivery
+- **Multi-Client Support**: Multiple clients can subscribe to same device
+- **Configuration Management**: Live SMIB configuration updates
+- **Machine Control**: Remote machine control commands (RESTART, LOCK, UNLOCK)
+
+**Key Files:**
+- `lib/services/mqttService.ts` - Singleton MQTT service
+- `app/api/mqtt/config/subscribe/route.ts` - SSE endpoint
+- `app/api/mqtt/config/request/route.ts` - Config request endpoint
+- `app/api/mqtt/config/publish/route.ts` - Config publish endpoint
+- `app/api/cabinets/[cabinetId]/smib-config/route.ts` - SMIB config update
+
 ## Related Documentation
 
 - [Frontend Documentation](../frontend/) - Frontend page documentation
-- [Database Models](../frontend/database-relationships.md) - Database schema documentation
+- [Frontend MQTT Integration](../frontend/mqtt-integration.md) - Frontend SSE and MQTT usage
 - [Type Safety Rules](../typescript-type-safety-rules.md) - TypeScript guidelines
+- [Engineering Guidelines](../ENGINEERING_GUIDELINES.md) - Development standards
 
 ## Support
 
@@ -295,3 +328,4 @@ For questions about the API documentation or implementation details, please refe
 - Individual API documentation files for specific endpoints
 - [API Overview](api-overview.md) for general architecture
 - Frontend documentation for integration examples
+- [MQTT Architecture](mqtt-architecture.md) for real-time communication

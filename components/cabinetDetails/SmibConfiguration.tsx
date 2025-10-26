@@ -1,20 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDownIcon } from '@radix-ui/react-icons';
-import axios from 'axios';
-import type {
-  GamingMachine as CabinetDetail,
-  SmibConfig,
-} from '@/shared/types/entities';
 import {
   configContentVariants,
   itemVariants,
 } from '@/lib/constants/animationVariants';
+import type {
+  GamingMachine as CabinetDetail,
+  SmibConfig,
+} from '@/shared/types/entities';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
+import axios from 'axios';
+import { AnimatePresence, motion } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import AdvancedSettings from './smibConfig/AdvancedSettings';
 import CommunicationModeSection from './smibConfig/CommunicationModeSection';
 import FirmwareUpdateSection from './smibConfig/FirmwareUpdateSection';
 import MachineControlButtons from './smibConfig/MachineControlButtons';
-import AdvancedSettings from './smibConfig/AdvancedSettings';
-import { toast } from 'sonner';
 
 type ExtendedSmibConfigurationProps = {
   cabinet: CabinetDetail | null;
@@ -69,7 +69,7 @@ export const SmibConfiguration: React.FC<ExtendedSmibConfigurationProps> = ({
         },
       };
 
-      const response = await axios.put(
+      const response = await axios.post(
         `/api/cabinets/${cabinet._id}/smib-config`,
         payload
       );

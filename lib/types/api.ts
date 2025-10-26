@@ -1,32 +1,24 @@
-import type { Document } from 'mongoose';
-import type { CollectionReportMachineEntry } from './collections';
 import type {
-  MongooseId,
-  MongoMatchStage,
-  WithTimestamps,
-  ApiResponse,
-  DateRange,
-  RegexFilter,
-  TimePeriod,
-  PipelineStage,
-  QueryFilter,
-  ParamsType,
-  CustomDate,
-} from '@shared/types';
+    ApiResponse,
+    CustomDate,
+    DateRange,
+    MongoMatchStage,
+    MongooseId,
+    ParamsType,
+    PipelineStage,
+    QueryFilter,
+    RegexFilter,
+    TimePeriod,
+    WithTimestamps,
+} from "@shared/types";
+import type { Document } from "mongoose";
+import type { CollectionReportMachineEntry } from "./collections";
 
 // Re-export shared types for convenience
 export type {
-  MongooseId,
-  MongoMatchStage,
-  WithTimestamps,
-  ApiResponse,
-  DateRange,
-  RegexFilter,
-  TimePeriod,
-  PipelineStage,
-  QueryFilter,
-  ParamsType,
-  CustomDate,
+    ApiResponse, CustomDate, DateRange, MongoMatchStage, MongooseId, ParamsType, PipelineStage,
+    QueryFilter, RegexFilter,
+    TimePeriod, WithTimestamps
 };
 
 export type AcceptedBill = {
@@ -73,7 +65,7 @@ export type SchedulerData = {
   location: string;
   startTime: string;
   endTime: string;
-  status: 'pending' | 'completed' | 'canceled';
+  status: "pending" | "completed" | "canceled";
   createdAt: string;
   updatedAt: string;
   __v: number;
@@ -227,8 +219,29 @@ export type IScheduler = Document & {
   creator: string;
   startTime: Date;
   endTime: Date;
-  status: 'pending' | 'completed' | 'canceled';
+  status: "pending" | "completed" | "canceled";
   notes?: string;
   createdAt?: Date;
   updatedAt?: Date;
+};
+
+// SMIB Discovery API Response Types
+export type DiscoverSmibsResponse = {
+  success: boolean;
+  smibs: import('@/shared/types/entities').SmibDevice[];
+  count: number;
+  error?: string;
+};
+
+export type SmibStatusResponse = {
+  success: boolean;
+  status: Record<string, import('@/shared/types/entities').SmibOnlineStatus>;
+  error?: string;
+};
+
+export type UpdateMachineConfigResponse = {
+  success: boolean;
+  data?: unknown;
+  machineId?: string;
+  error?: string;
 };

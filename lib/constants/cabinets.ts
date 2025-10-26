@@ -13,6 +13,11 @@ export const CABINET_TABS_CONFIG: CabinetTab[] = [
     icon: '🎰',
   },
   {
+    id: 'smib',
+    label: 'SMIB Management',
+    icon: '⚙️',
+  },
+  {
     id: 'movement',
     label: 'Movement Requests',
     icon: '📦',
@@ -22,10 +27,4 @@ export const CABINET_TABS_CONFIG: CabinetTab[] = [
     label: 'SMIB Firmware',
     icon: '💾',
   },
-  // Hidden for future use
-  // {
-  //   id: "smib",
-  //   label: "SMIB Management",
-  //   icon: "⚙️",
-  // },
 ];

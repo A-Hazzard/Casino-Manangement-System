@@ -1,8 +1,8 @@
 # Cabinets API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 20th, 2025  
-**Version:** 2.0.0
+**Last Updated:** October 26th, 2025  
+**Version:** 2.1.0
 
 ## Quick Search Guide
 
@@ -12,6 +12,9 @@
 - **Machine Aggregation**: `GET /api/machines/aggregation` - Aggregated data
 - **Activity Log**: `GET /api/machines/by-id/events` - Machine events
 - **Collection History**: `GET /api/machines/by-id/collection-history` - Collection data
+- **SMIB Configuration**: `POST /api/cabinets/[cabinetId]/smib-config` - Update SMIB config
+- **MQTT Config**: `GET /api/mqtt/config` - Get formatted MQTT configuration
+- **Bill Validator**: `GET /api/bill-validator/[machineId]` - Get bill validator data
 
 ## Overview
 
@@ -265,185 +268,412 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 - **Automatic Processing**: API detects data structure and processes accordingly
 - **Current Balance**: Retrieved from `machine.billValidator.balance`
 
+**File**: `app/api/bill-validator/[machineId]/route.ts`
+
+### POST `/api/cabinets/[cabinetId]/smib-config`
+
+**Purpose**: Update SMIB configuration and send updates via MQTT
+
+**Request Fields:**
+
+```json
+{
+  "smibConfig": {
+    "coms": {
+      "comsMode": 0,
+      "comsAddr": 1,
+      "comsRateMs": 200,
+      "comsRTE": 0,
+      "comsGPC": 0
+    },
+    "net": {
+      "netMode": 0,
+      "netStaSSID": "Casino_WiFi",
+      "netStaPwd": "password123",
+      "netStaChan": 1
+    },
+    "mqtt": {
+      "mqttSecure": 0,
+      "mqttQOS": 2,
+      "mqttURI": "mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883",
+      "mqttSubTopic": "sas/relay/",
+      "mqttPubTopic": "sas/gy/server",
+      "mqttCfgTopic": "smib/config",
+      "mqttIdleTimeS": 30
+    }
+  },
+  "smibVersion": {
+    "firmware": "1.0.0"
+  },
+  "machineControl": "RESTART" // Optional: RESTART, LOCK MACHINE, UNLOCK MACHINE
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    /* updated machine object */
+  },
+  "mqttSent": true
+}
+```
+
+**Operations:**
+
+1. Updates machine `smibConfig` field in database
+2. Updates machine `smibVersion` field if provided
+3. Sends configuration to SMIB via MQTT (`mqttService.sendSMIBConfigUpdate`)
+4. Sends machine control command via MQTT if provided (`mqttService.sendMachineControlCommand`)
+5. Logs activity with change tracking
+
+**File**: `app/api/cabinets/[cabinetId]/smib-config/route.ts`
+
+### GET `/api/cabinets/[cabinetId]/smib-config`
+
+**Purpose**: Retrieve current SMIB configuration from database
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "smibConfig": {
+      "coms": { /* communication settings */ },
+      "net": { /* network settings */ },
+      "mqtt": { /* MQTT settings */ }
+    },
+    "smibVersion": {
+      "firmware": "1.0.0"
+    },
+    "relayId": "e831cdfa8384"
+  }
+}
+```
+
+**File**: `app/api/cabinets/[cabinetId]/smib-config/route.ts`
+
+## MQTT Configuration Endpoints
+
+### GET `/api/mqtt/config`
+
+**Purpose**: Fetch formatted MQTT configuration values for display
+
+**Query Parameters:**
+
+- `cabinetId` (string, required): Cabinet/Machine ID
+
+**Response Fields:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "smibId": "e831cdfa8464",
+    "netMode": "0",
+    "networkSSID": "Casino_WiFi",
+    "networkPassword": "password123",
+    "networkChannel": "1",
+    "communicationMode": "sas",
+    "comsMode": "0",
+    "comsAddr": "1",
+    "comsRateMs": "200",
+    "comsRTE": "0",
+    "comsGPC": "0",
+    "firmwareVersion": "1.0.0",
+    "mqttHost": "mq.sas.backoffice.ltd",
+    "mqttPort": "1883",
+    "mqttTLS": "0",
+    "mqttQOS": "2",
+    "mqttIdleTimeout": "30",
+    "mqttUsername": "mqtt",
+    "mqttPassword": "***",
+    "mqttPubTopic": "sas/gy/server",
+    "mqttCfgTopic": "smib/config",
+    "mqttSubTopic": "sas/relay/",
+    "mqttURI": "mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883",
+    "serverTopic": "sas/gy/server",
+    "otaURL": "http://api.sas.backoffice.ltd/firmwares/"
+  }
+}
+```
+
+**Data Processing:**
+
+- Extracts MQTT host from URI using regex pattern
+- Extracts port from URI
+- Converts communication mode to human-readable format
+- Maps database fields to frontend display names
+- Provides fallback "No Value Provided" for missing fields
+
+**File**: `app/api/mqtt/config/route.ts`
+
+### POST `/api/mqtt/config/request`
+
+**Purpose**: Request live configuration from SMIB device via MQTT
+
+**Request Body:**
+
+```json
+{
+  "relayId": "e831cdfa8384",
+  "component": "mqtt" // mqtt, ota, coms, net, app
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Config request sent for mqtt to relayId: e831cdfa8384",
+  "relayId": "e831cdfa8384",
+  "component": "mqtt",
+  "timestamp": "2025-10-26T10:30:00.000Z"
+}
+```
+
+**Note:** Actual configuration data arrives via SSE subscription endpoint.
+
+**File**: `app/api/mqtt/config/request/route.ts`
+
+### POST `/api/mqtt/config/publish`
+
+**Purpose**: Publish configuration updates to SMIB device via MQTT
+
+**Request Body:**
+
+```json
+{
+  "relayId": "e831cdfa8384",
+  "config": {
+    "typ": "cfg",
+    "comp": "mqtt",
+    "mqttSecure": 0,
+    "mqttQOS": 2,
+    "mqttURI": "mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883",
+    "mqttSubTopic": "sas/relay/",
+    "mqttPubTopic": "sas/gy/server",
+    "mqttCfgTopic": "smib/config",
+    "mqttIdleTimeS": 30
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Config update published for mqtt to relayId: e831cdfa8384",
+  "relayId": "e831cdfa8384",
+  "config": { /* sent config */ },
+  "timestamp": "2025-10-26T10:30:00.000Z"
+}
+```
+
+**File**: `app/api/mqtt/config/publish/route.ts`
+
+### GET `/api/mqtt/config/subscribe`
+
+**Purpose**: Establish Server-Sent Events stream for live MQTT config updates
+
+**Query Parameters:**
+
+- `relayId` (string, required): Relay ID of the SMIB device
+
+**Response:** Server-Sent Events stream
+
+```
+data: {"type":"connected","relayId":"e831cdfa8384","timestamp":"2025-10-26T10:30:00.000Z","message":"Connected to MQTT config stream"}
+
+data: {"type":"config_update","relayId":"e831cdfa8384","component":"mqtt","data":{...},"timestamp":"2025-10-26T10:30:01.000Z"}
+
+data: {"type":"heartbeat","relayId":"e831cdfa8384","timestamp":"2025-10-26T10:30:05.000Z"}
+```
+
+**Features:**
+
+- Establishes SSE connection for real-time updates
+- Subscribes to MQTT config responses for specific relayId
+- Sends heartbeat every 5 seconds
+- Handles client disconnection cleanup
+
+**File**: `app/api/mqtt/config/subscribe/route.ts`
+
+### POST `/api/mqtt/test`
+
+**Purpose**: Test MQTT connectivity and message publishing/subscription
+
+**Request Body:**
+
+```json
+{
+  "action": "connect" | "publish" | "subscribe",
+  "relayId": "e831cdfa8384",
+  "message": "custom test message"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "action": "publish",
+  "relayId": "e831cdfa8384",
+  "topic": "sas/relay/e831cdfa8384",
+  "timestamp": "2025-10-26T10:30:00.000Z",
+  "messages": [
+    "Connected to MQTT broker",
+    "Published to sas/relay/e831cdfa8384: ..."
+  ]
+}
+```
+
+**File**: `app/api/mqtt/test/route.ts`
+
 ## Data Models
 
 ### Machine Schema
 
 **Database Fields:**
 
-````typescript
+```typescript
 {
   _id: String,                    // Machine identifier
   serialNumber: String,           // Asset number (maps to assetNumber)
   game: String,                   // Installed game (maps to installedGame)
   gamingLocation: String,         // Location ID (maps to locationId)
   relayId: String,                // SMIB board ID (maps to smbId)
+  smibBoard: String,              // Alternative SMIB identifier
   assetStatus: String,            // Machine status (maps to status)
+  
+  // Financial Meters
   sasMeters: {
     drop: Number,                 // Money inserted
     coinIn: Number,               // Total bets placed
+    coinOut: Number,              // Coin out
     jackpot: Number,              // Jackpot payouts
     gamesPlayed: Number,          // Games played
+    gamesWon: Number,             // Games won
     totalCancelledCredits: Number // Credits paid out
   },
+  
+  // SMIB Configuration
   smibConfig: {
-    version: String,              // SMIB firmware version
-    settings: Object              // SMIB configuration
+    coms: {
+      comsMode: Number,           // 0 = SAS, 1 = non-SAS, 2 = IGT
+      comsAddr: Number,           // Communication address
+      comsRateMs: Number,         // Communication rate (ms)
+      comsRTE: Number,            // Real-time events (0 = off, 1 = on)
+      comsGPC: Number             // Game protocol configuration
+    },
+    net: {
+      netMode: Number,            // 0 = WiFi, 1 = Ethernet
+      netStaSSID: String,         // WiFi SSID
+      netStaPwd: String,          // WiFi password
+      netStaChan: Number          // WiFi channel
+    },
+    mqtt: {
+      mqttSecure: Number,         // TLS encryption (0 = off, 1 = on)
+      mqttQOS: Number,            // Quality of Service (0, 1, 2)
+      mqttURI: String,            // MQTT broker URI with credentials
+      mqttSubTopic: String,       // Subscribe topic prefix
+      mqttPubTopic: String,       // Publish topic prefix
+      mqttCfgTopic: String,       // Config topic
+      mqttIdleTimeS: Number,      // Idle timeout in seconds
+      mqttUsername: String,       // MQTT username (optional)
+      mqttPassword: String        // MQTT password (optional)
+    },
+    ota: {
+      otaURL: String              // Firmware update server URL
+    }
   },
-
-**Last Updated**: October 3rd, 2025
-**Status**: ✅ Fully Functional - All Issues Resolved
-
-## Overview
-The Cabinets API provides comprehensive endpoints for managing gaming cabinets, including CRUD operations, metrics, events, and collection history. All endpoints now function correctly with proper data transformation and error handling.
-
-## Current Implementation Status
-
-### ✅ **Resolved Issues**
-- **Data Transformation**: Database fields properly mapped to frontend expectations
-- **API Endpoints**: All endpoints now functional with correct data flow
-- **Edit Operations**: Cabinet updates now save correctly with field mapping
-- **Delete Operations**: Soft delete functionality implemented and working
-- **Activity Log**: Machine events endpoint functional with filtering
-- **Collection History**: Collection meters history endpoint with pagination
-- **Time Period Filtering**: Date-based filtering working without parameter corruption
-
-### 🔧 **API Endpoints**
-
-#### **Core Cabinet Operations**
-
-##### **GET `/api/machines/[id]`**
-- **Purpose**: Fetch individual cabinet details
-- **Data Transformation**: Maps database fields to frontend expectations
-- **Response Format**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "assetNumber": "string",        // from serialNumber
-      "installedGame": "string",      // from game
-      "locationId": "string",         // from gamingLocation
-      "smbId": "string",              // from relayId
-      "status": "string",             // from assetStatus
-      "isCronosMachine": false,       // default value
-      // ... other fields
-    }
-  }
-````
-
-##### **PUT `/api/locations/[locationId]/cabinets/[cabinetId]`**
-
-- **Purpose**: Update cabinet information
-- **Data Transformation**: Maps frontend fields back to database format
-- **Request Format**: Accepts `CabinetFormData` with transformed field names
-- **Field Mapping**:
-  - `assetNumber` → `serialNumber`
-  - `installedGame` → `game`
-  - `locationId` → `gamingLocation`
-  - `smbId` → `relayId`
-  - `status` → `assetStatus`
-
-##### **DELETE `/api/locations/[locationId]/cabinets/[cabinetId]`**
-
-- **Purpose**: Soft delete cabinet (sets `deletedAt` timestamp)
-- **Implementation**: Marks record as deleted without permanent removal
-- **Response**: Success confirmation with soft delete status
-
-#### **Aggregation & Metrics**
-
-##### **GET `/api/machines/aggregation`**
-
-- **Purpose**: Fetch aggregated cabinet data with filtering
-- **Features**: Licensee filtering, date range filtering, pagination
-- **Data Consistency**: Properly filters deleted cabinets
-- **Response Format**: Array of cabinet objects with metrics
-
-##### **GET `/api/machines/by-id/events`**
-
-- **Purpose**: Fetch machine events for activity log
-- **Features**: Event type filtering, date filtering, pagination
-- **Query Parameters**:
-  - `id`: Machine ID
-  - `timePeriod`: Date filter (Today, Yesterday, 7d, 30d, All Time)
-  - `page`: Page number for pagination
-  - `limit`: Items per page
-
-##### **GET `/api/machines/by-id/collection-history`**
-
-- **Purpose**: Fetch collection meters history
-- **Features**: Date filtering, sorting, pagination
-- **Query Parameters**:
-  - `id`: Machine ID
-  - `timePeriod`: Date filter
-  - `page`: Page number
-  - `limit`: Items per page
-- **Response Format**:
-  ```json
-  {
-    "collectionHistory": [...],
-    "pagination": {
-      "currentPage": 1,
-      "totalPages": 5,
-      "totalEntries": 100,
-      "hasNextPage": true,
-      "hasPrevPage": false
-    }
-  }
-  ```
-
-### 📊 **Data Models**
-
-#### **Machine Schema** (`app/api/lib/models/machines.ts`)
-
-```typescript
-{
-  _id: String,                    // Machine identifier
-  serialNumber: String,           // Asset number
-  game: String,                   // Installed game
-  gamingLocation: String,         // Location ID
-  relayId: String,                // SMIB board ID
-  assetStatus: String,            // Machine status
-  sasMeters: Object,              // SAS meter data
-  meterData: Object,              // Meter information
-  gameConfig: Object,             // Game configuration
-  smibConfig: Object,             // SMIB configuration
-  smibVersion: Object,            // SMIB firmware version
-  collectionMetersHistory: Array, // Collection history
-  deletedAt: Date                 // Soft delete timestamp
+  
+  // SMIB Version
+  smibVersion: {
+    firmware: String,             // Current firmware version
+    hardware: String              // Hardware version
+  },
+  
+  // Collection Data
+  collectionMeters: {
+    metersIn: Number,
+    metersOut: Number
+  },
+  collectionMetersHistory: Array,
+  collectionTime: Date,
+  previousCollectionTime: Date,
+  
+  // Bill Validator
+  billValidator: {
+    balance: Number,
+    notes: Array
+  },
+  
+  // Timestamps
+  lastActivity: Date,
+  deletedAt: Date,
+  createdAt: Date,
+  updatedAt: Date
 }
 ```
 
+## Current Implementation Status
+
+### ✅ **Fully Functional Features**
+
+- **Data Transformation**: Database fields properly mapped to frontend expectations
+- **API Endpoints**: All endpoints functional with correct data flow
+- **Edit Operations**: Cabinet updates save correctly with field mapping
+- **Delete Operations**: Soft delete functionality implemented and working
+- **Activity Log**: Machine events endpoint functional with filtering
+- **Collection History**: Collection meters history endpoint with pagination
+- **Time Period Filtering**: Date-based filtering working with gaming day offset support
+- **SMIB Configuration**: Live SMIB config via SSE and MQTT
+- **Bill Validator**: V1/V2 data structure auto-detection
+- **MQTT Integration**: Real-time configuration updates and machine control
+
 ### Machine Event Schema
 
-**Database Fields:**
+**Collection:** `machineevents`
 
-````typescript
-{
-  _id: ObjectId,
-  eventType: String,              // Type of event (General, Significant, Priority)
-
-#### **Machine Event Schema** (`app/api/lib/models/machineEvents.ts`)
 ```typescript
 {
   _id: ObjectId,
-  eventType: String,              // Type of event
+  machine: String,                 // Machine ID reference
+  currentSession: String,          // Session ID reference
+  eventType: String,               // General, Significant, Priority
   description: String,             // Event description
   command: String,                 // Command executed
   gameName: String,                // Game name
   date: Date,                      // Event timestamp
-  sequence: Array                  // Optional sequence data
+  sequence: [{                     // Optional sequence data
+    description: String,
+    logLevel: String,
+    success: Boolean,
+    createdAt: Date
+  }]
 }
-````
+```
 
-#### **Accepted Bill Schema** (`app/api/lib/models/acceptedBills.ts`)
+### Accepted Bill Schema
+
+**Collection:** `acceptedbills`
 
 ```typescript
 {
   _id: String,                     // Unique bill record identifier
+  
   // V2 fields (current structure)
   value: Number,                   // V2: Bill denomination value
   machine: String,                 // V2: Machine ID reference
   member: String,                  // V2: Member (typically "ANONYMOUS")
+  createdAt: Date,                 // V2: Bill creation timestamp
 
   // V1 fields (legacy structure)
   location: String,                // V1: Location ID reference
@@ -463,7 +693,6 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
     dollarTotal: Number,
     dollarTotalUnknown: Number
   },
-  createdAt: Date,                 // V2: Bill creation timestamp
   updatedAt: Date                  // Record update timestamp
 }
 ```
@@ -750,6 +979,53 @@ const customBillData = await response.json();
 - **Redis Caching**: Enhanced caching layer
 - **Database Optimization**: Query performance improvements
 
+## MQTT Integration
+
+### MQTT Service
+
+The Cabinets API integrates with the MQTT service for real-time SMIB communication:
+
+- **Service File**: `lib/services/mqttService.ts`
+- **Connection**: Singleton MQTT client instance
+- **Topics**: Uses `sas/relay/[relayId]` for publishing, `smib/config` for responses
+- **QoS**: Default QoS 0 for configuration messages
+
+### SMIB Communication Flow
+
+```
+Frontend → API Endpoint → Database Update → MQTT Service → MQTT Broker → SMIB Device
+    ↑                                                                           ↓
+    │                                                              (publishes response)
+    │                                                                           ↓
+    └── SSE Stream ← API Subscribe ← MQTT Service ← MQTT Broker ← smib/config
+```
+
+### Machine Control Commands
+
+**Supported Commands:**
+
+- **RESTART**: Restart the SMIB device
+- **LOCK MACHINE**: Lock the gaming machine
+- **UNLOCK MACHINE**: Unlock the gaming machine
+
+**Implementation:**
+
+```typescript
+// In POST /api/cabinets/[cabinetId]/smib-config
+if (machineControl && relayId) {
+  await mqttService.sendMachineControlCommand(relayId, machineControl);
+}
+```
+
+## Related Documentation
+
+- [MQTT Architecture](./mqtt-architecture.md) - MQTT system architecture and design
+- [MQTT Implementation](./mqtt-implementation.md) - Detailed MQTT implementation guide
+- [MQTT Protocols](./mqtt-protocols.md) - Protocol specifications and message formats
+- [Bill Validator System](./bill-validator-calculation-system.md) - Bill validator data processing
+- [Gaming Day Offset System](./gaming-day-offset-system.md) - Time period filtering
+- [Frontend MQTT Integration](../frontend/mqtt-integration.md) - Frontend SSE and MQTT usage
+
 ## Conclusion
 
-The Cabinets API is now fully functional with all previously reported issues resolved. The implementation includes proper data transformation, comprehensive error handling, security measures, and performance optimizations. The system is production-ready and provides a robust foundation for cabinet management operations.
+The Cabinets API is fully functional with comprehensive cabinet management, SMIB configuration, MQTT integration, and real-time updates. The implementation includes proper data transformation, comprehensive error handling, security measures, and performance optimizations. The system is production-ready and provides a robust foundation for cabinet management operations with live SMIB communication capabilities.

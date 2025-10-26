@@ -10,14 +10,18 @@ This directory contains comprehensive documentation for all frontend pages and c
 
 - **[Dashboard](./dashboard.md)** - Main landing page with real-time metrics and analytics
 - **[Administration](./administration.md)** - User and licensee management system
-- **[Cabinets](./cabinets.md)** - Cabinet (slot machine) management and monitoring
-- **[Cabinet Details](./cabinet-details.md)** - Individual cabinet configuration and metrics
+- **[Cabinets](./machines.md)** - Cabinet (slot machine) management and monitoring
+- **[Cabinet Details](./machine-details.md)** - Individual cabinet configuration and metrics
 - **[Collection Report](./collection-report.md)** - Financial collection management system
 - **[Collection System Pages](./collection-system-pages.md)** - Complete collection workflow documentation
 - **[Locations](./locations.md)** - Gaming location management
-- **[Location Cabinets](./location-cabinets.md)** - Location-specific cabinet management
+- **[Location Cabinets](./location-machines.md)** - Location-specific cabinet management
 - **[Members](./members.md)** - Member management system
 - **[Sessions](./sessions.md)** - Gaming session tracking and management
+
+### Technical Integration
+
+- **[MQTT Integration](./mqtt-integration.md)** - Real-time SMIB configuration with SSE and MQTT
 
 ### System Documentation
 

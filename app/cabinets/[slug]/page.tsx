@@ -24,7 +24,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
 import { NetworkError, NotFoundError } from '@/components/ui/errors';
 import RefreshButton from '@/components/ui/RefreshButton';
-import { RefreshCw, Pencil } from 'lucide-react';
+import { Pencil, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -864,31 +864,46 @@ function CabinetDetailPageContent() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
-              {/* Responsive grid for SMIB details */}
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4">
-                <div>
-                  <p className="text-xs text-grayHighlight sm:text-sm">
-                    <span className="font-medium">SMIB ID:</span>{' '}
-                    {mqttConfigData?.smibId || 'No Value Provided'}
-                  </p>
+              {/* Show skeleton loader while fetching */}
+              {isManuallyFetching ? (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4">
+                  <div className="space-y-2">
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200"></div>
+                  </div>
+                  <div className="space-y-2 sm:text-right">
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200 sm:ml-auto"></div>
+                    <div className="h-4 w-2/3 animate-pulse rounded bg-gray-200 sm:ml-auto"></div>
+                  </div>
                 </div>
-                <div className="sm:text-right">
-                  <p className="text-xs text-grayHighlight sm:text-sm">
-                    <span className="font-medium">Communication Mode:</span>{' '}
-                    {cabinet?.smibConfig?.coms?.comsMode !== undefined
-                      ? cabinet?.smibConfig?.coms?.comsMode === 0
-                        ? 'sas'
-                        : cabinet?.smibConfig?.coms?.comsMode === 1
-                          ? 'non sas'
-                          : 'IGT'
-                      : 'undefined'}
-                  </p>
+              ) : (
+                /* Responsive grid for SMIB details */
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4">
+                  <div>
+                    <p className="text-xs text-grayHighlight sm:text-sm">
+                      <span className="font-medium">SMIB ID:</span>{' '}
+                      {cabinet?.relayId ||
+                        cabinet?.smibBoard ||
+                        'No Value Provided'}
+                    </p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-xs text-grayHighlight sm:text-sm">
+                      <span className="font-medium">Communication Mode:</span>{' '}
+                      {cabinet?.smibConfig?.coms?.comsMode !== undefined
+                        ? cabinet?.smibConfig?.coms?.comsMode === 0
+                          ? 'sas'
+                          : cabinet?.smibConfig?.coms?.comsMode === 1
+                            ? 'non sas'
+                            : 'IGT'
+                        : 'undefined'}
+                    </p>
                   <p className="mt-1 text-xs text-grayHighlight sm:mt-0 sm:text-sm">
                     <span className="font-medium">Running firmware:</span>{' '}
                     {mqttConfigData?.firmwareVersion || 'No Value Provided'}
                   </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
 
             {/* Expanded Configuration Section */}
@@ -1039,7 +1054,9 @@ function CabinetDetailPageContent() {
                             className="bg-button text-container hover:bg-buttonActive"
                             size="sm"
                           >
-                            <span className="hidden lg:inline">SAVE NETWORK</span>
+                            <span className="hidden lg:inline">
+                              SAVE NETWORK
+                            </span>
                             <span className="lg:hidden">SAVE</span>
                           </Button>
                         ) : (
@@ -1058,76 +1075,100 @@ function CabinetDetailPageContent() {
                           </>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-grayHighlight">
-                            Network Name{isConnectedToMqtt ? ' (live)' : ''}:
-                          </label>
-                          {editingSection === 'network' ? (
-                            <input
-                              type="text"
-                              value={formData.networkSSID}
-                              onChange={e =>
-                                updateFormData('networkSSID', e.target.value)
-                              }
-                              className="w-full rounded border border-border bg-background p-2 text-foreground"
-                              placeholder="Enter network name"
-                            />
-                          ) : (
-                            <div className="truncate text-sm">
-                              {formData.networkSSID ||
-                                'Device Online - Config Not Supported'}
-                            </div>
-                          )}
+                      {isManuallyFetching ? (
+                        /* Skeleton loader while fetching */
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <div className="h-4 w-32 animate-pulse rounded bg-gray-200"></div>
+                            <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="h-4 w-24 animate-pulse rounded bg-gray-200"></div>
+                            <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="h-4 w-20 animate-pulse rounded bg-gray-200"></div>
+                            <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-grayHighlight">
-                            Password{isConnectedToMqtt ? ' (live)' : ''}:
-                          </label>
-                          {editingSection === 'network' ? (
-                            <input
-                              type="password"
-                              value={formData.networkPassword}
-                              onChange={e =>
-                                updateFormData(
-                                  'networkPassword',
-                                  e.target.value
-                                )
-                              }
-                              className="w-full rounded border border-border bg-background p-2 text-foreground"
-                              placeholder="Enter network password"
-                            />
-                          ) : (
-                            <div className="text-sm">
-                              {formData.networkPassword ||
-                                'Device Online - Config Not Supported'}
-                            </div>
-                          )}
+                      ) : (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-grayHighlight">
+                              Network Name{isConnectedToMqtt ? ' (live)' : ''}:
+                            </label>
+                            {editingSection === 'network' ? (
+                              <input
+                                type="text"
+                                value={formData.networkSSID}
+                                onChange={e =>
+                                  updateFormData('networkSSID', e.target.value)
+                                }
+                                className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                placeholder="Enter network name"
+                              />
+                            ) : (
+                              <div className="truncate text-sm">
+                                {formData.networkSSID ||
+                                  cabinet?.smibConfig?.net?.netStaSSID ||
+                                  'No Value Provided'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-grayHighlight">
+                              Password{isConnectedToMqtt ? ' (live)' : ''}:
+                            </label>
+                            {editingSection === 'network' ? (
+                              <input
+                                type="password"
+                                value={formData.networkPassword}
+                                onChange={e =>
+                                  updateFormData(
+                                    'networkPassword',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                placeholder="Enter network password"
+                              />
+                            ) : (
+                              <div className="text-sm">
+                                {formData.networkPassword ||
+                                  cabinet?.smibConfig?.net?.netStaPwd ||
+                                  'No Value Provided'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-grayHighlight">
+                              Channel{isConnectedToMqtt ? ' (live)' : ''}:
+                            </label>
+                            {editingSection === 'network' ? (
+                              <input
+                                type="number"
+                                value={formData.networkChannel}
+                                onChange={e =>
+                                  updateFormData(
+                                    'networkChannel',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                placeholder="Enter channel"
+                                min="1"
+                                max="11"
+                              />
+                            ) : (
+                              <div className="text-sm">
+                                {formData.networkChannel ||
+                                  cabinet?.smibConfig?.net?.netStaChan ||
+                                  'No Value Provided'}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-grayHighlight">
-                            Channel{isConnectedToMqtt ? ' (live)' : ''}:
-                          </label>
-                          {editingSection === 'network' ? (
-                            <input
-                              type="number"
-                              value={formData.networkChannel}
-                              onChange={e =>
-                                updateFormData('networkChannel', e.target.value)
-                              }
-                              className="w-full rounded border border-border bg-background p-2 text-foreground"
-                              placeholder="Enter channel"
-                              min="1"
-                              max="11"
-                            />
-                          ) : (
-                            <div className="text-sm">
-                              {formData.networkChannel ||
-                                'Device Online - Config Not Supported'}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </motion.div>
 
                     {/* COMS and MQTT Grid - Side by Side */}
@@ -1145,7 +1186,9 @@ function CabinetDetailPageContent() {
                               className="bg-button text-container hover:bg-buttonActive"
                               size="sm"
                             >
-                              <span className="hidden lg:inline">SAVE COMS</span>
+                              <span className="hidden lg:inline">
+                                SAVE COMS
+                              </span>
                               <span className="lg:hidden">SAVE</span>
                             </Button>
                           ) : (
@@ -1164,88 +1207,114 @@ function CabinetDetailPageContent() {
                             </>
                           )}
                         </div>
-                        <div className="space-y-2">
-                          <div className="space-y-1">
-                            <label className="text-sm font-medium text-grayHighlight">
-                              Address:
-                            </label>
-                            {editingSection === 'coms' ? (
-                              <input
-                                type="text"
-                                value={formData.comsAddr || ''}
-                                onChange={e =>
-                                  updateFormData('comsAddr', e.target.value)
-                                }
-                                className="w-full rounded border border-border bg-background p-2 text-foreground"
-                              />
-                            ) : (
-                              <div className="text-sm">
-                                {formData.comsAddr || ''}
-                              </div>
-                            )}
+                        {isManuallyFetching ? (
+                          /* Skeleton loader while fetching */
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <div className="h-4 w-20 animate-pulse rounded bg-gray-200"></div>
+                              <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="h-4 w-24 animate-pulse rounded bg-gray-200"></div>
+                              <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="h-4 w-16 animate-pulse rounded bg-gray-200"></div>
+                              <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="h-4 w-16 animate-pulse rounded bg-gray-200"></div>
+                              <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-sm font-medium text-grayHighlight">
-                              Polling Rate:
-                            </label>
-                            {editingSection === 'coms' ? (
-                              <input
-                                type="text"
-                                value={formData.comsRateMs || ''}
-                                onChange={e =>
-                                  updateFormData('comsRateMs', e.target.value)
-                                }
-                                className="w-full rounded border border-border bg-background p-2 text-foreground"
-                              />
-                            ) : (
-                              <div className="text-sm">
-                                {formData.comsRateMs || ''}
-                              </div>
-                            )}
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                Address:
+                              </label>
+                              {editingSection === 'coms' ? (
+                                <input
+                                  type="text"
+                                  value={formData.comsAddr || ''}
+                                  onChange={e =>
+                                    updateFormData('comsAddr', e.target.value)
+                                  }
+                                  className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsAddr || cabinet?.smibConfig?.coms?.comsAddr || 'No Value Provided'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                Polling Rate:
+                              </label>
+                              {editingSection === 'coms' ? (
+                                <input
+                                  type="text"
+                                  value={formData.comsRateMs || ''}
+                                  onChange={e =>
+                                    updateFormData('comsRateMs', e.target.value)
+                                  }
+                                  className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsRateMs || cabinet?.smibConfig?.coms?.comsRateMs || 'No Value Provided'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                RTE:
+                              </label>
+                              {editingSection === 'coms' ? (
+                                <select
+                                  value={formData.comsRTE || '0'}
+                                  onChange={e =>
+                                    updateFormData('comsRTE', e.target.value)
+                                  }
+                                  className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                >
+                                  <option value="0">Disabled</option>
+                                  <option value="1">Enabled</option>
+                                </select>
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsRTE === '1'
+                                    ? 'Enabled'
+                                    : formData.comsRTE === '0' || cabinet?.smibConfig?.coms?.comsRTE === 0
+                                      ? 'Disabled'
+                                      : cabinet?.smibConfig?.coms?.comsRTE === 1
+                                        ? 'Enabled'
+                                        : 'No Value Provided'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-grayHighlight">
+                                GPC:
+                              </label>
+                              {editingSection === 'coms' ? (
+                                <input
+                                  type="text"
+                                  value={formData.comsGPC || ''}
+                                  onChange={e =>
+                                    updateFormData('comsGPC', e.target.value)
+                                  }
+                                  className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  {formData.comsGPC || cabinet?.smibConfig?.coms?.comsGPC || 'No Value Provided'}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-sm font-medium text-grayHighlight">
-                              RTE:
-                            </label>
-                            {editingSection === 'coms' ? (
-                              <select
-                                value={formData.comsRTE || '0'}
-                                onChange={e =>
-                                  updateFormData('comsRTE', e.target.value)
-                                }
-                                className="w-full rounded border border-border bg-background p-2 text-foreground"
-                              >
-                                <option value="0">Disabled</option>
-                                <option value="1">Enabled</option>
-                              </select>
-                            ) : (
-                              <div className="text-sm">
-                                {formData.comsRTE === '1'
-                                  ? 'Enabled'
-                                  : 'Disabled'}
-                              </div>
-                            )}
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-sm font-medium text-grayHighlight">
-                              GPC:
-                            </label>
-                            {editingSection === 'coms' ? (
-                              <input
-                                type="text"
-                                value={formData.comsGPC || ''}
-                                onChange={e =>
-                                  updateFormData('comsGPC', e.target.value)
-                                }
-                                className="w-full rounded border border-border bg-background p-2 text-foreground"
-                              />
-                            ) : (
-                              <div className="text-sm">
-                                {formData.comsGPC || ''}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                        )}
                       </motion.div>
 
                       {/* MQTT Section */}
@@ -1261,7 +1330,9 @@ function CabinetDetailPageContent() {
                               className="bg-button text-container hover:bg-buttonActive"
                               size="sm"
                             >
-                              <span className="hidden lg:inline">SAVE MQTT</span>
+                              <span className="hidden lg:inline">
+                                SAVE MQTT
+                              </span>
                               <span className="lg:hidden">SAVE</span>
                             </Button>
                           ) : (
@@ -1280,143 +1351,181 @@ function CabinetDetailPageContent() {
                             </>
                           )}
                         </div>
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                          <div>
-                            <h4 className="mb-2 text-sm font-medium">
-                              Topic Configuration
-                            </h4>
-                            <div className="space-y-2">
-                              <div className="space-y-1">
-                                <label className="text-sm font-medium text-grayHighlight">
-                                  MQTT Public Topic:
-                                </label>
-                                {editingSection === 'mqtt' ? (
-                                  <input
-                                    type="text"
-                                    value={formData.mqttPubTopic || ''}
-                                    onChange={e =>
-                                      updateFormData(
-                                        'mqttPubTopic',
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
-                                    placeholder="sas/gy/server"
-                                  />
-                                ) : (
-                                  <div className="text-sm">
-                                    {formData.mqttPubTopic ||
-                                      'No Value Provided'}
-                                  </div>
-                                )}
+                        {isManuallyFetching ? (
+                          /* Skeleton loader while fetching */
+                          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <div>
+                              <div className="mb-2 h-4 w-32 animate-pulse rounded bg-gray-200"></div>
+                              <div className="space-y-2">
+                                <div className="space-y-1">
+                                  <div className="h-4 w-36 animate-pulse rounded bg-gray-200"></div>
+                                  <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="h-4 w-32 animate-pulse rounded bg-gray-200"></div>
+                                  <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="h-4 w-24 animate-pulse rounded bg-gray-200"></div>
+                                  <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                                </div>
                               </div>
-                              <div className="space-y-1">
-                                <label className="text-sm font-medium text-grayHighlight">
-                                  MQTT Config Topic:
-                                </label>
-                                {editingSection === 'mqtt' ? (
-                                  <input
-                                    type="text"
-                                    value={formData.mqttCfgTopic || ''}
-                                    onChange={e =>
-                                      updateFormData(
-                                        'mqttCfgTopic',
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
-                                    placeholder="smib/config"
-                                  />
-                                ) : (
-                                  <div className="text-sm">
-                                    {formData.mqttCfgTopic ||
-                                      'No Value Provided'}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-sm font-medium text-grayHighlight">
-                                  MQTT URI:
-                                </label>
-                                {editingSection === 'mqtt' ? (
-                                  <input
-                                    type="text"
-                                    value={formData.mqttURI || ''}
-                                    onChange={e =>
-                                      updateFormData('mqttURI', e.target.value)
-                                    }
-                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
-                                    placeholder="mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883"
-                                  />
-                                ) : (
-                                  <div className="text-sm">
-                                    {formData.mqttURI || 'No Value Provided'}
-                                  </div>
-                                )}
+                            </div>
+                            <div>
+                              <div className="mb-2 h-4 w-36 animate-pulse rounded bg-gray-200"></div>
+                              <div className="space-y-2">
+                                <div className="space-y-1">
+                                  <div className="h-4 w-16 animate-pulse rounded bg-gray-200"></div>
+                                  <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="h-4 w-28 animate-pulse rounded bg-gray-200"></div>
+                                  <div className="h-10 w-full animate-pulse rounded bg-gray-200"></div>
+                                </div>
                               </div>
                             </div>
                           </div>
-                          <div>
-                            <h4 className="mb-2 text-sm font-medium">
-                              Additional Settings
-                            </h4>
-                            <div className="space-y-2">
-                              <div className="space-y-1">
-                                <label className="text-sm font-medium text-grayHighlight">
-                                  QOS:
-                                </label>
-                                {editingSection === 'mqtt' ? (
-                                  <select
-                                    value={formData.mqttTLS || '2'}
-                                    onChange={e =>
-                                      updateFormData('mqttTLS', e.target.value)
-                                    }
-                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
-                                  >
-                                    <option value="0">0 - At most once</option>
-                                    <option value="1">1 - At least once</option>
-                                    <option value="2">2 - Exactly once</option>
-                                  </select>
-                                ) : (
-                                  <div className="text-sm">
-                                    {formData.mqttTLS === '0'
-                                      ? '0 - At most once'
-                                      : formData.mqttTLS === '1'
-                                        ? '1 - At least once'
-                                        : formData.mqttTLS === '2'
-                                          ? '2 - Exactly once'
-                                          : formData.mqttTLS ||
-                                            'No Value Provided'}
-                                  </div>
-                                )}
+                        ) : (
+                          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <div>
+                              <h4 className="mb-2 text-sm font-medium">
+                                Topic Configuration
+                              </h4>
+                              <div className="space-y-2">
+                                <div className="space-y-1">
+                                  <label className="text-sm font-medium text-grayHighlight">
+                                    MQTT Public Topic:
+                                  </label>
+                                  {editingSection === 'mqtt' ? (
+                                    <input
+                                      type="text"
+                                      value={formData.mqttPubTopic || ''}
+                                      onChange={e =>
+                                        updateFormData(
+                                          'mqttPubTopic',
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                      placeholder="sas/gy/server"
+                                    />
+                                  ) : (
+                                    <div className="text-sm">
+                                      {formData.mqttPubTopic || cabinet?.smibConfig?.mqtt?.mqttPubTopic || 'No Value Provided'}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-sm font-medium text-grayHighlight">
+                                    MQTT Config Topic:
+                                  </label>
+                                  {editingSection === 'mqtt' ? (
+                                    <input
+                                      type="text"
+                                      value={formData.mqttCfgTopic || ''}
+                                      onChange={e =>
+                                        updateFormData(
+                                          'mqttCfgTopic',
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                      placeholder="smib/config"
+                                    />
+                                  ) : (
+                                    <div className="text-sm">
+                                      {formData.mqttCfgTopic || cabinet?.smibConfig?.mqtt?.mqttCfgTopic || 'No Value Provided'}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-sm font-medium text-grayHighlight">
+                                    MQTT URI:
+                                  </label>
+                                  {editingSection === 'mqtt' ? (
+                                    <input
+                                      type="text"
+                                      value={formData.mqttURI || ''}
+                                      onChange={e =>
+                                        updateFormData('mqttURI', e.target.value)
+                                      }
+                                      className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                      placeholder="mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883"
+                                    />
+                                  ) : (
+                                    <div className="text-sm">
+                                      {formData.mqttURI || cabinet?.smibConfig?.mqtt?.mqttURI || 'No Value Provided'}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div className="space-y-1">
-                                <label className="text-sm font-medium text-grayHighlight">
-                                  Idle Timeout (s):
-                                </label>
-                                {editingSection === 'mqtt' ? (
-                                  <input
-                                    type="number"
-                                    value={formData.mqttIdleTimeout || ''}
-                                    onChange={e =>
-                                      updateFormData(
-                                        'mqttIdleTimeout',
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-full rounded border border-border bg-background p-2 text-foreground"
-                                    placeholder="30"
-                                  />
-                                ) : (
-                                  <div className="text-sm">
-                                    {formData.mqttIdleTimeout ||
-                                      'No Value Provided'}
-                                  </div>
-                                )}
+                            </div>
+                            <div>
+                              <h4 className="mb-2 text-sm font-medium">
+                                Additional Settings
+                              </h4>
+                              <div className="space-y-2">
+                                <div className="space-y-1">
+                                  <label className="text-sm font-medium text-grayHighlight">
+                                    QOS:
+                                  </label>
+                                  {editingSection === 'mqtt' ? (
+                                    <select
+                                      value={formData.mqttTLS || '2'}
+                                      onChange={e =>
+                                        updateFormData('mqttTLS', e.target.value)
+                                      }
+                                      className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                    >
+                                      <option value="0">0 - At most once</option>
+                                      <option value="1">1 - At least once</option>
+                                      <option value="2">2 - Exactly once</option>
+                                    </select>
+                                  ) : (
+                                    <div className="text-sm">
+                                      {formData.mqttTLS === '0'
+                                        ? '0 - At most once'
+                                        : formData.mqttTLS === '1'
+                                          ? '1 - At least once'
+                                          : formData.mqttTLS === '2'
+                                            ? '2 - Exactly once'
+                                            : cabinet?.smibConfig?.mqtt?.mqttQOS === 0
+                                              ? '0 - At most once'
+                                              : cabinet?.smibConfig?.mqtt?.mqttQOS === 1
+                                                ? '1 - At least once'
+                                                : cabinet?.smibConfig?.mqtt?.mqttQOS === 2
+                                                  ? '2 - Exactly once'
+                                                  : formData.mqttTLS || 'No Value Provided'}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-sm font-medium text-grayHighlight">
+                                    Idle Timeout (s):
+                                  </label>
+                                  {editingSection === 'mqtt' ? (
+                                    <input
+                                      type="number"
+                                      value={formData.mqttIdleTimeout || ''}
+                                      onChange={e =>
+                                        updateFormData(
+                                          'mqttIdleTimeout',
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full rounded border border-border bg-background p-2 text-foreground"
+                                      placeholder="30"
+                                    />
+                                  ) : (
+                                    <div className="text-sm">
+                                      {formData.mqttIdleTimeout || cabinet?.smibConfig?.mqtt?.mqttIdleTimeS || 'No Value Provided'}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
+                        )}
                       </motion.div>
                     </div>
                   </TooltipProvider>

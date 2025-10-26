@@ -2,9 +2,9 @@
 import { Types } from 'mongoose';
 import type { SasMeters } from './common';
 import type {
-  MeterData,
-  BillValidatorData,
-  CollectionMetersHistoryEntry,
+    BillValidatorData,
+    CollectionMetersHistoryEntry,
+    MeterData,
 } from './database';
 
 // Location types
@@ -320,6 +320,24 @@ export type SmibConfig = {
     comsRTE?: number;
     comsGPC?: number;
   };
+};
+
+// SMIB Discovery and Status types
+export type SmibDevice = {
+  relayId: string;
+  machineId: string;
+  serialNumber?: string;
+  game?: string;
+  locationName?: string;
+  locationId?: string;
+  online?: boolean;
+  lastSeen?: Date;
+};
+
+export type SmibOnlineStatus = {
+  online: boolean;
+  lastSeen?: Date;
+  heartbeat?: Date;
 };
 
 // Unified User types - consolidates User from models and UserDocument from API types

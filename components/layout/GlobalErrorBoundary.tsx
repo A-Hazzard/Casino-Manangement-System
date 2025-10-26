@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import ErrorBoundary from '@/components/ui/errors/ErrorBoundary';
-import ConnectionError from '@/components/ui/errors/ConnectionError';
+import React, { useState, useEffect } from "react";
+import ErrorBoundary from "@/components/ui/errors/ErrorBoundary";
+import ConnectionError from "@/components/ui/errors/ConnectionError";
 
 /**
  * Global error boundary wrapper for the entire application
@@ -17,24 +17,24 @@ export default function GlobalErrorBoundary({
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
-      console.error('Global error caught:', event.error);
+      console.error("Global error caught:", event.error);
       setGlobalError(event.error);
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('Unhandled promise rejection:', event.reason);
+      console.error("Unhandled promise rejection:", event.reason);
       setGlobalError(
-        new Error(event.reason?.message || 'Unhandled promise rejection')
+        new Error(event.reason?.message || "Unhandled promise rejection")
       );
     };
 
-    window.addEventListener('error', handleError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
     return () => {
-      window.removeEventListener('error', handleError);
+      window.removeEventListener("error", handleError);
       window.removeEventListener(
-        'unhandledrejection',
+        "unhandledrejection",
         handleUnhandledRejection
       );
     };
@@ -42,7 +42,7 @@ export default function GlobalErrorBoundary({
 
   if (globalError) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4">
         <ConnectionError
           error={globalError}
           title="Application Error"
@@ -61,9 +61,9 @@ export default function GlobalErrorBoundary({
     <ErrorBoundary
       onError={(error, errorInfo) => {
         // Log error to console in development
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === "development") {
           console.error(
-            'Global Error Boundary caught an error:',
+            "Global Error Boundary caught an error:",
             error,
             errorInfo
           );
@@ -76,9 +76,9 @@ export default function GlobalErrorBoundary({
         // like Sentry, LogRocket, etc.
       }}
       fallback={
-        <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <ConnectionError
-            error={globalError || new Error('Unknown application error')}
+            error={globalError || new Error("Unknown application error")}
             title="Application Error"
             description="Something went wrong with the application. Please try refreshing the page or contact support if the issue persists."
             showRetryButton={true}

@@ -3,14 +3,14 @@
  * Handles section changes, URL synchronization, and navigation state
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-  getActiveSectionFromURL,
-  handleSectionChange as handleSectionChangeHelper,
-} from '@/lib/helpers/cabinetsPage';
 import type { CabinetSection } from '@/lib/constants/cabinets';
+import {
+    getActiveSectionFromURL,
+    handleSectionChange as handleSectionChangeHelper,
+} from '@/lib/helpers/cabinetsPage';
 import type { UseCabinetNavigationReturn } from '@/lib/types/cabinets';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 
 export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   const pathname = usePathname();
@@ -32,8 +32,12 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   const handleSectionChange = useCallback(
     (section: CabinetSection) => {
       console.warn('Changing section from', activeSection, 'to', section);
+      // Update state immediately for instant UI response
       setActiveSection(section);
-      handleSectionChangeHelper(section, searchParams, pathname, router);
+      // Update URL asynchronously (don't block UI)
+      setTimeout(() => {
+        handleSectionChangeHelper(section, searchParams, pathname, router);
+      }, 0);
     },
     [activeSection, searchParams, pathname, router]
   );

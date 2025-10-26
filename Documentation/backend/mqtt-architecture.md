@@ -1,7 +1,7 @@
 # MQTT System Architecture & Implementation Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** January 17th, 2025
+**Last Updated:** October 26th, 2025
 
 ## Overview
 

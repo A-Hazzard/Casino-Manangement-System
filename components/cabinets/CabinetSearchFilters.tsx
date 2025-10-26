@@ -3,11 +3,11 @@
  * Handles search input, location filtering, and sorting controls
  */
 
-import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { Input } from '@/components/ui/input';
-import { CustomSelect } from '@/components/ui/custom-select';
-import type { CabinetSearchFiltersProps } from '@/lib/types/cabinetDetails';
-import type { CabinetSortOption } from '@/lib/hooks/data';
+import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { Input } from "@/components/ui/input";
+import { CustomSelect } from "@/components/ui/custom-select";
+import type { CabinetSearchFiltersProps } from "@/lib/types/cabinetDetails";
+import type { CabinetSortOption } from "@/lib/hooks/data";
 
 export const CabinetSearchFilters = ({
   searchTerm,
@@ -26,32 +26,32 @@ export const CabinetSearchFilters = ({
   activeSection,
 }: CabinetSearchFiltersProps) => {
   // Only show filters for cabinets section
-  if (activeSection !== 'cabinets') {
+  if (activeSection !== "cabinets") {
     return null;
   }
 
   // Sort options configuration
   const sortOptions = [
-    { value: 'moneyIn-desc', label: 'Money In (Highest First)' },
-    { value: 'moneyIn-asc', label: 'Money In (Lowest First)' },
-    { value: 'moneyOut-desc', label: 'Money Out (Highest First)' },
-    { value: 'moneyOut-asc', label: 'Money Out (Lowest First)' },
-    { value: 'gross-desc', label: 'Gross Revenue (Highest First)' },
-    { value: 'gross-asc', label: 'Gross Revenue (Lowest First)' },
-    { value: 'jackpot-desc', label: 'Jackpot (Highest First)' },
-    { value: 'jackpot-asc', label: 'Jackpot (Lowest First)' },
-    { value: 'assetNumber-asc', label: 'Asset Number (A to Z)' },
-    { value: 'assetNumber-desc', label: 'Asset Number (Z to A)' },
-    { value: 'locationName-asc', label: 'Location (A to Z)' },
-    { value: 'locationName-desc', label: 'Location (Z to A)' },
-    { value: 'lastOnline-desc', label: 'Last Online (Most Recent)' },
-    { value: 'lastOnline-asc', label: 'Last Online (Oldest First)' },
+    { value: "moneyIn-desc", label: "Money In (Highest First)" },
+    { value: "moneyIn-asc", label: "Money In (Lowest First)" },
+    { value: "moneyOut-desc", label: "Money Out (Highest First)" },
+    { value: "moneyOut-asc", label: "Money Out (Lowest First)" },
+    { value: "gross-desc", label: "Gross Revenue (Highest First)" },
+    { value: "gross-asc", label: "Gross Revenue (Lowest First)" },
+    { value: "jackpot-desc", label: "Jackpot (Highest First)" },
+    { value: "jackpot-asc", label: "Jackpot (Lowest First)" },
+    { value: "assetNumber-asc", label: "Asset Number (A to Z)" },
+    { value: "assetNumber-desc", label: "Asset Number (Z to A)" },
+    { value: "locationName-asc", label: "Location (A to Z)" },
+    { value: "locationName-desc", label: "Location (Z to A)" },
+    { value: "lastOnline-desc", label: "Last Online (Most Recent)" },
+    { value: "lastOnline-asc", label: "Last Online (Oldest First)" },
   ];
 
   // Location options configuration
   const locationOptions = [
-    { value: 'all', label: 'All Locations' },
-    ...locations.map(location => ({
+    { value: "all", label: "All Locations" },
+    ...locations.map((location) => ({
       value: location._id,
       label: location.name,
     })),
@@ -59,8 +59,8 @@ export const CabinetSearchFilters = ({
 
   // Game type options configuration
   const gameTypeOptions = [
-    { value: 'all', label: 'All Game Types' },
-    ...gameTypes.map(gameType => ({
+    { value: "all", label: "All Game Types" },
+    ...gameTypes.map((gameType) => ({
       value: gameType,
       label: gameType,
     })),
@@ -68,8 +68,8 @@ export const CabinetSearchFilters = ({
 
   // Handle sort change
   const handleSortChange = (value: string) => {
-    const [option, order] = value.split('-');
-    onSortChange(option as CabinetSortOption, order as 'asc' | 'desc');
+    const [option, order] = value.split("-");
+    onSortChange(option as CabinetSortOption, order as "asc" | "desc");
   };
 
   // Handle location change
@@ -91,21 +91,21 @@ export const CabinetSearchFilters = ({
   return (
     <>
       {/* Mobile: Compact filter layout - 2 rows of 2 filters each + search */}
-      <div className="mt-4 md:hidden">
+      <div className="md:hidden mt-4">
         {/* Search Input - Full width */}
-        <div className="relative mb-3 w-full">
+        <div className="relative w-full mb-3">
           <Input
             type="text"
             placeholder="Search machines..."
-            className="h-11 w-full rounded-full border border-gray-300 bg-white px-4 pr-10 text-base text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
+            className="w-full pr-10 bg-white border border-gray-300 rounded-full h-11 px-4 shadow-sm text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-base"
             value={searchTerm}
             onChange={handleSearchChange}
           />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
         </div>
 
         {/* Filters Row 1: Location and Game Type */}
-        <div className="mb-2 flex gap-2">
+        <div className="flex gap-2 mb-2">
           <div className="flex-1">
             <CustomSelect
               value={selectedLocation}
@@ -139,9 +139,9 @@ export const CabinetSearchFilters = ({
               value={selectedStatus}
               onValueChange={onStatusChange}
               options={[
-                { value: 'All', label: 'All Machines' },
-                { value: 'Online', label: 'Online' },
-                { value: 'Offline', label: 'Offline' },
+                { value: "All", label: "All Machines" },
+                { value: "Online", label: "Online" },
+                { value: "Offline", label: "Offline" },
               ]}
               placeholder="All Status"
               className="w-full"
@@ -166,26 +166,26 @@ export const CabinetSearchFilters = ({
       </div>
 
       {/* Desktop: Search Row - Purple box */}
-      <div className="mt-4 hidden items-center gap-4 rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex">
+      <div className="hidden md:flex items-center gap-4 p-4 bg-buttonActive rounded-t-lg rounded-b-none mt-4">
         {/* Search Input */}
-        <div className="relative min-w-0 max-w-md flex-1">
+        <div className="relative flex-1 max-w-md min-w-0">
           <Input
             type="text"
             placeholder="Search machines..."
-            className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+            className="w-full pr-10 bg-white border border-gray-300 rounded-md h-9 px-3 text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-sm"
             value={searchTerm}
             onChange={handleSearchChange}
           />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
         </div>
 
         {/* Location Filter */}
         <select
           value={selectedLocation}
-          onChange={event => handleLocationChange(event.target.value)}
-          className="h-9 w-auto max-w-[200px] truncate rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+          onChange={(event) => handleLocationChange(event.target.value)}
+          className="w-auto max-w-[200px] h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
         >
-          {locationOptions.map(option => (
+          {locationOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -195,10 +195,10 @@ export const CabinetSearchFilters = ({
         {/* Game Type Filter */}
         <select
           value={selectedGameType}
-          onChange={event => handleGameTypeChange(event.target.value)}
-          className="h-9 w-auto max-w-[200px] truncate rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+          onChange={(event) => handleGameTypeChange(event.target.value)}
+          className="w-auto max-w-[200px] h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
         >
-          {gameTypeOptions.map(option => (
+          {gameTypeOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -208,8 +208,8 @@ export const CabinetSearchFilters = ({
         {/* Status Filter */}
         <select
           value={selectedStatus}
-          onChange={event => onStatusChange(event.target.value)}
-          className="h-9 w-auto max-w-[150px] truncate rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+          onChange={(event) => onStatusChange(event.target.value)}
+          className="w-auto max-w-[150px] h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
         >
           <option value="All">All Machines</option>
           <option value="Online">Online</option>

@@ -1,43 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
-import { Machine } from '@/app/api/lib/models/machines';
+import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
+import { Machine } from "@/app/api/lib/models/machines";
 import {
   getMonthlyCollectionReportSummary,
   getMonthlyCollectionReportByLocation,
-} from '@/lib/helpers/collectionReport';
-import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReportService';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '../lib/helpers/users';
-import { getClientIP } from '@/lib/utils/ipAddress';
-import type { CreateCollectionReportPayload } from '@/lib/types/api';
-import type { TimePeriod } from '@/app/api/lib/types';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { calculateCollectionReportTotals } from '@/app/api/lib/helpers/collectionReportCalculations';
+} from "@/lib/helpers/collectionReport";
+import { getAllCollectionReportsWithMachineCounts } from "@/app/api/lib/helpers/collectionReportService";
+import { connectDB } from "@/app/api/lib/middleware/db";
+import { CollectionReport } from "@/app/api/lib/models/collectionReport";
+import { logActivity } from "@/app/api/lib/helpers/activityLogger";
+import { getUserFromServer } from "../lib/helpers/users";
+import { getClientIP } from "@/lib/utils/ipAddress";
+import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import type { TimePeriod } from "@/app/api/lib/types";
+import { GamingLocations } from "@/app/api/lib/models/gaminglocations";
+import { calculateCollectionReportTotals } from "@/app/api/lib/helpers/collectionReportCalculations";
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
 
-    if (searchParams.get('locationsWithMachines')) {
-      console.warn('Fetching locations with machines...');
+    if (searchParams.get("locationsWithMachines")) {
+      console.warn("Fetching locations with machines...");
       const startTime = Date.now();
 
-      const licencee = searchParams.get('licencee');
+      const licencee = searchParams.get("licencee");
       const matchCriteria: Record<string, unknown> = {
         $or: [
           { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
+          { deletedAt: { $lt: new Date("2020-01-01") } },
         ],
       };
 
-      if (licencee && licencee !== 'all') {
-        matchCriteria['rel.licencee'] = licencee;
+      if (licencee && licencee !== "all") {
+        matchCriteria["rel.licencee"] = licencee;
       }
 
-      console.warn(`[LOCATIONS WITH MACHINES] Licensee: ${licencee || 'All'}`);
+      console.warn(`[LOCATIONS WITH MACHINES] Licensee: ${licencee || "All"}`);
 
       const locationsWithMachines = await GamingLocations.aggregate([
         {
@@ -45,16 +45,16 @@ export async function GET(req: NextRequest) {
         },
         {
           $lookup: {
-            from: 'machines',
-            localField: '_id',
-            foreignField: 'gamingLocation',
-            as: 'machines',
+            from: "machines",
+            localField: "_id",
+            foreignField: "gamingLocation",
+            as: "machines",
             pipeline: [
               {
                 $match: {
                   $or: [
                     { deletedAt: null },
-                    { deletedAt: { $lt: new Date('1970-01-01') } },
+                    { deletedAt: { $lt: new Date("1970-01-01") } },
                   ],
                 },
               },
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
                 $project: {
                   _id: 1,
                   serialNumber: 1,
-                  'custom.name': 1,
+                  "custom.name": 1,
                   smibBoard: 1,
                   smbId: 1,
                   game: 1,
@@ -81,29 +81,29 @@ export async function GET(req: NextRequest) {
             profitShare: 1,
             machines: {
               $map: {
-                input: '$machines',
-                as: 'machine',
+                input: "$machines",
+                as: "machine",
                 in: {
-                  _id: '$$machine._id',
-                  serialNumber: '$$machine.serialNumber',
+                  _id: "$$machine._id",
+                  serialNumber: "$$machine.serialNumber",
                   name: {
                     $ifNull: [
-                      '$$machine.custom.name',
+                      "$$machine.custom.name",
                       {
-                        $ifNull: ['$$machine.serialNumber', 'Unnamed Machine'],
+                        $ifNull: ["$$machine.serialNumber", "Unnamed Machine"],
                       },
                     ],
                   },
-                  game: '$$machine.game',
-                  smibBoard: '$$machine.smibBoard',
-                  smbId: '$$machine.smbId',
+                  game: "$$machine.game",
+                  smibBoard: "$$machine.smibBoard",
+                  smbId: "$$machine.smbId",
                   collectionMeters: {
                     $ifNull: [
-                      '$$machine.collectionMeters',
+                      "$$machine.collectionMeters",
                       { metersIn: 0, metersOut: 0 },
                     ],
                   },
-                  collectionTime: '$$machine.collectionTime',
+                  collectionTime: "$$machine.collectionTime",
                 },
               },
             },
@@ -118,11 +118,11 @@ export async function GET(req: NextRequest) {
     }
 
     const timePeriod =
-      (searchParams.get('timePeriod') as TimePeriod) || undefined;
-    const startDateStr = searchParams.get('startDate');
-    const endDateStr = searchParams.get('endDate');
-    const locationName = searchParams.get('locationName') || undefined;
-    const licencee = searchParams.get('licencee') || undefined;
+      (searchParams.get("timePeriod") as TimePeriod) || undefined;
+    const startDateStr = searchParams.get("startDate");
+    const endDateStr = searchParams.get("endDate");
+    const locationName = searchParams.get("locationName") || undefined;
+    const licencee = searchParams.get("licencee") || undefined;
 
     if (startDateStr && endDateStr && !timePeriod) {
       const startDate = new Date(startDateStr);
@@ -145,13 +145,13 @@ export async function GET(req: NextRequest) {
     let startDate: Date | undefined;
     let endDate: Date | undefined;
 
-    if (timePeriod && timePeriod !== 'Custom') {
+    if (timePeriod && timePeriod !== "Custom") {
       const now = new Date();
 
       const trinidadNow = new Date(now.getTime() - 4 * 60 * 60 * 1000);
 
       switch (timePeriod) {
-        case 'Today':
+        case "Today":
           // Start of today in Trinidad time
           const todayStart = new Date(trinidadNow);
           todayStart.setHours(0, 0, 0, 0);
@@ -164,7 +164,7 @@ export async function GET(req: NextRequest) {
           endDate = new Date(todayEnd.getTime() + 4 * 60 * 60 * 1000);
           break;
 
-        case 'Yesterday':
+        case "Yesterday":
           // Start of yesterday in Trinidad time
           const yesterdayStart = new Date(trinidadNow);
           yesterdayStart.setDate(yesterdayStart.getDate() - 1);
@@ -179,7 +179,7 @@ export async function GET(req: NextRequest) {
           endDate = new Date(yesterdayEnd.getTime() + 4 * 60 * 60 * 1000);
           break;
 
-        case '7d':
+        case "7d":
           // Start of 7 days ago in Trinidad time
           const sevenDaysStart = new Date(trinidadNow);
           sevenDaysStart.setDate(sevenDaysStart.getDate() - 6);
@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
           endDate = new Date(sevenDaysEnd.getTime() + 4 * 60 * 60 * 1000);
           break;
 
-        case '30d':
+        case "30d":
           // Start of 30 days ago in Trinidad time
           const thirtyDaysStart = new Date(trinidadNow);
           thirtyDaysStart.setDate(thirtyDaysStart.getDate() - 29);
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
           endDate = new Date(thirtyDaysEnd.getTime() + 4 * 60 * 60 * 1000);
           break;
 
-        case 'All Time':
+        case "All Time":
           // No date filtering for All Time
           startDate = undefined;
           endDate = undefined;
@@ -240,15 +240,15 @@ export async function GET(req: NextRequest) {
       endDate = customEnd;
     }
 
-    console.warn('Fetching collection reports...');
-    console.warn(`[COLLECTION REPORTS] Time Period: ${timePeriod || 'Custom'}`);
+    console.warn("Fetching collection reports...");
+    console.warn(`[COLLECTION REPORTS] Time Period: ${timePeriod || "Custom"}`);
     console.warn(
-      `[COLLECTION REPORTS] Start Date: ${startDate?.toISOString() || 'None'}`
+      `[COLLECTION REPORTS] Start Date: ${startDate?.toISOString() || "None"}`
     );
     console.warn(
-      `[COLLECTION REPORTS] End Date: ${endDate?.toISOString() || 'None'}`
+      `[COLLECTION REPORTS] End Date: ${endDate?.toISOString() || "None"}`
     );
-    console.warn(`[COLLECTION REPORTS] Licensee: ${licencee || 'All'}`);
+    console.warn(`[COLLECTION REPORTS] Licensee: ${licencee || "All"}`);
 
     const startTime = Date.now();
 
@@ -287,11 +287,11 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(reports);
   } catch (error) {
-    console.error('Error in collectionReport GET endpoint:', error);
+    console.error("Error in collectionReport GET endpoint:", error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch collection reports',
-        details: 'Database connection or query failed',
+        error: "Failed to fetch collection reports",
+        details: "Database connection or query failed",
       },
       { status: 500 }
     );
@@ -304,20 +304,20 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as CreateCollectionReportPayload;
     // Basic validation (required fields)
     const requiredFields = [
-      'variance',
-      'previousBalance',
-      'currentBalance',
-      'amountToCollect',
-      'amountCollected',
-      'amountUncollected',
-      'partnerProfit',
-      'taxes',
-      'advance',
-      'collectorName',
-      'locationName',
-      'locationReportId',
-      'location',
-      'timestamp',
+      "variance",
+      "previousBalance",
+      "currentBalance",
+      "amountToCollect",
+      "amountCollected",
+      "amountUncollected",
+      "partnerProfit",
+      "taxes",
+      "advance",
+      "collectorName",
+      "locationName",
+      "locationReportId",
+      "location",
+      "timestamp",
     ];
     for (const field of requiredFields) {
       if (
@@ -332,17 +332,17 @@ export async function POST(req: NextRequest) {
     }
     // Sanitize string fields (basic trim)
     const stringFields = [
-      'collectorName',
-      'locationName',
-      'locationReportId',
-      'location',
-      'varianceReason',
-      'reasonForShortagePayment',
-      'balanceCorrectionReas',
+      "collectorName",
+      "locationName",
+      "locationReportId",
+      "location",
+      "varianceReason",
+      "reasonForShortagePayment",
+      "balanceCorrectionReas",
     ];
     const bodyRecord: Record<string, unknown> = body as Record<string, unknown>;
-    stringFields.forEach(field => {
-      if (bodyRecord[field] && typeof bodyRecord[field] === 'string') {
+    stringFields.forEach((field) => {
+      if (bodyRecord[field] && typeof bodyRecord[field] === "string") {
         bodyRecord[field] = (bodyRecord[field] as string).trim();
       }
     });
@@ -353,8 +353,8 @@ export async function POST(req: NextRequest) {
       locationName: body.locationName,
       $expr: {
         $eq: [
-          { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
-          { $dateToString: { format: '%Y-%m-%d', date: reportDate } },
+          { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
+          { $dateToString: { format: "%Y-%m-%d", date: reportDate } },
         ],
       },
     });
@@ -364,15 +364,15 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           error:
-            'A collection report already exists for this location on this gaming day',
+            "A collection report already exists for this location on this gaming day",
           details: `Report ${existingReport.locationReportId} was created on ${
-            existingReport.timestamp.toISOString().split('T')[0]
+            existingReport.timestamp.toISOString().split("T")[0]
           }. To create a new report for this date, please delete the existing report first.`,
           existingReportId: existingReport.locationReportId,
           existingReportDate: existingReport.timestamp
             .toISOString()
-            .split('T')[0],
-          actionRequired: 'DELETE_EXISTING_REPORT',
+            .split("T")[0],
+          actionRequired: "DELETE_EXISTING_REPORT",
         },
         { status: 409 } // Conflict status code
       );
@@ -393,7 +393,7 @@ export async function POST(req: NextRequest) {
 
     // CRITICAL: Update all collection documents with the locationReportId
     // This ensures consistency between collections, collectionReport, and collectionMetersHistory
-    const { Collections } = await import('@/app/api/lib/models/collections');
+    const { Collections } = await import("@/app/api/lib/models/collections");
     if (body.machines && Array.isArray(body.machines)) {
       for (const m of body.machines) {
         if (m.machineId) {
@@ -404,7 +404,7 @@ export async function POST(req: NextRequest) {
               metersIn: Number(m.metersIn) || 0,
               metersOut: Number(m.metersOut) || 0,
               $or: [
-                { locationReportId: '' },
+                { locationReportId: "" },
                 { locationReportId: { $exists: false } },
               ],
             },
@@ -415,7 +415,7 @@ export async function POST(req: NextRequest) {
                 updatedAt: new Date(),
               },
             }
-          ).catch(err => {
+          ).catch((err) => {
             console.warn(
               `Failed to update collection documents for machine ${m.machineId}:`,
               err
@@ -449,10 +449,10 @@ export async function POST(req: NextRequest) {
               m.machineId,
               {
                 $set: {
-                  'collectionMetersHistory.$[elem].locationReportId':
+                  "collectionMetersHistory.$[elem].locationReportId":
                     body.locationReportId,
-                  'collectionMeters.metersIn': Number(m.metersIn) || 0,
-                  'collectionMeters.metersOut': Number(m.metersOut) || 0,
+                  "collectionMeters.metersIn": Number(m.metersIn) || 0,
+                  "collectionMeters.metersOut": Number(m.metersOut) || 0,
                   previousCollectionTime: currentCollectionMeters?.metersIn
                     ? currentMachineCollectionTime ||
                       new Date(Date.now() - 24 * 60 * 60 * 1000)
@@ -464,17 +464,17 @@ export async function POST(req: NextRequest) {
               {
                 arrayFilters: [
                   {
-                    'elem.metersIn': Number(m.metersIn) || 0,
-                    'elem.metersOut': Number(m.metersOut) || 0,
+                    "elem.metersIn": Number(m.metersIn) || 0,
+                    "elem.metersOut": Number(m.metersOut) || 0,
                     $or: [
-                      { 'elem.locationReportId': '' },
-                      { 'elem.locationReportId': { $exists: false } },
+                      { "elem.locationReportId": "" },
+                      { "elem.locationReportId": { $exists: false } },
                     ],
                   },
                 ],
                 new: true,
               }
-            ).catch(err => {
+            ).catch((err) => {
               console.error(
                 `Failed to update collectionMeters and history for machine ${m.machineId}:`,
                 err
@@ -513,7 +513,7 @@ export async function POST(req: NextRequest) {
 
             if (gamingLocationId) {
               const { GamingLocations } = await import(
-                '@/app/api/lib/models/gaminglocations'
+                "@/app/api/lib/models/gaminglocations"
               );
               await GamingLocations.findByIdAndUpdate(
                 gamingLocationId,
@@ -526,7 +526,7 @@ export async function POST(req: NextRequest) {
                   },
                 },
                 { new: true }
-              ).catch(err => {
+              ).catch((err) => {
                 console.error(
                   `Failed to update previousCollectionTime for gaming location ${gamingLocationId}:`,
                   err
@@ -544,68 +544,68 @@ export async function POST(req: NextRequest) {
       try {
         const createChanges = [
           {
-            field: 'locationName',
+            field: "locationName",
             oldValue: null,
             newValue: body.locationName,
           },
           {
-            field: 'collectorName',
+            field: "collectorName",
             oldValue: null,
             newValue: body.collectorName,
           },
           {
-            field: 'amountCollected',
+            field: "amountCollected",
             oldValue: null,
             newValue: body.amountCollected,
           },
           {
-            field: 'amountToCollect',
+            field: "amountToCollect",
             oldValue: null,
             newValue: body.amountToCollect,
           },
-          { field: 'variance', oldValue: null, newValue: body.variance },
+          { field: "variance", oldValue: null, newValue: body.variance },
           {
-            field: 'partnerProfit',
+            field: "partnerProfit",
             oldValue: null,
             newValue: body.partnerProfit,
           },
-          { field: 'taxes', oldValue: null, newValue: body.taxes },
+          { field: "taxes", oldValue: null, newValue: body.taxes },
           {
-            field: 'machines',
+            field: "machines",
             oldValue: null,
             newValue: body.machines?.length || 0,
           },
         ];
 
         await logActivity({
-          action: 'CREATE',
+          action: "CREATE",
           details: `Created collection report for ${body.locationName} by ${
             body.collectorName
           } (${body.machines?.length || 0} machines, $${
             body.amountCollected
           } collected)`,
           ipAddress: getClientIP(req) || undefined,
-          userAgent: req.headers.get('user-agent') || undefined,
+          userAgent: req.headers.get("user-agent") || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'collection',
+            userRole: (currentUser.roles as string[])?.[0] || "user",
+            resource: "collection",
             resourceId: created._id.toString(),
             resourceName: `${body.locationName} - ${body.collectorName}`,
             changes: createChanges,
           },
         });
       } catch (logError) {
-        console.error('Failed to log activity:', logError);
+        console.error("Failed to log activity:", logError);
       }
     }
 
     return NextResponse.json({ success: true, data: created._id });
   } catch (err) {
-    console.error('Error creating collection report:', err);
+    console.error("Error creating collection report:", err);
     return NextResponse.json(
-      { success: false, error: 'Failed to create collection report.' },
+      { success: false, error: "Failed to create collection report." },
       { status: 500 }
     );
   }

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
-import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { Collections } from '@/app/api/lib/models/collections';
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "@/app/api/lib/middleware/db";
+import { Machine } from "@/app/api/lib/models/machines";
+import { CollectionReport } from "@/app/api/lib/models/collectionReport";
+import { Collections } from "@/app/api/lib/models/collections";
 
 type MachineChange = {
   machineId: string;
@@ -30,14 +30,14 @@ export async function PATCH(
 
     if (!reportId) {
       return NextResponse.json(
-        { success: false, error: 'Report ID is required' },
+        { success: false, error: "Report ID is required" },
         { status: 400 }
       );
     }
 
     if (!body.changes || !Array.isArray(body.changes)) {
       return NextResponse.json(
-        { success: false, error: 'Changes array is required' },
+        { success: false, error: "Changes array is required" },
         { status: 400 }
       );
     }
@@ -47,12 +47,10 @@ export async function PATCH(
     // Verify report exists
     // CRITICAL: Query by locationReportId field, not _id
     // The reportId parameter is the locationReportId value
-    const report = await CollectionReport.findOne({
-      locationReportId: reportId,
-    });
+    const report = await CollectionReport.findOne({ locationReportId: reportId });
     if (!report) {
       return NextResponse.json(
-        { success: false, error: 'Collection report not found' },
+        { success: false, error: "Collection report not found" },
         { status: 404 }
       );
     }
@@ -94,7 +92,7 @@ export async function PATCH(
           results.failed++;
           results.errors.push({
             machineId,
-            error: 'Collection not found or mismatch',
+            error: "Collection not found or mismatch",
           });
           continue;
         }
@@ -104,18 +102,18 @@ export async function PATCH(
           machineId,
           {
             $set: {
-              'collectionMetersHistory.$[elem].metersIn': metersIn,
-              'collectionMetersHistory.$[elem].metersOut': metersOut,
-              'collectionMetersHistory.$[elem].prevMetersIn': prevMetersIn,
-              'collectionMetersHistory.$[elem].prevMetersOut': prevMetersOut,
-              'collectionMetersHistory.$[elem].timestamp': new Date(),
+              "collectionMetersHistory.$[elem].metersIn": metersIn,
+              "collectionMetersHistory.$[elem].metersOut": metersOut,
+              "collectionMetersHistory.$[elem].prevMetersIn": prevMetersIn,
+              "collectionMetersHistory.$[elem].prevMetersOut": prevMetersOut,
+              "collectionMetersHistory.$[elem].timestamp": new Date(),
               updatedAt: new Date(),
             },
           },
           {
             arrayFilters: [
               {
-                'elem.locationReportId': locationReportId,
+                "elem.locationReportId": locationReportId,
               },
             ],
             new: true,
@@ -127,7 +125,7 @@ export async function PATCH(
           results.failed++;
           results.errors.push({
             machineId,
-            error: 'Failed to update machine history',
+            error: "Failed to update machine history",
           });
           continue;
         }
@@ -135,8 +133,8 @@ export async function PATCH(
         // Update machine's current collectionMeters
         await Machine.findByIdAndUpdate(machineId, {
           $set: {
-            'collectionMeters.metersIn': metersIn,
-            'collectionMeters.metersOut': metersOut,
+            "collectionMeters.metersIn": metersIn,
+            "collectionMeters.metersOut": metersOut,
             collectionTime: new Date(),
             updatedAt: new Date(),
           },
@@ -147,11 +145,14 @@ export async function PATCH(
         );
         results.updated++;
       } catch (error) {
-        console.error(`Error updating machine ${change.machineId}:`, error);
+        console.error(
+          `Error updating machine ${change.machineId}:`,
+          error
+        );
         results.failed++;
         results.errors.push({
           machineId: change.machineId,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -159,27 +160,26 @@ export async function PATCH(
     // NOTE: We do NOT set isEditing: false here
     // That is handled by the main collection-report PATCH endpoint
     // This endpoint only updates machine histories
-    console.warn(
-      `✅ Machine history updates completed: ${results.updated} succeeded, ${results.failed} failed`
-    );
+    console.warn(`✅ Machine history updates completed: ${results.updated} succeeded, ${results.failed} failed`);
 
     return NextResponse.json({
       success: results.failed === 0,
       message:
         results.failed === 0
-          ? 'All machine histories updated successfully'
+          ? "All machine histories updated successfully"
           : `Updated ${results.updated} machines, ${results.failed} failed`,
       results,
     });
   } catch (error) {
-    console.error('Error in update-history endpoint:', error);
+    console.error("Error in update-history endpoint:", error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
   }
 }
+

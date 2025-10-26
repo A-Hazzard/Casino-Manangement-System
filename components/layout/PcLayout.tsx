@@ -1,25 +1,25 @@
-'use client';
+"use client";
 
-import MapPreview from '@/components/ui/MapPreview';
-import { timeFrames } from '@/lib/constants/uiConstants';
-import { PcLayoutProps } from '@/lib/types/componentProps';
-import type { TopPerformingItem } from '@/lib/types';
-import { getFinancialColorClass } from '@/lib/utils/financialColors';
-import { formatCurrency } from '@/lib/utils/currency';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { RefreshButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
-import CustomSelect from '../ui/CustomSelect';
+import MapPreview from "@/components/ui/MapPreview";
+import { timeFrames } from "@/lib/constants/uiConstants";
+import { PcLayoutProps } from "@/lib/types/componentProps";
+import type { TopPerformingItem } from "@/lib/types";
+import { getFinancialColorClass } from "@/lib/utils/financialColors";
+import { formatCurrency } from "@/lib/utils/currency";
+import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
+import { RefreshButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
+import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import CustomSelect from "../ui/CustomSelect";
 import {
   DashboardFinancialMetricsSkeleton,
   DashboardChartSkeleton,
-} from '@/components/ui/skeletons/DashboardSkeletons';
-import Chart from '@/components/ui/dashboard/Chart';
-import { RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+} from "@/components/ui/skeletons/DashboardSkeletons";
+import Chart from "@/components/ui/dashboard/Chart";
+import { RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 
 export default function PcLayout(props: PcLayoutProps) {
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
@@ -28,9 +28,9 @@ export default function PcLayout(props: PcLayoutProps) {
     useCurrencyFormat();
 
   const NoDataMessage = ({ message }: { message: string }) => (
-    <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">
-      <div className="mb-2 text-lg text-gray-500">No Data Available</div>
-      <div className="text-center text-sm text-gray-400">{message}</div>
+    <div className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md">
+      <div className="text-gray-500 text-lg mb-2">No Data Available</div>
+      <div className="text-gray-400 text-sm text-center">{message}</div>
     </div>
   );
 
@@ -46,9 +46,9 @@ export default function PcLayout(props: PcLayoutProps) {
     const fetchAgg = async () => {
       // Only fetch if we have a valid activeMetricsFilter - no fallback
       if (!activeMetricsFilter) {
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === "development") {
           console.warn(
-            '⚠️ No activeMetricsFilter available in PcLayout, skipping locationAggregation fetch'
+            "⚠️ No activeMetricsFilter available in PcLayout, skipping locationAggregation fetch"
           );
         }
         setLocationAggregates([]);
@@ -59,10 +59,10 @@ export default function PcLayout(props: PcLayoutProps) {
       setAggLoading(true);
       try {
         const params = new URLSearchParams();
-        params.append('timePeriod', activeMetricsFilter);
+        params.append("timePeriod", activeMetricsFilter);
 
         // Add custom date range if applicable
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
+        if (activeMetricsFilter === "Custom" && customDateRange) {
           if (customDateRange.startDate && customDateRange.endDate) {
             const sd =
               customDateRange.startDate instanceof Date
@@ -72,14 +72,14 @@ export default function PcLayout(props: PcLayoutProps) {
               customDateRange.endDate instanceof Date
                 ? customDateRange.endDate
                 : new Date(customDateRange.endDate as unknown as string);
-            params.append('startDate', sd.toISOString());
-            params.append('endDate', ed.toISOString());
+            params.append("startDate", sd.toISOString());
+            params.append("endDate", ed.toISOString());
           }
         }
 
         // Add licensee filter if applicable
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
+        if (selectedLicencee && selectedLicencee !== "all") {
+          params.append("licencee", selectedLicencee);
         }
 
         const res = await axios.get(
@@ -121,10 +121,10 @@ export default function PcLayout(props: PcLayoutProps) {
               <RefreshButtonSkeleton />
             ) : (
               <div
-                className={`flex cursor-pointer select-none items-center gap-2 rounded-md bg-buttonActive px-4 py-2 text-white transition-opacity ${
+                className={`flex items-center gap-2 bg-buttonActive text-white rounded-md px-4 py-2 cursor-pointer transition-opacity select-none ${
                   props.loadingChartData || props.refreshing
-                    ? 'cursor-not-allowed opacity-50'
-                    : 'hover:bg-buttonActive/90'
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-buttonActive/90"
                 }`}
                 onClick={() => {
                   if (!(props.loadingChartData || props.refreshing))
@@ -135,7 +135,7 @@ export default function PcLayout(props: PcLayoutProps) {
                 role="button"
               >
                 <RefreshCw
-                  className={`h-4 w-4 ${props.refreshing ? 'animate-spin' : ''}`}
+                  className={`w-4 h-4 ${props.refreshing ? "animate-spin" : ""}`}
                   aria-hidden="true"
                 />
                 <span className="font-semibold">Refresh</span>
@@ -147,16 +147,16 @@ export default function PcLayout(props: PcLayoutProps) {
           {props.loadingChartData ? (
             <DashboardFinancialMetricsSkeleton />
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {/* Money In Card */}
-              <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
-                <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
+              <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+                <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                   Money In
                 </p>
-                <div className="my-2 h-[4px] w-full rounded-full bg-buttonActive"></div>
-                <div className="flex flex-1 items-center justify-center">
+                <div className="w-full h-[4px] rounded-full my-2 bg-buttonActive"></div>
+                <div className="flex-1 flex items-center justify-center">
                   <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                    className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
                       props.totals?.moneyIn
                     )}`}
                   >
@@ -164,19 +164,19 @@ export default function PcLayout(props: PcLayoutProps) {
                       ? shouldShowCurrency()
                         ? formatAmount(props.totals.moneyIn, displayCurrency)
                         : formatCurrency(props.totals.moneyIn)
-                      : '--'}
+                      : "--"}
                   </p>
                 </div>
               </div>
               {/* Money Out Card */}
-              <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
-                <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
+              <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center">
+                <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                   Money Out
                 </p>
-                <div className="my-2 h-[4px] w-full rounded-full bg-lighterBlueHighlight"></div>
-                <div className="flex flex-1 items-center justify-center">
+                <div className="w-full h-[4px] rounded-full my-2 bg-lighterBlueHighlight"></div>
+                <div className="flex-1 flex items-center justify-center">
                   <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                    className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
                       props.totals?.moneyOut
                     )}`}
                   >
@@ -184,19 +184,19 @@ export default function PcLayout(props: PcLayoutProps) {
                       ? shouldShowCurrency()
                         ? formatAmount(props.totals.moneyOut, displayCurrency)
                         : formatCurrency(props.totals.moneyOut)
-                      : '--'}
+                      : "--"}
                   </p>
                 </div>
               </div>
               {/* Gross Card - Will wrap to new line when space is limited */}
-              <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6 md:col-span-2 lg:col-span-2 xl:col-span-1">
-                <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
+              <div className="px-4 sm:px-6 py-4 sm:py-6 text-center rounded-lg shadow-md bg-gradient-to-b from-white to-transparent min-h-[120px] flex flex-col justify-center md:col-span-2 lg:col-span-2 xl:col-span-1">
+                <p className="text-gray-500 text-xs sm:text-sm md:text-base lg:text-lg font-medium mb-2">
                   Gross
                 </p>
-                <div className="my-2 h-[4px] w-full rounded-full bg-orangeHighlight"></div>
-                <div className="flex flex-1 items-center justify-center">
+                <div className="w-full h-[4px] rounded-full my-2 bg-orangeHighlight"></div>
+                <div className="flex-1 flex items-center justify-center">
                   <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                    className={`font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
                       props.totals?.gross
                     )}`}
                   >
@@ -204,7 +204,7 @@ export default function PcLayout(props: PcLayoutProps) {
                       ? shouldShowCurrency()
                         ? formatAmount(props.totals.gross, displayCurrency)
                         : formatCurrency(props.totals.gross)
-                      : '--'}
+                      : "--"}
                   </p>
                 </div>
               </div>
@@ -215,7 +215,7 @@ export default function PcLayout(props: PcLayoutProps) {
           {props.loadingChartData ? (
             <DashboardChartSkeleton />
           ) : (
-            <div className="rounded-lg bg-container p-6 shadow-md">
+            <div className="bg-container rounded-lg shadow-md p-6">
               <Chart
                 loadingChartData={props.loadingChartData}
                 chartData={props.chartData}
@@ -228,20 +228,20 @@ export default function PcLayout(props: PcLayoutProps) {
         {/* Right Section (Map & Status) - 40% Width (2/5 columns) */}
         <div className="col-span-2 space-y-6">
           {/* Map Preview Section */}
-          <div className="rounded-lg bg-container p-6 shadow-md">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="bg-container rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Location Map</h3>
               {aggLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-blue-500"></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                   <span>Updating financial data...</span>
                 </div>
               )}
             </div>
 
             {aggLoading ? (
-              <div className="relative w-full rounded-lg bg-container p-4 shadow-md">
-                <div className="skeleton-bg mt-2 h-48 w-full animate-pulse rounded-lg"></div>
+              <div className="relative p-4 rounded-lg shadow-md bg-container w-full">
+                <div className="mt-2 h-48 w-full rounded-lg skeleton-bg animate-pulse"></div>
               </div>
             ) : (
               <MapPreview
@@ -253,27 +253,27 @@ export default function PcLayout(props: PcLayoutProps) {
           </div>
 
           {/* Top Performing Section */}
-          <div className="rounded-lg bg-container p-6 shadow-md">
+          <div className="bg-container rounded-lg shadow-md p-6">
             {props.loadingTopPerforming ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold">Top Performing</h2>
-                  <div className="h-8 w-32 animate-pulse rounded bg-gray-200"></div>
+                  <div className="w-32 h-8 bg-gray-200 rounded animate-pulse"></div>
                 </div>
-                <div className="flex overflow-hidden rounded-lg border border-gray-200">
-                  <div className="flex-1 bg-gray-100 px-4 py-2"></div>
-                  <div className="flex-1 bg-gray-100 px-4 py-2"></div>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                  <div className="flex-1 px-4 py-2 bg-gray-100"></div>
+                  <div className="flex-1 px-4 py-2 bg-gray-100"></div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex-1 space-y-2">
-                    {[1, 2, 3].map(i => (
+                  <div className="space-y-2 flex-1">
+                    {[1, 2, 3].map((i) => (
                       <div key={i} className="flex items-center space-x-2">
-                        <div className="h-4 w-4 animate-pulse rounded-full bg-gray-200"></div>
-                        <div className="h-4 w-24 animate-pulse rounded bg-gray-200"></div>
+                        <div className="w-4 h-4 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
                       </div>
                     ))}
                   </div>
-                  <div className="h-40 w-40 animate-pulse rounded-full bg-gray-200"></div>
+                  <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse"></div>
                 </div>
               </div>
             ) : props.topPerformingData.length === 0 ? (
@@ -287,7 +287,7 @@ export default function PcLayout(props: PcLayoutProps) {
                     selectedFilter={props.activePieChartFilter}
                     activePieChartFilter={props.activePieChartFilter}
                     activeFilters={props.activeFilters}
-                    onSelect={value => {
+                    onSelect={(value) => {
                       if (!props.loadingTopPerforming) {
                         props.setActivePieChartFilter(value);
                       }
@@ -299,47 +299,47 @@ export default function PcLayout(props: PcLayoutProps) {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex overflow-hidden rounded-lg border border-gray-200">
+                <div className="flex rounded-lg overflow-hidden border border-gray-200">
                   <button
                     className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                      props.activeTab === 'locations'
-                        ? 'bg-buttonActive text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      props.activeTab === "locations"
+                        ? "bg-buttonActive text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     } ${
-                      props.activeTab !== 'locations' &&
+                      props.activeTab !== "locations" &&
                       props.loadingTopPerforming
-                        ? 'cursor-not-allowed opacity-50'
-                        : ''
+                        ? "cursor-not-allowed opacity-50"
+                        : ""
                     }`}
                     onClick={() => {
                       if (
-                        props.activeTab !== 'locations' &&
+                        props.activeTab !== "locations" &&
                         props.loadingTopPerforming
                       )
                         return;
-                      props.setActiveTab('locations');
+                      props.setActiveTab("locations");
                     }}
                   >
                     Locations
                   </button>
                   <button
                     className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                      props.activeTab === 'Cabinets'
-                        ? 'bg-buttonActive text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      props.activeTab === "Cabinets"
+                        ? "bg-buttonActive text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     } ${
-                      props.activeTab !== 'Cabinets' &&
+                      props.activeTab !== "Cabinets" &&
                       props.loadingTopPerforming
-                        ? 'cursor-not-allowed opacity-50'
-                        : ''
+                        ? "cursor-not-allowed opacity-50"
+                        : ""
                     }`}
                     onClick={() => {
                       if (
-                        props.activeTab !== 'Cabinets' &&
+                        props.activeTab !== "Cabinets" &&
                         props.loadingTopPerforming
                       )
                         return;
-                      props.setActiveTab('Cabinets');
+                      props.setActiveTab("Cabinets");
                     }}
                   >
                     Cabinets
@@ -348,7 +348,7 @@ export default function PcLayout(props: PcLayoutProps) {
 
                 {/* Chart and Legend */}
                 <div className="flex items-center justify-between">
-                  <ul className="flex-1 space-y-2">
+                  <ul className="space-y-2 flex-1">
                     {props.topPerformingData.map(
                       (item: TopPerformingItem, index: number) => (
                         <li
@@ -356,7 +356,7 @@ export default function PcLayout(props: PcLayoutProps) {
                           className="flex items-center space-x-2 text-sm"
                         >
                           <div
-                            className="h-4 w-4 rounded-full"
+                            className="w-4 h-4 rounded-full"
                             style={{ backgroundColor: item.color }}
                           ></div>
                           <span className="text-gray-700">{item.name}</span>

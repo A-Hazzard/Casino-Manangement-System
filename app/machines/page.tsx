@@ -1,27 +1,27 @@
 'use client';
 
-import { Suspense } from 'react';
-import Image from 'next/image';
-import PageLayout from '@/components/layout/PageLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import PageLayout from '@/components/layout/PageLayout';
+import Image from 'next/image';
+import { Suspense } from 'react';
 
 // Modal components
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
 import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
 import { NewCabinetModal } from '@/components/ui/cabinets/NewCabinetModal';
-import NewMovementRequestModal from '@/components/ui/movements/NewMovementRequestModal';
 import UploadSmibDataModal from '@/components/ui/firmware/UploadSmibDataModal';
+import NewMovementRequestModal from '@/components/ui/movements/NewMovementRequestModal';
 
 // Section components
-import SMIBManagement from '@/components/cabinets/SMIBManagement';
-import MovementRequests from '@/components/cabinets/MovementRequests';
-import SMIBFirmwareSection from '@/components/ui/firmware/SMIBFirmwareSection';
 import CabinetsNavigation from '@/components/cabinets/CabinetsNavigation';
+import MovementRequests from '@/components/cabinets/MovementRequests';
+import SMIBManagementTab from '@/components/cabinets/SMIBManagementTab';
+import SMIBFirmwareSection from '@/components/ui/firmware/SMIBFirmwareSection';
 
 // New extracted components
 import { CabinetActions } from '@/components/cabinets/CabinetActions';
-import { CabinetSearchFilters } from '@/components/cabinets/CabinetSearchFilters';
 import { CabinetContentDisplay } from '@/components/cabinets/CabinetContentDisplay';
+import { CabinetSearchFilters } from '@/components/cabinets/CabinetSearchFilters';
 
 // UI components
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
@@ -30,10 +30,10 @@ import { CabinetTableSkeleton } from '@/components/ui/cabinets/CabinetSkeletonLo
 
 // Custom hooks
 import {
-  useCabinetData,
-  useCabinetSorting,
-  useCabinetFilters,
-  useCabinetModals,
+    useCabinetData,
+    useCabinetFilters,
+    useCabinetModals,
+    useCabinetSorting,
 } from '@/lib/hooks/data';
 import { useCabinetNavigation } from '@/lib/hooks/navigation';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -208,7 +208,6 @@ function CabinetsPageContent() {
             tabs={CABINET_TABS_CONFIG}
             activeSection={activeSection}
             onChange={handleSectionChange}
-            isLoading={loading}
           />
         </div>
 
@@ -222,35 +221,39 @@ function CabinetsPageContent() {
           />
         )}
 
-        {/* Date Filters */}
-        <div className="mb-0 mt-4 flex items-center justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <DashboardDateFilters
-              disabled={loading}
-              hideAllTime={true}
-              onCustomRangeGo={loadCabinets}
-              enableTimeInputs={true}
-            />
+        {/* Date Filters - Only show on cabinets section */}
+        {activeSection === 'cabinets' && (
+          <div className="mb-0 mt-4 flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <DashboardDateFilters
+                disabled={loading}
+                hideAllTime={true}
+                onCustomRangeGo={loadCabinets}
+                enableTimeInputs={true}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Search and Filters */}
-        <CabinetSearchFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedLocation={selectedLocation}
-          locations={locations}
-          onLocationChange={handleLocationChange}
-          selectedGameType={selectedGameType}
-          gameTypes={gameTypes}
-          onGameTypeChange={handleGameTypeChange}
-          selectedStatus={selectedStatus}
-          onStatusChange={setSelectedStatus}
-          sortOption={sortOption}
-          sortOrder={sortOrder}
-          onSortChange={handleSortChange}
-          activeSection={activeSection}
-        />
+        {/* Search and Filters - Only show on cabinets section */}
+        {activeSection === 'cabinets' && (
+          <CabinetSearchFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            selectedLocation={selectedLocation}
+            locations={locations}
+            onLocationChange={handleLocationChange}
+            selectedGameType={selectedGameType}
+            gameTypes={gameTypes}
+            onGameTypeChange={handleGameTypeChange}
+            selectedStatus={selectedStatus}
+            onStatusChange={setSelectedStatus}
+            sortOption={sortOption}
+            sortOrder={sortOrder}
+            onSortChange={handleSortChange}
+            activeSection={activeSection}
+          />
+        )}
 
         {/* Section Content */}
         {activeSection === 'cabinets' ? (
@@ -277,13 +280,13 @@ function CabinetsPageContent() {
             transformCabinet={transformCabinet}
           />
         ) : activeSection === 'smib' ? (
-          <SMIBManagement />
+          <SMIBManagementTab />
         ) : activeSection === 'movement' ? (
           <MovementRequests locations={locations} />
         ) : activeSection === 'firmware' ? (
           <SMIBFirmwareSection />
         ) : (
-          <SMIBManagement />
+          <SMIBManagementTab />
         )}
       </PageLayout>
     </>

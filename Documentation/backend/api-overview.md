@@ -1,7 +1,7 @@
 # API Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 20th, 2025
+**Last Updated:** October 26th, 2025
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -460,6 +460,22 @@ All APIs follow a consistent response format:
 | `/metrics/top-machines`   | GET    | Top machine performance   | Performance ranking    |
 | `/metrics/top-performers` | GET    | Top performing entities   | Performance analysis   |
 
+### 11. MQTT & Real-Time Communication
+
+**Base URL:** `/api/mqtt`
+
+| Endpoint                       | Method | Description                  | Used By                |
+| ------------------------------ | ------ | ---------------------------- | ---------------------- |
+| `/mqtt/config/subscribe`       | GET    | SSE stream for live updates  | Cabinet details page   |
+| `/mqtt/config/request`         | POST   | Request SMIB configuration   | SMIB configuration UI  |
+| `/mqtt/config/publish`         | POST   | Publish config to SMIB       | SMIB configuration UI  |
+| `/mqtt/config`                 | GET    | Get formatted MQTT config    | Configuration display  |
+| `/mqtt/test`                   | POST   | Test MQTT connectivity       | Development/debugging  |
+| `/cabinets/[id]/smib-config`   | POST   | Update SMIB config & MQTT    | SMIB configuration UI  |
+| `/cabinets/[id]/smib-config`   | GET    | Get current SMIB config      | Configuration display  |
+
+**Documentation:** [mqtt-architecture.md](mqtt-architecture.md), [mqtt-implementation.md](mqtt-implementation.md), [mqtt-protocols.md](mqtt-protocols.md)
+
 ## Data Flow Patterns
 
 ### 1. Authentication Flow
@@ -612,15 +628,36 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 
 ## Related Documentation
 
+### Backend Documentation
+
 - [Authentication API](auth-api.md)
 - [Members API](members-api.md)
 - [Sessions API](sessions-api.md)
-- [Locations & Machines API](locations-machines-api.md)
+- [Locations API](locations-api.md)
+- [Machines API](machines-api.md)
+- [Cabinets API](cabinets-api.md)
 - [Analytics API](analytics-api.md)
 - [Administration API](administration-api.md)
-- [Collections API](collections-api.md)
-- [System Configuration API](system-config-api.md)
+- [Collection Report](collection-report.md)
+- [Collection Report Details](collection-report-details.md)
 - [Operations API](operations-api.md)
+
+### MQTT & Real-Time
+
+- [MQTT Architecture](mqtt-architecture.md)
+- [MQTT Implementation](mqtt-implementation.md)
+- [MQTT Protocols](mqtt-protocols.md)
+
+### System Documentation
+
+- [Gaming Day Offset System](gaming-day-offset-system.md)
+- [SAS GROSS Calculation](sas-gross-calculation-system.md)
+- [Bill Validator System](bill-validator-calculation-system.md)
+
+### Frontend Documentation
+
+- [Frontend MQTT Integration](../frontend/mqtt-integration.md)
+- [Frontend Documentation](../frontend/)
 
 ## Frontend Integration
 
@@ -640,11 +677,14 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 
 ### Real-time Features
 
-- WebSocket connections
-- Event-driven updates
-- Live data synchronization
-- Push notifications
+- **MQTT Integration**: Pub/sub messaging for SMIB devices
+- **Server-Sent Events**: SSE for frontend live updates
+- **Event-driven Updates**: Callback-based message routing
+- **Live Data Synchronization**: Real-time configuration and status updates
+- **Heartbeat Monitoring**: Connection health monitoring
+
+**See:** [MQTT Architecture](mqtt-architecture.md) for implementation details
 
 ---
 
-**Last Updated:** October 20th, 2025
+**Last Updated:** October 26th, 2025

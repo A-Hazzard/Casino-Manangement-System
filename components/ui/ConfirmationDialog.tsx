@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { Button } from '@/components/ui/button';
-import { Cross2Icon } from '@radix-ui/react-icons';
-import Image from 'next/image';
-import { IMAGES } from '@/lib/constants/images';
+import { useEffect, useRef } from "react";
+import { gsap } from "gsap";
+import { Button } from "@/components/ui/button";
+import { Cross2Icon } from "@radix-ui/react-icons";
+import Image from "next/image";
+import { IMAGES } from "@/lib/constants/images";
 type ConfirmationDialogProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -23,8 +23,8 @@ export const ConfirmationDialog = ({
   onConfirm,
   title,
   message,
-  confirmText = 'Yes, Delete',
-  cancelText = 'Cancel',
+  confirmText = "Yes, Delete",
+  cancelText = "Cancel",
   isLoading = false,
 }: ConfirmationDialogProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -39,14 +39,14 @@ export const ConfirmationDialog = ({
           opacity: 1,
           y: 0,
           duration: 0.3,
-          ease: 'power2.out',
+          ease: "power2.out",
           overwrite: true,
           onComplete: () => {
             // Ensure the modal is fully visible and clickable
             if (modalRef.current) {
-              modalRef.current.style.pointerEvents = 'auto';
-              modalRef.current.style.opacity = '1';
-              modalRef.current.style.transform = 'translateY(0px)';
+              modalRef.current.style.pointerEvents = "auto";
+              modalRef.current.style.opacity = "1";
+              modalRef.current.style.transform = "translateY(0px)";
             }
           },
         }
@@ -54,34 +54,34 @@ export const ConfirmationDialog = ({
       gsap.to(backdropRef.current, {
         opacity: 1,
         duration: 0.2,
-        ease: 'power2.out',
+        ease: "power2.out",
         overwrite: true,
       });
     }
   }, [isOpen]);
 
   const handleClose = () => {
-    console.warn('ConfirmationDialog: handleClose called');
+    console.warn("ConfirmationDialog: handleClose called");
     if (isLoading) return; // Prevent closing while loading
 
     gsap.to(modalRef.current, {
       opacity: 0,
       y: -20,
       duration: 0.3,
-      ease: 'power2.in',
+      ease: "power2.in",
       overwrite: true,
     });
     gsap.to(backdropRef.current, {
       opacity: 0,
       duration: 0.2,
-      ease: 'power2.in',
+      ease: "power2.in",
       overwrite: true,
       onComplete: onClose,
     });
   };
 
   const handleConfirm = () => {
-    console.warn('ConfirmationDialog: handleConfirm called');
+    console.warn("ConfirmationDialog: handleConfirm called");
     onConfirm();
   };
 
@@ -92,8 +92,8 @@ export const ConfirmationDialog = ({
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
-        onClick={e => {
-          console.warn('Backdrop clicked');
+        onClick={(e) => {
+          console.warn("Backdrop clicked");
           if (e.target === e.currentTarget) {
             handleClose();
           }
@@ -101,43 +101,43 @@ export const ConfirmationDialog = ({
       />
 
       {/* Modal Content */}
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-4">
+      <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
         <div
           ref={modalRef}
-          className="pointer-events-auto relative z-10 w-full max-w-md rounded-md bg-container shadow-lg"
-          style={{ opacity: 0, transform: 'translateY(-20px)' }}
-          onClick={e => {
-            console.warn('Modal content clicked');
+          className="bg-container rounded-md shadow-lg max-w-md w-full pointer-events-auto relative z-10"
+          style={{ opacity: 0, transform: "translateY(-20px)" }}
+          onClick={(e) => {
+            console.warn("Modal content clicked");
             e.stopPropagation();
           }}
         >
           <div
-            className="border-b border-border p-6"
-            onClick={() => console.warn('Header area clicked')}
+            className="p-6 border-b border-border"
+            onClick={() => console.warn("Header area clicked")}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold text-destructive">{title}</h2>
               <Button
-                onClick={e => {
+                onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.warn('Header close button clicked');
+                  console.warn("Header close button clicked");
                   handleClose();
                 }}
                 variant="ghost"
                 disabled={isLoading}
               >
-                <Cross2Icon className="h-5 w-5" />
+                <Cross2Icon className="w-5 h-5" />
               </Button>
             </div>
           </div>
 
           <div
             className="p-6"
-            onClick={() => console.warn('Content area clicked')}
+            onClick={() => console.warn("Content area clicked")}
           >
-            <div className="space-y-4 text-center text-foreground">
-              <div className="mb-4 flex justify-center">
+            <div className="text-center text-foreground space-y-4">
+              <div className="flex justify-center mb-4">
                 <Image
                   src={IMAGES.deleteIcon}
                   alt="Delete"
@@ -155,28 +155,28 @@ export const ConfirmationDialog = ({
           </div>
 
           <div
-            className="border-t border-border p-6"
-            onClick={() => console.warn('Button area clicked')}
+            className="p-6 border-t border-border"
+            onClick={() => console.warn("Button area clicked")}
           >
             <div className="flex justify-center gap-4">
               <Button
-                onClick={e => {
+                onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.warn('Confirm button clicked');
+                  console.warn("Confirm button clicked");
                   handleConfirm();
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={isLoading}
               >
-                {isLoading ? 'Deleting...' : confirmText}
+                {isLoading ? "Deleting..." : confirmText}
               </Button>
               {cancelText && (
                 <Button
-                  onClick={e => {
+                  onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.warn('Cancel button clicked');
+                    console.warn("Cancel button clicked");
                     handleClose();
                   }}
                   className="bg-muted text-muted-foreground hover:bg-accent"
