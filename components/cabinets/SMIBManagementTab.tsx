@@ -17,8 +17,7 @@ import { NetworkConfigSection } from './smibManagement/NetworkConfigSection';
 export default function SMIBManagementTab() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { availableSmibs, loading, error, refreshSmibs } =
-    useSMIBDiscovery();
+  const { availableSmibs, loading, error, refreshSmibs } = useSMIBDiscovery();
   const [selectedRelayId, setSelectedRelayId] = useState<string>('');
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
   const smibConfig = useSmibConfiguration();
@@ -39,7 +38,7 @@ export default function SMIBManagementTab() {
   // Update URL when SMIB selection changes
   const handleSmibSelection = (relayId: string) => {
     setSelectedRelayId(relayId);
-    
+
     // Update URL with smib parameter
     const params = new URLSearchParams(searchParams?.toString() || '');
     if (relayId) {
@@ -47,7 +46,7 @@ export default function SMIBManagementTab() {
     } else {
       params.delete('smib');
     }
-    
+
     // Update URL without scroll
     router.push(`?${params.toString()}`, { scroll: false });
   };
@@ -58,10 +57,10 @@ export default function SMIBManagementTab() {
       console.log(
         `🔗 [SMIB MANAGEMENT] Connecting to config stream for ${selectedRelayId}`
       );
-      
-      // Set loading state
+
+      // Set loading state - will persist until we receive actual data
       setIsInitialLoading(true);
-      
+
       smibConfig.connectToConfigStream(selectedRelayId);
 
       // Request initial config
@@ -69,16 +68,13 @@ export default function SMIBManagementTab() {
         smibConfig.requestLiveConfig(selectedRelayId, 'mqtt'),
         smibConfig.requestLiveConfig(selectedRelayId, 'net'),
         smibConfig.requestLiveConfig(selectedRelayId, 'coms'),
-      ])
-        .catch(err => {
-          console.error('Failed to request initial config:', err);
-        })
-        .finally(() => {
-          // Stop showing skeleton after 3 seconds (enough time for initial response)
-          setTimeout(() => {
-            setIsInitialLoading(false);
-          }, 3000);
-        });
+      ]).catch(err => {
+        console.error('Failed to request initial config:', err);
+        // If request fails, stop loading after 5 seconds
+        setTimeout(() => {
+          setIsInitialLoading(false);
+        }, 5000);
+      });
 
       // Find machine ID for this relayId
       const smib = availableSmibs.find(s => s.relayId === selectedRelayId);
@@ -94,6 +90,49 @@ export default function SMIBManagementTab() {
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRelayId, availableSmibs]);
+
+  // Stop loading skeleton when we receive actual config data
+  useEffect(() => {
+    if (
+      isInitialLoading &&
+      (smibConfig.formData.networkSSID ||
+        smibConfig.formData.comsMode ||
+        smibConfig.formData.mqttPubTopic)
+    ) {
+      console.log(
+        '📦 [SMIB MANAGEMENT] Received config data, stopping skeleton loader'
+      );
+      setIsInitialLoading(false);
+    }
+  }, [
+    isInitialLoading,
+    smibConfig.formData.networkSSID,
+    smibConfig.formData.comsMode,
+    smibConfig.formData.mqttPubTopic,
+  ]);
+
+  // Fetch machine data from database to show as fallback when SMIB is offline
+  useEffect(() => {
+    if (selectedRelayId && selectedMachineId) {
+      // Fetch machine config from database
+      axios
+        .get(`/api/mqtt/config?relayId=${selectedRelayId}`)
+        .then(response => {
+          console.log(
+            '📦 [SMIB MANAGEMENT] Fetched machine config from DB:',
+            response.data
+          );
+          // This will populate formData via the hook's fetchMqttConfig logic
+          if (response.data) {
+            smibConfig.fetchMqttConfig(selectedMachineId);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch machine config from DB:', err);
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRelayId, selectedMachineId]);
 
   // Handle network config update
   const handleNetworkUpdate = async (data: {
@@ -190,9 +229,7 @@ export default function SMIBManagementTab() {
       await smibConfig.updateComsConfig(selectedRelayId, {
         comsMode: data.comsMode ? parseInt(data.comsMode, 10) : undefined,
         comsAddr: data.comsAddr ? parseInt(data.comsAddr, 10) : undefined,
-        comsRateMs: data.comsRateMs
-          ? parseInt(data.comsRateMs, 10)
-          : undefined,
+        comsRateMs: data.comsRateMs ? parseInt(data.comsRateMs, 10) : undefined,
         comsRTE: data.comsRTE ? parseInt(data.comsRTE, 10) : undefined,
         comsGPC: data.comsGPC ? parseInt(data.comsGPC, 10) : undefined,
       });
@@ -288,63 +325,62 @@ export default function SMIBManagementTab() {
       {selectedRelayId ? (
         <>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {/* Left Column */}
-              <div className="flex flex-col gap-6">
-                {/* Network Config */}
-                <NetworkConfigSection
-                  networkSSID={smibConfig.formData.networkSSID}
-                  networkPassword={smibConfig.formData.networkPassword}
-                  networkChannel={smibConfig.formData.networkChannel}
-                  networkMode={
-                    smibConfig.formData.networkSSID ? 1 : 0 // If SSID is set, assume WiFi mode
-                  }
-                  isEditMode={networkEditMode}
-                  onToggleEdit={() => setNetworkEditMode(!networkEditMode)}
-                  onUpdate={handleNetworkUpdate}
-                  isLoading={isInitialLoading}
-                />
+            {/* Left Column */}
+            <div className="flex flex-col gap-6">
+              {/* Network Config */}
+              <NetworkConfigSection
+                networkSSID={smibConfig.formData.networkSSID}
+                networkPassword={smibConfig.formData.networkPassword}
+                networkChannel={smibConfig.formData.networkChannel}
+                networkMode={
+                  smibConfig.formData.networkSSID ? 1 : 0 // If SSID is set, assume WiFi mode
+                }
+                isEditMode={networkEditMode}
+                onToggleEdit={() => setNetworkEditMode(!networkEditMode)}
+                onUpdate={handleNetworkUpdate}
+                isLoading={isInitialLoading}
+                isConnectedToMqtt={smibConfig.isConnectedToMqtt}
+              />
 
-                {/* COMS Config */}
-                <ComsConfigSection
-                  comsMode={smibConfig.formData.comsMode}
-                  comsAddr={smibConfig.formData.comsAddr}
-                  comsRateMs={smibConfig.formData.comsRateMs}
-                  comsRTE={smibConfig.formData.comsRTE}
-                  comsGPC={smibConfig.formData.comsGPC}
-                  isEditMode={comsEditMode}
-                  onToggleEdit={() => setComsEditMode(!comsEditMode)}
-                  onUpdate={handleComsUpdate}
-                  isLoading={isInitialLoading}
-                />
-              </div>
-
-              {/* Right Column */}
-              <div className="flex flex-col gap-6">
-                {/* MQTT Topics */}
-                <MqttTopicsSection
-                  mqttPubTopic={smibConfig.formData.mqttPubTopic}
-                  mqttCfgTopic={smibConfig.formData.mqttCfgTopic}
-                  mqttSubTopic={smibConfig.mqttConfigData?.mqttSubTopic}
-                  mqttURI={smibConfig.formData.mqttURI}
-                  mqttHost={smibConfig.formData.mqttHost}
-                  mqttPort={smibConfig.formData.mqttPort}
-                  mqttTLS={smibConfig.formData.mqttTLS}
-                  mqttUsername={smibConfig.formData.mqttUsername}
-                  mqttPassword={smibConfig.formData.mqttPassword}
-                  mqttIdleTimeout={smibConfig.formData.mqttIdleTimeout}
-                  isEditMode={mqttEditMode}
-                  onToggleEdit={() => setMqttEditMode(!mqttEditMode)}
-                  onUpdate={handleMqttUpdate}
-                  isLoading={isInitialLoading}
-                />
-              </div>
+              {/* COMS Config */}
+              <ComsConfigSection
+                comsMode={smibConfig.formData.comsMode}
+                comsAddr={smibConfig.formData.comsAddr}
+                comsRateMs={smibConfig.formData.comsRateMs}
+                comsRTE={smibConfig.formData.comsRTE}
+                comsGPC={smibConfig.formData.comsGPC}
+                isEditMode={comsEditMode}
+                onToggleEdit={() => setComsEditMode(!comsEditMode)}
+                onUpdate={handleComsUpdate}
+                isLoading={isInitialLoading}
+              />
             </div>
+
+            {/* Right Column */}
+            <div className="flex flex-col gap-6">
+              {/* MQTT Topics */}
+              <MqttTopicsSection
+                mqttPubTopic={smibConfig.formData.mqttPubTopic}
+                mqttCfgTopic={smibConfig.formData.mqttCfgTopic}
+                mqttSubTopic={smibConfig.mqttConfigData?.mqttSubTopic}
+                mqttURI={smibConfig.formData.mqttURI}
+                mqttHost={smibConfig.formData.mqttHost}
+                mqttPort={smibConfig.formData.mqttPort}
+                mqttTLS={smibConfig.formData.mqttTLS}
+                mqttUsername={smibConfig.formData.mqttUsername}
+                mqttPassword={smibConfig.formData.mqttPassword}
+                mqttIdleTimeout={smibConfig.formData.mqttIdleTimeout}
+                isEditMode={mqttEditMode}
+                onToggleEdit={() => setMqttEditMode(!mqttEditMode)}
+                onUpdate={handleMqttUpdate}
+                isLoading={isInitialLoading}
+              />
+            </div>
+          </div>
         </>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
-          <p className="text-lg font-medium text-gray-600">
-            No SMIB Selected
-          </p>
+          <p className="text-lg font-medium text-gray-600">No SMIB Selected</p>
           <p className="mt-2 text-sm text-gray-500">
             Select a SMIB device from the dropdown above to view and edit its
             configuration
@@ -354,4 +390,3 @@ export default function SMIBManagementTab() {
     </div>
   );
 }
-

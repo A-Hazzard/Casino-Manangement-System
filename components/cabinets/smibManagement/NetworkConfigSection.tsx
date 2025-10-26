@@ -22,6 +22,7 @@ type NetworkConfigSectionProps = {
   }) => Promise<void>;
   disabled?: boolean;
   isLoading?: boolean;
+  isConnectedToMqtt?: boolean;
 };
 
 export function NetworkConfigSection({
@@ -34,6 +35,7 @@ export function NetworkConfigSection({
   onUpdate,
   disabled = false,
   isLoading = false,
+  isConnectedToMqtt = false,
 }: NetworkConfigSectionProps) {
   const [formData, setFormData] = useState({
     networkSSID: networkSSID || '',
@@ -79,9 +81,28 @@ export function NetworkConfigSection({
   return (
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-lg font-bold text-gray-700">
-          Network / WiFi
-        </CardTitle>
+        <div className="flex items-center gap-3">
+          <CardTitle className="text-lg font-bold text-gray-700">
+            Network / WiFi
+          </CardTitle>
+          {/* SMIB Online/Offline Status */}
+          <div className="flex items-center gap-2">
+            <div
+              className={`h-2.5 w-2.5 rounded-full ${
+                isConnectedToMqtt
+                  ? 'animate-pulse bg-green-500'
+                  : 'bg-red-500'
+              }`}
+            ></div>
+            <span
+              className={`text-sm font-medium ${
+                isConnectedToMqtt ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
+              {isConnectedToMqtt ? 'SMIB Online' : 'SMIB Offline'}
+            </span>
+          </div>
+        </div>
         {!isEditMode && !disabled && (
           <button
             onClick={onToggleEdit}
