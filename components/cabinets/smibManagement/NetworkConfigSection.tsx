@@ -75,9 +75,6 @@ export function NetworkConfigSection({
     onToggleEdit();
   };
 
-  const modeLabel =
-    networkMode === 1 ? 'WiFi' : networkMode === 0 ? 'Ethernet' : 'Unknown';
-
   return (
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -146,7 +143,7 @@ export function NetworkConfigSection({
             <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2">
               <Label className="text-sm text-gray-600">Mode</Label>
               <div className="text-sm font-medium sm:col-start-2">
-                {modeLabel}
+                {networkMode !== undefined ? networkMode : 'Not configured'}
               </div>
             </div>
 

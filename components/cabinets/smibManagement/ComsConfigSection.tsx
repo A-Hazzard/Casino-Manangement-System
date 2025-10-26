@@ -83,20 +83,6 @@ export function ComsConfigSection({
     onToggleEdit();
   };
 
-  // Convert mode number to label
-  const getModeLabel = (mode: string) => {
-    switch (mode) {
-      case '0':
-        return 'SAS';
-      case '1':
-        return 'Non-SAS';
-      case '2':
-        return 'IGT';
-      default:
-        return mode || 'Not configured';
-    }
-  };
-
   return (
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -163,7 +149,7 @@ export function ComsConfigSection({
                 />
               ) : (
                 <div className="text-sm font-medium sm:col-start-2">
-                  {getModeLabel(comsMode || '')}
+                  {comsMode || 'Not configured'}
                 </div>
               )}
             </div>
@@ -285,4 +271,3 @@ export function ComsConfigSection({
     </Card>
   );
 }
-

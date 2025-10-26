@@ -157,9 +157,12 @@ export function MqttTopicsSection({
               <div className="space-y-1 text-xs text-gray-500">
                 <div>Host: {mqttHost || 'Not configured'}</div>
                 <div>Port: {mqttPort || 'Not configured'}</div>
-                <div>Use TLS: {mqttTLS === '1' ? 'Yes' : 'No'}</div>
+                <div>TLS: {mqttTLS || 'Not configured'}</div>
                 <div>
-                  Idle Timeout: {mqttIdleTimeout || 'Not configured'} seconds
+                  Idle Timeout:{' '}
+                  {mqttIdleTimeout
+                    ? `${mqttIdleTimeout} seconds`
+                    : 'Not configured'}
                 </div>
               </div>
             </div>
@@ -285,4 +288,3 @@ export function MqttTopicsSection({
     </Card>
   );
 }
-

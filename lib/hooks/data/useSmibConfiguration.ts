@@ -639,20 +639,23 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
 
     eventSource.onmessage = event => {
       console.warn(`📨 [HOOK] EventSource message received:`, event.data);
+      console.warn(`📨 [HOOK] Current isConnectedToMqtt:`, isConnectedToMqtt);
 
       // Update heartbeat for ANY message received (including ping/heartbeat)
       lastHeartbeatRef.current = Date.now();
 
       try {
         const message = JSON.parse(event.data);
+        console.warn(`📨 [HOOK] Parsed message type:`, message.type);
 
         // Handle heartbeat/keepalive messages
         if (message.type === 'heartbeat' || message.type === 'keepalive') {
-          console.warn(`💓 [HOOK] Heartbeat received - SMIB connection alive`);
-          // If we've previously received real data, keep the connection status as online
-          if (hasReceivedRealSmibData && !isConnectedToMqtt) {
-            setIsConnectedToMqtt(true);
-          }
+          console.warn(
+            `💓 [HOOK] SSE Heartbeat received (server keepalive, not SMIB data)`
+          );
+          // Heartbeats are from the SSE server, not the SMIB device
+          // Don't set isConnectedToMqtt here - only actual SMIB responses should do that
+          // The heartbeat just keeps the SSE connection alive
           return;
         }
 
@@ -1138,7 +1141,7 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     // Start heartbeat check interval (runs whether connected or not to detect reconnection)
     heartbeatCheckIntervalRef.current = setInterval(() => {
       const timeSinceLastHeartbeat = Date.now() - lastHeartbeatRef.current;
-      const timeoutMs = 10000; // 10 seconds timeout
+      const timeoutMs = 7000; // 7 seconds timeout (faster detection)
 
       if (timeSinceLastHeartbeat > timeoutMs && isConnectedToMqtt) {
         // SMIB went offline
@@ -1158,7 +1161,7 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         );
         setIsConnectedToMqtt(true);
       }
-    }, 2000); // Check every 2 seconds
+    }, 1000); // Check every 1 second (faster detection)
 
     return () => {
       if (heartbeatCheckIntervalRef.current) {

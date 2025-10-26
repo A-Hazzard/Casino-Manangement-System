@@ -3,19 +3,24 @@ import { connectDB } from '../../lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 
 /**
- * GET /api/machines/[id]
- * Get a single machine by ID with its gamingLocation field
+ * GET /api/machines/by-id?id=<machineId>
+ * Get a single machine by ID with its gamingLocation field and smibConfig
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Machine ID is required' },
+        { status: 400 }
+      );
+    }
 
     await connectDB();
 
-    // Fetch machine with gamingLocation field
+    // Fetch machine with gamingLocation field and smibConfig
     const machine = await Machine.findOne({
       _id: id,
       $or: [
@@ -23,7 +28,7 @@ export async function GET(
         { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     }).select(
-      '_id serialNumber game gamingLocation assetStatus cabinetType createdAt updatedAt'
+      '_id serialNumber game gamingLocation assetStatus cabinetType createdAt updatedAt smibConfig relayId smibBoard'
     );
 
     if (!machine) {
