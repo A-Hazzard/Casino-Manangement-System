@@ -2,9 +2,9 @@
 import { Types } from 'mongoose';
 import type { SasMeters } from './common';
 import type {
-    BillValidatorData,
-    CollectionMetersHistoryEntry,
-    MeterData,
+  BillValidatorData,
+  CollectionMetersHistoryEntry,
+  MeterData,
 } from './database';
 
 // Location types
@@ -301,6 +301,7 @@ export type SmibConfig = {
     netStaSSID?: string;
     netStaPwd?: string;
     netStaChan?: number;
+    updatedAt?: Date;
   };
   mqtt?: {
     mqttSecure?: number;
@@ -312,6 +313,7 @@ export type SmibConfig = {
     mqttIdleTimeS?: number;
     mqttUsername?: string;
     mqttPassword?: string;
+    updatedAt?: Date;
   };
   coms?: {
     comsAddr?: number;
@@ -319,6 +321,11 @@ export type SmibConfig = {
     comsRateMs?: number;
     comsRTE?: number;
     comsGPC?: number;
+    updatedAt?: Date;
+  };
+  ota?: {
+    otaURL?: string;
+    updatedAt?: Date;
   };
 };
 

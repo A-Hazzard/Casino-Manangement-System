@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import editIcon from '@/public/editIcon.svg';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { formatDateWithOrdinal } from '@/lib/utils/dateFormatting';
 
 type NetworkConfigSectionProps = {
   networkSSID?: string;
   networkPassword?: string;
   networkChannel?: string;
   networkMode?: number; // 0 = ethernet, 1 = wifi
+  updatedAt?: Date;
   isEditMode: boolean;
   onToggleEdit: () => void;
   onUpdate: (data: {
@@ -30,6 +32,7 @@ export function NetworkConfigSection({
   networkPassword,
   networkChannel,
   networkMode,
+  updatedAt,
   isEditMode,
   onToggleEdit,
   onUpdate,
@@ -75,24 +78,30 @@ export function NetworkConfigSection({
     onToggleEdit();
   };
 
+  const formatLastConfigured = () => {
+    if (!updatedAt) return 'Unknown';
+    return formatDateWithOrdinal(new Date(updatedAt));
+  };
+
   return (
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div className="flex items-center gap-3">
-          <CardTitle className="text-lg font-bold text-gray-700">
-            Network / WiFi
-          </CardTitle>
-          {/* SMIB Online/Offline Status */}
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2.5 w-2.5 rounded-full ${
-                isConnectedToMqtt
-                  ? 'animate-pulse bg-green-500'
-                  : 'bg-red-500'
-              }`}
-            ></div>
-            <span
-              className={`text-sm font-medium ${
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg font-bold text-gray-700">
+              Network / WiFi
+            </CardTitle>
+            {/* SMIB Online/Offline Status */}
+            <div className="flex items-center gap-2">
+              <div
+                className={`h-2.5 w-2.5 rounded-full ${
+                  isConnectedToMqtt
+                    ? 'animate-pulse bg-green-500'
+                    : 'bg-red-500'
+                }`}
+              ></div>
+              <span
+                className={`text-sm font-medium ${
                 isConnectedToMqtt ? 'text-green-600' : 'text-red-600'
               }`}
             >
@@ -100,6 +109,10 @@ export function NetworkConfigSection({
             </span>
           </div>
         </div>
+        <div className="text-xs text-gray-500">
+          Last configured: {formatLastConfigured()}
+        </div>
+      </div>
         {!isEditMode && !disabled && (
           <button
             onClick={onToggleEdit}

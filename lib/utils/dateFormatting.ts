@@ -88,6 +88,20 @@ export function formatDate(date: Date | string | undefined): string {
 }
 
 /**
+ * Formats a date with ordinal suffix and time (e.g., "Sep 9th 2025 3:45 PM")
+ * @param date - Date object, string, or undefined
+ * @returns Formatted date string with ordinal and time or fallback
+ */
+export function formatDateWithOrdinal(date: Date | string | undefined): string {
+  if (!date) return 'Unknown';
+  const d = typeof date === 'string' ? new Date(date) : date;
+
+  if (isNaN(d.getTime())) return 'Unknown';
+
+  return format(d, 'MMM do yyyy h:mm a');
+}
+
+/**
  * Gets a date that is 30 days from today
  * @returns Date object set to 30 days from now
  */

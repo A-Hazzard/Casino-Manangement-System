@@ -46,8 +46,19 @@ export async function GET(request: NextRequest) {
 
       controller.enqueue(`data: ${JSON.stringify(initialMessage)}\n\n`);
 
+      // Track if controller is closed
+      let isClosed = false;
+
       // Set up MQTT callback for this relayId
       const handleConfigMessage = (message: Record<string, unknown>) => {
+        // Don't process if controller is already closed
+        if (isClosed) {
+          console.log(
+            `⚠️ [API] SSE controller closed, skipping message for ${relayId}`
+          );
+          return;
+        }
+
         console.log(
           `🔍 [API] SSE received MQTT message for relayId: ${relayId}`
         );
@@ -72,6 +83,13 @@ export async function GET(request: NextRequest) {
           controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
         } catch (error) {
           console.error('❌ [API] Error processing config message:', error);
+          // Mark as closed if we get an invalid state error
+          if (
+            error instanceof Error &&
+            error.message.includes('Controller is already closed')
+          ) {
+            isClosed = true;
+          }
         }
       };
 
@@ -98,13 +116,19 @@ export async function GET(request: NextRequest) {
       // Handle client disconnect
       request.signal.addEventListener('abort', () => {
         console.log(`Client disconnected for relayId: ${relayId}`);
+        isClosed = true;
         mqttService.unsubscribeCallback(relayId, handleConfigMessage);
-        controller.close();
+        try {
+          controller.close();
+        } catch (_error) {
+          // Controller might already be closed
+          console.log('Controller already closed', _error);
+        }
       });
 
       // Send keep-alive/heartbeat messages every 5 seconds to maintain connection
       const keepAliveInterval = setInterval(() => {
-        if (request.signal.aborted) {
+        if (request.signal.aborted || isClosed) {
           clearInterval(keepAliveInterval);
           return;
         }
@@ -119,12 +143,14 @@ export async function GET(request: NextRequest) {
           controller.enqueue(`data: ${JSON.stringify(keepAliveMessage)}\n\n`);
         } catch (error) {
           console.error('Error sending keep-alive:', error);
+          isClosed = true;
           clearInterval(keepAliveInterval);
         }
       }, 5000);
 
       // Clean up interval on abort
       request.signal.addEventListener('abort', () => {
+        isClosed = true;
         clearInterval(keepAliveInterval);
       });
     },

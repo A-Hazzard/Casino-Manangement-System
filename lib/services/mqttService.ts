@@ -556,6 +556,225 @@ class MQTTService {
   getConfig(): MQTTConfig {
     return { ...this.config };
   }
+
+  /**
+   * Configure OTA URL for firmware downloads
+   * @param relayId - The SMIB relay ID
+   * @param otaURL - Base URL where firmware files are hosted
+   */
+  async configureOTAUrl(relayId: string, otaURL: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const payload = JSON.stringify({
+      typ: 'cfg',
+      comp: 'ota',
+      otaURL: otaURL,
+    });
+
+    console.log(`📡 [MQTT] Configuring OTA URL for ${relayId}`);
+    console.log(`📡 [MQTT] OTA URL: ${otaURL}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to configure OTA URL:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ OTA URL configured for ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Send OTA firmware update command to SMIB
+   * @param relayId - The SMIB relay ID
+   * @param firmwareVersion - Firmware version (bin) to download (e.g. "v1.0.1")
+   */
+  async sendOTAUpdateCommand(
+    relayId: string,
+    firmwareVersion: string
+  ): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const payload = JSON.stringify({
+      typ: 'ota_ud',
+      bin: firmwareVersion,
+    });
+
+    console.log(`📡 [MQTT] Sending OTA update command to ${relayId}`);
+    console.log(`📡 [MQTT] Firmware Version: ${firmwareVersion}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to send OTA command:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ OTA command sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Get current firmware version from SMIB
+   * @param relayId - The SMIB relay ID
+   * Response will be on topic: sas/relay/config/${relayId}
+   */
+  async getFirmwareVersion(relayId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const payload = JSON.stringify({
+      typ: 'cfg',
+      comp: 'app',
+    });
+
+    console.log(`📡 [MQTT] Requesting firmware version from ${relayId}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to request firmware version:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Firmware version request sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Request meter data from SMIB
+   * @param relayId - The SMIB relay ID
+   */
+  async requestMeterData(relayId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const payload = JSON.stringify({
+      typ: 'cmd',
+      cmd: 'met_get',
+    });
+
+    console.log(`📡 [MQTT] Requesting meter data from ${relayId}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to request meters:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Meter request sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Reset meter data on non-SAS SMIB
+   * @param relayId - The SMIB relay ID
+   */
+  async resetMeterData(relayId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const payload = JSON.stringify({
+      typ: 'cmd',
+      cmd: 'met_reset',
+    });
+
+    console.log(`📡 [MQTT] Sending reset meters command to ${relayId}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to reset meters:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Reset meters command sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Restart SMIB device
+   * @param relayId - The SMIB relay ID
+   */
+  async restartSmib(relayId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const payload = JSON.stringify({
+      typ: 'rst',
+    });
+
+    console.log(`📡 [MQTT] Sending restart command to ${relayId}`);
+    console.log(`📡 [MQTT] Payload: ${payload}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to send restart command:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Restart command sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
 }
 
 // Export singleton instance

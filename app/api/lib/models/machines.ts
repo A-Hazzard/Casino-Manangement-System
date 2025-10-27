@@ -113,12 +113,14 @@ export const machineSchema = new Schema(
         mqttIdleTimeS: Number,
         mqttUsername: String,
         mqttPassword: String,
+        updatedAt: Date,
       },
       net: {
         netMode: Number,
         netStaSSID: String,
         netStaPwd: String,
         netStaChan: Number,
+        updatedAt: Date,
       },
       coms: {
         comsAddr: Number,
@@ -126,9 +128,11 @@ export const machineSchema = new Schema(
         comsRateMs: Number,
         comsRTE: Number,
         comsGPC: Number,
+        updatedAt: Date,
       },
       ota: {
         otaURL: String,
+        updatedAt: Date,
       },
     },
     billMeters: {

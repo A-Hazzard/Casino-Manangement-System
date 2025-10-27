@@ -80,3 +80,6 @@ export * from './activityLog';
 
 // Export component types
 export * from './components';
+
+// Export SMIB types
+export * from './smib';

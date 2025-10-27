@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import editIcon from '@/public/editIcon.svg';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { formatDateWithOrdinal } from '@/lib/utils/dateFormatting';
 
 type MqttTopicsSectionProps = {
   mqttPubTopic?: string;
@@ -19,6 +20,7 @@ type MqttTopicsSectionProps = {
   mqttUsername?: string;
   mqttPassword?: string;
   mqttIdleTimeout?: string;
+  updatedAt?: Date;
   isEditMode: boolean;
   onToggleEdit: () => void;
   onUpdate: (data: {
@@ -41,6 +43,7 @@ export function MqttTopicsSection({
   mqttUsername,
   mqttPassword,
   mqttIdleTimeout,
+  updatedAt,
   isEditMode,
   onToggleEdit,
   onUpdate,
@@ -85,12 +88,22 @@ export function MqttTopicsSection({
     onToggleEdit();
   };
 
+  const formatLastConfigured = () => {
+    if (!updatedAt) return 'Unknown';
+    return formatDateWithOrdinal(new Date(updatedAt));
+  };
+
   return (
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-lg font-bold text-gray-700">
-          MQTT Topics
-        </CardTitle>
+        <div className="flex flex-col gap-1">
+          <CardTitle className="text-lg font-bold text-gray-700">
+            MQTT Topics
+          </CardTitle>
+          <div className="text-xs text-gray-500">
+            Last configured: {formatLastConfigured()}
+          </div>
+        </div>
         {!isEditMode && !disabled && (
           <button
             onClick={onToggleEdit}

@@ -12,8 +12,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ComsConfigSection } from './smibManagement/ComsConfigSection';
+import { MeterDataSection } from './smibManagement/MeterDataSection';
 import { MqttTopicsSection } from './smibManagement/MqttTopicsSection';
 import { NetworkConfigSection } from './smibManagement/NetworkConfigSection';
+import { OTAUpdateSection } from './smibManagement/OTAUpdateSection';
+import { RestartSection } from './smibManagement/RestartSection';
 
 export default function SMIBManagementTab() {
   const router = useRouter();
@@ -295,6 +298,42 @@ export default function SMIBManagementTab() {
     }
   };
 
+  // Refresh SMIB data (re-request config and reload machine data)
+  const handleRefreshSmibData = async () => {
+    if (!selectedRelayId) return;
+
+    console.log('🔄 [SMIB MANAGEMENT] Refreshing SMIB data...');
+    setIsInitialLoading(true);
+
+    // Refresh SMIB list
+    await refreshSmibs();
+
+    // Re-request config data
+    try {
+      await Promise.all([
+        smibConfig.requestLiveConfig(selectedRelayId, 'mqtt'),
+        smibConfig.requestLiveConfig(selectedRelayId, 'net'),
+        smibConfig.requestLiveConfig(selectedRelayId, 'coms'),
+      ]);
+    } catch (err) {
+      console.error('Failed to request config:', err);
+    }
+
+    // Reload machine data
+    if (selectedMachineId) {
+      try {
+        const response = await axios.get(
+          `/api/machines/by-id?id=${selectedMachineId}`
+        );
+        setMachineData(response.data);
+      } catch (err) {
+        console.error('Failed to reload machine data:', err);
+      }
+    }
+
+    // Loading will automatically stop when config data arrives
+  };
+
   if (loading) {
     return <SMIBManagementSkeleton />;
   }
@@ -388,6 +427,7 @@ export default function SMIBManagementTab() {
                     : machineData?.smibConfig?.net?.netStaChan?.toString() || ''
                 }
                 networkMode={machineData?.smibConfig?.net?.netMode}
+                updatedAt={machineData?.smibConfig?.net?.updatedAt}
                 isEditMode={networkEditMode}
                 onToggleEdit={() => setNetworkEditMode(!networkEditMode)}
                 onUpdate={handleNetworkUpdate}
@@ -423,6 +463,7 @@ export default function SMIBManagementTab() {
                     ? smibConfig.formData.comsGPC
                     : machineData?.smibConfig?.coms?.comsGPC?.toString() || ''
                 }
+                updatedAt={machineData?.smibConfig?.coms?.updatedAt}
                 isEditMode={comsEditMode}
                 onToggleEdit={() => setComsEditMode(!comsEditMode)}
                 onUpdate={handleComsUpdate}
@@ -486,11 +527,48 @@ export default function SMIBManagementTab() {
                     : machineData?.smibConfig?.mqtt?.mqttIdleTimeS?.toString() ||
                       ''
                 }
+                updatedAt={machineData?.smibConfig?.mqtt?.updatedAt}
                 isEditMode={mqttEditMode}
                 onToggleEdit={() => setMqttEditMode(!mqttEditMode)}
                 onUpdate={handleMqttUpdate}
                 isLoading={isInitialLoading}
               />
+            </div>
+          </div>
+
+          {/* Additional SMIB Management Features */}
+          <div className="mt-8 space-y-6">
+            <h2 className="text-xl font-bold text-gray-800">
+              SMIB Operations & Management
+            </h2>
+
+            {/* Operations Grid - Only visible when SMIB is selected */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Left Column */}
+              <div className="space-y-6">
+                <RestartSection
+                  relayId={selectedRelayId}
+                  isOnline={smibConfig.isConnectedToMqtt}
+                  onRefreshData={handleRefreshSmibData}
+                />
+                <MeterDataSection
+                  relayId={selectedRelayId}
+                  isOnline={smibConfig.isConnectedToMqtt}
+                  comsMode={
+                    machineData?.smibConfig?.coms?.comsMode !== undefined
+                      ? Number(machineData.smibConfig.coms.comsMode)
+                      : undefined
+                  }
+                />
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                <OTAUpdateSection
+                  relayId={selectedRelayId}
+                  isOnline={smibConfig.isConnectedToMqtt}
+                />
+              </div>
             </div>
           </div>
         </>

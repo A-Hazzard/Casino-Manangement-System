@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../../lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { getUserFromServer } from '../../../lib/helpers/users';
-import { getClientIP } from '@/lib/utils/ipAddress';
 import {
-  logActivity,
   calculateChanges,
+  logActivity,
 } from '@/app/api/lib/helpers/activityLogger';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/lib/services/mqttService';
+import { getClientIP } from '@/lib/utils/ipAddress';
 import type { SmibConfig } from '@/shared/types/entities';
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromServer } from '../../../lib/helpers/users';
+import { connectDB } from '../../../lib/middleware/db';
 
 /**
  * POST /api/cabinets/[cabinetId]/smib-config
@@ -66,7 +66,24 @@ export async function POST(
 
     // Handle SMIB configuration updates
     if (data.smibConfig !== undefined) {
-      updateFields.smibConfig = data.smibConfig;
+      const now = new Date();
+      const smibConfig = { ...data.smibConfig };
+
+      // Add updatedAt timestamp to each section that's being updated
+      if (smibConfig.mqtt !== undefined) {
+        smibConfig.mqtt = { ...smibConfig.mqtt, updatedAt: now };
+      }
+      if (smibConfig.net !== undefined) {
+        smibConfig.net = { ...smibConfig.net, updatedAt: now };
+      }
+      if (smibConfig.coms !== undefined) {
+        smibConfig.coms = { ...smibConfig.coms, updatedAt: now };
+      }
+      if (smibConfig.ota !== undefined) {
+        smibConfig.ota = { ...smibConfig.ota, updatedAt: now };
+      }
+
+      updateFields.smibConfig = smibConfig;
     }
     if (data.smibVersion !== undefined) {
       updateFields.smibVersion = data.smibVersion;

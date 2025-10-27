@@ -16,6 +16,7 @@ import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
+  Cross2Icon,
   Pencil2Icon,
 } from '@radix-ui/react-icons';
 import { AnimatePresence, motion, Variants } from 'framer-motion';
@@ -24,12 +25,16 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
 import { NetworkError, NotFoundError } from '@/components/ui/errors';
 import RefreshButton from '@/components/ui/RefreshButton';
-import { Pencil, RefreshCw } from 'lucide-react';
+import { format } from 'date-fns';
+import { Check, Pencil, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 // Extracted skeleton and error components
+import { MeterDataSection } from '@/components/cabinets/smibManagement/MeterDataSection';
+import { OTAUpdateSection } from '@/components/cabinets/smibManagement/OTAUpdateSection';
+import { RestartSection } from '@/components/cabinets/smibManagement/RestartSection';
 import { CabinetDetailsLoadingState } from '@/components/ui/skeletons/CabinetDetailSkeletons';
 
 // Animation variants
@@ -897,10 +902,10 @@ function CabinetDetailPageContent() {
                             : 'IGT'
                         : 'undefined'}
                     </p>
-                  <p className="mt-1 text-xs text-grayHighlight sm:mt-0 sm:text-sm">
-                    <span className="font-medium">Running firmware:</span>{' '}
-                    {mqttConfigData?.firmwareVersion || 'No Value Provided'}
-                  </p>
+                    <p className="mt-1 text-xs text-grayHighlight sm:mt-0 sm:text-sm">
+                      <span className="font-medium">Running firmware:</span>{' '}
+                      {mqttConfigData?.firmwareVersion || 'No Value Provided'}
+                    </p>
                   </div>
                 </div>
               )}
@@ -1042,23 +1047,45 @@ function CabinetDetailPageContent() {
                       className="border-t border-border pt-6"
                     >
                       <div className="mb-4 flex items-center justify-between">
-                        <h3 className="font-medium text-foreground">
-                          Network/WiFi
-                        </h3>
+                        <div className="flex flex-col gap-1">
+                          <h3 className="font-medium text-foreground">
+                            Network/WiFi
+                          </h3>
+                          <div className="text-xs text-gray-500">
+                            Last configured:{' '}
+                            {cabinet?.smibConfig?.net?.updatedAt
+                              ? format(
+                                  new Date(cabinet.smibConfig.net.updatedAt),
+                                  'MMM do yyyy h:mm a'
+                                )
+                              : 'Unknown'}
+                          </div>
+                        </div>
                         {editingSection === 'network' ? (
-                          <Button
-                            onClick={async () => {
-                              await handleSaveSMIBConfig();
-                              setEditingSection(null);
-                            }}
-                            className="bg-button text-container hover:bg-buttonActive"
-                            size="sm"
-                          >
-                            <span className="hidden lg:inline">
-                              SAVE NETWORK
-                            </span>
-                            <span className="lg:hidden">SAVE</span>
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => setEditingSection(null)}
+                              variant="outline"
+                              size="sm"
+                              className="border-gray-300"
+                            >
+                              <Cross2Icon className="h-4 w-4 md:hidden" />
+                              <span className="hidden md:inline">CANCEL</span>
+                            </Button>
+                            <Button
+                              onClick={async () => {
+                                await handleSaveSMIBConfig();
+                                setEditingSection(null);
+                              }}
+                              className="bg-button text-container hover:bg-buttonActive"
+                              size="sm"
+                            >
+                              <Check className="h-4 w-4 lg:hidden" />
+                              <span className="hidden lg:inline">
+                                SAVE NETWORK
+                              </span>
+                            </Button>
+                          </div>
                         ) : (
                           <>
                             <Pencil
@@ -1176,21 +1203,45 @@ function CabinetDetailPageContent() {
                       {/* COMS Section */}
                       <motion.div variants={itemVariants}>
                         <div className="mb-4 flex items-center justify-between">
-                          <h3 className="font-medium text-foreground">COMS</h3>
+                          <div className="flex flex-col gap-1">
+                            <h3 className="font-medium text-foreground">
+                              COMS
+                            </h3>
+                            <div className="text-xs text-gray-500">
+                              Last configured:{' '}
+                              {cabinet?.smibConfig?.coms?.updatedAt
+                                ? format(
+                                    new Date(cabinet.smibConfig.coms.updatedAt),
+                                    'MMM do yyyy h:mm a'
+                                  )
+                                : 'Unknown'}
+                            </div>
+                          </div>
                           {editingSection === 'coms' ? (
-                            <Button
-                              onClick={async () => {
-                                await handleSaveSMIBConfig();
-                                setEditingSection(null);
-                              }}
-                              className="bg-button text-container hover:bg-buttonActive"
-                              size="sm"
-                            >
-                              <span className="hidden lg:inline">
-                                SAVE COMS
-                              </span>
-                              <span className="lg:hidden">SAVE</span>
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => setEditingSection(null)}
+                                variant="outline"
+                                size="sm"
+                                className="border-gray-300"
+                              >
+                                <Cross2Icon className="h-4 w-4 md:hidden" />
+                                <span className="hidden md:inline">CANCEL</span>
+                              </Button>
+                              <Button
+                                onClick={async () => {
+                                  await handleSaveSMIBConfig();
+                                  setEditingSection(null);
+                                }}
+                                className="bg-button text-container hover:bg-buttonActive"
+                                size="sm"
+                              >
+                                <Check className="h-4 w-4 lg:hidden" />
+                                <span className="hidden lg:inline">
+                                  SAVE COMS
+                                </span>
+                              </Button>
+                            </div>
                           ) : (
                             <>
                               <Pencil
@@ -1244,7 +1295,9 @@ function CabinetDetailPageContent() {
                                 />
                               ) : (
                                 <div className="text-sm">
-                                  {formData.comsAddr || cabinet?.smibConfig?.coms?.comsAddr || 'No Value Provided'}
+                                  {formData.comsAddr ||
+                                    cabinet?.smibConfig?.coms?.comsAddr ||
+                                    'No Value Provided'}
                                 </div>
                               )}
                             </div>
@@ -1263,7 +1316,9 @@ function CabinetDetailPageContent() {
                                 />
                               ) : (
                                 <div className="text-sm">
-                                  {formData.comsRateMs || cabinet?.smibConfig?.coms?.comsRateMs || 'No Value Provided'}
+                                  {formData.comsRateMs ||
+                                    cabinet?.smibConfig?.coms?.comsRateMs ||
+                                    'No Value Provided'}
                                 </div>
                               )}
                             </div>
@@ -1286,7 +1341,8 @@ function CabinetDetailPageContent() {
                                 <div className="text-sm">
                                   {formData.comsRTE === '1'
                                     ? 'Enabled'
-                                    : formData.comsRTE === '0' || cabinet?.smibConfig?.coms?.comsRTE === 0
+                                    : formData.comsRTE === '0' ||
+                                        cabinet?.smibConfig?.coms?.comsRTE === 0
                                       ? 'Disabled'
                                       : cabinet?.smibConfig?.coms?.comsRTE === 1
                                         ? 'Enabled'
@@ -1309,7 +1365,9 @@ function CabinetDetailPageContent() {
                                 />
                               ) : (
                                 <div className="text-sm">
-                                  {formData.comsGPC || cabinet?.smibConfig?.coms?.comsGPC || 'No Value Provided'}
+                                  {formData.comsGPC ||
+                                    cabinet?.smibConfig?.coms?.comsGPC ||
+                                    'No Value Provided'}
                                 </div>
                               )}
                             </div>
@@ -1320,21 +1378,45 @@ function CabinetDetailPageContent() {
                       {/* MQTT Section */}
                       <motion.div variants={itemVariants}>
                         <div className="mb-4 flex items-center justify-between">
-                          <h3 className="font-medium text-foreground">MQTT</h3>
+                          <div className="flex flex-col gap-1">
+                            <h3 className="font-medium text-foreground">
+                              MQTT
+                            </h3>
+                            <div className="text-xs text-gray-500">
+                              Last configured:{' '}
+                              {cabinet?.smibConfig?.mqtt?.updatedAt
+                                ? format(
+                                    new Date(cabinet.smibConfig.mqtt.updatedAt),
+                                    'MMM do yyyy h:mm a'
+                                  )
+                                : 'Unknown'}
+                            </div>
+                          </div>
                           {editingSection === 'mqtt' ? (
-                            <Button
-                              onClick={async () => {
-                                await handleSaveSMIBConfig();
-                                setEditingSection(null);
-                              }}
-                              className="bg-button text-container hover:bg-buttonActive"
-                              size="sm"
-                            >
-                              <span className="hidden lg:inline">
-                                SAVE MQTT
-                              </span>
-                              <span className="lg:hidden">SAVE</span>
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => setEditingSection(null)}
+                                variant="outline"
+                                size="sm"
+                                className="border-gray-300"
+                              >
+                                <Cross2Icon className="h-4 w-4 md:hidden" />
+                                <span className="hidden md:inline">CANCEL</span>
+                              </Button>
+                              <Button
+                                onClick={async () => {
+                                  await handleSaveSMIBConfig();
+                                  setEditingSection(null);
+                                }}
+                                className="bg-button text-container hover:bg-buttonActive"
+                                size="sm"
+                              >
+                                <Check className="h-4 w-4 lg:hidden" />
+                                <span className="hidden lg:inline">
+                                  SAVE MQTT
+                                </span>
+                              </Button>
+                            </div>
                           ) : (
                             <>
                               <Pencil
@@ -1411,7 +1493,10 @@ function CabinetDetailPageContent() {
                                     />
                                   ) : (
                                     <div className="text-sm">
-                                      {formData.mqttPubTopic || cabinet?.smibConfig?.mqtt?.mqttPubTopic || 'No Value Provided'}
+                                      {formData.mqttPubTopic ||
+                                        cabinet?.smibConfig?.mqtt
+                                          ?.mqttPubTopic ||
+                                        'No Value Provided'}
                                     </div>
                                   )}
                                 </div>
@@ -1434,7 +1519,10 @@ function CabinetDetailPageContent() {
                                     />
                                   ) : (
                                     <div className="text-sm">
-                                      {formData.mqttCfgTopic || cabinet?.smibConfig?.mqtt?.mqttCfgTopic || 'No Value Provided'}
+                                      {formData.mqttCfgTopic ||
+                                        cabinet?.smibConfig?.mqtt
+                                          ?.mqttCfgTopic ||
+                                        'No Value Provided'}
                                     </div>
                                   )}
                                 </div>
@@ -1447,14 +1535,19 @@ function CabinetDetailPageContent() {
                                       type="text"
                                       value={formData.mqttURI || ''}
                                       onChange={e =>
-                                        updateFormData('mqttURI', e.target.value)
+                                        updateFormData(
+                                          'mqttURI',
+                                          e.target.value
+                                        )
                                       }
                                       className="w-full rounded border border-border bg-background p-2 text-foreground"
                                       placeholder="mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883"
                                     />
                                   ) : (
                                     <div className="text-sm">
-                                      {formData.mqttURI || cabinet?.smibConfig?.mqtt?.mqttURI || 'No Value Provided'}
+                                      {formData.mqttURI ||
+                                        cabinet?.smibConfig?.mqtt?.mqttURI ||
+                                        'No Value Provided'}
                                     </div>
                                   )}
                                 </div>
@@ -1473,13 +1566,22 @@ function CabinetDetailPageContent() {
                                     <select
                                       value={formData.mqttTLS || '2'}
                                       onChange={e =>
-                                        updateFormData('mqttTLS', e.target.value)
+                                        updateFormData(
+                                          'mqttTLS',
+                                          e.target.value
+                                        )
                                       }
                                       className="w-full rounded border border-border bg-background p-2 text-foreground"
                                     >
-                                      <option value="0">0 - At most once</option>
-                                      <option value="1">1 - At least once</option>
-                                      <option value="2">2 - Exactly once</option>
+                                      <option value="0">
+                                        0 - At most once
+                                      </option>
+                                      <option value="1">
+                                        1 - At least once
+                                      </option>
+                                      <option value="2">
+                                        2 - Exactly once
+                                      </option>
                                     </select>
                                   ) : (
                                     <div className="text-sm">
@@ -1489,13 +1591,17 @@ function CabinetDetailPageContent() {
                                           ? '1 - At least once'
                                           : formData.mqttTLS === '2'
                                             ? '2 - Exactly once'
-                                            : cabinet?.smibConfig?.mqtt?.mqttQOS === 0
+                                            : cabinet?.smibConfig?.mqtt
+                                                  ?.mqttQOS === 0
                                               ? '0 - At most once'
-                                              : cabinet?.smibConfig?.mqtt?.mqttQOS === 1
+                                              : cabinet?.smibConfig?.mqtt
+                                                    ?.mqttQOS === 1
                                                 ? '1 - At least once'
-                                                : cabinet?.smibConfig?.mqtt?.mqttQOS === 2
+                                                : cabinet?.smibConfig?.mqtt
+                                                      ?.mqttQOS === 2
                                                   ? '2 - Exactly once'
-                                                  : formData.mqttTLS || 'No Value Provided'}
+                                                  : formData.mqttTLS ||
+                                                    'No Value Provided'}
                                     </div>
                                   )}
                                 </div>
@@ -1518,7 +1624,10 @@ function CabinetDetailPageContent() {
                                     />
                                   ) : (
                                     <div className="text-sm">
-                                      {formData.mqttIdleTimeout || cabinet?.smibConfig?.mqtt?.mqttIdleTimeS || 'No Value Provided'}
+                                      {formData.mqttIdleTimeout ||
+                                        cabinet?.smibConfig?.mqtt
+                                          ?.mqttIdleTimeS ||
+                                        'No Value Provided'}
                                     </div>
                                   )}
                                 </div>
@@ -1527,6 +1636,89 @@ function CabinetDetailPageContent() {
                           </div>
                         )}
                       </motion.div>
+                    </div>
+
+                    {/* Additional SMIB Management Features */}
+                    <div className="mt-8 space-y-6 border-t border-border pt-6">
+                      <h3 className="text-xl font-bold text-gray-800">
+                        SMIB Operations & Management
+                      </h3>
+
+                      {/* Operations Grid - Horizontal layout on large screens */}
+                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                        {/* Left Column */}
+                        <div className="space-y-6">
+                          <RestartSection
+                            relayId={
+                              cabinet?.relayId || cabinet?.smibBoard || null
+                            }
+                            isOnline={isConnectedToMqtt}
+                            onRefreshData={async () => {
+                              if (!cabinet?.relayId) {
+                                console.error(
+                                  '❌ [CABINET DETAILS] No relayId available!'
+                                );
+                                return;
+                              }
+
+                              console.log(
+                                '🔄 [CABINET DETAILS] Refreshing SMIB data after restart...'
+                              );
+
+                              // 1. Refresh cabinet data from database
+                              console.log(
+                                '📊 [CABINET DETAILS] Refreshing cabinet data...'
+                              );
+                              await fetchCabinetDetailsData();
+
+                              // 2. Wait for SMIB to fully restart and reconnect to MQTT
+                              console.log(
+                                '⏱️ [CABINET DETAILS] Waiting for SMIB to reconnect...'
+                              );
+                              await new Promise(resolve =>
+                                setTimeout(resolve, 2000)
+                              );
+
+                              // 3. Re-request live config from SMIB (keeping SSE connection alive)
+                              console.log(
+                                '📡 [CABINET DETAILS] Re-requesting live config...'
+                              );
+                              try {
+                                await Promise.all([
+                                  requestLiveConfig(cabinet.relayId, 'mqtt'),
+                                  requestLiveConfig(cabinet.relayId, 'net'),
+                                  requestLiveConfig(cabinet.relayId, 'coms'),
+                                ]);
+                                console.log(
+                                  '✅ [CABINET DETAILS] Config requests sent'
+                                );
+                              } catch (err) {
+                                console.error(
+                                  '❌ [CABINET DETAILS] Failed to request config:',
+                                  err
+                                );
+                              }
+                            }}
+                          />
+                          <MeterDataSection
+                            relayId={
+                              cabinet?.relayId || cabinet?.smibBoard || null
+                            }
+                            isOnline={isConnectedToMqtt}
+                            comsMode={cabinet?.smibConfig?.coms?.comsMode}
+                          />
+                        </div>
+
+                        {/* Right Column */}
+                        <div className="space-y-6">
+                          <OTAUpdateSection
+                            relayId={
+                              cabinet?.relayId || cabinet?.smibBoard || null
+                            }
+                            isOnline={isConnectedToMqtt}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </TooltipProvider>
                 </motion.div>
