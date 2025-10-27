@@ -1,5 +1,4 @@
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,7 +7,8 @@ import { connectDB } from '../../../lib/middleware/db';
 
 /**
  * POST /api/locations/[locationId]/smib-restart
- * Restart all SMIBs at a specific location
+ * Restart all SMIBs currently discovered via MQTT at a specific location
+ * Uses relayIds from frontend (MQTT discovery), not database query
  * Processes in parallel batches of 10 for efficiency
  */
 export async function POST(
@@ -19,28 +19,29 @@ export async function POST(
     const { locationId } = await params;
     await connectDB();
 
-    // Find all machines at this location with valid relayId or smibBoard
-    const machines = await Machine.find({
-      gamingLocation: locationId,
-      deletedAt: null,
-      $or: [
-        { relayId: { $exists: true, $ne: '' } },
-        { smibBoard: { $exists: true, $ne: '' } },
-      ],
-    }).select('_id serialNumber game relayId smibBoard');
+    // Get relayIds from request body (sent from frontend MQTT discovery)
+    const body = await request.json();
+    const relayIds = body.relayIds as string[];
 
-    if (machines.length === 0) {
+    if (!relayIds || relayIds.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: 'No machines with SMIBs found at this location',
+          error: 'No SMIB relay IDs provided',
         },
-        { status: 404 }
+        { status: 400 }
       );
     }
 
+    console.log(
+      `🔄 [API] Restarting ${relayIds.length} SMIBs at location ${locationId}`
+    );
+
+    // Remove duplicates (in case frontend sends duplicates)
+    const uniqueRelayIds = Array.from(new Set(relayIds));
+
     const results = {
-      total: machines.length,
+      total: uniqueRelayIds.length,
       successful: 0,
       failed: 0,
       errors: [] as Array<{ relayId: string; error: string }>,
@@ -48,23 +49,22 @@ export async function POST(
 
     // Process in batches of 10 for parallel execution
     const BATCH_SIZE = 10;
-    for (let i = 0; i < machines.length; i += BATCH_SIZE) {
-      const batch = machines.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < uniqueRelayIds.length; i += BATCH_SIZE) {
+      const batch = uniqueRelayIds.slice(i, i + BATCH_SIZE);
 
       await Promise.allSettled(
-        batch.map(async machine => {
-          const relayId = machine.relayId || machine.smibBoard;
-          if (!relayId) return;
-
+        batch.map(async relayId => {
           try {
             await mqttService.restartSmib(relayId);
             results.successful++;
+            console.log(`✅ [API] Restart sent to SMIB: ${relayId}`);
           } catch (error) {
             results.failed++;
             results.errors.push({
               relayId,
               error: error instanceof Error ? error.message : 'Unknown error',
             });
+            console.error(`❌ [API] Failed to restart SMIB ${relayId}:`, error);
           }
         })
       );

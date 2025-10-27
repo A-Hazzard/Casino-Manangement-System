@@ -1716,6 +1716,10 @@ function CabinetDetailPageContent() {
                               cabinet?.relayId || cabinet?.smibBoard || null
                             }
                             isOnline={isConnectedToMqtt}
+                            firmwareUpdatedAt={
+                              cabinet?.smibConfig?.ota?.firmwareUpdatedAt
+                            }
+                            onUpdateComplete={fetchCabinetDetailsData}
                           />
                         </div>
                       </div>

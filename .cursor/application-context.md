@@ -439,6 +439,99 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 
 ## Recent System Updates (October 2025)
 
+### SMIB Management System - Production Ready ✅
+
+**Last Updated:** October 27th, 2025
+
+The complete SMIB (Slot Machine Interface Board) management system has been implemented with comprehensive real-time control and monitoring capabilities:
+
+#### Core Features
+
+- **OTA Firmware Updates**: Upload firmware to MongoDB GridFS, serve via dynamic URLs, and push updates to SMIB devices over-the-air
+- **SMIB Restart**: Restart individual SMIBs or all SMIBs at a location with countdown UI and confirmation dialogs
+- **Meter Management**: Request current meter data and reset meters on non-SAS machines
+- **Configuration Tracking**: Display "Last configured" timestamps for Network, MQTT, COMS, and OTA sections with `updatedAt` fields
+- **Location-Wide Operations**: Batch operations for restarting multiple SMIBs and pushing firmware updates to all devices at a location
+- **MQTT Discovery**: Real-time SMIB detection including unassigned SMIBs not linked to machines or locations
+
+#### Firmware Management System
+
+- **GridFS Storage**: Firmware binaries stored in MongoDB using GridFS for efficient large file handling
+- **Upload System**: Web-based firmware upload interface with `.bin` file validation
+- **Version Control**: Track firmware versions, product names, and version details
+- **Dynamic Serving**: Temporarily download firmware from GridFS to `/public/firmwares/` and serve via `/firmwares/[filename]` endpoint
+- **SMIB Download**: SMIBs append `?&relayId=<SMIB-ID>` query parameter when downloading firmware
+- **Auto-Cleanup**: Firmware files automatically deleted after 30 minutes to conserve disk space
+
+#### Technical Implementation
+
+- **MQTT Protocol**: Proper MQTT message formats for configuration (`typ: "cfg"`), OTA updates (`typ: "ota_ud"`), meter requests (`typ: "cmd", "sta": "", "siz": 54, "pyd": "..."`), and restart commands (`typ: "rst"`)
+- **SSE Integration**: Server-Sent Events for live configuration updates without page refreshes
+- **Activity Logging**: Comprehensive logging of all SMIB operations for audit trails
+- **Error Handling**: Robust error handling with user-friendly toast notifications
+- **Type Safety**: Complete TypeScript type definitions in `shared/types/smib.ts`
+- **Batch Processing**: Concurrent processing of up to 10 SMIBs for location-wide operations
+
+#### UI Components
+
+- **SMIB Management Tab**: Dedicated tab in cabinets page with configuration, restart, meters, and OTA sections
+- **Cabinet Details Integration**: Same functionality available in individual cabinet detail pages
+- **Location Filtering**: Filter SMIBs by location with "Restart All SMIBs" button for location-wide operations
+- **Responsive Design**: Mobile-optimized with icon-based buttons for smaller screens
+- **Visual Feedback**: 15-second countdown after restart with modern, clean design
+
+#### API Endpoints
+
+**Single SMIB Operations:**
+
+- `/api/smib/restart` - Restart single SMIB
+- `/api/smib/meters` - Request meter data
+- `/api/smib/reset-meters` - Reset meters (non-SAS only)
+- `/api/smib/ota-update` - Initiate OTA firmware update
+
+**Location-Wide Operations:**
+
+- `/api/locations/[locationId]/smib-restart` - Restart all SMIBs at location
+- `/api/locations/[locationId]/smib-meters` - Request meters from all SMIBs
+- `/api/locations/[locationId]/smib-ota` - Push firmware to all SMIBs
+
+**Firmware Management:**
+
+- `/api/firmwares` - Upload and list firmwares (GET/POST)
+- `/api/firmwares/[id]/serve` - Download firmware from GridFS and serve temporarily
+- `/api/firmwares/[filename]` - Serve firmware file to SMIB (handles query params)
+- `/api/mqtt/discover-smibs` - MQTT-based SMIB discovery including unassigned devices
+
+#### Files Created/Modified
+
+**Backend (10 files):**
+
+- `shared/types/smib.ts` - SMIB type definitions
+- `app/api/smib/restart/route.ts` - Single SMIB restart
+- `app/api/smib/meters/route.ts` - Meter data request
+- `app/api/smib/reset-meters/route.ts` - Reset meters
+- `app/api/smib/ota-update/route.ts` - OTA firmware update
+- `app/api/locations/[locationId]/smib-restart/route.ts` - Location-wide restart
+- `app/api/locations/[locationId]/smib-meters/route.ts` - Location-wide meters
+- `app/api/locations/[locationId]/smib-ota/route.ts` - Location-wide OTA
+- `app/api/firmwares/[id]/serve/route.ts` - Firmware serving from GridFS
+- `app/firmwares/[filename]/route.ts` - Firmware download endpoint
+
+**Frontend (7 files):**
+
+- `lib/hooks/data/useSmibRestart.ts` - Restart hook
+- `lib/hooks/data/useSmibMeters.ts` - Meters management hook
+- `lib/hooks/data/useSmibOTA.ts` - OTA update hook
+- `components/cabinets/smibManagement/RestartSection.tsx` - Restart UI
+- `components/cabinets/smibManagement/MeterDataSection.tsx` - Meters UI
+- `components/cabinets/smibManagement/OTAUpdateSection.tsx` - OTA UI
+- `components/cabinets/SMIBManagementTab.tsx` - Main management interface
+
+**Database Schema:**
+
+- Added `updatedAt` to `smibConfig.net`, `smibConfig.mqtt`, `smibConfig.coms`, `smibConfig.ota`
+- Added `firmwareUpdatedAt` to `smibConfig.ota`
+
 ### Collection Report Creation & SAS Time System - Production Ready ✅
 
 **Last Updated:** October 10th, 2025
@@ -601,14 +694,14 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Error Boundaries**: Graceful error handling throughout the application
 - **Activity Logging**: Complete audit trail for all user actions
 
-## Current System Status (October 10th, 2025)
+## Current System Status (October 27th, 2025)
 
 ### Build System Status ✅
 
 - **TypeScript Compilation**: ✅ Clean (no errors)
 - **ESLint**: ✅ Clean (no warnings)
 - **Type Check**: ✅ Passing with strict mode
-- **Production Build**: ✅ Optimized and working (compiled in ~26s)
+- **Production Build**: ✅ Optimized and working
 - **Type Safety**: ✅ Comprehensive coverage across all components
 - **Bundle Size**: ✅ Optimized with code splitting
 
@@ -647,6 +740,17 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 - **Security Monitoring**: ✅ Activity logging and account locking
 - **Licensee Filtering**: ✅ Multi-tenant data isolation working
 
+### SMIB Management System Status ✅
+
+- **OTA Firmware Updates**: ✅ GridFS storage, dynamic serving, auto-cleanup
+- **SMIB Restart**: ✅ Individual and location-wide with visual feedback
+- **Meter Management**: ✅ Request and reset meters with proper validation
+- **Configuration Tracking**: ✅ updatedAt timestamps for all config sections
+- **Location Operations**: ✅ Batch processing for multiple SMIBs
+- **MQTT Discovery**: ✅ Real-time detection including unassigned SMIBs
+- **Activity Logging**: ✅ Complete audit trail for all operations
+- **Type Safety**: ✅ Full TypeScript coverage with shared types
+
 ## Current Development Priorities (October 2025)
 
 ### Completed ✅
@@ -660,6 +764,10 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 7. ✅ **Collection Report Creation**: Fixed SAS time calculation and validation system
 8. ✅ **SAS Time Detection**: Smart detection and automatic fixing of SAS time issues
 9. ✅ **Type Safety**: All TypeScript errors resolved with proper type definitions
+10. ✅ **SMIB Management System**: Complete OTA, restart, meters, and configuration management
+11. ✅ **Firmware Management**: GridFS storage, upload, download, and dynamic serving system
+12. ✅ **Location-Wide Operations**: Batch SMIB operations with MQTT discovery
+13. ✅ **Real-time MQTT Control**: Live configuration updates and device management
 
 ### High Priority
 
@@ -711,4 +819,4 @@ const [showConfirmation, setShowConfirmation] = useState(false);
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** October 10th, 2025 - Collection Report Creation Times Fix, SAS Time Validation System, Smart Detection Logic
+**Last Major Update:** October 27th, 2025 - SMIB Management System Complete, OTA Firmware Updates, Location-Wide Operations, Real-time MQTT Control

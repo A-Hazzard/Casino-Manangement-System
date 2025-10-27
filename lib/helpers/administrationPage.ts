@@ -1,16 +1,16 @@
-import type { User, SortKey } from '@/lib/types/administration';
-import type { Licensee } from '@/lib/types/licensee';
-import type { AddUserForm, AddLicenseeForm } from '@/lib/types/pages';
-import axios from 'axios';
 import {
+  createUser,
   fetchUsers,
   filterAndSortUsers,
   updateUser,
-  createUser,
 } from '@/lib/helpers/administration';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
-import { validateEmail, validatePassword } from '@/lib/utils/validation';
+import type { SortKey, User } from '@/lib/types/administration';
+import type { Licensee } from '@/lib/types/licensee';
+import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import { getNext30Days } from '@/lib/utils/licensee';
+import { validateEmail, validatePassword } from '@/lib/utils/validation';
+import axios from 'axios';
 import { toast } from 'sonner';
 
 /**
@@ -37,50 +37,28 @@ export function handleSectionChange(
   searchParams: URLSearchParams,
   router: AppRouterInstance
 ) {
-  // Add smooth transition class to the content area
-  const contentElement = document.querySelector('[data-section-content]');
-  if (contentElement) {
-    contentElement.classList.add(
-      'opacity-0',
-      'transform',
-      'translate-y-2',
-      'transition-all',
-      'duration-300',
-      'ease-in-out'
-    );
+  console.log('🔄 [ADMIN HELPER] handleSectionChange called with:', section);
+
+  // Immediately update the active section
+  console.log('🔄 [ADMIN HELPER] Setting active section to:', section);
+  setActiveSection(section);
+  setCurrentPage(0); // Reset pagination when switching sections
+
+  // Update URL based on section
+  const params = new URLSearchParams(searchParams.toString());
+  if (section === 'users') {
+    params.delete('section'); // Default section, no param needed
+  } else if (section === 'licensees') {
+    params.set('section', 'licensees');
+  } else if (section === 'activity-logs') {
+    params.set('section', 'activity-logs');
   }
 
-  // Delay the section change to allow for smooth transition
-  setTimeout(() => {
-    setActiveSection(section);
-    setCurrentPage(0); // Reset pagination when switching sections
-
-    // Update URL based on section
-    const params = new URLSearchParams(searchParams.toString());
-    if (section === 'users') {
-      params.delete('section'); // Default section, no param needed
-    } else if (section === 'licensees') {
-      params.set('section', 'licensees');
-    } else if (section === 'activity-logs') {
-      params.set('section', 'activity-logs');
-    }
-
-    const newURL = params.toString()
-      ? `${pathname}?${params.toString()}`
-      : pathname;
-    router.push(newURL, { scroll: false });
-
-    // Remove transition class after content updates
-    setTimeout(() => {
-      if (contentElement) {
-        contentElement.classList.remove(
-          'opacity-0',
-          'transform',
-          'translate-y-2'
-        );
-      }
-    }, 50);
-  }, 150);
+  const newURL = params.toString()
+    ? `${pathname}?${params.toString()}`
+    : pathname;
+  console.log('🔄 [ADMIN HELPER] Navigating to:', newURL);
+  router.push(newURL, { scroll: false });
 }
 
 /**

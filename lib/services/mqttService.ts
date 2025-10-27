@@ -598,11 +598,11 @@ class MQTTService {
   /**
    * Send OTA firmware update command to SMIB
    * @param relayId - The SMIB relay ID
-   * @param firmwareVersion - Firmware version (bin) to download (e.g. "v1.0.1")
+   * @param firmwareBinUrl - Full URL to the binary file to download
    */
   async sendOTAUpdateCommand(
     relayId: string,
-    firmwareVersion: string
+    firmwareBinUrl: string
   ): Promise<void> {
     if (!this.client || !this.isConnected) {
       await this.connect();
@@ -611,11 +611,11 @@ class MQTTService {
     const topic = `sas/relay/${relayId}`;
     const payload = JSON.stringify({
       typ: 'ota_ud',
-      bin: firmwareVersion,
+      bin: 'wifi.bin',
     });
 
     console.log(`📡 [MQTT] Sending OTA update command to ${relayId}`);
-    console.log(`📡 [MQTT] Firmware Version: ${firmwareVersion}`);
+    console.log(`📡 [MQTT] Firmware Binary URL: ${firmwareBinUrl}`);
 
     return new Promise<void>((resolve, reject) => {
       if (!this.client) {
@@ -683,7 +683,9 @@ class MQTTService {
     const topic = `sas/relay/${relayId}`;
     const payload = JSON.stringify({
       typ: 'cmd',
-      cmd: 'met_get',
+      sta: '',
+      siz: 54,
+      pyd: '016F16000000000100040003002200240002000C0005000600E180',
     });
 
     console.log(`📡 [MQTT] Requesting meter data from ${relayId}`);

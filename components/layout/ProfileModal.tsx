@@ -1,23 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
-import { X, Pencil } from 'lucide-react';
-import axios from 'axios';
 import { Button } from '@/components/ui/button';
+import CircleCropModal from '@/components/ui/image/CircleCropModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import Image from 'next/image';
+import type { Country } from '@/lib/helpers/countries';
+import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
 import type { User } from '@/lib/types/administration';
-import { toast } from 'sonner';
 import {
   detectChanges,
   filterMeaningfulChanges,
   getChangesSummary,
 } from '@/lib/utils/changeDetection';
-import defaultAvatar from '@/public/defaultAvatar.svg';
 import cameraIcon from '@/public/cameraIcon.svg';
-import CircleCropModal from '@/components/ui/image/CircleCropModal';
-import { fetchCountries } from '@/lib/helpers/countries';
-import type { Country } from '@/lib/helpers/countries';
+import defaultAvatar from '@/public/defaultAvatar.svg';
+import * as Dialog from '@radix-ui/react-dialog';
+import axios from 'axios';
+import { Pencil, X } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 async function fetchUserData(userId: string): Promise<User | null> {
   try {
@@ -49,6 +49,7 @@ export default function ProfileModal({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   // Countries state
   const [countries, setCountries] = useState<Country[]>([]);
@@ -145,6 +146,7 @@ export default function ProfileModal({
             setUserData(data);
             setFormData(data.profile || {});
             setProfilePicture(data.profilePicture || null);
+            setSelectedRoles(data.roles || []);
           } else {
             toast.error('Could not load user profile.');
             onClose();
@@ -259,11 +261,20 @@ export default function ProfileModal({
       profile: typeof formData;
       password?: { current: string; new: string };
       profilePicture?: string | null;
+      roles?: string[];
     } = {
       _id: userData._id,
       profile: formData,
       profilePicture: profilePicture ?? null,
     };
+
+    // Only include roles if user is admin/evo admin
+    if (
+      authUser?.roles?.includes('admin') ||
+      authUser?.roles?.includes('evolution admin')
+    ) {
+      payload.roles = selectedRoles;
+    }
 
     if (
       passwordData.newPassword &&
@@ -651,6 +662,58 @@ export default function ProfileModal({
                         ) : (
                           <p className="p-2 capitalize">
                             {formData?.gender || '-'}
+                          </p>
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                          Roles
+                        </label>
+                        {isEditMode &&
+                        (authUser?.roles?.includes('admin') ||
+                          authUser?.roles?.includes('evolution admin')) ? (
+                          <div className="flex flex-wrap gap-2 rounded-md border border-border bg-white p-2">
+                            {[
+                              'evolution admin',
+                              'admin',
+                              'manager',
+                              'location admin',
+                              'technician',
+                              'collector',
+                              'collector meters',
+                            ].map(role => (
+                              <label
+                                key={role}
+                                className="flex items-center gap-2"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRoles.includes(role)}
+                                  onChange={e => {
+                                    if (e.target.checked) {
+                                      setSelectedRoles([
+                                        ...selectedRoles,
+                                        role,
+                                      ]);
+                                    } else {
+                                      setSelectedRoles(
+                                        selectedRoles.filter(r => r !== role)
+                                      );
+                                    }
+                                  }}
+                                  className="h-4 w-4"
+                                />
+                                <span className="text-sm capitalize">
+                                  {role}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="p-2 capitalize">
+                            {selectedRoles.length > 0
+                              ? selectedRoles.join(', ')
+                              : '-'}
                           </p>
                         )}
                       </div>

@@ -16,35 +16,52 @@ export async function GET(_request: NextRequest) {
     const machines = await Machine.find({
       $or: [
         { relayId: { $exists: true, $nin: [null, ''] } },
-        { smibBoard: { $exists: true, $nin: [null, ''] } }
-      ]
+        { smibBoard: { $exists: true, $nin: [null, ''] } },
+      ],
     })
       .select('_id relayId smibBoard serialNumber game gamingLocation')
       .lean();
 
     // Get location data for each machine
-    const locationIds = [...new Set(machines.map(m => m.gamingLocation).filter(Boolean))];
+    const locationIds = [
+      ...new Set(machines.map(m => m.gamingLocation).filter(Boolean)),
+    ];
     const locations = await GamingLocations.find({
-      _id: { $in: locationIds }
+      _id: { $in: locationIds },
     })
       .select('_id name')
       .lean();
 
     const locationMap = new Map(
-      locations.map(loc => [(loc._id as unknown as { toString: () => string }).toString(), loc.name as string])
+      locations.map(loc => [
+        (loc._id as unknown as { toString: () => string }).toString(),
+        loc.name as string,
+      ])
     );
 
-    // Build SMIB device list
-    const smibs = machines.map(machine => ({
-      relayId: machine.relayId || machine.smibBoard || '',
-      machineId: (machine._id as unknown as { toString: () => string }).toString(),
-      serialNumber: machine.serialNumber || undefined,
-      game: machine.game || undefined,
-      locationName: machine.gamingLocation 
-        ? locationMap.get((machine.gamingLocation as unknown as { toString: () => string }).toString()) || undefined
-        : undefined,
-      locationId: (machine.gamingLocation as unknown as { toString: () => string })?.toString() || undefined,
-    })).filter(smib => smib.relayId); // Only include machines with valid relayId
+    // Build SMIB device list - include SMIBs without locations
+    const smibs = machines
+      .map(machine => {
+        const locationIdStr = machine.gamingLocation
+          ? (
+              machine.gamingLocation as unknown as { toString: () => string }
+            ).toString()
+          : null;
+
+        return {
+          relayId: machine.relayId || machine.smibBoard || '',
+          machineId: (
+            machine._id as unknown as { toString: () => string }
+          ).toString(),
+          serialNumber: machine.serialNumber || undefined,
+          game: machine.game || undefined,
+          locationName: locationIdStr
+            ? locationMap.get(locationIdStr) || 'Unknown Location'
+            : 'No Location Assigned',
+          locationId: locationIdStr || 'unassigned',
+        };
+      })
+      .filter(smib => smib.relayId); // Only include machines with valid relayId
 
     console.log(`✅ [DISCOVER SMIBS] Found ${smibs.length} SMIB devices`);
 
@@ -66,4 +83,3 @@ export async function GET(_request: NextRequest) {
     );
   }
 }
-

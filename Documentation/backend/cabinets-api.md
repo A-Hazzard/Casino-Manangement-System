@@ -1,8 +1,8 @@
 # Cabinets API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 26th, 2025  
-**Version:** 2.1.0
+**Last Updated:** October 27th, 2025  
+**Version:** 2.2.0
 
 ## Quick Search Guide
 
@@ -15,6 +15,12 @@
 - **SMIB Configuration**: `POST /api/cabinets/[cabinetId]/smib-config` - Update SMIB config
 - **MQTT Config**: `GET /api/mqtt/config` - Get formatted MQTT configuration
 - **Bill Validator**: `GET /api/bill-validator/[machineId]` - Get bill validator data
+- **SMIB Restart**: `POST /api/smib/restart` - Restart single SMIB
+- **SMIB Meters**: `POST /api/smib/meters` - Request meter data
+- **SMIB OTA Update**: `POST /api/smib/ota-update` - Initiate firmware update
+- **Location SMIB Restart**: `POST /api/locations/[locationId]/smib-restart` - Restart all SMIBs
+- **Firmware Upload**: `POST /api/firmwares` - Upload firmware to GridFS
+- **Firmware Download**: `GET /api/firmwares/[filename]` - Serve firmware to SMIB
 
 ## Overview
 
@@ -342,9 +348,15 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
   "success": true,
   "data": {
     "smibConfig": {
-      "coms": { /* communication settings */ },
-      "net": { /* network settings */ },
-      "mqtt": { /* MQTT settings */ }
+      "coms": {
+        /* communication settings */
+      },
+      "net": {
+        /* network settings */
+      },
+      "mqtt": {
+        /* MQTT settings */
+      }
     },
     "smibVersion": {
       "firmware": "1.0.0"
@@ -470,7 +482,9 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
   "success": true,
   "message": "Config update published for mqtt to relayId: e831cdfa8384",
   "relayId": "e831cdfa8384",
-  "config": { /* sent config */ },
+  "config": {
+    /* sent config */
+  },
   "timestamp": "2025-10-26T10:30:00.000Z"
 }
 ```
@@ -551,7 +565,7 @@ data: {"type":"heartbeat","relayId":"e831cdfa8384","timestamp":"2025-10-26T10:30
   relayId: String,                // SMIB board ID (maps to smbId)
   smibBoard: String,              // Alternative SMIB identifier
   assetStatus: String,            // Machine status (maps to status)
-  
+
   // Financial Meters
   sasMeters: {
     drop: Number,                 // Money inserted
@@ -562,7 +576,7 @@ data: {"type":"heartbeat","relayId":"e831cdfa8384","timestamp":"2025-10-26T10:30
     gamesWon: Number,             // Games won
     totalCancelledCredits: Number // Credits paid out
   },
-  
+
   // SMIB Configuration
   smibConfig: {
     coms: {
@@ -593,13 +607,13 @@ data: {"type":"heartbeat","relayId":"e831cdfa8384","timestamp":"2025-10-26T10:30
       otaURL: String              // Firmware update server URL
     }
   },
-  
+
   // SMIB Version
   smibVersion: {
     firmware: String,             // Current firmware version
     hardware: String              // Hardware version
   },
-  
+
   // Collection Data
   collectionMeters: {
     metersIn: Number,
@@ -608,13 +622,13 @@ data: {"type":"heartbeat","relayId":"e831cdfa8384","timestamp":"2025-10-26T10:30
   collectionMetersHistory: Array,
   collectionTime: Date,
   previousCollectionTime: Date,
-  
+
   // Bill Validator
   billValidator: {
     balance: Number,
     notes: Array
   },
-  
+
   // Timestamps
   lastActivity: Date,
   deletedAt: Date,
@@ -668,7 +682,7 @@ data: {"type":"heartbeat","relayId":"e831cdfa8384","timestamp":"2025-10-26T10:30
 ```typescript
 {
   _id: String,                     // Unique bill record identifier
-  
+
   // V2 fields (current structure)
   value: Number,                   // V2: Bill denomination value
   machine: String,                 // V2: Machine ID reference
@@ -1017,6 +1031,290 @@ if (machineControl && relayId) {
 }
 ```
 
+## SMIB Operations API
+
+### POST `/api/smib/restart`
+
+**Purpose:** Restart a single SMIB device
+
+**Request Body:**
+
+```json
+{
+  "relayId": "78421c1bf944"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Restart command sent successfully",
+  "relayId": "78421c1bf944"
+}
+```
+
+**Features:**
+
+- Sends `{ "typ": "rst" }` MQTT command
+- Logs activity with user and device information
+- Returns immediately (restart happens async)
+
+### POST `/api/smib/meters`
+
+**Purpose:** Request meter data from SMIB
+
+**Request Body:**
+
+```json
+{
+  "relayId": "78421c1bf944"
+}
+```
+
+**MQTT Command:**
+
+```json
+{
+  "typ": "cmd",
+  "sta": "",
+  "siz": 54,
+  "pyd": "016F16000000000100040003002200240002000C0005000600E180"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Meter request sent successfully"
+}
+```
+
+### POST `/api/smib/reset-meters`
+
+**Purpose:** Reset meter data on non-SAS machines
+
+**Request Body:**
+
+```json
+{
+  "relayId": "78421c1bf944",
+  "comsMode": "0"
+}
+```
+
+**Validation:**
+
+- Only works if `comsMode !== "1"` (not SAS mode)
+- Returns error if SAS machine
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Reset meters command sent successfully"
+}
+```
+
+### POST `/api/smib/ota-update`
+
+**Purpose:** Initiate OTA firmware update
+
+**Request Body:**
+
+```json
+{
+  "relayId": "78421c1bf944",
+  "firmwareId": "507f1f77bcf86cd799439011"
+}
+```
+
+**Process:**
+
+1. Download firmware from GridFS to `/public/firmwares/`
+2. Configure OTA URL on SMIB: `http://192.168.0.211:3000/firmwares/`
+3. Send update command with firmware filename
+4. SMIB downloads firmware (appends `?&relayId=<SMIB-ID>`)
+5. SMIB installs and reboots
+6. File auto-deleted after 30 minutes
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "OTA update initiated successfully",
+  "firmwareFile": "wifi.bin",
+  "estimatedTime": "Several minutes"
+}
+```
+
+### POST `/api/locations/[locationId]/smib-restart`
+
+**Purpose:** Restart all SMIBs at a location
+
+**Request Body:**
+
+```json
+{
+  "relayIds": ["78421c1bf944", "98f4ab0b1e30", "e831cdfa8384"]
+}
+```
+
+**Features:**
+
+- Accepts array of relay IDs from MQTT discovery
+- Deduplicates relay IDs
+- Batch processes in groups of 10
+- Continues on individual failures
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Restart commands sent to 3 SMIBs",
+  "successCount": 3,
+  "failureCount": 0
+}
+```
+
+### POST `/api/locations/[locationId]/smib-meters`
+
+**Purpose:** Request meter data from all SMIBs at location
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Meter requests sent to 5 machines",
+  "successCount": 5,
+  "failureCount": 0
+}
+```
+
+### POST `/api/locations/[locationId]/smib-ota`
+
+**Purpose:** Push firmware update to all SMIBs at location
+
+**Request Body:**
+
+```json
+{
+  "relayIds": ["78421c1bf944", "98f4ab0b1e30"],
+  "firmwareId": "507f1f77bcf86cd799439011"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "OTA update initiated for 2 SMIBs",
+  "successCount": 2,
+  "failureCount": 0
+}
+```
+
+## Firmware Management API
+
+### POST `/api/firmwares`
+
+**Purpose:** Upload firmware binary to MongoDB GridFS
+
+**Request:** Multipart form data
+
+- `product` (string): Product name
+- `version` (string): Version number (e.g., "v1.0.1")
+- `versionDetails` (string): Version description
+- `file` (File): `.bin` firmware file
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "firmware": {
+    "_id": "507f1f77bcf86cd799439011",
+    "product": "SMIB WiFi",
+    "version": "v1.0.1",
+    "fileName": "wifi.bin",
+    "fileSize": 1048576,
+    "createdAt": "2025-10-27T10:00:00Z"
+  }
+}
+```
+
+### GET `/api/firmwares`
+
+**Purpose:** List all firmware versions
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "firmwares": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "product": "SMIB WiFi",
+      "version": "v1.0.1",
+      "fileName": "wifi.bin",
+      "fileSize": 1048576,
+      "createdAt": "2025-10-27T10:00:00Z"
+    }
+  ]
+}
+```
+
+### GET `/api/firmwares/[id]/serve`
+
+**Purpose:** Download firmware from GridFS and serve temporarily
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "fileName": "wifi.bin",
+  "staticUrl": "/firmwares/wifi.bin",
+  "size": 1048576
+}
+```
+
+**Features:**
+
+- Downloads firmware from GridFS
+- Saves to `/public/firmwares/` temporarily
+- Returns static URL for serving
+- Auto-cleanup after 30 minutes
+
+### GET `/api/firmwares/[filename]`
+
+**Purpose:** Serve firmware file to SMIB (called by SMIB device)
+
+**Query Parameters:**
+
+- `relayId` (string): SMIB relay ID (appended by SMIB)
+
+**Example Request:**
+
+```
+GET /api/firmwares/wifi.bin?&relayId=78421c1bf944
+```
+
+**Response:** Binary firmware file with headers:
+
+- `Content-Type: application/octet-stream`
+- `Content-Disposition: attachment; filename="wifi.bin"`
+- `Content-Length: 1048576`
+
 ## Related Documentation
 
 - [MQTT Architecture](./mqtt-architecture.md) - MQTT system architecture and design
@@ -1025,6 +1323,7 @@ if (machineControl && relayId) {
 - [Bill Validator System](./bill-validator-calculation-system.md) - Bill validator data processing
 - [Gaming Day Offset System](./gaming-day-offset-system.md) - Time period filtering
 - [Frontend MQTT Integration](../frontend/mqtt-integration.md) - Frontend SSE and MQTT usage
+- [SMIB Testing Guide](../../SMIB_TESTING_GUIDE.md) - Testing guide for SMIB features
 
 ## Conclusion
 

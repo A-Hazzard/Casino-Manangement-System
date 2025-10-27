@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 import { ActivityLog } from '../models/activityLog';
 import type {
-  ActivityLog as ActivityLogType,
   ActivityLogActor,
-  ActivityLogEntity,
   ActivityLogChange,
+  ActivityLogEntity,
   ActivityLogQueryParams,
+  ActivityLog as ActivityLogType,
 } from '../types/activityLog';
 
 /**
@@ -21,34 +21,55 @@ export async function logActivity(params: {
   username?: string;
 }): Promise<void> {
   try {
+    // Extract resource info from metadata if available (ensure lowercase)
+    const resource = (
+      (params.metadata?.resource as string) || 'session'
+    ).toLowerCase();
+    const resourceId = (params.metadata?.resourceId as string) || 'auth';
+    const resourceName =
+      (params.metadata?.resourceName as string) || 'Authentication';
+    const changes =
+      (params.metadata?.changes as Array<{
+        field: string;
+        oldValue: unknown;
+        newValue: unknown;
+      }>) || [];
+
+    // Validate that we have user information
+    if (!params.userId || !params.username) {
+      console.error('❌ Activity logging failed: Missing user information');
+      console.error('❌ userId:', params.userId, 'username:', params.username);
+      throw new Error('User information is required for activity logging');
+    }
+
     const activityLog = await ActivityLog.create({
       _id: new mongoose.Types.ObjectId().toString(),
       timestamp: new Date(),
-      // Required fields - use provided user info or fallback to system
-      userId: params.userId || 'system',
-      username: params.username || 'system',
+      // Required fields - use provided user info (no fallback to system)
+      userId: params.userId,
+      username: params.username,
       action: params.action.toLowerCase(),
-      resource: 'session',
-      resourceId: 'auth',
-      resourceName: 'Authentication',
+      resource: resource,
+      resourceId: resourceId,
+      resourceName: resourceName,
       // Optional fields
       details: params.details,
       ipAddress: params.ipAddress || 'unknown',
       userAgent: params.userAgent || 'unknown',
       // Legacy fields for backward compatibility
       actor: {
-        id: params.userId || 'system',
-        email: params.username || 'system@system.com',
+        id: params.userId,
+        email: params.username,
         role: 'user',
       },
       actionType: params.action.toUpperCase(),
-      entityType: 'Auth',
+      entityType: resource.charAt(0).toUpperCase() + resource.slice(1),
       entity: {
-        id: 'auth',
-        name: 'Authentication',
+        id: resourceId,
+        name: resourceName,
       },
       description: params.details,
-      changes: [],
+      changes: changes,
       metadata: {
         ...params.metadata,
         timestamp: new Date().toISOString(),
@@ -57,9 +78,11 @@ export async function logActivity(params: {
       updatedAt: new Date(),
     });
 
-    console.warn('Activity logged:', activityLog._id);
+    console.warn('✅ Activity logged successfully:', activityLog._id);
   } catch (error) {
-    console.error('Failed to log activity:', error);
+    console.error('❌ Failed to log activity:', error);
+    // Re-throw the error to ensure the calling code knows logging failed
+    throw error;
   }
 }
 

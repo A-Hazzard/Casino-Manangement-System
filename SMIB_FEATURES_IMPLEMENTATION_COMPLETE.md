@@ -1,12 +1,12 @@
 # SMIB Management Features Implementation - COMPLETE
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Date:** October 26th, 2025  
+**Last Updated:** October 27th, 2025  
 **Status:** ✅ FULLY IMPLEMENTED
 
 ## Overview
 
-Complete implementation of missing SMIB (Slot Machine Interface Board) management features as specified in `mqttFRD.md`. All backend APIs, MQTT commands, frontend hooks, and UI components have been implemented and integrated into the SMIB Management tab.
+Complete implementation of SMIB (Slot Machine Interface Board) management features as specified in `mqttFRD.md`. All backend APIs, MQTT commands, frontend hooks, and UI components have been implemented and integrated into both the SMIB Management tab and Cabinet Details page.
 
 ---
 
@@ -86,11 +86,13 @@ Complete implementation of missing SMIB (Slot Machine Interface Board) managemen
 **Location:** `components/cabinets/smibManagement/`
 
 ##### A. RestartSection Component
-**Purpose:** Restart SMIB devices with safety confirmation
+**Purpose:** Restart SMIB devices with safety confirmation and auto-refresh
 
 **Features:**
 - ✅ Restart button with confirmation dialog
 - ✅ Warning about temporary disconnection
+- ✅ 15-second animated countdown after restart
+- ✅ Auto-refresh with live config re-request on completion
 - ✅ Online/offline status awareness
 - ✅ Loading spinner during operation
 - ✅ Disabled when no SMIB selected
@@ -99,6 +101,7 @@ Complete implementation of missing SMIB (Slot Machine Interface Board) managemen
 **Props:**
 - `relayId` - Selected SMIB ID
 - `isOnline` - Connection status
+- `onRefreshData` - Callback to refresh SMIB data after restart
 
 ##### B. MeterDataSection Component
 **Purpose:** Request and display meter data, reset meters
@@ -162,7 +165,9 @@ Complete implementation of missing SMIB (Slot Machine Interface Board) managemen
 - Partial character match: (matching_chars / query_length) * 40
 ```
 
-#### 3. Integration
+#### 3. Integration - Two Locations
+
+**A. SMIB Management Tab**  
 **File:** `components/cabinets/SMIBManagementTab.tsx`
 
 **Layout Structure:**
@@ -170,13 +175,9 @@ Complete implementation of missing SMIB (Slot Machine Interface Board) managemen
 SMIB Management Tab
 ├── Header (Select SMIB dropdown + Refresh)
 ├── Online/Offline Status
-├── Configuration Sections (existing)
-│   ├── Network Config
-│   ├── MQTT Config
-│   └── COMS Config
-└── NEW: SMIB Operations & Management
-    ├── Search & Recovery (always visible)
-    └── Operations Grid (2 columns, visible when SMIB selected)
+├── Configuration Sections (Network, MQTT, COMS with updatedAt timestamps)
+└── SMIB Operations & Management
+    └── Operations Grid (2 columns lg breakpoint)
         ├── Left Column
         │   ├── Restart Section
         │   └── Meter Data Section
@@ -184,10 +185,74 @@ SMIB Management Tab
             └── OTA Update Section
 ```
 
+**B. Cabinet Details Page**  
+**File:** `app/cabinets/[slug]/page.tsx`
+
+**Layout Structure:**
+```
+Cabinet Details → SMIB Configuration (Dropdown)
+├── Header (Get SMIB Configuration button + Online/Offline status)
+├── Configuration Sections (Network, MQTT, COMS with Last configured timestamps)
+└── SMIB Operations & Management
+    └── Operations Grid (2 columns lg breakpoint)
+        ├── Left Column
+        │   ├── Restart Section (with auto-refresh)
+        │   └── Meter Data Section
+        └── Right Column
+            └── OTA Update Section
+```
+
+**Key Integration Details:**
+- Both locations use the same UI components
+- Cabinet Details uses `requestLiveConfig()` for refresh (keeps SSE alive)
+- SMIB Management uses `refreshSmibs()` + `requestLiveConfig()`
+- Configuration sections show `updatedAt` timestamps
+- Auto-refresh after restart re-requests live config without disconnecting SSE
+
 **Responsive Behavior:**
 - Mobile: Single column, stacked sections
 - Tablet: 2 columns for operations
 - Desktop: Full width with optimal spacing
+
+---
+
+## 📅 Configuration Timestamp Tracking
+
+**Status:** ✅ Implemented
+
+### Database Schema
+**File:** `app/api/lib/models/machines.ts`
+
+Each SMIB configuration section now includes an `updatedAt` timestamp:
+```typescript
+smibConfig: {
+  mqtt: { ...fields, updatedAt: Date },
+  net: { ...fields, updatedAt: Date },
+  coms: { ...fields, updatedAt: Date },
+  ota: { ...fields, updatedAt: Date }
+}
+```
+
+### Backend Auto-Timestamping
+**File:** `app/api/cabinets/[cabinetId]/smib-config/route.ts`
+
+- Automatically sets `updatedAt` when any section is modified
+- Per-section granularity (each section tracks its own last update)
+- Timestamp set to current UTC time on every save
+
+### Frontend Display
+**Files:** `components/cabinets/smibManagement/*.tsx`, `app/cabinets/[slug]/page.tsx`
+
+- **Format:** "Oct 27th 2025 3:45 PM" (using `formatDateWithOrdinal()`)
+- **Fallback:** Shows "Unknown" for legacy records without timestamp
+- **Location:** Displayed below section title in all config sections
+- **Styling:** Small gray text for subtle, non-intrusive display
+
+### Benefits
+- ✅ Audit trail for configuration changes
+- ✅ Helps identify stale configurations
+- ✅ Debugging aid for support teams
+- ✅ Compliance and change tracking
 
 ---
 

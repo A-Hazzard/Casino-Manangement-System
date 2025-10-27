@@ -1,7 +1,7 @@
 # MQTT System Architecture & Implementation Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 26th, 2025
+**Last Updated:** October 27th, 2025
 
 ## Overview
 
@@ -200,6 +200,7 @@ await mqttService.publishConfigUpdate(relayId, config);
 - Handle message publishing and subscription
 - Route messages to appropriate callbacks
 - Manage connection lifecycle
+- Execute SMIB operations (OTA, restart, meters)
 
 **Key Functions:**
 
@@ -208,14 +209,122 @@ await mqttService.publishConfigUpdate(relayId, config);
 async connect();
 async disconnect();
 
-// Message handling
+// Configuration management
 async subscribeToConfig(relayId, callback);
 async requestConfig(relayId, component);
 async publishConfigUpdate(relayId, config);
 
+// SMIB Operations
+async sendOTAUpdateCommand(relayId, firmwareBinUrl);
+async configureOTAUrl(relayId, otaURL);
+async requestMeterData(relayId);
+async resetMeterData(relayId);
+async restartSmib(relayId);
+async getFirmwareVersion(relayId);
+
 // Callback management
 private handleMessage(topic, message);
 private routeMessage(payload);
+```
+
+### 4. SMIB Operations
+
+#### OTA Firmware Updates
+
+**Purpose:** Over-the-air firmware updates for SMIB devices
+
+**Process:**
+
+1. Upload firmware binary to MongoDB GridFS
+2. Download firmware to `/public/firmwares/` temporarily
+3. Configure OTA URL on SMIB
+4. Send update command with firmware filename
+5. SMIB downloads and installs firmware
+6. Auto-cleanup after 30 minutes
+
+**MQTT Commands:**
+
+```json
+// Configure OTA URL
+{
+  "typ": "cfg",
+  "comp": "ota",
+  "otaURL": "http://192.168.0.211:3000/firmwares/"
+}
+
+// Initiate Update
+{
+  "typ": "ota_ud",
+  "bin": "wifi.bin"
+}
+```
+
+#### SMIB Restart
+
+**Purpose:** Restart SMIB devices remotely
+
+**MQTT Command:**
+
+```json
+{
+  "typ": "rst"
+}
+```
+
+**Features:**
+
+- Individual SMIB restart
+- Location-wide batch restart
+- 15-second countdown UI
+- Automatic data refresh after restart
+
+#### Meter Management
+
+**Purpose:** Request and reset meter data on SMIB devices
+
+**Get Meters Command:**
+
+```json
+{
+  "typ": "cmd",
+  "sta": "",
+  "siz": 54,
+  "pyd": "016F16000000000100040003002200240002000C0005000600E180"
+}
+```
+
+**Reset Meters Command (Non-SAS only):**
+
+```json
+{
+  "typ": "cmd",
+  "cmd": "met_reset"
+}
+```
+
+#### Firmware Version Query
+
+**Purpose:** Query current firmware version from SMIB
+
+**MQTT Command:**
+
+```json
+{
+  "typ": "cfg",
+  "comp": "app"
+}
+```
+
+**Response:**
+
+```json
+{
+  "rly": "98f4ab0b1e30",
+  "typ": "cfg",
+  "comp": "app",
+  "firmware": "cloudy",
+  "version": "v0.0.1"
+}
 ```
 
 ## Data Flow

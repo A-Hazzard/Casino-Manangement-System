@@ -1,72 +1,67 @@
 'use client';
 import DeleteUserModal from '@/components/administration/DeleteUserModal';
+import LicenseeCardSkeleton from '@/components/administration/LicenseeCardSkeleton';
+import LicenseeTableSkeleton from '@/components/administration/LicenseeTableSkeleton';
 import SearchFilterBar from '@/components/administration/SearchFilterBar';
 import UserCard from '@/components/administration/UserCard';
 import UserCardSkeleton from '@/components/administration/UserCardSkeleton';
 import UserTable from '@/components/administration/UserTable';
 import UserTableSkeleton from '@/components/administration/UserTableSkeleton';
-import LicenseeCardSkeleton from '@/components/administration/LicenseeCardSkeleton';
-import LicenseeTableSkeleton from '@/components/administration/LicenseeTableSkeleton';
-import PageLayout from '@/components/layout/PageLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import PageLayout from '@/components/layout/PageLayout';
 
+import AdministrationNavigation from '@/components/administration/AdministrationNavigation';
 import { Button } from '@/components/ui/button';
 import PaginationControls from '@/components/ui/PaginationControls';
-import AdministrationNavigation from '@/components/administration/AdministrationNavigation';
-import { ADMINISTRATION_TABS_CONFIG } from '@/lib/constants/administration';
 import type { AdministrationSection } from '@/lib/constants/administration';
+import { ADMINISTRATION_TABS_CONFIG } from '@/lib/constants/administration';
 // Activity logging removed - handled via API calls
+import ActivityLogsTable from '@/components/administration/ActivityLogsTable';
+import AddLicenseeModal from '@/components/administration/AddLicenseeModal';
+import AddUserDetailsModal from '@/components/administration/AddUserDetailsModal';
+import DeleteLicenseeModal from '@/components/administration/DeleteLicenseeModal';
+import EditLicenseeModal from '@/components/administration/EditLicenseeModal';
+import LicenseeCard from '@/components/administration/LicenseeCard';
+import LicenseeSearchBar from '@/components/administration/LicenseeSearchBar';
+import LicenseeSuccessModal from '@/components/administration/LicenseeSuccessModal';
+import LicenseeTable from '@/components/administration/LicenseeTable';
+import PaymentHistoryModal from '@/components/administration/PaymentHistoryModal';
+import PaymentStatusConfirmModal from '@/components/administration/PaymentStatusConfirmModal';
+import UserModal from '@/components/administration/UserModal';
+import { IMAGES } from '@/lib/constants/images';
 import { fetchUsers, updateUser } from '@/lib/helpers/administration';
+import { administrationUtils } from '@/lib/helpers/administrationPage';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
+import { useAdministrationNavigation } from '@/lib/hooks/navigation';
+import { useUserStore } from '@/lib/store/userStore';
 import type {
   ResourcePermissions,
   SortKey,
   User,
 } from '@/lib/types/administration';
-import Image from 'next/image';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { IMAGES } from '@/lib/constants/images';
-import { useUserStore } from '@/lib/store/userStore';
-import { useEffect, useMemo, useState, useCallback, Suspense } from 'react';
-import UserModal from '@/components/administration/UserModal';
-import AddUserDetailsModal from '@/components/administration/AddUserDetailsModal';
-import LicenseeTable from '@/components/administration/LicenseeTable';
-import {
-  handleSectionChange,
-  administrationUtils,
-} from '@/lib/helpers/administrationPage';
-import LicenseeCard from '@/components/administration/LicenseeCard';
-import AddLicenseeModal from '@/components/administration/AddLicenseeModal';
-import EditLicenseeModal from '@/components/administration/EditLicenseeModal';
-import DeleteLicenseeModal from '@/components/administration/DeleteLicenseeModal';
-import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import type { Licensee } from '@/lib/types/licensee';
-import LicenseeSearchBar from '@/components/administration/LicenseeSearchBar';
-import ActivityLogsTable from '@/components/administration/ActivityLogsTable';
-import PaymentHistoryModal from '@/components/administration/PaymentHistoryModal';
-import LicenseeSuccessModal from '@/components/administration/LicenseeSuccessModal';
-import PaymentStatusConfirmModal from '@/components/administration/PaymentStatusConfirmModal';
-import { getNext30Days } from '@/lib/utils/licensee';
-import { toast } from 'sonner';
 import {
   detectChanges,
   filterMeaningfulChanges,
   getChangesSummary,
 } from '@/lib/utils/changeDetection';
-import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
+import { getNext30Days } from '@/lib/utils/licensee';
+import Image from 'next/image';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+// import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
 
-import type { AddUserForm, AddLicenseeForm } from '@/lib/types/pages';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import axios from 'axios';
 
 // Import SVG icons for pre-rendering
 import plusButtonWhite from '@/public/plusButtonWhite.svg';
 
 function AdministrationPageContent() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
+  const { activeSection, handleSectionChange } = useAdministrationNavigation();
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = useCallback(() => {
@@ -107,42 +102,28 @@ function AdministrationPageContent() {
     setMounted(true);
   }, []);
 
-  // Create activity loggers
-  // Activity logging removed - handled via API calls
-
   // Initialize selectedLicencee if not set
   useEffect(() => {
     if (!selectedLicencee) {
       setSelectedLicencee('');
     }
   }, [selectedLicencee, setSelectedLicencee]);
+
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-
-  // Get active section from URL search params, default to "users"
-  const getActiveSectionFromURL = useCallback((): AdministrationSection => {
-    const section = searchParams.get('section');
-    if (section === 'licensees') return 'licensees';
-    if (section === 'activity-logs') return 'activity-logs';
-    return 'users';
-  }, [searchParams]);
-
-  const [activeSection, setActiveSection] = useState<AdministrationSection>(
-    getActiveSectionFromURL()
-  );
   const [searchValue, setSearchValue] = useState('');
   const [searchMode, setSearchMode] = useState<'username' | 'email'>(
     'username'
   );
 
-  // URL protection for administration tabs
-  useUrlProtection({
-    page: 'administration',
-    allowedTabs: ['users', 'licensees', 'activity-logs'],
-    defaultTab: 'users',
-    redirectPath: '/unauthorized',
-  });
+  // URL protection for administration tabs - temporarily disabled for debugging
+  // useUrlProtection({
+  //   page: 'administration',
+  //   allowedTabs: ['users', 'licensees', 'activity-logs'],
+  //   defaultTab: 'users',
+  //   redirectPath: '/unauthorized',
+  // });
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey;
@@ -190,14 +171,6 @@ function AdministrationPageContent() {
 
   const itemsPerPage = 5;
 
-  // Sync state with URL changes
-  useEffect(() => {
-    const newSection = getActiveSectionFromURL();
-    if (newSection !== activeSection) {
-      setActiveSection(newSection);
-    }
-  }, [searchParams, activeSection, getActiveSectionFromURL]);
-
   // Track which sections have been loaded
   const [loadedSections, setLoadedSections] = useState<
     Set<AdministrationSection>
@@ -205,26 +178,6 @@ function AdministrationPageContent() {
 
   // Track tab transition loading state
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
-
-  // Handle section changes with transition loading
-  const handleSectionChangeWithTransition = useCallback(
-    (section: AdministrationSection) => {
-      // Show transition loading if switching to a section that hasn't been loaded
-      if (!loadedSections.has(section) && section !== 'activity-logs') {
-        setIsTabTransitioning(true);
-      }
-
-      handleSectionChange(
-        section,
-        setActiveSection,
-        setCurrentPage,
-        pathname,
-        searchParams,
-        router
-      );
-    },
-    [loadedSections, pathname, searchParams, router]
-  );
 
   // Load users only when users tab is active and not already loaded
   useEffect(() => {
@@ -1187,7 +1140,7 @@ function AdministrationPageContent() {
         <AdministrationNavigation
           tabs={ADMINISTRATION_TABS_CONFIG}
           activeSection={activeSection}
-          onChange={handleSectionChangeWithTransition}
+          onChange={handleSectionChange}
           isLoading={isLoading || isLicenseesLoading || isTabTransitioning}
         />
       </div>

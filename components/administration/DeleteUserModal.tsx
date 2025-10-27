@@ -1,9 +1,9 @@
 import { Button } from '@/components/ui/button';
 import type { DeleteUserModalProps } from '@/lib/types/administration';
-import { X } from 'lucide-react';
+import gsap from 'gsap';
+import { Loader2, X } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
-import gsap from 'gsap';
 
 // Import SVG icons for pre-rendering
 import deleteIcon from '@/public/deleteIcon.svg';
@@ -30,6 +30,8 @@ export default function DeleteUserModal({
         { opacity: 0 },
         { opacity: 1, duration: 0.3, ease: 'power2.out' }
       );
+      // Reset loading state when modal opens
+      setLoading(false);
     }
   }, [open]);
 
@@ -85,15 +87,22 @@ export default function DeleteUserModal({
           <div className="border-t border-border p-4">
             <div className="flex justify-center space-x-4">
               <Button
-                onClick={() => {
+                onClick={async () => {
                   setLoading(true);
-                  onDelete();
-                  setLoading(false);
+                  await onDelete();
+                  // Loading will be reset when modal closes or via parent
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={loading}
               >
-                {loading ? 'Deleting...' : 'Delete'}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </Button>
               <Button
                 onClick={onClose}

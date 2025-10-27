@@ -14,7 +14,7 @@ type Firmware = {
 /**
  * Hook for managing SMIB OTA firmware updates
  */
-export function useSmibOTA() {
+export function useSmibOTA(onUpdateComplete?: () => void) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [firmwares, setFirmwares] = useState<Firmware[]>([]);
   const [isLoadingFirmwares, setIsLoadingFirmwares] = useState(false);
@@ -40,6 +40,7 @@ export function useSmibOTA() {
    */
   const updateSmib = async (
     relayId: string,
+    firmwareId: string,
     firmwareVersion: string
   ): Promise<boolean> => {
     setIsUpdating(true);
@@ -50,12 +51,22 @@ export function useSmibOTA() {
 
       const response = await axios.post('/api/smib/ota-update', {
         relayId,
-        firmwareVersion,
+        firmwareId,
       });
 
       if (response.data.success) {
-        toast.success(`OTA update initiated for version ${firmwareVersion}`);
+        toast.success(
+          `OTA update initiated for version ${firmwareVersion}. This process may take several minutes. Check back later.`,
+          { duration: 6000 }
+        );
         console.log(`✅ [OTA] Update initiated successfully`);
+
+        // Call refresh callback to update parent data
+        if (onUpdateComplete) {
+          console.log(`🔄 [OTA] Calling refresh callback`);
+          onUpdateComplete();
+        }
+
         return true;
       } else {
         toast.error(response.data.error || 'Failed to initiate OTA update');

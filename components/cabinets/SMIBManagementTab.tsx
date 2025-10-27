@@ -1,15 +1,32 @@
 'use client';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { SMIBManagementSkeleton } from '@/components/ui/skeletons/SMIBManagementSkeleton';
 import { SMIBSearchSelect } from '@/components/ui/smib/SMIBSearchSelect';
 import { useSMIBDiscovery } from '@/lib/hooks/data/useSMIBDiscovery';
 import { useSmibConfiguration } from '@/lib/hooks/data/useSmibConfiguration';
 import type { GamingMachine } from '@/shared/types/entities';
 import axios from 'axios';
-import { RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ComsConfigSection } from './smibManagement/ComsConfigSection';
 import { MeterDataSection } from './smibManagement/MeterDataSection';
@@ -24,6 +41,9 @@ export default function SMIBManagementTab() {
   const { availableSmibs, loading, error, refreshSmibs } = useSMIBDiscovery();
   const [selectedRelayId, setSelectedRelayId] = useState<string>('');
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
+  const [showRestartAllDialog, setShowRestartAllDialog] = useState(false);
+  const [isRestartingAll, setIsRestartingAll] = useState(false);
   const smibConfig = useSmibConfiguration();
 
   const [networkEditMode, setNetworkEditMode] = useState(false);
@@ -334,6 +354,116 @@ export default function SMIBManagementTab() {
     // Loading will automatically stop when config data arrives
   };
 
+  // Get unique locations from available SMIBs (including unassigned)
+  const uniqueLocations = useMemo(() => {
+    const locationMap = new Map<string, string>();
+    availableSmibs.forEach(smib => {
+      // Include all locations, even unassigned ones
+      if (smib.locationId) {
+        locationMap.set(
+          smib.locationId,
+          smib.locationName || 'No Location Assigned'
+        );
+      }
+    });
+    return Array.from(locationMap.entries()).map(([id, name]) => ({
+      id,
+      name,
+    }));
+  }, [availableSmibs]);
+
+  // Filter SMIBs by selected location
+  const filteredSmibs = useMemo(() => {
+    if (selectedLocationId === 'all') {
+      return availableSmibs;
+    }
+    return availableSmibs.filter(
+      smib => smib.locationId === selectedLocationId
+    );
+  }, [availableSmibs, selectedLocationId]);
+
+  // Get selected location name for restart all dialog
+  const selectedLocationName = useMemo(() => {
+    return (
+      uniqueLocations.find(loc => loc.id === selectedLocationId)?.name || ''
+    );
+  }, [uniqueLocations, selectedLocationId]);
+
+  // Handle restart all SMIBs for selected location
+  const handleRestartAllSmibs = async () => {
+    if (selectedLocationId === 'all' || !selectedLocationId) {
+      toast.error('Please select a specific location');
+      return;
+    }
+
+    console.log(
+      '🔄 [SMIB MANAGEMENT] Restarting all SMIBs at location:',
+      selectedLocationId
+    );
+    console.log('🔄 [SMIB MANAGEMENT] Location name:', selectedLocationName);
+    console.log(
+      '🔄 [SMIB MANAGEMENT] Filtered SMIBs count:',
+      filteredSmibs.length
+    );
+
+    // Extract unique relayIds from filtered SMIBs (from MQTT discovery)
+    const relayIds = Array.from(
+      new Set(filteredSmibs.map(smib => smib.relayId).filter(Boolean))
+    );
+
+    console.log('🔄 [SMIB MANAGEMENT] Unique relay IDs to restart:', relayIds);
+
+    if (relayIds.length === 0) {
+      toast.error('No SMIBs found at this location');
+      setShowRestartAllDialog(false);
+      return;
+    }
+
+    setIsRestartingAll(true);
+    try {
+      const url = `/api/locations/${selectedLocationId}/smib-restart`;
+      console.log('📡 [SMIB MANAGEMENT] Calling POST:', url);
+      console.log('📡 [SMIB MANAGEMENT] Payload:', { relayIds });
+
+      const response = await axios.post(url, { relayIds });
+
+      console.log('✅ [SMIB MANAGEMENT] Restart all response:', response.data);
+
+      if (response.data.successful > 0) {
+        toast.success(
+          `Restart command sent to ${response.data.successful} SMIB(s) at ${selectedLocationName}`
+        );
+      }
+
+      if (response.data.failed > 0) {
+        toast.warning(
+          `Failed to restart ${response.data.failed} SMIB(s). Check console for details.`
+        );
+        console.error('Failed SMIBs:', response.data.errors);
+      }
+    } catch (error) {
+      console.error('❌ [SMIB MANAGEMENT] Failed to restart all SMIBs:', error);
+
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+
+        if (error.response.status === 404) {
+          toast.error(
+            error.response.data.error || 'No SMIBs found at this location'
+          );
+        } else {
+          toast.error('Failed to send restart command to SMIBs');
+        }
+      } else {
+        toast.error('Failed to send restart command to SMIBs');
+      }
+    } finally {
+      setIsRestartingAll(false);
+      setShowRestartAllDialog(false);
+    }
+  };
+
   if (loading) {
     return <SMIBManagementSkeleton />;
   }
@@ -370,10 +500,46 @@ export default function SMIBManagementTab() {
           </Button>
         </div>
 
+        {/* Location Filter */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex-1">
+            <Select
+              value={selectedLocationId}
+              onValueChange={setSelectedLocationId}
+            >
+              <SelectTrigger className="w-full border-white/20 bg-white/10 text-white hover:bg-white/20">
+                <SelectValue placeholder="Filter by location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {uniqueLocations.map(location => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Restart All SMIBs Button - Only shown when specific location selected */}
+          {selectedLocationId !== 'all' && (
+            <Button
+              onClick={() => setShowRestartAllDialog(true)}
+              variant="destructive"
+              size="sm"
+              disabled={isRestartingAll || filteredSmibs.length === 0}
+              className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Restart All SMIBs ({filteredSmibs.length})
+            </Button>
+          )}
+        </div>
+
         <SMIBSearchSelect
           value={selectedRelayId}
           onValueChange={handleSmibSelection}
-          smibs={availableSmibs}
+          smibs={filteredSmibs}
           placeholder="Search for SMIB by relay ID, serial number, or location..."
           emptyMessage="No SMIBs found"
           className="w-full"
@@ -567,6 +733,10 @@ export default function SMIBManagementTab() {
                 <OTAUpdateSection
                   relayId={selectedRelayId}
                   isOnline={smibConfig.isConnectedToMqtt}
+                  firmwareUpdatedAt={
+                    machineData?.smibConfig?.ota?.firmwareUpdatedAt
+                  }
+                  onUpdateComplete={handleRefreshSmibData}
                 />
               </div>
             </div>
@@ -581,6 +751,55 @@ export default function SMIBManagementTab() {
           </p>
         </div>
       )}
+
+      {/* Restart All SMIBs Confirmation Dialog */}
+      <AlertDialog
+        open={showRestartAllDialog}
+        onOpenChange={setShowRestartAllDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Restart All SMIBs at {selectedLocationName}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will send a restart command to{' '}
+                <strong>{filteredSmibs.length} SMIB(s)</strong> at{' '}
+                <strong>{selectedLocationName}</strong>.
+              </p>
+              <p className="text-amber-600">
+                ⚠️ All affected machines will temporarily disconnect during the
+                restart process.
+              </p>
+              <p>Are you sure you want to continue?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRestartingAll}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRestartAllSmibs}
+              disabled={isRestartingAll}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isRestartingAll ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Restarting...
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Restart All
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

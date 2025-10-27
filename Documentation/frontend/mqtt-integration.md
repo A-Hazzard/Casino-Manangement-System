@@ -1,7 +1,7 @@
 # MQTT Integration - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 26th, 2025
+**Last Updated:** October 27th, 2025
 
 ## Quick Search Guide
 
@@ -23,9 +23,11 @@ The frontend MQTT integration provides real-time communication with SMIB devices
 ### Key Components
 
 - **SMIB Configuration Hook** (`lib/hooks/data/useSmibConfiguration.ts`)
+- **SMIB Management Tab** (`components/cabinets/SMIBManagementTab.tsx`)
 - **Cabinet Details Page** (`app/cabinets/[slug]/page.tsx`)
 - **SSE Connection Management** (EventSource API)
-- **Configuration Forms** (Network, MQTT, COMS, OTA, App)
+- **Configuration Forms** (Network, MQTT, COMS with updatedAt tracking)
+- **Operations Sections** (Restart, Meters, OTA Updates)
 
 ### Architecture Overview
 

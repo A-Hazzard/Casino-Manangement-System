@@ -133,6 +133,7 @@ export const machineSchema = new Schema(
       ota: {
         otaURL: String,
         updatedAt: Date,
+        firmwareUpdatedAt: Date,
       },
     },
     billMeters: {

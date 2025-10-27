@@ -1,29 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import Image from 'next/image';
-import { X, Trash2, Edit3, Save, XCircle } from 'lucide-react';
-import type { User, ResourcePermissions } from '@/lib/types/administration';
-import type { LocationSelectItem } from '@/lib/types/location';
-import { fetchAllGamingLocations } from '@/lib/helpers/locations';
-import { fetchCountries } from '@/lib/helpers/countries';
-import type { Country } from '@/lib/helpers/countries';
-import gsap from 'gsap';
-import defaultAvatar from '@/public/defaultAvatar.svg';
-import cameraIcon from '@/public/cameraIcon.svg';
 import CircleCropModal from '@/components/ui/image/CircleCropModal';
-import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Country } from '@/lib/helpers/countries';
+import { fetchCountries } from '@/lib/helpers/countries';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import type { ResourcePermissions, User } from '@/lib/types/administration';
+import type { LocationSelectItem } from '@/lib/types/location';
 import {
   detectChanges,
   filterMeaningfulChanges,
   getChangesSummary,
 } from '@/lib/utils/changeDetection';
 import {
-  validatePasswordStrength,
   getPasswordStrengthLabel,
+  validatePasswordStrength,
 } from '@/lib/utils/validation';
+import cameraIcon from '@/public/cameraIcon.svg';
+import defaultAvatar from '@/public/defaultAvatar.svg';
+import gsap from 'gsap';
+import { Edit3, Loader2, Save, Trash2, X, XCircle } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 const ROLE_OPTIONS = [
   { label: 'Evolution Admin', value: 'evolution admin' },
@@ -318,7 +318,7 @@ export default function UserModal({
     loc.name.toLowerCase().includes(locationSearch.toLowerCase())
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (password && password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -415,11 +415,15 @@ export default function UserModal({
       console.warn('Changes summary:', getChangesSummary(meaningfulChanges));
     }
 
-    onSave(updatedUser);
-
-    setIsEditMode(false);
-    setPassword('');
-    setConfirmPassword('');
+    setIsLoading(true);
+    try {
+      await onSave(updatedUser);
+      setIsEditMode(false);
+      setPassword('');
+      setConfirmPassword('');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -1261,9 +1265,19 @@ export default function UserModal({
                   type="button"
                   onClick={handleSave}
                   className="flex items-center gap-2 rounded-md bg-button px-8 py-3 text-lg font-semibold text-white hover:bg-buttonActive"
+                  disabled={isLoading}
                 >
-                  <Save className="h-4 w-4" />
-                  Save Changes
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      Save Changes
+                    </>
+                  )}
                 </Button>
               </>
             ) : (

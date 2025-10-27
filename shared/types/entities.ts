@@ -326,6 +326,7 @@ export type SmibConfig = {
   ota?: {
     otaURL?: string;
     updatedAt?: Date;
+    firmwareUpdatedAt?: Date;
   };
 };
 

@@ -20,15 +20,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useSmibOTA } from '@/lib/hooks/data/useSmibOTA';
+import { formatDateWithOrdinal } from '@/lib/utils/dateFormatting';
 import { AlertTriangle, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type OTAUpdateSectionProps = {
   relayId: string | null;
   isOnline: boolean;
+  firmwareUpdatedAt?: Date;
+  onUpdateComplete?: () => void;
 };
 
-export function OTAUpdateSection({ relayId, isOnline }: OTAUpdateSectionProps) {
+export function OTAUpdateSection({
+  relayId,
+  isOnline,
+  firmwareUpdatedAt,
+  onUpdateComplete,
+}: OTAUpdateSectionProps) {
   const [selectedFirmwareId, setSelectedFirmwareId] = useState<string>('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const {
@@ -37,7 +45,7 @@ export function OTAUpdateSection({ relayId, isOnline }: OTAUpdateSectionProps) {
     isLoadingFirmwares,
     fetchFirmwares,
     updateSmib,
-  } = useSmibOTA();
+  } = useSmibOTA(onUpdateComplete);
 
   useEffect(() => {
     fetchFirmwares();
@@ -50,12 +58,17 @@ export function OTAUpdateSection({ relayId, isOnline }: OTAUpdateSectionProps) {
     const firmware = firmwares.find(f => f._id === selectedFirmwareId);
     if (!firmware) return;
 
-    const success = await updateSmib(relayId, firmware.version);
+    const success = await updateSmib(relayId, firmware._id, firmware.version);
 
     if (success) {
       setShowConfirmDialog(false);
       setSelectedFirmwareId('');
     }
+  };
+
+  const formatLastUpdate = () => {
+    if (!firmwareUpdatedAt) return 'Never updated';
+    return formatDateWithOrdinal(new Date(firmwareUpdatedAt));
   };
 
   const selectedFirmware = firmwares.find(f => f._id === selectedFirmwareId);
@@ -64,10 +77,15 @@ export function OTAUpdateSection({ relayId, isOnline }: OTAUpdateSectionProps) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-700">
-            <Download className="h-5 w-5" />
-            OTA Firmware Update
-          </CardTitle>
+          <div className="flex flex-col gap-1">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-700">
+              <Download className="h-5 w-5" />
+              OTA Firmware Update
+            </CardTitle>
+            <div className="text-xs text-gray-500">
+              Last firmware update: {formatLastUpdate()}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
