@@ -894,13 +894,7 @@ function CabinetDetailPageContent() {
                   <div className="sm:text-right">
                     <p className="text-xs text-grayHighlight sm:text-sm">
                       <span className="font-medium">Communication Mode:</span>{' '}
-                      {cabinet?.smibConfig?.coms?.comsMode !== undefined
-                        ? cabinet?.smibConfig?.coms?.comsMode === 0
-                          ? 'sas'
-                          : cabinet?.smibConfig?.coms?.comsMode === 1
-                            ? 'non sas'
-                            : 'IGT'
-                        : 'undefined'}
+                      {cabinet?.smibConfig?.coms?.comsMode ?? 'undefined'}
                     </p>
                     <p className="mt-1 text-xs text-grayHighlight sm:mt-0 sm:text-sm">
                       <span className="font-medium">Running firmware:</span>{' '}
@@ -1753,13 +1747,7 @@ function CabinetDetailPageContent() {
                 <div className="md:text-right">
                   <p className="text-sm text-grayHighlight">
                     Communication Mode:{' '}
-                    {cabinet?.smibConfig?.coms?.comsMode !== undefined
-                      ? cabinet?.smibConfig?.coms?.comsMode === 0
-                        ? 'sas'
-                        : cabinet?.smibConfig?.coms?.comsMode === 1
-                          ? 'non sas'
-                          : 'IGT'
-                      : 'undefined'}
+                    {cabinet?.smibConfig?.coms?.comsMode ?? 'undefined'}
                   </p>
                   <p className="mt-1 text-sm text-grayHighlight md:mt-0">
                     Running firmware{' '}

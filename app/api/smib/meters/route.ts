@@ -35,6 +35,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Enforce user presence for logging and operation
+    const currentUser = await getUserFromServer();
+    if (!currentUser || !currentUser._id || !currentUser.emailAddress) {
+      console.error('❌ Activity logging failed: Missing user information');
+      return NextResponse.json(
+        { success: false, error: 'Authentication required to request meters' },
+        { status: 401 }
+      );
+    }
+
     // Send get meters command via MQTT
     try {
       await mqttService.requestMeterData(relayId);
@@ -49,31 +59,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
-    const currentUser = await getUserFromServer();
+    // Log activity (optional - don't fail the request if logging fails)
     const clientIP = getClientIP(request);
-
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        await logActivity({
-          action: 'VIEW',
-          details: `Meter data requested from SMIB ${relayId} for machine ${machine.serialNumber || machine._id}`,
-          ipAddress: clientIP || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: machine._id.toString(),
-            resourceName: machine.serialNumber || machine.game || machine._id,
-            relayId,
-            requestedAt: new Date().toISOString(),
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
+    try {
+      await logActivity({
+        action: 'VIEW',
+        details: `Meter data requested from SMIB ${relayId} for machine ${machine.serialNumber || machine._id}`,
+        ipAddress: clientIP || undefined,
+        userAgent: request.headers.get('user-agent') || undefined,
+        metadata: {
+          userId: currentUser._id as string,
+          userEmail: currentUser.emailAddress as string,
+          userRole: (currentUser.roles as string[])?.[0] || 'user',
+          resource: 'machine',
+          resourceId: machine._id.toString(),
+          resourceName: machine.serialNumber || machine.game || machine._id,
+          relayId,
+          requestedAt: new Date().toISOString(),
+        },
+      });
+    } catch (logError) {
+      console.error('Failed to log activity:', logError);
+      // Don't fail the request if logging fails - just continue
     }
 
     return NextResponse.json({

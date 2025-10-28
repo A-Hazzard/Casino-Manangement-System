@@ -49,7 +49,7 @@ class MQTTService {
       this.client.on('connect', () => {
         console.log('✅ MQTT connected successfully');
         this.isConnected = true;
-        // Subscribe to config topic if not already subscribed
+        // Subscribe to config/server topics if not already subscribed
         this.ensureConfigSubscription();
       });
 
@@ -73,7 +73,7 @@ class MQTTService {
         }
 
         // Listen for messages on server topics where SMIB devices publish responses
-        if (topic === 'smib/config' || topic === 'sas/server') {
+        if (topic === 'smib/config' || topic.startsWith('sas/gli/server')) {
           try {
             const payload = JSON.parse(message.toString());
             const relayId = payload.rly;
@@ -303,11 +303,12 @@ class MQTTService {
   private async ensureConfigSubscription(): Promise<void> {
     if (!this.isSubscribedToConfig && this.client && this.isConnected) {
       try {
-        // Subscribe to config topic
+        // Subscribe to config topic and server data topic pattern
         await this.subscribe('smib/config');
+        await this.subscribe('sas/gli/server/#');
 
         this.isSubscribedToConfig = true;
-        console.log(`✅ MQTT subscribed to config topics`);
+        console.log(`✅ MQTT subscribed to config and server topics`);
       } catch (error) {
         console.error('❌ Failed to subscribe to server topics:', error);
       }

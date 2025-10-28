@@ -1,8 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,8 +10,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BarChart3, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSmibMeters } from '@/lib/hooks/data/useSmibMeters';
+import { parseSasPyd } from '@/lib/utils/sas/parsePyd';
+import { AlertTriangle, BarChart3, RefreshCw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 type MeterDataSectionProps = {
   relayId: string | null;
@@ -31,6 +32,22 @@ export function MeterDataSection({
   const { isRequestingMeters, isResettingMeters, requestMeters, resetMeters } =
     useSmibMeters();
 
+  const [liveMeters, setLiveMeters] = useState<{
+    totalCoinCredits?: number;
+    totalCoinOut?: number;
+    totalCancelledCredits?: number;
+    totalHandPaidCancelCredits?: number;
+    totalWonCredits?: number;
+    totalDrop?: number;
+    totalAttendantPaidProgressiveWin?: number;
+    currentCredits?: number;
+    total20KBillsAccepted?: number;
+    total200BillsToDrop?: number;
+    lastAt?: string;
+    error?: string;
+  } | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
+
   const handleRequestMeters = async () => {
     if (!relayId) return;
     await requestMeters(relayId);
@@ -46,6 +63,71 @@ export function MeterDataSection({
 
   const canResetMeters = comsMode !== undefined && comsMode !== 0; // Non-SAS only
 
+  // Connect to SSE to capture 'rsp' with pyd and parse meters
+  useEffect(() => {
+    if (!relayId) return;
+
+    if (sseRef.current) {
+      sseRef.current.close();
+      sseRef.current = null;
+    }
+
+    const es = new EventSource(`/api/mqtt/config/subscribe?relayId=${relayId}`);
+    sseRef.current = es;
+
+    es.onmessage = ev => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg?.type === 'config_update' && msg?.data) {
+          const data = msg.data as Record<string, unknown>;
+          const typ = data.typ as string | undefined;
+          const pyd = data.pyd as string | undefined;
+          if (typ === 'rsp' && pyd && typeof pyd === 'string') {
+            const parsed = parseSasPyd(pyd);
+
+            // Handle error case (e.g., pyd: "-1")
+            if (parsed.error) {
+              setLiveMeters({
+                error: parsed.error,
+                lastAt: new Date().toISOString(),
+              });
+              return;
+            }
+
+            // Parse successful, extract all values
+            setLiveMeters({
+              totalCoinCredits: parsed.totalCoinCredits,
+              totalCoinOut: parsed.totalCoinOut,
+              totalCancelledCredits: parsed.totalCancelledCredits,
+              totalHandPaidCancelCredits: parsed.totalHandPaidCancelCredits,
+              totalWonCredits: parsed.totalWonCredits,
+              totalDrop: parsed.totalDrop,
+              totalAttendantPaidProgressiveWin:
+                parsed.totalAttendantPaidProgressiveWin,
+              currentCredits: parsed.currentCredits,
+              total20KBillsAccepted: parsed.total20KBillsAccepted,
+              total200BillsToDrop: parsed.total200BillsToDrop,
+              lastAt: new Date().toISOString(),
+            });
+          }
+        }
+      } catch {
+        // ignore malformed
+      }
+    };
+
+    es.onerror = () => {
+      // Best-effort; ignore
+    };
+
+    return () => {
+      if (sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
+      }
+    };
+  }, [relayId]);
+
   return (
     <>
       <Card>
@@ -60,6 +142,74 @@ export function MeterDataSection({
             Request current meter data from the SMIB to verify machine
             communication and retrieve accounting information.
           </p>
+
+          {liveMeters && (
+            <div className="rounded-md border border-gray-200 p-3">
+              {liveMeters.error ? (
+                <div className="mb-2 text-sm font-semibold text-amber-600">
+                  {liveMeters.error}
+                </div>
+              ) : (
+                <>
+                  <div className="mb-3 text-sm font-semibold">
+                    Live SAS Meters
+                  </div>
+                  <div className="divide-y divide-gray-200">
+                    {[
+                      {
+                        label: 'Total Coin Credits',
+                        value: liveMeters.totalCoinCredits,
+                      },
+                      {
+                        label: 'Total Coin Out',
+                        value: liveMeters.totalCoinOut,
+                      },
+                      {
+                        label: 'Total Cancelled Credits',
+                        value: liveMeters.totalCancelledCredits,
+                      },
+                      {
+                        label: 'Total Hand Paid Cancel Credits',
+                        value: liveMeters.totalHandPaidCancelCredits,
+                      },
+                      {
+                        label: 'Total Won Credits',
+                        value: liveMeters.totalWonCredits,
+                      },
+                      { label: 'Total Drop', value: liveMeters.totalDrop },
+                      {
+                        label: 'Total Attendant Paid Progressive Win',
+                        value: liveMeters.totalAttendantPaidProgressiveWin,
+                      },
+                      {
+                        label: 'Current Credits',
+                        value: liveMeters.currentCredits,
+                      },
+                      {
+                        label: 'Total $20K Bills Accepted',
+                        value: liveMeters.total20KBillsAccepted,
+                      },
+                      {
+                        label: 'Total $200 Bills to Drop',
+                        value: liveMeters.total200BillsToDrop,
+                      },
+                    ].map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between py-2 text-sm"
+                      >
+                        <span className="text-gray-600">{item.label}</span>
+                        <span className="font-medium">{item.value ?? '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Last updated: {liveMeters.lastAt}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -151,8 +301,8 @@ export function MeterDataSection({
               </p>
               <p className="text-sm">
                 Resetting meters will clear all meter memory on this non-SAS
-                machine. This operation should only be performed when
-                absolutely necessary.
+                machine. This operation should only be performed when absolutely
+                necessary.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -173,4 +323,3 @@ export function MeterDataSection({
     </>
   );
 }
-

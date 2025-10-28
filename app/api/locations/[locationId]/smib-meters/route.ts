@@ -70,11 +70,10 @@ export async function POST(
       );
     }
 
-    // Log activity
+    // Log activity (optional - don't fail the request if logging fails)
     const currentUser = await getUserFromServer();
-    const clientIP = getClientIP(request);
-
-    if (currentUser && currentUser.emailAddress) {
+    if (currentUser && currentUser._id && currentUser.emailAddress) {
+      const clientIP = getClientIP(request);
       try {
         await logActivity({
           action: 'VIEW',
@@ -97,6 +96,7 @@ export async function POST(
         });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
+        // Don't fail the request if logging fails - just continue
       }
     }
 
