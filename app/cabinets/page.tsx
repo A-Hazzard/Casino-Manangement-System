@@ -27,13 +27,13 @@ import { CabinetSearchFilters } from "@/components/cabinets/CabinetSearchFilters
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import { CabinetTableSkeleton } from "@/components/ui/cabinets/CabinetSkeletonLoader";
 import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
-import RefreshButton from "@/components/ui/RefreshButton";
+import { RefreshCw } from "lucide-react";
 
 // Custom hooks
 import {
-    useCabinetData,
-    useCabinetFilters,
-    useCabinetModals,
+  useCabinetData,
+  useCabinetFilters,
+  useCabinetModals,
     useCabinetSorting,
 } from "@/lib/hooks/data";
 import { useCabinetNavigation } from "@/lib/hooks/navigation";
@@ -184,39 +184,57 @@ function CabinetsPageContent() {
         <div className="mt-4 w-full max-w-full">
           {/* Title row */}
           <div className="flex items-center gap-3 mb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2">
               Cabinets
+              <Image
+                src={IMAGES.cabinetsIcon}
+                alt="Cabinet Icon"
+                width={32}
+                height={32}
+                className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
+              />
             </h1>
-            <Image
-              src={IMAGES.cabinetsIcon}
-              alt="Cabinet Icon"
-              width={32}
-              height={32}
-              className="w-6 h-6 sm:w-8 sm:h-8"
-            />
+            {/* Refresh icon - always icon only */}
+            <button
+              onClick={handleRefresh}
+              disabled={loading || refreshing}
+              className="ml-auto p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Refresh"
+            >
+              <RefreshCw
+                className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </button>
           </div>
           
           {/* Actions row - stacked on mobile, side-by-side on desktop */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <RefreshButton
-                onClick={handleRefresh}
-                isSyncing={refreshing}
-                disabled={loading}
-                label="Refresh"
-                className=""
+            {/* Desktop: Create button on far right */}
+            <div className="hidden md:block ml-auto">
+              <CabinetActions
+                activeSection={activeSection}
+                selectedLocation={selectedLocation}
+                locations={locations}
+                onMovementRequestClick={() => {}}
+                onCabinetCreated={loadCabinets}
+                onCabinetUpdated={loadCabinets}
+                onCabinetDeleted={loadCabinets}
+                loading={loading}
               />
             </div>
-            <CabinetActions
-              activeSection={activeSection}
-              selectedLocation={selectedLocation}
-              locations={locations}
-              onMovementRequestClick={() => {}}
-              onCabinetCreated={loadCabinets}
-              onCabinetUpdated={loadCabinets}
-              onCabinetDeleted={loadCabinets}
-              loading={loading}
-            />
+            {/* Mobile: Cabinet actions */}
+            <div className="md:hidden">
+              <CabinetActions
+                activeSection={activeSection}
+                selectedLocation={selectedLocation}
+                locations={locations}
+                onMovementRequestClick={() => {}}
+                onCabinetCreated={loadCabinets}
+                onCabinetUpdated={loadCabinets}
+                onCabinetDeleted={loadCabinets}
+                loading={loading}
+              />
+            </div>
           </div>
         </div>
 
@@ -241,36 +259,36 @@ function CabinetsPageContent() {
 
         {/* Date Filters - Only show on cabinets section */}
         {activeSection === "cabinets" && (
-          <div className="flex items-center justify-between mt-2 mb-2 gap-4">
-            <div className="flex-1 min-w-0">
-              <DashboardDateFilters
-                disabled={loading}
-                hideAllTime={true}
-                onCustomRangeGo={loadCabinets}
-                enableTimeInputs={true}
-              />
-            </div>
+        <div className="flex items-center justify-between mt-2 mb-2 gap-4">
+          <div className="flex-1 min-w-0">
+            <DashboardDateFilters
+              disabled={loading}
+              hideAllTime={true}
+              onCustomRangeGo={loadCabinets}
+              enableTimeInputs={true}
+            />
           </div>
+        </div>
         )}
 
         {/* Search and Filters - Only show on cabinets section */}
         {activeSection === "cabinets" && (
-          <CabinetSearchFilters
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            selectedLocation={selectedLocation}
-            locations={locations}
-            onLocationChange={handleLocationChange}
-            selectedGameType={selectedGameType}
-            gameTypes={gameTypes}
-            onGameTypeChange={handleGameTypeChange}
-            selectedStatus={selectedStatus}
-            onStatusChange={setSelectedStatus}
-            sortOption={sortOption}
-            sortOrder={sortOrder}
-            onSortChange={handleSortChange}
-            activeSection={activeSection}
-          />
+        <CabinetSearchFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedLocation={selectedLocation}
+          locations={locations}
+          onLocationChange={handleLocationChange}
+          selectedGameType={selectedGameType}
+          gameTypes={gameTypes}
+          onGameTypeChange={handleGameTypeChange}
+          selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
+          sortOption={sortOption}
+          sortOrder={sortOrder}
+          onSortChange={handleSortChange}
+          activeSection={activeSection}
+        />
         )}
 
         {/* Section Content */}

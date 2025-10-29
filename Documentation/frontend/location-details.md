@@ -19,9 +19,17 @@
 The Location Details page provides comprehensive information about gaming locations, including cabinet management, metrics, and detailed analytics. The main locations page offers location listing with advanced filtering capabilities.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated**: October 6th, 2025  
-**Version:** 2.0.0
+**Last Updated**: October 29th, 2025  
+**Version:** 2.1.0
 **Status**: ✅ Fully Functional - All Issues Resolved
+
+## Recent Updates (October 29th, 2025)
+
+### Filter Improvements
+- **Mobile Filter Layout**: Filters are now horizontally scrollable on mobile devices for better UX
+- **Online/Offline Status Filter**: Fixed status filter to properly filter cabinets by online/offline status
+- **Consistent Filter Design**: Location details page now uses the same filter layout as cabinets page for consistency
+- **Select Component Overflow**: Fixed select dropdown components to prevent Y-axis overflow with proper max-height constraints
 
 ## Overview
 

@@ -20,8 +20,17 @@
 The Cabinets page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, SMIB configuration with live MQTT updates, and operational controls. This page serves as the central hub for managing all gaming cabinets across casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 26th, 2025  
-**Version:** 2.1.0
+**Last Updated:** October 29th, 2025  
+**Version:** 2.1.1
+
+## Recent Updates (October 29th, 2025)
+
+### Filter Improvements
+- **Mobile Filter Layout**: All filters are now horizontally scrollable on mobile devices, improving UX on small screens
+- **Online/Offline Status Filter**: Fixed status filter logic to correctly filter cabinets by online/offline status (previously showed "No data available")
+- **Desktop Filter Layout**: Maintained clean desktop layout without horizontal scrolling
+- **Select Component Overflow**: Fixed CustomSelect component to prevent Y-axis overflow with max-height: 240px (max-h-60) constraint
+- **Filter Consistency**: Both cabinets page and location details page now use identical filter layouts and logic
 
 ### File Information
 

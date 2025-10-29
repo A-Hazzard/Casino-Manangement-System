@@ -3,11 +3,11 @@
  * Handles loading, filtering, and error states for cabinet operations
  */
 
-import { fetchCabinetLocations, fetchCabinets } from "@/lib/helpers/cabinets";
-import { filterCabinets as filterCabinetsHelper } from "@/lib/helpers/cabinetsPage";
-import { calculateCabinetFinancialTotals } from "@/lib/utils/financial";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchCabinetLocations, fetchCabinets } from '@/lib/helpers/cabinets';
+import { filterCabinets as filterCabinetsHelper } from '@/lib/helpers/cabinetsPage';
+import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 type CustomDateRange = {
   startDate: Date;
   endDate: Date;
@@ -79,25 +79,25 @@ export const useCabinetData = ({
   // Load locations for filter dropdown
   const loadLocations = useCallback(async () => {
     try {
-      console.warn("Loading cabinet locations for licensee:", selectedLicencee);
+      console.warn('Loading cabinet locations for licensee:', selectedLicencee);
       const locationsData = await fetchCabinetLocations(selectedLicencee);
 
       if (Array.isArray(locationsData)) {
         setLocations(locationsData);
-        console.warn("Successfully loaded locations:", locationsData.length);
+        console.warn('Successfully loaded locations:', locationsData.length);
       } else {
-        console.error("Locations data is not an array:", locationsData);
+        console.error('Locations data is not an array:', locationsData);
         setLocations([]);
       }
     } catch (error) {
-      console.error("Failed to fetch locations:", error);
+      console.error('Failed to fetch locations:', error);
       setLocations([]);
     }
   }, [selectedLicencee]);
 
   // PERFORMANCE OPTIMIZATION: Memoize filtered cabinets calculation
   const filteredCabinets = useMemo(() => {
-    console.warn("Filtering cabinets:", {
+    console.warn('Filtering cabinets:', {
       totalCabinets: allCabinets.length,
       searchTerm,
       selectedLocation,
@@ -105,31 +105,45 @@ export const useCabinetData = ({
       selectedStatus,
     });
 
-    let filtered = filterCabinetsHelper(allCabinets, searchTerm, selectedLocation);
+    let filtered = filterCabinetsHelper(
+      allCabinets,
+      searchTerm,
+      selectedLocation
+    );
 
     // Apply game type filter
-    if (selectedGameType && selectedGameType !== "all") {
-      filtered = filtered.filter((cabinet) => {
+    if (selectedGameType && selectedGameType !== 'all') {
+      filtered = filtered.filter(cabinet => {
         const cabinetGame = cabinet.game || cabinet.installedGame;
         return cabinetGame === selectedGameType;
       });
     }
 
     // Apply status filter
-    if (selectedStatus && selectedStatus !== "All") {
-      filtered = filtered.filter((cabinet) => {
-        if (selectedStatus === "Online") {
+    if (
+      selectedStatus &&
+      selectedStatus !== 'All' &&
+      selectedStatus !== 'all'
+    ) {
+      filtered = filtered.filter(cabinet => {
+        if (selectedStatus === 'Online') {
           return cabinet.online === true;
-        } else if (selectedStatus === "Offline") {
+        } else if (selectedStatus === 'Offline') {
           return cabinet.online === false;
         }
         return true;
       });
     }
 
-    console.warn("Filtered cabinets result:", filtered.length);
+    console.warn('Filtered cabinets result:', filtered.length);
     return filtered;
-  }, [allCabinets, searchTerm, selectedLocation, selectedGameType, selectedStatus]);
+  }, [
+    allCabinets,
+    searchTerm,
+    selectedLocation,
+    selectedGameType,
+    selectedStatus,
+  ]);
 
   // Legacy filterCabinets function for backward compatibility (now just updates state)
   const filterCabinets = useCallback(
@@ -149,7 +163,7 @@ export const useCabinetData = ({
   // Load cabinets with proper error handling and logging
   const loadCabinets = useCallback(async () => {
     try {
-      console.warn("Loading cabinets with filters:", {
+      console.warn('Loading cabinets with filters:', {
         selectedLicencee,
         activeMetricsFilter,
         customDateRange: customDateRange
@@ -164,7 +178,7 @@ export const useCabinetData = ({
       setError(null);
 
       const dateRangeForFetch =
-        activeMetricsFilter === "Custom" &&
+        activeMetricsFilter === 'Custom' &&
         customDateRange?.startDate &&
         customDateRange?.endDate
           ? {
@@ -180,26 +194,32 @@ export const useCabinetData = ({
         displayCurrency
       );
 
-      console.warn("✅ [USE CABINET DATA] Fetch completed, received:", {
+      console.warn('✅ [USE CABINET DATA] Fetch completed, received:', {
         isArray: Array.isArray(cabinetsData),
         length: Array.isArray(cabinetsData) ? cabinetsData.length : 0,
         type: typeof cabinetsData,
       });
 
       if (!Array.isArray(cabinetsData)) {
-        console.error("❌ [USE CABINET DATA] Cabinets data is not an array:", cabinetsData);
+        console.error(
+          '❌ [USE CABINET DATA] Cabinets data is not an array:',
+          cabinetsData
+        );
         setAllCabinets([]);
-        setError("Invalid data format received from server");
+        setError('Invalid data format received from server');
       } else {
-        console.warn("✅ [USE CABINET DATA] Successfully loaded cabinets:", cabinetsData.length);
+        console.warn(
+          '✅ [USE CABINET DATA] Successfully loaded cabinets:',
+          cabinetsData.length
+        );
         setAllCabinets(cabinetsData);
 
         // PERFORMANCE OPTIMIZATION: Extract unique game types efficiently
         const uniqueGameTypes = Array.from(
           new Set(
             cabinetsData
-              .map((cabinet) => cabinet.game || cabinet.installedGame)
-              .filter((game) => game && game.trim() !== "")
+              .map(cabinet => cabinet.game || cabinet.installedGame)
+              .filter(game => game && game.trim() !== '')
           )
         ).sort();
         setGameTypes(uniqueGameTypes);
@@ -207,21 +227,16 @@ export const useCabinetData = ({
         // Filtering is now handled by the memoized filteredCabinets above
       }
     } catch (error) {
-      console.error("Error fetching cabinet data:", error);
+      console.error('Error fetching cabinet data:', error);
       setAllCabinets([]);
       setError(
-        error instanceof Error ? error.message : "Failed to load cabinets"
+        error instanceof Error ? error.message : 'Failed to load cabinets'
       );
     } finally {
       setLoading(false);
       setInitialLoading(false);
     }
-  }, [
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    displayCurrency,
-  ]);
+  }, [selectedLicencee, activeMetricsFilter, customDateRange, displayCurrency]);
 
   // Effect hooks for data loading
   useEffect(() => {

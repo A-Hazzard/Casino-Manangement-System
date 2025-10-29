@@ -101,7 +101,7 @@ import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
 import "./animations.css";
 import { Button } from "@/components/ui/button";
-import RefreshButton from "@/components/ui/RefreshButton";
+import { RefreshCw, PlusCircle } from "lucide-react";
 /**
  * Main page component for the Collection Report.
  * Handles tab switching, data fetching, filtering, and pagination for:
@@ -1011,66 +1011,70 @@ function CollectionReportContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        <div
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-4 w-full max-w-full gap-3 sm:gap-0"
-          suppressHydrationWarning
-        >
-          <div className="flex items-center gap-3 w-full">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">
-              Collection Report
-            </h1>
+        {/* Header Section: Title, refresh icon, and create button */}
+        <div className="flex items-center justify-between mt-4 w-full max-w-full">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
+            Collection Report
             <Image
               src={IMAGES.creditCardIcon}
               alt="Collection Report Icon"
               width={32}
               height={32}
-              className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8"
+              className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex-shrink-0"
               suppressHydrationWarning
             />
-            <RefreshButton
+          </h1>
+
+          {/* Right side: Refresh icon and Create button */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Refresh icon - always icon only */}
+            <button
               onClick={handleRefresh}
-              isSyncing={refreshing}
-              disabled={loading}
-              label="Refresh"
-              className="ml-auto mr-2"
-            />
+              disabled={loading || refreshing}
+              className="p-1.5 md:p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Refresh"
+            >
+              <RefreshCw
+                className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </button>
+
+            {/* Create button - Desktop full button, Mobile icon only */}
+            {activeTab === "collection" && (
+              <>
+                {/* Desktop: Full button */}
+                <div className="hidden md:block">
+                  {loading ? (
+                    <div className="w-36 h-10" />
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        setShowDesktopCollectionModal(true);
+                      }}
+                      className="bg-buttonActive text-white hover:bg-purple-700 transition-colors flex items-center gap-2"
+                      disabled={loading || refreshing}
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                      Create Collection Report
+                    </Button>
+                  )}
+                </div>
+                {/* Mobile: Icon only */}
+                <div className="md:hidden">
+                  <button
+                    onClick={() => {
+                      setShowMobileCollectionModal(true);
+                    }}
+                    disabled={loading || refreshing}
+                    className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                    aria-label="Create Collection Report"
+                  >
+                    <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-
-          {activeTab === "collection" && (
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-              <Button
-                onClick={() => {
-                  if (isMobileSize()) {
-                    setShowMobileCollectionModal(true);
-                  } else {
-                    setShowDesktopCollectionModal(true);
-                  }
-                }}
-                className="bg-buttonActive text-white px-3 py-2 sm:px-4 rounded-md hover:bg-purple-700 transition-colors flex items-center gap-2 text-xs sm:text-sm font-medium w-full sm:w-auto justify-center sm:justify-start"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  suppressHydrationWarning
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 4v16m8-8H4"
-                    suppressHydrationWarning
-                  />
-                </svg>
-                <span className="hidden sm:inline">
-                  Create Collection Report
-                </span>
-                <span className="sm:hidden">Create Collection Report</span>
-              </Button>
-
-            </div>
-          )}
         </div>
 
         <div className="mt-8 mb-8">

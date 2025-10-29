@@ -67,9 +67,9 @@ export async function POST(request: NextRequest) {
         details: `Meter data requested from SMIB ${relayId} for machine ${machine.serialNumber || machine._id}`,
         ipAddress: clientIP || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
+        userId: currentUser._id as string,
+        username: currentUser.username as string,
         metadata: {
-          userId: currentUser._id as string,
-          userEmail: currentUser.emailAddress as string,
           userRole: (currentUser.roles as string[])?.[0] || 'user',
           resource: 'machine',
           resourceId: machine._id.toString(),

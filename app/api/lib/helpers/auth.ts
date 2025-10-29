@@ -1,15 +1,15 @@
-import { getUserByEmail, getUserByUsername } from './users';
-import { sendEmail } from '../../lib/utils/email';
-import { UserAuthPayload } from '@/shared/types';
-import { comparePassword } from '../utils/validation';
-import type { AuthResult } from '@/shared/types';
 import {
   generateAccessToken,
   generateRefreshToken,
   getCurrentDbConnectionString,
   loginRateLimiter,
 } from '@/lib/utils/auth';
+import type { AuthResult } from '@/shared/types';
+import { UserAuthPayload } from '@/shared/types';
+import { sendEmail } from '../../lib/utils/email';
+import { comparePassword } from '../utils/validation';
 import { logActivity } from './activityLogger';
+import { getUserByEmail, getUserByUsername } from './users';
 
 /**
  * Validates user credentials and generates JWT tokens on success.
@@ -42,6 +42,8 @@ export async function authenticateUser(
         details: `Rate limit exceeded for ${identifier} from ${ipAddress}`,
         ipAddress,
         userAgent,
+        userId: 'unknown',
+        username: 'unknown',
       });
 
       return {
@@ -69,6 +71,8 @@ export async function authenticateUser(
         details: `User not found: ${identifier}`,
         ipAddress,
         userAgent,
+        userId: 'unknown',
+        username: 'unknown',
       });
       return { success: false, message: 'Invalid email/username or password.' };
     }
@@ -80,6 +84,8 @@ export async function authenticateUser(
         details: `Disabled user attempted login: ${identifier}`,
         ipAddress,
         userAgent,
+        userId: 'unknown',
+        username: 'unknown',
       });
       return {
         success: false,
@@ -98,6 +104,8 @@ export async function authenticateUser(
         details: `Locked user attempted login: ${identifier}`,
         ipAddress,
         userAgent,
+        userId: user._id,
+        username: user.username,
       });
       return {
         success: false,
@@ -125,6 +133,8 @@ export async function authenticateUser(
           details: `Account locked due to ${failedAttempts} failed login attempts: ${identifier}`,
           ipAddress,
           userAgent,
+          userId: user._id,
+          username: user.username,
         });
 
         return {
@@ -141,6 +151,8 @@ export async function authenticateUser(
         details: `Invalid password for: ${identifier}`,
         ipAddress,
         userAgent,
+        userId: user._id,
+        username: user.username,
       });
 
       return { success: false, message: 'Invalid email/username or password.' };
@@ -214,7 +226,7 @@ export async function authenticateUser(
         ipAddress,
         userAgent,
         userId: user._id,
-        username: user.emailAddress,
+        username: user.username,
       });
 
       const expiresAt = new Date(
@@ -275,7 +287,7 @@ export async function authenticateUser(
       ipAddress,
       userAgent,
       userId: user._id,
-      username: user.emailAddress,
+      username: user.username,
     });
 
     const expiresAt = new Date(
@@ -293,6 +305,22 @@ export async function authenticateUser(
   } catch (error) {
     console.error('Authentication error:', error);
 
+    // Try to get user info for error logging if available
+    let userIdForLog = 'unknown';
+    let usernameForLog = 'unknown';
+
+    try {
+      const user = /\S+@\S+\.\S+/.test(identifier)
+        ? await getUserByEmail(identifier)
+        : await getUserByUsername(identifier);
+      if (user) {
+        userIdForLog = user._id;
+        usernameForLog = user.username;
+      }
+    } catch {
+      // Ignore errors when trying to get user for logging
+    }
+
     await logActivity({
       action: 'login_error',
       details: `Authentication error for ${identifier}: ${
@@ -300,6 +328,8 @@ export async function authenticateUser(
       }`,
       ipAddress,
       userAgent,
+      userId: userIdForLog,
+      username: usernameForLog,
     });
 
     return {

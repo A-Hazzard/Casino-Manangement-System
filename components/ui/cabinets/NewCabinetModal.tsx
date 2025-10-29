@@ -423,14 +423,14 @@ export const NewCabinetModal = ({
         className="absolute inset-0 bg-black/50 opacity-0"
         onClick={handleClose}
       />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
+      <div className="fixed inset-0 flex items-start md:items-center justify-center p-0 md:p-4">
         <div
           ref={modalRef}
-          className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-md bg-container shadow-lg"
+          className="flex flex-col h-full w-full md:max-h-[90vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"
           style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <div className="flex items-center justify-between border-b border-border px-4 md:px-6 py-4 flex-shrink-0">
             <h2 className="text-xl font-semibold">New Cabinet</h2>
             <Button variant="ghost" size="icon" onClick={handleClose}>
               <Cross2Icon className="h-4 w-4" />
@@ -438,7 +438,7 @@ export const NewCabinetModal = ({
           </div>
 
           {/* Form Content */}
-          <div className="p-6">
+          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-6">
             <div className="space-y-6">
               {/* Basic Information Section */}
               <div className="space-y-4">
@@ -791,7 +791,7 @@ export const NewCabinetModal = ({
             </div>
 
             {/* Footer */}
-            <div className="mt-8 flex justify-center space-x-3">
+            <div className="mt-8 flex justify-center space-x-3 flex-shrink-0 pb-4">
               <Button
                 onClick={handleSubmit}
                 className="bg-button px-8 text-container hover:bg-button/90"

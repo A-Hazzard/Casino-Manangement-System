@@ -20,7 +20,8 @@ import {
     DoubleArrowLeftIcon,
     DoubleArrowRightIcon,
 } from "@radix-ui/react-icons";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+import { animateTableRows, animateCards } from "@/lib/utils/ui";
 
 type CabinetContentDisplayProps = {
   paginatedCabinets: Machine[];
@@ -62,6 +63,20 @@ export const CabinetContentDisplay = ({
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
+
+  // Animate when filtered data changes (filtering, sorting, pagination)
+  useEffect(() => {
+    if (!loading && !initialLoading && paginatedCabinets.length > 0) {
+      // Animate table rows for desktop view
+      if (tableRef.current) {
+        animateTableRows(tableRef);
+      }
+      // Animate cards for mobile view
+      if (cardsRef.current) {
+        animateCards(cardsRef);
+      }
+    }
+  }, [paginatedCabinets, loading, initialLoading]);
 
   // No data message component
   const NoDataMessage = ({ message }: { message: string }) => (

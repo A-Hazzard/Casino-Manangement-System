@@ -50,6 +50,17 @@ const nextConfig: NextConfig = {
       querystring: false,
     };
 
+    // Normalize module paths to handle case sensitivity warnings
+    config.resolve.extensionAlias = {
+      '.js': ['.js', '.ts', '.tsx'],
+      '.jsx': ['.jsx', '.tsx'],
+    };
+
+    // Ignore case sensitivity warnings for module resolution
+    if (config.resolve) {
+      config.resolve.modules = config.resolve.modules || [];
+    }
+
     // Ignore problematic internal module requests
     config.module.rules.push({
       test: /\.js$/,
@@ -64,6 +75,16 @@ const nextConfig: NextConfig = {
       '@sendgrid/helpers': 'commonjs @sendgrid/helpers',
       '@sendgrid/mail': 'commonjs @sendgrid/mail',
     });
+
+    // Suppress case sensitivity warnings
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      /Failed to parse source map/,
+      {
+        module: /node_modules\/@radix-ui/,
+        message: /multiple modules with names that only differ in casing/,
+      },
+    ];
 
     return config;
   },

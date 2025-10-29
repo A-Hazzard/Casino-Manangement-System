@@ -1,5 +1,8 @@
 # Frontend Documentation
 
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** October 29th, 2025
+
 ## Overview
 
 This directory contains comprehensive documentation for all frontend pages and components in the Evolution One Casino Management System. Each document provides detailed technical specifications, business logic, and implementation details for the respective pages.

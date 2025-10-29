@@ -1,21 +1,21 @@
 'use client';
-import { HeaderProps } from '@/lib/types/componentProps';
-import { ExitIcon } from '@radix-ui/react-icons';
-import { PanelLeft } from 'lucide-react';
-import { usePathname, useParams, useRouter } from 'next/navigation';
-import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { logoutUser } from '@/lib/helpers/clientAuth';
-import LicenceeSelect from '@/components/ui/LicenceeSelect';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { fetchMetricsData } from '@/lib/helpers/dashboard';
-import { ClientOnly } from '@/components/ui/ClientOnly';
-import { useUserStore } from '@/lib/store/userStore';
-import { shouldShowNavigationLink } from '@/lib/utils/permissions';
-import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import CurrencyFilter from '@/components/filters/CurrencyFilter';
+import { ClientOnly } from '@/components/ui/ClientOnly';
+import LicenceeSelect from '@/components/ui/LicenceeSelect';
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import { logoutUser } from '@/lib/helpers/clientAuth';
+import { fetchMetricsData } from '@/lib/helpers/dashboard';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
+import { HeaderProps } from '@/lib/types/componentProps';
+import { cn } from '@/lib/utils';
+import { shouldShowNavigationLink } from '@/lib/utils/permissions';
+import { ExitIcon } from '@radix-ui/react-icons';
+import { AnimatePresence, motion } from 'framer-motion';
+import { PanelLeft } from 'lucide-react';
+import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function Header({
   selectedLicencee,
@@ -120,9 +120,9 @@ export default function Header({
         {/* Header Section: Main header with title and licensee selector */}
         <header className="flex w-full flex-col p-0">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
-          <div className="flex w-full items-center justify-between">
+          <div className="flex w-full items-center justify-between gap-4">
             {/* Left side: Menu button and title */}
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
               {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
               <SidebarTrigger
                 className={cn(
@@ -133,43 +133,24 @@ export default function Header({
               >
                 <PanelLeft className="h-6 w-6" suppressHydrationWarning />
               </SidebarTrigger>
-              <h1 className="ml-0 pl-2 text-left text-base sm:ml-0 md:ml-0 xl:text-xl">
+              <h1 className="shrink-0 text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl">
                 Evolution CMS
               </h1>
             </div>
 
             {/* Right side: Filters */}
             {!hideLicenceeFilter && (
-              <div className="flex items-center gap-2">
-                <LicenceeSelect
-                  selected={selectedLicencee || ''}
-                  onChange={handleLicenseeChange}
-                  disabled={disabled}
-                />
-                {/* Currency selector - only show when "All Licensee" is selected */}
+              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                <div className="min-w-0 max-w-[120px] sm:max-w-[160px] md:max-w-none">
+                  <LicenceeSelect
+                    selected={selectedLicencee || ''}
+                    onChange={handleLicenseeChange}
+                    disabled={disabled}
+                  />
+                </div>
+                {/* Currency selector - only show on desktop when "All Licensee" is selected */}
                 <CurrencyFilter
                   className="hidden md:flex"
-                  disabled={disabled}
-                  onCurrencyChange={() => {
-                    // Trigger data refresh when currency changes
-                    if (pathname === '/' && activeMetricsFilter) {
-                      setLoadingChartData(true);
-                      fetchMetricsData(
-                        activeMetricsFilter,
-                        customDateRange,
-                        selectedLicencee,
-                        setTotals,
-                        setChartData,
-                        setActiveFilters,
-                        setShowDatePicker,
-                        displayCurrency
-                      ).finally(() => setLoadingChartData(false));
-                    }
-                  }}
-                />
-                {/* Mobile Currency selector - show on small screens */}
-                <CurrencyFilter
-                  className="flex md:hidden"
                   disabled={disabled}
                   onCurrencyChange={() => {
                     // Trigger data refresh when currency changes

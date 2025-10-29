@@ -114,8 +114,8 @@ export default function DashboardDateFilters({
 
       {/* Filter Controls */}
       <div className="flex w-full flex-wrap items-center gap-2">
-        {/* Mobile and md: Select dropdown */}
-        <div className={mode === 'auto' ? 'w-full lg:hidden' : 'w-full'}>
+        {/* Mobile only: Select dropdown */}
+        <div className={mode === 'auto' ? 'w-full md:hidden' : 'w-full'}>
           <CustomSelect
             value={activeMetricsFilter}
             onValueChange={handleSelectChange}
@@ -133,12 +133,12 @@ export default function DashboardDateFilters({
           />
         </div>
 
-        {/* lg and above: Filter buttons */}
+        {/* md and above: Filter buttons */}
         {showDesktopButtons && (
           <div
             className={
               mode === 'auto'
-                ? 'hidden flex-wrap items-center gap-2 lg:flex'
+                ? 'hidden flex-wrap items-center gap-2 md:flex'
                 : 'flex flex-wrap items-center gap-2'
             }
           >

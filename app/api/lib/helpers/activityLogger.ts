@@ -35,19 +35,24 @@ export async function logActivity(params: {
         newValue: unknown;
       }>) || [];
 
-    // Validate that we have user information
-    if (!params.userId || !params.username) {
+    // Validate and extract user information
+    // For auth failures (login attempts), 'unknown' is acceptable
+    const userId = params.userId;
+    const username = params.username;
+
+    if (!userId || !username) {
       console.error('❌ Activity logging failed: Missing user information');
-      console.error('❌ userId:', params.userId, 'username:', params.username);
+      console.error('❌ userId:', userId, 'username:', username);
+      console.error('❌ Action:', params.action);
       throw new Error('User information is required for activity logging');
     }
 
     const activityLog = await ActivityLog.create({
       _id: new mongoose.Types.ObjectId().toString(),
       timestamp: new Date(),
-      // Required fields - use provided user info (no fallback to system)
-      userId: params.userId,
-      username: params.username,
+      // Required fields
+      userId: userId,
+      username: username,
       action: params.action.toLowerCase(),
       resource: resource,
       resourceId: resourceId,

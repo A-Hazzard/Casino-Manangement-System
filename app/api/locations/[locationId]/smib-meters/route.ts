@@ -80,9 +80,9 @@ export async function POST(
           details: `Location-wide SMIB meters request: ${results.successful} successful, ${results.failed} failed`,
           ipAddress: clientIP || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.username as string,
           metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'location',
             resourceId: locationId,

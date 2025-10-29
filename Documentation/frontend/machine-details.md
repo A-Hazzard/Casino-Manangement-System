@@ -1,7 +1,7 @@
 # Cabinet Details Page Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 26th, 2025  
+**Last Updated:** October 29th, 2025  
 **Version:** 2.1.0
 
 ## Quick Search Guide
@@ -349,6 +349,7 @@ The system uses **Server-Sent Events (SSE)** for real-time SMIB configuration up
 4. **Form Synchronization**: Updates UI with live SMIB data
 
 **Implementation:**
+
 - **Frontend Hook**: `lib/hooks/data/useSmibConfiguration.ts`
 - **SSE Endpoint**: `GET /api/mqtt/config/subscribe?relayId=[relayId]`
 - **Request Endpoint**: `POST /api/mqtt/config/request`
@@ -408,10 +409,10 @@ SMIBConfig {
 
 ```typescript
 // Connection State
-isConnectedToMqtt: boolean;        // SSE connection active
-hasReceivedRealSmibData: boolean;  // Received actual SMIB data
-isLoadingMqttConfig: boolean;      // Loading database config
-hasConfigBeenFetched: boolean;     // Initial fetch complete
+isConnectedToMqtt: boolean; // SSE connection active
+hasReceivedRealSmibData: boolean; // Received actual SMIB data
+isLoadingMqttConfig: boolean; // Loading database config
+hasConfigBeenFetched: boolean; // Initial fetch complete
 
 // Form State
 formData: {
@@ -419,7 +420,7 @@ formData: {
   networkSSID: string;
   networkPassword: string;
   networkChannel: string;
-  
+
   // MQTT fields
   mqttHost: string;
   mqttPort: string;
@@ -429,7 +430,7 @@ formData: {
   mqttPubTopic: string;
   mqttCfgTopic: string;
   mqttURI: string;
-  
+
   // COMS fields
   comsMode: string;
   comsAddr: string;

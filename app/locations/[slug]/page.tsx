@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 
 import { Button } from "@/components/ui/button";
@@ -10,25 +10,24 @@ import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
 import type { GamingMachine as Cabinet } from "@/shared/types/entities";
 import { useParams, useRouter } from "next/navigation";
 import { fetchCabinetsForLocation } from "@/lib/helpers/cabinets";
-import { motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Search,
-  Filter,
-  ArrowUpDown,
+  RefreshCw,
+  PlusCircle,
 } from "lucide-react";
 import FinancialMetricsCards from "@/components/ui/FinancialMetricsCards";
 import CabinetGrid from "@/components/locationDetails/CabinetGrid";
 import { Input } from "@/components/ui/input";
+import { CustomSelect } from "@/components/ui/custom-select";
+import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import gsap from "gsap";
-import { RefreshButton } from "@/components/ui/RefreshButton";
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { ActionButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
 import {
-  animateTableRows,
   animateSortDirection,
   animateColumnSort,
   filterAndSortCabinets as filterAndSortCabinetsUtil,
@@ -47,6 +46,8 @@ import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { ChevronDown } from "lucide-react";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
+import Image from "next/image";
+import { IMAGES } from "@/lib/constants/images";
 
 type CabinetSortOption =
   | "assetNumber"
@@ -91,12 +92,12 @@ export default function LocationPage() {
   const [selectedStatus, setSelectedStatus] = useState<
     "All" | "Online" | "Offline"
   >("All");
+  const [selectedGameType, setSelectedGameType] = useState<string>("all");
 
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [sortOption, setSortOption] = useState<CabinetSortOption>("moneyIn");
   const [currentPage, setCurrentPage] = useState(0);
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
 
   const tableRef = useRef<HTMLDivElement>(null);
   const locationDropdownRef = useRef<HTMLDivElement>(null);
@@ -124,17 +125,50 @@ export default function LocationPage() {
       .length,
   };
 
+  // Extract game types from cabinets
+  const gameTypes = useMemo(() => {
+    const uniqueGameTypes = Array.from(
+      new Set(
+        allCabinets
+          .map((cabinet) => cabinet.game || cabinet.installedGame)
+          .filter((game) => game && game.trim() !== "")
+      )
+    ).sort();
+    return uniqueGameTypes;
+  }, [allCabinets]);
+
   // ====== Filter Cabinets by search and sort ======
   const applyFiltersAndSort = useCallback(() => {
-    const filtered = filterAndSortCabinetsUtil(
+    let filtered = filterAndSortCabinetsUtil(
       allCabinets,
       searchTerm,
       sortOption,
       sortOrder
     );
+    
+    // Apply game type filter
+    if (selectedGameType && selectedGameType !== "all") {
+      filtered = filtered.filter((cabinet) => {
+        const cabinetGame = cabinet.game || cabinet.installedGame;
+        return cabinetGame === selectedGameType;
+      });
+    }
+    
+    // Apply status filter
+    if (selectedStatus && selectedStatus !== "All") {
+      filtered = filtered.filter((cabinet) => {
+        if (selectedStatus === "Online") {
+          return cabinet.online === true;
+        } else if (selectedStatus === "Offline") {
+          return cabinet.online === false;
+        }
+        return true;
+      });
+    }
+    
     setFilteredCabinets(filtered);
     setCurrentPage(0); // Reset to first page when filters change
-  }, [allCabinets, searchTerm, sortOption, sortOrder]);
+  }, [allCabinets, searchTerm, sortOption, sortOrder, selectedStatus, selectedGameType]);
 
   // Consolidated data fetch - single useEffect to prevent duplicate requests
   useEffect(() => {
@@ -321,7 +355,6 @@ export default function LocationPage() {
       setSortOption(column);
       setSortOrder("desc"); // Default to desc when changing column
     }
-    setIsFilterMenuOpen(false); // Close mobile menu on sort
   };
 
   // Pagination Calculations
@@ -330,11 +363,55 @@ export default function LocationPage() {
 
   // Animation hooks for filtering and sorting
   useEffect(() => {
-    if (!loading && !cabinetsLoading) {
-      animateTableRows(tableRef);
+    if (!loading && !cabinetsLoading && filteredCabinets.length > 0) {
+      // Small delay to ensure DOM is updated before animation
+      const timeoutId = setTimeout(() => {
+        if (tableRef.current) {
+          // Try to animate table rows (for desktop view)
+          const tableRows = tableRef.current.querySelectorAll('tbody tr');
+          if (tableRows.length > 0) {
+            gsap.fromTo(
+              tableRows,
+              { opacity: 0, y: 15 },
+              {
+                opacity: 1,
+                y: 0,
+                duration: 0.4,
+                stagger: 0.05,
+                ease: 'power2.out',
+              }
+            );
+          }
+          
+          // Try to animate cards (for mobile view)
+          const cardsContainer = tableRef.current.querySelector('.grid');
+          if (cardsContainer) {
+            const cards = Array.from(cardsContainer.children);
+            if (cards.length > 0) {
+              gsap.fromTo(
+                cards,
+                { opacity: 0, scale: 0.95, y: 15 },
+                {
+                  opacity: 1,
+                  scale: 1,
+                  y: 0,
+                  duration: 0.4,
+                  stagger: 0.08,
+                  ease: 'back.out(1.5)',
+                }
+              );
+            }
+          }
+        }
+      }, 150);
+      return () => clearTimeout(timeoutId);
     }
+    return undefined;
   }, [
     filteredCabinets,
+    selectedStatus,
+    selectedGameType,
+    searchTerm,
     sortOption,
     sortOrder,
     currentPage,
@@ -352,20 +429,7 @@ export default function LocationPage() {
   // ====== Event Handlers ======
   const handleFilterChange = (status: "All" | "Online" | "Offline") => {
     setSelectedStatus(status);
-
-    if (!allCabinets) return;
-
-    if (status === "All") {
-      setFilteredCabinets(allCabinets);
-    } else if (status === "Online") {
-      setFilteredCabinets(
-        allCabinets.filter((cabinet) => cabinet.online === true)
-      );
-    } else if (status === "Offline") {
-      setFilteredCabinets(
-        allCabinets.filter((cabinet) => cabinet.online === false)
-      );
-    }
+    // Status filter is now handled in applyFiltersAndSort
   };
 
   // Add a refresh function
@@ -438,42 +502,50 @@ export default function LocationPage() {
         {/* Header Section: Title, back button, and action buttons */}
         <div className="mt-4 w-full max-w-full">
           {/* Mobile Layout (below sm) */}
-          <div className="sm:hidden space-y-3">
-            {/* Back button and title */}
-            <div className="flex items-center gap-3">
+          <div className="sm:hidden">
+            {/* Back button, title, and action icons aligned */}
+            <div className="flex items-center gap-2">
               <Link href="/locations">
                 <Button
                   variant="ghost"
-                  className="p-2 rounded-full border border-gray-200 hover:bg-gray-100"
+                  className="p-1.5 h-8 w-8 rounded-full border border-gray-200 hover:bg-gray-100 flex-shrink-0"
                 >
-                  <ArrowLeftIcon className="h-5 w-5" />
+                  <ArrowLeftIcon className="h-4 w-4" />
                 </Button>
               </Link>
-              <h1 className="text-xl font-bold text-gray-800 flex-1">
+              <h1 className="text-lg font-bold text-gray-800 flex-1 min-w-0 truncate flex items-center gap-2">
                 Location Details
+                <Image
+                  src={IMAGES.locationIcon}
+                  alt="Location Icon"
+                  width={32}
+                  height={32}
+                  className="w-4 h-4 flex-shrink-0"
+                />
               </h1>
-            </div>
-
-            {/* Action buttons - stacked on mobile */}
-            <div className="flex gap-2">
-              <RefreshButton
+              {/* Refresh icon */}
+              <button
                 onClick={handleRefresh}
-                isSyncing={refreshing}
                 disabled={loading || cabinetsLoading || refreshing}
-                label="Refresh"
-                className="flex-1"
-              />
+                className="p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                aria-label="Refresh"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                />
+              </button>
+              {/* Create icon */}
               {loading || cabinetsLoading ? (
-                <ActionButtonSkeleton width="flex-1" showIcon={false} />
+                <div className="h-4 w-4 flex-shrink-0" />
               ) : (
-                <Button
-                  variant="default"
-                  className="flex-1 bg-button text-white"
-                  disabled={loading || cabinetsLoading || refreshing}
+                <button
                   onClick={() => openCabinetModal(locationId)}
+                  disabled={loading || cabinetsLoading || refreshing}
+                  className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                  aria-label="Create Machine"
                 >
-                  Create
-                </Button>
+                  <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+                </button>
               )}
             </div>
           </div>
@@ -489,25 +561,40 @@ export default function LocationPage() {
                   <ArrowLeftIcon className="h-5 w-5" />
                 </Button>
               </Link>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex-1 min-w-0 truncate flex items-center gap-2">
                 Location Details
+                <Image
+                  src={IMAGES.locationIcon}
+                  alt="Location Icon"
+                  width={32}
+                  height={32}
+                  className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
+                />
               </h1>
-              <RefreshButton
+              {/* Refresh icon - always icon only */}
+              <button
                 onClick={handleRefresh}
-                isSyncing={refreshing}
                 disabled={loading || cabinetsLoading || refreshing}
-                label="Refresh"
-                className="ml-auto"
-              />
+                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                aria-label="Refresh"
+              >
+                <RefreshCw
+                  className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+                />
+              </button>
+            </div>
+            {/* Desktop: Create button on far right */}
+            <div className="hidden md:flex items-center flex-shrink-0 ml-4">
               {loading || cabinetsLoading ? (
                 <ActionButtonSkeleton width="w-36" showIcon={false} />
               ) : (
                 <Button
                   variant="default"
-                  className="ml-2 bg-button text-white"
+                  className="bg-button text-white"
                   disabled={loading || cabinetsLoading || refreshing}
                   onClick={() => openCabinetModal(locationId)}
                 >
+                  <PlusCircle className="h-4 w-4 mr-2" />
                   Create Machine
                 </Button>
               )}
@@ -641,37 +728,60 @@ export default function LocationPage() {
             )}
           </div>
 
+          {/* Game Type Filter */}
+          <CustomSelect
+            value={selectedGameType}
+            onValueChange={setSelectedGameType}
+            options={[
+              { value: "all", label: "All Games" },
+              ...gameTypes
+                .filter((gameType): gameType is string => !!gameType)
+                .map((gameType) => ({
+                  value: gameType,
+                  label: gameType,
+                })),
+            ]}
+            placeholder="All Games"
+            className="w-auto min-w-[180px] max-w-[200px]"
+            triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
+            searchable={true}
+            emptyMessage="No game types found"
+          />
+
           {/* Status Filter */}
-          <select
+          <CustomSelect
             value={selectedStatus}
-            onChange={(e) =>
-              handleFilterChange(e.target.value as "All" | "Online" | "Offline")
+            onValueChange={(value) =>
+              handleFilterChange(value as "All" | "Online" | "Offline")
             }
-            className="w-auto max-w-[150px] h-9 rounded-md border border-gray-300 px-3 bg-white text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
-            disabled={loading || cabinetsLoading || refreshing}
-          >
-            <option value="All">All Machines</option>
-            <option value="Online">Online</option>
-            <option value="Offline">Offline</option>
-          </select>
+            options={[
+              { value: "All", label: "All Machines" },
+              { value: "Online", label: "Online" },
+              { value: "Offline", label: "Offline" },
+            ]}
+            placeholder="All Status"
+            className="w-auto min-w-[140px] max-w-[150px]"
+            triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm truncate"
+            searchable={true}
+            emptyMessage="No status options found"
+          />
         </div>
 
-        {/* Mobile: Search and Location Selection Section */}
-        <div className="md:hidden flex flex-col gap-4 mt-4">
-          <div className="relative w-full">
+        {/* Mobile: Horizontal scrollable filters - Same layout as cabinets page */}
+        <div className="md:hidden mt-4">
+          {/* Search Input - Full width */}
+          <div className="relative mb-3 w-full">
             <Input
               type="text"
-              placeholder="Search machines (Asset, SMID, Serial, Game)..."
-              className="w-full pr-10 bg-white border border-gray-300 rounded-full h-11 px-4 shadow-sm text-gray-700 placeholder-gray-400 focus:ring-buttonActive focus:border-buttonActive text-base"
+              placeholder="Search machines..."
+              className="h-11 w-full rounded-full border border-gray-300 bg-white px-4 pr-10 text-base text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
               value={searchTerm}
-              disabled={loading || cabinetsLoading || refreshing}
               onChange={(e) => {
                 if (loading || cabinetsLoading || refreshing) return;
                 setSearchTerm(e.target.value);
 
                 // Highlight matched items when searching
                 if (tableRef.current && e.target.value.trim() !== "") {
-                  // Add a subtle highlight pulse animation
                   gsap.to(tableRef.current, {
                     backgroundColor: "rgba(59, 130, 246, 0.05)",
                     duration: 0.2,
@@ -684,191 +794,87 @@ export default function LocationPage() {
                   });
                 }
               }}
-            />
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          </div>
-
-          {/* Mobile: Location Dropdown */}
-          <div className="relative w-full" ref={locationDropdownRef}>
-            <Button
-              variant="outline"
-              className={`w-full flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
-                loading || cabinetsLoading || refreshing
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
               disabled={loading || cabinetsLoading || refreshing}
-              onClick={() =>
-                !(loading || cabinetsLoading || refreshing) &&
-                setIsLocationDropdownOpen(!isLocationDropdownOpen)
-              }
-            >
-              <span className="truncate">
-                {selectedLocation || locationName || "Select Location"}
-              </span>
-              <ChevronDown
-                size={16}
-                className={`transition-transform ${
-                  isLocationDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </Button>
-            {isLocationDropdownOpen && (
-              <div className="absolute z-50 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200">
-                <div className="max-h-60 overflow-y-auto">
-                  {locations.map((loc) => (
-                    <button
-                      key={loc.id}
-                      className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                        locationId === loc.id ? "bg-gray-100 font-medium" : ""
-                      }`}
-                      onClick={() => handleLocationChangeInPlace(loc.id)}
-                    >
-                      {loc.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            />
+            <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
           </div>
-        </div>
 
-        {/* Mobile Sort and Filter Section: Sort dropdown and filter controls */}
-        <div className="mt-4 flex flex-col md:hidden">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center rounded-md bg-buttonActive px-4 py-2">
-              <span className="text-white text-sm mr-2">Sort by:</span>
-              <div className="relative inline-block">
-                <select
-                  value={sortOption}
-                  onChange={(e) =>
-                    handleColumnSort(e.target.value as CabinetSortOption)
+          {/* Filters - Horizontal scrollable */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div className="flex gap-2 min-w-max">
+              <div className="w-36 flex-shrink-0 relative">
+                <CustomSelect
+                  value={selectedGameType}
+                  onValueChange={setSelectedGameType}
+                  options={[
+                    { value: "all", label: "All Games" },
+                    ...gameTypes
+                      .filter((gameType): gameType is string => !!gameType)
+                      .map((gameType) => ({
+                        value: gameType,
+                        label: gameType,
+                      })),
+                  ]}
+                  placeholder="All Games"
+                  className="w-full"
+                  triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                  searchable={true}
+                  emptyMessage="No game types found"
+                />
+              </div>
+              <div className="w-32 flex-shrink-0 relative">
+                <CustomSelect
+                  value={selectedStatus}
+                  onValueChange={(value) =>
+                    handleFilterChange(value as "All" | "Online" | "Offline")
                   }
-                  className="appearance-none bg-buttonActive text-white border-none pr-6 text-sm font-medium focus:outline-none"
-                >
-                  <option value="moneyIn">Today</option>
-                  <option value="gross">Yesterday</option>
-                  <option value="assetNumber">Last 7 days</option>
-                  <option value="jackpot">Last 30 days</option>
-                </select>
-                <ChevronDown
-                  size={14}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-white"
+                  options={[
+                    { value: "All", label: "All Machines" },
+                    { value: "Online", label: "Online" },
+                    { value: "Offline", label: "Offline" },
+                  ]}
+                  placeholder="All Status"
+                  className="w-full"
+                  triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                  searchable={true}
+                  emptyMessage="No status options found"
+                />
+              </div>
+              <div className="w-40 flex-shrink-0 relative">
+                <CustomSelect
+                  value={`${sortOption}-${sortOrder}`}
+                  onValueChange={(value) => {
+                    const [option, order] = value.split("-");
+                    handleColumnSort(option as CabinetSortOption);
+                    setSortOrder(order as "asc" | "desc");
+                  }}
+                  options={[
+                    { value: "moneyIn-desc", label: "Money In (Highest First)" },
+                    { value: "moneyIn-asc", label: "Money In (Lowest First)" },
+                    { value: "moneyOut-desc", label: "Money Out (Highest First)" },
+                    { value: "moneyOut-asc", label: "Money Out (Lowest First)" },
+                    { value: "gross-desc", label: "Gross Revenue (Highest First)" },
+                    { value: "gross-asc", label: "Gross Revenue (Lowest First)" },
+                    { value: "jackpot-desc", label: "Jackpot (Highest First)" },
+                    { value: "jackpot-asc", label: "Jackpot (Lowest First)" },
+                    { value: "assetNumber-asc", label: "Asset Number (A to Z)" },
+                    { value: "assetNumber-desc", label: "Asset Number (Z to A)" },
+                    { value: "locationName-asc", label: "Location (A to Z)" },
+                    { value: "locationName-desc", label: "Location (Z to A)" },
+                    { value: "lastOnline-desc", label: "Last Online (Most Recent)" },
+                    { value: "lastOnline-asc", label: "Last Online (Oldest First)" },
+                  ]}
+                  placeholder="Sort by"
+                  className="w-full"
+                  triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm whitespace-nowrap"
+                  searchable={true}
+                  emptyMessage="No sort options found"
                 />
               </div>
             </div>
-
-            <RefreshButton
-              onClick={handleRefresh}
-              isSyncing={refreshing}
-              disabled={loading || cabinetsLoading || refreshing}
-              label="Refresh"
-              size="sm"
-              className="px-3"
-            />
           </div>
         </div>
 
-        {/* Mobile Filter Radio Buttons: Status filter controls */}
-        <div className="flex md:hidden mt-4 gap-4 justify-start">
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <div
-              className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                selectedStatus === "All"
-                  ? "bg-[#5119e9] border border-[#5119e9]"
-                  : "bg-white border border-[#5119e9]"
-              }`}
-              onClick={() => handleFilterChange("All")}
-            >
-              {selectedStatus === "All" && (
-                <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-              )}
-            </div>
-            <span className="text-xs font-medium text-gray-700">All</span>
-          </label>
-
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <div
-              className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                selectedStatus === "Online"
-                  ? "bg-[#5119e9] border border-[#5119e9]"
-                  : "bg-white border border-[#5119e9]"
-              }`}
-              onClick={() => handleFilterChange("Online")}
-            >
-              {selectedStatus === "Online" && (
-                <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-              )}
-            </div>
-            <span className="text-xs font-medium text-gray-700">Online</span>
-          </label>
-
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <div
-              className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                selectedStatus === "Offline"
-                  ? "bg-[#5119e9] border border-[#5119e9]"
-                  : "bg-white border border-[#5119e9]"
-              }`}
-              onClick={() => handleFilterChange("Offline")}
-            >
-              {selectedStatus === "Offline" && (
-                <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-              )}
-            </div>
-            <span className="text-xs font-medium text-gray-700">Offline</span>
-          </label>
-        </div>
-
-        {/* Mobile Sort and Filter Buttons: Action controls for mobile users */}
-        <div className="flex md:hidden justify-between mt-4">
-          <Button
-            variant="default"
-            className="bg-button text-white rounded-full px-6 py-2 flex items-center gap-2"
-            onClick={handleSortToggle}
-          >
-            <ArrowUpDown size={16} />
-            <span>Sort</span>
-          </Button>
-
-          <Button
-            variant="default"
-            className="bg-button text-white rounded-full px-6 py-2 flex items-center gap-2"
-            onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-          >
-            <Filter size={16} />
-            <span>Filter</span>
-          </Button>
-
-          {isFilterMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute right-4 z-10 mt-12 w-48 bg-white rounded-md shadow-lg border border-gray-200"
-            >
-              <div className="p-2 text-sm font-semibold border-b">Sort by:</div>
-              {[
-                { label: "Today", value: "moneyIn" },
-                { label: "Yesterday", value: "gross" },
-                { label: "Last 7 days", value: "assetNumber" },
-                { label: "Last 30 days", value: "jackpot" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() =>
-                    handleColumnSort(opt.value as CabinetSortOption)
-                  }
-                  className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                    sortOption === opt.value ? "bg-gray-100 font-medium" : ""
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </div>
 
         {/* Content Section: Main cabinet data display with responsive layouts */}
         <div className="flex-1 w-full">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PageErrorBoundary from "@/components/ui/errors/PageErrorBoundary";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
@@ -13,13 +13,12 @@ import {
   DoubleArrowRightIcon,
   MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
-import { Plus } from "lucide-react";
+import { RefreshCw, PlusCircle } from "lucide-react";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils/number";
-import RefreshButton from "@/components/ui/RefreshButton";
 import { FloatingRefreshButton } from "@/components/ui/FloatingRefreshButton";
 import { ActionButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
 
@@ -48,6 +47,7 @@ import {
   useLocationPagination,
 } from "@/lib/hooks/data";
 import { useGlobalErrorHandler } from "@/lib/hooks/data/useGlobalErrorHandler";
+import { animateTableRows, animateCards } from "@/lib/utils/ui";
 
 function LocationsPageContent() {
   const { handleApiCallWithRetry: _handleApiCallWithRetry } =
@@ -64,6 +64,10 @@ function LocationsPageContent() {
   const [selectedFilters, setSelectedFilters] = useState<LocationFilter[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  // Refs for animations
+  const tableRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
 
   // Custom hooks for data management
   const { locationData, loading, searchLoading, error, fetchData } =
@@ -140,6 +144,20 @@ function LocationsPageContent() {
   // Show loading state for search
   const isLoading = loading || searchLoading;
 
+  // Animate when filtered data changes (filtering, sorting, search, pagination)
+  useEffect(() => {
+    if (!isLoading && currentItems.length > 0) {
+      // Animate table rows for desktop view
+      if (tableRef.current) {
+        animateTableRows(tableRef);
+      }
+      // Animate cards for mobile view
+      if (cardsRef.current) {
+        animateCards(cardsRef);
+      }
+    }
+  }, [currentItems, selectedFilters, searchTerm, sortOption, sortOrder, isLoading]);
+
   return (
     <>
       <PageLayout
@@ -152,26 +170,41 @@ function LocationsPageContent() {
       >
         {/* Header Section: Title, refresh button, and new location button */}
         <div className="flex items-center justify-between mt-4 w-full max-w-full">
-          <div className="flex items-center gap-3 w-full">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 flex-1 min-w-0 truncate flex items-center gap-2">
               Locations
+              <Image
+                src={IMAGES.locationIcon}
+                alt="Location Icon"
+                width={32}
+                height={32}
+                className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
+              />
             </h1>
-            <Image
-              src={IMAGES.locationIcon}
-              alt="Location Icon"
-              width={32}
-              height={32}
-              className="w-6 h-6 sm:w-8 sm:h-8 ml-2"
-            />
-            <RefreshButton
+            {/* Refresh icon - always icon only */}
+            <button
               onClick={handleRefresh}
-              isSyncing={refreshing}
-              disabled={isLoading}
-              label="Refresh"
-              className="ml-auto mr-2"
-            />
+              disabled={isLoading || refreshing}
+              className="p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Refresh"
+            >
+              <RefreshCw
+                className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </button>
+            {/* Mobile: Create icon */}
+            {!isLoading && (
+              <button
+                onClick={openNewLocationModal}
+                disabled={isLoading}
+                className="md:hidden p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                aria-label="New Location"
+              >
+                <PlusCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 hover:text-green-700" />
+              </button>
+            )}
           </div>
-          {/* Desktop: New Location button */}
+          {/* Desktop: Create button on far right */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             {isLoading ? (
               <ActionButtonSkeleton width="w-36" showIcon={true} />
@@ -181,27 +214,12 @@ function LocationsPageContent() {
                 className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
               >
                 <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                  <Plus className="w-4 h-4 text-white" />
+                  <PlusCircle className="w-4 h-4 text-white" />
                 </div>
                 <span>New Location</span>
               </Button>
             )}
           </div>
-        </div>
-
-        {/* Mobile: New Location button below title */}
-        <div className="md:hidden mt-4 w-full">
-          {isLoading ? (
-            <ActionButtonSkeleton width="w-full" showIcon={true} />
-          ) : (
-            <Button
-              onClick={openNewLocationModal}
-              className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
-            >
-              <Plus size={20} />
-              New Location
-            </Button>
-          )}
         </div>
 
         {/* Financial Metrics Section: Total financial overview cards */}
@@ -481,7 +499,7 @@ function LocationsPageContent() {
                     </div>
                   }
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4" ref={cardsRef}>
                     {!isLoading ? (
                       currentItems.map((location) => (
                         <LocationCard
@@ -502,7 +520,7 @@ function LocationsPageContent() {
                 </ClientOnly>
               </div>
               {/* Desktop: show table */}
-              <div className="hidden md:block">
+              <div className="hidden md:block" ref={tableRef}>
                 <LocationTable
                   locations={currentItems}
                   sortOption={sortOption}

@@ -1,30 +1,37 @@
 'use client';
 
-import { SidebarContainer, useSidebar } from '@/components/ui/sidebar';
-import {
-  BarChart3,
-  UserCog,
-  MonitorSpeaker,
-  FileText,
-  Users,
-  MapPin,
-  Clock,
-  Receipt,
-} from 'lucide-react';
-import { PanelLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useUserStore } from '@/lib/store/userStore';
-import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
 import ProfileModal from '@/components/layout/ProfileModal';
+import { ClientOnly } from '@/components/ui/ClientOnly';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { SidebarContainer, useSidebar } from '@/components/ui/sidebar';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { logoutUser } from '@/lib/helpers/clientAuth';
 import { fetchUserId } from '@/lib/helpers/user';
-import { ClientOnly } from '@/components/ui/ClientOnly';
+import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
 import { shouldShowNavigationLinkDb } from '@/lib/utils/permissionsDb';
-import { fetchUserWithCache, CACHE_KEYS } from '@/lib/utils/userCache';
+import { CACHE_KEYS, fetchUserWithCache } from '@/lib/utils/userCache';
+import {
+  BarChart3,
+  Clock,
+  FileText,
+  MapPin,
+  MonitorSpeaker,
+  PanelLeft,
+  Receipt,
+  UserCog,
+  Users,
+} from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 const DEFAULT_AVATAR = '/defaultAvatar.svg';
 
 type Item = {
@@ -80,6 +87,7 @@ export default function AppSidebar() {
   const { collapsed, toggleCollapsed, setIsOpen } = useSidebar();
   const { user, clearUser } = useUserStore();
   const pathname = usePathname();
+  const { displayCurrency, setDisplayCurrency } = useCurrency();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -428,6 +436,63 @@ export default function AppSidebar() {
                     );
                   })}
           </nav>
+          {/* Currency Filter Section - Mobile Only */}
+          {collapsed && (
+            <div className="border-t border-border/50 px-3 py-3 md:hidden">
+              <div className="mb-2 text-xs font-medium text-gray-700">
+                Currency
+              </div>
+              <div className="w-full">
+                <Select
+                  value={displayCurrency}
+                  onValueChange={value =>
+                    setDisplayCurrency(value as 'USD' | 'TTD' | 'GYD' | 'BBD')
+                  }
+                >
+                  <SelectTrigger className="h-8 w-full text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">$</span>
+                        <span className="text-sm text-gray-600">USD</span>
+                        <span className="text-xs text-gray-500">US Dollar</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="TTD">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">TT$</span>
+                        <span className="text-sm text-gray-600">TTD</span>
+                        <span className="text-xs text-gray-500">
+                          Trinidad Dollar
+                        </span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="GYD">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">GY$</span>
+                        <span className="text-sm text-gray-600">GYD</span>
+                        <span className="text-xs text-gray-500">
+                          Guyana Dollar
+                        </span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="BBD">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Bds$</span>
+                        <span className="text-sm text-gray-600">BBD</span>
+                        <span className="text-xs text-gray-500">
+                          Barbados Dollar
+                        </span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {/* User Profile Section: User information and profile controls */}
           <div className="relative mt-auto border-t border-border/50 px-3 py-3">
             {profileLoading ? (

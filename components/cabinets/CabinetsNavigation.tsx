@@ -24,12 +24,12 @@ export default function CabinetsNavigation({
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop - md: and above */}
-      <nav className="hidden space-x-8 px-6 md:flex">
+      <nav className="hidden space-x-2 px-4 md:flex">
         {tabs.map(tab => (
           <motion.button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`navigation-button flex cursor-pointer items-center space-x-2 whitespace-nowrap border-b-2 px-2 py-4 text-sm font-medium transition-all duration-200 ${
+            className={`navigation-button flex cursor-pointer items-center space-x-1.5 whitespace-nowrap border-b-2 px-1.5 py-3 text-xs font-medium transition-all duration-200 ${
               activeSection === tab.id
                 ? 'border-buttonActive bg-buttonActive/5 text-buttonActive'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
@@ -38,7 +38,7 @@ export default function CabinetsNavigation({
             whileTap={{ scale: 0.98 }}
             type="button"
           >
-            <span className="text-lg">{tab.icon}</span>
+            <span className="text-sm">{tab.icon}</span>
             <span>{tab.label}</span>
           </motion.button>
         ))}

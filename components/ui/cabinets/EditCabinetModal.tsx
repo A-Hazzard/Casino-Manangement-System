@@ -586,13 +586,13 @@ export const EditCabinetModal = ({
       />
 
       {/* Desktop Modal */}
-      <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-4">
+      <div className="fixed inset-0 flex items-start md:items-center justify-center p-0 md:p-4">
         <div
           ref={modalRef}
-          className="max-h-[98vh] w-full max-w-2xl overflow-visible rounded-md bg-container shadow-lg"
+          className="flex flex-col h-full w-full md:max-h-[98vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"
           style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
-          <div className="flex items-center border-b border-border p-3 sm:p-4">
+          <div className="flex items-center border-b border-border p-3 sm:p-4 flex-shrink-0">
             <h2 className="flex-1 text-center text-xl font-semibold">
               Edit {getDisplaySerialNumber(selectedCabinet)} Details
             </h2>
@@ -608,13 +608,13 @@ export const EditCabinetModal = ({
           </div>
 
           {/* Form Content */}
-          <div className="max-h-[calc(98vh-120px)] overflow-visible px-4 pb-6 sm:px-8 sm:pb-8">
-            <div className="max-h-[calc(98vh-180px)] space-y-4 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto px-4 pb-6 sm:px-8 sm:pb-8">
+            <div className="space-y-4">
               <div className="space-y-6">
                 {/* Creation Date Display */}
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex-1">
                       <h3 className="text-sm font-medium text-gray-700">
                         Machine Created
                       </h3>
@@ -624,11 +624,11 @@ export const EditCabinetModal = ({
                           : 'Unknown'}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="flex-1 text-left sm:text-right">
                       <h3 className="text-sm font-medium text-gray-700">
                         Machine ID
                       </h3>
-                      <p className="mt-1 font-mono text-sm text-gray-600">
+                      <p className="mt-1 break-all font-mono text-sm text-gray-600">
                         {formData._id || 'Unknown'}
                       </p>
                     </div>
@@ -972,7 +972,7 @@ export const EditCabinetModal = ({
             </div>
 
             {/* Footer */}
-            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4">
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4 flex-shrink-0 pb-4">
               <Button
                 onClick={handleSubmit}
                 disabled={loading}

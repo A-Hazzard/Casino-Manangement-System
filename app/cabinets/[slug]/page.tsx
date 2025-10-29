@@ -3,6 +3,8 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
+import { IMAGES } from '@/lib/constants/images';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import { Button } from '@/components/ui/button';
@@ -589,7 +591,14 @@ function CabinetDetailPageContent() {
           >
             <div className="flex flex-col justify-between md:flex-row md:items-center">
               <div className="mb-4 md:mb-0">
-                <h1 className="flex items-center text-2xl font-bold">
+                <h1 className="flex items-center text-2xl font-bold gap-2">
+                  <Image
+                    src={IMAGES.cabinetsIcon}
+                    alt="Cabinet Icon"
+                    width={32}
+                    height={32}
+                    className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
+                  />
                   Name: {cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1'}
                   <motion.button
                     className="ml-2 rounded-full p-2 transition-colors hover:bg-gray-100"
