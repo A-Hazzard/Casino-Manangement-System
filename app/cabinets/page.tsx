@@ -182,46 +182,33 @@ function CabinetsPageContent() {
       >
         {/* Mobile-friendly header layout */}
         <div className="mt-4 w-full max-w-full">
-          {/* Title row */}
-          <div className="flex items-center gap-3 mb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2">
+          {/* Mobile Layout - All on same line */}
+          <div className="flex items-center gap-2 md:hidden mb-4">
+            <h1 className="text-2xl font-bold text-gray-800 flex-1 min-w-0 truncate flex items-center gap-2">
               Cabinets
             <Image
               src={IMAGES.cabinetsIcon}
               alt="Cabinet Icon"
-              width={32}
-              height={32}
-                className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
+              width={40}
+              height={40}
+                className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"
             />
             </h1>
-            {/* Mobile: Refresh icon */}
+            {/* Refresh icon */}
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="md:hidden ml-auto p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              className="p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
               aria-label="Refresh"
             >
               <RefreshCw
-                className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
               />
             </button>
-          </div>
-          
-          {/* Actions row - stacked on mobile, side-by-side on desktop */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            {/* Desktop: Refresh icon and Create button on far right */}
-            <div className="hidden md:flex items-center gap-2 ml-auto">
-              {/* Refresh icon */}
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                aria-label="Refresh"
-              >
-                <RefreshCw
-                  className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
-                />
-              </button>
+            {/* Create icon */}
+            {loading ? (
+              <div className="h-4 w-4 flex-shrink-0" />
+            ) : (
               <CabinetActions
                 activeSection={activeSection}
                 selectedLocation={selectedLocation}
@@ -232,19 +219,44 @@ function CabinetsPageContent() {
                 onCabinetDeleted={loadCabinets}
                 loading={loading}
               />
-            </div>
-            {/* Mobile: Cabinet actions */}
-            <div className="md:hidden">
-            <CabinetActions
-              activeSection={activeSection}
-              selectedLocation={selectedLocation}
-              locations={locations}
-              onMovementRequestClick={() => {}}
-              onCabinetCreated={loadCabinets}
-              onCabinetUpdated={loadCabinets}
-              onCabinetDeleted={loadCabinets}
-              loading={loading}
+            )}
+          </div>
+          
+          {/* Desktop Layout - Title and actions on same row */}
+          <div className="hidden md:flex items-center justify-between mb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2">
+              Cabinets
+            <Image
+              src={IMAGES.cabinetsIcon}
+              alt="Cabinet Icon"
+              width={32}
+              height={32}
+                className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
             />
+            </h1>
+            {/* Desktop: Refresh icon and Create button on far right */}
+            <div className="flex items-center gap-2">
+            {/* Refresh icon */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Refresh"
+            >
+              <RefreshCw
+                className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </button>
+            <CabinetActions
+                activeSection={activeSection}
+                selectedLocation={selectedLocation}
+                locations={locations}
+                onMovementRequestClick={() => {}}
+                onCabinetCreated={loadCabinets}
+                onCabinetUpdated={loadCabinets}
+                onCabinetDeleted={loadCabinets}
+                loading={loading}
+              />
             </div>
           </div>
         </div>

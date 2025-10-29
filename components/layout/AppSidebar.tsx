@@ -466,7 +466,7 @@ export default function AppSidebar() {
                   <SelectTrigger className="h-8 w-full text-sm">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[100000]">
                     <SelectItem value="USD">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">$</span>

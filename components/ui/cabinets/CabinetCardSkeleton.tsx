@@ -15,12 +15,13 @@ export default function CabinetCardSkeleton() {
             <div className="skeleton-bg h-5 w-1/3 rounded" />
             <div className="skeleton-bg h-5 w-5 rounded-full" />
           </div>
-          {/* SMIB and Location */}
+          {/* SMIB, Location, and Game/Serial */}
           <div className="mb-3">
             <div className="skeleton-bg mb-1 h-4 w-1/2 rounded"></div>
-            <div className="skeleton-bg h-4 w-2/3 rounded"></div>
+            <div className="skeleton-bg mb-1 h-4 w-2/3 rounded"></div>
+            <div className="skeleton-bg h-4 w-3/4 rounded"></div>
           </div>
-          {/* Money In, Money Out, Gross */}
+          {/* Money In, Money Out, Jackpot, Gross */}
           <div className="mb-2 flex flex-col space-y-2 text-sm">
             <div className="flex justify-between">
               <div className="skeleton-bg h-4 w-20 rounded" />
@@ -34,11 +35,10 @@ export default function CabinetCardSkeleton() {
               <div className="skeleton-bg h-4 w-16 rounded" />
               <div className="skeleton-bg h-4 w-24 rounded" />
             </div>
-          </div>
-          {/* Buttons at the bottom */}
-          <div className="mt-2 flex justify-between gap-2">
-            <div className="skeleton-bg h-7 w-28 rounded" />
-            <div className="skeleton-bg h-7 w-28 rounded" />
+            <div className="flex justify-between">
+              <div className="skeleton-bg h-4 w-16 rounded" />
+              <div className="skeleton-bg h-4 w-24 rounded" />
+            </div>
           </div>
         </div>
       ))}

@@ -9,7 +9,6 @@ import { CabinetCardProps } from '@/lib/types/cardProps';
 import { motion } from 'framer-motion';
 import editIcon from '@/public/editIcon.svg';
 import deleteIcon from '@/public/deleteIcon.svg';
-import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 
 export default function CabinetCard(props: CabinetCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -71,8 +70,8 @@ export default function CabinetCard(props: CabinetCardProps) {
     >
       {/* Header with Asset Number and Status Indicator */}
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="xs:text-xs flex flex-1 items-center gap-1 truncate pr-2 text-sm font-semibold sm:text-base">
-          {props.assetNumber || '(No Asset #)'}
+        <h3 className="flex flex-1 items-center gap-1 truncate pr-2 text-base font-semibold">
+          {props.assetNumber || props.serialNumber || '(No Asset #)'}
           <motion.span
             className={`h-2 w-2 rounded-full ${
               isOnline ? 'bg-green-500' : 'bg-red-500'
@@ -86,62 +85,63 @@ export default function CabinetCard(props: CabinetCardProps) {
             e.stopPropagation();
             props.onEdit?.(props);
           }}
-          className="flex-shrink-0 text-green-500"
+          className="flex-shrink-0 text-green-600 hover:text-green-700"
         >
           <Image
             src={editIcon}
             alt="Edit"
             width={20}
             height={20}
-            className="xs:w-4 xs:h-4 h-4 w-4 sm:h-5 sm:w-5"
+            className="h-5 w-5"
           />
         </button>
       </div>
 
       {/* SMIB ID and Details */}
       <div className="mb-3">
-        <p className="xs:text-xs truncate text-xs text-green-500 sm:text-sm">
-          SMIB ID: {props.smbId || 'N/A'}
+        <p className="mb-1 text-sm text-green-600">
+          {props.smbId || 'N/A'}
         </p>
-        <p className="xs:text-xs truncate text-xs text-gray-600 sm:text-sm">
+        <p className="mb-1 text-sm font-medium text-gray-900">
           {props.locationName || 'No Location'}
         </p>
-        <p className="xs:text-xs truncate text-xs text-gray-600 sm:text-sm">
-          {formatMachineDisplayNameWithBold({
-            serialNumber: props.serialNumber,
-            assetNumber: props.assetNumber,
-            custom: { name: undefined }, // CabinetCard doesn't have customName prop
-            game: props.game || props.installedGame,
-            installedGame: props.installedGame,
-          })}
+        <p className="text-sm text-gray-600">
+          {(() => {
+            const assetNum = props.assetNumber || props.serialNumber || '';
+            const game = props.game || props.installedGame || '';
+            if (game) {
+              return `${assetNum} (${game})`;
+            }
+            return assetNum || 'Unknown';
+          })()}
         </p>
       </div>
 
-      {/* Financial Data - Simple List Layout */}
-      <div className="xs:text-xs text-xs sm:text-sm">
-        <div className="flex justify-between py-1">
-          <span className="flex-1 truncate pr-2">Money In</span>
-          <span className="flex-shrink-0 text-right">
+      {/* Financial Data - List Layout */}
+      <div className="border-t border-gray-200 pt-2 text-sm">
+        <div className="mb-1 flex justify-between">
+          <span className="text-gray-500">Money In</span>
+          <span className="font-medium">
             {formatCurrency(props.moneyIn || 0)}
           </span>
         </div>
-        <div className="flex justify-between py-1">
-          <span className="flex-1 truncate pr-2">Money Out</span>
-          <span className="flex-shrink-0 text-right">
-            {formatCurrency(props.cancelledCredits || 0)}
+        <div className="mb-1 flex justify-between">
+          <span className="text-gray-500">Money Out</span>
+          <span className="font-medium">
+            {formatCurrency(props.moneyOut || 0)}
           </span>
         </div>
-        <div className="flex justify-between py-1">
-          <span className="flex-1 truncate pr-2">Jackpot</span>
-          <span className="flex-shrink-0 text-right">
+        <div className="mb-1 flex justify-between">
+          <span className="text-gray-500">Jackpot</span>
+          <span className="font-medium">
             {formatCurrency(props.jackpot || 0)}
           </span>
         </div>
-        <div className="flex justify-between py-1">
-          <span className="flex-1 truncate pr-2">Gross</span>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Gross</span>
           <span
-            className={`flex-shrink-0 text-right ${
-              (props.gross || 0) < 0 ? 'text-red-500' : 'text-green-500'
+            className={`font-medium ${
+              (props.gross || 0) < 0 ? 'text-red-500' : 'text-green-600'
             }`}
           >
             {formatCurrency(props.gross || 0)}

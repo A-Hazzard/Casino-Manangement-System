@@ -61,23 +61,22 @@ func main() {
 	dstDB := dstClient.Database("sas-prod-local")
 
 	collections := []string{
+		"acceptedbills",
+		"activityLogs",
+		"collections",
+		"collectionreports",
+		"countries",
+		"firmwares",
+		"gaminglocations",
 		"licencees",
-		// "acceptedbills",
-		// "activityLogs",
-		// "collections",
-		// "collectionreports",
-		// "countries",
-		// "firmwares",
-		// "gaminglocations",
-		// "licencees",
-		// "machineevents",
-		// "machinesessions",
-		// "machines",
-		// "meters",
-		// "members",
-		// "movementrequests",
-		// "schedulers",
-		// "users",
+		"machineevents",
+		"machinesessions",
+		"machines",
+		"meters",
+		"members",
+		"movementrequests",
+		"schedulers",
+		"users",
 	}
 
 	var wg sync.WaitGroup
