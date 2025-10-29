@@ -15,10 +15,10 @@ import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
 import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
 import type { GamingMachine as Machine } from "@/shared/types/entities";
 import {
-    ChevronLeftIcon,
-    ChevronRightIcon,
-    DoubleArrowLeftIcon,
-    DoubleArrowRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
 } from "@radix-ui/react-icons";
 import { useEffect, useRef } from "react";
 import { animateTableRows, animateCards } from "@/lib/utils/ui";

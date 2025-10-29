@@ -526,7 +526,7 @@ export default function LocationPage() {
               {/* Refresh icon */}
               <button
                 onClick={handleRefresh}
-                disabled={loading || cabinetsLoading || refreshing}
+                disabled={refreshing}
                 className="p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                 aria-label="Refresh"
               >
@@ -540,7 +540,7 @@ export default function LocationPage() {
               ) : (
                 <button
                   onClick={() => openCabinetModal(locationId)}
-                  disabled={loading || cabinetsLoading || refreshing}
+                  disabled={refreshing}
                   className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                   aria-label="Create Machine"
                 >
@@ -571,11 +571,11 @@ export default function LocationPage() {
                   className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
                 />
               </h1>
-              {/* Refresh icon - always icon only */}
+              {/* Mobile: Refresh icon */}
               <button
                 onClick={handleRefresh}
-                disabled={loading || cabinetsLoading || refreshing}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                disabled={refreshing}
+                className="md:hidden p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                 aria-label="Refresh"
               >
                 <RefreshCw
@@ -583,15 +583,26 @@ export default function LocationPage() {
                 />
               </button>
             </div>
-            {/* Desktop: Create button on far right */}
-            <div className="hidden md:flex items-center flex-shrink-0 ml-4">
+            {/* Desktop: Refresh icon and Create button on far right */}
+            <div className="hidden md:flex items-center gap-2 flex-shrink-0 ml-4">
+              {/* Refresh icon */}
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                aria-label="Refresh"
+              >
+                <RefreshCw
+                  className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+                />
+              </button>
               {loading || cabinetsLoading ? (
                 <ActionButtonSkeleton width="w-36" showIcon={false} />
               ) : (
                 <Button
                   variant="default"
                   className="bg-button text-white"
-                  disabled={loading || cabinetsLoading || refreshing}
+                  disabled={refreshing}
                   onClick={() => openCabinetModal(locationId)}
                 >
                   <PlusCircle className="h-4 w-4 mr-2" />
@@ -821,7 +832,7 @@ export default function LocationPage() {
                   searchable={true}
                   emptyMessage="No game types found"
                 />
-              </div>
+                </div>
               <div className="w-32 flex-shrink-0 relative">
                 <CustomSelect
                   value={selectedStatus}
@@ -869,11 +880,11 @@ export default function LocationPage() {
                   triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm whitespace-nowrap"
                   searchable={true}
                   emptyMessage="No sort options found"
-                />
-              </div>
-            </div>
+            />
           </div>
         </div>
+            </div>
+            </div>
 
 
         {/* Content Section: Main cabinet data display with responsive layouts */}

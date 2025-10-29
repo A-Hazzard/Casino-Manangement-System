@@ -114,6 +114,14 @@ export default function AppSidebar() {
   const [profileLoading, setProfileLoading] = useState(true);
 
   const router = useRouter();
+  
+  // Close sidebar on mobile when pathname changes (navigation occurs)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsOpen(false);
+    }
+  }, [pathname, setIsOpen]);
+  
   useEffect(() => {
     // Seed with store info
     const seedEmail = user?.emailAddress || '';
@@ -391,6 +399,12 @@ export default function AppSidebar() {
                               ? 'bg-buttonActive font-medium text-white'
                               : 'text-gray-700 hover:bg-gray-100 hover:text-white dark:hover:bg-gray-800 dark:hover:text-white'
                           )}
+                          onClick={() => {
+                            // Close sidebar on mobile when a link is clicked
+                            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                              setIsOpen(false);
+                            }
+                          }}
                           onMouseEnter={e => {
                             if (collapsed) {
                               const rect =

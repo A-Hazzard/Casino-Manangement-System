@@ -108,56 +108,56 @@ export const CabinetSearchFilters = ({
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
           <div className="flex gap-2 min-w-max">
             <div className="w-36 flex-shrink-0 relative">
-              <CustomSelect
-                value={selectedLocation}
-                onValueChange={handleLocationChange}
-                options={locationOptions}
-                placeholder="All Locations"
-                className="w-full"
-                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
-                emptyMessage="No locations found"
-              />
-            </div>
+            <CustomSelect
+              value={selectedLocation}
+              onValueChange={handleLocationChange}
+              options={locationOptions}
+              placeholder="All Locations"
+              className="w-full"
+              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={true}
+              emptyMessage="No locations found"
+            />
+          </div>
             <div className="w-36 flex-shrink-0 relative">
-              <CustomSelect
-                value={selectedGameType}
-                onValueChange={handleGameTypeChange}
-                options={gameTypeOptions}
-                placeholder="All Games"
-                className="w-full"
-                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
-                emptyMessage="No game types found"
-              />
-            </div>
+            <CustomSelect
+              value={selectedGameType}
+              onValueChange={handleGameTypeChange}
+              options={gameTypeOptions}
+              placeholder="All Games"
+              className="w-full"
+              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={true}
+              emptyMessage="No game types found"
+            />
+          </div>
             <div className="w-32 flex-shrink-0 relative">
-              <CustomSelect
-                value={selectedStatus}
-                onValueChange={onStatusChange}
-                options={[
+            <CustomSelect
+              value={selectedStatus}
+              onValueChange={onStatusChange}
+              options={[
                   { value: 'All', label: 'All Machines' },
                   { value: 'Online', label: 'Online' },
                   { value: 'Offline', label: 'Offline' },
-                ]}
-                placeholder="All Status"
-                className="w-full"
-                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
-                emptyMessage="No status options found"
-              />
-            </div>
+              ]}
+              placeholder="All Status"
+              className="w-full"
+              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={true}
+              emptyMessage="No status options found"
+            />
+          </div>
             <div className="w-40 flex-shrink-0 relative">
-              <CustomSelect
-                value={`${sortOption}-${sortOrder}`}
-                onValueChange={handleSortChange}
-                options={sortOptions}
-                placeholder="Sort by"
-                className="w-full"
+            <CustomSelect
+              value={`${sortOption}-${sortOrder}`}
+              onValueChange={handleSortChange}
+              options={sortOptions}
+              placeholder="Sort by"
+              className="w-full"
                 triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm whitespace-nowrap"
-                searchable={true}
-                emptyMessage="No sort options found"
-              />
+              searchable={true}
+              emptyMessage="No sort options found"
+            />
             </div>
           </div>
         </div>

@@ -161,18 +161,16 @@ export default function DashboardTab() {
           </div>
 
           {/* Refresh Button */}
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center space-x-1"
+            className="p-1.5 md:p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            aria-label="Refresh"
           >
             <RefreshCw
-              className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+              className={`h-4 w-4 sm:h-5 sm:w-5 ${isRefreshing ? 'animate-spin' : ''}`}
             />
-            <span>Refresh</span>
-          </Button>
+          </button>
         </div>
       </div>
 

@@ -1,79 +1,137 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Search, Filter } from 'lucide-react';
-import { SESSION_SORT_OPTIONS } from '@/lib/constants/sessions';
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import { CustomSelect } from '@/components/ui/custom-select';
+import { Input } from '@/components/ui/input';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import { SESSION_SORT_OPTIONS } from '@/lib/constants/sessions';
 
 type SessionsFiltersProps = {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   sortBy: string;
   sortOrder: 'asc' | 'desc';
-  onSortChange: (field: string) => void;
+  // New props for explicit control to keep consistency with other pages
+  setSortBy?: (field: string) => void;
+  setSortOrder?: (order: 'asc' | 'desc') => void;
+  onSortChange?: (field: string) => void; // kept for backward compatibility
 };
 
-/**
- * Sessions Filters Component
- * Handles search, sorting, and date filtering for sessions
- */
 export default function SessionsFilters({
   searchTerm,
   onSearchChange,
   sortBy,
   sortOrder,
+  setSortBy,
+  setSortOrder,
   onSortChange,
 }: SessionsFiltersProps) {
+  // Handlers with fallbacks to onSortChange for compatibility
+  const handleSortFieldChange = (value: string) => {
+    if (setSortBy) setSortBy(value);
+    else if (onSortChange) onSortChange(value);
+  };
+
+  const handleSortOrderChange = (value: string) => {
+    const order = value === 'asc' ? 'asc' : 'desc';
+    if (setSortOrder) setSortOrder(order);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 w-full max-w-full">
       {/* Date Filters */}
       <div>
         <DashboardDateFilters hideAllTime={false} />
       </div>
 
-      {/* Search and Filter Controls */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by player name, machine ID, or session ID..."
-              value={searchTerm}
-              onChange={e => onSearchChange(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+      {/* Mobile: Search + Horizontal scroll filters */}
+      <div className="md:hidden">
+        {/* Search */}
+        <div className="relative mb-3 w-full">
+          <Input
+            type="text"
+            placeholder="Search by player, machine, or session ID..."
+            className="h-11 w-full rounded-full border border-gray-300 bg-white px-4 pr-10 text-base text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
+            value={searchTerm}
+            onChange={e => onSearchChange(e.target.value)}
+          />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        </div>
 
-          {/* Sort Options */}
-          <div className="flex items-center space-x-2">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <select
-              value={sortBy}
-              onChange={e => onSortChange(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-            >
-              {SESSION_SORT_OPTIONS.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+        {/* Filters - Horizontal scrollable */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          <div className="flex gap-2 min-w-max">
+            {/* Sort Field */}
+            <div className="w-40 flex-shrink-0 relative">
+              <CustomSelect
+                value={sortBy}
+                onValueChange={handleSortFieldChange}
+                options={SESSION_SORT_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+                placeholder="Sort By"
+                className="w-full"
+                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm whitespace-nowrap"
+                searchable={true}
+                emptyMessage="No sort options"
+              />
+            </div>
 
-            {/* Sort Order Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onSortChange(sortBy)}
-              className="flex items-center space-x-1"
-            >
-              <span>{sortOrder === 'desc' ? '↓' : '↑'}</span>
-              <span className="hidden sm:inline">
-                {sortOrder === 'desc' ? 'Desc' : 'Asc'}
-              </span>
-            </Button>
+            {/* Sort Order */}
+            <div className="w-28 flex-shrink-0 relative">
+              <CustomSelect
+                value={sortOrder}
+                onValueChange={handleSortOrderChange}
+                options={[
+                  { value: 'desc', label: 'Desc' },
+                  { value: 'asc', label: 'Asc' },
+                ]}
+                placeholder="Order"
+                className="w-full"
+                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              />
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Desktop: Search row (purple bar style like other pages) */}
+      <div className="hidden items-center gap-4 rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex">
+        {/* Search */}
+        <div className="relative min-w-0 max-w-md flex-1">
+          <Input
+            type="text"
+            placeholder="Search by player, machine, or session ID..."
+            className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+            value={searchTerm}
+            onChange={e => onSearchChange(e.target.value)}
+          />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
+
+        {/* Sort Field */}
+        <div className="w-auto min-w-[180px] max-w-[220px]">
+          <CustomSelect
+            value={sortBy}
+            onValueChange={handleSortFieldChange}
+            options={SESSION_SORT_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+            placeholder="Sort By"
+            className="w-full"
+            triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          />
+        </div>
+
+        {/* Sort Order */}
+        <div className="w-auto min-w-[120px] max-w-[140px]">
+          <CustomSelect
+            value={sortOrder}
+            onValueChange={handleSortOrderChange}
+            options={[
+              { value: 'desc', label: 'Desc' },
+              { value: 'asc', label: 'Asc' },
+            ]}
+            placeholder="Order"
+            className="w-full"
+            triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+          />
         </div>
       </div>
     </div>

@@ -173,19 +173,19 @@ function LocationsPageContent() {
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 flex-1 min-w-0 truncate flex items-center gap-2">
               Locations
-              <Image
-                src={IMAGES.locationIcon}
-                alt="Location Icon"
-                width={32}
-                height={32}
+            <Image
+              src={IMAGES.locationIcon}
+              alt="Location Icon"
+              width={32}
+              height={32}
                 className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
-              />
+            />
             </h1>
-            {/* Refresh icon - always icon only */}
+            {/* Mobile: Refresh icon */}
             <button
               onClick={handleRefresh}
-              disabled={isLoading || refreshing}
-              className="p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              disabled={refreshing}
+              className="md:hidden p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
               aria-label="Refresh"
             >
               <RefreshCw
@@ -196,7 +196,7 @@ function LocationsPageContent() {
             {!isLoading && (
               <button
                 onClick={openNewLocationModal}
-                disabled={isLoading}
+              disabled={isLoading}
                 className="md:hidden p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                 aria-label="New Location"
               >
@@ -204,8 +204,19 @@ function LocationsPageContent() {
               </button>
             )}
           </div>
-          {/* Desktop: Create button on far right */}
-          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+          {/* Desktop: Refresh icon and Create button on far right */}
+          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+            {/* Refresh icon */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Refresh"
+            >
+              <RefreshCw
+                className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </button>
             {isLoading ? (
               <ActionButtonSkeleton width="w-36" showIcon={true} />
             ) : (

@@ -1014,7 +1014,7 @@ function CollectionReportContent() {
         {/* Header Section: Title, refresh icon, and create button */}
         <div className="flex items-center justify-between mt-4 w-full max-w-full">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
-            Collection Report
+              Collection Report
             <Image
               src={IMAGES.creditCardIcon}
               alt="Collection Report Icon"
@@ -1030,42 +1030,42 @@ function CollectionReportContent() {
             {/* Refresh icon - always icon only */}
             <button
               onClick={handleRefresh}
-              disabled={loading || refreshing}
+              disabled={refreshing}
               className="p-1.5 md:p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
               aria-label="Refresh"
             >
               <RefreshCw
                 className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? "animate-spin" : ""}`}
-              />
+            />
             </button>
 
             {/* Create button - Desktop full button, Mobile icon only */}
-            {activeTab === "collection" && (
+          {activeTab === "collection" && (
               <>
                 {/* Desktop: Full button */}
                 <div className="hidden md:block">
                   {loading ? (
                     <div className="w-36 h-10" />
                   ) : (
-                    <Button
-                      onClick={() => {
-                        setShowDesktopCollectionModal(true);
-                      }}
+              <Button
+                onClick={() => {
+                    setShowDesktopCollectionModal(true);
+                }}
                       className="bg-buttonActive text-white hover:bg-purple-700 transition-colors flex items-center gap-2"
-                      disabled={loading || refreshing}
-                    >
+                      disabled={refreshing}
+                >
                       <PlusCircle className="h-4 w-4" />
-                      Create Collection Report
-                    </Button>
+                  Create Collection Report
+              </Button>
                   )}
-                </div>
+            </div>
                 {/* Mobile: Icon only */}
                 <div className="md:hidden">
                   <button
                     onClick={() => {
                       setShowMobileCollectionModal(true);
                     }}
-                    disabled={loading || refreshing}
+                    disabled={refreshing}
                     className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                     aria-label="Create Collection Report"
                   >
@@ -1073,7 +1073,7 @@ function CollectionReportContent() {
                   </button>
                 </div>
               </>
-            )}
+          )}
           </div>
         </div>
 

@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from "react";
-import { Plus } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNewCabinetStore } from "@/lib/store/newCabinetStore";
 import { ActionButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
@@ -52,9 +52,7 @@ export const CabinetActions = ({
               className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
               title="Add Cabinet"
             >
-              <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                <Plus className="w-4 h-4 text-white" />
-              </div>
+              <PlusCircle className="h-4 w-4" />
               <span>Add Cabinet</span>
             </Button>
           )}
@@ -72,9 +70,7 @@ export const CabinetActions = ({
               onClick={handleNewMovementRequest}
               className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
             >
-              <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                <Plus className="w-4 h-4 text-white" />
-              </div>
+              <PlusCircle className="h-4 w-4" />
               <span>Create Movement Request</span>
             </Button>
           )}
@@ -85,22 +81,22 @@ export const CabinetActions = ({
     return null;
   };
 
-  // Render mobile action buttons
+  // Render mobile action buttons - icons only
   const renderMobileActions = () => {
     if (activeSection === "cabinets") {
       return (
-        <div className="md:hidden mt-4 w-full">
+        <div className="md:hidden">
           {loading ? (
-            <ActionButtonSkeleton width="w-full" showIcon={true} />
+            <div className="h-5 w-5 flex-shrink-0" />
           ) : (
-            <Button
+            <button
               onClick={handleNewCabinet}
-              className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
-              title="Add Cabinet"
+              disabled={loading}
+              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Add Cabinet"
             >
-              <Plus size={20} />
-              Add Cabinet
-            </Button>
+              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+            </button>
           )}
         </div>
       );
@@ -108,17 +104,18 @@ export const CabinetActions = ({
 
     if (activeSection === "movement") {
       return (
-        <div className="md:hidden mt-4 w-full">
+        <div className="md:hidden">
           {loading ? (
-            <ActionButtonSkeleton width="w-full" showIcon={true} />
+            <div className="h-5 w-5 flex-shrink-0" />
           ) : (
-            <Button
+            <button
               onClick={handleNewMovementRequest}
-              className="w-full bg-button hover:bg-buttonActive text-white py-3 rounded-lg flex items-center justify-center gap-2"
+              disabled={loading}
+              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Create Movement Request"
             >
-              <Plus size={20} />
-              Create Movement Request
-            </Button>
+              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+            </button>
           )}
         </div>
       );

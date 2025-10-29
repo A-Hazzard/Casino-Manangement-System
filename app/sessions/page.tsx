@@ -45,7 +45,7 @@ function SessionsPageContent() {
   const { sessions, loading, error, pagination, handlePageChange } =
     useSessions();
 
-  const { searchTerm, sortBy, sortOrder, setSearchTerm, handleSort } =
+  const { searchTerm, sortBy, sortOrder, setSearchTerm, setSortBy, setSortOrder, handleSort } =
     useSessionsFilters();
 
   const { navigateToSessionEvents } = useSessionsNavigation();
@@ -96,6 +96,8 @@ function SessionsPageContent() {
             onSearchChange={setSearchTerm}
             sortBy={sortBy}
             sortOrder={sortOrder}
+            setSortBy={setSortBy}
+            setSortOrder={setSortOrder}
             onSortChange={handleSort}
           />
 

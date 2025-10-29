@@ -49,14 +49,12 @@ import { getNext30Days } from '@/lib/utils/licensee';
 import Image from 'next/image';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { RefreshCw, PlusCircle } from 'lucide-react';
 // import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
 
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import axios from 'axios';
-
-// Import SVG icons for pre-rendering
-import plusButtonWhite from '@/public/plusButtonWhite.svg';
 
 function AdministrationPageContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
@@ -111,6 +109,7 @@ function AdministrationPageContent() {
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [searchValue, setSearchValue] = useState('');
   const [searchMode, setSearchMode] = useState<'username' | 'email'>(
@@ -339,8 +338,10 @@ function AdministrationPageContent() {
       setIsUserModalOpen(false);
       setSelectedUser(null);
       // Refresh users with licensee filter
+      setRefreshing(true);
       const usersData = await fetchUsers(selectedLicencee);
       setAllUsers(usersData);
+      setRefreshing(false);
       toast.success(
         `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
       );
@@ -1105,34 +1106,106 @@ function AdministrationPageContent() {
       mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"
       showToaster={false}
     >
-      {/* Header Section: Admin icon, title, and action buttons */}
-      <div className={`flex items-center ${'mt-6 justify-between'}`}>
-        <div className="flex items-center">
-          <h1 className="mr-4 text-3xl font-bold">Administration</h1>
-          <Image
-            src={IMAGES.adminIcon}
-            alt="Admin Icon"
-            width={32}
-            height={32}
-          />
+      {/* Header Section: Admin icon, title, refresh icon, and action buttons */}
+      <div className="flex items-center justify-between mt-4 md:mt-6 w-full max-w-full">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
+            Administration
+            <Image
+              src={IMAGES.adminIcon}
+              alt="Admin Icon"
+              width={32}
+              height={32}
+              className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex-shrink-0"
+            />
+          </h1>
+          {/* Mobile: Refresh icon */}
+          <button
+            onClick={async () => {
+              setRefreshing(true);
+              if (activeSection === 'users') {
+                const usersData = await fetchUsers(selectedLicencee);
+                setAllUsers(usersData);
+              } else if (activeSection === 'licensees') {
+                const licenseesData = await fetchLicensees();
+                setAllLicensees(licenseesData);
+              }
+              setRefreshing(false);
+            }}
+            disabled={refreshing}
+            className="md:hidden ml-auto p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            aria-label="Refresh"
+          >
+            <RefreshCw
+              className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? "animate-spin" : ""}`}
+            />
+          </button>
         </div>
-        {activeSection === 'users' ? (
-          <Button
-            onClick={openAddUserModal}
-            className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
+
+        {/* Desktop: Refresh icon and Create button - Desktop full button, Mobile icon only */}
+        <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+          {/* Refresh icon */}
+          <button
+            onClick={async () => {
+              setRefreshing(true);
+              if (activeSection === 'users') {
+                const usersData = await fetchUsers(selectedLicencee);
+                setAllUsers(usersData);
+              } else if (activeSection === 'licensees') {
+                const licenseesData = await fetchLicensees();
+                setAllLicensees(licenseesData);
+              }
+              setRefreshing(false);
+            }}
+            disabled={refreshing}
+            className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            aria-label="Refresh"
           >
-            <Image src={plusButtonWhite} width={16} height={16} alt="Add" />
-            <span>Add User</span>
-          </Button>
-        ) : activeSection === 'licensees' ? (
-          <Button
-            onClick={handleOpenAddLicensee}
-            className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
-          >
-            <Image src={plusButtonWhite} width={16} height={16} alt="Add" />
-            <span>Add Licensee</span>
-          </Button>
-        ) : null}
+            <RefreshCw
+              className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+            />
+          </button>
+          {activeSection === 'users' ? (
+            <Button
+              onClick={openAddUserModal}
+              className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Add User
+            </Button>
+          ) : activeSection === 'licensees' ? (
+            <Button
+              onClick={handleOpenAddLicensee}
+              className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Add Licensee
+            </Button>
+          ) : null}
+        </div>
+
+        {/* Mobile: Create button - Icon only */}
+        <div className="md:hidden flex items-center gap-2 flex-shrink-0">
+          {activeSection === 'users' ? (
+            <button
+              onClick={openAddUserModal}
+              disabled={refreshing}
+              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Add User"
+            >
+              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+            </button>
+          ) : activeSection === 'licensees' ? (
+            <button
+              onClick={handleOpenAddLicensee}
+              disabled={refreshing}
+              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              aria-label="Add Licensee"
+            >
+              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Navigation Section: Tab navigation for different administration sections */}
