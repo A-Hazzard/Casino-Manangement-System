@@ -1163,7 +1163,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
             requestLiveConfig(relayId, 'coms'),
           ]);
         } catch (error) {
-          // Silent failure - don't log or show errors
+         console.error('❌ [HOOK] Error requesting live config:', error);
+         setIsConnectedToMqtt(false);
+         setHasReceivedRealSmibData(false);
+         return;
         }
 
         // Schedule next poll
