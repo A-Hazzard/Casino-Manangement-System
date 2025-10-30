@@ -789,7 +789,7 @@ class MQTTService {
     }
 
     const topic = `sas/relay/${relayId}`;
-    const pyd = 'E101015B2C';
+    const pyd = 'E101015B2C0x5B2C';
     const payload = JSON.stringify({
       typ: 'sun',
       pyd,
@@ -828,7 +828,7 @@ class MQTTService {
     }
 
     const topic = `sas/relay/${relayId}`;
-    const pyd = 'E101021234';
+    const pyd = 'E1010212340x69B7';
     const payload = JSON.stringify({
       typ: 'sun',
       pyd,
@@ -867,7 +867,7 @@ class MQTTService {
     }
 
     const topic = `sas/relay/${relayId}`;
-    const pyd = 'E101031234';
+    const pyd = 'E1010312340x783E';
     const payload = JSON.stringify({
       typ: 'sun',
       pyd,
@@ -906,7 +906,7 @@ class MQTTService {
     }
 
     const topic = `sas/relay/${relayId}`;
-    const pyd = 'E101041234';
+    const pyd = 'E1010412340xC81';
     const payload = JSON.stringify({
       typ: 'sun',
       pyd,

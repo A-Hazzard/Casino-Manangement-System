@@ -1143,10 +1143,51 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     }
   }, [formData]);
 
+  // Silent background polling - query SMIB config every 5-10 seconds to detect online/offline
+  useEffect(() => {
+    if (!currentRelayIdRef.current) return;
+
+    const scheduleNextPoll = () => {
+      // Random interval between 5-10 seconds
+      const randomInterval = Math.floor(Math.random() * 5000) + 5000;
+      
+      return setTimeout(async () => {
+        const relayId = currentRelayIdRef.current;
+        if (!relayId) return;
+
+        // Silent query - no loading states
+        try {
+          await Promise.all([
+            requestLiveConfig(relayId, 'mqtt'),
+            requestLiveConfig(relayId, 'net'),
+            requestLiveConfig(relayId, 'coms'),
+          ]);
+        } catch (error) {
+          // Silent failure - don't log or show errors
+        }
+
+        // Schedule next poll
+        if (currentRelayIdRef.current === relayId) {
+          heartbeatCheckIntervalRef.current = scheduleNextPoll();
+        }
+      }, randomInterval);
+    };
+
+    // Start first poll
+    heartbeatCheckIntervalRef.current = scheduleNextPoll();
+
+    return () => {
+      if (heartbeatCheckIntervalRef.current) {
+        clearTimeout(heartbeatCheckIntervalRef.current);
+        heartbeatCheckIntervalRef.current = null;
+      }
+    };
+  }, [requestLiveConfig]);
+
   // Heartbeat check - monitor SMIB connection status continuously
   useEffect(() => {
     // Start heartbeat check interval (runs whether connected or not to detect reconnection)
-    heartbeatCheckIntervalRef.current = setInterval(() => {
+    const checkInterval = setInterval(() => {
       const timeSinceLastHeartbeat = Date.now() - lastHeartbeatRef.current;
       const timeoutMs = 7000; // 7 seconds timeout (faster detection)
 
@@ -1171,9 +1212,8 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     }, 1000); // Check every 1 second (faster detection)
 
     return () => {
-      if (heartbeatCheckIntervalRef.current) {
-        clearInterval(heartbeatCheckIntervalRef.current);
-        heartbeatCheckIntervalRef.current = null;
+      if (checkInterval) {
+        clearInterval(checkInterval);
       }
     };
   }, [isConnectedToMqtt, hasReceivedRealSmibData]);
