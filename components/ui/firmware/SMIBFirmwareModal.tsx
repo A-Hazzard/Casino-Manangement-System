@@ -120,147 +120,149 @@ export default function SMIBFirmwareModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleModalClose}>
-      <DialogContent className="max-w-lg overflow-hidden bg-white p-0">
-        <DialogHeader className="border-b border-gray-200 p-6">
-          <DialogTitle className="text-2xl font-bold text-gray-800">
+      <DialogContent className="mx-2 flex max-h-[95vh] w-full max-w-lg flex-col overflow-hidden bg-white p-0 sm:mx-4 md:mx-0 md:max-h-[90vh]">
+        <DialogHeader className="flex-shrink-0 border-b border-gray-200 p-4 sm:p-6">
+          <DialogTitle className="text-xl font-bold text-gray-800 sm:text-2xl">
             Add New Firmware Version
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-6 p-6">
-          {/* Product Dropdown */}
-          <div>
-            <Label
-              htmlFor="product"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Product *
-            </Label>
-            <select
-              id="product"
-              value={product}
-              onChange={e => setProduct(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-              required
-            >
-              <option value="">Select Product</option>
-              <option value="Cloudy">Cloudy</option>
-              <option value="Sunny">Sunny</option>
-              <option value="Storm">Storm</option>
-            </select>
-          </div>
+        <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
+          <div className="flex flex-col gap-6">
+            {/* Product Dropdown */}
+            <div>
+              <Label
+                htmlFor="product"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                Product *
+              </Label>
+              <select
+                id="product"
+                value={product}
+                onChange={e => setProduct(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+                required
+              >
+                <option value="">Select Product</option>
+                <option value="Cloudy">Cloudy</option>
+                <option value="Sunny">Sunny</option>
+                <option value="Storm">Storm</option>
+              </select>
+            </div>
 
-          {/* Version Input */}
-          <div>
-            <Label
-              htmlFor="version"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Version *
-            </Label>
-            <Input
-              id="version"
-              type="text"
-              placeholder="e.g., 1.0.4.1"
-              value={version}
-              onChange={e => setVersion(e.target.value)}
-              className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
-              required
-            />
-          </div>
-
-          {/* Version Details */}
-          <div>
-            <Label
-              htmlFor="versionDetails"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Version Details
-            </Label>
-            <Textarea
-              id="versionDetails"
-              placeholder="Add any details about this version..."
-              value={versionDetails}
-              onChange={e => setVersionDetails(e.target.value)}
-              className="min-h-[80px] border-gray-300 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-            />
-          </div>
-
-          {/* File Upload Area */}
-          <div>
-            <Label className="mb-1 block text-sm font-medium text-gray-700">
-              Firmware File (.bin) *
-            </Label>
-            <div
-              className={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                dragActive
-                  ? 'border-buttonActive bg-buttonActive/5'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept=".bin"
+            {/* Version Input */}
+            <div>
+              <Label
+                htmlFor="version"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                Version *
+              </Label>
+              <Input
+                id="version"
+                type="text"
+                placeholder="e.g., 1.0.4.1"
+                value={version}
+                onChange={e => setVersion(e.target.value)}
+                className="border-gray-300 focus:border-buttonActive focus:ring-buttonActive"
+                required
               />
+            </div>
 
-              {selectedFile ? (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-button">
-                    <UploadIcon className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="text-sm font-medium text-gray-700">
-                    {selectedFile.name}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedFile(null)}
-                    className="mt-2"
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-                    <CameraIcon className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    <button
+            {/* Version Details */}
+            <div>
+              <Label
+                htmlFor="versionDetails"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                Version Details
+              </Label>
+              <Textarea
+                id="versionDetails"
+                placeholder="Add any details about this version..."
+                value={versionDetails}
+                onChange={e => setVersionDetails(e.target.value)}
+                className="min-h-[80px] border-gray-300 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+              />
+            </div>
+
+            {/* File Upload Area */}
+            <div>
+              <Label className="mb-1 block text-sm font-medium text-gray-700">
+                Firmware File (.bin) *
+              </Label>
+              <div
+                className={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+                  dragActive
+                    ? 'border-buttonActive bg-buttonActive/5'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept=".bin"
+                />
+
+                {selectedFile ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-button">
+                      <UploadIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-700">
+                      {selectedFile.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </div>
+                    <Button
                       type="button"
-                      onClick={handleChooseFileClick}
-                      className="font-medium text-buttonActive hover:text-buttonActive/80"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedFile(null)}
+                      className="mt-2"
                     >
-                      Click to upload
-                    </button>{' '}
-                    or drag and drop
+                      Remove
+                    </Button>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    Only .bin files are supported
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                      <CameraIcon className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <button
+                        type="button"
+                        onClick={handleChooseFileClick}
+                        className="font-medium text-buttonActive hover:text-buttonActive/80"
+                      >
+                        Click to upload
+                      </button>{' '}
+                      or drag and drop
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Only .bin files are supported
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="border-t border-gray-200 p-6">
+        <DialogFooter className="flex-shrink-0 border-t border-gray-200 bg-white p-4 sm:p-6">
           <DialogClose asChild>
             <Button
               variant="outline"
               onClick={handleModalClose}
-              className="border-gray-300 text-gray-700 hover:bg-gray-100"
+              className="w-full border-gray-300 text-gray-700 hover:bg-gray-100 sm:w-auto"
               disabled={uploading}
             >
               Cancel
@@ -269,7 +271,7 @@ export default function SMIBFirmwareModal({
           <Button
             onClick={handleUpload}
             disabled={!product || !version || !selectedFile || uploading}
-            className="bg-button text-white hover:bg-button/90"
+            className="w-full bg-button text-white hover:bg-button/90 sm:w-auto"
           >
             {uploading ? 'Uploading...' : 'Add'}
           </Button>
