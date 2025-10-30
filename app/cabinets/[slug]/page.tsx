@@ -1708,7 +1708,6 @@ function CabinetDetailPageContent() {
                               cabinet?.relayId || cabinet?.smibBoard || null
                             }
                             isOnline={isConnectedToMqtt}
-                            comsMode={cabinet?.smibConfig?.coms?.comsMode}
                           />
                         </div>
 

@@ -500,9 +500,21 @@ export default function SMIBManagementTab() {
           </Button>
         </div>
 
-        {/* Location Filter */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        {/* Search Bar and Location Filter */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="flex-1">
+            <SMIBSearchSelect
+              value={selectedRelayId}
+              onValueChange={handleSmibSelection}
+              smibs={filteredSmibs}
+              placeholder="Search for SMIB by relay ID, serial number, or location..."
+              emptyMessage="No SMIBs found"
+              className="w-full"
+            />
+          </div>
+
+          {/* Location Filter */}
+          <div className="w-full sm:w-64">
             <Select
               value={selectedLocationId}
               onValueChange={setSelectedLocationId}
@@ -520,30 +532,21 @@ export default function SMIBManagementTab() {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Restart All SMIBs Button - Only shown when specific location selected */}
-          {selectedLocationId !== 'all' && (
-            <Button
-              onClick={() => setShowRestartAllDialog(true)}
-              variant="destructive"
-              size="sm"
-              disabled={isRestartingAll || filteredSmibs.length === 0}
-              className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
-            >
-              <AlertTriangle className="mr-2 h-4 w-4" />
-              Restart All SMIBs ({filteredSmibs.length})
-            </Button>
-          )}
         </div>
 
-        <SMIBSearchSelect
-          value={selectedRelayId}
-          onValueChange={handleSmibSelection}
-          smibs={filteredSmibs}
-          placeholder="Search for SMIB by relay ID, serial number, or location..."
-          emptyMessage="No SMIBs found"
-          className="w-full"
-        />
+        {/* Restart All SMIBs Button - Only shown when specific location selected */}
+        {selectedLocationId !== 'all' && (
+          <Button
+            onClick={() => setShowRestartAllDialog(true)}
+            variant="destructive"
+            size="sm"
+            disabled={isRestartingAll || filteredSmibs.length === 0}
+            className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
+          >
+            <AlertTriangle className="mr-2 h-4 w-4" />
+            Restart All SMIBs ({filteredSmibs.length})
+          </Button>
+        )}
 
         {selectedSmib && (
           <div className="space-y-2">
@@ -720,11 +723,6 @@ export default function SMIBManagementTab() {
                 <MeterDataSection
                   relayId={selectedRelayId}
                   isOnline={smibConfig.isConnectedToMqtt}
-                  comsMode={
-                    machineData?.smibConfig?.coms?.comsMode !== undefined
-                      ? Number(machineData.smibConfig.coms.comsMode)
-                      : undefined
-                  }
                 />
               </div>
 

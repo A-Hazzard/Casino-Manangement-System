@@ -778,6 +778,162 @@ class MQTTService {
       });
     });
   }
+
+  /**
+   * Send Clear NVS command to SMIB
+   * @param relayId - The SMIB relay ID
+   */
+  async sendClearNvs(relayId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const pyd = 'E101015B2C';
+    const payload = JSON.stringify({
+      typ: 'sun',
+      pyd,
+      sta: '162',
+      siz: pyd.length,
+    });
+
+    console.log(`📡 [MQTT] Sending Clear NVS command to ${relayId}`);
+    console.log(`📡 [MQTT] Payload: ${payload}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to send Clear NVS command:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Clear NVS command sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Send Clear NVS Meters command to SMIB
+   * @param relayId - The SMIB relay ID
+   */
+  async sendClearNvsMeters(relayId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const pyd = 'E101021234';
+    const payload = JSON.stringify({
+      typ: 'sun',
+      pyd,
+      sta: '162',
+      siz: pyd.length,
+    });
+
+    console.log(`📡 [MQTT] Sending Clear NVS Meters command to ${relayId}`);
+    console.log(`📡 [MQTT] Payload: ${payload}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to send Clear NVS Meters command:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Clear NVS Meters command sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Send Clear NVS BV command to SMIB
+   * @param relayId - The SMIB relay ID
+   */
+  async sendClearNvsBv(relayId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const pyd = 'E101031234';
+    const payload = JSON.stringify({
+      typ: 'sun',
+      pyd,
+      sta: '162',
+      siz: pyd.length,
+    });
+
+    console.log(`📡 [MQTT] Sending Clear NVS BV command to ${relayId}`);
+    console.log(`📡 [MQTT] Payload: ${payload}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to send Clear NVS BV command:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Clear NVS BV command sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Send Clear NVS Door command to SMIB
+   * @param relayId - The SMIB relay ID
+   */
+  async sendClearNvsDoor(relayId: string): Promise<void> {
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = `sas/relay/${relayId}`;
+    const pyd = 'E101041234';
+    const payload = JSON.stringify({
+      typ: 'sun',
+      pyd,
+      sta: '162',
+      siz: pyd.length,
+    });
+
+    console.log(`📡 [MQTT] Sending Clear NVS Door command to ${relayId}`);
+    console.log(`📡 [MQTT] Payload: ${payload}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to send Clear NVS Door command:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Clear NVS Door command sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
 }
 
 // Export singleton instance

@@ -665,9 +665,16 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
           console.warn(`🔍 [HOOK] Received config_update message:`, message);
           console.warn(`🔍 [HOOK] Config data:`, configData);
 
-          // Skip processing if configData is empty or doesn't have a component
+          // ANY message from SMIB indicates it's alive (rsp, err, exp, etc.)
+          // If we previously had real data and went offline, mark as back online
+          if (!isConnectedToMqtt && hasReceivedRealSmibData) {
+            console.warn(`✅ [HOOK] SMIB reconnected (${configData.typ} message detected)`);
+            setIsConnectedToMqtt(true);
+          }
+
+          // For non-config messages (rsp, err, exp), just update heartbeat and return
           if (!configData || !configData.comp) {
-            console.warn(`🔍 [HOOK] Skipping empty config_update message`);
+            console.warn(`🔍 [HOOK] Received ${configData.typ || 'unknown'} message - updating heartbeat only`);
             return;
           }
 
