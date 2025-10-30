@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, User, Building2, Calendar, Clock } from 'lucide-react';
 import gsap from 'gsap';
@@ -7,6 +7,7 @@ import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 import { getIPDescription } from '@/lib/utils/ipAddress';
 import { formatFieldName } from '@/lib/utils/fieldFormatting';
 import { formatValue } from '@/lib/utils/dateFormatting';
+import { resolveIdToName, isIdValue } from '@/lib/utils/idResolution';
 
 type ActivityDetailsModalProps = {
   open: boolean;
@@ -21,6 +22,14 @@ export default function ActivityDetailsModal({
 }: ActivityDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const [resolvedChanges, setResolvedChanges] = useState<
+    Array<{
+      field: string;
+      oldValue: string;
+      newValue: string;
+      originalChange: { field: string; oldValue: unknown; newValue: unknown };
+    }>
+  >([]);
 
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
@@ -36,6 +45,77 @@ export default function ActivityDetailsModal({
       );
     }
   }, [open]);
+
+  // Resolve IDs and format values
+  useEffect(() => {
+    if (!open || !activity?.changes || activity.changes.length === 0) {
+      setResolvedChanges([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const resolveChanges = async () => {
+      try {
+        const resolved = await Promise.all(
+          activity.changes!
+            // Filter out changes where "To" value is an ID (for UPDATE operations)
+            .filter(change => {
+              const action = (
+                activity.actionType || activity.action || 'unknown'
+              ).toLowerCase();
+              // For UPDATE operations, filter out if "To" is an ID
+              if (action === 'update') {
+                return !isIdValue(change.newValue);
+              }
+              // For CREATE operations, show if newValue is not an ID
+              if (action === 'create') {
+                return !isIdValue(change.newValue);
+              }
+              // For DELETE operations, always show
+              return true;
+            })
+            .map(async change => {
+              const action = (
+                activity.actionType || activity.action || 'unknown'
+              ).toLowerCase();
+              const formattedOldValue = isIdValue(change.oldValue)
+                ? await resolveIdToName(change.oldValue, change.field)
+                : formatValue(change.oldValue, change.field);
+              const formattedNewValue =
+                action === 'create'
+                  ? isIdValue(change.newValue)
+                    ? await resolveIdToName(change.newValue, change.field)
+                    : formatValue(change.newValue, change.field)
+                  : formatValue(change.newValue, change.field);
+
+              return {
+                field: change.field,
+                oldValue: formattedOldValue,
+                newValue: formattedNewValue,
+                originalChange: change,
+              };
+            })
+        );
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setResolvedChanges(resolved);
+        }
+      } catch (error) {
+        console.error('Error resolving changes:', error);
+        if (isMounted) {
+          setResolvedChanges([]);
+        }
+      }
+    };
+
+    resolveChanges();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [open, activity?.changes, activity?.actionType, activity?.action]);
 
   if (!open || !activity) return null;
 
@@ -181,7 +261,7 @@ export default function ActivityDetailsModal({
           </div>
 
           {/* Changes Details */}
-          {activity.changes && activity.changes.length > 0 ? (
+          {resolvedChanges && resolvedChanges.length > 0 ? (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 {(
@@ -189,17 +269,17 @@ export default function ActivityDetailsModal({
                   activity.action ||
                   'unknown'
                 ).toLowerCase() === 'create'
-                  ? `Fields Created (${activity.changes.length})`
+                  ? `Fields Created (${resolvedChanges.length})`
                   : (
                         activity.actionType ||
                         activity.action ||
                         'unknown'
                       ).toLowerCase() === 'delete'
-                    ? `Fields Deleted (${activity.changes.length})`
-                    : `Changes Made (${activity.changes.length})`}
+                    ? `Fields Deleted (${resolvedChanges.length})`
+                    : `Changes Made (${resolvedChanges.length})`}
               </h3>
               <div className="space-y-3">
-                {activity.changes.map((change, index) => (
+                {resolvedChanges.map((change, index) => (
                   <div
                     key={index}
                     className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm"
@@ -225,7 +305,7 @@ export default function ActivityDetailsModal({
                           </p>
                           <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
                             <p className="break-all font-mono text-sm text-blue-800">
-                              {formatValue(change.newValue, change.field)}
+                              {change.newValue}
                             </p>
                           </div>
                         </div>
@@ -241,7 +321,7 @@ export default function ActivityDetailsModal({
                           </p>
                           <div className="rounded-md border border-red-200 bg-red-50 p-3">
                             <p className="break-all font-mono text-sm text-red-800">
-                              {formatValue(change.oldValue, change.field)}
+                              {change.oldValue}
                             </p>
                           </div>
                         </div>
@@ -254,7 +334,7 @@ export default function ActivityDetailsModal({
                             </p>
                             <div className="rounded-md border border-red-200 bg-red-50 p-3">
                               <p className="break-all font-mono text-sm text-red-800">
-                                {formatValue(change.oldValue, change.field)}
+                                {change.oldValue}
                               </p>
                             </div>
                           </div>
@@ -264,7 +344,7 @@ export default function ActivityDetailsModal({
                             </p>
                             <div className="rounded-md border border-green-200 bg-green-50 p-3">
                               <p className="break-all font-mono text-sm text-green-800">
-                                {formatValue(change.newValue, change.field)}
+                                {change.newValue}
                               </p>
                             </div>
                           </div>

@@ -22,13 +22,20 @@ type MemberSortOption =
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
   MagnifyingGlassIcon,
 } from '@radix-ui/react-icons';
-import { PlusCircle, RefreshCw } from 'lucide-react';
+import { PlusCircle, RefreshCw, ArrowUpDown } from 'lucide-react';
 import { Toaster } from 'sonner';
 import Image from 'next/image';
 
@@ -228,16 +235,17 @@ export default function MembersListTab() {
   return (
     <>
       {/* Title Row */}
-      <div className="mt-4 flex w-full max-w-full items-center justify-between">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
+      <div className="mt-4 w-full max-w-full">
+        {/* Mobile Layout - All on same line */}
+        <div className="flex items-center gap-2 md:hidden">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-800 flex-1 min-w-0 truncate flex items-center gap-2">
             Members List
             <Image
               src={membersIcon}
               alt="Members Icon"
               width={32}
               height={32}
-              className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex-shrink-0"
+              className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
             />
           </h1>
           {/* Mobile: Refresh icon */}
@@ -248,17 +256,38 @@ export default function MembersListTab() {
               setRefreshing(false);
             }}
             disabled={refreshing}
-            className="md:hidden ml-auto p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            className="p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
             aria-label="Refresh"
           >
             <RefreshCw
-              className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? "animate-spin" : ""}`}
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
             />
+          </button>
+          {/* Create icon */}
+          <button
+            onClick={handleNewMember}
+            disabled={refreshing}
+            className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            aria-label="New Member"
+          >
+            <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
           </button>
         </div>
 
-        {/* Desktop: Refresh icon and Create button - Desktop full button, Mobile icon only */}
-        <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+        {/* Desktop Layout - Title on left, actions on right */}
+        <div className="hidden md:flex items-center justify-between">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2">
+            Members List
+            <Image
+              src={membersIcon}
+              alt="Members Icon"
+              width={32}
+              height={32}
+              className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
+            />
+          </h1>
+          {/* Desktop: Refresh icon and Create button onido far right */}
+          <div className="flex items-center gap-2 flex-shrink-0 ml-4">
           {/* Refresh icon */}
           <button
             onClick={async () => {
@@ -274,26 +303,15 @@ export default function MembersListTab() {
               className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
             />
           </button>
-          {/* Desktop: Full button */}
-          <div className="hidden md:block">
+            {/* Create button */}
             <Button
               onClick={handleNewMember}
-              className="flex items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive"
+              disabled={refreshing}
+              className="flex items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <PlusCircle className="h-4 w-4" />
               New Member
             </Button>
-          </div>
-          {/* Mobile: Icon only */}
-          <div className="md:hidden">
-            <button
-              onClick={handleNewMember}
-              disabled={refreshing}
-              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-              aria-label="New Member"
-            >
-              <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-            </button>
           </div>
         </div>
       </div>
@@ -309,6 +327,36 @@ export default function MembersListTab() {
             onChange={e => setSearchTerm(e.target.value)}
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        </div>
+
+        {/* Mobile: Sort controls */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <Select
+              value={sortOption}
+              onValueChange={v => setSortOption(v as MemberSortOption)}
+            >
+              <SelectTrigger className="h-10 w-full">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="playerId">Member ID</SelectItem>
+                <SelectItem value="points">Points</SelectItem>
+                <SelectItem value="lastSession">Last Session</SelectItem>
+                <SelectItem value="lastLogin">Last Login</SelectItem>
+                <SelectItem value="winLoss">Win/Loss</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            className="h-10 w-10 p-0"
+            onClick={() => setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))}
+            aria-label="Toggle sort order"
+          >
+            <ArrowUpDown className={`h-4 w-4 ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
+          </Button>
         </div>
       </div>
 

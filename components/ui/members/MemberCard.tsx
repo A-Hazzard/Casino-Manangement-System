@@ -44,9 +44,11 @@ export default function MemberCard({
         }
       }}
     >
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-base font-semibold">
-          {`${member.profile.firstName} ${member.profile.lastName}`}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-base font-semibold min-w-0 flex-1 truncate">
+          {member.profile?.firstName && member.profile?.lastName
+            ? `${member.profile.firstName} ${member.profile.lastName}`
+            : member.memberId || member._id || 'Unknown Member'}
         </h3>
         <div className="action-buttons flex gap-2">
           <Image
@@ -86,23 +88,22 @@ export default function MemberCard({
       </div>
 
       <div className="mb-2 flex flex-col space-y-2 text-sm">
-        <div className="flex justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="font-medium">Member ID</span>
-          <span className="font-mono text-xs font-semibold text-foreground">
+          <span className="font-semibold text-foreground max-w-[60%] truncate text-right font-mono">
             {member._id}
           </span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="font-medium">Occupation</span>
           <span className="font-semibold text-foreground">
-            {member.profile.occupation || 'Not Specified'}
+            {member.profile?.occupation || 'Not Specified'}
           </span>
         </div>
-      </div>
-
-      <div className="mb-3 mt-1 flex justify-between">
-        <span className="font-medium">Points</span>
-        <span className="font-semibold text-button">{member.points}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-medium">Points</span>
+          <span className="font-semibold text-button">{member.points}</span>
+        </div>
       </div>
 
       <div className="action-buttons mt-2 flex justify-between gap-2">
@@ -111,7 +112,9 @@ export default function MemberCard({
           onClick={e => e.stopPropagation()}
         >
           <User className="mr-1 h-3 w-3" />
-          {member.profile.firstName} {member.profile.lastName}
+          {member.profile?.firstName && member.profile?.lastName
+            ? `${member.profile.firstName} ${member.profile.lastName}`
+            : member.memberId || member._id || 'Unknown'}
         </Button>
         <Button
           className="flex h-auto items-center space-x-1 rounded-md bg-button px-2 py-1 text-xs text-primary-foreground"

@@ -284,6 +284,13 @@ export const shouldShowNavigationLink = (
     return false; // These are accessed via direct links only
   }
 
+  // Hide certain links (sessions, members, reports) unless the user has
+  // the highest-level role. This affects NAV/Sidebar visibility only and
+  // does not change actual route access rules handled by hasPageAccess.
+  if (page === 'sessions' || page === 'members' || page === 'reports') {
+    return userRoles.includes('evolution admin');
+  }
+
   return hasPageAccess(userRoles, page);
 };
 

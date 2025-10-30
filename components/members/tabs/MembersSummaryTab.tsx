@@ -197,8 +197,8 @@ export default function MembersSummaryTab() {
   };
 
   const handleLastPage = () => {
-    if (pagination) {
-      setCurrentPage(pagination.totalPages);
+    if (pagination && pagination.totalPages) {
+      setCurrentPage(Number(pagination.totalPages) || 1);
     }
   };
 
@@ -209,8 +209,11 @@ export default function MembersSummaryTab() {
   };
 
   const handleNextPage = () => {
-    if (pagination && currentPage < pagination.totalPages) {
-      setCurrentPage(currentPage + 1);
+    if (pagination && pagination.totalPages) {
+      const totalPagesNum = Number(pagination.totalPages) || 1;
+      if (currentPage < totalPagesNum) {
+        setCurrentPage(currentPage + 1);
+      }
     }
   };
 
@@ -387,16 +390,22 @@ export default function MembersSummaryTab() {
   });
 
   const renderPagination = () => {
-    if (!pagination || pagination.totalPages <= 1) return null;
+    if (
+      !pagination ||
+      !Number(pagination.totalPages) ||
+      Number(pagination.totalPages) <= 1
+    )
+      return null;
 
+    const totalPagesNum = Number(pagination.totalPages) || 1;
     const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(pagination.totalPages, currentPage + 2);
+    const endPage = Math.min(totalPagesNum, currentPage + 2);
 
     return (
       <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
         <div className="flex flex-col space-y-2 sm:hidden">
           <div className="text-center text-xs text-gray-600">
-            Page {currentPage} of {pagination.totalPages}
+            Page {currentPage} of {totalPagesNum}
           </div>
           <div className="flex items-center justify-center space-x-2">
             <Button
@@ -422,21 +431,19 @@ export default function MembersSummaryTab() {
               <input
                 type="number"
                 min={1}
-                max={pagination.totalPages}
+                max={totalPagesNum}
                 value={currentPage}
                 onChange={e => {
                   let val = Number(e.target.value);
                   if (isNaN(val)) val = 1;
                   if (val < 1) val = 1;
-                  if (val > pagination.totalPages) val = pagination.totalPages;
+                  if (val > totalPagesNum) val = totalPagesNum;
                   setCurrentPage(val);
                 }}
                 className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
                 aria-label="Page number"
               />
-              <span className="text-xs text-gray-600">
-                of {pagination.totalPages}
-              </span>
+              <span className="text-xs text-gray-600">of {totalPagesNum}</span>
             </div>
             <Button
               onClick={handleNextPage}
@@ -449,7 +456,7 @@ export default function MembersSummaryTab() {
             </Button>
             <Button
               onClick={handleLastPage}
-              disabled={currentPage === pagination.totalPages}
+              disabled={currentPage === totalPagesNum}
               variant="outline"
               size="sm"
               className="px-2 py-1 text-xs"
@@ -463,13 +470,23 @@ export default function MembersSummaryTab() {
             <p className="text-sm text-gray-700">
               Showing{' '}
               <span className="font-medium">
-                {(currentPage - 1) * pagination.limit + 1}
+                {pagination
+                  ? (currentPage - 1) * (Number(pagination.limit) || 10) + 1
+                  : 0}
               </span>{' '}
               to{' '}
               <span className="font-medium">
-                {Math.min(currentPage * pagination.limit, pagination.total)}
+                {pagination
+                  ? Math.min(
+                      currentPage * (Number(pagination.limit) || 10),
+                      Number(pagination.total) || 0
+                    )
+                  : 0}
               </span>{' '}
-              of <span className="font-medium">{pagination.total}</span> results
+              of <span className="font-medium">
+                {pagination ? Number(pagination.total) || 0 : 0}
+              </span>{' '}
+              results
             </p>
           </div>
           <div>
@@ -502,21 +519,20 @@ export default function MembersSummaryTab() {
                 <input
                   type="number"
                   min={1}
-                  max={pagination.totalPages}
+                  max={totalPagesNum}
                   value={currentPage}
                   onChange={e => {
                     let val = Number(e.target.value);
                     if (isNaN(val)) val = 1;
                     if (val < 1) val = 1;
-                    if (val > pagination.totalPages)
-                      val = pagination.totalPages;
+                    if (val > totalPagesNum) val = totalPagesNum;
                     setCurrentPage(val);
                   }}
                   className="w-12 border-0 bg-transparent px-1 py-0 text-center text-xs text-gray-700 focus:border-0 focus:ring-0"
                   aria-label="Page number"
                 />
                 <span className="ml-1 text-xs text-gray-600">
-                  of {pagination.totalPages}
+                  of {totalPagesNum}
                 </span>
               </div>
 
@@ -546,7 +562,7 @@ export default function MembersSummaryTab() {
               </Button>
               <Button
                 onClick={handleLastPage}
-                disabled={currentPage === pagination.totalPages}
+                disabled={currentPage === totalPagesNum}
                 variant="outline"
                 size="sm"
                 className="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-400 hover:bg-gray-50"

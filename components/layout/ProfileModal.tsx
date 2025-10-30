@@ -10,6 +10,10 @@ import {
   filterMeaningfulChanges,
   getChangesSummary,
 } from '@/lib/utils/changeDetection';
+import {
+  validatePasswordStrength,
+  getPasswordStrengthLabel,
+} from '@/lib/utils/validation';
 import cameraIcon from '@/public/cameraIcon.svg';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -54,6 +58,31 @@ export default function ProfileModal({
   // Countries state
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
+
+  // Password strength state
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number;
+    label: string;
+    feedback: string[];
+    requirements: {
+      length: boolean;
+      uppercase: boolean;
+      lowercase: boolean;
+      number: boolean;
+      special: boolean;
+    };
+  }>({
+    score: 0,
+    label: 'Very Weak',
+    feedback: [],
+    requirements: {
+      length: false,
+      uppercase: false,
+      lowercase: false,
+      number: false,
+      special: false,
+    },
+  });
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
@@ -201,6 +230,32 @@ export default function ProfileModal({
     }
   }, [open]);
 
+  // Update password strength when new password changes
+  useEffect(() => {
+    if (passwordData.newPassword) {
+      const validation = validatePasswordStrength(passwordData.newPassword);
+      setPasswordStrength({
+        score: validation.score,
+        label: getPasswordStrengthLabel(validation.score),
+        feedback: validation.feedback,
+        requirements: validation.requirements,
+      });
+    } else {
+      setPasswordStrength({
+        score: 0,
+        label: 'Very Weak',
+        feedback: [],
+        requirements: {
+          length: false,
+          uppercase: false,
+          lowercase: false,
+          number: false,
+          special: false,
+        },
+      });
+    }
+  }, [passwordData.newPassword]);
+
   const handleInputChange = (
     field: string,
     value: string,
@@ -276,29 +331,65 @@ export default function ProfileModal({
       payload.roles = selectedRoles;
     }
 
+    // Validate password change if any password field is filled
     if (
-      passwordData.newPassword &&
-      passwordData.newPassword === passwordData.confirmPassword
+      passwordData.currentPassword ||
+      passwordData.newPassword ||
+      passwordData.confirmPassword
     ) {
+      // If any password field is filled, all must be filled
       if (!passwordData.currentPassword) {
-        toast.error('Please enter your current password to set a new one.');
+        toast.error('Please enter your current password to change it.');
+        return;
+      }
+      if (!passwordData.newPassword) {
+        toast.error('Please enter a new password.');
+        return;
+      }
+      if (!passwordData.confirmPassword) {
+        toast.error('Please confirm your new password.');
+        return;
+      }
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        toast.error('New passwords do not match.');
+        return;
+      }
+      if (passwordData.currentPassword === passwordData.newPassword) {
+        toast.error('New password must be different from current password.');
         return;
       }
       payload.password = {
         current: passwordData.currentPassword,
         new: passwordData.newPassword,
       };
-    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('New passwords do not match.');
-      return;
     }
 
     // Detect actual changes between old and new user data
-    const changes = detectChanges(userData, payload);
-    const meaningfulChanges = filterMeaningfulChanges(changes);
+    // Create a clean payload for change detection (without password object)
+    const payloadForDetection = { ...payload };
+    if (payloadForDetection.password) {
+      // Remove password from detection since we handle it separately
+      delete payloadForDetection.password;
+    }
+    
+    let changes: ReturnType<typeof detectChanges> = [];
+    let meaningfulChanges: ReturnType<typeof filterMeaningfulChanges> = [];
+    
+    try {
+      changes = detectChanges(userData, payloadForDetection);
+      meaningfulChanges = filterMeaningfulChanges(changes);
+    } catch (error) {
+      console.error('Error detecting changes:', error);
+      // Continue with update even if change detection fails
+      meaningfulChanges = [];
+    }
 
-    // Only proceed if there are actual changes
-    if (meaningfulChanges.length === 0) {
+    // Check if we have password change or other meaningful changes
+    const hasPasswordChange = !!(
+      passwordData.newPassword && passwordData.confirmPassword
+    );
+    
+    if (meaningfulChanges.length === 0 && !hasPasswordChange) {
       toast.info('No changes detected');
       return;
     }
@@ -307,7 +398,18 @@ export default function ProfileModal({
       await axios.put(`/api/users/${userData._id}`, payload);
 
       // Log the profile update activity with proper change tracking
-      const changesSummary = getChangesSummary(meaningfulChanges);
+      let changesSummary = 'Profile updated';
+      try {
+        if (meaningfulChanges && meaningfulChanges.length > 0) {
+          changesSummary = getChangesSummary(meaningfulChanges);
+        } else if (hasPasswordChange) {
+          changesSummary = 'Password updated';
+        }
+      } catch (error) {
+        console.error('Error generating changes summary:', error);
+        changesSummary = 'Profile updated';
+      }
+      
       await logActivity(
         'update',
         'user',
@@ -324,6 +426,14 @@ export default function ProfileModal({
       );
 
       toast.success(`Profile updated successfully: ${changesSummary}`);
+      
+      // Reset password fields after successful save
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      
       // Emit a browser event so the sidebar can update immediately
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
@@ -338,11 +448,35 @@ export default function ProfileModal({
       }
       onClose();
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to update profile.';
+      let errorMessage = 'Failed to update profile.';
+      
+      if (axios.isAxiosError(error)) {
+        // Extract error message from API response
+        if (error.response?.data) {
+          const responseData = error.response.data;
+          // Try to get the error message from various possible locations
+          errorMessage = 
+            responseData.message || 
+            responseData.error || 
+            (typeof responseData === 'string' ? responseData : errorMessage);
+          
+          // If message is generic, try to get more specific error
+          if (errorMessage === 'Update failed' && responseData.error) {
+            errorMessage = responseData.error;
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast.error(errorMessage);
       if (process.env.NODE_ENV === 'development') {
-        console.error(error);
+        console.error('Profile update error:', error);
+        if (axios.isAxiosError(error) && error.response?.data) {
+          console.error('API Error Response:', error.response.data);
+        }
       }
     }
   };
@@ -352,6 +486,11 @@ export default function ProfileModal({
       setFormData(userData.profile || {});
       setProfilePicture(userData.profilePicture || null);
     }
+    setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
     setIsEditMode(false);
   };
 
@@ -967,6 +1106,190 @@ export default function ProfileModal({
                       </div>
                     </div>
                   </div>
+
+                  {/* Password Section */}
+                  {isEditMode && (
+                    <div className="mt-8">
+                      <h4 className="mb-2 border-b pb-1 text-lg font-semibold">
+                        Change Password
+                      </h4>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Current Password *
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full rounded-md border border-border bg-white p-2"
+                            value={passwordData.currentPassword}
+                            onChange={e =>
+                              setPasswordData(prev => ({
+                                ...prev,
+                                currentPassword: e.target.value,
+                              }))
+                            }
+                            placeholder="Enter current password"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-sm font-medium text-gray-700">
+                            New Password *
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full rounded-md border border-border bg-white p-2"
+                            value={passwordData.newPassword}
+                            onChange={e =>
+                              setPasswordData(prev => ({
+                                ...prev,
+                                newPassword: e.target.value,
+                              }))
+                            }
+                            placeholder="Enter new password"
+                          />
+                          {passwordData.newPassword && (
+                            <div className="mt-2 space-y-2">
+                              {/* Password Strength Indicator */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">
+                                  Strength:
+                                </span>
+                                <div className="flex gap-1">
+                                  {[1, 2, 3, 4, 5].map(level => (
+                                    <div
+                                      key={level}
+                                      className={`h-2 w-8 rounded ${
+                                        level <= passwordStrength.score
+                                          ? passwordStrength.score <= 2
+                                            ? 'bg-red-500'
+                                            : passwordStrength.score === 3
+                                              ? 'bg-yellow-500'
+                                              : 'bg-green-500'
+                                          : 'bg-gray-200'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span
+                                  className={`text-sm font-medium ${
+                                    passwordStrength.score <= 2
+                                      ? 'text-red-600'
+                                      : passwordStrength.score === 3
+                                        ? 'text-yellow-600'
+                                        : 'text-green-600'
+                                  }`}
+                                >
+                                  {passwordStrength.label}
+                                </span>
+                              </div>
+
+                              {/* Password Requirements */}
+                              <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
+                                <div
+                                  className={`flex items-center gap-2 ${
+                                    passwordStrength.requirements.length
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
+                                  }`}
+                                >
+                                  <span>
+                                    {passwordStrength.requirements.length
+                                      ? '✓'
+                                      : '✗'}
+                                  </span>
+                                  <span>At least 8 characters</span>
+                                </div>
+                                <div
+                                  className={`flex items-center gap-2 ${
+                                    passwordStrength.requirements.uppercase
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
+                                  }`}
+                                >
+                                  <span>
+                                    {passwordStrength.requirements.uppercase
+                                      ? '✓'
+                                      : '✗'}
+                                  </span>
+                                  <span>Uppercase letter</span>
+                                </div>
+                                <div
+                                  className={`flex items-center gap-2 ${
+                                    passwordStrength.requirements.lowercase
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
+                                  }`}
+                                >
+                                  <span>
+                                    {passwordStrength.requirements.lowercase
+                                      ? '✓'
+                                      : '✗'}
+                                  </span>
+                                  <span>Lowercase letter</span>
+                                </div>
+                                <div
+                                  className={`flex items-center gap-2 ${
+                                    passwordStrength.requirements.number
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
+                                  }`}
+                                >
+                                  <span>
+                                    {passwordStrength.requirements.number
+                                      ? '✓'
+                                      : '✗'}
+                                  </span>
+                                  <span>Number</span>
+                                </div>
+                                <div
+                                  className={`flex items-center gap-2 ${
+                                    passwordStrength.requirements.special
+                                      ? 'text-green-600'
+                                      : 'text-red-600'
+                                  }`}
+                                >
+                                  <span>
+                                    {passwordStrength.requirements.special
+                                      ? '✓'
+                                      : '✗'}
+                                  </span>
+                                  <span>Special character (@$!%*?&)</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-sm font-medium text-gray-700">
+                            Confirm New Password *
+                          </label>
+                          <input
+                            type="password"
+                            className="w-full rounded-md border border-border bg-white p-2"
+                            value={passwordData.confirmPassword}
+                            onChange={e =>
+                              setPasswordData(prev => ({
+                                ...prev,
+                                confirmPassword: e.target.value,
+                              }))
+                            }
+                            placeholder="Confirm new password"
+                          />
+                          {passwordData.newPassword &&
+                            passwordData.confirmPassword &&
+                            passwordData.newPassword !==
+                              passwordData.confirmPassword && (
+                              <p className="mt-1 text-sm text-red-500">
+                                Passwords do not match
+                              </p>
+                            )}
+                        </div>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">
+                        * To change your password, fill in all three fields. Leave all fields empty to keep your current password.
+                      </p>
+                    </div>
+                  )}
 
                   {isEditMode && (
                     <div className="mt-8 flex justify-end gap-4">

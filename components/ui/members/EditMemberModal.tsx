@@ -9,14 +9,7 @@ import { Label } from '@/components/ui/label';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useUserStore } from '@/lib/store/userStore';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { X } from 'lucide-react';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import {
   detectChanges,
@@ -274,20 +267,33 @@ export default function EditMemberModal({
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex">
         <div
           ref={modalRef}
-          className="mx-auto w-full max-w-md rounded-lg bg-white shadow-xl"
+          className="flex h-full w-full flex-col overflow-y-auto bg-white"
         >
-          <Dialog open={isEditModalOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Edit Member</DialogTitle>
-                <DialogDescription>
+          {/* Header */}
+          <div className="bg-button p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Edit Member</h2>
+                <p className="text-sm text-white text-opacity-90">
                   Update member information below.
-                </DialogDescription>
-              </DialogHeader>
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                className="text-white hover:bg-white hover:bg-opacity-20"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
 
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-6">
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -382,17 +388,19 @@ export default function EditMemberModal({
                   </div>
                 </div>
               </div>
+          </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSubmit} disabled={loading}>
-                  {loading ? 'Updating...' : 'Update Member'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {/* Footer */}
+          <div className="mt-auto border-t bg-gray-50 px-6 py-4">
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? 'Updating...' : 'Update Member'}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </>

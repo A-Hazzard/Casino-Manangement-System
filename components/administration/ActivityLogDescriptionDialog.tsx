@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils/formatting';
+import { formatValue } from '@/lib/utils/dateFormatting';
+import { resolveIdToName, isIdValue } from '@/lib/utils/idResolution';
 import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 
 type ActivityLogDescriptionDialogProps = {
@@ -21,6 +23,69 @@ type ActivityLogDescriptionDialogProps = {
 const ActivityLogDescriptionDialog: React.FC<
   ActivityLogDescriptionDialogProps
 > = ({ isOpen, onClose, log, searchMode }) => {
+  const [resolvedChanges, setResolvedChanges] = useState<
+    Array<{
+      field: string;
+      oldValue: string;
+      newValue: string;
+      originalChange: { field: string; oldValue: unknown; newValue: unknown };
+    }>
+  >([]);
+
+  // Resolve IDs and format values
+  useEffect(() => {
+    // Reset when dialog closes or log changes
+    if (!isOpen || !log || !log.changes || log.changes.length === 0) {
+      setResolvedChanges([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const resolveChanges = async () => {
+      try {
+        const resolved = await Promise.all(
+          log.changes!
+            // Filter out changes where "To" value is an ID
+            .filter(change => !isIdValue(change.newValue))
+            .map(async change => {
+              const formattedOldValue = isIdValue(change.oldValue)
+                ? await resolveIdToName(change.oldValue, change.field)
+                : formatValue(change.oldValue, change.field);
+              const formattedNewValue = formatValue(
+                change.newValue,
+                change.field
+              );
+
+              return {
+                field: change.field,
+                oldValue: formattedOldValue,
+                newValue: formattedNewValue,
+                originalChange: change,
+              };
+            })
+        );
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setResolvedChanges(resolved);
+        }
+      } catch (error) {
+        console.error('Error resolving changes:', error);
+        if (isMounted) {
+          setResolvedChanges([]);
+        }
+      }
+    };
+
+    resolveChanges();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, log]);
+
+  // Early return after hooks
   if (!log) return null;
 
   // Get action badge variant
@@ -130,13 +195,13 @@ const ActivityLogDescriptionDialog: React.FC<
           </div>
 
           {/* Changes (if available) */}
-          {log.changes && log.changes.length > 0 && (
+          {resolvedChanges && resolvedChanges.length > 0 && (
             <div className="border-b pb-3">
               <h4 className="mb-2 text-sm font-medium text-gray-700">
                 Changes
               </h4>
               <div className="space-y-2">
-                {log.changes.map((change, index) => (
+                {resolvedChanges.map((change, index) => (
                   <div
                     key={index}
                     className="rounded-md bg-blue-50 p-3 text-sm"
@@ -147,13 +212,13 @@ const ActivityLogDescriptionDialog: React.FC<
                     <div className="text-blue-800">
                       <span className="text-gray-600">From:</span>{' '}
                       <span className="rounded bg-red-100 px-1 font-mono">
-                        {String(change.oldValue || 'empty')}
+                        {change.oldValue}
                       </span>
                     </div>
                     <div className="text-blue-800">
                       <span className="text-gray-600">To:</span>{' '}
                       <span className="rounded bg-green-100 px-1 font-mono">
-                        {String(change.newValue || 'empty')}
+                        {change.newValue}
                       </span>
                     </div>
                   </div>

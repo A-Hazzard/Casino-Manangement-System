@@ -139,9 +139,9 @@ export function formatValue(value: unknown, fieldName?: string): string {
   if (typeof value === 'string' || value instanceof Date) {
     const dateValue = typeof value === 'string' ? value : value.toISOString();
 
-    // Check if it's a valid ISO date string with time
+    // Check if it's a valid ISO date string with time (more flexible regex)
     const isoDateTimeRegex =
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z?$/;
     if (isoDateTimeRegex.test(dateValue)) {
       try {
         const date = new Date(dateValue);

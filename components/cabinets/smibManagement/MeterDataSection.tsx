@@ -46,10 +46,34 @@ export function MeterDataSection({
     lastAt?: string;
     error?: string;
   } | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const sseRef = useRef<EventSource | null>(null);
+  const liveMetersRef = useRef<typeof liveMeters>(null);
+
+  useEffect(() => {
+    liveMetersRef.current = liveMeters;
+  }, [liveMeters]);
+
+  const metersEqual = (a: typeof liveMeters, b: typeof liveMeters): boolean => {
+    if (!a || !b) return false;
+    return (
+      a.totalCoinCredits === b.totalCoinCredits &&
+      a.totalCoinOut === b.totalCoinOut &&
+      a.totalCancelledCredits === b.totalCancelledCredits &&
+      a.totalHandPaidCancelCredits === b.totalHandPaidCancelCredits &&
+      a.totalWonCredits === b.totalWonCredits &&
+      a.totalDrop === b.totalDrop &&
+      a.totalAttendantPaidProgressiveWin ===
+        b.totalAttendantPaidProgressiveWin &&
+      a.currentCredits === b.currentCredits &&
+      a.total20KBillsAccepted === b.total20KBillsAccepted &&
+      a.total200BillsToDrop === b.total200BillsToDrop
+    );
+  };
 
   const handleRequestMeters = async () => {
     if (!relayId) return;
+    setInfoMessage(null);
     await requestMeters(relayId);
   };
 
@@ -91,11 +115,12 @@ export function MeterDataSection({
                 error: parsed.error,
                 lastAt: new Date().toISOString(),
               });
+              setInfoMessage(null);
               return;
             }
 
             // Parse successful, extract all values
-            setLiveMeters({
+            const nextMeters = {
               totalCoinCredits: parsed.totalCoinCredits,
               totalCoinOut: parsed.totalCoinOut,
               totalCancelledCredits: parsed.totalCancelledCredits,
@@ -108,7 +133,16 @@ export function MeterDataSection({
               total20KBillsAccepted: parsed.total20KBillsAccepted,
               total200BillsToDrop: parsed.total200BillsToDrop,
               lastAt: new Date().toISOString(),
-            });
+            } as const;
+
+            if (metersEqual(liveMetersRef.current, nextMeters)) {
+              setInfoMessage('No new SAS meters detected');
+              // Still update timestamp to reflect last check
+              setLiveMeters({ ...nextMeters });
+            } else {
+              setInfoMessage(null);
+              setLiveMeters({ ...nextMeters });
+            }
           }
         }
       } catch {
@@ -151,6 +185,11 @@ export function MeterDataSection({
                 </div>
               ) : (
                 <>
+                  {infoMessage && (
+                    <div className="mb-2 rounded-md bg-blue-50 p-2 text-xs font-medium text-blue-700">
+                      {infoMessage}
+                    </div>
+                  )}
                   <div className="mb-3 text-sm font-semibold">
                     Live SAS Meters
                   </div>

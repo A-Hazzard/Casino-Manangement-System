@@ -236,13 +236,13 @@ export default function NewMemberModal({
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex">
         <div
           ref={modalRef}
-          className="mx-auto max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl"
+          className="flex h-full w-full flex-col overflow-y-auto bg-white"
         >
           {/* Header */}
-          <div className="rounded-t-lg bg-button p-6 text-white">
+          <div className="bg-button p-6 text-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white bg-opacity-20">
@@ -267,7 +267,7 @@ export default function NewMemberModal({
           </div>
 
           {/* Form Content */}
-          <div className="p-6">
+          <div className="flex-1 overflow-y-auto p-6">
             <div className="space-y-6">
               {/* Basic Information Section */}
               <div className="rounded-lg bg-gray-50 p-4">
@@ -452,7 +452,7 @@ export default function NewMemberModal({
           </div>
 
           {/* Footer */}
-          <div className="rounded-b-lg border-t bg-gray-50 px-6 py-4">
+          <div className="mt-auto border-t bg-gray-50 px-6 py-4">
             <div className="flex justify-end gap-3">
               <Button
                 variant="outline"

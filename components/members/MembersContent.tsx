@@ -94,9 +94,12 @@ export default function MembersContent() {
    * Render the content for the active tab
    */
   const renderTabContent = () => {
+    const animationProps = getTabAnimationProps();
+    const { key, ...restProps } = animationProps;
+    
     return (
       <AnimatePresence mode="wait">
-        <motion.div {...getTabAnimationProps()}>
+        <motion.div key={key} {...restProps}>
           <Suspense
             fallback={
               activeTab === 'members' ? (

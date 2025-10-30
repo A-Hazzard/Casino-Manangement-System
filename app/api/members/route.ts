@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Member } from '@/app/api/lib/models/members';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '../lib/helpers/users';
-import { getClientIP } from '@/lib/utils/ipAddress';
-import type { PipelineStage } from 'mongoose';
 import {
-  getCurrencyFromQuery,
   applyCurrencyConversionToMetrics,
+  getCurrencyFromQuery,
   shouldApplyCurrencyConversion,
 } from '@/app/api/lib/helpers/currencyHelper';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Member } from '@/app/api/lib/models/members';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import type { PipelineStage } from 'mongoose';
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromServer } from '../lib/helpers/users';
 
 export async function GET(request: NextRequest) {
   try {

@@ -14,10 +14,10 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
   const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuth();
 
-  // Get current section from URL or default to "members"
-  const currentSection = searchParams?.get('section') || 'members';
+  // Get current tab from URL or default to "members"
+  const currentTab = searchParams?.get('tab') || 'members';
   const [activeTab, setActiveTab] = useState<MembersView>(
-    (currentSection as MembersView) || 'members'
+    (currentTab as MembersView) || 'members'
   );
 
   /**
@@ -25,16 +25,12 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
    */
   const handleTabChange = useCallback(
     (value: string) => {
-      const newSection = value as MembersView;
-      setActiveTab(newSection);
+      const newTab = value as MembersView;
+      setActiveTab(newTab);
 
-      // Update URL with section parameter
+      // Update URL with tab parameter - always include it
       const params = new URLSearchParams(searchParams?.toString() || '');
-      if (newSection === 'members') {
-        params.delete('section'); // Remove section param for default
-      } else {
-        params.set('section', newSection);
-      }
+      params.set('tab', newTab);
 
       const newUrl = `${pathname}?${params.toString()}`;
       router.push(newUrl, { scroll: false });
@@ -46,13 +42,18 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
    * Update active tab when URL changes
    */
   useEffect(() => {
-    const section = searchParams?.get('section');
-    if (section === 'summary-report') {
-      setActiveTab('summary-report');
+    const tab = searchParams?.get('tab');
+    if (tab === 'summary-report' || tab === 'members') {
+      setActiveTab(tab as MembersView);
     } else {
+      // If tab is missing or invalid, set default and update URL
       setActiveTab('members');
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.set('tab', 'members');
+      const newUrl = `${pathname}?${params.toString()}`;
+      router.replace(newUrl, { scroll: false });
     }
-  }, [searchParams]);
+  }, [searchParams, pathname, router]);
 
   /**
    * All tabs are available for authenticated users

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { JWTPayload, jwtVerify } from 'jose';
 import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import UserModel from '../models/user';
-import { hashPassword } from '../utils/validation';
+import { hashPassword, comparePassword } from '../utils/validation';
 import type { ResourcePermissions } from '@/lib/types/administration';
 import { logActivity } from './activityLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
@@ -266,25 +266,65 @@ export async function updateUser(
   updateFields: Record<string, unknown>,
   request: NextRequest
 ) {
-  const user = await UserModel.findById(_id);
+  // Find user with password field included (needed for password verification)
+  const user = await UserModel.findById(_id).select('+password');
   if (!user) {
     throw new Error('User not found');
   }
 
   // Validate and hash password if provided
-  if (updateFields.password && typeof updateFields.password === 'string') {
-    const { validatePasswordStrength } = await import('@/lib/utils/validation');
-    const passwordValidation = validatePasswordStrength(updateFields.password);
-    if (!passwordValidation.isValid) {
-      throw new Error(
-        `Password requirements not met: ${passwordValidation.feedback.join(
-          ', '
-        )}`
+  if (updateFields.password) {
+    // Check if password is an object with current and new properties (password change)
+    if (
+      typeof updateFields.password === 'object' &&
+      'current' in updateFields.password &&
+      'new' in updateFields.password
+    ) {
+      const passwordObj = updateFields.password as {
+        current: string;
+        new: string;
+      };
+
+      // Verify current password matches
+      const isCurrentPasswordValid = await comparePassword(
+        passwordObj.current,
+        user.password || ''
       );
+
+      if (!isCurrentPasswordValid) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // Validate new password strength
+      const { validatePasswordStrength } = await import('@/lib/utils/validation');
+      const passwordValidation = validatePasswordStrength(passwordObj.new);
+      if (!passwordValidation.isValid) {
+        throw new Error(
+          `Password requirements not met: ${passwordValidation.feedback.join(
+            ', '
+          )}`
+        );
+      }
+
+      // Hash the new password before saving
+      updateFields.password = await hashPassword(passwordObj.new);
+    } else if (typeof updateFields.password === 'string') {
+      // Legacy support: if password is a string, validate and hash it
+      const { validatePasswordStrength } = await import('@/lib/utils/validation');
+      const passwordValidation = validatePasswordStrength(updateFields.password);
+      if (!passwordValidation.isValid) {
+        throw new Error(
+          `Password requirements not met: ${passwordValidation.feedback.join(
+            ', '
+          )}`
+        );
+      }
+      // Hash the password before saving
+      updateFields.password = await hashPassword(updateFields.password);
+    } else {
+      // Invalid password format
+      throw new Error('Invalid password format. Expected string or object with current and new properties.');
     }
-    // Hash the password before saving
-    const { hashPassword } = await import('@/app/api/lib/utils/validation');
-    updateFields.password = await hashPassword(updateFields.password);
   }
 
   // Calculate changes for activity log

@@ -75,9 +75,12 @@ export default function ReportsContent() {
    * Render the content for the active tab
    */
   const renderTabContent = (): ReactElement => {
+    const animationProps = getTabAnimationProps();
+    const { key, ...restProps } = animationProps;
+    
     return (
       <AnimatePresence mode="wait">
-        <motion.div {...getTabAnimationProps()}>
+        <motion.div key={key} {...restProps}>
           {currentTabComponent}
         </motion.div>
       </AnimatePresence>

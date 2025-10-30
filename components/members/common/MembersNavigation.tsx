@@ -1,6 +1,4 @@
 'use client';
-
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, BarChart3 } from 'lucide-react';
 import type { MembersView, MembersTab } from '@/shared/types/entities';
@@ -39,23 +37,24 @@ export default function MembersNavigation({
     <div className="border-b border-gray-200 bg-white px-6 py-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         {/* Title and Description */}
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">Members</h1>
-          <Image
-            src={IMAGES.membersIcon}
-            alt="Members Icon"
-            width={32}
-            height={32}
-            className="h-6 w-6 sm:h-8 sm:w-8"
-          />
-          <p className="mt-1 text-sm text-gray-600">
+        <div className="flex flex-col">
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">Members</h1>
+            <Image
+              src={IMAGES.membersIcon}
+              alt="Members Icon"
+              width={32}
+              height={32}
+              className="h-6 w-6 sm:h-8 sm:w-8"
+            />
+            {/* Preserve selected licencee context for a11y without showing a badge */}
+            {selectedLicencee ? (
+              <span className="sr-only">Selected licencee: {selectedLicencee}</span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-sm text-gray-600 text-left">
             Manage member profiles, sessions, and analytics
           </p>
-          {selectedLicencee && (
-            <Badge variant="outline" className="mt-2">
-              Licensee: {selectedLicencee}
-            </Badge>
-          )}
         </div>
 
         {/* Tab Navigation */}

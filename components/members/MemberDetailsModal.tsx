@@ -189,15 +189,15 @@ export default function MemberDetailsModal({
   if (!isOpen || !member) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
+    <div className="fixed inset-0 z-50 flex">
       <div
         ref={backdropRef}
-        className="absolute inset-0 bg-black/50"
+        className="fixed inset-0 z-40 bg-black bg-opacity-50"
         onClick={onClose}
       />
       <div
         ref={modalRef}
-        className="relative flex h-full w-full flex-col overflow-y-auto border border-border bg-background p-4 animate-in lg:max-h-[95vh] lg:max-w-4xl lg:rounded-2xl lg:p-10"
+        className="relative z-50 flex h-full w-full flex-col overflow-y-auto bg-background p-4"
         style={{ opacity: 1 }}
       >
         {/* Single close button */}
