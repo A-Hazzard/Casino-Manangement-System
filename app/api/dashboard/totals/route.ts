@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     if (shouldApplyCurrencyConversion(licencee)) {
       console.warn('=== APPLYING CURRENCY CONVERSION FOR ALL LICENSEE ===');
 
-      // Get all licensee IDs
+      // Get all licensee IDs (including null for locations without a licensee)
       const allLicenseeIds = await db
         .collection('gaminglocations')
         .distinct('rel.licencee', {
@@ -80,8 +80,13 @@ export async function GET(req: NextRequest) {
             { deletedAt: { $lt: new Date('2020-01-01') } },
           ],
         });
+      
+      // Add null to the list to process locations without a licensee
+      if (!allLicenseeIds.includes(null)) {
+        allLicenseeIds.push(null);
+      }
 
-      console.warn('Found licensee IDs:', allLicenseeIds);
+      console.warn('Found licensee IDs (including null for unassigned):', allLicenseeIds);
 
       // Fetch licensee details to get their names
       const licenseesData = await db
@@ -113,15 +118,18 @@ export async function GET(req: NextRequest) {
       let totalMoneyOutUSD = 0;
       let totalGrossUSD = 0;
 
-      // Process each licensee separately
+      // Process each licensee separately (including null for locations without licensee)
       for (const licenseeId of allLicenseeIds) {
-        if (!licenseeId) continue;
+        const licenseeName = licenseeId 
+          ? (licenseeIdToName.get(licenseeId.toString()) || 'Unknown')
+          : 'Unassigned';
+        console.warn(`Processing licensee: ${licenseeId || 'null'} (${licenseeName})`);
 
-        const licenseeName =
-          licenseeIdToName.get(licenseeId.toString()) || 'Unknown';
-        console.warn(`Processing licensee: ${licenseeId} (${licenseeName})`);
-
-        // Get locations for this licensee
+        // Get locations for this licensee (including null for unassigned)
+        const locationFilter = licenseeId 
+          ? { 'rel.licencee': licenseeId }
+          : { $or: [{ 'rel.licencee': null }, { 'rel.licencee': { $exists: false } }] };
+        
         const locations = await db
           .collection('gaminglocations')
           .find(
@@ -130,7 +138,7 @@ export async function GET(req: NextRequest) {
                 { deletedAt: null },
                 { deletedAt: { $lt: new Date('2020-01-01') } },
               ],
-              'rel.licencee': licenseeId,
+              ...locationFilter,
             },
             { projection: { _id: 1 } }
           )
@@ -270,25 +278,37 @@ export async function GET(req: NextRequest) {
         };
 
         console.warn(
-          `Licensee ${licenseeName} (${licenseeId}) raw values:`,
+          `Licensee ${licenseeName} (${licenseeId || 'null'}) raw values:`,
           licenseeTotals
         );
 
-        // Convert this licensee's values to USD using their name for currency mapping
-        const { convertToUSD } = await import('@/lib/helpers/rates');
+        // For locations without a licensee, treat as USD (no conversion needed)
+        // For locations with a licensee, convert their currency to USD
+        let moneyInUSD, moneyOutUSD, grossUSD;
+        
+        if (!licenseeId) {
+          // Unassigned locations - already in USD
+          moneyInUSD = licenseeTotals.moneyIn;
+          moneyOutUSD = licenseeTotals.moneyOut;
+          grossUSD = licenseeTotals.gross;
+          console.warn(`Unassigned locations - treating as USD (no conversion)`);
+        } else {
+          // Convert this licensee's values to USD using their name for currency mapping
+          const { convertToUSD } = await import('@/lib/helpers/rates');
 
-        const moneyInUSD = convertToUSD(licenseeTotals.moneyIn, licenseeName);
-        const moneyOutUSD = convertToUSD(licenseeTotals.moneyOut, licenseeName);
-        const grossUSD = convertToUSD(licenseeTotals.gross, licenseeName);
+          moneyInUSD = convertToUSD(licenseeTotals.moneyIn, licenseeName);
+          moneyOutUSD = convertToUSD(licenseeTotals.moneyOut, licenseeName);
+          grossUSD = convertToUSD(licenseeTotals.gross, licenseeName);
 
-        console.warn(
-          `Licensee ${licenseeName} (${licenseeId}) converted to USD:`,
-          {
-            moneyIn: moneyInUSD,
-            moneyOut: moneyOutUSD,
-            gross: grossUSD,
-          }
-        );
+          console.warn(
+            `Licensee ${licenseeName} (${licenseeId}) converted to USD:`,
+            {
+              moneyIn: moneyInUSD,
+              moneyOut: moneyOutUSD,
+              gross: grossUSD,
+            }
+          );
+        }
 
         // Add to totals
         totalMoneyInUSD += moneyInUSD;
