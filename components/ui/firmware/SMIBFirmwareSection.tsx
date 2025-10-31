@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import SMIBFirmwareTable from './SMIBFirmwareTable';
 import SMIBFirmwareModal from './SMIBFirmwareModal';
 import { DeleteFirmwareModal } from './DeleteFirmwareModal';
@@ -61,25 +61,43 @@ export default function SMIBFirmwareSection() {
       <DownloadFirmwareModal onDownloadComplete={handleDownloadComplete} />
 
       <div className="w-full max-w-full">
-        {/* Header with Add Button */}
-        <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="w-full sm:w-auto">
-            <h2 className="text-xl font-semibold text-gray-800">
-              SMIB Firmware
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Manage firmware versions for SMIB devices
-            </p>
+        {/* Header with Actions */}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-800">
+            SMIB Firmware
+          </h2>
+          
+          {/* Mobile: Icon-only button */}
+          <div className="md:hidden">
+            {loading ? (
+              <div className="h-5 w-5 flex-shrink-0" />
+            ) : (
+              <button
+                onClick={openModal}
+                disabled={loading}
+                className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                aria-label="Add New Firmware Version"
+              >
+                <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+              </button>
+            )}
           </div>
-          <Button
-            onClick={openModal}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-button/90 sm:w-auto"
-          >
-            <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white">
-              <Plus className="h-4 w-4 text-white" />
-            </div>
-            <span>Add New Firmware Version</span>
-          </Button>
+
+          {/* Desktop: Full button with icon and text */}
+          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+            {loading ? (
+              <div className="h-10 w-40 flex-shrink-0" />
+            ) : (
+              <Button
+                onClick={openModal}
+                className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
+                title="Add New Firmware Version"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>Add Firmware</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Firmware Table */}
