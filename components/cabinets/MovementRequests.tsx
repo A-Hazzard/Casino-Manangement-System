@@ -13,10 +13,7 @@ import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
 import EditMovementRequestModal from '@/components/ui/movements/EditMovementRequestModal';
 import DeleteMovementRequestModal from '@/components/ui/movements/DeleteMovementRequestModal';
-import NewMovementRequestModal from '@/components/ui/movements/NewMovementRequestModal';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -27,13 +24,6 @@ export default function MovementRequests({
   locations: { _id: string; name: string }[];
   refreshTrigger?: number;
 }) {
-  const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] =
-    useState(false);
-
-  const openNewMovementRequestModal = () =>
-    setIsNewMovementRequestModalOpen(true);
-  const closeNewMovementRequestModal = () =>
-    setIsNewMovementRequestModalOpen(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [currentPage, setCurrentPage] = useState(0);
@@ -113,12 +103,6 @@ export default function MovementRequests({
     <div className="flex w-full max-w-full flex-col p-1">
       <EditMovementRequestModal onSaved={loadRequests} />
       <DeleteMovementRequestModal onDeleted={loadRequests} />
-      <NewMovementRequestModal
-        isOpen={isNewMovementRequestModalOpen}
-        onClose={closeNewMovementRequestModal}
-        locations={locations}
-        onSubmit={loadRequests}
-      />
 
       {/* Mobile: Search and filters stacked */}
       <div className="mb-4 flex flex-col gap-4 rounded-lg bg-buttonActive p-4 shadow-sm lg:hidden">

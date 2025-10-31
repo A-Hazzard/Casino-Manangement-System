@@ -3,7 +3,7 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import Image from 'next/image';
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useCallback } from 'react';
 
 // Modal components
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
