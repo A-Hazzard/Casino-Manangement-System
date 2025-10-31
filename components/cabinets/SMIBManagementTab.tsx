@@ -35,7 +35,7 @@ import { NetworkConfigSection } from './smibManagement/NetworkConfigSection';
 import { OTAUpdateSection } from './smibManagement/OTAUpdateSection';
 import { RestartSection } from './smibManagement/RestartSection';
 
-export default function SMIBManagementTab() {
+export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigger?: number } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { availableSmibs, loading, error, refreshSmibs } = useSMIBDiscovery();
@@ -353,6 +353,14 @@ export default function SMIBManagementTab() {
 
     // Loading will automatically stop when config data arrives
   };
+
+  // Refresh when trigger changes from parent
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      handleRefreshSmibData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   // Get unique locations from available SMIBs (including unassigned)
   const uniqueLocations = useMemo(() => {

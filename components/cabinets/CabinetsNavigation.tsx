@@ -24,7 +24,7 @@ export default function CabinetsNavigation({
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop - md: and above */}
-      <nav className="hidden space-x-2 px-4 md:flex">
+      <nav className="hidden space-x-2 px-4 md:flex lg:space-x-4">
         {tabs.map(tab => (
           <motion.button
             key={tab.id}

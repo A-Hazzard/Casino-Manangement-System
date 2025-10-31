@@ -115,11 +115,26 @@ function CabinetsPageContent() {
   const { activeSection, handleSectionChange } = useCabinetNavigation();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [movementRefreshTrigger, setMovementRefreshTrigger] = useState(0);
+  const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
+  const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
 
+  // Context-aware refresh handler based on active section
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadCabinets();
-    setRefreshing(false);
+    try {
+      if (activeSection === 'cabinets') {
+        await loadCabinets();
+      } else if (activeSection === 'movement') {
+        setMovementRefreshTrigger(prev => prev + 1);
+      } else if (activeSection === 'smib') {
+        setSmibRefreshTrigger(prev => prev + 1);
+      } else if (activeSection === 'firmware') {
+        setFirmwareRefreshTrigger(prev => prev + 1);
+      }
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleMovementRequestSubmit = () => {
@@ -339,13 +354,13 @@ function CabinetsPageContent() {
             transformCabinet={transformCabinet}
           />
         ) : activeSection === "smib" ? (
-          <SMIBManagementTab />
+          <SMIBManagementTab refreshTrigger={smibRefreshTrigger} />
         ) : activeSection === "movement" ? (
-          <MovementRequests locations={locations} />
+          <MovementRequests locations={locations} refreshTrigger={movementRefreshTrigger} />
         ) : activeSection === "firmware" ? (
-          <SMIBFirmwareSection />
+          <SMIBFirmwareSection refreshTrigger={firmwareRefreshTrigger} />
         ) : (
-          <SMIBManagementTab />
+          <SMIBManagementTab refreshTrigger={smibRefreshTrigger} />
         )}
       </PageLayout>
     </>

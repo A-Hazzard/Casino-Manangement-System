@@ -13,14 +13,14 @@ export const CABINET_TABS_CONFIG: CabinetTab[] = [
     icon: '🎰',
   },
   {
-    id: 'smib',
-    label: 'SMIB Management',
-    icon: '⚙️',
-  },
-  {
     id: 'movement',
     label: 'Movement Requests',
     icon: '📦',
+  },
+  {
+    id: 'smib',
+    label: 'SMIB Management',
+    icon: '⚙️',
   },
   {
     id: 'firmware',

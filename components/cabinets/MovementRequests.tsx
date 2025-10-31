@@ -22,8 +22,10 @@ const ITEMS_PER_PAGE = 10;
 
 export default function MovementRequests({
   locations,
+  refreshTrigger = 0,
 }: {
   locations: { _id: string; name: string }[];
+  refreshTrigger?: number;
 }) {
   const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] =
     useState(false);
@@ -71,6 +73,13 @@ export default function MovementRequests({
     loadRequests();
   }, [loadRequests]);
 
+  // Refresh when trigger changes
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      loadRequests();
+    }
+  }, [refreshTrigger, loadRequests]);
+
   const filteredRequests = requests.filter(req => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
@@ -113,14 +122,6 @@ export default function MovementRequests({
 
       {/* Mobile: Search and filters stacked */}
       <div className="mb-4 flex flex-col gap-4 rounded-lg bg-buttonActive p-4 shadow-sm lg:hidden">
-        {/* Mobile: Create Movement Request button */}
-        <Button
-          onClick={openNewMovementRequestModal}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-button py-3 text-white hover:bg-buttonActive"
-        >
-          <Plus size={20} />
-          Create Movement Request
-        </Button>
         <div className="relative w-full">
           <Input
             placeholder="Search requests..."
@@ -146,16 +147,6 @@ export default function MovementRequests({
 
       {/* Desktop: Search and filters in row */}
       <div className="hidden flex-col items-center gap-4 rounded-t-lg bg-buttonActive p-4 shadow-sm md:flex-row lg:flex">
-        {/* Desktop: Create Movement Request button */}
-        <Button
-          onClick={openNewMovementRequestModal}
-          className="flex-shrink-0 items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive"
-        >
-          <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white">
-            <Plus className="h-4 w-4 text-white" />
-          </div>
-          <span>Create Movement Request</span>
-        </Button>
         <div className="relative w-full md:w-2/3">
           <Input
             placeholder="Search requests... (e.g., Creator, Location, Cabinet, Status)"

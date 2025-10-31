@@ -588,22 +588,29 @@ export default function EditMovementRequestModal({
           </div>
         </div>
 
-        <DialogFooter className="flex justify-end gap-2 border-t border-gray-200 p-6">
+        <DialogFooter className="border-t border-gray-200 p-6">
           {errors.submit && (
-            <div className="mr-4 self-center text-xs text-red-500">
+            <div className="mb-2 text-center text-sm text-red-500">
               {errors.submit}
             </div>
           )}
-          <Button
-            onClick={handleSave}
-            disabled={loading}
-            className="bg-green-600 font-bold uppercase text-white hover:bg-green-700"
-          >
-            {loading ? 'Updating...' : 'UPDATE MOVEMENT REQUEST'}
-          </Button>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 w-full">
+            <DialogClose asChild>
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto order-2 sm:order-1"
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              onClick={handleSave}
+              disabled={loading}
+              className="bg-button hover:bg-buttonActive text-white w-full sm:w-auto order-1 sm:order-2"
+            >
+              {loading ? 'Updating...' : 'Update'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

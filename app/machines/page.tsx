@@ -3,7 +3,7 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import Image from 'next/image';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 
 // Modal components
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
@@ -113,14 +113,34 @@ function CabinetsPageContent() {
 
   const { activeSection, handleSectionChange } = useCabinetNavigation();
 
+  const [movementRefreshTrigger, setMovementRefreshTrigger] = useState(0);
+  const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
+  const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
+
   // Note: Modal handlers are now managed by useCabinetModals hook
 
   // Note: Upload modal handler is now managed by useCabinetModals hook
 
   const handleMovementRequestSubmit = () => {
-    loadCabinets();
+    // Only refresh if on cabinets or movement section
+    if (activeSection === 'cabinets' || activeSection === 'movement') {
+      loadCabinets();
+    }
     closeNewMovementRequestModal();
   };
+
+  // Context-aware refresh handler based on active section
+  const handleRefresh = useCallback(async () => {
+    if (activeSection === 'cabinets') {
+      await loadCabinets();
+    } else if (activeSection === 'movement') {
+      setMovementRefreshTrigger(prev => prev + 1);
+    } else if (activeSection === 'smib') {
+      setSmibRefreshTrigger(prev => prev + 1);
+    } else if (activeSection === 'firmware') {
+      setFirmwareRefreshTrigger(prev => prev + 1);
+    }
+  }, [activeSection, loadCabinets]);
 
   // Location change handler
   const handleLocationChange = (locationId: string) => {
@@ -158,12 +178,12 @@ function CabinetsPageContent() {
         onClose={closeNewMovementRequestModal}
         locations={locations}
         onSubmit={handleMovementRequestSubmit}
-        onRefresh={loadCabinets}
+        onRefresh={handleRefresh}
       />
       <UploadSmibDataModal
         isOpen={isUploadSmibDataModalOpen}
         onClose={closeUploadSmibDataModal}
-        onRefresh={loadCabinets}
+        onRefresh={handleRefresh}
       />
 
       <PageLayout
@@ -280,13 +300,13 @@ function CabinetsPageContent() {
             transformCabinet={transformCabinet}
           />
         ) : activeSection === 'smib' ? (
-          <SMIBManagementTab />
+          <SMIBManagementTab refreshTrigger={smibRefreshTrigger} />
         ) : activeSection === 'movement' ? (
-          <MovementRequests locations={locations} />
+          <MovementRequests locations={locations} refreshTrigger={movementRefreshTrigger} />
         ) : activeSection === 'firmware' ? (
-          <SMIBFirmwareSection />
+          <SMIBFirmwareSection refreshTrigger={firmwareRefreshTrigger} />
         ) : (
-          <SMIBManagementTab />
+          <SMIBManagementTab refreshTrigger={smibRefreshTrigger} />
         )}
       </PageLayout>
     </>
