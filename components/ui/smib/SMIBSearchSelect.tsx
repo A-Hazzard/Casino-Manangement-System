@@ -3,7 +3,59 @@
 import { cn } from '@/lib/utils';
 import type { SmibDevice } from '@/shared/types/entities';
 import { Check, ChevronDown, Search } from 'lucide-react';
+import { differenceInMinutes } from 'date-fns';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+type SmibStatus = 'online' | 'offline';
+
+const ONLINE_THRESHOLD_MINUTES = 3;
+
+const resolveLastSeenDate = (value: SmibDevice['lastSeen']): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getSmibStatus = (smib: SmibDevice): SmibStatus => {
+  if (typeof smib.online === 'boolean') {
+    return smib.online ? 'online' : 'offline';
+  }
+
+  const lastSeenDate = resolveLastSeenDate(smib.lastSeen);
+  if (!lastSeenDate) {
+    return 'offline';
+  }
+
+  const minutesSinceLastSeen = differenceInMinutes(new Date(), lastSeenDate);
+  if (Number.isNaN(minutesSinceLastSeen)) {
+    return 'offline';
+  }
+
+  return minutesSinceLastSeen <= ONLINE_THRESHOLD_MINUTES ? 'online' : 'offline';
+};
+
+const getStatusDotClass = (status: SmibStatus): string => {
+  if (status === 'online') {
+    return 'bg-emerald-500 animate-pulse';
+  }
+
+  if (status === 'offline') {
+    return 'bg-destructive';
+  }
+
+  return 'bg-muted-foreground/40';
+};
+
+const getStatusLabel = (status: SmibStatus): string => {
+  return status === 'online' ? 'Online' : 'Offline';
+};
 
 type SMIBSearchSelectProps = {
   value: string; // Selected relayId
@@ -13,6 +65,7 @@ type SMIBSearchSelectProps = {
   disabled?: boolean;
   className?: string;
   emptyMessage?: string;
+  statusOverrides?: Partial<Record<string, SmibStatus>>;
 };
 
 export function SMIBSearchSelect({
@@ -23,6 +76,7 @@ export function SMIBSearchSelect({
   disabled = false,
   className,
   emptyMessage = 'No SMIBs found',
+  statusOverrides,
 }: SMIBSearchSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +102,13 @@ export function SMIBSearchSelect({
 
   // Find selected SMIB
   const selectedSmib = smibs.find(smib => smib.relayId === value);
+  const selectedStatusOverride =
+    value && statusOverrides ? statusOverrides[value] : undefined;
+  const selectedStatus = selectedStatusOverride
+    ? selectedStatusOverride
+    : selectedSmib
+      ? getSmibStatus(selectedSmib)
+      : null;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -139,7 +200,16 @@ export function SMIBSearchSelect({
           isOpen && 'ring-2 ring-ring ring-offset-2'
         )}
       >
-        <span className="truncate">{displayText}</span>
+        <span className="flex flex-1 items-center gap-2 overflow-hidden">
+          <span
+            aria-hidden="true"
+            className={cn(
+              'h-2.5 w-2.5 shrink-0 rounded-full transition-colors duration-150',
+              selectedStatus ? getStatusDotClass(selectedStatus) : 'bg-muted-foreground/40'
+            )}
+          />
+          <span className="truncate text-left">{displayText}</span>
+        </span>
         <ChevronDown
           className={cn(
             'h-4 w-4 shrink-0 opacity-50 transition-transform',
@@ -179,6 +249,9 @@ export function SMIBSearchSelect({
               filteredSmibs.map((smib, index) => {
                 const isSelected = smib.relayId === value;
                 const isFocused = index === focusedIndex;
+                const overrideStatus = statusOverrides?.[smib.relayId];
+                const status = overrideStatus ?? getSmibStatus(smib);
+                const statusLabel = getStatusLabel(status);
 
                 return (
                   <button
@@ -192,9 +265,8 @@ export function SMIBSearchSelect({
                       isSelected && 'bg-accent/50'
                     )}
                   >
-                    <div className="flex flex-1 items-center gap-2">
-                      {/* SMIB Info */}
-                      <div className="flex flex-col items-start gap-0.5">
+                    <div className="flex w-full items-center gap-3">
+                      <div className="flex flex-1 flex-col items-start gap-0.5">
                         <span className="font-medium">{smib.relayId}</span>
                         {(smib.serialNumber || smib.game) && (
                           <span className="text-xs text-muted-foreground">
@@ -203,16 +275,27 @@ export function SMIBSearchSelect({
                         )}
                         {smib.locationName && (
                           <span className="text-xs text-muted-foreground">
-                            📍 {smib.locationName}
+                            Location: {smib.locationName}
                           </span>
                         )}
                       </div>
-                    </div>
 
-                    {/* Check Icon */}
-                    {isSelected && (
-                      <Check className="ml-auto h-4 w-4 shrink-0" />
-                    )}
+                      <div className="ml-auto flex items-center gap-2">
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'h-2 w-2 shrink-0 rounded-full transition-colors duration-150',
+                            getStatusDotClass(status)
+                          )}
+                        />
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {statusLabel}
+                        </span>
+                        {isSelected && (
+                          <Check className="h-4 w-4 shrink-0" />
+                        )}
+                      </div>
+                    </div>
                   </button>
                 );
               })

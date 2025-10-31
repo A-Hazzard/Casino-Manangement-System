@@ -1,7 +1,19 @@
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { NextRequest, NextResponse } from 'next/server';
+import { differenceInMinutes } from 'date-fns';
 import { connectDB } from '../../lib/middleware/db';
+
+type LeanMachine = {
+  _id: unknown;
+  relayId?: string | null;
+  smibBoard?: string | null;
+  serialNumber?: string | null;
+  game?: string | null;
+  gamingLocation?: unknown;
+  lastActivity?: Date | string | null;
+  updatedAt?: Date | string | null;
+};
 
 /**
  * GET /api/mqtt/discover-smibs
@@ -19,8 +31,10 @@ export async function GET(_request: NextRequest) {
         { smibBoard: { $exists: true, $nin: [null, ''] } },
       ],
     })
-      .select('_id relayId smibBoard serialNumber game gamingLocation')
-      .lean();
+      .select(
+        '_id relayId smibBoard serialNumber game gamingLocation lastActivity updatedAt'
+      )
+      .lean<LeanMachine[]>();
 
     // Get location data for each machine
     const locationIds = [
@@ -48,6 +62,19 @@ export async function GET(_request: NextRequest) {
             ).toString()
           : null;
 
+        const lastActivityValue = machine.lastActivity ?? machine.updatedAt ?? null;
+        const lastActivityDate =
+          lastActivityValue instanceof Date
+            ? lastActivityValue
+            : typeof lastActivityValue === 'string'
+              ? new Date(lastActivityValue)
+              : null;
+        const hasValidLastActivity =
+          !!lastActivityDate && !Number.isNaN(lastActivityDate.getTime());
+        const isOnline =
+          hasValidLastActivity &&
+          differenceInMinutes(new Date(), lastActivityDate) <= 3;
+
         return {
           relayId: machine.relayId || machine.smibBoard || '',
           machineId: (
@@ -59,11 +86,19 @@ export async function GET(_request: NextRequest) {
             ? locationMap.get(locationIdStr) || 'Unknown Location'
             : 'No Location Assigned',
           locationId: locationIdStr || 'unassigned',
+          online: isOnline,
+          lastSeen:
+            hasValidLastActivity && lastActivityDate
+              ? lastActivityDate.toISOString()
+              : null,
         };
       })
       .filter(smib => smib.relayId); // Only include machines with valid relayId
 
-    console.log(`✅ [DISCOVER SMIBS] Found ${smibs.length} SMIB devices`);
+    const onlineCount = smibs.filter(smib => smib.online).length;
+    console.log(
+      `✅ [DISCOVER SMIBS] Found ${smibs.length} SMIB devices (${onlineCount} online)`
+    );
 
     return NextResponse.json({
       success: true,
