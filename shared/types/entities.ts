@@ -339,7 +339,7 @@ export type SmibDevice = {
   locationName?: string;
   locationId?: string;
   online?: boolean;
-  lastSeen?: Date;
+  lastSeen?: Date | string | null;
 };
 
 export type SmibOnlineStatus = {
