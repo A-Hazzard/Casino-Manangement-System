@@ -66,16 +66,61 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
   };
 
   const handleNvsAction = async () => {
-    if (!relayId || !selectedNvsAction) return;
+    console.log('🔵 handleNvsAction called', {
+      relayId,
+      selectedNvsAction,
+      isOnline,
+    });
 
-    // TODO: Implement NVS action logic
+    if (!relayId || !selectedNvsAction) {
+      console.log('⚠️ Missing relayId or selectedNvsAction');
+      return;
+    }
+
+    if (!isOnline) {
+      console.log('⚠️ SMIB is offline');
+      setRequestMessage('SMIB is offline. Cannot execute NVS action.');
+      return;
+    }
+
     setIsProcessingAction(true);
+    setRequestMessage(null);
 
-    // Placeholder - will implement later
-    setTimeout(() => {
+    try {
+      console.log('📡 Sending NVS action request:', {
+        relayId,
+        action: selectedNvsAction,
+      });
+
+      const response = await fetch('/api/smib/nvs-action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          relayId,
+          action: selectedNvsAction,
+        }),
+      });
+
+      console.log('📡 Response status:', response.status);
+      const data = await response.json();
+      console.log('📡 Response data:', data);
+
+      if (response.ok && data.success) {
+        setRequestMessage(
+          `${selectedNvsAction.replace(/_/g, ' ')} command sent successfully`
+        );
+        setSelectedNvsAction('');
+      } else {
+        setRequestMessage(data.error || 'Failed to execute NVS action');
+      }
+    } catch (error) {
+      console.error('❌ Failed to execute NVS action:', error);
+      setRequestMessage('Failed to execute NVS action');
+    } finally {
       setIsProcessingAction(false);
-      setSelectedNvsAction('');
-    }, 1000);
+    }
   };
 
   // Connect to SSE to capture 'rsp' with pyd and parse meters
@@ -98,6 +143,60 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
           const data = msg.data as Record<string, unknown>;
           const typ = data.typ as string | undefined;
           const pyd = data.pyd as string | undefined;
+          const sta = data.sta as string | undefined;
+
+          console.log('📨 SSE message received:', { typ, sta, pyd });
+
+          // Handle NVS action responses (srsp)
+          if (typ === 'srsp' && sta === '162') {
+            console.log('✅ NVS action response received:', pyd);
+            
+            // Check for success/failure responses
+            if (pyd === 'E10101') {
+              console.log('✅ NVS action succeeded (E10101)');
+              setRequestMessage('NVS action completed successfully');
+              setIsProcessingAction(false);
+            } else if (pyd === 'E10100') {
+              console.log('❌ NVS action failed (E10100)');
+              setRequestMessage('NVS action failed');
+              setIsProcessingAction(false);
+            } else if (pyd?.startsWith('E101')) {
+              // Check if this is a success response with extra data
+              // E101004AA5 might mean: E10100 = command, 4AA5 = checksum/status
+              const statusCode = pyd.substring(0, 6); // Extract E10100 or E10101
+              console.log('📋 NVS action response code:', statusCode, 'Full pyd:', pyd);
+              
+              if (statusCode === 'E10100') {
+                console.log('❌ NVS action failed (from extended response)');
+                setRequestMessage('NVS action failed');
+                setIsProcessingAction(false);
+              } else if (statusCode === 'E10101') {
+                console.log('✅ NVS action succeeded (from extended response)');
+                setRequestMessage('NVS action completed successfully');
+                setIsProcessingAction(false);
+              } else {
+                console.log('📋 NVS action acknowledged with code:', statusCode);
+              }
+            } else {
+              // Other acknowledgment responses
+              console.log('📋 NVS action acknowledged (unknown format):', pyd);
+            }
+          }
+
+          // Handle exception/completion messages (exp)
+          if (typ === 'exp') {
+            console.log('📋 Exception message received:', pyd);
+            if (pyd === '00') {
+              console.log('✅ NVS action completed successfully');
+            }
+          }
+
+          // Handle error messages
+          if (typ === 'err') {
+            console.log('❌ Error message received:', pyd);
+          }
+
+          // Handle meter responses (rsp)
           if (typ === 'rsp' && pyd && typeof pyd === 'string') {
             const parsed = parseSasPyd(pyd);
 

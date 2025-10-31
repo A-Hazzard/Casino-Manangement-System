@@ -67,23 +67,21 @@ class MQTTService {
 
       // Set up message routing for config responses
       this.client.on('message', (topic, message) => {
-        // Only log message details if it's a config topic
-        if (topic.includes('config') || topic.includes('server')) {
-          console.log(`🔍 [MQTT] Received config message on topic: ${topic}`);
-        }
-
         // Listen for messages on server topics where SMIB devices publish responses
         if (topic === 'smib/config' || topic.startsWith('sas/gli/server')) {
           try {
             const payload = JSON.parse(message.toString());
             const relayId = payload.rly;
 
-            // Reduced logging for payload parsing
-            console.log(
-              `🔍 [MQTT] Received config response for relayId: ${relayId}`
-            );
-
+            // Only log and process if we have callbacks registered for this relayId
             if (relayId && this.configCallbacks.has(relayId)) {
+              console.log(
+                `🔍 [MQTT] Received config message on topic: ${topic}`
+              );
+              console.log(
+                `🔍 [MQTT] Received config response for relayId: ${relayId}`
+              );
+
               const callbacks = this.configCallbacks.get(relayId);
               console.log(
                 `✅ [MQTT] Executing ${callbacks?.length || 0} callbacks for relayId: ${relayId}`
@@ -94,7 +92,7 @@ class MQTTService {
                 });
               }
             }
-            // Note: No callbacks found is normal when SMIB is not connected
+            // Silently ignore messages for SMIBs we're not actively monitoring
           } catch (error) {
             console.error('❌ [MQTT] Error parsing server message:', error);
             console.error(
@@ -710,41 +708,6 @@ class MQTTService {
   }
 
   /**
-   * Reset meter data on non-SAS SMIB
-   * @param relayId - The SMIB relay ID
-   */
-  async resetMeterData(relayId: string): Promise<void> {
-    if (!this.client || !this.isConnected) {
-      await this.connect();
-    }
-
-    const topic = `sas/relay/${relayId}`;
-    const payload = JSON.stringify({
-      typ: 'cmd',
-      cmd: 'met_reset',
-    });
-
-    console.log(`📡 [MQTT] Sending reset meters command to ${relayId}`);
-
-    return new Promise<void>((resolve, reject) => {
-      if (!this.client) {
-        reject(new Error('MQTT client not available'));
-        return;
-      }
-
-      this.client.publish(topic, payload, error => {
-        if (error) {
-          console.error(`❌ Failed to reset meters:`, error);
-          reject(error);
-        } else {
-          console.log(`✅ Reset meters command sent to ${topic}`);
-          resolve();
-        }
-      });
-    });
-  }
-
-  /**
    * Restart SMIB device
    * @param relayId - The SMIB relay ID
    */
@@ -789,7 +752,7 @@ class MQTTService {
     }
 
     const topic = `sas/relay/${relayId}`;
-    const pyd = 'E101015B2C0x5B2C';
+    const pyd = 'E101015B2C';
     const payload = JSON.stringify({
       typ: 'sun',
       pyd,
@@ -828,7 +791,7 @@ class MQTTService {
     }
 
     const topic = `sas/relay/${relayId}`;
-    const pyd = 'E10102B769';
+    const pyd = 'E1010269B7';
     const payload = JSON.stringify({
       typ: 'sun',
       pyd,
@@ -867,7 +830,7 @@ class MQTTService {
     }
 
     const topic = `sas/relay/${relayId}`;
-    const pyd = 'E101033E78';
+    const pyd = 'E10103783E';
     const payload = JSON.stringify({
       typ: 'sun',
       pyd,

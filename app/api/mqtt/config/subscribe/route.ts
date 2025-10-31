@@ -67,30 +67,19 @@ export async function GET(request: NextRequest) {
           JSON.stringify(message, null, 2)
         );
 
-        try {
-          const sseMessage = {
-            type: 'config_update',
-            relayId: message.rly || relayId,
-            component: message.comp,
-            data: message,
-            timestamp: new Date().toISOString(),
-          };
+        const sseMessage = {
+          type: 'config_update',
+          relayId: message.rly || relayId,
+          component: message.comp,
+          data: message,
+          timestamp: new Date().toISOString(),
+        };
 
-          console.log(
-            `📡 [API] SSE sending message to client:`,
-            JSON.stringify(sseMessage, null, 2)
-          );
-          controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
-        } catch (error) {
-          console.error('❌ [API] Error processing config message:', error);
-          // Mark as closed if we get an invalid state error
-          if (
-            error instanceof Error &&
-            error.message.includes('Controller is already closed')
-          ) {
-            isClosed = true;
-          }
-        }
+        console.log(
+          `📡 [API] SSE sending message to client:`,
+          JSON.stringify(sseMessage, null, 2)
+        );
+        controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
       };
 
       // Subscribe to config updates for this relayId
