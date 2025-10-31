@@ -77,8 +77,9 @@ export async function GET(request: NextRequest) {
 
     if (timePeriod === 'Custom' && customStartDate && customEndDate) {
       timePeriodForGamingDay = 'Custom';
-      customStartDateForGamingDay = new Date(customStartDate);
-      customEndDateForGamingDay = new Date(customEndDate);
+      // Parse dates - gaming day offset will be applied by getGamingDayRangeForPeriod
+      customStartDateForGamingDay = new Date(customStartDate + 'T00:00:00.000Z');
+      customEndDateForGamingDay = new Date(customEndDate + 'T00:00:00.000Z');
     } else {
       timePeriodForGamingDay = timePeriod;
     }
@@ -110,32 +111,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate gaming day range for this location
-    let gamingDayRange: { rangeStart: Date; rangeEnd: Date };
-
-    if (
-      timePeriod === 'Custom' &&
-      customStartDateForGamingDay &&
+    // Always use gaming day offset logic (including for custom dates)
+    const gameDayOffset = locationCheck.gameDayOffset || 0;
+    const gamingDayRange = getGamingDayRangeForPeriod(
+      timePeriodForGamingDay,
+      gameDayOffset,
+      customStartDateForGamingDay,
       customEndDateForGamingDay
-    ) {
-      // For custom dates, use the exact user-specified times without gaming day offset
-      // The Date constructor already handles the local time to UTC conversion
-      const customStartUTC = customStartDateForGamingDay;
-      const customEndUTC = customEndDateForGamingDay;
-
-      gamingDayRange = {
-        rangeStart: customStartUTC,
-        rangeEnd: customEndUTC,
-      };
-    } else {
-      // For predefined periods, use gaming day offset logic
-      const gameDayOffset = locationCheck.gameDayOffset || 0;
-      gamingDayRange = getGamingDayRangeForPeriod(
-        timePeriodForGamingDay,
-        gameDayOffset,
-        customStartDateForGamingDay,
-        customEndDateForGamingDay
-      );
-    }
+    );
 
     // Build aggregation pipeline based on your MongoDB compass query
     const aggregationPipeline: Record<string, unknown>[] = [

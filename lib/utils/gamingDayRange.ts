@@ -173,11 +173,30 @@ export function getGamingDayRangeForPeriod(
         );
       }
 
-      // For custom dates, use the exact user-specified times without gaming day offset
-      // The Date constructor already handles the local time to UTC conversion
+      // For custom dates, apply gaming day offset
+      // User selects: Oct 31 to Oct 31
+      // Means: Oct 31 gaming day start (e.g., 8 AM) to Nov 1 gaming day start (e.g., 8 AM)
+      // If user selects: Sep 1 to Sep 30
+      // Means: Sep 1 gaming day start (e.g., 8 AM) to Oct 1 gaming day start (e.g., 8 AM)
+
+      const startGamingDay = getGamingDayRange(
+        customStartDate,
+        gameDayStartHour,
+        timezoneOffset
+      );
+
+      // For end date, we want to include the FULL gaming day, so we get the next gaming day start
+      const endDateNextDay = new Date(customEndDate);
+      endDateNextDay.setDate(endDateNextDay.getDate() + 1);
+      const endGamingDay = getGamingDayRange(
+        endDateNextDay,
+        gameDayStartHour,
+        timezoneOffset
+      );
+
       return {
-        rangeStart: customStartDate,
-        rangeEnd: customEndDate,
+        rangeStart: startGamingDay.rangeStart,
+        rangeEnd: endGamingDay.rangeStart, // Use start of next gaming day to include full last day
       };
 
     default:

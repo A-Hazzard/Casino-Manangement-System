@@ -84,10 +84,21 @@ export async function GET(
     let endDate: Date | undefined;
 
     if (timePeriod === 'Custom' && startDateParam && endDateParam) {
-      // For Custom dates, use the exact dates provided by the UI without gaming day offset adjustment
-      // The Date constructor already handles the local time to UTC conversion
-      startDate = new Date(startDateParam);
-      endDate = new Date(endDateParam);
+      // For Custom dates, parse and let gaming day offset be applied by getGamingDayRangeForPeriod
+      // User sends: "2025-10-31" meaning Oct 31 gaming day
+      // With 8 AM offset: Oct 31, 8:00 AM → Nov 1, 8:00 AM
+      const customStart = new Date(startDateParam + 'T00:00:00.000Z');
+      const customEnd = new Date(endDateParam + 'T00:00:00.000Z');
+      
+      const gamingDayRange = getGamingDayRangeForPeriod(
+        'Custom',
+        gameDayOffset,
+        customStart,
+        customEnd
+      );
+      
+      startDate = gamingDayRange.rangeStart;
+      endDate = gamingDayRange.rangeEnd;
     } else if (timePeriod === 'All Time') {
       // For "All Time", don't apply any date filtering - query all records
       startDate = undefined;

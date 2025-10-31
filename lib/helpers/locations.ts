@@ -337,9 +337,10 @@ export const fetchLocationsData = async (
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      params.startDate = customDateRange.from.toISOString();
-      params.endDate = customDateRange.to.toISOString();
-      params.timePeriod = 'Custom'; // Set timePeriod to "Custom" when using custom dates
+      // Extract just the date part (YYYY-MM-DD)
+      params.startDate = customDateRange.from.toISOString().split('T')[0];
+      params.endDate = customDateRange.to.toISOString().split('T')[0];
+      params.timePeriod = 'Custom';
     }
 
     const response = await axios.get('/api/locationAggregation', { params });
@@ -385,9 +386,10 @@ export const searchLocations = async (
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      params.startDate = customDateRange.from.toISOString();
-      params.endDate = customDateRange.to.toISOString();
-      params.timePeriod = 'Custom'; // Set timePeriod to "Custom" when using custom dates
+      // Extract just the date part (YYYY-MM-DD)
+      params.startDate = customDateRange.from.toISOString().split('T')[0];
+      params.endDate = customDateRange.to.toISOString().split('T')[0];
+      params.timePeriod = 'Custom';
     }
 
     const response = await axios.get('/api/locations/search', { params });
@@ -457,8 +459,11 @@ export async function fetchAggregatedLocationsData(
 
     // Handle custom date range
     if (timePeriod === 'Custom' && dateRange?.from && dateRange?.to) {
-      queryParams.push(`startDate=${dateRange.from.toISOString()}`);
-      queryParams.push(`endDate=${dateRange.to.toISOString()}`);
+      // Extract just the date part (YYYY-MM-DD)
+      const fromDate = dateRange.from.toISOString().split('T')[0];
+      const toDate = dateRange.to.toISOString().split('T')[0];
+      queryParams.push(`startDate=${fromDate}`);
+      queryParams.push(`endDate=${toDate}`);
     }
 
     // Append query string if we have parameters

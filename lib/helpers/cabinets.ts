@@ -49,8 +49,11 @@ export const fetchCabinets = async (
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      queryParams.push(`startDate=${customDateRange.from.toISOString()}`);
-      queryParams.push(`endDate=${customDateRange.to.toISOString()}`);
+      // Extract just the date part (YYYY-MM-DD)
+      const fromDate = customDateRange.from.toISOString().split('T')[0];
+      const toDate = customDateRange.to.toISOString().split('T')[0];
+      queryParams.push(`startDate=${fromDate}`);
+      queryParams.push(`endDate=${toDate}`);
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
@@ -131,8 +134,11 @@ export const fetchCabinetById = async (
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      queryParams.push(`startDate=${customDateRange.from.toISOString()}`);
-      queryParams.push(`endDate=${customDateRange.to.toISOString()}`);
+      // Extract just the date part (YYYY-MM-DD)
+      const fromDate = customDateRange.from.toISOString().split('T')[0];
+      const toDate = customDateRange.to.toISOString().split('T')[0];
+      queryParams.push(`startDate=${fromDate}`);
+      queryParams.push(`endDate=${toDate}`);
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
@@ -408,11 +414,14 @@ export async function fetchCabinetsForLocation(
       customDateRange?.from &&
       customDateRange?.to
     ) {
-      console.warn('Custom date range:', customDateRange);
-      params.startDate = customDateRange.from.toISOString();
-      params.endDate = customDateRange.to.toISOString();
-      params.timePeriod = 'Custom'; // Set timePeriod to "Custom" when using custom dates
-      console.warn('Custom date params:', params);
+      // Extract just the date part (YYYY-MM-DD) from the Date objects
+      // Backend will apply gaming day offset to these dates
+      const fromDate = customDateRange.from.toISOString().split('T')[0];
+      const toDate = customDateRange.to.toISOString().split('T')[0];
+      
+      params.startDate = fromDate;
+      params.endDate = toDate;
+      params.timePeriod = 'Custom';
     }
 
     const queryString = new URLSearchParams(params).toString();

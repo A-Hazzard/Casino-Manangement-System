@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Parse custom dates if provided (for gaming day offset calculations)
+    // Parse custom dates if provided
     let customStartDate: Date | undefined, customEndDate: Date | undefined;
     if (timePeriod === 'Custom') {
       const customStart = searchParams.get('startDate');
@@ -61,8 +61,11 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      customStartDate = new Date(customStart);
-      customEndDate = new Date(customEnd);
+      // Parse custom dates - gaming day offset will be applied by getGamingDayRangeForPeriod
+      // User sends: "2025-10-31" meaning Oct 31 gaming day
+      // With 8 AM offset: Oct 31, 8:00 AM → Nov 1, 8:00 AM
+      customStartDate = new Date(customStart + 'T00:00:00.000Z');
+      customEndDate = new Date(customEnd + 'T00:00:00.000Z');
     }
 
     let totals: { moneyIn: number; moneyOut: number; gross: number };

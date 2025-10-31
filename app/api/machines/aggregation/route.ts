@@ -35,8 +35,9 @@ export async function GET(req: NextRequest) {
 
     if (timePeriod === 'Custom' && startDateParam && endDateParam) {
       timePeriodForGamingDay = 'Custom';
-      customStartDateForGamingDay = new Date(startDateParam);
-      customEndDateForGamingDay = new Date(endDateParam);
+      // Parse dates - gaming day offset will be applied by getGamingDayRangeForPeriod
+      customStartDateForGamingDay = new Date(startDateParam + 'T00:00:00.000Z');
+      customEndDateForGamingDay = new Date(endDateParam + 'T00:00:00.000Z');
     } else {
       timePeriodForGamingDay = timePeriod;
     }
@@ -70,41 +71,16 @@ export async function GET(req: NextRequest) {
     }
 
     // Calculate gaming day ranges for each location
-    let gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>;
-
-    if (
-      timePeriod === 'Custom' &&
-      customStartDateForGamingDay &&
+    // Always use gaming day offset logic (including for custom dates)
+    const gamingDayRanges = getGamingDayRangesForLocations(
+      locations.map((loc: Record<string, unknown>) => ({
+        _id: (loc._id as { toString: () => string }).toString(),
+        gameDayOffset: (loc.gameDayOffset as number) || 0,
+      })),
+      timePeriodForGamingDay,
+      customStartDateForGamingDay,
       customEndDateForGamingDay
-    ) {
-      // For custom dates, use the exact user-specified times without gaming day offset
-      // The Date constructor already handles the local time to UTC conversion
-      const customStartUTC = customStartDateForGamingDay;
-      const customEndUTC = customEndDateForGamingDay;
-
-      // Apply the same custom date range to all locations
-      gamingDayRanges = new Map();
-      for (const location of locations) {
-        const locationIdStr = (
-          location._id as { toString: () => string }
-        ).toString();
-        gamingDayRanges.set(locationIdStr, {
-          rangeStart: customStartUTC,
-          rangeEnd: customEndUTC,
-        });
-      }
-    } else {
-      // For predefined periods, use gaming day offset logic
-      gamingDayRanges = getGamingDayRangesForLocations(
-        locations.map((loc: Record<string, unknown>) => ({
-          _id: (loc._id as { toString: () => string }).toString(),
-          gameDayOffset: (loc.gameDayOffset as number) || 0,
-        })),
-        timePeriodForGamingDay,
-        customStartDateForGamingDay,
-        customEndDateForGamingDay
-      );
-    }
+    );
 
     // Get all machines for these locations
     const allMachines = [];

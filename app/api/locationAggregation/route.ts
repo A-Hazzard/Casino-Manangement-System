@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getLocationsWithMetrics } from '@/app/api/lib/helpers/locationAggregation';
 import { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '../lib/utils/dates';
-import { trinidadTimeToUtc } from '../lib/utils/timezone';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { LocationFilter } from '@/lib/types/location';
 import {
@@ -48,11 +47,15 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      // For custom date ranges, convert from Trinidad time to UTC
-      startDate = trinidadTimeToUtc(new Date(customStart));
-      endDate = trinidadTimeToUtc(new Date(customEnd));
-      customStartDate = new Date(customStart);
-      customEndDate = new Date(customEnd);
+      // For custom date ranges, parse dates and let gaming day offset be applied
+      // User sends: "2025-10-31" meaning Oct 31 gaming day
+      // With 8 AM offset: Oct 31, 8:00 AM → Nov 1, 8:00 AM
+      customStartDate = new Date(customStart + 'T00:00:00.000Z');
+      customEndDate = new Date(customEnd + 'T00:00:00.000Z');
+      
+      // These will be used by getGamingDayRangesForLocations to calculate proper ranges
+      startDate = customStartDate;
+      endDate = customEndDate;
     } else {
       const { startDate: s, endDate: e } = getDatesForTimePeriod(timePeriod);
       startDate = s;

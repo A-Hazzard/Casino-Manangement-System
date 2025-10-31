@@ -77,7 +77,10 @@ export const fetchDashboardTotals = async (
       customDateRange.startDate &&
       customDateRange.endDate
     ) {
-      url += `&startDate=${customDateRange.startDate.toISOString()}&endDate=${customDateRange.endDate.toISOString()}`;
+      // Extract just the date part (YYYY-MM-DD)
+      const fromDate = customDateRange.startDate.toISOString().split('T')[0];
+      const toDate = customDateRange.endDate.toISOString().split('T')[0];
+      url += `&startDate=${fromDate}&endDate=${toDate}`;
     }
 
     if (selectedLicencee && selectedLicencee !== 'all') {
