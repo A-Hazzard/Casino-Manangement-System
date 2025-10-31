@@ -65,6 +65,7 @@ type SMIBSearchSelectProps = {
   disabled?: boolean;
   className?: string;
   emptyMessage?: string;
+  statusOverrides?: Partial<Record<string, SmibStatus>>;
 };
 
 export function SMIBSearchSelect({
@@ -75,6 +76,7 @@ export function SMIBSearchSelect({
   disabled = false,
   className,
   emptyMessage = 'No SMIBs found',
+  statusOverrides,
 }: SMIBSearchSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,7 +102,13 @@ export function SMIBSearchSelect({
 
   // Find selected SMIB
   const selectedSmib = smibs.find(smib => smib.relayId === value);
-  const selectedStatus = selectedSmib ? getSmibStatus(selectedSmib) : null;
+  const selectedStatusOverride =
+    value && statusOverrides ? statusOverrides[value] : undefined;
+  const selectedStatus = selectedStatusOverride
+    ? selectedStatusOverride
+    : selectedSmib
+      ? getSmibStatus(selectedSmib)
+      : null;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -241,7 +249,8 @@ export function SMIBSearchSelect({
               filteredSmibs.map((smib, index) => {
                 const isSelected = smib.relayId === value;
                 const isFocused = index === focusedIndex;
-                const status = getSmibStatus(smib);
+                const overrideStatus = statusOverrides?.[smib.relayId];
+                const status = overrideStatus ?? getSmibStatus(smib);
                 const statusLabel = getStatusLabel(status);
 
                 return (

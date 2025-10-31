@@ -390,6 +390,16 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
     );
   }, [availableSmibs, selectedLocationId]);
 
+  const dropdownStatusOverrides = useMemo(() => {
+    if (!selectedRelayId) {
+      return undefined;
+    }
+
+    return {
+      [selectedRelayId]: smibConfig.isConnectedToMqtt ? 'online' : 'offline',
+    } as const;
+  }, [selectedRelayId, smibConfig.isConnectedToMqtt]);
+
   // Get selected location name for restart all dialog
   const selectedLocationName = useMemo(() => {
     return (
@@ -518,6 +528,7 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
               placeholder="Search for SMIB by relay ID, serial number, or location..."
               emptyMessage="No SMIBs found"
               className="w-full"
+              statusOverrides={dropdownStatusOverrides}
             />
           </div>
 
