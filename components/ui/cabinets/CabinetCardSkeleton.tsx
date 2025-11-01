@@ -1,5 +1,7 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
+
 export default function CabinetCardSkeleton() {
   return (
     <div className="mt-4 space-y-4">
@@ -8,37 +10,46 @@ export default function CabinetCardSkeleton() {
           key={i}
           className="relative mx-auto mb-4 w-full rounded-lg border border-gray-100 bg-white p-4 shadow-sm"
         >
-          {/* Status dot (top right) */}
-          <span className="absolute right-3 top-3 h-3 w-3 rounded-full bg-gray-200" />
-          {/* Asset number + Edit button */}
+          {/* Header with Asset Number and Status Indicator */}
           <div className="mb-2 flex items-center justify-between">
-            <div className="skeleton-bg h-5 w-1/3 rounded" />
-            <div className="skeleton-bg h-5 w-5 rounded-full" />
+            <div className="flex items-center gap-1">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-2 w-2 rounded-full" />
+            </div>
           </div>
-          {/* SMIB, Location, and Game/Serial */}
+
+          {/* SMIB ID and Details */}
           <div className="mb-3">
-            <div className="skeleton-bg mb-1 h-4 w-1/2 rounded"></div>
-            <div className="skeleton-bg mb-1 h-4 w-2/3 rounded"></div>
-            <div className="skeleton-bg h-4 w-3/4 rounded"></div>
+            <Skeleton className="mb-1 h-4 w-24" />
+            <Skeleton className="mb-1 h-4 w-40" />
+            <Skeleton className="h-4 w-48" />
           </div>
-          {/* Money In, Money Out, Jackpot, Gross */}
-          <div className="mb-2 flex flex-col space-y-2 text-sm">
-            <div className="flex justify-between">
-              <div className="skeleton-bg h-4 w-20 rounded" />
-              <div className="skeleton-bg h-4 w-24 rounded" />
+
+          {/* Financial Data - List Layout */}
+          <div className="border-t border-gray-200 pt-2 text-sm">
+            <div className="mb-1 flex justify-between">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="mb-1 flex justify-between">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="mb-1 flex justify-between">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-24" />
             </div>
             <div className="flex justify-between">
-              <div className="skeleton-bg h-4 w-20 rounded" />
-              <div className="skeleton-bg h-4 w-24 rounded" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-24" />
             </div>
-            <div className="flex justify-between">
-              <div className="skeleton-bg h-4 w-16 rounded" />
-              <div className="skeleton-bg h-4 w-24 rounded" />
-            </div>
-            <div className="flex justify-between">
-              <div className="skeleton-bg h-4 w-16 rounded" />
-              <div className="skeleton-bg h-4 w-24 rounded" />
-            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+            <Skeleton className="h-8 flex-1" />
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-8 w-16" />
           </div>
         </div>
       ))}

@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import type { User } from '@/lib/types/administration';
 import defaultAvatar from '@/public/defaultAvatar.svg';
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
+import { Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type UserCardProps = {
   user: User;
@@ -79,23 +79,27 @@ export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
             <span className="italic text-red-500">Status unknown</span>
           )}
         </div>
-        <div className="flex items-center justify-end gap-3">
-          <Image
-            src={editIcon}
-            alt="Edit"
-            width={22}
-            height={22}
-            className="cursor-pointer"
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+          <Button
             onClick={() => onEdit?.(user)}
-          />
-          <Image
-            src={deleteIcon}
-            alt="Delete"
-            width={22}
-            height={22}
-            className="cursor-pointer"
+            variant="outline"
+            size="sm"
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
+          </Button>
+          <Button
             onClick={() => onDelete?.(user)}
-          />
+            variant="outline"
+            size="sm"
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete</span>
+          </Button>
         </div>
       </div>
     </div>

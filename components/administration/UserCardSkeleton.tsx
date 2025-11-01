@@ -22,11 +22,13 @@ export default function UserCardSkeleton() {
           </div>
           <div className="p-3">
             <Skeleton className="mb-2 h-4 w-40 max-w-full" />
+            <Skeleton className="mb-2 h-4 w-32 max-w-full" />
             <Skeleton className="mb-3 h-4 w-24 max-w-full" />
-            <div className="mt-2 flex items-center justify-end gap-3">
-              <Skeleton className="h-5 w-5" />
-              <Skeleton className="h-5 w-5" />
-              <Skeleton className="h-5 w-5" />
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+              <Skeleton className="h-8 flex-1" />
+              <Skeleton className="h-8 flex-1" />
             </div>
           </div>
         </div>

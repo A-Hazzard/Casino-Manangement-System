@@ -524,8 +524,15 @@ export const EditCabinetModal = ({
         return;
       }
 
-      // Pass the entire formData object with id included
-      const success = await updateCabinet(formData, activeMetricsFilter);
+      // Build update payload with only changed fields + required _id
+      const updatePayload: Record<string, unknown> = { _id: formData._id };
+      meaningfulChanges.forEach(change => {
+        const key = change.field as keyof typeof formData;
+        updatePayload[key] = formData[key];
+      });
+
+      // Pass only the changed fields to reduce unnecessary updates and logging
+      const success = await updateCabinet(updatePayload, activeMetricsFilter);
       if (success) {
         // Log the cabinet update activity with proper change tracking
         const changesSummary = getChangesSummary(meaningfulChanges);

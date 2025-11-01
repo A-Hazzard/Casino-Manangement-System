@@ -1,12 +1,10 @@
 'use client';
 
 import { useRef } from 'react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Database, MapPin } from 'lucide-react';
+import { Database, MapPin, Eye, Pencil } from 'lucide-react';
 import { LocationCardData } from '@/lib/types/location';
 import formatCurrency from '@/lib/utils/currency';
-import editIcon from '@/public/editIcon.svg';
 
 export default function LocationCard({
   location,
@@ -26,12 +24,7 @@ export default function LocationCard({
   return (
     <div
       ref={cardRef}
-      className="relative mx-auto w-full cursor-pointer rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow hover:shadow-md"
-      onClick={e => {
-        if (!(e.target as HTMLElement).closest('.action-buttons')) {
-          handleCardClick();
-        }
-      }}
+      className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       {typeof location.onlineMachines === 'number' && (
         <span
@@ -47,17 +40,6 @@ export default function LocationCard({
         <h3 className="text-base font-semibold">
           {(location as Record<string, unknown>).locationName as string}
         </h3>
-        <div className="action-buttons flex gap-2">
-          <button
-            onClick={e => {
-              e.stopPropagation();
-              onEdit(location);
-            }}
-            className="text-button"
-          >
-            <Image src={editIcon} alt="Edit" width={20} height={20} />
-          </button>
-        </div>
       </div>
 
       <div className="mb-2 flex flex-col space-y-2 text-sm">
@@ -86,20 +68,40 @@ export default function LocationCard({
         </span>
       </div>
 
-      <div className="action-buttons mt-2 flex justify-between gap-2">
+      <div className="mt-2 flex justify-between gap-2">
         <Button
           className="flex h-auto items-center space-x-1 rounded-md bg-blueHighlight px-2 py-1 text-xs text-primary-foreground"
-          onClick={e => e.stopPropagation()}
         >
           <Database className="mr-1 h-3 w-3" />
           {location.totalMachines} MACHINES
         </Button>
         <Button
           className="flex h-auto items-center space-x-1 rounded-md bg-button px-2 py-1 text-xs text-primary-foreground"
-          onClick={e => e.stopPropagation()}
         >
           <MapPin className="mr-1 h-3 w-3" />
           {location.onlineMachines} ONLINE
+        </Button>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+        <Button
+          onClick={() => handleCardClick()}
+          variant="outline"
+          size="sm"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>View Details</span>
+        </Button>
+        <Button
+          onClick={() => onEdit(location)}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          <span>Edit</span>
         </Button>
       </div>
     </div>

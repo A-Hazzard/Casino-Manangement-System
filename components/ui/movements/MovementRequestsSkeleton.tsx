@@ -8,21 +8,28 @@ export function MovementRequestCardSkeleton() {
           key={i}
           className="relative mx-auto mb-4 w-full rounded-lg border border-gray-100 bg-white p-4 shadow-sm"
         >
-          <div className="mb-2 flex items-center justify-between">
+          {/* Header */}
+          <div className="mb-2">
             <div className="skeleton-bg h-5 w-1/3 rounded"></div>
-            <div className="skeleton-bg h-5 w-5 rounded-full"></div>
           </div>
-          <div className="mb-3">
-            <div className="skeleton-bg mb-1 h-4 w-1/2 rounded"></div>
+
+          {/* Request details */}
+          <div className="mb-3 space-y-1">
+            <div className="skeleton-bg h-4 w-1/2 rounded"></div>
             <div className="skeleton-bg h-4 w-2/3 rounded"></div>
-            <div className="skeleton-bg mt-1 h-4 w-1/3 rounded"></div>
-            <div className="skeleton-bg mt-1 h-4 w-1/4 rounded"></div>
+            <div className="skeleton-bg h-4 w-1/3 rounded"></div>
+            <div className="skeleton-bg h-4 w-1/4 rounded"></div>
           </div>
-          <div className="mb-2 flex items-center gap-2">
+
+          {/* Status badge */}
+          <div className="mb-3 flex items-center">
             <div className="skeleton-bg h-5 w-16 rounded-full"></div>
           </div>
-          <div className="mt-2 flex items-center justify-end gap-2">
-            <div className="skeleton-bg h-7 w-7 rounded-full"></div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+            <div className="skeleton-bg h-8 flex-1 rounded"></div>
+            <div className="skeleton-bg h-8 flex-1 rounded"></div>
           </div>
         </div>
       ))}

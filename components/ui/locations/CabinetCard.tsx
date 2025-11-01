@@ -6,12 +6,9 @@ import gsap from 'gsap';
 import { useParams, useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils';
 import { CabinetCardProps } from '@/lib/types/cardProps';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
-
-// Import SVG icons for pre-rendering
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function CabinetCard(props: CabinetCardProps) {
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
@@ -135,13 +132,7 @@ export default function CabinetCard(props: CabinetCardProps) {
   return (
     <div
       ref={cardRef}
-      className="relative mx-auto mb-4 w-full cursor-pointer rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-      onClick={e => {
-        // Only handle card click if not clicking action buttons
-        if (!(e.target as HTMLElement).closest('.action-buttons')) {
-          handleCardClick();
-        }
-      }}
+      className="relative mx-auto mb-4 w-full rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       {/* Header with Asset Number and Status Indicator */}
       <div className="mb-2 flex items-center justify-between">
@@ -155,15 +146,6 @@ export default function CabinetCard(props: CabinetCardProps) {
             transition={{ duration: 2, repeat: Infinity }}
           ></motion.span>
         </h3>
-        <button onClick={handleEditClick} className="text-button">
-          <Image
-            src={editIcon}
-            width={20}
-            height={20}
-            alt="Edit"
-            className="h-5 w-5"
-          />
-        </button>
       </div>
 
       {/* SMIB ID and Location */}
@@ -206,17 +188,35 @@ export default function CabinetCard(props: CabinetCardProps) {
         </div>
       </div>
 
-      {/* Hidden delete button - only shown in edit mode or on hover */}
-      <div className="action-buttons absolute bottom-2 right-2 hidden">
-        <button onClick={handleDeleteClick} className="text-destructive">
-          <Image
-            src={deleteIcon}
-            width={20}
-            height={20}
-            alt="Delete"
-            className="h-5 w-5"
-          />
-        </button>
+      {/* Action Buttons */}
+      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+        <Button
+          onClick={() => handleCardClick()}
+          variant="outline"
+          size="sm"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>View Details</span>
+        </Button>
+        <Button
+          onClick={handleEditClick}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          <span>Edit</span>
+        </Button>
+        <Button
+          onClick={handleDeleteClick}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>Delete</span>
+        </Button>
       </div>
     </div>
   );

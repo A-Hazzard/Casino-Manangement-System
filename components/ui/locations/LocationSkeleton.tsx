@@ -45,11 +45,12 @@ export default function LocationSkeleton() {
           >
             {/* Status dot (top right) */}
             <span className="absolute right-3 top-3 h-3 w-3 rounded-full bg-gray-200" />
-            {/* Title + Edit button */}
-            <div className="mb-2 flex items-center justify-between">
+            
+            {/* Title */}
+            <div className="mb-2">
               <div className="skeleton-bg h-6 w-2/3 rounded" />
-              <div className="skeleton-bg h-6 w-6 rounded-full" />
             </div>
+
             {/* Money In & Out */}
             <div className="mb-2 flex flex-col space-y-2 text-sm">
               <div className="flex justify-between">
@@ -61,15 +62,23 @@ export default function LocationSkeleton() {
                 <div className="skeleton-bg h-4 w-24 rounded" />
               </div>
             </div>
+
             {/* Gross */}
             <div className="mb-3 mt-1 flex justify-between">
               <div className="skeleton-bg h-4 w-16 rounded" />
               <div className="skeleton-bg h-4 w-24 rounded" />
             </div>
-            {/* Machines & Online Buttons */}
+
+            {/* Machines & Online Info */}
             <div className="mt-2 flex justify-between gap-2">
               <div className="skeleton-bg h-7 w-28 rounded" />
               <div className="skeleton-bg h-7 w-28 rounded" />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+              <div className="skeleton-bg h-8 flex-1 rounded" />
+              <div className="skeleton-bg h-8 w-16 rounded" />
             </div>
           </div>
         ))}

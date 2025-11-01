@@ -2,6 +2,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
+import { Eye } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type ExtendedCabinetCardProps = {
   cabinet: CabinetDetail;
@@ -35,10 +37,9 @@ const CabinetCard: React.FC<ExtendedCabinetCardProps> = ({
       animate="visible"
       whileHover={{ scale: 1.03 }}
       transition={{ duration: 0.3 }}
-      className={`cursor-pointer overflow-hidden rounded-lg bg-white shadow-sm transition-shadow hover:shadow-md ${
+      className={`overflow-hidden rounded-lg bg-white shadow-sm transition-shadow hover:shadow-md ${
         isSelected ? 'ring-2 ring-buttonActive' : ''
       }`}
-      onClick={() => onClick(cabinet._id, cabinet.locationId || '')}
     >
       <div className="p-4">
         <div className="mb-3 flex items-start justify-between">
@@ -85,6 +86,19 @@ const CabinetCard: React.FC<ExtendedCabinetCardProps> = ({
             <p className="font-medium">{formatCurrency(cabinet.gross || 0)}</p>
           </div>
           {/* Removed Net as it's not directly available in CabinetDetail */}
+        </div>
+
+        {/* Action Button */}
+        <div className="mt-3 border-t border-gray-200 pt-3">
+          <Button
+            onClick={() => onClick(cabinet._id, cabinet.locationId || '')}
+            variant="outline"
+            size="sm"
+            className="w-full flex items-center justify-center gap-1.5 text-xs"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>View Details</span>
+          </Button>
         </div>
       </div>
     </motion.div>

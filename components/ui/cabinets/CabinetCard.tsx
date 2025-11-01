@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import Image from 'next/image';
 import gsap from 'gsap';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils';
 import { CabinetCardProps } from '@/lib/types/cardProps';
 import { motion } from 'framer-motion';
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function CabinetCard(props: CabinetCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -60,13 +59,7 @@ export default function CabinetCard(props: CabinetCardProps) {
   return (
     <div
       ref={cardRef}
-      className="xs:p-2 relative mx-auto mb-4 w-full max-w-full cursor-pointer rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition-shadow hover:shadow-md sm:p-4"
-      onClick={e => {
-        // Only handle card click if not clicking action buttons
-        if (!(e.target as HTMLElement).closest('.action-buttons')) {
-          handleCardClick();
-        }
-      }}
+      className="xs:p-2 relative mx-auto mb-4 w-full max-w-full rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition-shadow hover:shadow-md sm:p-4"
     >
       {/* Header with Asset Number and Status Indicator */}
       <div className="mb-2 flex items-center justify-between">
@@ -80,21 +73,6 @@ export default function CabinetCard(props: CabinetCardProps) {
             transition={{ duration: 2, repeat: Infinity }}
           ></motion.span>
         </h3>
-        <button
-          onClick={e => {
-            e.stopPropagation();
-            props.onEdit?.(props);
-          }}
-          className="flex-shrink-0 text-green-600 hover:text-green-700"
-        >
-          <Image
-            src={editIcon}
-            alt="Edit"
-            width={20}
-            height={20}
-            className="h-5 w-5"
-          />
-        </button>
       </div>
 
       {/* SMIB ID and Details */}
@@ -149,23 +127,35 @@ export default function CabinetCard(props: CabinetCardProps) {
         </div>
       </div>
 
-      {/* Hidden delete button - only shown in edit mode or on hover */}
-      <div className="action-buttons absolute bottom-2 right-2 hidden">
-        <button
-          onClick={e => {
-            e.stopPropagation();
-            props.onDelete?.(props);
-          }}
-          className="text-red-500"
+      {/* Action Buttons - Fixed at bottom */}
+      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+        <Button
+          onClick={() => handleCardClick()}
+          variant="outline"
+          size="sm"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs"
         >
-          <Image
-            src={deleteIcon}
-            alt="Delete"
-            width={20}
-            height={20}
-            className="xs:w-4 xs:h-4 h-4 w-4 sm:h-5 sm:w-5"
-          />
-        </button>
+          <Eye className="h-3.5 w-3.5" />
+          <span>View Details</span>
+        </Button>
+        <Button
+          onClick={() => props.onEdit?.(props)}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          <span>Edit</span>
+        </Button>
+        <Button
+          onClick={() => props.onDelete?.(props)}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>Delete</span>
+        </Button>
       </div>
     </div>
   );

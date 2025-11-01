@@ -1,5 +1,4 @@
 import type { Licensee } from '@/lib/types/licensee';
-import Image from 'next/image';
 import {
   isLicenseePaid,
   formatLicenseeDate,
@@ -7,9 +6,8 @@ import {
 } from '@/lib/utils/licensee';
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDownIcon } from '@radix-ui/react-icons';
-import creditCardIcon from '@/public/creditCardIcon.svg';
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
+import { CreditCard, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type LicenseeCardProps = {
   licensee: Licensee;
@@ -150,31 +148,36 @@ export default function LicenseeCard({
             </div>
           )}
         </div>
-        <div className="flex gap-3">
-          <Image
-            src={creditCardIcon}
-            alt="Payment History"
-            width={22}
-            height={22}
-            className="cursor-pointer opacity-70 hover:opacity-100"
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 border-t border-gray-200 pt-3 mt-3">
+          <Button
             onClick={() => onPaymentHistory(licensee)}
-          />
-          <Image
-            src={editIcon}
-            alt="Edit"
-            width={22}
-            height={22}
-            className="cursor-pointer opacity-70 hover:opacity-100"
+            variant="outline"
+            size="sm"
+            className="flex items-center justify-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            <span>History</span>
+          </Button>
+          <Button
             onClick={() => onEdit(licensee)}
-          />
-          <Image
-            src={deleteIcon}
-            alt="Delete"
-            width={22}
-            height={22}
-            className="cursor-pointer opacity-70 hover:opacity-100"
+            variant="outline"
+            size="sm"
+            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
+          </Button>
+          <Button
             onClick={() => onDelete(licensee)}
-          />
+            variant="outline"
+            size="sm"
+            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete</span>
+          </Button>
         </div>
       </div>
     </div>

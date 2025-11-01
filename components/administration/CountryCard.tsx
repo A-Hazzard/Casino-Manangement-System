@@ -1,9 +1,6 @@
 import type { Country } from '@/lib/types/country';
-import Image from 'next/image';
-
-// Import SVG icons for pre-rendering
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
+import { Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type CountryCardProps = {
   country: Country;
@@ -27,7 +24,7 @@ export default function CountryCard({
         </div>
       </div>
       <div className="p-3">
-        <div className="mb-2 flex flex-wrap gap-3">
+        <div className="mb-3 flex flex-wrap gap-3">
           <span className="rounded bg-black px-2 py-1 text-xs font-semibold text-white">
             Alpha 2: {country.alpha2}
           </span>
@@ -38,23 +35,27 @@ export default function CountryCard({
             ISO: {country.isoNumeric}
           </span>
         </div>
-        <div className="flex items-center justify-end gap-3">
-          <Image
-            src={editIcon}
-            alt="Edit"
-            width={22}
-            height={22}
-            className="cursor-pointer opacity-70 hover:opacity-100"
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+          <Button
             onClick={() => onEdit(country)}
-          />
-          <Image
-            src={deleteIcon}
-            alt="Delete"
-            width={22}
-            height={22}
-            className="cursor-pointer opacity-70 hover:opacity-100"
+            variant="outline"
+            size="sm"
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
+          </Button>
+          <Button
             onClick={() => onDelete(country)}
-          />
+            variant="outline"
+            size="sm"
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete</span>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,16 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import Image from 'next/image';
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
-
-// Pre-render the icons for better performance
-const EditIcon = () => (
-  <Image src={editIcon} alt="Edit" width={20} height={20} priority />
-);
-
-const DeleteIcon = () => (
-  <Image src={deleteIcon} alt="Delete" width={20} height={20} priority />
-);
+import { Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   getStatusColor,
   formatMovementRequestDate,
@@ -57,12 +47,6 @@ export default function MovementRequestCard({
         >
           {request.createdBy}
         </h3>
-        <button
-          onClick={() => onEdit(request)}
-          className="flex-shrink-0 text-green-500"
-        >
-          <EditIcon />
-        </button>
       </div>
       <div className="mb-3 space-y-1">
         <p
@@ -97,21 +81,37 @@ export default function MovementRequestCard({
           {formatMovementRequestDate(request.timestamp)}
         </p>
       </div>
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-3 flex items-center">
         <span
-          className={`inline-flex max-w-[120px] truncate rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
+          className={`inline-flex truncate rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
             request.status
           )}`}
           title={request.status}
         >
           {request.status}
         </span>
-        <button
-          onClick={() => onDelete(request)}
-          className="flex-shrink-0 text-red-500"
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+        <Button
+          onClick={() => onEdit(request)}
+          variant="outline"
+          size="sm"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
         >
-          <DeleteIcon />
-        </button>
+          <Pencil className="h-3.5 w-3.5" />
+          <span>Edit</span>
+        </Button>
+        <Button
+          onClick={() => onDelete(request)}
+          variant="outline"
+          size="sm"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>Delete</span>
+        </Button>
       </div>
     </div>
   );

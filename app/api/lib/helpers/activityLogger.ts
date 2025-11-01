@@ -219,9 +219,11 @@ export async function getActivityLogs(params: ActivityLogQueryParams): Promise<{
 
 /**
  * Calculates changes between two objects.
+ * Only compares fields that exist in the newObj (update payload).
+ * This prevents logging all fields as changed when only specific fields are updated.
  *
  * @param oldObj - The original object
- * @param newObj - The updated object
+ * @param newObj - The updated object (should only contain fields being updated)
  * @returns Array of changes
  */
 export function calculateChanges(
@@ -230,10 +232,14 @@ export function calculateChanges(
 ): ActivityLogChange[] {
   const changes: ActivityLogChange[] = [];
 
-  // Check for changed or new fields
+  // Only check fields that are present in newObj (the update payload)
   for (const [key, newValue] of Object.entries(newObj)) {
     const oldValue = oldObj[key];
-    if (oldValue !== newValue) {
+
+    // Deep comparison for objects and arrays
+    const hasChanged = !isEqual(oldValue, newValue);
+
+    if (hasChanged) {
       changes.push({
         field: key,
         oldValue,
@@ -242,18 +248,47 @@ export function calculateChanges(
     }
   }
 
-  // Check for deleted fields
-  for (const [key, oldValue] of Object.entries(oldObj)) {
-    if (!(key in newObj)) {
-      changes.push({
-        field: key,
-        oldValue,
-        newValue: undefined,
-      });
-    }
-  }
+  // NOTE: We don't check for "deleted fields" in update operations
+  // because the newObj only contains fields being updated, not a full document
 
   return changes;
+}
+
+/**
+ * Deep equality check for comparing values
+ */
+function isEqual(a: unknown, b: unknown): boolean {
+  // Same reference or both null/undefined
+  if (a === b) return true;
+
+  // One is null/undefined and the other isn't
+  if (a == null || b == null) return false;
+
+  // Different types
+  if (typeof a !== typeof b) return false;
+
+  // For primitives, === already checked above
+  if (typeof a !== 'object') return a === b;
+
+  // Arrays
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((val, index) => isEqual(val, b[index]));
+  }
+
+  // One is array, other is not
+  if (Array.isArray(a) || Array.isArray(b)) return false;
+
+  // Objects
+  const aObj = a as Record<string, unknown>;
+  const bObj = b as Record<string, unknown>;
+
+  const aKeys = Object.keys(aObj);
+  const bKeys = Object.keys(bObj);
+
+  if (aKeys.length !== bKeys.length) return false;
+
+  return aKeys.every(key => isEqual(aObj[key], bObj[key]));
 }
 
 /**

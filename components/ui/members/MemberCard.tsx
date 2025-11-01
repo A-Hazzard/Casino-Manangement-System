@@ -1,13 +1,9 @@
 'use client';
 
 import { useRef } from 'react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { User, Calendar } from 'lucide-react';
+import { User, Calendar, Eye, Pencil, Trash2 } from 'lucide-react';
 import { CasinoMember as Member } from '@/shared/types/entities';
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
-import leftHamburgerMenu from '@/public/leftHamburgerMenu.svg';
 
 export default function MemberCard({
   member,
@@ -37,12 +33,7 @@ export default function MemberCard({
   return (
     <div
       ref={cardRef}
-      className="relative mx-auto w-full cursor-pointer rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow hover:shadow-md"
-      onClick={e => {
-        if (!(e.target as HTMLElement).closest('.action-buttons')) {
-          handleCardClick();
-        }
-      }}
+      className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-base font-semibold min-w-0 flex-1 truncate">
@@ -50,41 +41,6 @@ export default function MemberCard({
             ? `${member.profile.firstName} ${member.profile.lastName}`
             : member.memberId || member._id || 'Unknown Member'}
         </h3>
-        <div className="action-buttons flex gap-2">
-          <Image
-            src={leftHamburgerMenu}
-            alt="Details"
-            width={20}
-            height={20}
-            className="cursor-pointer opacity-70 hover:opacity-100"
-            onClick={e => {
-              e.stopPropagation();
-              onMemberClick(member._id);
-            }}
-          />
-          <Image
-            src={editIcon}
-            alt="Edit"
-            width={20}
-            height={20}
-            className="cursor-pointer opacity-70 hover:opacity-100"
-            onClick={e => {
-              e.stopPropagation();
-              onEdit(member);
-            }}
-          />
-          <Image
-            src={deleteIcon}
-            alt="Delete"
-            width={20}
-            height={20}
-            className="cursor-pointer opacity-70 hover:opacity-100"
-            onClick={e => {
-              e.stopPropagation();
-              onDelete(member);
-            }}
-          />
-        </div>
       </div>
 
       <div className="mb-2 flex flex-col space-y-2 text-sm">
@@ -106,10 +62,9 @@ export default function MemberCard({
         </div>
       </div>
 
-      <div className="action-buttons mt-2 flex justify-between gap-2">
+      <div className="mt-2 flex justify-between gap-2">
         <Button
           className="flex h-auto items-center space-x-1 rounded-md bg-blueHighlight px-2 py-1 text-xs text-primary-foreground"
-          onClick={e => e.stopPropagation()}
         >
           <User className="mr-1 h-3 w-3" />
           {member.profile?.firstName && member.profile?.lastName
@@ -118,7 +73,6 @@ export default function MemberCard({
         </Button>
         <Button
           className="flex h-auto items-center space-x-1 rounded-md bg-button px-2 py-1 text-xs text-primary-foreground"
-          onClick={e => e.stopPropagation()}
         >
           <Calendar className="mr-1 h-3 w-3" />
           {formatDate(
@@ -126,6 +80,37 @@ export default function MemberCard({
               ? member.createdAt
               : member.createdAt.toISOString()
           )}
+        </Button>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+        <Button
+          onClick={() => handleCardClick()}
+          variant="outline"
+          size="sm"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>View Details</span>
+        </Button>
+        <Button
+          onClick={() => onEdit(member)}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          <span>Edit</span>
+        </Button>
+        <Button
+          onClick={() => onDelete(member)}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>Delete</span>
         </Button>
       </div>
     </div>
