@@ -152,7 +152,7 @@ export default function Header({
                 <CurrencyFilter
                   className="hidden md:flex"
                   disabled={disabled}
-                  onCurrencyChange={() => {
+                  onCurrencyChange={newCurrency => {
                     // Trigger data refresh when currency changes
                     if (pathname === '/' && activeMetricsFilter) {
                       setLoadingChartData(true);
@@ -164,7 +164,7 @@ export default function Header({
                         setChartData,
                         setActiveFilters,
                         setShowDatePicker,
-                        displayCurrency
+                        newCurrency
                       ).finally(() => setLoadingChartData(false));
                     }
                   }}
@@ -369,7 +369,7 @@ export default function Header({
                       <CurrencyFilter
                         className="w-full"
                         disabled={disabled}
-                        onCurrencyChange={() => {
+                        onCurrencyChange={newCurrency => {
                           // Trigger data refresh when currency changes
                           if (pathname === '/' && activeMetricsFilter) {
                             setLoadingChartData(true);
@@ -381,7 +381,7 @@ export default function Header({
                               setChartData,
                               setActiveFilters,
                               setShowDatePicker,
-                              displayCurrency
+                              newCurrency
                             ).finally(() => setLoadingChartData(false));
                           }
                         }}

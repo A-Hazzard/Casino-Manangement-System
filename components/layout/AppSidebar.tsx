@@ -13,6 +13,7 @@ import { SidebarContainer, useSidebar } from '@/components/ui/sidebar';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { logoutUser } from '@/lib/helpers/clientAuth';
 import { fetchUserId } from '@/lib/helpers/user';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import { shouldShowNavigationLinkDb } from '@/lib/utils/permissionsDb';
@@ -88,6 +89,7 @@ export default function AppSidebar() {
   const { user, clearUser } = useUserStore();
   const pathname = usePathname();
   const { displayCurrency, setDisplayCurrency } = useCurrency();
+  const { setDisplayCurrency: setDashboardCurrency } = useDashBoardStore();
   const [profileOpen, setProfileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -114,14 +116,14 @@ export default function AppSidebar() {
   const [profileLoading, setProfileLoading] = useState(true);
 
   const router = useRouter();
-  
+
   // Close sidebar on mobile when pathname changes (navigation occurs)
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsOpen(false);
     }
   }, [pathname, setIsOpen]);
-  
+
   useEffect(() => {
     // Seed with store info
     const seedEmail = user?.emailAddress || '';
@@ -401,7 +403,10 @@ export default function AppSidebar() {
                           )}
                           onClick={() => {
                             // Close sidebar on mobile when a link is clicked
-                            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                            if (
+                              typeof window !== 'undefined' &&
+                              window.innerWidth < 768
+                            ) {
                               setIsOpen(false);
                             }
                           }}
@@ -459,9 +464,12 @@ export default function AppSidebar() {
               <div className="w-full">
                 <Select
                   value={displayCurrency}
-                  onValueChange={value =>
-                    setDisplayCurrency(value as 'USD' | 'TTD' | 'GYD' | 'BBD')
-                  }
+                  onValueChange={value => {
+                    const newCurrency = value as 'USD' | 'TTD' | 'GYD' | 'BBD';
+                    // Update BOTH currency states to keep them in sync
+                    setDisplayCurrency(newCurrency);
+                    setDashboardCurrency(newCurrency);
+                  }}
                 >
                   <SelectTrigger className="h-8 w-full text-sm">
                     <SelectValue />

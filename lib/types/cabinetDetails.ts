@@ -1,5 +1,5 @@
-import { GamingMachine } from '@/shared/types/entities';
 import type { CabinetSortOption } from '@/lib/hooks/data';
+import { GamingMachine } from '@/shared/types/entities';
 
 /**
  * Types for cabinet details functionality
@@ -75,6 +75,7 @@ export type AccountingDetailsProps = {
   loading: boolean;
   activeMetricsTabContent: string;
   setActiveMetricsTabContent: (content: string) => void;
+  disableCurrencyConversion?: boolean; // For specific cabinet pages
 };
 
 // Props for CabinetSearchFilters component

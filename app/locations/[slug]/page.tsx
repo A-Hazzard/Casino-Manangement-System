@@ -619,6 +619,7 @@ export default function LocationPage() {
             totals={financialTotals}
             loading={loading || cabinetsLoading}
             title={`Financial Metrics for ${locationName || "Location"}`}
+            disableCurrencyConversion={true}
           />
         </div>
 

@@ -1,9 +1,5 @@
 'use client';
 
-import React from 'react';
-import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { getCurrencyName, getCurrencySymbol } from '@/lib/helpers/rates';
-import type { CurrencyCode } from '@/shared/types/currency';
 import {
   Select,
   SelectContent,
@@ -11,6 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import { getCurrencyName, getCurrencySymbol } from '@/lib/helpers/rates';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 interface CurrencyFilterProps {
   className?: string;
@@ -26,10 +26,13 @@ export function CurrencyFilter({
   onCurrencyChange,
 }: CurrencyFilterProps) {
   const { displayCurrency, setDisplayCurrency, isAllLicensee } = useCurrency();
+  const { setDisplayCurrency: setDashboardCurrency } = useDashBoardStore();
 
   const handleCurrencyChange = (value: string) => {
     const newCurrency = value as CurrencyCode;
+    // Update BOTH currency states to keep them in sync
     setDisplayCurrency(newCurrency);
+    setDashboardCurrency(newCurrency);
     onCurrencyChange?.(newCurrency);
   };
 

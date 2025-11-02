@@ -156,6 +156,8 @@ export async function GET(request: NextRequest) {
           machineCount: location.machineCount,
           onlineMachines: location.onlineMachines,
           sasMachines: location.sasMachines,
+          rel: location.locationInfo.rel, // Include for currency conversion
+          country: location.locationInfo.country, // Include for currency conversion
           coordinates:
             location.locationInfo.geoCoords?.latitude &&
             location.locationInfo.geoCoords?.longitude
@@ -172,15 +174,57 @@ export async function GET(request: NextRequest) {
 
     // Apply currency conversion if needed
     if (shouldApplyCurrencyConversion(licensee)) {
-      console.warn(
-        '🔍 ANALYTICS LOCATIONS - Applying currency conversion for All Licensee mode'
-      );
-      // Convert financial fields from USD to display currency
+      // Get currency mappings for multi-licensee conversion
+      const { convertToUSD, getCountryCurrency } = await import('@/lib/helpers/rates');
+      
+      const licenseesData = await db
+        .collection('licencees')
+        .find(
+          {
+            $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+          },
+          { projection: { _id: 1, name: 1 } }
+        )
+        .toArray();
+
+      const licenseeIdToName = new Map<string, string>();
+      licenseesData.forEach(lic => {
+        licenseeIdToName.set(lic._id.toString(), lic.name);
+      });
+
+      const countriesData = await db.collection('countries').find({}).toArray();
+      const countryIdToName = new Map<string, string>();
+      countriesData.forEach(country => {
+        countryIdToName.set(country._id.toString(), country.name);
+      });
+
+      // Convert each location's financial data from native currency
       topLocationsWithMetrics = topLocationsWithMetrics.map(location => {
+        // Determine native currency
+        const licenseeId = location.rel?.licencee;
+        let nativeCurrency: string = 'USD';
+
+        if (licenseeId) {
+          const licenseeName = licenseeIdToName.get(licenseeId.toString());
+          nativeCurrency = licenseeName || 'USD';
+        } else if (location.country) {
+          const countryName = countryIdToName.get(location.country.toString());
+          nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
+        }
+
+        // Convert from native currency to display currency
+        const totalDropUSD = convertToUSD(location.totalDrop, nativeCurrency);
+        const grossUSD = convertToUSD(location.gross, nativeCurrency);
+        const cancelledCreditsUSD = convertToUSD(
+          location.cancelledCredits || 0,
+          nativeCurrency
+        );
+
         return {
           ...location,
-          totalDrop: convertFromUSD(location.totalDrop, displayCurrency),
-          gross: convertFromUSD(location.gross, displayCurrency),
+          totalDrop: convertFromUSD(totalDropUSD, displayCurrency),
+          cancelledCredits: convertFromUSD(cancelledCreditsUSD, displayCurrency),
+          gross: convertFromUSD(grossUSD, displayCurrency),
         };
       });
     }

@@ -338,8 +338,12 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   loading,
   activeMetricsTabContent,
   setActiveMetricsTabContent,
+  disableCurrencyConversion = false,
 }: AccountingDetailsProps) => {
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  
+  // On specific cabinet pages, don't apply currency conversion
+  const shouldApplyCurrency = !disableCurrencyConversion && shouldShowCurrency();
 
   const [collectionHistory, setCollectionHistory] = useState<CollectionData[]>(
     []
@@ -714,7 +718,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
-                            {shouldShowCurrency()
+                            {shouldApplyCurrency
                               ? formatAmount(
                                   Number(
                                     cabinet?.moneyIn ??
@@ -749,7 +753,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
-                            {shouldShowCurrency()
+                            {shouldApplyCurrency
                               ? formatAmount(
                                   Number(
                                     cabinet?.moneyOut ??
@@ -786,7 +790,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="h-1 w-full bg-pinkHighlight mb-4 md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
-                            {shouldShowCurrency()
+                            {shouldApplyCurrency
                               ? formatAmount(
                                   Number(
                                     cabinet?.gross ??

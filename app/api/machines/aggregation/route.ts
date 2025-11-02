@@ -5,6 +5,9 @@ import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import { MachineAggregationMatchStage } from '@/shared/types/mongo';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../lib/middleware/db';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,6 +20,8 @@ export async function GET(req: NextRequest) {
     const searchTerm = searchParams.get('search')?.trim() || '';
     const licensee = searchParams.get('licensee');
     const timePeriod = searchParams.get('timePeriod');
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
@@ -234,6 +239,120 @@ export async function GET(req: NextRequest) {
           machine.smbId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           machine._id === searchTerm // Exact match for _id
       );
+    }
+
+    // Apply currency conversion if "All Licensee" is selected
+    if (shouldApplyCurrencyConversion(licensee)) {
+      // Get licensee details for currency mapping
+      const db = await connectDB();
+      if (!db) {
+        return NextResponse.json(
+          { error: 'DB connection failed' },
+          { status: 500 }
+        );
+      }
+
+      const licenseesData = await db
+        .collection('licencees')
+        .find(
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          },
+          { projection: { _id: 1, name: 1 } }
+        )
+        .toArray();
+
+      // Create a map of licensee ID to name
+      const licenseeIdToName = new Map<string, string>();
+      licenseesData.forEach(lic => {
+        licenseeIdToName.set(lic._id.toString(), lic.name);
+      });
+
+      // Get country details for currency mapping
+      const { getCountryCurrency } = await import('@/lib/helpers/rates');
+      const countriesData = await db.collection('countries').find({}).toArray();
+      const countryIdToName = new Map<string, string>();
+      countriesData.forEach(country => {
+        countryIdToName.set(country._id.toString(), country.name);
+      });
+
+      // Get location details for each machine to determine licensee
+      const locationDetailsMap = new Map();
+      for (const location of locations) {
+        const locationIdStr = (
+          location._id as { toString: () => string }
+        ).toString();
+        locationDetailsMap.set(locationIdStr, location);
+      }
+
+      // Convert each machine's financial data
+      filteredMachines = filteredMachines.map(machine => {
+        // Get licensee from the machine's location
+        const locationDetails = locationDetailsMap.get(machine.locationId);
+        const machineLicenseeId = locationDetails?.rel?.licencee as
+          | string
+          | undefined;
+
+        if (!machineLicenseeId) {
+          // Unassigned machines - determine currency from country
+          const countryId = locationDetails?.country as string | undefined;
+          const countryName = countryId
+            ? countryIdToName.get(countryId.toString())
+            : undefined;
+          const nativeCurrency = countryName
+            ? getCountryCurrency(countryName)
+            : 'USD';
+
+          // Convert from country's native currency to display currency
+          const moneyInUSD = convertToUSD(machine.moneyIn || 0, nativeCurrency);
+          const moneyOutUSD = convertToUSD(machine.moneyOut || 0, nativeCurrency);
+          const cancelledCreditsUSD = convertToUSD(machine.cancelledCredits || 0, nativeCurrency);
+          const jackpotUSD = convertToUSD(machine.jackpot || 0, nativeCurrency);
+          const grossUSD = convertToUSD(machine.gross || 0, nativeCurrency);
+          const coinInUSD = convertToUSD(machine.coinIn || 0, nativeCurrency);
+          const coinOutUSD = convertToUSD(machine.coinOut || 0, nativeCurrency);
+
+          return {
+            ...machine,
+            moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
+            moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+            cancelledCredits: convertFromUSD(cancelledCreditsUSD, displayCurrency),
+            jackpot: convertFromUSD(jackpotUSD, displayCurrency),
+            gross: convertFromUSD(grossUSD, displayCurrency),
+            coinIn: convertFromUSD(coinInUSD, displayCurrency),
+            coinOut: convertFromUSD(coinOutUSD, displayCurrency),
+          };
+        }
+
+        const licenseeName =
+          licenseeIdToName.get(machineLicenseeId.toString()) || 'Unknown';
+
+        // Convert from licensee's native currency to USD, then to display currency
+        const moneyInUSD = convertToUSD(machine.moneyIn || 0, licenseeName);
+        const moneyOutUSD = convertToUSD(machine.moneyOut || 0, licenseeName);
+        const cancelledCreditsUSD = convertToUSD(
+          machine.cancelledCredits || 0,
+          licenseeName
+        );
+        const jackpotUSD = convertToUSD(machine.jackpot || 0, licenseeName);
+        const grossUSD = convertToUSD(machine.gross || 0, licenseeName);
+        const coinInUSD = convertToUSD(machine.coinIn || 0, licenseeName);
+        const coinOutUSD = convertToUSD(machine.coinOut || 0, licenseeName);
+
+        return {
+          ...machine,
+          moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
+          moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+          cancelledCredits: convertFromUSD(cancelledCreditsUSD, displayCurrency),
+          jackpot: convertFromUSD(jackpotUSD, displayCurrency),
+          gross: convertFromUSD(grossUSD, displayCurrency),
+          coinIn: convertFromUSD(coinInUSD, displayCurrency),
+          coinOut: convertFromUSD(coinOutUSD, displayCurrency),
+        };
+      });
     }
 
     return NextResponse.json({ success: true, data: filteredMachines });

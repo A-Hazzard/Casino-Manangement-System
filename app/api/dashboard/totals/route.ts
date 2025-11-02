@@ -28,19 +28,6 @@ export async function GET(req: NextRequest) {
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
-    // Log currency conversion parameters
-    console.warn('=== DASHBOARD TOTALS API CURRENCY DEBUG ===');
-    console.warn('Request parameters:', {
-      timePeriod,
-      licencee,
-      displayCurrency,
-      shouldApplyConversion: shouldApplyCurrencyConversion(licencee),
-    });
-    console.warn('Full URL:', req.url);
-    console.warn(
-      'Search params:',
-      Object.fromEntries(req.nextUrl.searchParams)
-    );
 
     // Only proceed if timePeriod is provided
     if (!timePeriod) {
@@ -72,7 +59,6 @@ export async function GET(req: NextRequest) {
 
     // Check if we need to apply currency conversion (All Licensee mode)
     if (shouldApplyCurrencyConversion(licencee)) {
-      console.warn('=== APPLYING CURRENCY CONVERSION FOR ALL LICENSEE ===');
 
       // Get all licensee IDs (including null for locations without a licensee)
       const allLicenseeIds = await db
@@ -89,7 +75,6 @@ export async function GET(req: NextRequest) {
         allLicenseeIds.push(null);
       }
 
-      console.warn('Found licensee IDs (including null for unassigned):', allLicenseeIds);
 
       // Fetch licensee details to get their names
       const licenseesData = await db
@@ -112,10 +97,6 @@ export async function GET(req: NextRequest) {
         licenseeIdToName.set(lic._id.toString(), lic.name);
       });
 
-      console.warn(
-        'Licensee ID to Name mapping:',
-        Object.fromEntries(licenseeIdToName)
-      );
 
       let totalMoneyInUSD = 0;
       let totalMoneyOutUSD = 0;
@@ -126,7 +107,6 @@ export async function GET(req: NextRequest) {
         const licenseeName = licenseeId 
           ? (licenseeIdToName.get(licenseeId.toString()) || 'Unknown')
           : 'Unassigned';
-        console.warn(`Processing licensee: ${licenseeId || 'null'} (${licenseeName})`);
 
         // Get locations for this licensee (including null for unassigned)
         const locationFilter = licenseeId 
@@ -170,7 +150,11 @@ export async function GET(req: NextRequest) {
 
         if (machineIds.length === 0) continue;
 
-        // Get locations with their gameDayOffset for this licensee
+        // Get locations with their gameDayOffset, country for this licensee
+        const locationFilterForOffset = licenseeId
+          ? { 'rel.licencee': licenseeId }
+          : { $or: [{ 'rel.licencee': null }, { 'rel.licencee': { $exists: false } }] };
+        
         const locationsWithOffset = await db
           .collection('gaminglocations')
           .find(
@@ -179,9 +163,9 @@ export async function GET(req: NextRequest) {
                 { deletedAt: null },
                 { deletedAt: { $lt: new Date('2020-01-01') } },
               ],
-              'rel.licencee': licenseeId,
+              ...locationFilterForOffset,
             },
-            { projection: { _id: 1, gameDayOffset: 1 } }
+            { projection: { _id: 1, gameDayOffset: 1, country: 1, rel: 1 } }
           )
           .toArray();
 
@@ -280,21 +264,32 @@ export async function GET(req: NextRequest) {
           gross: licenseeGross,
         };
 
-        console.warn(
-          `Licensee ${licenseeName} (${licenseeId || 'null'}) raw values:`,
-          licenseeTotals
-        );
 
-        // For locations without a licensee, treat as USD (no conversion needed)
+        // For locations without a licensee, determine currency from country
         // For locations with a licensee, convert their currency to USD
         let moneyInUSD, moneyOutUSD, grossUSD;
         
         if (!licenseeId) {
-          // Unassigned locations - already in USD
-          moneyInUSD = licenseeTotals.moneyIn;
-          moneyOutUSD = licenseeTotals.moneyOut;
-          grossUSD = licenseeTotals.gross;
-          console.warn(`Unassigned locations - treating as USD (no conversion)`);
+          // Unassigned locations - determine currency from country
+          const { convertToUSD, getCountryCurrency } = await import('@/lib/helpers/rates');
+          
+          // Get country details for these locations
+          const countriesData = await db.collection('countries').find({}).toArray();
+          const countryIdToName = new Map<string, string>();
+          countriesData.forEach(country => {
+            countryIdToName.set(country._id.toString(), country.name);
+          });
+          
+          // Determine native currency from country
+          let nativeCurrency = 'USD';
+          if (locationsWithOffset.length > 0 && locationsWithOffset[0].country) {
+            const countryName = countryIdToName.get(locationsWithOffset[0].country.toString());
+            nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
+          }
+          
+          moneyInUSD = convertToUSD(licenseeTotals.moneyIn, nativeCurrency);
+          moneyOutUSD = convertToUSD(licenseeTotals.moneyOut, nativeCurrency);
+          grossUSD = convertToUSD(licenseeTotals.gross, nativeCurrency);
         } else {
           // Convert this licensee's values to USD using their name for currency mapping
           const { convertToUSD } = await import('@/lib/helpers/rates');
@@ -303,14 +298,6 @@ export async function GET(req: NextRequest) {
           moneyOutUSD = convertToUSD(licenseeTotals.moneyOut, licenseeName);
           grossUSD = convertToUSD(licenseeTotals.gross, licenseeName);
 
-          console.warn(
-            `Licensee ${licenseeName} (${licenseeId}) converted to USD:`,
-            {
-              moneyIn: moneyInUSD,
-              moneyOut: moneyOutUSD,
-              gross: grossUSD,
-            }
-          );
         }
 
         // Add to totals
@@ -319,20 +306,9 @@ export async function GET(req: NextRequest) {
         totalGrossUSD += grossUSD;
       }
 
-      console.warn('Total USD values before final conversion:', {
-        moneyIn: Math.round(totalMoneyInUSD * 100) / 100,
-        moneyOut: Math.round(totalMoneyOutUSD * 100) / 100,
-        gross: Math.round(totalGrossUSD * 100) / 100,
-      });
 
       // Convert from USD to display currency
 
-      console.warn('Converting from USD to display currency:', {
-        displayCurrency,
-        totalMoneyInUSD,
-        totalMoneyOutUSD,
-        totalGrossUSD,
-      });
 
       const convertedMoneyIn = convertFromUSD(totalMoneyInUSD, displayCurrency);
       const convertedMoneyOut = convertFromUSD(

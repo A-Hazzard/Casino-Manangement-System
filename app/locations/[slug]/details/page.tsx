@@ -353,7 +353,7 @@ export default function LocationDetailsPage() {
         }}
         pageTitle=""
         hideOptions={true}
-        hideLicenceeFilter={false}
+        hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 p-4 md:p-6 w-full max-w-full overflow-x-hidden"
         showToaster={false}
       >

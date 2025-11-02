@@ -24,11 +24,27 @@ const LICENSEE_CURRENCY: LicenseeCurrencyMapping = {
   Barbados: 'BBD', // Barbados
 };
 
+// Country name to currency mapping (for locations without licensees)
+const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
+  'Trinidad and Tobago': 'TTD',
+  'Trinidad & Tobago': 'TTD',
+  Trinidad: 'TTD',
+  Guyana: 'GYD',
+  Barbados: 'BBD',
+};
+
 /**
  * Get the currency for a specific licensee
  */
 export function getLicenseeCurrency(licensee: string): CurrencyCode {
   return LICENSEE_CURRENCY[licensee as keyof LicenseeCurrencyMapping] || 'USD';
+}
+
+/**
+ * Get the currency for a specific country
+ */
+export function getCountryCurrency(countryName: string): CurrencyCode {
+  return COUNTRY_CURRENCY_MAP[countryName] || 'USD';
 }
 
 /**
@@ -44,13 +60,19 @@ export function shouldApplyConversion(
 /**
  * Convert a value from a licensee's currency to USD
  */
-export function convertToUSD(value: number, licensee: string): number {
-  const licenseeCurrency = getLicenseeCurrency(licensee);
-  if (licenseeCurrency === 'USD') {
+export function convertToUSD(value: number, licenseeOrCurrency: string): number {
+  // Check if it's a currency code (3 letters uppercase) or a licensee name
+  const isCurrencyCode = /^[A-Z]{3}$/.test(licenseeOrCurrency);
+  
+  const sourceCurrency = isCurrencyCode 
+    ? (licenseeOrCurrency as CurrencyCode)
+    : getLicenseeCurrency(licenseeOrCurrency);
+  
+  if (sourceCurrency === 'USD') {
     return value;
   }
 
-  const rate = FIXED_RATES[licenseeCurrency];
+  const rate = FIXED_RATES[sourceCurrency];
   return value / rate;
 }
 

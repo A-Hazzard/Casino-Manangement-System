@@ -37,6 +37,7 @@ declare module '@/components/cabinetDetails/AccountingDetails' {
     activeMetricsTabContent: string;
     setActiveMetricsTabContent: (tab: string) => void;
     activeMetricsFilter?: TimePeriod;
+    disableCurrencyConversion?: boolean; // For specific cabinet pages
   };
 
   export const AccountingDetails: React.FC<AccountingDetailsProps>;

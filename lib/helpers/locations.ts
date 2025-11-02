@@ -406,12 +406,14 @@ export const searchLocations = async (
  */
 export const searchAllLocations = async (
   searchTerm: string,
-  licensee?: string
+  licensee?: string,
+  displayCurrency?: string
 ): Promise<AggregatedLocation[]> => {
   try {
     const params: Record<string, string> = {};
     if (searchTerm) params.search = searchTerm;
     if (licensee) params.licencee = licensee;
+    if (displayCurrency) params.currency = displayCurrency;
 
     const response = await axios.get('/api/locations/search-all', { params });
     return response.data || [];
@@ -440,7 +442,8 @@ export async function fetchAggregatedLocationsData(
   timePeriod: TimePeriod,
   licensee?: string,
   filterString?: string,
-  dateRange?: { from: Date; to: Date }
+  dateRange?: { from: Date; to: Date },
+  displayCurrency?: string
 ): Promise<AggregatedLocation[]> {
   try {
     // Construct the URL with appropriate parameters
@@ -453,6 +456,8 @@ export async function fetchAggregatedLocationsData(
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     if (filterString)
       queryParams.push(`filters=${encodeURIComponent(filterString)}`);
+    if (displayCurrency)
+      queryParams.push(`currency=${encodeURIComponent(displayCurrency)}`);
 
     // Always show all locations, even those with 0 meters (like cabinets page)
     queryParams.push(`showAllLocations=true`);

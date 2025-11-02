@@ -13,6 +13,7 @@ type FinancialMetricsCardsProps = {
   loading?: boolean;
   title?: string;
   className?: string;
+  disableCurrencyConversion?: boolean; // For specific location/cabinet pages
 };
 
 export default function FinancialMetricsCards({
@@ -20,9 +21,13 @@ export default function FinancialMetricsCards({
   loading = false,
   title = "Financial Metrics",
   className = "",
+  disableCurrencyConversion = false,
 }: FinancialMetricsCardsProps) {
   const { formatAmount, shouldShowCurrency, displayCurrency } =
     useCurrencyFormat();
+  
+  // On specific location/cabinet pages, don't apply currency conversion
+  const shouldApplyCurrency = !disableCurrencyConversion && shouldShowCurrency();
   if (loading) {
     return <DashboardFinancialMetricsSkeleton />;
   }
@@ -78,7 +83,7 @@ export default function FinancialMetricsCards({
                   {totals
                     ? (() => {
                         const formatted = formatNumberWithScaling(totals.moneyIn);
-                        return shouldShowCurrency() 
+                        return shouldApplyCurrency 
                           ? formatAmount(totals.moneyIn, displayCurrency)
                           : formatted.display;
                       })()
@@ -113,7 +118,7 @@ export default function FinancialMetricsCards({
                   {totals
                     ? (() => {
                         const formatted = formatNumberWithScaling(totals.moneyOut);
-                        return shouldShowCurrency() 
+                        return shouldApplyCurrency 
                           ? formatAmount(totals.moneyOut, displayCurrency)
                           : formatted.display;
                       })()
@@ -148,7 +153,7 @@ export default function FinancialMetricsCards({
                   {totals
                     ? (() => {
                         const formatted = formatNumberWithScaling(totals.gross);
-                        return shouldShowCurrency() 
+                        return shouldApplyCurrency 
                           ? formatAmount(totals.gross, displayCurrency)
                           : formatted.display;
                       })()
@@ -179,7 +184,7 @@ export default function FinancialMetricsCards({
             <div className="flex-1 flex items-center justify-center">
               <p className="font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl">
                 {totals
-                  ? shouldShowCurrency()
+                  ? shouldApplyCurrency
                     ? formatAmount(totals.moneyIn, displayCurrency)
                     : formatNumber(totals.moneyIn)
                   : "--"}
@@ -196,7 +201,7 @@ export default function FinancialMetricsCards({
             <div className="flex-1 flex items-center justify-center">
               <p className="font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl">
                 {totals
-                  ? shouldShowCurrency()
+                  ? shouldApplyCurrency
                     ? formatAmount(totals.moneyOut, displayCurrency)
                     : formatNumber(totals.moneyOut)
                   : "--"}
@@ -213,7 +218,7 @@ export default function FinancialMetricsCards({
             <div className="flex-1 flex items-center justify-center">
               <p className="font-bold break-words overflow-hidden text-sm sm:text-base md:text-lg lg:text-xl">
                 {totals
-                  ? shouldShowCurrency()
+                  ? shouldApplyCurrency
                     ? formatAmount(totals.gross, displayCurrency)
                     : formatNumber(totals.gross)
                   : "--"}

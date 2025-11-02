@@ -11,6 +11,7 @@ import {
 } from '@/lib/helpers/locations';
 import { AggregatedLocation, TimePeriod } from '@/shared/types/common';
 import { LocationFilter } from '@/lib/types/location';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 type UseLocationDataProps = {
   selectedLicencee: string;
@@ -40,6 +41,9 @@ export function useLocationData({
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Get display currency from store
+  const { displayCurrency } = useDashBoardStore();
+
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -55,7 +59,8 @@ export function useLocationData({
         const effectiveLicencee = selectedLicencee || '';
         const searchData = await searchAllLocations(
           debouncedSearchTerm,
-          effectiveLicencee
+          effectiveLicencee,
+          displayCurrency
         );
         setLocationData(searchData);
         setSearchLoading(false);
@@ -88,7 +93,8 @@ export function useLocationData({
         (activeMetricsFilter || 'Today') as TimePeriod,
         effectiveLicencee,
         filterString,
-        dateRangeForFetch
+        dateRangeForFetch,
+        displayCurrency
       );
 
       setLocationData(data);
@@ -104,6 +110,7 @@ export function useLocationData({
     selectedFilters,
     customDateRange,
     debouncedSearchTerm,
+    displayCurrency,
   ]);
 
   // Fetch data when dependencies change

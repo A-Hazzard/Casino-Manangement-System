@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { NextRequest, NextResponse } from 'next/server';
 
 type LocationAggregationResult = {
   _id: string;
@@ -24,6 +27,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const licencee = searchParams.get('licencee') || '';
     const search = searchParams.get('search')?.trim() || '';
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     const db = await connectDB();
     if (!db) {
@@ -49,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all locations that match the criteria with financial data
-    const locations = (await db
+    let locations = (await db
       .collection('gaminglocations')
       .aggregate([
         // Stage 1: Filter locations by deletion status, search term, and licencee
@@ -185,6 +190,82 @@ export async function GET(request: NextRequest) {
         },
       ])
       .toArray()) as LocationAggregationResult[];
+
+    // Apply currency conversion if "All Licensee" is selected
+    if (shouldApplyCurrencyConversion(licencee)) {
+      // Get licensee details for currency mapping
+      const licenseesData = await db
+        .collection('licencees')
+        .find(
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          },
+          { projection: { _id: 1, name: 1 } }
+        )
+        .toArray();
+
+      // Create a map of licensee ID to name
+      const licenseeIdToName = new Map<string, string>();
+      licenseesData.forEach(lic => {
+        licenseeIdToName.set(lic._id.toString(), lic.name);
+      });
+
+      // Get country details for currency mapping (for unassigned locations)
+      const { getCountryCurrency } = await import('@/lib/helpers/rates');
+      const countriesData = await db.collection('countries').find({}).toArray();
+
+      // Create a map of country ID to name
+      const countryIdToName = new Map<string, string>();
+      countriesData.forEach(country => {
+        countryIdToName.set(country._id.toString(), country.name);
+      });
+
+      // Convert each location's financial data
+      locations = locations.map(loc => {
+        const licenseeId = loc.rel?.licencee as string | undefined;
+
+        if (!licenseeId) {
+          // Unassigned locations - determine currency from country
+          const countryId = loc.country as string | undefined;
+          const countryName = countryId
+            ? countryIdToName.get(countryId.toString())
+            : undefined;
+          const nativeCurrency = countryName
+            ? getCountryCurrency(countryName)
+            : 'USD';
+
+          // Convert from country's native currency to display currency
+          const moneyInUSD = convertToUSD(loc.moneyIn, nativeCurrency);
+          const moneyOutUSD = convertToUSD(loc.moneyOut, nativeCurrency);
+          const grossUSD = convertToUSD(loc.gross, nativeCurrency);
+
+          return {
+            ...loc,
+            moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
+            moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+            gross: convertFromUSD(grossUSD, displayCurrency),
+          };
+        }
+
+        const licenseeName =
+          licenseeIdToName.get(licenseeId.toString()) || 'Unknown';
+
+        // Convert from licensee's native currency to USD, then to display currency
+        const moneyInUSD = convertToUSD(loc.moneyIn, licenseeName);
+        const moneyOutUSD = convertToUSD(loc.moneyOut, licenseeName);
+        const grossUSD = convertToUSD(loc.gross, licenseeName);
+
+        return {
+          ...loc,
+          moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
+          moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+          gross: convertFromUSD(grossUSD, displayCurrency),
+        };
+      });
+    }
 
     // Transform the data to match the expected format
     const response = locations.map((loc: LocationAggregationResult) => ({
