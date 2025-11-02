@@ -1,10 +1,8 @@
 import React from 'react';
 import Image from 'next/image';
 import { formatCurrency } from '@/lib/utils';
-
-// Import SVG icons for pre-rendering
-import editIcon from '@/public/editIcon.svg';
-import deleteIcon from '@/public/deleteIcon.svg';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import type { CabinetSortOption } from '@/lib/hooks/data';
@@ -50,56 +48,19 @@ function CabinetCardMobile({
   return (
     <div
       key={cabinet._id}
-      className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-      onClick={() => router.push(`/cabinets/${cabinet._id}`)}
+      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="mb-3 flex items-center justify-between">
         <h3 className="max-w-[60%] truncate font-semibold">
           {getSerialNumberIdentifier(cabinet)}
         </h3>
-        <div className="flex items-center gap-2">
-          <span
-            ref={statusRef}
-            className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
-              cabinet.isOnline ? 'bg-green-500' : 'bg-red-500'
-            }`}
-            title={cabinet.isOnline ? 'Online' : 'Offline'}
-          ></span>
-          <div className="flex gap-1">
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                onEdit(cabinet);
-              }}
-              className="rounded p-1 hover:bg-gray-100"
-              title="Edit"
-            >
-              <Image
-                src={editIcon}
-                alt="Edit"
-                width={16}
-                height={16}
-                className="h-4 w-4"
-              />
-            </button>
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                onDelete(cabinet);
-              }}
-              className="rounded p-1 text-red-600 hover:bg-gray-100"
-              title="Delete"
-            >
-              <Image
-                src={deleteIcon}
-                alt="Delete"
-                width={16}
-                height={16}
-                className="h-4 w-4"
-              />
-            </button>
-          </div>
-        </div>
+        <span
+          ref={statusRef}
+          className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
+            cabinet.isOnline ? 'bg-green-500' : 'bg-red-500'
+          }`}
+          title={cabinet.isOnline ? 'Online' : 'Offline'}
+        ></span>
       </div>
       <p className="mb-1 text-sm text-gray-600">
         Game: {cabinet.game || cabinet.installedGame || 'Unknown'}
@@ -126,6 +87,37 @@ function CabinetCardMobile({
             {formatCurrency(cabinet.gross || 0)}
           </span>
         </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+        <Button
+          onClick={() => router.push(`/cabinets/${cabinet._id}`)}
+          variant="outline"
+          size="sm"
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>View Details</span>
+        </Button>
+        <Button
+          onClick={() => onEdit(cabinet)}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          <span>Edit</span>
+        </Button>
+        <Button
+          onClick={() => onDelete(cabinet)}
+          variant="outline"
+          size="sm"
+          className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>Delete</span>
+        </Button>
       </div>
     </div>
   );
