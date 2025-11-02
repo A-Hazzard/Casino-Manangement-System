@@ -1,6 +1,51 @@
 import React from 'react';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 
+declare module '*.svg' {
+  const content: string;
+  export default content;
+}
+
+declare module '@/public/*.svg' {
+  const content: string;
+  export default content;
+}
+
+declare module '/public/*.svg' {
+  const content: string;
+  export default content;
+}
+
+declare module '*.png' {
+  const content: string;
+  export default content;
+}
+
+declare module '@/public/*.png' {
+  const content: string;
+  export default content;
+}
+
+declare module '/public/*.png' {
+  const content: string;
+  export default content;
+}
+
+declare module '*.jpg' {
+  const content: string;
+  export default content;
+}
+
+declare module '*.jpeg' {
+  const content: string;
+  export default content;
+}
+
+declare module '*.gif' {
+  const content: string;
+  export default content;
+}
+
 // Make TypeScript recognize our hook
 declare module '@/lib/hooks/useCabinetDetails' {
   export type UseCabinetDetailsReturn = {

@@ -3,8 +3,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import CircleCropModal from '@/components/ui/image/CircleCropModal';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Country } from '@/lib/helpers/countries';
 import { fetchCountries } from '@/lib/helpers/countries';
+import type { Country } from '@/lib/types/country';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import type { ResourcePermissions, User } from '@/lib/types/administration';
 import type { LocationSelectItem } from '@/lib/types/location';
@@ -970,8 +970,8 @@ export default function UserModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.length
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>At least 8 characters</span>
                                 </div>
@@ -984,8 +984,8 @@ export default function UserModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.uppercase
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>Uppercase letter</span>
                                 </div>
@@ -998,8 +998,8 @@ export default function UserModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.lowercase
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>Lowercase letter</span>
                                 </div>
@@ -1012,8 +1012,8 @@ export default function UserModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.number
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>Number</span>
                                 </div>
@@ -1026,7 +1026,7 @@ export default function UserModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.special
-                                      ? '✓'
+                                      ? '?'
                                       : '!'}
                                   </span>
                                   <span>Special character</span>
