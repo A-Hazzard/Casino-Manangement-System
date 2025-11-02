@@ -76,21 +76,24 @@ export default function AdministrationNavigation({
 
       {/* Mobile - below md: */}
       <div className="px-4 py-2 md:hidden">
-        <select
-          value={activeSection}
-          onChange={e => {
-            const section = e.target.value as AdministrationSection;
-            onChange(section);
-          }}
-          className="navigation-button w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
-          disabled={isLoading}
-        >
-          {accessibleTabs.map(t => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={activeSection}
+            onChange={e => onChange(e.target.value as AdministrationSection)}
+            className="navigation-button w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-2 focus:ring-buttonActive"
+            disabled={isLoading}
+            aria-label="Select administration section"
+          >
+            {accessibleTabs.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
+            ?
+          </span>
+        </div>
       </div>
     </div>
   );
