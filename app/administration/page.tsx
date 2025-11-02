@@ -32,6 +32,7 @@ import { IMAGES } from '@/lib/constants/images';
 import { fetchUsers, updateUser } from '@/lib/helpers/administration';
 import { administrationUtils } from '@/lib/helpers/administrationPage';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
+import { fetchCountries } from '@/lib/helpers/countries';
 import { useAdministrationNavigation } from '@/lib/hooks/navigation';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
@@ -40,6 +41,7 @@ import type {
   User,
 } from '@/lib/types/administration';
 import type { Licensee } from '@/lib/types/licensee';
+import type { Country } from '@/lib/types/country';
 import {
   detectChanges,
   filterMeaningfulChanges,
@@ -100,6 +102,40 @@ function AdministrationPageContent() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCountries = async () => {
+      if (isMounted) {
+        setIsCountriesLoading(true);
+      }
+      try {
+        const data = await fetchCountries();
+        if (isMounted) {
+          setCountries(data || []);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to fetch countries:', error);
+        }
+        if (isMounted) {
+          setCountries([]);
+          toast.error('Failed to load countries');
+        }
+      } finally {
+        if (isMounted) {
+          setIsCountriesLoading(false);
+        }
+      }
+    };
+
+    void loadCountries();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Initialize selectedLicencee if not set
   useEffect(() => {
     if (!selectedLicencee) {
@@ -146,6 +182,8 @@ function AdministrationPageContent() {
   const [isEditLicenseeModalOpen, setIsEditLicenseeModalOpen] = useState(false);
   const [isDeleteLicenseeModalOpen, setIsDeleteLicenseeModalOpen] =
     useState(false);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [isCountriesLoading, setIsCountriesLoading] = useState<boolean>(true);
   const [selectedLicensee, setSelectedLicensee] = useState<Licensee | null>(
     null
   );
@@ -167,6 +205,22 @@ function AdministrationPageContent() {
     selectedLicenseeForPaymentChange,
     setSelectedLicenseeForPaymentChange,
   ] = useState<Licensee | null>(null);
+
+  const countryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    countries.forEach(country => {
+      map.set(country._id, country.name);
+    });
+    return map;
+  }, [countries]);
+
+  const getCountryNameById = useCallback(
+    (countryId?: string) => {
+      if (!countryId) return '';
+      return countryNameById.get(countryId) || countryId;
+    },
+    [countryNameById]
+  );
 
   const itemsPerPage = 5;
 
@@ -434,7 +488,7 @@ function AdministrationPageContent() {
               resource: 'licensee',
               resourceId: result.licensee._id,
               resourceName: result.licensee.name,
-              details: `Created new licensee: ${result.licensee.name} in ${licenseeForm.country}`,
+              details: `Created new licensee: ${result.licensee.name} in ${getCountryNameById(licenseeForm.country)}`,
               userId: user?._id || 'unknown',
               username: getUserDisplayName(),
               userRole: 'user',
@@ -623,7 +677,10 @@ function AdministrationPageContent() {
             resource: 'licensee',
             resourceId: selectedLicensee._id,
             resourceName: selectedLicensee.name,
-            details: `Deleted licensee: ${selectedLicensee.name} from ${licenseeData.country}`,
+            details: `Deleted licensee: ${selectedLicensee.name} from ${
+              selectedLicensee.countryName ||
+              getCountryNameById(selectedLicensee.country)
+            }`,
             userId: user?._id || 'unknown',
             username: getUserDisplayName(),
             userRole: 'user',
@@ -657,12 +714,24 @@ function AdministrationPageContent() {
     }
   };
 
+  const licenseesWithCountryNames = useMemo(() => {
+    if (allLicensees.length === 0) return allLicensees;
+    return allLicensees.map(licensee => ({
+      ...licensee,
+      countryName:
+        licensee.countryName ||
+        getCountryNameById(licensee.country) ||
+        licensee.country,
+    }));
+  }, [allLicensees, getCountryNameById]);
+
   const filteredLicensees = useMemo(() => {
-    if (!licenseeSearchValue) return allLicensees;
-    return allLicensees.filter(licensee =>
-      licensee.name.toLowerCase().includes(licenseeSearchValue.toLowerCase())
+    if (!licenseeSearchValue) return licenseesWithCountryNames;
+    const search = licenseeSearchValue.toLowerCase();
+    return licenseesWithCountryNames.filter(licensee =>
+      (licensee.name || '').toLowerCase().includes(search)
     );
-  }, [allLicensees, licenseeSearchValue]);
+  }, [licenseesWithCountryNames, licenseeSearchValue]);
 
   const paginatedLicensees = useMemo(() => {
     return filteredLicensees.slice(
@@ -793,6 +862,12 @@ function AdministrationPageContent() {
             searchValue={licenseeSearchValue}
             setSearchValue={setLicenseeSearchValue}
           />
+          {!isCountriesLoading && countries.length === 0 && (
+            <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              No countries are available. Please add countries first before
+              creating or updating licensees.
+            </p>
+          )}
           <div className="block xl:hidden">
             {paginatedLicensees.length > 0 ? (
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -844,6 +919,8 @@ function AdministrationPageContent() {
             setFormState={data =>
               setLicenseeForm(prev => ({ ...prev, ...data }))
             }
+            countries={countries}
+            countriesLoading={isCountriesLoading}
           />
           <EditLicenseeModal
             open={isEditLicenseeModalOpen}
@@ -862,6 +939,8 @@ function AdministrationPageContent() {
             setFormState={data =>
               setLicenseeForm(prev => ({ ...prev, ...data }))
             }
+            countries={countries}
+            countriesLoading={isCountriesLoading}
           />
           <DeleteLicenseeModal
             open={isDeleteLicenseeModalOpen}
@@ -1176,6 +1255,7 @@ function AdministrationPageContent() {
           ) : activeSection === 'licensees' ? (
             <Button
               onClick={handleOpenAddLicensee}
+              disabled={isCountriesLoading || countries.length === 0}
               className="flex items-center gap-2 rounded-md bg-button px-6 py-2 text-lg font-semibold text-white"
             >
               <PlusCircle className="h-4 w-4" />
@@ -1198,7 +1278,9 @@ function AdministrationPageContent() {
           ) : activeSection === 'licensees' ? (
             <button
               onClick={handleOpenAddLicensee}
-              disabled={refreshing}
+              disabled={
+                refreshing || isCountriesLoading || countries.length === 0
+              }
               className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
               aria-label="Add Licensee"
             >

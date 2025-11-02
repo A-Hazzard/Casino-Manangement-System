@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { Licencee } from '../models/licencee';
+import { Countries } from '../models/countries';
 import { logActivity, calculateChanges } from './activityLogger';
 import { getUserFromServer } from './users';
 import { getClientIP } from '@/lib/utils/ipAddress';
@@ -9,9 +10,34 @@ import { generateMongoId } from '@/lib/utils/id';
 /**
  * Formats licensees data for frontend consumption, ensuring isPaid status is always defined
  */
-export function formatLicenseesForResponse(
+export async function formatLicenseesForResponse(
   licensees: Record<string, unknown>[]
 ) {
+  const countryIds = Array.from(
+    new Set(
+      licensees
+        .map(licensee =>
+          typeof licensee.country === 'string' && licensee.country.trim() !== ''
+            ? (licensee.country as string)
+            : null
+        )
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  const countryNameMap = new Map<string, string>();
+
+  if (countryIds.length > 0) {
+    const countries = await Countries.find(
+      { _id: { $in: countryIds } },
+      { _id: 1, name: 1 }
+    ).lean();
+
+    countries.forEach(country => {
+      countryNameMap.set(country._id as string, country.name as string);
+    });
+  }
+
   return licensees.map(licensee => {
     let isPaid = licensee.isPaid;
     if (typeof isPaid === 'undefined') {
@@ -21,10 +47,21 @@ export function formatLicenseesForResponse(
         isPaid = false;
       }
     }
+
+    const rawCountry = licensee.country;
+    const country =
+      typeof rawCountry === 'string'
+        ? rawCountry
+        : rawCountry && typeof (rawCountry as { toString: () => string }).toString === 'function'
+          ? (rawCountry as { toString: () => string }).toString()
+          : '';
+    const countryName = countryNameMap.get(country) || country || undefined;
+
     return {
       ...licensee,
       isPaid,
-      countryName: licensee.country,
+      country,
+      countryName,
       lastEdited: licensee.updatedAt,
     };
   });
@@ -134,7 +171,11 @@ export async function createLicensee(
     }
   }
 
-  return licensee;
+  const [formattedLicensee] = await formatLicenseesForResponse([
+    licensee.toObject(),
+  ]);
+
+  return formattedLicensee;
 }
 
 /**
@@ -308,7 +349,11 @@ export async function updateLicensee(
     }
   }
 
-  return updatedLicensee;
+  const [formattedLicensee] = await formatLicenseesForResponse([
+    updatedLicensee,
+  ]);
+
+  return formattedLicensee;
 }
 
 /**

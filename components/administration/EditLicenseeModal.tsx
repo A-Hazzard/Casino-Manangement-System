@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
-import { getNames } from 'country-list';
 import { Info } from 'lucide-react';
 import { formatLicenseeDate } from '@/lib/utils/licensee';
+import type { Country } from '@/lib/types/country';
 
 type EditLicenseeModalProps = {
   open: boolean;
@@ -29,6 +29,8 @@ type EditLicenseeModalProps = {
     prevStartDate?: Date | string;
     prevExpiryDate?: Date | string;
   }) => void;
+  countries: Country[];
+  countriesLoading?: boolean;
 };
 
 export default function EditLicenseeModal({
@@ -37,9 +39,10 @@ export default function EditLicenseeModal({
   onSave,
   formState,
   setFormState,
+  countries,
+  countriesLoading = false,
 }: EditLicenseeModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const countryNames = getNames();
 
   useEffect(() => {
     if (open && modalRef.current) {
@@ -126,16 +129,34 @@ export default function EditLicenseeModal({
               name="country"
               value={formState.country || ''}
               onChange={handleChange}
-              className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:bg-gray-100"
               required
+              disabled={countriesLoading || countries.length === 0}
             >
               <option value="">Select a country</option>
-              {countryNames.map(name => (
-                <option key={name} value={name}>
-                  {name}
+              {countries.length === 0 && !countriesLoading && (
+                <option value="" disabled>
+                  No countries available
                 </option>
-              ))}
+              )}
+              {countriesLoading && (
+                <option value="" disabled>
+                  Loading countries...
+                </option>
+              )}
+              {!countriesLoading &&
+                countries.map(country => (
+                  <option key={country._id} value={country._id}>
+                    {country.name}
+                  </option>
+                ))}
             </select>
+            {!countriesLoading && countries.length === 0 && (
+              <p className="mt-1 text-xs text-red-500">
+                No countries found. Please add countries before updating a
+                licensee.
+              </p>
+            )}
           </div>
 
           <div>
