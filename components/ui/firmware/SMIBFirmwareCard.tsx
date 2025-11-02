@@ -1,8 +1,9 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { DownloadIcon, TrashIcon } from '@radix-ui/react-icons';
+import { Download, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useFirmwareActionsStore } from '@/lib/store/firmwareActionsStore';
 import type { Firmware } from '@/lib/types/firmware';
 
@@ -51,28 +52,27 @@ export default function SMIBFirmwareCard({ firmware }: SMIBFirmwareCardProps) {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="pt-2 border-t border-gray-200">
-          <div className="text-xs text-gray-500 uppercase font-semibold mb-2">
-            Actions
-          </div>
-          <div className="flex items-center gap-4">
-            <button
+        {/* Action Buttons */}
+        <div className="pt-3 border-t border-gray-200">
+          <div className="flex items-center gap-2">
+            <Button
               onClick={() => openDownloadModal(firmware)}
-              className="flex items-center gap-2 text-green-500 transition-colors hover:text-green-700"
-              title="Download Firmware"
+              variant="outline"
+              size="sm"
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
             >
-              <DownloadIcon className="h-5 w-5" />
-              <span className="text-sm font-medium">Download</span>
-            </button>
-            <button
+              <Download className="h-3.5 w-3.5" />
+              <span>Download</span>
+            </Button>
+            <Button
               onClick={() => openDeleteModal(firmware)}
-              className="flex items-center gap-2 text-red-500 transition-colors hover:text-red-700"
-              title="Delete Firmware"
+              variant="outline"
+              size="sm"
+              className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
             >
-              <TrashIcon className="h-5 w-5" />
-              <span className="text-sm font-medium">Delete</span>
-            </button>
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete</span>
+            </Button>
           </div>
         </div>
       </CardContent>

@@ -55,8 +55,8 @@ export const CabinetContentDisplay = ({
   totalPages,
   onSort,
   onPageChange,
-  onEdit,
-  onDelete,
+  onEdit: _onEdit,
+  onDelete: _onDelete,
   onRetry,
   transformCabinet,
 }: CabinetContentDisplayProps) => {
@@ -225,8 +225,8 @@ export const CabinetContentDisplay = ({
                   : undefined
               }
               installedGame={machine.installedGame || machine.game || ""}
-              onEdit={() => onEdit(machine)}
-              onDelete={() => onDelete(machine)}
+              onEdit={() => handleEdit(machine)}
+              onDelete={() => handleDelete(machine)}
             />
           ))}
         </ClientOnly>

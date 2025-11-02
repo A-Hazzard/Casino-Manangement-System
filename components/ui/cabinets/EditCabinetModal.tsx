@@ -979,11 +979,11 @@ export const EditCabinetModal = ({
             </div>
 
             {/* Footer */}
-            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4 flex-shrink-0 pb-4">
+            <div className="mt-6 flex flex-row justify-center gap-3 sm:gap-4 flex-shrink-0 pb-4">
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="bg-button px-8 text-container hover:bg-button/90"
+                className="flex-1 bg-button px-8 text-container hover:bg-button/90 sm:flex-initial"
               >
                 {loading ? 'Saving...' : 'SAVE'}
               </Button>
@@ -991,7 +991,7 @@ export const EditCabinetModal = ({
                 onClick={handleClose}
                 variant="outline"
                 disabled={loading}
-                className="px-8"
+                className="flex-1 px-8 sm:flex-initial"
               >
                 CLOSE
               </Button>

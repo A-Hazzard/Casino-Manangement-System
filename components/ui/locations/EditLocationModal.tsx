@@ -1068,9 +1068,9 @@ export default function EditLocationModal({
                 </div>
 
                 {/* Actions */}
-                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                <div className="mt-6 flex flex-row justify-center gap-3">
                   <Button
-                    className="h-12 w-full bg-button px-6 py-3 text-base text-primary-foreground hover:bg-button/90 sm:w-auto"
+                    className="h-12 flex-1 bg-button px-6 py-3 text-base text-primary-foreground hover:bg-button/90 sm:flex-initial sm:w-auto"
                     onClick={handleSubmit}
                     disabled={loading}
                   >
@@ -1078,7 +1078,7 @@ export default function EditLocationModal({
                   </Button>
                   <Button
                     variant="outline"
-                    className="h-12 w-full border-button px-6 py-3 text-base text-button hover:bg-button/10 sm:w-auto"
+                    className="h-12 flex-1 border-button px-6 py-3 text-base text-button hover:bg-button/10 sm:flex-initial sm:w-auto"
                     onClick={handleClose}
                   >
                     Close
