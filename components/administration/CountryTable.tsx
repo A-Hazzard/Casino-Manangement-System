@@ -2,6 +2,7 @@ import type { Country } from '@/lib/types/country';
 import Image from 'next/image';
 import editIcon from '@/public/editIcon.svg';
 import deleteIcon from '@/public/deleteIcon.svg';
+import { formatFullDate } from '@/lib/utils/dateFormatting';
 
 type CountryTableProps = {
   countries: Country[];
@@ -59,9 +60,7 @@ export default function CountryTable({
                   {country.isoNumeric}
                 </td>
                 <td className="px-4 py-3 text-gray-700">
-                  {country.createdAt
-                    ? new Date(country.createdAt).toLocaleDateString()
-                    : '-'}
+                  {formatFullDate(country.createdAt)}
                 </td>
                 <td className="flex max-w-[120px] items-center justify-center gap-2 px-4 py-3">
                   <Image

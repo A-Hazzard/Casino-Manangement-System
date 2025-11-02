@@ -1,4 +1,5 @@
 import type { Licensee } from '@/lib/types/licensee';
+import { formatFullDate } from '@/lib/utils/dateFormatting';
 
 /**
  * Determines if a licensee is paid based on the isPaid field from the API.
@@ -38,6 +39,5 @@ export function getNext30Days(): Date {
  * @returns Formatted date string or "-" if no date
  */
 export function formatLicenseeDate(date: Date | string | undefined): string {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString();
+  return formatFullDate(date);
 }
