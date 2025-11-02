@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     const licensees = await getAllLicensees();
-    let formattedLicensees = formatLicenseesForResponse(licensees);
+    let formattedLicensees = await formatLicenseesForResponse(licensees);
 
     // Apply location-based filtering for non-admin users
     if (

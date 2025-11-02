@@ -1,15 +1,31 @@
 import axios from 'axios';
 
+import type { Country } from '@/lib/types/country';
+
 // Activity logging removed - handled via API calls
 
-export type Country = {
-  _id: string;
-  name: string;
-  alpha2: string;
-  alpha3: string;
-  isoNumeric: string;
-  createdAt: Date;
-  updatedAt: Date;
+const normalizeCountry = (country: unknown): Country => {
+  const raw = country as Partial<Country> & {
+    createdAt?: string | Date;
+    updatedAt?: string | Date;
+  };
+
+  const toIsoString = (value?: string | Date): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+  };
+
+  return {
+    _id: String(raw._id ?? ''),
+    name: String(raw.name ?? ''),
+    alpha2: String(raw.alpha2 ?? ''),
+    alpha3: String(raw.alpha3 ?? ''),
+    isoNumeric: String(raw.isoNumeric ?? ''),
+    createdAt: toIsoString(raw.createdAt),
+    updatedAt: toIsoString(raw.updatedAt),
+  };
 };
 
 /**
@@ -19,7 +35,7 @@ export async function fetchCountries(): Promise<Country[]> {
   try {
     const response = await axios.get('/api/countries');
     if (response.data.success) {
-      return response.data.countries;
+      return (response.data.countries || []).map(normalizeCountry);
     }
     throw new Error('Failed to fetch countries');
   } catch (error) {
@@ -35,7 +51,7 @@ export const createCountry = async (
 
   // Activity logging removed - handled via API calls
 
-  return response.data.country;
+  return normalizeCountry(response.data.country);
 };
 
 export const updateCountry = async (country: Country) => {
@@ -43,7 +59,7 @@ export const updateCountry = async (country: Country) => {
 
   // Activity logging removed - handled via API calls
 
-  return response.data.country;
+  return normalizeCountry(response.data.country);
 };
 
 export const deleteCountry = async (id: string) => {

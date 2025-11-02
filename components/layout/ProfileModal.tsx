@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button';
 import CircleCropModal from '@/components/ui/image/CircleCropModal';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Country } from '@/lib/helpers/countries';
 import { fetchCountries } from '@/lib/helpers/countries';
+import type { Country } from '@/lib/types/country';
 import { useUserStore } from '@/lib/store/userStore';
 import type { User } from '@/lib/types/administration';
 import {
@@ -1194,8 +1194,8 @@ export default function ProfileModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.length
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>At least 8 characters</span>
                                 </div>
@@ -1208,8 +1208,8 @@ export default function ProfileModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.uppercase
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>Uppercase letter</span>
                                 </div>
@@ -1222,8 +1222,8 @@ export default function ProfileModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.lowercase
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>Lowercase letter</span>
                                 </div>
@@ -1236,8 +1236,8 @@ export default function ProfileModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.number
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>Number</span>
                                 </div>
@@ -1250,8 +1250,8 @@ export default function ProfileModal({
                                 >
                                   <span>
                                     {passwordStrength.requirements.special
-                                      ? '✓'
-                                      : '✗'}
+                                      ? '?'
+                                      : '?'}
                                   </span>
                                   <span>Special character (@$!%*?&)</span>
                                 </div>

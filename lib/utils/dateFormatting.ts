@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 
 /**
  * Formats a profile object with nested address and identification
@@ -85,6 +85,32 @@ export function formatDate(date: Date | string | undefined): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+/**
+ * Formats a date value into a long, fully readable string like "Monday 1st October, 2025".
+ * @param date - Date object, ISO string, or undefined to format.
+ * @param fallback - Value to return when the date cannot be parsed.
+ * @returns Human-readable date string including weekday and ordinal day or the fallback.
+ */
+export function formatFullDate(
+  date: Date | string | undefined,
+  fallback = '-'
+): string {
+  if (!date) return fallback;
+
+  let parsedDate: Date;
+
+  if (typeof date === 'string') {
+    const isoDate = parseISO(date);
+    parsedDate = isValid(isoDate) ? isoDate : new Date(date);
+  } else {
+    parsedDate = date;
+  }
+
+  if (!isValid(parsedDate)) return fallback;
+
+  return format(parsedDate, 'EEEE do MMMM, yyyy');
 }
 
 /**

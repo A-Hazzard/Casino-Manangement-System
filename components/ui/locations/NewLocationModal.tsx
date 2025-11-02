@@ -23,7 +23,7 @@ import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import type { Licensee } from '@/lib/types/licensee';
 
 import { fetchCountries } from '@/lib/helpers/countries';
-import type { Country } from '@/lib/helpers/countries';
+import type { Country } from '@/lib/types/country';
 
 export default function NewLocationModal({
   isOpen,
@@ -586,8 +586,8 @@ export default function NewLocationModal({
               {mapLoadError && (
                 <div className="relative z-10 mb-2 rounded-md border border-yellow-200 bg-yellow-50 p-2">
                   <p className="text-xs text-yellow-700">
-                    ⚠️ Map hasn&apos;t loaded properly. Please uncheck and check
-                    the &quot;Use Map&quot; button again. ⚠️ Map hasn&apos;t
+                    ?? Map hasn&apos;t loaded properly. Please uncheck and check
+                    the &quot;Use Map&quot; button again. ?? Map hasn&apos;t
                     loaded properly. Please uncheck and check the &quot;Use
                     Map&quot; button again.
                   </p>
