@@ -18,10 +18,7 @@ import { Meters } from '../lib/models/meters';
 import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 import { generateMongoId } from '@/lib/utils/id';
 
-import {
-  logActivity,
-  calculateChanges,
-} from '@/app/api/lib/helpers/activityLogger';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '../lib/helpers/users';
 import { getClientIP } from '@/lib/utils/ipAddress';
 
@@ -794,33 +791,14 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Log activity
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const changes = calculateChanges(originalMachine.toObject(), data);
+    // Activity logging is handled by the frontend to ensure user context is available
 
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated machine "${
-            originalMachine.serialNumber || originalMachine.game
-          }"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: id,
-            resourceName: originalMachine.serialNumber || originalMachine.game,
-            changes: changes,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
+    // Debug logging for troubleshooting
+    console.warn('[MACHINES API] Update successful:', {
+      machineId: id,
+      updatedFields: Object.keys(data),
+      serialNumber: updatedMachine.serialNumber,
+    });
 
     return NextResponse.json({
       success: true,

@@ -341,8 +341,28 @@ function AdministrationPageContent() {
       return;
     }
 
-    // Detect actual changes between old and new user data
-    const changes = detectChanges(selectedUser, updated);
+    // Build comparison objects with ONLY editable fields
+    const originalData = {
+      username: selectedUser.username,
+      email: selectedUser.email,
+      profile: selectedUser.profile,
+      roles: selectedUser.roles,
+      resourcePermissions: selectedUser.resourcePermissions,
+      profilePicture: selectedUser.profilePicture,
+    };
+
+    const formDataComparison = {
+      username: updated.username,
+      email: updated.email,
+      profile: updated.profile,
+      roles: updated.roles,
+      resourcePermissions: updated.resourcePermissions,
+      profilePicture: updated.profilePicture,
+      password: updated.password, // Include if changing password
+    };
+
+    // Detect changes by comparing ONLY editable fields
+    const changes = detectChanges(originalData, formDataComparison);
     const meaningfulChanges = filterMeaningfulChanges(changes);
 
     // Only proceed if there are actual changes
@@ -351,10 +371,31 @@ function AdministrationPageContent() {
       return;
     }
 
-    const newData = { ...updated, _id: selectedUser._id };
+    // Build update payload with only changed fields + required _id
+    const updatePayload: Record<string, unknown> = { _id: selectedUser._id };
+    meaningfulChanges.forEach(change => {
+      const fieldPath = change.path; // Use full path for nested fields
+      
+      // Handle nested fields
+      if (fieldPath.includes('.')) {
+        const [parent, child] = fieldPath.split('.');
+        
+        // Special handling for objects that must be sent whole
+        if (parent === 'profile' || parent === 'resourcePermissions') {
+          updatePayload[parent] = updated[parent as keyof typeof updated];
+        } else {
+          if (!updatePayload[parent]) {
+            updatePayload[parent] = {};
+          }
+          (updatePayload[parent] as Record<string, unknown>)[child] = change.newValue;
+        }
+      } else {
+        updatePayload[fieldPath] = updated[fieldPath as keyof typeof updated];
+      }
+    });
 
     try {
-      await updateUser(newData);
+      await updateUser(updatePayload as never);
 
       // Log the update activity with proper change tracking
       try {
@@ -373,8 +414,8 @@ function AdministrationPageContent() {
             userId: user?._id || 'unknown',
             username: getUserDisplayName(),
             userRole: 'user',
-            previousData: selectedUser,
-            newData: newData,
+            previousData: originalData,
+            newData: updatePayload,
             changes: meaningfulChanges.map(change => ({
               field: change.field,
               oldValue: change.oldValue,
@@ -555,15 +596,31 @@ function AdministrationPageContent() {
     try {
       if (!selectedLicensee) return;
 
-      // Include the current isPaid value to preserve payment status
-      const updateData = {
-        ...licenseeForm,
-        _id: selectedLicensee._id,
+      // Build comparison objects with ONLY editable fields
+      const originalData = {
+        name: selectedLicensee.name,
+        description: selectedLicensee.description,
+        country: selectedLicensee.country,
+        startDate: selectedLicensee.startDate,
+        expiryDate: selectedLicensee.expiryDate,
+        prevStartDate: selectedLicensee.prevStartDate,
+        prevExpiryDate: selectedLicensee.prevExpiryDate,
+        isPaid: selectedLicensee.isPaid,
+      };
+
+      const formDataComparison = {
+        name: licenseeForm.name,
+        description: licenseeForm.description,
+        country: licenseeForm.country,
+        startDate: licenseeForm.startDate,
+        expiryDate: licenseeForm.expiryDate,
+        prevStartDate: licenseeForm.prevStartDate,
+        prevExpiryDate: licenseeForm.prevExpiryDate,
         isPaid: selectedLicensee.isPaid, // Preserve current payment status
       };
 
-      // Detect actual changes between old and new licensee data
-      const changes = detectChanges(selectedLicensee, updateData);
+      // Detect changes by comparing ONLY editable fields
+      const changes = detectChanges(originalData, formDataComparison);
       const meaningfulChanges = filterMeaningfulChanges(changes);
 
       // Only proceed if there are actual changes
@@ -572,12 +629,19 @@ function AdministrationPageContent() {
         return;
       }
 
+      // Build update payload with only changed fields + required _id
+      const updatePayload: Record<string, unknown> = { _id: selectedLicensee._id };
+      meaningfulChanges.forEach(change => {
+        const fieldPath = change.path; // Use full path for nested fields
+        updatePayload[fieldPath] = change.newValue;
+      });
+
       const response = await fetch('/api/licensees', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updateData),
+        body: JSON.stringify(updatePayload),
       });
 
       const result = await response.json();
@@ -603,8 +667,8 @@ function AdministrationPageContent() {
             userId: user?._id || 'unknown',
             username: getUserDisplayName(),
             userRole: 'user',
-            previousData: selectedLicensee,
-            newData: updateData,
+            previousData: originalData,
+            newData: updatePayload,
             changes: meaningfulChanges.map(change => ({
               field: change.field,
               oldValue: change.oldValue,

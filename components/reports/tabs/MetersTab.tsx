@@ -48,7 +48,12 @@ export default function MetersTab() {
   const [paginationLoading, setPaginationLoading] = useState(false);
 
   const { selectedDateRange } = useReportsStore();
-  const { selectedLicencee } = useDashBoardStore();
+  const {
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    displayCurrency,
+  } = useDashBoardStore();
   const locationsInitialized = useRef(false);
 
   // Handle page change
@@ -77,16 +82,32 @@ export default function MetersTab() {
       try {
         const params = new URLSearchParams({
           locations: selectedLocations.join(','),
-          startDate: selectedDateRange.start.toISOString(),
-          endDate: selectedDateRange.end.toISOString(),
+          timePeriod: activeMetricsFilter,
           page: '1',
           limit: '10000', // Large limit to get all data
           search: search,
         });
 
+        // Add custom dates if needed (in YYYY-MM-DD format)
+        if (activeMetricsFilter === 'Custom' && customDateRange) {
+          params.append(
+            'startDate',
+            customDateRange.startDate.toISOString().split('T')[0]
+          );
+          params.append(
+            'endDate',
+            customDateRange.endDate.toISOString().split('T')[0]
+          );
+        }
+
         // Add licensee filter if selected
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.append('licencee', selectedLicencee);
+        }
+
+        // Add currency parameter
+        if (displayCurrency) {
+          params.append('currency', displayCurrency);
         }
 
         const response = await axios.get<MetersReportResponse>(
@@ -110,7 +131,13 @@ export default function MetersTab() {
         return [];
       }
     },
-    [selectedLocations, selectedDateRange, selectedLicencee]
+    [
+      selectedLocations,
+      activeMetricsFilter,
+      customDateRange,
+      selectedLicencee,
+      displayCurrency,
+    ]
   );
 
   // Fetch locations data
@@ -168,16 +195,32 @@ export default function MetersTab() {
       try {
         const params = new URLSearchParams({
           locations: selectedLocations.join(','),
-          startDate: selectedDateRange.start.toISOString(),
-          endDate: selectedDateRange.end.toISOString(),
+          timePeriod: activeMetricsFilter,
           page: page.toString(),
           limit: '10',
           search: search,
         });
 
+        // Add custom dates if needed (in YYYY-MM-DD format)
+        if (activeMetricsFilter === 'Custom' && customDateRange) {
+          params.append(
+            'startDate',
+            customDateRange.startDate.toISOString().split('T')[0]
+          );
+          params.append(
+            'endDate',
+            customDateRange.endDate.toISOString().split('T')[0]
+          );
+        }
+
         // Add licensee filter if selected
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.append('licencee', selectedLicencee);
+        }
+
+        // Add currency parameter
+        if (displayCurrency) {
+          params.append('currency', displayCurrency);
         }
 
         const response = await axios.get<MetersReportResponse>(
@@ -208,7 +251,13 @@ export default function MetersTab() {
         setLoading(false);
       }
     },
-    [selectedLocations, selectedDateRange, selectedLicencee]
+    [
+      selectedLocations,
+      activeMetricsFilter,
+      customDateRange,
+      selectedLicencee,
+      displayCurrency,
+    ]
   );
 
   // Initialize locations once
@@ -226,9 +275,10 @@ export default function MetersTab() {
     }
   }, [
     selectedLocations,
-    selectedDateRange.start,
-    selectedDateRange.end,
+    activeMetricsFilter,
+    customDateRange,
     selectedLicencee,
+    displayCurrency,
     fetchMetersData,
     searchTerm,
   ]);
@@ -295,7 +345,10 @@ export default function MetersTab() {
           },
           {
             label: 'Date Range',
-            value: `${selectedDateRange.start.toLocaleDateString()} - ${selectedDateRange.end.toLocaleDateString()}`,
+            value:
+              activeMetricsFilter === 'Custom' && customDateRange
+                ? `${customDateRange.startDate.toLocaleDateString()} - ${customDateRange.endDate.toLocaleDateString()}`
+                : activeMetricsFilter,
           },
           ...(searchTerm
             ? [{ label: 'Search Filter', value: searchTerm }]
@@ -304,7 +357,11 @@ export default function MetersTab() {
         metadata: {
           generatedBy: 'Meters Report',
           generatedAt: new Date().toISOString(),
-          dateRange: `${selectedDateRange.start.toLocaleDateString()} - ${selectedDateRange.end.toLocaleDateString()}`,
+          timePeriod: activeMetricsFilter,
+          dateRange:
+            activeMetricsFilter === 'Custom' && customDateRange
+              ? `${customDateRange.startDate.toLocaleDateString()} - ${customDateRange.endDate.toLocaleDateString()}`
+              : activeMetricsFilter,
           locations: selectedLocationNames.join(', '),
         },
       };

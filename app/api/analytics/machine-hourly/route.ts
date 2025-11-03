@@ -4,6 +4,8 @@ import { getDatesForTimePeriod } from '@/lib/utils/dates';
 import { TimePeriod } from '@/shared/types';
 import type { PipelineStage } from 'mongoose';
 import type { StackedData } from '@/shared/types/analytics';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 type HourlyDataItem = {
   hour: number;
@@ -37,6 +39,8 @@ export async function GET(req: NextRequest) {
     const licencee = searchParams.get('licencee');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     if (!locationIds && !machineIds) {
       return NextResponse.json(
@@ -236,15 +240,147 @@ export async function GET(req: NextRequest) {
       >
     );
 
+    // Fetch location names for the location IDs
+    // Note: In this database, location _id fields are stored as strings, not ObjectIds
+    const locationStringIds = Object.keys(locationHourlyData);
+    
+    const locationsData = await db
+      .collection('gaminglocations')
+      .find(
+        { _id: { $in: locationStringIds } } as never,
+        { projection: { _id: 1, name: 1, rel: 1, country: 1 } }
+      )
+      .toArray();
+
+    // Create location ID to name mapping
+    const locationNames: Record<string, string> = {};
+    locationsData.forEach((loc) => {
+      // _id is already a string in this database
+      const locationId = String(loc._id);
+      locationNames[locationId] = loc.name as string;
+    });
+
+    // Apply currency conversion if needed (All Licensee mode)
+    let convertedHourlyTrends = hourlyTrends;
+    let convertedTotals = totals;
+
+    if (shouldApplyCurrencyConversion(licencee)) {
+      // Get licensee and country mappings for currency conversion
+      const { convertFromUSD, convertToUSD, getCountryCurrency } = await import(
+        '@/lib/helpers/rates'
+      );
+
+      const licenseesData = await db
+        .collection('licencees')
+        .find(
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          },
+          { projection: { _id: 1, name: 1 } }
+        )
+        .toArray();
+
+      const licenseeIdToName = new Map<string, string>();
+      licenseesData.forEach(lic => {
+        licenseeIdToName.set(lic._id.toString(), lic.name);
+      });
+
+      const countriesData = await db.collection('countries').find({}).toArray();
+      const countryIdToName = new Map<string, string>();
+      countriesData.forEach(country => {
+        countryIdToName.set(country._id.toString(), country.name);
+      });
+
+      // Create a map of location ID to native currency
+      const locationCurrencies = new Map<string, string>();
+      locationsData.forEach(loc => {
+        const locationLicenseeId = loc.rel?.licencee;
+        if (locationLicenseeId) {
+          const licenseeName =
+            licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
+          locationCurrencies.set(loc._id.toString(), licenseeName);
+        } else {
+          // Unassigned location - use country currency
+          const countryId = loc.country;
+          const countryName = countryId
+            ? countryIdToName.get(countryId.toString())
+            : undefined;
+          const nativeCurrency = countryName
+            ? getCountryCurrency(countryName)
+            : 'USD';
+          locationCurrencies.set(loc._id.toString(), nativeCurrency);
+        }
+      });
+
+      // Convert hourly trends
+      convertedHourlyTrends = hourlyTrends.map(hourData => {
+        const converted: StackedData = { hour: hourData.hour };
+        Object.keys(hourData).forEach(key => {
+          if (key !== 'hour' && typeof hourData[key] === 'object') {
+            const data = hourData[key] as {
+              handle: number;
+              winLoss: number;
+              jackpot: number;
+              plays: number;
+            };
+            const nativeCurrency = locationCurrencies.get(key) || 'USD';
+            converted[key] = {
+              handle: convertFromUSD(
+                convertToUSD(data.handle, nativeCurrency),
+                displayCurrency
+              ),
+              winLoss: convertFromUSD(
+                convertToUSD(data.winLoss, nativeCurrency),
+                displayCurrency
+              ),
+              jackpot: convertFromUSD(
+                convertToUSD(data.jackpot, nativeCurrency),
+                displayCurrency
+              ),
+              plays: data.plays, // plays is not a currency value
+            };
+          }
+        });
+        return converted;
+      });
+
+      // Convert totals
+      convertedTotals = {};
+      Object.keys(totals).forEach(locationId => {
+        const nativeCurrency = locationCurrencies.get(locationId) || 'USD';
+        convertedTotals[locationId] = {
+          handle: convertFromUSD(
+            convertToUSD(totals[locationId].handle, nativeCurrency),
+            displayCurrency
+          ),
+          winLoss: convertFromUSD(
+            convertToUSD(totals[locationId].winLoss, nativeCurrency),
+            displayCurrency
+          ),
+          jackpot: convertFromUSD(
+            convertToUSD(totals[locationId].jackpot, nativeCurrency),
+            displayCurrency
+          ),
+          plays: totals[locationId].plays, // plays is not a currency value
+        };
+      });
+    }
+
     return NextResponse.json({
       locationIds: targetLocations,
       machineIds: targetMachines,
       timePeriod,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
-      hourlyTrends,
-      totals,
+      hourlyTrends: convertedHourlyTrends,
+      totals: convertedTotals,
       locations: Object.keys(locationHourlyData),
+      locationNames, // Add location names mapping
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licencee),
     });
   } catch (error) {
     console.error('Error fetching machine hourly data:', error);

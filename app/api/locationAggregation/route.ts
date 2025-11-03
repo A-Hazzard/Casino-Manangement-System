@@ -10,12 +10,17 @@ import {
   setCachedData,
   clearCache,
 } from '@/app/api/lib/helpers/cacheUtils';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import { convertFromUSD, convertToUSD, getCountryCurrency } from '@/lib/helpers/rates';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
     const licencee = searchParams.get('licencee') || undefined;
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
     const machineTypeFilter =
       (searchParams.get('machineTypeFilter') as LocationFilter) || null;
 
@@ -74,6 +79,7 @@ export async function GET(req: NextRequest) {
       sasEvaluationOnly,
       basicList,
       selectedLocations,
+      currency: displayCurrency, // Include currency in cache key
     });
 
     const skipCacheForSelected = Boolean(selectedLocations);
@@ -153,12 +159,87 @@ export async function GET(req: NextRequest) {
       (a, b) => (b.moneyIn || 0) - (a.moneyIn || 0)
     );
 
+    // Apply currency conversion if "All Licensee" is selected
+    let convertedRows = sortedRows;
+    if (shouldApplyCurrencyConversion(licencee)) {
+      // Get currency mappings
+      const licenseesData = await db
+        .collection('licencees')
+        .find(
+          {
+            $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
+          },
+          { projection: { _id: 1, name: 1 } }
+        )
+        .toArray();
+
+      const licenseeIdToName = new Map<string, string>();
+      licenseesData.forEach(lic => {
+        licenseeIdToName.set(lic._id.toString(), lic.name);
+      });
+
+      const countriesData = await db.collection('countries').find({}).toArray();
+      const countryIdToName = new Map<string, string>();
+      countriesData.forEach(country => {
+        countryIdToName.set(country._id.toString(), country.name);
+      });
+
+      // Convert each location's financial data
+      convertedRows = sortedRows.map(location => {
+        const locationLicenseeId = location.rel?.licencee as string | undefined;
+
+        if (!locationLicenseeId) {
+          // Unassigned locations - determine currency from country
+          const countryId = location.country as string | undefined;
+          const countryName = countryId
+            ? countryIdToName.get(countryId.toString())
+            : undefined;
+          const nativeCurrency = countryName
+            ? getCountryCurrency(countryName)
+            : 'USD';
+
+          // Convert from country's native currency to display currency
+          const moneyInUSD = convertToUSD(location.moneyIn || 0, nativeCurrency);
+          const moneyOutUSD = convertToUSD(location.moneyOut || 0, nativeCurrency);
+          const totalDropUSD = convertToUSD(location.totalDrop || 0, nativeCurrency);
+          const grossUSD = convertToUSD(location.gross || 0, nativeCurrency);
+
+          return {
+            ...location,
+            moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
+            moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+            totalDrop: convertFromUSD(totalDropUSD, displayCurrency),
+            gross: convertFromUSD(grossUSD, displayCurrency),
+          };
+        }
+
+        const licenseeName =
+          licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
+
+        // Convert from licensee's native currency to USD, then to display currency
+        const moneyInUSD = convertToUSD(location.moneyIn || 0, licenseeName);
+        const moneyOutUSD = convertToUSD(location.moneyOut || 0, licenseeName);
+        const totalDropUSD = convertToUSD(location.totalDrop || 0, licenseeName);
+        const grossUSD = convertToUSD(location.gross || 0, licenseeName);
+
+        return {
+          ...location,
+          moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
+          moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+          totalDrop: convertFromUSD(totalDropUSD, displayCurrency),
+          gross: convertFromUSD(grossUSD, displayCurrency),
+        };
+      });
+    }
+
     const result = {
-      data: sortedRows,
+      data: convertedRows,
       totalCount: totalCount,
       page,
       limit,
       hasMore: false,
+      currency: displayCurrency,
+      converted: shouldApplyCurrencyConversion(licencee),
     };
 
     // Cache the result (unless cache was cleared)

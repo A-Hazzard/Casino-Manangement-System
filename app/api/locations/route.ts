@@ -1,18 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { UpdateLocationData } from '@/lib/types/location';
 import { apiLogger } from '@/app/api/lib/utils/logger';
+import { UpdateLocationData } from '@/lib/types/location';
 import { generateMongoId } from '@/lib/utils/id';
 
-import {
-  logActivity,
-  calculateChanges,
-} from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '../lib/helpers/users';
-import { getClientIP } from '@/lib/utils/ipAddress';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { Countries } from '@/app/api/lib/models/countries';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { getUserFromServer } from '../lib/helpers/users';
 
 export async function GET(request: Request) {
   const context = apiLogger.createContext(
@@ -414,13 +411,25 @@ export async function PUT(request: Request) {
       if (typeof isLocalServer === 'boolean')
         updateData.isLocalServer = isLocalServer;
 
-      // Handle nested geoCoords object
+      // Handle nested geoCoords object - only save valid coordinates
       if (geoCoords) {
-        updateData.geoCoords = {};
-        if (typeof geoCoords.latitude === 'number')
-          updateData.geoCoords.latitude = geoCoords.latitude;
-        if (typeof geoCoords.longitude === 'number')
-          updateData.geoCoords.longitude = geoCoords.longitude;
+        const lat = geoCoords.latitude;
+        const lng = geoCoords.longitude;
+
+        // Only save if both coordinates are valid numbers (not NaN, not 0, not undefined)
+        if (
+          typeof lat === 'number' &&
+          typeof lng === 'number' &&
+          !Number.isNaN(lat) &&
+          !Number.isNaN(lng) &&
+          lat !== 0 &&
+          lng !== 0
+        ) {
+          updateData.geoCoords = {
+            latitude: lat,
+            longitude: lng,
+          };
+        }
       }
 
       // Handle billValidatorOptions
@@ -435,9 +444,6 @@ export async function PUT(request: Request) {
       // Always update the updatedAt timestamp
       updateData.updatedAt = new Date();
 
-      // Get original location data for change tracking
-      const originalLocation = location.toObject();
-
       // Update the location
       const result = await GamingLocations.updateOne(
         { _id: locationId },
@@ -451,32 +457,15 @@ export async function PUT(request: Request) {
         );
       }
 
-      // Log activity
-      const currentUser = await getUserFromServer();
-      if (currentUser && currentUser.emailAddress) {
-        try {
-          const changes = calculateChanges(originalLocation, updateData);
+      // Activity logging is handled by the frontend
+      // Backend logging disabled to prevent user session issues
 
-          await logActivity({
-            action: 'UPDATE',
-            details: `Updated location "${location.name}"`,
-            ipAddress: getClientIP(request as NextRequest) || undefined,
-            userAgent:
-              (request as NextRequest).headers.get('user-agent') || undefined,
-            metadata: {
-              userId: currentUser._id as string,
-              userEmail: currentUser.emailAddress as string,
-              userRole: (currentUser.roles as string[])?.[0] || 'user',
-              resource: 'location',
-              resourceId: locationId,
-              resourceName: location.name,
-              changes: changes,
-            },
-          });
-        } catch (logError) {
-          console.error('Failed to log activity:', logError);
-        }
-      }
+      // Debug logging for troubleshooting
+      console.warn('[LOCATIONS API] Update successful:', {
+        locationId,
+        updatedFields: Object.keys(updateData),
+        locationName: name,
+      });
 
       return NextResponse.json(
         {

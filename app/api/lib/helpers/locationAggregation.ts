@@ -224,6 +224,8 @@ export const getLocationsWithMetrics = async (
           noSMIBLocation: machineMetrics.sasMachines === 0,
           hasSmib: machineMetrics.sasMachines > 0,
           gamesPlayed: meterMetrics.totalGamesPlayed,
+          rel: location.rel, // Include for currency conversion
+          country: location.country, // Include for currency conversion
         } as unknown as AggregatedLocation;
       })
     );

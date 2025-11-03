@@ -72,6 +72,9 @@ export type AggregatedLocation = {
   noSMIBLocation: boolean;
   hasSmib: boolean;
   gamesPlayed: number;
+  rel?: { licencee?: string | null }; // For currency conversion
+  country?: string; // For currency conversion
+  totalDrop?: number; // Alias for moneyIn in some contexts
 };
 
 // Location metrics for reports and analytics

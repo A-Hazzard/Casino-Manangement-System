@@ -364,19 +364,25 @@ export default function ProfileModal({
       };
     }
 
-    // Detect actual changes between old and new user data
-    // Create a clean payload for change detection (without password object)
-    const payloadForDetection = { ...payload };
-    if (payloadForDetection.password) {
-      // Remove password from detection since we handle it separately
-      delete payloadForDetection.password;
-    }
+    // Build comparison objects with ONLY editable fields
+    const originalData = {
+      profile: userData.profile,
+      profilePicture: userData.profilePicture,
+      roles: userData.roles,
+    };
+
+    const formDataComparison = {
+      profile: formData,
+      profilePicture: profilePicture ?? null,
+      roles: selectedRoles,
+    };
     
     let changes: ReturnType<typeof detectChanges> = [];
     let meaningfulChanges: ReturnType<typeof filterMeaningfulChanges> = [];
     
     try {
-      changes = detectChanges(userData, payloadForDetection);
+      // Detect changes by comparing ONLY editable fields
+      changes = detectChanges(originalData, formDataComparison);
       meaningfulChanges = filterMeaningfulChanges(changes);
     } catch (error) {
       console.error('Error detecting changes:', error);
@@ -394,8 +400,45 @@ export default function ProfileModal({
       return;
     }
 
+    // Build update payload with only changed fields + required _id
+    const updatePayload: Record<string, unknown> = { _id: userData._id };
+    meaningfulChanges.forEach(change => {
+      const fieldPath = change.path; // Use full path for nested fields
+      
+      // Handle nested fields
+      if (fieldPath.includes('.')) {
+        const [parent, child] = fieldPath.split('.');
+        
+        // Special handling for objects that must be sent whole
+        if (parent === 'profile') {
+          updatePayload.profile = formData;
+        } else {
+          if (!updatePayload[parent]) {
+            updatePayload[parent] = {};
+          }
+          (updatePayload[parent] as Record<string, unknown>)[child] = change.newValue;
+        }
+      } else {
+        if (fieldPath === 'profilePicture') {
+          updatePayload.profilePicture = profilePicture ?? null;
+        } else if (fieldPath === 'roles') {
+          updatePayload.roles = selectedRoles;
+        } else {
+          updatePayload[fieldPath] = payload[fieldPath as keyof typeof payload];
+        }
+      }
+    });
+
+    // Add password if changing
+    if (hasPasswordChange) {
+      updatePayload.password = {
+        current: passwordData.currentPassword,
+        new: passwordData.newPassword,
+      };
+    }
+
     try {
-      await axios.put(`/api/users/${userData._id}`, payload);
+      await axios.put(`/api/users/${userData._id}`, updatePayload);
 
       // Log the profile update activity with proper change tracking
       let changesSummary = 'Profile updated';
@@ -416,8 +459,8 @@ export default function ProfileModal({
         userData._id,
         userData.username,
         `Updated profile: ${changesSummary}`,
-        userData, // Previous data
-        payload, // New data
+        originalData, // Previous data (only editable fields)
+        updatePayload, // New data (only changed fields)
         meaningfulChanges.map(change => ({
           field: change.field,
           oldValue: change.oldValue,

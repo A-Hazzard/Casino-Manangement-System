@@ -223,7 +223,8 @@ export const createCabinet = async (
  */
 export const updateCabinet = async (
   data: CabinetFormData,
-  timePeriod?: string
+  timePeriod?: string,
+  customDateRange?: DateRange
 ) => {
   try {
     // console.log(
@@ -235,8 +236,26 @@ export const updateCabinet = async (
 
     // Get the machine data with gamingLocation from the new endpoint
     let cabinetUrl = `/api/machines/${data._id}`;
-    if (timePeriod) {
-      cabinetUrl += `?timePeriod=${encodeURIComponent(timePeriod)}`;
+    
+    // Add query parameters
+    const queryParams = [];
+    if (
+      timePeriod === 'Custom' &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
+      // Extract just the date part (YYYY-MM-DD)
+      const fromDate = customDateRange.from.toISOString().split('T')[0];
+      const toDate = customDateRange.to.toISOString().split('T')[0];
+      queryParams.push(`startDate=${fromDate}`);
+      queryParams.push(`endDate=${toDate}`);
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    } else if (timePeriod) {
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    }
+    
+    if (queryParams.length > 0) {
+      cabinetUrl += `?${queryParams.join('&')}`;
     }
 
     const cabinetResponse = await axios.get(cabinetUrl, {
@@ -286,14 +305,36 @@ export const updateCabinet = async (
  * @param timePeriod - Optional time period filter for fetching cabinet data.
  * @returns Promise resolving to true if deleted, or throws on error.
  */
-export const deleteCabinet = async (cabinetId: string, timePeriod?: string) => {
+export const deleteCabinet = async (
+  cabinetId: string,
+  timePeriod?: string,
+  customDateRange?: DateRange
+) => {
   try {
     // Activity logging removed - handled via API calls
 
     // Get the machine data with gamingLocation from the new endpoint
     let cabinetUrl = `/api/machines/${cabinetId}`;
-    if (timePeriod) {
-      cabinetUrl += `?timePeriod=${encodeURIComponent(timePeriod)}`;
+    
+    // Add query parameters
+    const queryParams = [];
+    if (
+      timePeriod === 'Custom' &&
+      customDateRange?.from &&
+      customDateRange?.to
+    ) {
+      // Extract just the date part (YYYY-MM-DD)
+      const fromDate = customDateRange.from.toISOString().split('T')[0];
+      const toDate = customDateRange.to.toISOString().split('T')[0];
+      queryParams.push(`startDate=${fromDate}`);
+      queryParams.push(`endDate=${toDate}`);
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    } else if (timePeriod) {
+      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    }
+    
+    if (queryParams.length > 0) {
+      cabinetUrl += `?${queryParams.join('&')}`;
     }
 
     const cabinetResponse = await axios.get(cabinetUrl, {

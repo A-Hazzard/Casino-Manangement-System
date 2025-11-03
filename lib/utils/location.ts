@@ -66,12 +66,12 @@ const REGION_CENTERS: Record<string, [number, number]> = {
   TR: [38.9637, 35.2433],
   IR: [32.4279, 53.688],
 
-  // Caribbean
-  TT: [10.6599, -61.5199], // Trinidad and Tobago
-  GY: [4.8604, -58.9302], // Guyana
-  BB: [13.1939, -59.5432], // Barbados
+  // Caribbean - Country-level centers for map centering only (NOT location defaults)
+  TT: [10.6599, -61.5199], // Trinidad and Tobago - Port of Spain
+  GY: [4.8604, -58.9302], // Guyana - Georgetown area
+  BB: [13.1939, -59.5432], // Barbados - Bridgetown
 
-  // Default fallback
+  // Default fallback - Trinidad center (most common)
   DEFAULT: [10.6599, -61.5199], // Trinidad center as global fallback
 };
 

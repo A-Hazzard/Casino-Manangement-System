@@ -36,7 +36,7 @@ export const EditCabinetModal = ({
 }) => {
   const { isEditModalOpen, selectedCabinet, closeEditModal } =
     useCabinetActionsStore();
-  const { activeMetricsFilter } = useDashBoardStore();
+  const { activeMetricsFilter, customDateRange } = useDashBoardStore();
   const { user } = useUserStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -301,8 +301,25 @@ export const EditCabinetModal = ({
 
       // Fetch additional cabinet details if needed
       if (selectedCabinet._id && activeMetricsFilter) {
+        // Skip if Custom filter is selected but date range is not available
+        if (activeMetricsFilter === 'Custom') {
+          if (!customDateRange || !customDateRange.startDate || !customDateRange.endDate) {
+            console.warn('[EditCabinetModal] Skipping fetch: Custom filter selected but date range not available', {
+              hasCustomDateRange: !!customDateRange,
+              hasStartDate: !!customDateRange?.startDate,
+              hasEndDate: !!customDateRange?.endDate,
+            });
+            setCabinetDataLoading(false);
+            return;
+          }
+        }
+        
         setCabinetDataLoading(true);
-        fetchCabinetById(selectedCabinet._id, activeMetricsFilter)
+        // Convert customDateRange to DateRange format expected by fetchCabinetById
+        const dateRangeForFetch = customDateRange?.startDate && customDateRange?.endDate
+          ? { from: customDateRange.startDate, to: customDateRange.endDate }
+          : undefined;
+        fetchCabinetById(selectedCabinet._id, activeMetricsFilter, dateRangeForFetch)
           .then(cabinetDetails => {
             if (cabinetDetails) {
               // console.log("Cabinet details gameType:", cabinetDetails.gameType);
@@ -373,6 +390,7 @@ export const EditCabinetModal = ({
     fetchLocations,
     fetchManufacturersData,
     activeMetricsFilter,
+    customDateRange,
     userModifiedFields,
   ]);
 
@@ -513,8 +531,37 @@ export const EditCabinetModal = ({
       // console.log("Submitting form data:", JSON.stringify(formData, null, 2));
       // console.log("Sending to updateCabinet:", formData);
 
-      // Detect actual changes between old and new cabinet data
-      const changes = detectChanges(selectedCabinet, formData);
+      // Build comparison objects with ONLY editable fields
+      const originalData = {
+        assetNumber: selectedCabinet.assetNumber,
+        installedGame: selectedCabinet.installedGame,
+        gameType: selectedCabinet.gameType,
+        accountingDenomination: selectedCabinet.accountingDenomination,
+        collectionMultiplier: selectedCabinet.collectionMultiplier,
+        locationId: selectedCabinet.locationId,
+        smbId: selectedCabinet.smbId,
+        status: selectedCabinet.status,
+        isCronosMachine: selectedCabinet.isCronosMachine,
+        manufacturer: selectedCabinet.manufacturer,
+        custom: selectedCabinet.custom,
+      };
+
+      const formDataComparison = {
+        assetNumber: formData.assetNumber,
+        installedGame: formData.installedGame,
+        gameType: formData.gameType,
+        accountingDenomination: formData.accountingDenomination,
+        collectionMultiplier: formData.collectionMultiplier,
+        locationId: formData.locationId,
+        smbId: formData.smbId,
+        status: formData.status,
+        isCronosMachine: formData.isCronosMachine,
+        manufacturer: formData.manufacturer,
+        custom: formData.custom,
+      };
+
+      // Detect changes by comparing ONLY editable fields
+      const changes = detectChanges(originalData, formDataComparison);
       const meaningfulChanges = filterMeaningfulChanges(changes);
 
       // Only proceed if there are actual changes
@@ -527,12 +574,32 @@ export const EditCabinetModal = ({
       // Build update payload with only changed fields + required _id
       const updatePayload: Record<string, unknown> = { _id: formData._id };
       meaningfulChanges.forEach(change => {
-        const key = change.field as keyof typeof formData;
-        updatePayload[key] = formData[key];
+        const fieldPath = change.path; // Use full path for nested fields
+        
+        // Handle nested fields (e.g., "custom.name")
+        if (fieldPath.includes('.')) {
+          const [parent, child] = fieldPath.split('.');
+          
+          // Special handling for objects that must be sent whole
+          if (parent === 'custom') {
+            updatePayload.custom = formData.custom;
+          } else {
+            if (!updatePayload[parent]) {
+              updatePayload[parent] = {};
+            }
+            (updatePayload[parent] as Record<string, unknown>)[child] = change.newValue;
+          }
+        } else {
+          updatePayload[fieldPath] = formData[fieldPath as keyof typeof formData];
+        }
       });
 
       // Pass only the changed fields to reduce unnecessary updates and logging
-      const success = await updateCabinet(updatePayload, activeMetricsFilter);
+      // Convert customDateRange to DateRange format expected by updateCabinet
+      const dateRangeForUpdate = customDateRange?.startDate && customDateRange?.endDate
+        ? { from: customDateRange.startDate, to: customDateRange.endDate }
+        : undefined;
+      const success = await updateCabinet(updatePayload, activeMetricsFilter, dateRangeForUpdate);
       if (success) {
         // Log the cabinet update activity with proper change tracking
         const changesSummary = getChangesSummary(meaningfulChanges);
@@ -548,8 +615,8 @@ export const EditCabinetModal = ({
             'Unknown'
           }`,
           `Updated cabinet: ${changesSummary}`,
-          selectedCabinet, // Previous data
-          formData, // New data
+          originalData, // Previous data (only editable fields)
+          updatePayload, // New data (only changed fields)
           meaningfulChanges.map(change => ({
             field: change.field,
             oldValue: change.oldValue,

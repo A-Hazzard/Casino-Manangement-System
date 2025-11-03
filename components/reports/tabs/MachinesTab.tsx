@@ -110,7 +110,7 @@ export default function MachinesTab() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  const { formatAmount, shouldShowCurrency, displayCurrency } = useCurrencyFormat();
   // Separate states for different purposes (streaming approach)
   const [overviewMachines, setOverviewMachines] = useState<MachineData[]>([]); // Paginated for overview
   const [allMachines, setAllMachines] = useState<MachineData[]>([]); // All machines for performance analysis
@@ -285,6 +285,11 @@ export default function MachinesTab() {
         params.onlineStatus = onlineStatusFilter;
       }
 
+      // Add currency parameter
+      if (displayCurrency) {
+        params.currency = displayCurrency;
+      }
+
       const response = await axios.get<MachineStatsApiResponse>(
         '/api/reports/machines',
         { params }
@@ -303,6 +308,7 @@ export default function MachinesTab() {
     selectedDateRange?.end,
     onlineStatusFilter,
     activeMetricsFilter,
+    displayCurrency,
   ]);
 
   // Fetch overview machines (paginated)
@@ -341,6 +347,11 @@ export default function MachinesTab() {
           params.search = search.trim();
         }
 
+        // Add currency parameter
+        if (displayCurrency) {
+          params.currency = displayCurrency;
+        }
+
         const response = await axios.get<MachinesApiResponse>(
           '/api/reports/machines',
           { params }
@@ -365,6 +376,7 @@ export default function MachinesTab() {
       onlineStatusFilter,
       overviewSelectedLocation,
       activeMetricsFilter,
+      displayCurrency,
     ]
   );
 
@@ -399,6 +411,11 @@ export default function MachinesTab() {
         params.onlineStatus = onlineStatusFilter;
       }
 
+      // Add currency parameter
+      if (displayCurrency) {
+        params.currency = displayCurrency;
+      }
+
       const response = await axios.get<MachinesApiResponse>(
         '/api/reports/machines',
         { params }
@@ -419,6 +436,7 @@ export default function MachinesTab() {
     activeTab,
     evaluationSelectedLocation,
     activeMetricsFilter,
+    displayCurrency,
   ]);
 
   // Fetch offline machines (loads on tab switch)

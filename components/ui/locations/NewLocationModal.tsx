@@ -595,10 +595,14 @@ export default function NewLocationModal({
               )}
               <LocationPickerMap
                 initialLat={
-                  formData.latitude ? parseFloat(formData.latitude) : 10.6599
+                  formData.latitude
+                    ? parseFloat(formData.latitude)
+                    : 10.6599 // Trinidad center for map display when no coords
                 }
                 initialLng={
-                  formData.longitude ? parseFloat(formData.longitude) : -61.5199
+                  formData.longitude
+                    ? parseFloat(formData.longitude)
+                    : -61.5199 // Trinidad center for map display when no coords
                 }
                 mapType="street"
                 onLocationSelect={handleLocationSelect}
@@ -610,9 +614,45 @@ export default function NewLocationModal({
 
           {/* Bill Validator Denominations */}
           <div className="mb-4">
-            <label className="mb-3 block text-sm font-medium text-grayHighlight">
-              Bill Validator Denominations
-            </label>
+            <div className="mb-3 flex justify-center">
+              <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                <Checkbox
+                  id="billValidatorOptionsAll"
+                  checked={Object.values(formData.billValidatorOptions).every(
+                    checked => checked
+                  )}
+                  onCheckedChange={checked => {
+                    // Toggle all bill validator options
+                    const allChecked = checked === true;
+                    setFormData(prev => ({
+                      ...prev,
+                      billValidatorOptions: {
+                        denom1: allChecked,
+                        denom2: allChecked,
+                        denom5: allChecked,
+                        denom10: allChecked,
+                        denom20: allChecked,
+                        denom50: allChecked,
+                        denom100: allChecked,
+                        denom200: allChecked,
+                        denom500: allChecked,
+                        denom1000: allChecked,
+                        denom2000: allChecked,
+                        denom5000: allChecked,
+                        denom10000: allChecked,
+                      },
+                    }));
+                  }}
+                  className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                />
+                <Label
+                  htmlFor="billValidatorOptionsAll"
+                  className="text-sm font-medium"
+                >
+                  Bill Validator Denominations (Check All)
+                </Label>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
               {[
                 { key: 'denom1', label: '$1' },

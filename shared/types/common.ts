@@ -245,4 +245,6 @@ export type AggregatedLocation = {
   hasSasMachines: boolean;
   hasNonSasMachines: boolean;
   noSMIBLocation: boolean;
+  country?: string; // For currency conversion
+  totalDrop?: number; // Alias for moneyIn in some contexts
 };

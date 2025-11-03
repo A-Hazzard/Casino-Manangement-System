@@ -221,7 +221,7 @@ export default function MapPreview(props: MapPreviewProps) {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
     10.6599, -61.5199,
-  ]); // Trinidad center as initial fallback
+  ]); // Trinidad center as initial map center (dynamically updated based on licensee)
   const mapRef = useRef<Record<string, unknown> | null>(null);
   const router = useRouter();
 

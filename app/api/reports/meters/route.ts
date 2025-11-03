@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import { convertFromUSD } from '@/lib/helpers/rates';
+import {
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+} from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { TimePeriod } from '@/app/api/lib/types';
+import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
   try {
     const { searchParams } = new URL(req.url);
     const locations = searchParams.get('locations');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
+    const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+    const customStartDate = searchParams.get('startDate');
+    const customEndDate = searchParams.get('endDate');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
@@ -25,6 +32,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Validate custom date parameters if timePeriod is Custom
+    if (timePeriod === 'Custom') {
+      if (!customStartDate || !customEndDate) {
+        return NextResponse.json(
+          { error: 'Custom date range requires both startDate and endDate' },
+          { status: 400 }
+        );
+      }
+    }
+
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -34,20 +51,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Parse locations (comma-separated)
-    const locationList = locations.split(',').map(loc => loc.trim());
-
-    // Parse date range
-    let start: Date, end: Date;
-
-    if (startDate && endDate) {
-      start = new Date(startDate);
-      end = new Date(endDate);
-    } else {
-      // Default to today if no dates provided
-      const today = new Date();
-      start = new Date(today.setHours(0, 0, 0, 0));
-      end = new Date(today.setHours(23, 59, 59, 999));
-    }
+    const locationList = locations
+      .split(',')
+      .map(loc => loc.trim())
+      .filter(loc => loc !== 'all' && loc !== '');
 
     // Build query filter for machines
     const machineMatchStage: Record<string, unknown> = {
@@ -99,178 +106,100 @@ export async function GET(req: NextRequest) {
     // Get all gaming locations for name resolution and gaming day offset
     const locationsData = await db
       .collection('gaminglocations')
-      .find({
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      })
-      .project({ _id: 1, name: 1, gameDayOffset: 1 })
+      .find(
+        {
+          _id: { $in: locationList as never[] },
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+        } as never,
+        { projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 } }
+      )
       .toArray();
 
-    // Create maps for quick location name lookup and gaming day offset
+    // Create maps for quick location name lookup
     const locationMap = new Map();
-    const locationOffsetMap = new Map();
     locationsData.forEach((loc: Record<string, unknown>) => {
       locationMap.set((loc._id as string).toString(), loc.name as string);
-      locationOffsetMap.set(
-        (loc._id as string).toString(),
-        loc.gameDayOffset || 0
-      );
     });
 
-    // Calculate gaming day range for custom date (Trinidad UTC-4 timezone)
-    function getGamingDayRange(
-      selectedDate: Date,
-      gameDayStartHour: number = 0
-    ) {
-      // For custom date: get meter reading from the selected gaming day
-      // Gaming day runs from gameDayStartHour to gameDayStartHour next day
+    // Calculate gaming day ranges for all selected locations
+    const locationsList = locationsData.map((loc) => ({
+      _id: String(loc._id),
+      gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM
+    }));
 
-      // Gaming day start on the selected date (e.g., Aug 23rd at 11:00 AM Trinidad time)
-      const rangeStart = new Date(selectedDate);
-      rangeStart.setUTCHours(gameDayStartHour + 4, 0, 0, 0); // Convert Trinidad time to UTC
-
-      // Gaming day end on the selected date (e.g., Aug 21st at 11:00 AM Trinidad time)
-      const rangeEnd = new Date(selectedDate);
-      rangeEnd.setDate(rangeEnd.getDate() + 1); // Move to next day for gaming day end
-      rangeEnd.setUTCHours(gameDayStartHour + 4, 0, 0, 0); // Convert Trinidad time to UTC
-
-      return { rangeStart, rangeEnd };
+    // Parse custom dates if provided
+    let customStart: Date | undefined;
+    let customEnd: Date | undefined;
+    if (timePeriod === 'Custom' && customStartDate && customEndDate) {
+      customStart = new Date(customStartDate + 'T00:00:00.000Z');
+      customEnd = new Date(customEndDate + 'T00:00:00.000Z');
     }
 
-    // Helper functions to check if date range is today or yesterday (using standard calendar days for sasMeters)
-    function isToday(startDate: Date, endDate: Date): boolean {
-      const today = new Date();
-      const todayStart = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-      );
-      const todayEnd = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate(),
-        23,
-        59,
-        59,
-        999
-      );
-      return (
-        startDate.getTime() >= todayStart.getTime() &&
-        endDate.getTime() <= todayEnd.getTime()
-      );
-    }
+    const gamingDayRanges = getGamingDayRangesForLocations(
+      locationsList,
+      timePeriod,
+      customStart,
+      customEnd
+    );
 
-    function isYesterday(startDate: Date, endDate: Date): boolean {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStart = new Date(
-        yesterday.getFullYear(),
-        yesterday.getMonth(),
-        yesterday.getDate()
-      );
-      const yesterdayEnd = new Date(
-        yesterday.getFullYear(),
-        yesterday.getMonth(),
-        yesterday.getDate(),
-        23,
-        59,
-        59,
-        999
-      );
-      return (
-        startDate.getTime() >= yesterdayStart.getTime() &&
-        endDate.getTime() <= yesterdayEnd.getTime()
-      );
-    }
+    // Get the earliest start and latest end across all locations
+    const rangesArray = Array.from(gamingDayRanges.values());
+    const queryStartDate = new Date(
+      Math.min(...rangesArray.map((r) => r.rangeStart.getTime()))
+    );
+    const queryEndDate = new Date(
+      Math.max(...rangesArray.map((r) => r.rangeEnd.getTime()))
+    );
 
-    function isCustomDate(startDate: Date, endDate: Date): boolean {
-      // Custom date is when start and end dates are the same (single date selection)
-      return startDate.toDateString() === endDate.toDateString();
-    }
+    console.warn('🔍 METERS API - Date Range:', {
+      timePeriod,
+      queryStartDate: queryStartDate.toISOString(),
+      queryEndDate: queryEndDate.toISOString(),
+    });
 
-    // Determine data source based on date range
-    const isRecentData = isToday(start, end) || isYesterday(start, end);
-    const isCustomData = isCustomDate(start, end);
+    // Aggregate meter data for the gaming day range
+    const machineIds = machinesData.map((m) => (m._id as string).toString());
 
+    const metersAggregation = await db
+      .collection('meters')
+      .aggregate([
+        {
+          $match: {
+            machine: { $in: machineIds },
+            readAt: { $gte: queryStartDate, $lte: queryEndDate },
+          },
+        },
+        {
+          $group: {
+            _id: '$machine',
+            drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            totalCancelledCredits: {
+              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+            },
+            totalHandPaidCancelledCredits: {
+              $sum: { $ifNull: ['$movement.totalHandPaidCancelledCredits', 0] },
+            },
+            coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
+            coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
+            totalWonCredits: { $sum: { $ifNull: ['$movement.totalWonCredits', 0] } },
+            gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
+            jackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+            lastReadAt: { $max: '$readAt' },
+          },
+        },
+      ])
+      .toArray();
+
+    // Create a map for meter data lookup
     const metersMap = new Map();
+    metersAggregation.forEach((meter: Record<string, unknown>) => {
+      metersMap.set(meter._id, meter);
+    });
 
-    if (isCustomData) {
-      // For custom date selection, get meter readings from the selected gaming day
-      // Account for gaming day offset for each location
-
-      // Group machines by location to apply appropriate gaming day offset
-      const machinesByLocation = new Map();
-      machinesData.forEach((machine: Record<string, unknown>) => {
-        const locationId =
-          (machine.gamingLocation as string)?.toString() || 'unknown';
-        if (!machinesByLocation.has(locationId)) {
-          machinesByLocation.set(locationId, []);
-        }
-        machinesByLocation
-          .get(locationId)
-          .push((machine._id as string).toString());
-      });
-
-      const allMeterResults: Record<string, unknown>[] = [];
-
-      // Process each location with its specific gaming day start hour
-      for (const [
-        locationId,
-        locationMachineIds,
-      ] of machinesByLocation.entries()) {
-        const gameDayStartHour = locationOffsetMap.get(locationId) || 0;
-
-        // Calculate the gaming day range for the selected date
-        // For example: Aug 23rd with gameDayOffset: 11
-        // Range: Aug 23rd 11:00 AM to Aug 21st 11:00 AM (Trinidad time)
-        const { rangeStart, rangeEnd } = getGamingDayRange(
-          start,
-          gameDayStartHour
-        );
-
-        // Query pattern: createdAt >= rangeStart AND createdAt < rangeEnd + sort desc + limit 1
-        // This gives us the latest meter reading within the selected gaming day
-        for (const machineId of locationMachineIds) {
-          const query = {
-            machine: machineId,
-            createdAt: {
-              $gte: rangeStart,
-              $lt: rangeEnd,
-            },
-          };
-
-          const latestMeter = await db.collection('meters').findOne(query, {
-            sort: { createdAt: -1 }, // Most recent first
-            projection: {
-              machine: 1,
-              coinIn: 1,
-              coinOut: 1,
-              totalWonCredits: 1,
-              totalCancelledCredits: 1,
-              totalHandPaidCancelledCredits: 1,
-              drop: 1,
-              jackpot: 1,
-              gamesPlayed: 1,
-              readAt: 1,
-              createdAt: 1,
-            },
-          });
-
-          if (latestMeter) {
-            allMeterResults.push(latestMeter);
-          }
-        }
-      }
-
-      // Create a map for meter data lookup using machine document ID
-      allMeterResults.forEach((meter: Record<string, unknown>) => {
-        metersMap.set(meter.machine, meter);
-      });
-    }
-
-    // Transform data for the table with enhanced validation
+    // Transform data for the table
     let transformedData = machinesData.map(
       (machine: Record<string, unknown>) => {
         const locationName = machine.gamingLocation
@@ -278,116 +207,44 @@ export async function GET(req: NextRequest) {
             'Unknown Location'
           : 'Unknown Location';
 
-        // Machine ID display per specification: prefer serialNumber, fallback to custom.name
+        // Machine ID display
         const serialNumber = machine.serialNumber?.toString().trim() || '';
         const customName =
           (machine.Custom as Record<string, unknown>)?.name
             ?.toString()
             .trim() || '';
 
-        // Display logic per specification
         let machineId = '';
-
         if (serialNumber) {
-          // Prefer serialNumber (primary)
           machineId = serialNumber;
         } else if (customName) {
-          // Fallback to custom.name if serialNumber is missing
           machineId = customName;
         } else {
-          // Final fallback if both are missing
           machineId = `Machine ${(machine._id as string).toString().slice(-6)}`;
         }
 
-        // Machine document ID for meters lookup
         const machineDocumentId = (machine._id as string).toString();
 
-        // Validate meter values are reasonable (non-negative numbers)
+        // Validate meter values
         const validateMeter = (value: unknown): number => {
           const num = Number(value) || 0;
           return num >= 0 ? num : 0;
         };
 
-        let metersIn,
-          metersOut,
-          jackpot,
-          billIn,
-          totalCancelledCredits,
-          handPaidCredits,
-          gamesPlayed;
+        // Use aggregated meter data (always use meters collection for consistency)
+        const meterData = metersMap.get(machineDocumentId) || {};
 
-        if (isRecentData) {
-          // For today/yesterday, use machine.sasMeters (real-time data)
-          const sasMeters =
-            (machine.sasMeters as Record<string, unknown>) || {};
-          metersIn = validateMeter(sasMeters.coinIn);
-          metersOut = validateMeter(sasMeters.totalWonCredits); // Use totalWonCredits for money won
-          jackpot = validateMeter(sasMeters.jackpot);
-          billIn = validateMeter(sasMeters.drop);
-          totalCancelledCredits = validateMeter(
-            sasMeters.totalCancelledCredits
-          );
-          handPaidCredits = validateMeter(
-            sasMeters.totalHandPaidCancelledCredits
-          );
-          gamesPlayed = validateMeter(sasMeters.gamesPlayed);
-        } else if (isCustomData) {
-          // For custom date, use latest meter reading from the selected gaming day
-          const meterData = metersMap.get(machineDocumentId) || {};
-          const sasMeters =
-            (machine.sasMeters as Record<string, unknown>) || {};
-
-          // Use latest meter data if available, else fall back to sasMeters
-          metersIn =
-            meterData.coinIn !== undefined
-              ? validateMeter(meterData.coinIn)
-              : validateMeter(sasMeters.coinIn);
-
-          metersOut =
-            meterData.totalWonCredits !== undefined
-              ? validateMeter(meterData.totalWonCredits)
-              : validateMeter(sasMeters.totalWonCredits);
-
-          jackpot =
-            meterData.jackpot !== undefined
-              ? validateMeter(meterData.jackpot)
-              : validateMeter(sasMeters.jackpot);
-
-          billIn =
-            meterData.drop !== undefined
-              ? validateMeter(meterData.drop)
-              : validateMeter(sasMeters.drop);
-
-          totalCancelledCredits =
-            meterData.totalCancelledCredits !== undefined
-              ? validateMeter(meterData.totalCancelledCredits)
-              : validateMeter(sasMeters.totalCancelledCredits);
-
-          handPaidCredits =
-            meterData.totalHandPaidCancelledCredits !== undefined
-              ? validateMeter(meterData.totalHandPaidCancelledCredits)
-              : validateMeter(sasMeters.totalHandPaidCancelledCredits);
-
-          gamesPlayed =
-            meterData.gamesPlayed !== undefined
-              ? validateMeter(meterData.gamesPlayed)
-              : validateMeter(sasMeters.gamesPlayed);
-        } else {
-          // Fallback to sasMeters for any other case
-          const sasMeters =
-            (machine.sasMeters as Record<string, unknown>) || {};
-          metersIn = validateMeter(sasMeters.coinIn);
-          metersOut = validateMeter(sasMeters.totalWonCredits);
-          jackpot = validateMeter(sasMeters.jackpot);
-          billIn = validateMeter(sasMeters.drop);
-          totalCancelledCredits = validateMeter(
-            sasMeters.totalCancelledCredits
-          );
-          handPaidCredits = validateMeter(
-            sasMeters.totalHandPaidCancelledCredits
-          );
-          gamesPlayed = validateMeter(sasMeters.gamesPlayed);
-        }
+        const metersIn = validateMeter(meterData.coinIn);
+        const metersOut = validateMeter(meterData.totalWonCredits);
+        const jackpot = validateMeter(meterData.jackpot);
+        const billIn = validateMeter(meterData.drop);
+        const totalCancelledCredits = validateMeter(
+          meterData.totalCancelledCredits
+        );
+        const handPaidCredits = validateMeter(
+          meterData.totalHandPaidCancelledCredits
+        );
+        const gamesPlayed = validateMeter(meterData.gamesPlayed);
 
         // Calculate voucher out (net cancelled credits)
         const voucherOut = validateMeter(
@@ -405,8 +262,8 @@ export async function GET(req: NextRequest) {
           gamesPlayed: gamesPlayed,
           location: locationName,
           locationId: machine.gamingLocation?.toString() || '',
-          createdAt: machine.lastActivity,
-          machineDocumentId: machineDocumentId, // Include for search functionality
+          createdAt: meterData.lastReadAt || machine.lastActivity,
+          machineDocumentId: machineDocumentId,
         };
       }
     );
@@ -450,64 +307,114 @@ export async function GET(req: NextRequest) {
       `Meters report completed successfully in ${duration}ms - ${totalCount} machines`
     );
 
-    // Apply currency conversion if needed
+    // Apply currency conversion if needed (proper multi-currency pattern)
     let convertedData = paginatedData;
 
     if (shouldApplyCurrencyConversion(licencee)) {
       console.warn(
-        '🔍 REPORTS METERS - Applying currency conversion for All Licensee mode'
+        '🔍 REPORTS METERS - Applying multi-currency conversion for All Licensee mode'
       );
-      // Convert financial fields from USD to display currency
+
+      // Fetch licensee mappings
+      const allLicensees = await db
+        .collection('licencees')
+        .find({}, { projection: { _id: 1, name: 1, country: 1 } })
+        .toArray();
+
+      const licenseeMap = new Map();
+      allLicensees.forEach((lic: Record<string, unknown>) => {
+        licenseeMap.set(lic.name, lic.country);
+      });
+
+      // Fetch country names from country IDs
+      const countryIds = locationsData
+        .map((loc: Record<string, unknown>) => loc.country)
+        .filter((id): id is string => !!id);
+
+      const countries = await db
+        .collection('countries')
+        .find({ _id: { $in: countryIds as never[] } } as never, {
+          projection: { _id: 1, name: 1 },
+        })
+        .toArray();
+
+      const countryNameMap = new Map();
+      countries.forEach((country: Record<string, unknown>) => {
+        countryNameMap.set(String(country._id), country.name as string);
+      });
+
+      // Get location details for currency determination
+      const locationDetailsMap = new Map();
+      locationsData.forEach((loc: Record<string, unknown>) => {
+        const countryId = loc.country as string;
+        const countryName = countryId ? countryNameMap.get(countryId) : null;
+        
+        locationDetailsMap.set(String(loc._id), {
+          licensee: (loc.rel as Record<string, unknown>)?.licencee || null,
+          country: countryName || null,
+        });
+      });
+
+      // Convert each machine's financial data
       convertedData = paginatedData.map(item => {
         const itemAsRecord = item as unknown as Record<string, unknown>;
+        const locationId = String(itemAsRecord.locationId || '');
+        const locationDetails = locationDetailsMap.get(locationId);
+
+        // Determine native currency for this machine
+        let nativeCurrency: CurrencyCode = 'USD';
+        if (locationDetails) {
+          if (locationDetails.licensee) {
+            const licenseeCountry = licenseeMap.get(locationDetails.licensee);
+            if (licenseeCountry) {
+              nativeCurrency = getCountryCurrency(licenseeCountry as string);
+            }
+          } else if (locationDetails.country) {
+            nativeCurrency = getCountryCurrency(locationDetails.country as string);
+          }
+        }
+
+        // Debug logging for first machine
+        if (itemAsRecord.machineId === 'TEST') {
+          console.warn('🔍 METERS CURRENCY DEBUG:', {
+            machineId: itemAsRecord.machineId,
+            locationId,
+            nativeCurrency,
+            displayCurrency,
+            willConvert: nativeCurrency !== displayCurrency,
+            originalBillIn: itemAsRecord.billIn,
+          });
+        }
+
         const convertedItem = { ...item };
         const convertedAsRecord = convertedItem as unknown as Record<
           string,
           unknown
         >;
 
-        // Convert top-level financial fields
-        [
-          'drop',
-          'totalCancelledCredits',
-          'gross',
-          'coinIn',
-          'coinOut',
-          'jackpot',
-          'currentCredits',
-        ].forEach(field => {
-          if (typeof itemAsRecord[field] === 'number') {
-            convertedAsRecord[field] = convertFromUSD(
-              itemAsRecord[field] as number,
-              displayCurrency
-            );
-          }
-        });
-
-        // Handle nested movement object
-        if (
-          itemAsRecord.movement &&
-          typeof itemAsRecord.movement === 'object'
-        ) {
-          const movement = itemAsRecord.movement as Record<string, unknown>;
-          const convertedMovement = { ...movement };
-          [
-            'drop',
-            'totalCancelledCredits',
-            'gross',
-            'coinIn',
-            'coinOut',
+        // Only convert if native currency differs from display currency
+        if (nativeCurrency !== displayCurrency) {
+          // Convert financial fields: native → USD → displayCurrency
+          const financialFields = [
+            'billIn',
+            'metersIn',
+            'metersOut',
             'jackpot',
-            'currentCredits',
-          ].forEach(field => {
-            if (typeof movement[field] === 'number') {
-              convertedMovement[field] = convertFromUSD(
-                movement[field] as number,
-                displayCurrency
+            'voucherOut',
+            'attPaidCredits',
+          ];
+
+          financialFields.forEach(field => {
+            if (typeof itemAsRecord[field] === 'number') {
+              // Step 1: Convert from native currency to USD
+              const usdValue = convertToUSD(
+                itemAsRecord[field] as number,
+                nativeCurrency
               );
+              // Step 2: Convert from USD to display currency
+              convertedAsRecord[field] = convertFromUSD(usdValue, displayCurrency);
             }
           });
-          convertedAsRecord.movement = convertedMovement;
         }
 
         return convertedItem;
@@ -521,7 +428,8 @@ export async function GET(req: NextRequest) {
       currentPage: page,
       limit,
       locations: locationList,
-      dateRange: { start, end },
+      dateRange: { start: queryStartDate, end: queryEndDate },
+      timePeriod,
       currency: displayCurrency,
       converted: shouldApplyCurrencyConversion(licencee),
       pagination: {

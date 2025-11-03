@@ -1,14 +1,8 @@
-import {
-  calculateChanges,
-  logActivity,
-} from '@/app/api/lib/helpers/activityLogger';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/lib/services/mqttService';
-import { getClientIP } from '@/lib/utils/ipAddress';
 import type { SmibConfig } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../../lib/helpers/users';
 import { connectDB } from '../../../lib/middleware/db';
 
 /**
@@ -137,37 +131,15 @@ export async function POST(
       }
     }
 
-    // Log activity
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const changes = calculateChanges(
-          originalCabinet.toObject(),
-          updateFields
-        );
+    // Activity logging is handled by the frontend to ensure user context is available
 
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated SMIB configuration for cabinet "${
-            originalCabinet.serialNumber || originalCabinet.game
-          }" in location "${location.name}"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: cabinetId,
-            resourceName: originalCabinet.serialNumber || originalCabinet.game,
-            changes: changes,
-            mqttSent: !!(data.smibConfig || data.machineControl),
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
+    // Debug logging for troubleshooting
+    console.warn('[SMIB CONFIG API] Update successful:', {
+      cabinetId,
+      updatedFields: Object.keys(updateFields),
+      serialNumber: updatedMachine.serialNumber,
+      mqttSent: !!(data.smibConfig || data.machineControl),
+    });
 
     return NextResponse.json({
       success: true,

@@ -60,7 +60,7 @@ import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
 import EnhancedLocationTable from '@/components/reports/common/EnhancedLocationTable';
 import RevenueAnalysisTable from '@/components/reports/common/RevenueAnalysisTable';
 
-import { StackedChart } from '@/components/ui/StackedChart';
+import { LocationTrendChart } from '@/components/ui/LocationTrendChart';
 
 // Reports helpers and components
 import { AggregatedLocation } from '@/lib/types/location';
@@ -124,7 +124,7 @@ export default function LocationsTab() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  const { formatAmount, shouldShowCurrency, displayCurrency } = useCurrencyFormat();
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
 
@@ -146,18 +146,22 @@ export default function LocationsTab() {
   const [topMachinesData, setTopMachinesData] = useState<MachineData[]>([]);
   const [topMachinesLoading, setTopMachinesLoading] = useState(false);
 
-  // Add state for machine hourly data
-  const [machineHourlyData, setMachineHourlyData] = useState<{
-    hourlyTrends: Array<{
-      hour: string;
+  // Add state for location trend data (hourly or daily based on time period)
+  const [locationTrendData, setLocationTrendData] = useState<{
+    trends: Array<{
+      day: string;
+      time?: string;
       [locationId: string]:
         | {
             handle: number;
             winLoss: number;
             jackpot: number;
             plays: number;
+            drop: number;
+            gross: number;
           }
-        | string;
+        | string
+        | undefined;
     }>;
     totals: Record<
       string,
@@ -166,11 +170,15 @@ export default function LocationsTab() {
         winLoss: number;
         jackpot: number;
         plays: number;
+        drop: number;
+        gross: number;
       }
     >;
     locations: string[];
+    locationNames?: Record<string, string>;
+    isHourly?: boolean;
   } | null>(null);
-  const [machineHourlyLoading, setMachineHourlyLoading] = useState(false);
+  const [locationTrendLoading, setLocationTrendLoading] = useState(false);
 
   // Two-phase loading: gaming locations (fast) + financial data (slow)
   const [gamingLocations, setGamingLocations] = useState<
@@ -267,6 +275,11 @@ export default function LocationsTab() {
 
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.licencee = selectedLicencee;
+        }
+
+        // Add currency parameter for conversion
+        if (displayCurrency) {
+          params.currency = displayCurrency;
         }
 
         // Note: We don't add selectedLocations filter here to ensure dropdown always shows all locations
@@ -513,6 +526,7 @@ export default function LocationsTab() {
       fetchGamingLocationsAsync,
       selectedSasLocations,
       selectedRevenueLocations,
+      displayCurrency,
     ]
   );
 
@@ -604,18 +618,18 @@ export default function LocationsTab() {
     customDateRange?.endDate,
   ]);
 
-  // Function to fetch machine hourly data
-  const fetchMachineHourlyData = useCallback(async () => {
+  // Function to fetch location trend data (daily or hourly based on time period)
+  const fetchLocationTrendData = useCallback(async () => {
     const currentSelectedLocations =
       activeTab === 'sas-evaluation'
         ? selectedSasLocations
         : selectedRevenueLocations;
     if (currentSelectedLocations.length === 0) {
-      setMachineHourlyData(null);
+      setLocationTrendData(null);
       return;
     }
 
-    setMachineHourlyLoading(true);
+    setLocationTrendLoading(true);
     try {
       const params: Record<string, string> = {
         locationIds: currentSelectedLocations.join(','),
@@ -623,6 +637,11 @@ export default function LocationsTab() {
 
       if (selectedLicencee && selectedLicencee !== 'all') {
         params.licencee = selectedLicencee;
+      }
+
+      // Add currency parameter
+      if (displayCurrency) {
+        params.currency = displayCurrency;
       }
 
       // Add date parameters
@@ -663,16 +682,16 @@ export default function LocationsTab() {
         params.timePeriod = 'Today';
       }
 
-      const response = await axios.get('/api/analytics/machine-hourly', {
+      const response = await axios.get('/api/analytics/location-trends', {
         params,
       });
-      setMachineHourlyData(response.data);
+      setLocationTrendData(response.data);
     } catch (error) {
-      console.error('Error fetching machine hourly data:', error);
-      toast.error('Failed to fetch machine hourly data');
-      setMachineHourlyData(null);
+      console.error('Error fetching location trend data:', error);
+      toast.error('Failed to fetch location trend data');
+      setLocationTrendData(null);
     } finally {
-      setMachineHourlyLoading(false);
+      setLocationTrendLoading(false);
     }
   }, [
     selectedSasLocations,
@@ -681,6 +700,7 @@ export default function LocationsTab() {
     selectedLicencee,
     activeMetricsFilter,
     customDateRange,
+    displayCurrency,
   ]);
 
   // Consolidated useEffect to handle all data fetching
@@ -697,10 +717,10 @@ export default function LocationsTab() {
     // Fetch additional data only when locations are selected
     if (currentSelectedLocations.length > 0) {
       fetchTopMachines();
-      fetchMachineHourlyData();
+      fetchLocationTrendData();
     } else {
       setTopMachinesData([]);
-      setMachineHourlyData(null);
+      setLocationTrendData(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -711,6 +731,7 @@ export default function LocationsTab() {
     customDateRange?.endDate,
     selectedSasLocations,
     selectedRevenueLocations,
+    displayCurrency,
   ]);
 
   // Initialize from URL
@@ -743,9 +764,11 @@ export default function LocationsTab() {
           : selectedRevenueLocations;
       const filteredData =
         currentSelectedLocations.length > 0
-          ? allLocationsForDropdown.filter(loc =>
-              currentSelectedLocations.includes(loc._id as string)
-            )
+          ? allLocationsForDropdown.filter(loc => {
+              // Check both _id and location fields as they can be used interchangeably
+              const locationId = (loc._id || loc.location) as string;
+              return currentSelectedLocations.includes(locationId);
+            })
           : allLocationsForDropdown;
 
       console.warn(
@@ -1344,24 +1367,7 @@ export default function LocationsTab() {
                     <CardContent>
                       <EnhancedLocationTable
                         key={`enhanced-table-${activeTab}-${paginatedLocations.length}`}
-                        locations={((activeTab === 'sas-evaluation'
-                          ? selectedSasLocations
-                          : selectedRevenueLocations
-                        ).length > 0
-                          ? paginatedLocations.filter(loc => {
-                              // Find the corresponding topLocation to get the correct locationId
-                              const topLocation = topLocations.find(
-                                tl => tl.locationName === loc.locationName
-                              );
-                              return topLocation
-                                ? (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).includes(topLocation.locationId)
-                                : false;
-                            })
-                          : []
-                        ).map(loc => {
+                        locations={paginatedLocations.map(loc => {
                           // Debug logging to check data values
                           console.warn(
                             `🔍 Location data for table: ${JSON.stringify({
@@ -1579,20 +1585,24 @@ export default function LocationsTab() {
                     ))}
 
                   {/* Machine Hourly Charts - Stacked by Machine */}
+                  {/* Location Trend Charts */}
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    {machineHourlyLoading ? (
+                    {locationTrendLoading ? (
                       <MachineHourlyChartsSkeleton />
-                    ) : machineHourlyData &&
-                      machineHourlyData.locations &&
-                      machineHourlyData.locations.length > 0 ? (
+                    ) : locationTrendData &&
+                      locationTrendData.locations &&
+                      locationTrendData.locations.length > 0 &&
+                      locationTrendData.trends &&
+                      locationTrendData.trends.length > 0 ? (
                       <>
                         {/* Money In Chart */}
-                        <StackedChart
+                        <LocationTrendChart
                           title="Money In"
                           icon={<BarChart3 className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
-                          dataKey="handle"
-                          machines={machineHourlyData.locations}
+                          data={locationTrendData.trends}
+                          dataKey="drop"
+                          locations={locationTrendData.locations}
+                          locationNames={locationTrendData.locationNames}
                           colors={[
                             '#3b82f6',
                             '#ef4444',
@@ -1601,15 +1611,17 @@ export default function LocationsTab() {
                             '#8b5cf6',
                           ]}
                           formatter={value => `$${value.toLocaleString()}`}
+                          isHourly={locationTrendData.isHourly}
                         />
 
                         {/* Win/Loss Chart */}
-                        <StackedChart
+                        <LocationTrendChart
                           title="Win/Loss"
                           icon={<TrendingUp className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
-                          dataKey="winLoss"
-                          machines={machineHourlyData.locations}
+                          data={locationTrendData.trends}
+                          dataKey="gross"
+                          locations={locationTrendData.locations}
+                          locationNames={locationTrendData.locationNames}
                           colors={[
                             '#10b981',
                             '#ef4444',
@@ -1618,15 +1630,17 @@ export default function LocationsTab() {
                             '#8b5cf6',
                           ]}
                           formatter={value => `$${value.toLocaleString()}`}
+                          isHourly={locationTrendData.isHourly}
                         />
 
                         {/* Jackpot Chart */}
-                        <StackedChart
+                        <LocationTrendChart
                           title="Jackpot"
                           icon={<Trophy className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
+                          data={locationTrendData.trends}
                           dataKey="jackpot"
-                          machines={machineHourlyData.locations}
+                          locations={locationTrendData.locations}
+                          locationNames={locationTrendData.locationNames}
                           colors={[
                             '#f59e0b',
                             '#ef4444',
@@ -1635,15 +1649,17 @@ export default function LocationsTab() {
                             '#8b5cf6',
                           ]}
                           formatter={value => `$${value.toLocaleString()}`}
+                          isHourly={locationTrendData.isHourly}
                         />
 
                         {/* Plays Chart */}
-                        <StackedChart
+                        <LocationTrendChart
                           title="Plays"
                           icon={<Activity className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
+                          data={locationTrendData.trends}
                           dataKey="plays"
-                          machines={machineHourlyData.locations}
+                          locations={locationTrendData.locations}
+                          locationNames={locationTrendData.locationNames}
                           colors={[
                             '#8b5cf6',
                             '#ef4444',
@@ -1652,11 +1668,12 @@ export default function LocationsTab() {
                             '#f59e0b',
                           ]}
                           formatter={value => value.toLocaleString()}
+                          isHourly={locationTrendData.isHourly}
                         />
                       </>
                     ) : (
                       <div className="col-span-2 py-8 text-center text-muted-foreground">
-                        Select locations to view machine hourly data
+                        Select locations to view location trend data
                       </div>
                     )}
                   </div>
@@ -1759,13 +1776,15 @@ export default function LocationsTab() {
                                         : '0.00'}
                                     </td>
                                     <td className="p-3 text-sm font-medium text-gray-600">
-                                      {machine.actualHold
-                                        ? machine.actualHold.toFixed(3) + '%'
+                                      {machine.actualHold != null &&
+                                      !isNaN(machine.actualHold)
+                                        ? machine.actualHold.toFixed(2) + '%'
                                         : 'N/A'}
                                     </td>
                                     <td className="p-3 text-sm text-gray-600">
-                                      {machine.theoreticalHold
-                                        ? machine.theoreticalHold.toFixed(3) +
+                                      {machine.theoreticalHold != null &&
+                                      !isNaN(machine.theoreticalHold)
+                                        ? machine.theoreticalHold.toFixed(2) +
                                           '%'
                                         : 'N/A'}
                                     </td>
@@ -1844,8 +1863,9 @@ export default function LocationsTab() {
                                       Actual Hold:
                                     </span>
                                     <span className="font-medium text-gray-600">
-                                      {machine.actualHold
-                                        ? machine.actualHold.toFixed(3) + '%'
+                                      {machine.actualHold != null &&
+                                      !isNaN(machine.actualHold)
+                                        ? machine.actualHold.toFixed(2) + '%'
                                         : 'N/A'}
                                     </span>
                                   </div>
@@ -1854,8 +1874,9 @@ export default function LocationsTab() {
                                       Theoretical Hold:
                                     </span>
                                     <span className="font-medium text-gray-600">
-                                      {machine.theoreticalHold
-                                        ? machine.theoreticalHold.toFixed(3) +
+                                      {machine.theoreticalHold != null &&
+                                      !isNaN(machine.theoreticalHold)
+                                        ? machine.theoreticalHold.toFixed(2) +
                                           '%'
                                         : 'N/A'}
                                     </span>
@@ -1918,8 +1939,9 @@ export default function LocationsTab() {
                                       Actual Hold:
                                     </span>
                                     <p className="font-medium text-gray-600">
-                                      {machine.actualHold
-                                        ? machine.actualHold.toFixed(3) + '%'
+                                      {machine.actualHold != null &&
+                                      !isNaN(machine.actualHold)
+                                        ? machine.actualHold.toFixed(2) + '%'
                                         : 'N/A'}
                                     </p>
                                   </div>
@@ -1928,8 +1950,9 @@ export default function LocationsTab() {
                                       Theoretical Hold:
                                     </span>
                                     <p className="text-gray-600">
-                                      {machine.theoreticalHold
-                                        ? machine.theoreticalHold.toFixed(3) +
+                                      {machine.theoreticalHold != null &&
+                                      !isNaN(machine.theoreticalHold)
+                                        ? machine.theoreticalHold.toFixed(2) +
                                           '%'
                                         : 'N/A'}
                                     </p>
@@ -2343,21 +2366,24 @@ export default function LocationsTab() {
                       </div>
                     ))}
 
-                  {/* Revenue Analysis Charts - Handle, Win/Loss, and Jackpot */}
+                  {/* Revenue Analysis Charts - Drop, Win/Loss, and Jackpot */}
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {machineHourlyLoading ? (
+                    {locationTrendLoading ? (
                       <RevenueAnalysisChartsSkeleton />
-                    ) : machineHourlyData &&
-                      machineHourlyData.locations &&
-                      machineHourlyData.locations.length > 0 ? (
+                    ) : locationTrendData &&
+                      locationTrendData.locations &&
+                      locationTrendData.locations.length > 0 &&
+                      locationTrendData.trends &&
+                      locationTrendData.trends.length > 0 ? (
                       <>
                         {/* Money In Chart */}
-                        <StackedChart
+                        <LocationTrendChart
                           title="Money In"
                           icon={<BarChart3 className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
-                          dataKey="handle"
-                          machines={machineHourlyData.locations}
+                          data={locationTrendData.trends}
+                          dataKey="drop"
+                          locations={locationTrendData.locations}
+                          locationNames={locationTrendData.locationNames}
                           colors={[
                             '#3b82f6',
                             '#ef4444',
@@ -2366,32 +2392,17 @@ export default function LocationsTab() {
                             '#8b5cf6',
                           ]}
                           formatter={value => `$${value.toLocaleString()}`}
-                          locationNames={(() => {
-                            const locationNameMap: Record<string, string> = {};
-                            gamingLocations.forEach(loc => {
-                              if (
-                                typeof loc === 'object' &&
-                                loc !== null &&
-                                '_id' in loc
-                              ) {
-                                const locationId = loc._id?.toString() || '';
-                                const locationName = (loc.name ||
-                                  loc.locationName ||
-                                  locationId) as string;
-                                locationNameMap[locationId] = locationName;
-                              }
-                            });
-                            return locationNameMap;
-                          })()}
+                          isHourly={locationTrendData.isHourly}
                         />
 
                         {/* Win/Loss Chart */}
-                        <StackedChart
+                        <LocationTrendChart
                           title="Win/Loss"
                           icon={<TrendingUp className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
-                          dataKey="winLoss"
-                          machines={machineHourlyData.locations}
+                          data={locationTrendData.trends}
+                          dataKey="gross"
+                          locations={locationTrendData.locations}
+                          locationNames={locationTrendData.locationNames}
                           colors={[
                             '#10b981',
                             '#ef4444',
@@ -2400,32 +2411,17 @@ export default function LocationsTab() {
                             '#8b5cf6',
                           ]}
                           formatter={value => `$${value.toLocaleString()}`}
-                          locationNames={(() => {
-                            const locationNameMap: Record<string, string> = {};
-                            gamingLocations.forEach(loc => {
-                              if (
-                                typeof loc === 'object' &&
-                                loc !== null &&
-                                '_id' in loc
-                              ) {
-                                const locationId = loc._id?.toString() || '';
-                                const locationName = (loc.name ||
-                                  loc.locationName ||
-                                  locationId) as string;
-                                locationNameMap[locationId] = locationName;
-                              }
-                            });
-                            return locationNameMap;
-                          })()}
+                          isHourly={locationTrendData.isHourly}
                         />
 
                         {/* Jackpot Chart */}
-                        <StackedChart
+                        <LocationTrendChart
                           title="Jackpot"
                           icon={<Trophy className="h-5 w-5" />}
-                          data={machineHourlyData.hourlyTrends}
+                          data={locationTrendData.trends}
                           dataKey="jackpot"
-                          machines={machineHourlyData.locations}
+                          locations={locationTrendData.locations}
+                          locationNames={locationTrendData.locationNames}
                           colors={[
                             '#f59e0b',
                             '#ef4444',
@@ -2434,23 +2430,7 @@ export default function LocationsTab() {
                             '#8b5cf6',
                           ]}
                           formatter={value => `$${value.toLocaleString()}`}
-                          locationNames={(() => {
-                            const locationNameMap: Record<string, string> = {};
-                            gamingLocations.forEach(loc => {
-                              if (
-                                typeof loc === 'object' &&
-                                loc !== null &&
-                                '_id' in loc
-                              ) {
-                                const locationId = loc._id?.toString() || '';
-                                const locationName = (loc.name ||
-                                  loc.locationName ||
-                                  locationId) as string;
-                                locationNameMap[locationId] = locationName;
-                              }
-                            });
-                            return locationNameMap;
-                          })()}
+                          isHourly={locationTrendData.isHourly}
                         />
                       </>
                     ) : (
@@ -2558,13 +2538,15 @@ export default function LocationsTab() {
                                         : '0.00'}
                                     </td>
                                     <td className="p-3 text-sm font-medium text-gray-600">
-                                      {machine.actualHold
-                                        ? machine.actualHold.toFixed(3) + '%'
+                                      {machine.actualHold != null &&
+                                      !isNaN(machine.actualHold)
+                                        ? machine.actualHold.toFixed(2) + '%'
                                         : 'N/A'}
                                     </td>
                                     <td className="p-3 text-sm text-gray-600">
-                                      {machine.theoreticalHold
-                                        ? machine.theoreticalHold.toFixed(3) +
+                                      {machine.theoreticalHold != null &&
+                                      !isNaN(machine.theoreticalHold)
+                                        ? machine.theoreticalHold.toFixed(2) +
                                           '%'
                                         : 'N/A'}
                                     </td>
@@ -2643,8 +2625,9 @@ export default function LocationsTab() {
                                       Actual Hold:
                                     </span>
                                     <span className="font-medium text-gray-600">
-                                      {machine.actualHold
-                                        ? machine.actualHold.toFixed(3) + '%'
+                                      {machine.actualHold != null &&
+                                      !isNaN(machine.actualHold)
+                                        ? machine.actualHold.toFixed(2) + '%'
                                         : 'N/A'}
                                     </span>
                                   </div>
@@ -2653,8 +2636,9 @@ export default function LocationsTab() {
                                       Theoretical Hold:
                                     </span>
                                     <span className="font-medium text-gray-600">
-                                      {machine.theoreticalHold
-                                        ? machine.theoreticalHold.toFixed(3) +
+                                      {machine.theoreticalHold != null &&
+                                      !isNaN(machine.theoreticalHold)
+                                        ? machine.theoreticalHold.toFixed(2) +
                                           '%'
                                         : 'N/A'}
                                     </span>
@@ -2717,8 +2701,9 @@ export default function LocationsTab() {
                                       Actual Hold:
                                     </span>
                                     <p className="font-medium text-gray-600">
-                                      {machine.actualHold
-                                        ? machine.actualHold.toFixed(3) + '%'
+                                      {machine.actualHold != null &&
+                                      !isNaN(machine.actualHold)
+                                        ? machine.actualHold.toFixed(2) + '%'
                                         : 'N/A'}
                                     </p>
                                   </div>
@@ -2727,8 +2712,9 @@ export default function LocationsTab() {
                                       Theoretical Hold:
                                     </span>
                                     <p className="text-gray-600">
-                                      {machine.theoreticalHold
-                                        ? machine.theoreticalHold.toFixed(3) +
+                                      {machine.theoreticalHold != null &&
+                                      !isNaN(machine.theoreticalHold)
+                                        ? machine.theoreticalHold.toFixed(2) +
                                           '%'
                                         : 'N/A'}
                                     </p>

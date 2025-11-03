@@ -4,13 +4,6 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Collections } from '@/app/api/lib/models/collections';
 
-import {
-  logActivity,
-  calculateChanges,
-} from '@/app/api/lib/helpers/activityLogger';
-
-import { getUserFromServer } from '../../../../lib/helpers/users';
-import { getClientIP } from '@/lib/utils/ipAddress';
 
 /**
  * GET /api/locations/[locationId]/cabinets/[cabinetId]
@@ -237,36 +230,15 @@ export async function PUT(
       }
     }
 
-    // Log activity
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const changes = calculateChanges(
-          originalCabinet.toObject(),
-          updateFields
-        );
-
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated cabinet "${
-            originalCabinet.serialNumber || originalCabinet.game
-          }" in location "${location.name}"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: cabinetId,
-            resourceName: originalCabinet.serialNumber || originalCabinet.game,
-            changes: changes,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
+    // Activity logging is handled by the frontend to ensure user context is available
+    
+    // Debug logging for troubleshooting
+    console.warn('[CABINET UPDATE API] Update successful:', {
+      locationId,
+      cabinetId,
+      updatedFields: Object.keys(updateFields),
+      serialNumber: updatedMachine.serialNumber,
+    });
 
     // console.log("Sending response to frontend:", {
     //   success: true,
@@ -370,36 +342,15 @@ export async function PATCH(
       );
     }
 
-    // Log activity
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const changes = calculateChanges(
-          originalCabinet.toObject(),
-          updateFields
-        );
-
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated collection settings for cabinet "${
-            originalCabinet.serialNumber || originalCabinet.game
-          }" in location "${location.name}"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: cabinetId,
-            resourceName: originalCabinet.serialNumber || originalCabinet.game,
-            changes: changes,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
+    // Activity logging is handled by the frontend to ensure user context is available
+    
+    // Debug logging for troubleshooting
+    console.warn('[CABINET COLLECTION SETTINGS API] Update successful:', {
+      locationId,
+      cabinetId,
+      updatedFields: Object.keys(updateFields),
+      serialNumber: updatedMachine.serialNumber,
+    });
 
     return NextResponse.json({
       success: true,
@@ -461,55 +412,15 @@ export async function DELETE(
       { new: true }
     );
 
-    // Log activity
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const deleteChanges = [
-          {
-            field: 'serialNumber',
-            oldValue: cabinetToDelete.serialNumber,
-            newValue: null,
-          },
-          { field: 'game', oldValue: cabinetToDelete.game, newValue: null },
-          {
-            field: 'cabinetType',
-            oldValue: cabinetToDelete.cabinetType,
-            newValue: null,
-          },
-          {
-            field: 'assetStatus',
-            oldValue: cabinetToDelete.assetStatus,
-            newValue: null,
-          },
-          {
-            field: 'gamingLocation',
-            oldValue: cabinetToDelete.gamingLocation,
-            newValue: null,
-          },
-        ];
-
-        await logActivity({
-          action: 'DELETE',
-          details: `Deleted cabinet "${
-            cabinetToDelete.serialNumber || cabinetToDelete.game
-          }" from location "${location.name}"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: cabinetId,
-            resourceName: cabinetToDelete.serialNumber || cabinetToDelete.game,
-            changes: deleteChanges,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
+    // Activity logging is handled by the frontend to ensure user context is available
+    
+    // Debug logging for troubleshooting
+    console.warn('[CABINET DELETE API] Delete successful:', {
+      locationId,
+      cabinetId,
+      serialNumber: cabinetToDelete.serialNumber,
+      locationName: location.name,
+    });
 
     return NextResponse.json({
       success: true,

@@ -468,7 +468,7 @@ const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}
-        zoom={15}
+        zoom={10}
         options={mapOptions}
         onLoad={onMapLoad}
         onClick={onMapClick}

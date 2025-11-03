@@ -364,31 +364,150 @@ const getMachineStats = async (
     totalCancelledCredits: 0,
   };
 
-  // Apply currency conversion if needed
+  // Apply currency conversion if needed (same pattern as /api/machines/aggregation)
   let convertedTotals = totals;
 
   if (shouldApplyCurrencyConversion(licencee)) {
     console.warn(
-      '🔍 REPORTS MACHINES - Applying currency conversion for All Licensee mode'
+      '🔍 REPORTS MACHINES - Applying multi-currency aggregation for All Licensee mode'
     );
-    // Convert financial fields from USD to display currency
-    const financialFields = [
-      'totalGross',
-      'totalDrop',
-      'totalCancelledCredits',
-      'netWin',
-      'drop',
-    ];
-    convertedTotals = { ...totals };
 
-    financialFields.forEach(field => {
-      if (typeof totals[field] === 'number') {
-        (convertedTotals as Record<string, unknown>)[field] = convertFromUSD(
-          totals[field],
-          displayCurrency
-        );
-      }
+    // Need to re-aggregate with currency conversion per machine
+    // Get licensee and country mappings for currency determination
+    const { getCountryCurrency } = await import('@/lib/helpers/rates');
+    const { convertToUSD } = await import('@/lib/helpers/rates');
+    
+    const licensees = await db.collection('licensees').find({}).toArray();
+    const licenseeIdToName = new Map<string, string>();
+    const licenseeIdToCurrency = new Map<string, string>();
+    licensees.forEach(licensee => {
+      const licenseeId = licensee._id.toString();
+      licenseeIdToName.set(licenseeId, licensee.name);
+      licenseeIdToCurrency.set(licenseeId, licensee.currency || 'USD');
     });
+
+    const countriesData = await db.collection('countries').find({}).toArray();
+    const countryIdToName = new Map<string, string>();
+    countriesData.forEach(country => {
+      countryIdToName.set(country._id.toString(), country.name);
+    });
+
+    // Re-fetch machines with location and currency info
+    const machinesWithCurrency = await db
+      .collection('machines')
+      .aggregate([
+        { $match: machineMatchStage },
+        {
+          $lookup: {
+            from: 'gaminglocations',
+            localField: 'gamingLocation',
+            foreignField: '_id',
+            as: 'locationDetails',
+          },
+        },
+        {
+          $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+        },
+        ...(locationMatchStage &&
+        typeof locationMatchStage === 'object' &&
+        'rel.licencee' in locationMatchStage
+          ? [
+              {
+                $match: {
+                  'locationDetails.rel.licencee':
+                    locationMatchStage['rel.licencee'],
+                },
+              },
+            ]
+          : []),
+        {
+          $lookup: {
+            from: 'meters',
+            let: { machineId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$machine', '$$machineId'] },
+                      ...(startDate && endDate
+                        ? [
+                            { $gte: ['$readAt', startDate] },
+                            { $lte: ['$readAt', endDate] },
+                          ]
+                        : []),
+                    ],
+                  },
+                },
+              },
+              {
+                $group: {
+                  _id: null,
+                  drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+                  moneyOut: {
+                    $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                  },
+                  coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
+                  coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
+                },
+              },
+            ],
+            as: 'meterData',
+          },
+        },
+        {
+          $unwind: {
+            path: '$meterData',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            drop: { $ifNull: ['$meterData.drop', 0] },
+            moneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
+            gross: {
+              $subtract: [
+                { $ifNull: ['$meterData.drop', 0] },
+                { $ifNull: ['$meterData.moneyOut', 0] },
+              ],
+            },
+            licenceeId: '$locationDetails.rel.licencee',
+            countryId: '$locationDetails.country',
+          },
+        },
+      ])
+      .toArray();
+
+    // Convert each machine's values to USD, then sum, then convert to display currency
+    let totalDropUSD = 0;
+    let totalMoneyOutUSD = 0;
+    let totalGrossUSD = 0;
+
+    machinesWithCurrency.forEach(machine => {
+      const machineLicenseeId = machine.licenceeId?.toString();
+      const countryId = machine.countryId?.toString();
+      
+      // Determine native currency
+      let nativeCurrency = 'USD';
+      if (machineLicenseeId && licenseeIdToCurrency.has(machineLicenseeId)) {
+        nativeCurrency = licenseeIdToCurrency.get(machineLicenseeId) || 'USD';
+      } else if (countryId) {
+        const countryName = countryIdToName.get(countryId);
+        nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
+      }
+
+      // Convert to USD first
+      totalDropUSD += convertToUSD(machine.drop || 0, nativeCurrency);
+      totalMoneyOutUSD += convertToUSD(machine.moneyOut || 0, nativeCurrency);
+      totalGrossUSD += convertToUSD(machine.gross || 0, nativeCurrency);
+    });
+
+    // Convert from USD to display currency
+    convertedTotals = {
+      totalDrop: convertFromUSD(totalDropUSD, displayCurrency),
+      totalGross: convertFromUSD(totalGrossUSD, displayCurrency),
+      totalCancelledCredits: convertFromUSD(totalMoneyOutUSD, displayCurrency),
+    };
   }
 
   return NextResponse.json({
@@ -524,7 +643,7 @@ const getOverviewMachines = async (
             { $ifNull: ['$meterData.moneyOut', 0] },
           ],
         },
-        // Calculate actual hold percentage: (win / handle) * 100 where win = coinIn - coinOut, handle = coinIn
+        // Calculate actual hold percentage: (gross / handle) * 100 where gross = drop - totalCancelledCredits, handle = coinIn
         holdPct: {
           $cond: [
             { $gt: [{ $ifNull: ['$meterData.coinIn', 0] }, 0] },
@@ -534,8 +653,8 @@ const getOverviewMachines = async (
                   $divide: [
                     {
                       $subtract: [
-                        { $ifNull: ['$meterData.coinIn', 0] },
-                        { $ifNull: ['$meterData.coinOut', 0] },
+                        { $ifNull: ['$meterData.drop', 0] },
+                        { $ifNull: ['$meterData.totalCancelledCredits', 0] },
                       ],
                     },
                     { $ifNull: ['$meterData.coinIn', 0] },
@@ -799,7 +918,7 @@ const getAllMachines = async (
             { $ifNull: ['$meterData.moneyOut', 0] },
           ],
         },
-        // Calculate actual hold percentage: (win / handle) * 100 where win = coinIn - coinOut, handle = coinIn
+        // Calculate actual hold percentage: (gross / handle) * 100 where gross = drop - totalCancelledCredits, handle = coinIn
         holdPct: {
           $cond: [
             { $gt: [{ $ifNull: ['$meterData.coinIn', 0] }, 0] },
@@ -809,8 +928,8 @@ const getAllMachines = async (
                   $divide: [
                     {
                       $subtract: [
-                        { $ifNull: ['$meterData.coinIn', 0] },
-                        { $ifNull: ['$meterData.coinOut', 0] },
+                        { $ifNull: ['$meterData.drop', 0] },
+                        { $ifNull: ['$meterData.totalCancelledCredits', 0] },
                       ],
                     },
                     { $ifNull: ['$meterData.coinIn', 0] },

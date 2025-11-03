@@ -13,7 +13,7 @@ import {
   DoubleArrowRightIcon,
   MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
-import { RefreshCw, PlusCircle } from "lucide-react";
+import { RefreshCw, Plus, PlusCircle } from "lucide-react";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import CabinetTableSkeleton from "@/components/ui/locations/CabinetTableSkeleton";
@@ -225,7 +225,7 @@ function LocationsPageContent() {
                 className="bg-button hover:bg-buttonActive text-white px-4 py-2 rounded-md items-center gap-2 flex-shrink-0"
               >
                 <div className="flex items-center justify-center w-6 h-6 border-2 border-white rounded-full">
-                  <PlusCircle className="w-4 h-4 text-white" />
+                  <Plus className="w-4 h-4 text-white" />
                 </div>
                 <span>New Location</span>
               </Button>

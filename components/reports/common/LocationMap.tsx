@@ -1,24 +1,24 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import dynamic from 'next/dynamic';
-import axios from 'axios';
-import 'leaflet/dist/leaflet.css';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, TrendingUp, Search } from 'lucide-react';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import type { LocationMapProps } from '@/lib/types/components';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MapLoader from '@/components/ui/MapLoader';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import type { LocationMapProps } from '@/lib/types/components';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { getMapCenterByLicensee } from '@/lib/utils/location';
+import axios from 'axios';
+import 'leaflet/dist/leaflet.css';
+import { MapPin, Search, TrendingUp } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useEffect, useRef, useState } from 'react';
 
 // Dynamically import react-leaflet components (SSR disabled)
 const MapContainer = dynamic(
@@ -237,7 +237,7 @@ export default function LocationMap({
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
     10.6599, -61.5199,
-  ]); // Trinidad center as initial fallback
+  ]); // Trinidad center as initial map center (dynamically updated based on licensee)
   const mapRef = useRef<{
     setView: (coords: [number, number], zoom: number) => void;
     on: (event: string, callback: () => void) => void;

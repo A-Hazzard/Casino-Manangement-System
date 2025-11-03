@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useLocationActionsStore } from '@/lib/store/locationActionsStore';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import axios from 'axios';
-import { toast } from 'sonner';
+import { useLocationActionsStore } from '@/lib/store/locationActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
+import axios from 'axios';
+import { gsap } from 'gsap';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import type { EditLocationModalProps } from '@/lib/types/components';
 // Activity logging will be handled via API calls
@@ -24,8 +24,8 @@ import {
   getChangesSummary,
 } from '@/lib/utils/changeDetection';
 
-import LocationPickerMap from './LocationPickerMap';
 import { SelectedLocation } from '@/lib/types/maps';
+import LocationPickerMap from './LocationPickerMap';
 
 type LocationDetails = {
   _id: string;
@@ -161,15 +161,13 @@ export default function EditLocationModal({
     name: '',
     street: '',
     city: '',
-    country: 'Guyana',
-    profitShare: '50',
+    country: '',
+    profitShare: '',
     licencee: '',
     isLocalServer: false,
     latitude: '',
     longitude: '',
-
     dayStartTime: '08:00', // Default to 8:00 AM
-
     billValidatorOptions: {
       denom1: false,
       denom2: false,
@@ -291,16 +289,15 @@ export default function EditLocationModal({
 
       setFormData({
         name: selectedLocation.locationName || '',
-
         street: '', // Will be loaded from locationDetails
         city: '', // Will be loaded from locationDetails
-        country: 'Guyana', // Default since AggregatedLocation doesn't have this
-        profitShare: '50', // Will be loaded from locationDetails
+        country: '', // Will be loaded from locationDetails
+        profitShare: '', // Will be loaded from locationDetails
         licencee: '', // Will be loaded from locationDetails
         isLocalServer: selectedLocation.isLocalServer || false,
-        latitude: '8.909985', // Will be loaded from locationDetails
-        longitude: '-58.186204', // Will be loaded from locationDetails
-        dayStartTime: '08:00', // Will be loaded from locationDetails
+        latitude: '', // Will be loaded from locationDetails
+        longitude: '', // Will be loaded from locationDetails
+        dayStartTime: '08:00', // Will be loaded from locationDetails (default 8 AM)
         billValidatorOptions: {
           denom1: false,
           denom2: false,
@@ -349,34 +346,19 @@ export default function EditLocationModal({
     setMapLoadError(false);
   };
 
-  // Get user's current location when map is enabled
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const { latitude, longitude } = position.coords;
-        setFormData(prev => ({
-          ...prev,
-          latitude: latitude.toFixed(6),
-          longitude: longitude.toFixed(6),
-        }));
-      },
-      error => {
-        console.error('Error getting current location:', error);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 600000, // 5 minutes
-      }
-    );
-  };
+  // Note: getCurrentLocation is NOT used in edit mode
+  // Coordinates should only come from the database or manual entry
+  // For new locations, use the NewLocationModal which has geolocation support
 
   // Update form data when location details are fetched
   useEffect(() => {
     if (locationDetails) {
+      console.warn('🔍 LOCATION DETAILS LOADED:', {
+        name: locationDetails.name,
+        billValidatorOptions: locationDetails.billValidatorOptions,
+        hasBillValidatorOptions: !!locationDetails.billValidatorOptions,
+      });
+
       // Convert gameDayOffset to time format (e.g., 11 -> "11:00")
       const gameDayOffset = locationDetails.gameDayOffset || 8; // Default to 8 AM
       const dayStartTime = `${gameDayOffset.toString().padStart(2, '0')}:00`;
@@ -508,8 +490,34 @@ export default function EditLocationModal({
       // Convert dayStartTime (HH:MM) back to gameDayOffset (number of hours)
       const gameDayOffset = parseInt(formData.dayStartTime.split(':')[0]);
 
-      const locationData = {
-        locationName: locationIdentifier,
+      // Parse and validate coordinates
+      const latitude = formData.latitude
+        ? parseFloat(formData.latitude)
+        : undefined;
+      const longitude = formData.longitude
+        ? parseFloat(formData.longitude)
+        : undefined;
+
+      if (!locationDetails) {
+        toast.error('Location details not loaded');
+        setLoading(false);
+        return;
+      }
+
+      // Build comparison objects with ONLY editable fields
+      const originalData = {
+        name: locationDetails.name,
+        address: locationDetails.address,
+        country: locationDetails.country,
+        profitShare: locationDetails.profitShare,
+        gameDayOffset: locationDetails.gameDayOffset,
+        rel: locationDetails.rel,
+        isLocalServer: locationDetails.isLocalServer,
+        geoCoords: locationDetails.geoCoords,
+        billValidatorOptions: locationDetails.billValidatorOptions,
+      };
+
+      const formDataComparison = {
         name: formData.name,
         address: {
           street: formData.street,
@@ -522,16 +530,39 @@ export default function EditLocationModal({
           licencee: formData.licencee,
         },
         isLocalServer: formData.isLocalServer,
-        geoCoords: {
-          latitude: parseFloat(formData.latitude),
-          longitude: parseFloat(formData.longitude),
-        },
+        geoCoords:
+          latitude !== undefined &&
+          longitude !== undefined &&
+          !Number.isNaN(latitude) &&
+          !Number.isNaN(longitude) &&
+          latitude !== 0 &&
+          longitude !== 0
+            ? {
+                latitude: latitude,
+                longitude: longitude,
+              }
+            : locationDetails.geoCoords || undefined,
         billValidatorOptions: formData.billValidatorOptions,
       };
 
-      // Detect actual changes between old and new location data
-      const changes = detectChanges(selectedLocation, locationData);
+      // Detect changes by comparing ONLY editable fields
+      const changes = detectChanges(originalData, formDataComparison);
       const meaningfulChanges = filterMeaningfulChanges(changes);
+
+      console.warn(
+        '🔍 ORIGINAL billValidatorOptions:',
+        originalData.billValidatorOptions
+      );
+      console.warn(
+        '🔍 FORM billValidatorOptions:',
+        formData.billValidatorOptions
+      );
+      console.warn('🔍 ALL CHANGES:', changes.length, changes);
+      console.warn(
+        '🔍 MEANINGFUL CHANGES:',
+        meaningfulChanges.length,
+        meaningfulChanges
+      );
 
       // Only proceed if there are actual changes
       if (meaningfulChanges.length === 0) {
@@ -540,7 +571,47 @@ export default function EditLocationModal({
         return;
       }
 
-      await axios.put('/api/locations', locationData);
+      // Build update payload with ONLY changed fields
+      const updatePayload: Record<string, unknown> = {
+        locationName: locationIdentifier, // Required for API to identify location
+      };
+
+      // Add only the fields that actually changed
+      meaningfulChanges.forEach(change => {
+        const fieldPath = change.path; // Use full path, not just field name
+
+        // Handle nested fields (e.g., "address.street", "billValidatorOptions.denom5")
+        if (fieldPath.includes('.')) {
+          const [parent, child] = fieldPath.split('.');
+
+          // Special handling for billValidatorOptions - must send entire object
+          if (parent === 'billValidatorOptions') {
+            updatePayload.billValidatorOptions = formData.billValidatorOptions;
+          } else {
+            // For other nested fields (like address.street), build nested object
+            if (!updatePayload[parent]) {
+              updatePayload[parent] = {};
+            }
+            (updatePayload[parent] as Record<string, unknown>)[child] =
+              change.newValue;
+          }
+        } else {
+          updatePayload[fieldPath] = change.newValue;
+        }
+      });
+
+      console.warn(
+        '🔍 UPDATE PAYLOAD:',
+        JSON.stringify(updatePayload, null, 2)
+      );
+
+      console.warn('🔍 CALLING PUT /api/locations...');
+      const updateResponse = await axios.put('/api/locations', updatePayload);
+      console.warn(
+        '🔍 UPDATE RESPONSE:',
+        updateResponse.status,
+        updateResponse.data
+      );
 
       // Log the update activity with proper change tracking
       const changesSummary = getChangesSummary(meaningfulChanges);
@@ -550,8 +621,8 @@ export default function EditLocationModal({
         locationIdentifier,
         formData.name,
         `Updated location: ${changesSummary}`,
-        selectedLocation, // Previous data
-        locationData, // New data
+        locationDetails, // Previous data (actual location document)
+        updatePayload, // New data (only changed fields)
         meaningfulChanges.map(change => ({
           field: change.field,
           oldValue: change.oldValue,
@@ -922,9 +993,8 @@ export default function EditLocationModal({
                       checked={useMap}
                       onCheckedChange={checked => {
                         setUseMap(checked === true);
-                        if (checked === true) {
-                          getCurrentLocation();
-                        }
+                        // In edit mode, don't auto-get current location
+                        // User can manually pick from the map or enter coordinates
                       }}
                       className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
                     />
@@ -986,12 +1056,12 @@ export default function EditLocationModal({
                       initialLat={
                         formData.latitude
                           ? parseFloat(formData.latitude)
-                          : 10.6599
+                          : 10.6599 // Trinidad center for map display when no coords
                       }
                       initialLng={
                         formData.longitude
                           ? parseFloat(formData.longitude)
-                          : -61.5199
+                          : -61.5199 // Trinidad center for map display when no coords
                       }
                       mapType="street"
                       onLocationSelect={handleLocationSelect}
@@ -1009,15 +1079,36 @@ export default function EditLocationModal({
                         id="billValidatorOptions"
                         checked={Object.values(
                           formData.billValidatorOptions
-                        ).some(checked => checked)}
+                        ).every(checked => checked)}
+                        onCheckedChange={checked => {
+                          // Toggle all bill validator options
+                          const allChecked = checked === true;
+                          setFormData(prev => ({
+                            ...prev,
+                            billValidatorOptions: {
+                              denom1: allChecked,
+                              denom2: allChecked,
+                              denom5: allChecked,
+                              denom10: allChecked,
+                              denom20: allChecked,
+                              denom50: allChecked,
+                              denom100: allChecked,
+                              denom200: allChecked,
+                              denom500: allChecked,
+                              denom1000: allChecked,
+                              denom2000: allChecked,
+                              denom5000: allChecked,
+                              denom10000: allChecked,
+                            },
+                          }));
+                        }}
                         className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
-                        disabled
                       />
                       <Label
                         htmlFor="billValidatorOptions"
                         className="text-sm font-medium"
                       >
-                        Bill Validator Options
+                        Bill Validator Options (Check All)
                       </Label>
                     </div>
                   </div>
@@ -1070,7 +1161,7 @@ export default function EditLocationModal({
                 {/* Actions */}
                 <div className="mt-6 flex flex-row justify-center gap-3">
                   <Button
-                    className="h-12 flex-1 bg-button px-6 py-3 text-base text-primary-foreground hover:bg-button/90 sm:flex-initial sm:w-auto"
+                    className="h-12 flex-1 bg-button px-6 py-3 text-base text-primary-foreground hover:bg-button/90 sm:w-auto sm:flex-initial"
                     onClick={handleSubmit}
                     disabled={loading}
                   >
@@ -1078,7 +1169,7 @@ export default function EditLocationModal({
                   </Button>
                   <Button
                     variant="outline"
-                    className="h-12 flex-1 border-button px-6 py-3 text-base text-button hover:bg-button/10 sm:flex-initial sm:w-auto"
+                    className="h-12 flex-1 border-button px-6 py-3 text-base text-button hover:bg-button/10 sm:w-auto sm:flex-initial"
                     onClick={handleClose}
                   >
                     Close

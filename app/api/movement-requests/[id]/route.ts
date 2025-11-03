@@ -1,9 +1,6 @@
 import { NextRequest } from 'next/server';
 import { MovementRequest } from '@/app/api/lib/models/movementrequests';
-import {
-  logActivity,
-  calculateChanges,
-} from '@/app/api/lib/helpers/activityLogger';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '../../lib/helpers/users';
 import { getClientIP } from '@/lib/utils/ipAddress';
 
@@ -156,34 +153,14 @@ export async function PATCH(
       { new: true }
     );
 
-    // Log activity
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const changes = calculateChanges(
-          originalMovementRequest.toObject(),
-          body
-        );
+    // Activity logging is handled by the frontend to ensure user context is available
 
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated movement request for cabinet ${originalMovementRequest.cabinetIn} from ${originalMovementRequest.locationFrom} to ${originalMovementRequest.locationTo}`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'movement_request',
-            resourceId: id,
-            resourceName: `Cabinet ${originalMovementRequest.cabinetIn}`,
-            changes: changes,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
+    // Debug logging for troubleshooting
+    console.warn('[MOVEMENT REQUESTS API] Update successful:', {
+      requestId: id,
+      updatedFields: Object.keys(body),
+      cabinetIn: updated?.cabinetIn,
+    });
 
     return new Response(JSON.stringify(updated), { status: 200 });
   } catch (err: unknown) {
