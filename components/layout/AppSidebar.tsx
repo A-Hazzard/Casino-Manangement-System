@@ -469,6 +469,14 @@ export default function AppSidebar() {
                     // Update BOTH currency states to keep them in sync
                     setDisplayCurrency(newCurrency);
                     setDashboardCurrency(newCurrency);
+
+                    // Close sidebar immediately on mobile after selecting a currency
+                    if (
+                      typeof window !== 'undefined' &&
+                      window.innerWidth < 768
+                    ) {
+                      setIsOpen(false);
+                    }
                   }}
                 >
                   <SelectTrigger className="h-8 w-full text-sm">
@@ -596,7 +604,7 @@ export default function AppSidebar() {
                     collapsed ? 'md:hidden' : ''
                   )}
                 >
-                  ▾
+                  ?
                 </span>
               </button>
             )}
