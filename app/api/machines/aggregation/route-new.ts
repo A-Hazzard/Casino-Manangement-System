@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     const gamingDayRanges = getGamingDayRangesForLocations(
       locations.map((loc: Record<string, unknown>) => ({
         _id: (loc._id as { toString: () => string }).toString(),
-        gameDayOffset: (loc.gameDayOffset as number) || 0,
+        gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM Trinidad time
       })),
       timePeriodForGamingDay,
       customStartDateForGamingDay,

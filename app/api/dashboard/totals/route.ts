@@ -173,7 +173,7 @@ export async function GET(req: NextRequest) {
         const gamingDayRanges = getGamingDayRangesForLocations(
           locationsWithOffset.map(loc => ({
             _id: loc._id.toString(),
-            gameDayOffset: loc.gameDayOffset || 0,
+            gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM
           })),
           timePeriod,
           customStartDate,
@@ -381,7 +381,7 @@ export async function GET(req: NextRequest) {
         const gamingDayRanges = getGamingDayRangesForLocations(
           locations.map(loc => ({
             _id: loc._id.toString(),
-            gameDayOffset: loc.gameDayOffset || 0,
+            gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM
           })),
           timePeriod,
           customStartDate,
@@ -491,7 +491,7 @@ export async function GET(req: NextRequest) {
         const gamingDayRanges = getGamingDayRangesForLocations(
           allLocations.map(loc => ({
             _id: loc._id.toString(),
-            gameDayOffset: loc.gameDayOffset || 0,
+            gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM
           })),
           timePeriod,
           customStartDate,

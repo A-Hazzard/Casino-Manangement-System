@@ -99,7 +99,7 @@ export const getLocationsWithMetrics = async (
     const locationsWithMetrics = await Promise.all(
       locations.map(async location => {
         const locationId = location._id.toString();
-        const gameDayOffset = location.gameDayOffset || 0;
+        const gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
 
         // Calculate gaming day range for this location
         const gamingDayRange = getGamingDayRangeForPeriod(

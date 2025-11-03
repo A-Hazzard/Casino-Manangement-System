@@ -15,7 +15,7 @@ const mongooseCache: {
  * Reads directly from process.env to support dynamic updates
  */
 function getMongodbUri(): string {
-  const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+  const uri = process.env.MONGO_URI;
   if (typeof window === 'undefined' && !uri) {
     throw new Error('MONGO_URI not set in environment variables');
   }
@@ -77,7 +77,7 @@ export async function connectDB() {
   if (!mongooseCache.promise) {
     mongooseCache.connectionString = MONGODB_URI;
     console.log('🔗 [DB] Connecting to MongoDB...');
-    
+
     mongooseCache.promise = mongoose
       .connect(MONGODB_URI, {
         bufferCommands: false,

@@ -1,9 +1,9 @@
-import { SignJWT, jwtVerify } from 'jose';
 import type {
   JwtPayload,
   RefreshTokenPayload,
   SessionData,
 } from '@/shared/types/auth';
+import { SignJWT, jwtVerify } from 'jose';
 
 // Environment configuration
 export function getJwtSecret(): string {
@@ -25,7 +25,7 @@ export function getRefreshTokenSecret(): string {
 }
 
 export function getCurrentDbConnectionString(): string {
-  const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+  const mongoUri = process.env.MONGO_URI || process.env.MONGO_URI;
   if (!mongoUri) {
     throw new Error(
       'MONGODB_URI or MONGO_URI is not defined in environment variables.'

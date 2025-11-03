@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
     // Calculate gaming day ranges for all locations
     const locationsList = locationsData.map((loc) => ({
       _id: String(loc._id),
-      gameDayOffset: loc.gameDayOffset || 0,
+      gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM
     }));
 
     const gamingDayRanges = getGamingDayRangesForLocations(

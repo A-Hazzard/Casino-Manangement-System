@@ -84,6 +84,9 @@ export default function EditLocationModal({
 
   const [useMap, setUseMap] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
+  
+  // Store original form data exactly as loaded from API for accurate comparison
+  const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(null);
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
     if (!user) return 'Unknown User';
@@ -329,12 +332,32 @@ export default function EditLocationModal({
 
   // Handle location selection from map
   const handleLocationSelect = (location: SelectedLocation) => {
+    // Map returns country NAME, but we need country ID
+    // Find the matching country ID from the countries list
+    let countryId = '';
+    if (location.country) {
+      const matchingCountry = countries.find(
+        c => c.name.toLowerCase() === location.country?.toLowerCase()
+      );
+      if (matchingCountry) {
+        countryId = matchingCountry._id;
+        console.warn(
+          `🗺️ MAP: Mapped country "${location.country}" to ID:`,
+          countryId
+        );
+      } else {
+        console.warn(
+          `🗺️ MAP: Could not find country ID for "${location.country}"`
+        );
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       latitude: location.lat.toFixed(6),
       longitude: location.lng.toFixed(6),
       ...(location.city && { city: location.city }),
-      ...(location.country && { country: location.country }),
+      ...(countryId && { country: countryId }), // Use country ID, not name
     }));
   };
 
@@ -355,6 +378,8 @@ export default function EditLocationModal({
     if (locationDetails) {
       console.warn('🔍 LOCATION DETAILS LOADED:', {
         name: locationDetails.name,
+        country: locationDetails.country,
+        countryType: typeof locationDetails.country,
         billValidatorOptions: locationDetails.billValidatorOptions,
         hasBillValidatorOptions: !!locationDetails.billValidatorOptions,
       });
@@ -363,26 +388,69 @@ export default function EditLocationModal({
       const gameDayOffset = locationDetails.gameDayOffset || 8; // Default to 8 AM
       const dayStartTime = `${gameDayOffset.toString().padStart(2, '0')}:00`;
 
-      setFormData(prev => ({
-        ...prev,
-        name: locationDetails.name || prev.name,
-        street: locationDetails.address?.street || prev.street,
-        city: locationDetails.address?.city || prev.city,
-        country: locationDetails.country || prev.country,
-        profitShare:
-          locationDetails.profitShare?.toString() || prev.profitShare,
-        licencee: locationDetails.rel?.licencee || prev.licencee,
-        isLocalServer: locationDetails.isLocalServer || prev.isLocalServer,
-        latitude:
-          locationDetails.geoCoords?.latitude?.toString() || prev.latitude,
-        longitude:
-          locationDetails.geoCoords?.longitude?.toString() || prev.longitude,
+      // Extract country ID - handle both string and ObjectId formats
+      let countryId = '';
+      if (locationDetails.country) {
+        if (typeof locationDetails.country === 'string') {
+          countryId = locationDetails.country;
+        } else if (
+          typeof locationDetails.country === 'object' &&
+          '_id' in locationDetails.country
+        ) {
+          countryId = (locationDetails.country as { _id: string })._id;
+        }
+      }
+
+      console.warn('🔍 COUNTRY ID EXTRACTED:', countryId);
+
+      // Validate country ID - check if it exists in the countries list
+      if (countryId && countries.length > 0) {
+        const countryExists = countries.some(c => c._id === countryId);
+        if (!countryExists) {
+          console.error('⚠️ INVALID COUNTRY ID:', countryId);
+          toast.warning(
+            'This location has an invalid country ID. Please select a valid country if you need to update this location.',
+            { duration: 5000 }
+          );
+          // Set country to empty string to avoid sending invalid ID
+          countryId = '';
+        }
+      }
+
+      const loadedFormData = {
+        name: locationDetails.name || '',
+        street: locationDetails.address?.street || '',
+        city: locationDetails.address?.city || '',
+        country: countryId || '',
+        profitShare: locationDetails.profitShare?.toString() || '',
+        licencee: locationDetails.rel?.licencee || '',
+        isLocalServer: locationDetails.isLocalServer || false,
+        latitude: locationDetails.geoCoords?.latitude?.toString() || '',
+        longitude: locationDetails.geoCoords?.longitude?.toString() || '',
         dayStartTime: dayStartTime,
         billValidatorOptions:
-          locationDetails.billValidatorOptions || prev.billValidatorOptions,
-      }));
+          locationDetails.billValidatorOptions || {
+            denom1: false,
+            denom2: false,
+            denom5: false,
+            denom10: false,
+            denom20: false,
+            denom50: false,
+            denom100: false,
+            denom200: false,
+            denom500: false,
+            denom1000: false,
+            denom2000: false,
+            denom5000: false,
+            denom10000: false,
+          },
+      };
+
+      // Store original form data for comparison on submit
+      setOriginalFormData(loadedFormData);
+      setFormData(loadedFormData);
     }
-  }, [locationDetails]);
+  }, [locationDetails, countries]);
 
   useEffect(() => {
     if (isEditModalOpen) {
@@ -498,23 +566,34 @@ export default function EditLocationModal({
         ? parseFloat(formData.longitude)
         : undefined;
 
-      if (!locationDetails) {
+      if (!originalFormData) {
         toast.error('Location details not loaded');
         setLoading(false);
         return;
       }
 
-      // Build comparison objects with ONLY editable fields
+      // Build comparison object from ORIGINAL form data (as loaded from API)
       const originalData = {
-        name: locationDetails.name,
-        address: locationDetails.address,
-        country: locationDetails.country,
-        profitShare: locationDetails.profitShare,
-        gameDayOffset: locationDetails.gameDayOffset,
-        rel: locationDetails.rel,
-        isLocalServer: locationDetails.isLocalServer,
-        geoCoords: locationDetails.geoCoords,
-        billValidatorOptions: locationDetails.billValidatorOptions,
+        name: originalFormData.name,
+        address: {
+          street: originalFormData.street,
+          city: originalFormData.city,
+        },
+        country: originalFormData.country,
+        profitShare: parseInt(originalFormData.profitShare) || 0,
+        gameDayOffset: parseInt(originalFormData.dayStartTime.split(':')[0]) || 8,
+        rel: {
+          licencee: originalFormData.licencee,
+        },
+        isLocalServer: originalFormData.isLocalServer,
+        geoCoords:
+          originalFormData.latitude && originalFormData.longitude
+            ? {
+                latitude: parseFloat(originalFormData.latitude),
+                longitude: parseFloat(originalFormData.longitude),
+              }
+            : undefined,
+        billValidatorOptions: originalFormData.billValidatorOptions,
       };
 
       const formDataComparison = {
@@ -524,7 +603,7 @@ export default function EditLocationModal({
           city: formData.city,
         },
         country: formData.country,
-        profitShare: parseInt(formData.profitShare),
+        profitShare: parseInt(formData.profitShare) || 0,
         gameDayOffset: gameDayOffset,
         rel: {
           licencee: formData.licencee,
@@ -541,25 +620,19 @@ export default function EditLocationModal({
                 latitude: latitude,
                 longitude: longitude,
               }
-            : locationDetails.geoCoords || undefined,
+            : undefined,
         billValidatorOptions: formData.billValidatorOptions,
       };
 
-      // Detect changes by comparing ONLY editable fields
+      // Detect changes by comparing original loaded data with current form data
       const changes = detectChanges(originalData, formDataComparison);
       const meaningfulChanges = filterMeaningfulChanges(changes);
 
+      console.warn('🔍 ORIGINAL DATA:', originalData);
+      console.warn('🔍 CURRENT FORM DATA:', formDataComparison);
+      console.warn('🔍 ALL DETECTED CHANGES:', changes.length, changes);
       console.warn(
-        '🔍 ORIGINAL billValidatorOptions:',
-        originalData.billValidatorOptions
-      );
-      console.warn(
-        '🔍 FORM billValidatorOptions:',
-        formData.billValidatorOptions
-      );
-      console.warn('🔍 ALL CHANGES:', changes.length, changes);
-      console.warn(
-        '🔍 MEANINGFUL CHANGES:',
+        '🔍 MEANINGFUL CHANGES (after filtering):',
         meaningfulChanges.length,
         meaningfulChanges
       );
@@ -573,7 +646,7 @@ export default function EditLocationModal({
 
       // Build update payload with ONLY changed fields
       const updatePayload: Record<string, unknown> = {
-        locationName: locationIdentifier, // Required for API to identify location
+        locationName: locationIdentifier, // Required for API to identify location (actually the ID)
       };
 
       // Add only the fields that actually changed
@@ -636,7 +709,29 @@ export default function EditLocationModal({
       handleClose();
     } catch (error) {
       console.error('Error updating location:', error);
-      toast.error('Failed to update location');
+
+      // Extract detailed error message from axios error
+      let errorMessage = 'Failed to update location';
+
+      if (typeof error === 'object' && error !== null) {
+        const axiosError = error as {
+          response?: { data?: { message?: string; error?: string } };
+          message?: string;
+        };
+
+        // Try to get the most specific error message
+        if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

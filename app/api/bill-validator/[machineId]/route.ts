@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     }
 
     // If no location found via machine, we'll get it from bills data later
-    const gameDayOffset = gamingLocation?.gameDayOffset || 0;
+    const gameDayOffset = gamingLocation?.gameDayOffset ?? 8; // Default to 8 AM Trinidad time (Rule 1)
 
     // Calculate date range with gaming day support
     let dateFilter: Record<string, unknown> = {};

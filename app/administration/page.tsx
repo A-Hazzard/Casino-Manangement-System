@@ -441,10 +441,20 @@ function AdministrationPageContent() {
         `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
       );
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to update user:', error);
+      console.error('Failed to update user:', error);
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to update user';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        const err = error as { response?: { data?: { message?: string } } };
+        if (err.response?.data?.message) {
+          errorMessage = err.response.data.message;
+        }
       }
-      toast.error('Failed to update user');
+      
+      toast.error(errorMessage);
       // Don't close modal on error - let user try again
     }
   };

@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate gaming day range for this location
     // Always use gaming day offset logic (including for custom dates)
-    const gameDayOffset = locationCheck.gameDayOffset || 0;
+    const gameDayOffset = locationCheck.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
     const gamingDayRange = getGamingDayRangeForPeriod(
       timePeriodForGamingDay,
       gameDayOffset,

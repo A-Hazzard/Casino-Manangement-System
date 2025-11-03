@@ -2,9 +2,9 @@
  * Check Raw Meter Value from Database
  */
 
-const {MongoClient} = require('mongodb');
+const { MongoClient } = require('mongodb');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const MONGODB_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const DB_NAME = 'evolution';
 
 async function checkRawMeterValue() {
@@ -84,4 +84,3 @@ async function checkRawMeterValue() {
 }
 
 checkRawMeterValue();
-

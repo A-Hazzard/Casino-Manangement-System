@@ -9,8 +9,8 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 async function testLocationQuery() {
   console.log('Testing MongoDB location query...\n');
 
-  const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
-  
+  const mongoUri = process.env.MONGO_URI || process.env.MONGO_URI;
+
   if (!mongoUri) {
     console.error('MONGO_URI not found in .env file');
     return;
@@ -31,7 +31,9 @@ async function testLocationQuery() {
     const result1 = await db
       .collection('gaminglocations')
       .findOne({ _id: locationId });
-    console.log(`  Result: ${result1 ? `Found "${result1.name}"` : 'NOT FOUND'}\n`);
+    console.log(
+      `  Result: ${result1 ? `Found "${result1.name}"` : 'NOT FOUND'}\n`
+    );
 
     // Test 2: Query with ObjectId
     console.log('Test 2: Query with ObjectId _id');
@@ -39,7 +41,9 @@ async function testLocationQuery() {
       const result2 = await db
         .collection('gaminglocations')
         .findOne({ _id: new ObjectId(locationId) });
-      console.log(`  Result: ${result2 ? `Found "${result2.name}"` : 'NOT FOUND'}\n`);
+      console.log(
+        `  Result: ${result2 ? `Found "${result2.name}"` : 'NOT FOUND'}\n`
+      );
     } catch (e) {
       console.log(`  Error: ${e.message}\n`);
     }
@@ -51,14 +55,13 @@ async function testLocationQuery() {
       .find({})
       .limit(3)
       .toArray();
-    
+
     console.log(`  Found ${allLocs.length} locations:`);
-    allLocs.forEach((loc) => {
+    allLocs.forEach(loc => {
       console.log(`    ID: ${loc._id} (type: ${typeof loc._id})`);
       console.log(`    Name: ${loc.name}`);
       console.log(`    Is ObjectId: ${loc._id instanceof ObjectId}`);
     });
-
   } catch (error) {
     console.error('Error:', error);
   } finally {
@@ -67,4 +70,3 @@ async function testLocationQuery() {
 }
 
 testLocationQuery();
-

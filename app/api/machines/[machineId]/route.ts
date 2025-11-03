@@ -69,7 +69,7 @@ export async function GET(
         if (location) {
           locationName =
             location.name || location.locationName || 'Unknown Location';
-          gameDayOffset = location.gameDayOffset || 0;
+          gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
         } else {
           locationName = 'Location Not Found';
         }

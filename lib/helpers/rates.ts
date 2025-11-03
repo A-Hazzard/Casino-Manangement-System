@@ -61,8 +61,8 @@ export function shouldApplyConversion(
  * Convert a value from a licensee's currency to USD
  */
 export function convertToUSD(value: number, licenseeOrCurrency: string): number {
-  // Check if it's a currency code (3 letters uppercase) or a licensee name
-  const isCurrencyCode = /^[A-Z]{3}$/.test(licenseeOrCurrency);
+  // Check if it's an actual currency code (must exist in FIXED_RATES)
+  const isCurrencyCode = licenseeOrCurrency in FIXED_RATES;
   
   const sourceCurrency = isCurrencyCode 
     ? (licenseeOrCurrency as CurrencyCode)
@@ -73,6 +73,13 @@ export function convertToUSD(value: number, licenseeOrCurrency: string): number 
   }
 
   const rate = FIXED_RATES[sourceCurrency];
+  
+  // Safety check: if rate is undefined, return original value without conversion
+  if (!rate || isNaN(rate)) {
+    console.error(`⚠️ Currency conversion error: No rate found for ${sourceCurrency} (from ${licenseeOrCurrency})`);
+    return value;
+  }
+  
   return value / rate;
 }
 
@@ -88,6 +95,13 @@ export function convertFromUSD(
   }
 
   const rate = FIXED_RATES[targetCurrency];
+  
+  // Safety check: if rate is undefined, return original value without conversion
+  if (!rate || isNaN(rate)) {
+    console.error(`⚠️ Currency conversion error: No rate found for ${targetCurrency}`);
+    return value;
+  }
+  
   return value * rate;
 }
 

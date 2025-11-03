@@ -227,6 +227,26 @@ export default function NewLocationModal({
   };
 
   const handleLocationSelect = (location: SelectedLocation) => {
+    // Map returns country NAME, but we need country ID
+    // Find the matching country ID from the countries list
+    let countryId = '';
+    if (location.country) {
+      const matchingCountry = countries.find(
+        c => c.name.toLowerCase() === location.country?.toLowerCase()
+      );
+      if (matchingCountry) {
+        countryId = matchingCountry._id;
+        console.warn(
+          `🗺️ MAP: Mapped country "${location.country}" to ID:`,
+          countryId
+        );
+      } else {
+        console.warn(
+          `🗺️ MAP: Could not find country ID for "${location.country}"`
+        );
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       latitude: location.lat.toFixed(6),
@@ -234,7 +254,7 @@ export default function NewLocationModal({
       // Update address, city and country if they were provided by the map
       ...(location.address && { street: location.address }),
       ...(location.city && { city: location.city }),
-      ...(location.country && { country: location.country }),
+      ...(countryId && { country: countryId }), // Use country ID, not name
     }));
   };
 

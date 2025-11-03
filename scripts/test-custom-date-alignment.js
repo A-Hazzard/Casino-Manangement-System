@@ -15,7 +15,7 @@ const { MongoClient } = require('mongodb');
 
 // Configuration
 const MONGODB_URI =
-  process.env.MONGODB_URI || 'mongodb://localhost:27017/evolution-one-cms';
+  process.env.MONGO_URI || 'mongodb://localhost:27017/evolution-one-cms';
 const MACHINE_SERIAL = '1309';
 const CUSTOM_START = '2025-10-01T08:00:00';
 const CUSTOM_END = '2025-10-15T08:00:00';

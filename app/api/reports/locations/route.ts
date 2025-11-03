@@ -5,6 +5,7 @@ import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Force recompilation to pick up rates.ts changes
 // Removed auto-index creation to avoid conflicts and extra latency
 
 export async function GET(req: NextRequest) {
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       locations.map((loc: any) => ({
         _id: loc._id.toString(),
-        gameDayOffset: loc.gameDayOffset || 0,
+        gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM Trinidad time (Rule 1)
       })),
       timePeriod,
       customStartDate,
@@ -107,6 +108,7 @@ export async function GET(req: NextRequest) {
     );
 
     // Gaming day ranges calculated for all locations
+    console.log(`🔍 [LOCATIONS API] Processing ${locations.length} locations for time period: ${timePeriod}`);
 
     // Process each location individually with its gaming day range
     const locationResults = [];
@@ -115,9 +117,15 @@ export async function GET(req: NextRequest) {
       const locationId = location._id.toString();
       const gamingDayRange = gamingDayRanges.get(locationId);
 
-      if (!gamingDayRange) continue;
+      if (!gamingDayRange) {
+        console.warn(`⚠️ [LOCATIONS API] No gaming day range for location ${locationId}`);
+        continue;
+      }
 
-      // Processing location with its gaming day range
+      console.log(`🔍 [LOCATIONS API] Location: ${location.name} (${locationId})`);
+      console.log(`   Gaming Day Offset: ${location.gameDayOffset ?? 8}`);
+      console.log(`   Range Start: ${gamingDayRange.rangeStart.toISOString()}`);
+      console.log(`   Range End: ${gamingDayRange.rangeEnd.toISOString()}`);
 
       // Get machines for this location
       const machines = await db
@@ -131,13 +139,20 @@ export async function GET(req: NextRequest) {
         })
         .toArray();
 
-      // Calculate financial metrics for this location using its gaming day range
+      console.log(`   Machines found: ${machines.length}`);
+
+      // Get machine IDs for this location
+      const machineIds = machines.map(m => m._id.toString());
+      console.log(`   Machine IDs:`, machineIds);
+
+      // Calculate financial metrics for this location using MACHINE IDs (not location ID)
+      // This matches how the individual location API works
       const metrics = await db
         .collection('meters')
         .aggregate([
           {
             $match: {
-              location: locationId,
+              machine: { $in: machineIds }, // Query by machine IDs, not location ID!
               readAt: {
                 $gte: gamingDayRange.rangeStart,
                 $lte: gamingDayRange.rangeEnd,
@@ -149,13 +164,18 @@ export async function GET(req: NextRequest) {
               _id: null,
               moneyIn: { $sum: '$movement.drop' },
               moneyOut: { $sum: '$movement.totalCancelledCredits' },
+              meterCount: { $sum: 1 },
             },
           },
         ])
         .toArray();
 
-      const locationMetrics = metrics[0] || { moneyIn: 0, moneyOut: 0 };
+      console.log(`   Meters query result:`, JSON.stringify(metrics, null, 2));
+
+      const locationMetrics = metrics[0] || { moneyIn: 0, moneyOut: 0, meterCount: 0 };
       const gross = locationMetrics.moneyIn - locationMetrics.moneyOut;
+      
+      console.log(`   Final metrics - moneyIn: ${locationMetrics.moneyIn}, moneyOut: ${locationMetrics.moneyOut}, gross: ${gross}, meters: ${locationMetrics.meterCount}`);
 
       // Calculate machine status metrics
       const totalMachines = machines.length;
@@ -231,113 +251,112 @@ export async function GET(req: NextRequest) {
 
     // Request completed
 
-    // Apply currency conversion if needed
+    // Apply currency conversion using the proper helper
+    // Data comes in native currency (TTD for TTG, GYD for Cabana, etc.)
+    // Need to convert to display currency
     let convertedData = paginatedData;
 
+    console.log(`🔍 [LOCATIONS API] shouldApplyCurrencyConversion: ${shouldApplyCurrencyConversion(licencee)}`);
+    console.log(`🔍 [LOCATIONS API] displayCurrency: ${displayCurrency}`);
+    console.log(`🔍 [LOCATIONS API] licencee param: ${licencee}`);
+    console.log(`🔍 [LOCATIONS API] paginatedData before conversion:`, JSON.stringify(paginatedData, null, 2));
+
     if (shouldApplyCurrencyConversion(licencee)) {
-      // Applying currency conversion for All Licensee mode
-      // Each location belongs to a licensee with a specific currency (TTG=TTD, Cabana=GYD, Barbados=BBD)
-      // We need to convert from each licensee's native currency to the display currency
-      const { convertFromUSD, convertToUSD, getCountryCurrency } = await import(
-        '@/lib/helpers/rates'
-      );
+      try {
+        console.log(`💱 Starting currency conversion...`);
+        
+        // Import conversion helpers
+        const { convertCurrency, getLicenseeCurrency } = await import('@/lib/helpers/rates');
+        
+        // Get licensee details for currency mapping
+        const licenseesData = await db
+          .collection('licencees')
+          .find(
+            {
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date('2020-01-01') } },
+              ],
+            },
+            { projection: { _id: 1, name: 1 } }
+          )
+          .toArray();
 
-      // Get licensee details for currency mapping
-      const licenseesData = await db
-        .collection('licencees')
-        .find(
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2020-01-01') } },
-            ],
-          },
-          { projection: { _id: 1, name: 1 } }
-        )
-        .toArray();
+        // Create a map of licensee ID to name
+        const licenseeIdToName = new Map<string, string>();
+        licenseesData.forEach(lic => {
+          licenseeIdToName.set(lic._id.toString(), lic.name);
+        });
 
-      // Create a map of licensee ID to name
-      const licenseeIdToName = new Map<string, string>();
-      licenseesData.forEach(lic => {
-        licenseeIdToName.set(lic._id.toString(), lic.name);
-      });
+        // Convert each location's financial data
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        convertedData = paginatedData.map((location: any) => {
+          console.log(`\n💱 Currency conversion for location: ${location.locationName}`);
+          console.log(`   Before conversion - moneyIn: ${location.moneyIn}, moneyOut: ${location.moneyOut}, gross: ${location.gross}`);
+          
+          const locationLicenseeId = location.rel?.licencee as string | undefined;
+          
+          if (!locationLicenseeId) {
+            console.log(`   No licensee - skipping conversion (treating as USD)`);
+            return location;
+          }
 
-      // Get country details for currency mapping (for unassigned locations)
-      const countriesData = await db.collection('countries').find({}).toArray();
+          const licenseeName = licenseeIdToName.get(locationLicenseeId.toString()) || '';
+          console.log(`   Licensee ID: ${locationLicenseeId}`);
+          console.log(`   Licensee name: ${licenseeName}`);
+          
+          if (!licenseeName || licenseeName === 'Unknown') {
+            console.log(`   Unknown licensee - skipping conversion`);
+            return location;
+          }
 
-      // Create a map of country ID to name
-      const countryIdToName = new Map<string, string>();
-      countriesData.forEach(country => {
-        countryIdToName.set(country._id.toString(), country.name);
-      });
+          // Get the source currency for this licensee
+          const sourceCurrency = getLicenseeCurrency(licenseeName);
+          console.log(`   Source currency (${licenseeName}): ${sourceCurrency}`);
+          console.log(`   Target currency: ${displayCurrency}`);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      convertedData = paginatedData.map((location: any) => {
-        const locationLicenseeId = location.rel?.licencee as string | undefined;
+          // If source and target are the same, no conversion needed
+          if (sourceCurrency === displayCurrency) {
+            console.log(`   No conversion needed (same currency)`);
+            return location;
+          }
 
-        if (!locationLicenseeId) {
-          // Unassigned locations - determine currency from country
-          const countryId = location.country as string | undefined;
-          const countryName = countryId
-            ? countryIdToName.get(countryId.toString())
-            : undefined;
-          const nativeCurrency = countryName
-            ? getCountryCurrency(countryName)
-            : 'USD';
-
-          // Convert from country's native currency to display currency
+          // Convert financial fields
           const convertedLocation = { ...location };
 
           if (typeof location.moneyIn === 'number') {
-            const moneyInUSD = convertToUSD(location.moneyIn, nativeCurrency);
-            convertedLocation.moneyIn = convertFromUSD(
-              moneyInUSD,
-              displayCurrency
-            );
+            const converted = convertCurrency(location.moneyIn, sourceCurrency, displayCurrency);
+            console.log(`   moneyIn: ${location.moneyIn} ${sourceCurrency} -> ${converted} ${displayCurrency}`);
+            convertedLocation.moneyIn = converted;
           }
+          
           if (typeof location.moneyOut === 'number') {
-            const moneyOutUSD = convertToUSD(location.moneyOut, nativeCurrency);
-            convertedLocation.moneyOut = convertFromUSD(
-              moneyOutUSD,
-              displayCurrency
-            );
+            const converted = convertCurrency(location.moneyOut, sourceCurrency, displayCurrency);
+            console.log(`   moneyOut: ${location.moneyOut} ${sourceCurrency} -> ${converted} ${displayCurrency}`);
+            convertedLocation.moneyOut = converted;
           }
+          
           if (typeof location.gross === 'number') {
-            const grossUSD = convertToUSD(location.gross, nativeCurrency);
-            convertedLocation.gross = convertFromUSD(grossUSD, displayCurrency);
+            const converted = convertCurrency(location.gross, sourceCurrency, displayCurrency);
+            console.log(`   gross: ${location.gross} ${sourceCurrency} -> ${converted} ${displayCurrency}`);
+            convertedLocation.gross = converted;
           }
 
+          console.log(`   After conversion - moneyIn: ${convertedLocation.moneyIn}, moneyOut: ${convertedLocation.moneyOut}, gross: ${convertedLocation.gross}`);
           return convertedLocation;
-        }
-
-        const licenseeName =
-          licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
-
-        // Convert from licensee's native currency to USD, then to display currency
-        const convertedLocation = { ...location };
-
-        if (typeof location.moneyIn === 'number') {
-          const moneyInUSD = convertToUSD(location.moneyIn, licenseeName);
-          convertedLocation.moneyIn = convertFromUSD(
-            moneyInUSD,
-            displayCurrency
-          );
-        }
-        if (typeof location.moneyOut === 'number') {
-          const moneyOutUSD = convertToUSD(location.moneyOut, licenseeName);
-          convertedLocation.moneyOut = convertFromUSD(
-            moneyOutUSD,
-            displayCurrency
-          );
-        }
-        if (typeof location.gross === 'number') {
-          const grossUSD = convertToUSD(location.gross, licenseeName);
-          convertedLocation.gross = convertFromUSD(grossUSD, displayCurrency);
-        }
-
-        return convertedLocation;
-      });
+        });
+        
+        console.log(`💱 Currency conversion completed. Converted ${convertedData.length} locations`);
+      } catch (conversionError) {
+        console.error(`❌ [LOCATIONS API] Currency conversion failed:`, conversionError);
+        // If conversion fails, use original data
+        convertedData = paginatedData;
+      }
+    } else {
+      console.log(`💱 Skipping currency conversion (specific licensee selected)`);
     }
+
+    console.log(`🔍 [LOCATIONS API] convertedData after conversion:`, JSON.stringify(convertedData, null, 2));
 
     const response = {
       data: convertedData,
@@ -352,7 +371,7 @@ export async function GET(req: NextRequest) {
       currency: displayCurrency,
       converted: shouldApplyCurrencyConversion(licencee),
     };
-
+    console.log(`🔍 [LOCATIONS API] Response:`, JSON.stringify(response, null, 2));
     return NextResponse.json(response);
   } catch (err: unknown) {
     console.error('Error in reports locations route:', err);
