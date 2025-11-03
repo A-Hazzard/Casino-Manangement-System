@@ -30,6 +30,12 @@ export default function DashboardDateFilters({
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
 
+  useEffect(() => {
+    if (hideAllTime && activeMetricsFilter === 'All Time') {
+      setActiveMetricsFilter('30d');
+    }
+  }, [activeMetricsFilter, hideAllTime, setActiveMetricsFilter]);
+
   const timeFilterButtons: { label: string; value: TimePeriod }[] = useMemo(
     () =>
       hideAllTime
