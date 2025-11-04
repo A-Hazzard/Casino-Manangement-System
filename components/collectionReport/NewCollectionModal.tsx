@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { LocationSelect } from "@/components/ui/custom-select";
+import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -96,6 +96,7 @@ export default function NewCollectionModal({
   onClose,
   locations = [],
   onRefresh,
+  onRefreshLocations,
 }: NewCollectionModalProps) {
   // Get Zustand store actions
   const {
@@ -846,6 +847,12 @@ export default function NewCollectionModal({
     if (show) {
       console.warn("🔄 Modal opened - ensuring fresh data is available");
 
+      // Refresh locations data first
+      if (onRefreshLocations) {
+        console.warn("🔄 Refreshing locations data");
+        onRefreshLocations();
+      }
+
       // Trigger a refresh of the parent component's data if onRefresh is available
       if (onRefresh) {
         console.warn(
@@ -854,7 +861,7 @@ export default function NewCollectionModal({
         onRefresh();
       }
     }
-  }, [show, onRefresh]);
+  }, [show, onRefresh, onRefreshLocations]);
 
   useEffect(() => {
     if (selectedLocation) {
@@ -2063,24 +2070,27 @@ export default function NewCollectionModal({
           </DialogHeader>
 
           <div className="flex-grow flex flex-col lg:flex-row overflow-y-auto min-h-0">
-            {/* Mobile: Full width, Desktop: 1/4 width */}
-            <div className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r border-gray-300 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
-              <LocationSelect
-                value={lockedLocationId || selectedLocationId || ""}
-                onValueChange={handleLocationChange}
-                locations={locations.map((loc) => ({
-                  _id: String(loc._id),
-                  name: loc.name,
-                }))}
-                placeholder="Select Location"
-                disabled={
-                  isProcessing ||
-                  lockedLocationId !== undefined ||
-                  collectedMachineEntries.length > 0
-                }
-                className="w-full"
-                emptyMessage="No locations found"
-              />
+            {/* Mobile: Full width, Desktop: 1/5 width */}
+            <div className="w-full lg:w-1/5 border-b lg:border-b-0 lg:border-r border-gray-300 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
+              <div className={
+                isProcessing ||
+                lockedLocationId !== undefined ||
+                collectedMachineEntries.length > 0
+                  ? "opacity-50 pointer-events-none"
+                  : ""
+              }>
+                <LocationSingleSelect
+                  locations={locations.map((loc) => ({
+                    id: String(loc._id),
+                    name: loc.name,
+                    sasEnabled: false,
+                  }))}
+                  selectedLocation={lockedLocationId || selectedLocationId || ""}
+                  onSelectionChange={handleLocationChange}
+                  placeholder="Select Location"
+                  includeAllOption={false}
+                />
+              </div>
 
               {lockedLocationId && (
                 <p className="text-xs text-gray-500 italic">
@@ -2228,8 +2238,8 @@ export default function NewCollectionModal({
               </div>
             </div>
 
-            {/* Mobile: Full width, Desktop: 2/4 width */}
-            <div className="w-full lg:w-2/4 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
+            {/* Mobile: Full width, Desktop: 3/5 width (60%) */}
+            <div className="w-full lg:w-3/5 p-3 md:p-4 flex flex-col space-y-3 overflow-y-auto">
               {(selectedMachineId && machineForDataEntry) ||
               collectedMachineEntries.length > 0 ? (
                 <>
@@ -2918,7 +2928,7 @@ export default function NewCollectionModal({
             </div>
 
             {/* Mobile: Full width, Desktop: 1/4 width */}
-            <div className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-gray-300 flex flex-col bg-gray-50 min-h-0">
+            <div className="w-full lg:w-1/5 border-t lg:border-t-0 lg:border-l border-gray-300 flex flex-col bg-gray-50 min-h-0">
               <div className="sticky top-0 bg-gray-50 z-10 p-3 md:p-4 pb-2 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-700">
                   Collected Machines ({collectedMachineEntries.length})

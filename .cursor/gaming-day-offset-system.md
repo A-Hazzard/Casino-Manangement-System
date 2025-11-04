@@ -1,7 +1,7 @@
 # Gaming Day Offset System
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 31, 2025  
+**Last Updated:** November 3, 2025  
 **Version:** 2.0.0
 
 ---
@@ -44,6 +44,7 @@ Gaming day offset is used for **ALL financial metrics** from meter data:
 ✅ **Machine reports** - Individual machine financials  
 ✅ **Cabinet aggregation** - All machines list  
 ✅ **Bill validator data** - Gaming session tracking  
+✅ **Reports page** - All tabs (Locations, Machines, Meters)  
 ✅ **ALL time periods** - Today, Yesterday, 7d, 30d, **AND Custom**
 
 ---
@@ -183,6 +184,10 @@ const date = customDateRange.from.toISOString();
 - `app/api/locations/[locationId]/route.ts` - Location details
 - `app/api/machines/aggregation/route.ts` - Machines aggregation
 - `app/api/machines/[machineId]/route.ts` - Machine details
+- `app/api/reports/locations/route.ts` - Reports Locations tab
+- `app/api/reports/machines/route.ts` - Reports Machines tab
+- `app/api/reports/meters/route.ts` - Reports Meters tab
+- `app/api/analytics/location-trends/route.ts` - Location trend charts
 
 ### Frontend Helpers
 
@@ -219,5 +224,5 @@ The gaming day offset system now works correctly:
 ✅ **Backend applies gaming day offset** consistently  
 ✅ **Documentation updated** to reflect correct behavior
 
-**Last Updated:** October 31, 2025  
+**Last Updated:** November 3, 2025  
 **Maintained By:** Evolution One CMS Development Team

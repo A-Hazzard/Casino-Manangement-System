@@ -4,6 +4,7 @@ import CollectionReportTableSkeleton from '@/components/collectionReport/Collect
 import CollectionReportFilters from '@/components/collectionReport/CollectionReportFilters';
 import type { CollectionDesktopUIProps } from '@/lib/types/componentProps';
 import PaginationControls from '@/components/ui/PaginationControls';
+import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 
 const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   loading,
@@ -33,7 +34,10 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   sortField,
   sortDirection,
   onSort,
+  selectedLicencee,
 }) => {
+  const licenseeName = getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
+  
   return (
     <div className="hidden lg:block">
       {/* Filter Container - positioned at the top */}
@@ -63,7 +67,7 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
         ) : filteredReports.length === 0 ? (
           <div className="animate-in fade-in-0 slide-in-from-bottom-2">
             <p className="py-10 text-center text-gray-500">
-              No collection reports found.
+              {selectedLicencee ? `No collection reports found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.` : 'No collection reports found.'}
             </p>
           </div>
         ) : (

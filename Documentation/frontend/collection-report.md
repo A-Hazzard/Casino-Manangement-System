@@ -1,7 +1,7 @@
 # Collection Report System - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025
+**Last Updated:** November 3rd, 2025
 
 ## Overview
 
@@ -18,9 +18,11 @@ The Collection Report System manages casino slot machine money collection operat
 ### Main Components
 
 - **Main Page**: `app/collection-report/page.tsx`
-- **New Collection Modal**: `components/collectionReport/NewCollectionModal.tsx`
-- **Edit Collection Modal**: `components/collectionReport/EditCollectionModal.tsx`
-- **Mobile Modals**: Mobile-optimized creation and editing interfaces
+- **New Collection Modal (Desktop)**: `components/collectionReport/NewCollectionModal.tsx`
+- **Edit Collection Modal (Desktop)**: `components/collectionReport/EditCollectionModal.tsx`
+- **Mobile Collection Modal**: `components/collectionReport/mobile/MobileCollectionModal.tsx`
+- **Mobile Edit Collection Modal**: `components/collectionReport/mobile/MobileEditCollectionModal.tsx`
+- **Form Components**: `components/collectionReport/forms/*` - Reusable form components
 
 ## User Roles & Permissions
 
@@ -45,36 +47,81 @@ The Collection Report System manages casino slot machine money collection operat
 
 ## Collection Report Creation
 
-### Process Flow
+### Process Flow (Both Desktop & Mobile)
 
 **1. Location Selection**
 
-- User selects gaming location from dropdown
-- System auto-initializes collection time based on location's `gameDayOffset`
-- Default collection time: 8:00 AM (adjusts based on gaming day offset)
+- User selects gaming location from `LocationSingleSelect` dropdown
+- System loads machines for the selected location
+- System initializes collection time based on location's `gameDayOffset`
+- Default collection time: 8:00 AM (adjusts based on gaming day offset from `calculateDefaultCollectionTime`)
+- Location gets locked after first machine is added (prevents mixing locations)
 
 **2. Machine Selection & Data Entry**
 
-- User selects machines from location's machine list
+- User selects a machine from the location's machine list
 - System fetches previous meter values from `machine.collectionMeters`
-- User enters current meter readings (`metersIn`, `metersOut`)
-- System automatically calculates movement values
+- User enters:
+  - Current meter readings (`metersIn`, `metersOut`)
+  - Collection time (can be customized per machine)
+  - Optional notes
+  - RAM clear status (if applicable, with RAM clear meters)
+- System automatically calculates movement values using `calculateMachineMovement`
 
 **3. Add Machine to List**
 
-- Creates collection via `/api/collections POST`
+- Creates collection via `/api/collections POST` (calls `addMachineCollection`)
 - Backend calculates SAS metrics from `sashourly` collection
-- Collection stored with empty `locationReportId`
-- Machine added to collected machines list
+- Collection stored with empty `locationReportId` and `isCompleted: false`
+- Machine added to `collectedMachines` list in local state and Zustand store
 - **Note**: `collectionMetersHistory` is NOT created yet
+- Machine can be edited or deleted from list before report finalization
 
-**4. Report Finalization (Create Report)**
+**4. Financial Data Entry (First Machine Only)**
 
+- User enters shared financial data:
+  - Taxes
+  - Advance
+  - Variance (with optional reason)
+  - Balance correction (with optional reason)
+  - Collected amount
+  - Previous balance
+  - Reason for shortage payment
+- **Desktop**: Shows in right-side form panel
+- **Mobile**: Shows in form panel after machine data entry
+
+**5. Report Finalization (Create Report)**
+
+Desktop (`NewCollectionModal.tsx`):
+
+- Validates all data using `validateCollectionReportPayload`
+- Generates `locationReportId` using `uuidv4()`
+- Calls `/api/collectionReport POST` with complete payload
+- Backend handles all updates automatically
+
+Mobile (`MobileCollectionModal.tsx`):
+
+- Updates all collections with `locationReportId` via `/api/collections PATCH`
+- Marks collections as completed (`isCompleted: true`)
+- Calls `/api/collectionReport POST` with complete payload
+
+Backend (`/api/collectionReport POST`):
+
+- Validates payload and checks for duplicate reports on same gaming day
+- Creates CollectionReport document
 - Updates all collections with `locationReportId`
-- Creates collection report via `/api/collectionReport POST`
 - Creates `collectionMetersHistory` entries for all machines
-- Updates machine `collectionMeters` to current values
-- Updates machine collection times
+- Updates `machine.collectionMeters` to current values
+- Updates `machine.collectionTime` and `previousCollectionTime`
+- Updates `gamingLocation.previousCollectionTime`
+- Logs activity
+
+**6. State Cleanup**
+
+- Resets all form state
+- Clears Zustand store
+- Refreshes parent component data
+- Shows success toast notification
 
 ### Movement Calculation
 
@@ -112,20 +159,45 @@ gross = movementIn - movementOut
 
 ## Collection Report Editing
 
-### Process Flow
+### Process Flow (Both Desktop & Mobile)
 
 **1. Load Existing Report**
 
-- Fetches report data via `/api/collection-report/[reportId]`
-- Loads all collections for the report
-- Populates financial fields with current values
+- Opens edit modal via "Edit" button on collection report row
+- Fetches report data via `/api/collection-report/[reportId] GET`
+- Loads all collections for the report via `/api/collections GET`
+- Populates financial fields with current report values
+- Displays collected machines list with ability to edit/delete
 
 **2. Modify Data**
 
-- Add new machines to existing report
-- Edit existing collection meter readings
-- Delete collections from report
-- Modify financial fields (taxes, advance, variance, etc.)
+Desktop (`EditCollectionModal.tsx`):
+
+- Three-column layout: Machine list | Data entry form | Collected machines
+- Can add new machines to existing report
+- Can edit existing collection meter readings
+- Can delete collections from report
+- Financial data updates in real-time
+
+Mobile (`MobileEditCollectionModal.tsx`):
+
+- Slide-up panels for different sections
+- Location panel → Form panel → Collected machines list
+- Similar functionality to desktop but optimized for touch
+- Uses `MobileFormPanel` and `MobileCollectedListPanel` components
+
+**3. Add or Edit Machine Collection**
+
+**Fixed:** November 4th, 2025 - EditCollectionModal now matches NewCollectionModal logic
+
+- Click "Add Machine" or "Edit" on existing machine
+- **Sends only essential data to API** (meters, RAM clear, notes, timestamp)
+- **API calculates** `prevIn`, `prevOut`, `movement`, and SAS metrics (not frontend)
+- Updates collection via `/api/collections POST` (for new) or `PATCH` (for edit)
+- Updates machine in local state and Zustand store
+
+**Critical Change:**
+Previously, EditCollectionModal sent pre-calculated values (`prevIn`, `prevOut`, `movement`, `sasMeters` with hardcoded 0s) to the API. This caused inconsistencies with NewCollectionModal. Now both modals send identical payloads, letting the backend handle all calculations.
 
 **3. Save Changes**
 
@@ -180,6 +252,58 @@ previousBalance = collectedAmount - amountToCollect
 - **Variance**: Manual adjustments for discrepancies
 - **Collected Amount**: Actual cash collected by collector
 - **Balance Correction**: Manual balance adjustments
+
+## Component Architecture (Mobile)
+
+### Reusable Form Components
+
+The mobile collection modals have been fully componentized for better maintainability:
+
+**`components/collectionReport/forms/`**:
+
+- **`MachineInfoDisplay.tsx`**: Displays machine name and SMIB ID with view button
+- **`CollectionTimeInput.tsx`**: Date/time picker for collection time
+- **`MachineMetersForm.tsx`**: Meters In/Out with RAM clear functionality
+- **`MachineNotesInput.tsx`**: Notes textarea input
+- **`SharedFinancialsForm.tsx`**: Taxes and Advance inputs (first machine only)
+- **`MachineDataEntryForm.tsx`**: Master component combining all machine data inputs
+- **`FinancialSummaryForm.tsx`**: Complete financial summary section
+- **`MachineListPanel.tsx`**: Searchable machine selection list
+- **`MobileFormPanel.tsx`**: Complete form panel with scrolling header/content/footer
+- **`MobileCollectedListPanel.tsx`**: Complete collected machines list with financial summary
+
+### Component Benefits
+
+- **Code Reduction**: Reduced `MobileCollectionModal` from 2,707 lines to 1,855 lines (31.5% smaller)
+- **Reusability**: All components can be reused in create and edit modals
+- **Maintainability**: Each component has a single, focused responsibility
+- **Consistency**: Ensures consistent UI/UX across create and edit flows
+- **Testing**: Easier to test individual components in isolation
+
+### Scroll Behavior
+
+Both `MobileFormPanel` and `MobileCollectedListPanel` use proper scroll structure:
+
+```tsx
+<div className="fixed ...">
+  {' '}
+  {/* Outer container - no scroll */}
+  <div className="flex flex-col overflow-hidden">
+    <Header /> {/* Fixed at top */}
+    <div className="flex-1 overflow-y-auto">
+      <Content /> {/* Scrollable content */}
+    </div>
+    <Footer /> {/* Fixed at bottom */}
+  </div>
+</div>
+```
+
+This ensures:
+
+- Header stays visible at all times
+- Only content scrolls
+- Footer remains accessible
+- Better UX on mobile devices
 
 ### Balance Correction Logic
 

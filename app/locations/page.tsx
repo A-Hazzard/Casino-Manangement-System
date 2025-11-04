@@ -48,6 +48,7 @@ import {
 } from "@/lib/hooks/data";
 import { useGlobalErrorHandler } from "@/lib/hooks/data/useGlobalErrorHandler";
 import { animateTableRows, animateCards } from "@/lib/utils/ui";
+import { getLicenseeName } from "@/lib/utils/licenseeMapping";
 
 function LocationsPageContent() {
   const { handleApiCallWithRetry: _handleApiCallWithRetry } =
@@ -58,6 +59,7 @@ function LocationsPageContent() {
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+  const licenseeName = getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
   const { openEditModal } = useLocationActionsStore();
 
@@ -494,7 +496,7 @@ function LocationsPageContent() {
               <span className="text-gray-500 text-lg">
                 {searchTerm
                   ? "No locations found matching your search."
-                  : "No locations found."}
+                  : `No locations found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`}
               </span>
             </div>
           ) : (

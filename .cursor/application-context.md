@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** October 10th, 2025
+**Last Updated:** November 4th, 2025
 
 ## System Overview
 
@@ -596,6 +596,160 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
 - **Date Display**: Consistent date/time formatting across all components
 - **Console Cleanup**: Minimal API logging (only errors, no spam)
 
+## Recent System Updates (November 2025)
+
+### Collection Report System - Major Refactoring ✅
+
+**Last Updated:** November 3rd, 2025
+
+#### Mobile Modal Componentization
+
+**Code Reduction Achievement:**
+
+- `MobileCollectionModal`: 2,707 lines → 1,855 lines (31.5% reduction)
+- Total reduction: 852 lines of duplicate code eliminated
+
+**New Reusable Components** (`components/collectionReport/forms/`):
+
+- `MachineInfoDisplay`: Machine name and SMIB ID display
+- `CollectionTimeInput`: Date/time picker for collections
+- `MachineMetersForm`: Meters In/Out with RAM clear validation
+- `MachineNotesInput`: Notes textarea with character limits
+- `SharedFinancialsForm`: Taxes and Advance inputs (first machine only)
+- `MachineDataEntryForm`: Master component combining all machine data inputs
+- `FinancialSummaryForm`: Complete financial summary section
+- `MachineListPanel`: Searchable machine selection list
+- `MobileFormPanel`: Complete form panel with fixed header/scrollable content/fixed footer
+- `MobileCollectedListPanel`: Collected machines list with financial summary
+
+**Benefits:**
+
+- Single responsibility components for better maintainability
+- Reusable across create and edit modals
+- Consistent UI/UX patterns
+- Easier testing and debugging
+- Proper scroll behavior (fixed headers/footers, scrollable content only)
+
+#### Desktop Modal Layout Improvements
+
+**Width Distribution Optimization:**
+
+- Machine List: 25% → 20% (more compact)
+- **Form Panel: 50% → 60% (wider for better UX)**
+- Collected Machines: 25% → 20% (more compact)
+
+Result: Form fields have more space, reducing cramped UX issues.
+
+#### Collection Report Details Page Enhancements
+
+**Machine Search Bar:**
+
+- Created dedicated `MachineSearchBar` component
+- Fixed buggy search behavior
+- Added clear button (X icon)
+- Shows result counter ("Showing 5 of 20 machines")
+- Focus ring effect for better UX
+- Replaced both mobile and desktop search bars with single reusable component
+
+**Warning System Improvements:**
+
+- **SAS Time Issues**: Now clickable - navigates to machine's page, scrolls, and highlights for 3 seconds
+- **Collection History Issues**: Shows actual machine names with issues (not hardcoded placeholders)
+- Enhanced API to return specific machines with history problems
+- Added `data-machine-id` attributes for DOM querying
+- Accurate, actionable warnings for users
+
+#### Edit Modal Validation
+
+**Unsaved Changes Detection:**
+
+- Prevents report updates when form has unsaved machine edits
+- Shows detailed warning with current vs saved meter values
+- Works for both editing existing machines and adding new machines
+- Implemented in both desktop (`EditCollectionModal`) and mobile (`MobileEditCollectionModal`)
+
+**Warning Example:**
+
+```
+⚠️ Unsaved meter changes detected for GMID1.
+Current form: In=150, Out=120.
+Saved values: In=100, Out=80.
+Please click "Update Machine" to save changes or cancel the edit.
+```
+
+#### LocationSingleSelect Bug Fixes
+
+**Issue**: Components passed `selectedLocation="all"` with `includeAllOption={false}`
+
+- Caused LocationSingleSelect to show placeholder instead of selected location
+- Created unreachable dead code for "all" handling
+
+**Fix**:
+
+- Changed fallback from `"all"` to `""` in both `NewCollectionModal` and `MobileCollectionModal`
+- Removed dead code that checked for "all" selection
+- Proper placeholder display when no location selected
+
+#### Documentation Updates
+
+**Frontend Collection Report Documentation:**
+
+- Updated component references (desktop vs mobile)
+- Added detailed creation and editing flows
+- Documented componentization architecture
+- Added scroll behavior patterns
+- Updated to November 3rd, 2025
+
+**Backend Collection Report Documentation:**
+
+- Added comprehensive flow diagrams (Creation, Editing, Deletion)
+- Documented Desktop vs Mobile implementation differences
+- Added "Key Takeaways" section with critical timing rules
+- Added Desktop vs Mobile comparison table
+- Added "Common Pitfalls to Avoid" section
+- Added debugging tips with code examples
+- Expanded API endpoint documentation (PATCH /api/collections, DELETE, etc.)
+- Updated to November 3rd, 2025
+
+### Currency Conversion System - Production Ready ✅
+
+**Last Updated:** November 3rd, 2025
+
+The currency conversion system provides multi-licensee financial aggregation with proper currency handling:
+
+**Features:**
+
+- Native currency detection (licensee-based or country-based)
+- USD intermediate conversion for accurate multi-currency aggregation
+- Support for 4 currencies: USD, TTD (6.75), GYD (207.98), BBD (2.0)
+- Dual currency state management (CurrencyContext + DashboardStore)
+- Currency selector only visible for "All Licensee" mode
+- Detail pages show plain numbers without currency symbols
+
+**Implemented Endpoints:**
+
+- ✅ `/api/dashboard/totals` - Multi-licensee dashboard totals
+- ✅ `/api/reports/locations` - Locations list with conversion
+- ✅ `/api/locations/search-all` - Location search with conversion
+- ✅ `/api/machines/aggregation` - Cabinets/Machines with conversion
+- ✅ `/api/analytics/locations` - Analytics with conversion
+
+**Conversion Flow:**
+
+```
+Native Currency (TTD $20)
+  → USD (÷ 6.75 = $2.96)
+  → Display Currency (× rate = final value)
+```
+
+**Country-Based Fallback:**
+
+- Unassigned locations use country to determine currency
+- Maps: Trinidad → TTD, Guyana → GYD, Barbados → BBD
+- Enables accurate conversion even without licensee assignment
+
+**Documentation:** `Documentation/currency-conversion-system.md` - Complete implementation guide with examples, testing scenarios, and troubleshooting.
+
 ## Recent System Updates (October 2025)
 
 ### Authentication & Authorization System - Complete Implementation
@@ -806,17 +960,47 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
 - **`Documentation/backend/bill-validator-calculation-system.md`**: Bill validator system
 - **`Documentation/currency-converter-system.md`**: Currency conversion system
 - **`Documentation/frontend/database-relationships.md`**: Database schema relationships
+- **`.cursor/collection-reports-guidelines.md`**: **CRITICAL** - Collection Reports system rules and debugging guide
 
 ### Best Practices
 
+- **Always check `.cursor/collection-reports-guidelines.md`** before modifying collection reports
 - **Always check `.cursor/gaming-day-offset-rules.md`** before implementing date filtering
 - **Refer to engineering rules** in `.cursor/rules/nextjs-rules.mdc` for code standards
 - **Use Movement Delta Method** for all financial calculations (sum of movement fields)
 - **Convert local time to UTC** for all database queries (Trinidad UTC-4 → UTC)
 - **Test with MongoDB scripts** to verify API accuracy before deployment
+- **Never send calculated values from frontend** - Let backend calculate `prevIn/prevOut`, `movement`, `sasMeters`
 
 ---
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** October 27th, 2025 - SMIB Management System Complete, OTA Firmware Updates, Location-Wide Operations, Real-time MQTT Control
+**Last Major Update:** November 4th, 2025 - Collection Report System Critical Fixes
+
+**November 4th, 2025 Major Work:**
+
+1. **Collection Report System Refactoring**
+   - Mobile componentization (31.5% code reduction)
+   - Desktop layout improvements (60% form width)
+   - LocationSingleSelect bug fixes
+2. **Critical Backend Fixes**
+   - Previous meters recalculation in PATCH endpoint (99.7% revenue error fix)
+   - DELETE endpoint now removes collection history
+   - Edit modal matches create modal logic
+   - isCompleted status synchronization (27 collections fixed)
+3. **Collection History Race Condition Eliminated**
+   - NEW machines included in batch update
+   - update-history endpoint creates history if doesn't exist
+   - No more false "history inconsistency" warnings
+4. **Detection Logic False Positives Fixed**
+   - Recognizes machine.collectionMeters fallback as valid
+   - No more incorrect "should be 0" errors
+   - Accurate issue detection
+5. **UI/UX Improvements**
+   - Clickable machine warnings with navigation and highlighting
+   - Remade search bar with result counter
+   - Specific machine names in collection history warnings
+   - Unsaved changes validation in edit modal
+
+**See:** `.cursor/collection-reports-guidelines.md` for complete guidelines

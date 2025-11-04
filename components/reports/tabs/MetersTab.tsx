@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import { exportData } from '@/lib/utils/exportUtils';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
@@ -54,6 +55,7 @@ export default function MetersTab() {
     customDateRange,
     displayCurrency,
   } = useDashBoardStore();
+  const licenseeName = getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
   const locationsInitialized = useRef(false);
 
   // Handle page change
@@ -547,9 +549,9 @@ export default function MetersTab() {
                   No Data Found
                 </h3>
                 <p className="text-gray-600">
-                  No meters data found for the selected locations and date
-                  range.
-                  {searchTerm && ' Try adjusting your search criteria.'}
+                  {searchTerm 
+                    ? 'No meters data found matching your search criteria.'
+                    : `No meters data found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`}
                 </p>
               </div>
             ) : (

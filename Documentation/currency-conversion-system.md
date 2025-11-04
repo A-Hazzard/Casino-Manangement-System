@@ -1,7 +1,7 @@
 # Currency Conversion System
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 2nd, 2025  
+**Last Updated:** November 3, 2025  
 **Version:** 3.0.0
 
 ## Table of Contents

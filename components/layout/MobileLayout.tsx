@@ -15,8 +15,10 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
+import { getLicenseeName } from "@/lib/utils/licenseeMapping";
 
 export default function MobileLayout(props: MobileLayoutProps) {
+  const licenseeName = getLicenseeName(props.selectedLicencee) || props.selectedLicencee || 'any licensee';
 
   const NoDataMessage = ({ message }: { message: string }) => (
     <div
@@ -178,7 +180,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
           </div>
         </div>
       ) : props.topPerformingData.length === 0 ? (
-        <NoDataMessage message="No top performing data available for the selected period" />
+        <NoDataMessage message={`No metrics found for ${props.selectedLicencee === 'all' ? 'any licensee' : licenseeName}`} />
       ) : (
         <div className="space-y-2">
           <h2 className="text-lg">Top Performing</h2>

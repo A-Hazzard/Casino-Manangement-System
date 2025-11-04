@@ -1,6 +1,7 @@
 # Auditing and Logging Standards
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** November 3, 2025
 
 ## Overview
 

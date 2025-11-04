@@ -158,28 +158,13 @@ export async function GET(
         });
       }
         } else {
-          // No previous collection exists, so prevIn/prevOut should be 0
-          if (collection.prevIn !== 0 || collection.prevOut !== 0) {
-            issues.push({
-              collectionId: collection._id.toString(),
-              machineName:
-                collection.machineName ||
-                collection.machineCustomName ||
-                "Unknown",
-              issueType: "prev_meters_mismatch",
-              details: {
-                current: {
-                  prevIn: collection.prevIn,
-                  prevOut: collection.prevOut,
-                },
-                expected: {
-                  prevIn: 0,
-                  prevOut: 0,
-                },
-                explanation: "No previous collection found, but prevIn/prevOut are not zero",
-              },
-            });
-          }
+          // CRITICAL: No previous COLLECTION found, but this doesn't mean prevIn/prevOut should be 0!
+          // When no previous collection exists, the creation logic uses machine.collectionMeters as fallback
+          // So prevIn/prevOut can have non-zero values from machine.collectionMeters
+          // We can't validate this accurately without knowing the historical machine.collectionMeters value at creation time
+          // Therefore, we should NOT flag this as an issue - it's expected behavior
+          console.warn(`ℹ️ No previous collection found for ${collection.machineId}, prevIn=${collection.prevIn}, prevOut=${collection.prevOut} (likely from machine.collectionMeters, expected behavior)`);
+          // Don't flag as issue - this is normal when using machine.collectionMeters fallback
         }
       }
 

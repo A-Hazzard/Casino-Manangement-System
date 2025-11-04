@@ -1,9 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { toast } from 'sonner';
-import axios from 'axios';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -12,16 +10,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  BarChart3,
-  Download,
-  RefreshCw,
-  ChevronUp,
-  ChevronDown,
-  Monitor,
-} from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -29,40 +17,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useReportsStore } from '@/lib/store/reportsStore';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useReportsStore } from '@/lib/store/reportsStore';
+import axios from 'axios';
+import {
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Monitor,
+  RefreshCw,
+} from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { exportData } from '@/lib/utils/exportUtils';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  handleExportMeters as handleExportMetersHelper,
   handleMachineSort as handleMachineSortHelper,
   sortEvaluationData as sortEvaluationDataHelper,
-  handleExportMeters as handleExportMetersHelper,
 } from '@/lib/helpers/reportsPage';
-import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { exportData } from '@/lib/utils/exportUtils';
+import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 
-import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
-import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
+import { GamesPerformanceChart } from '@/components/ui/GamesPerformanceChart';
+import { GamesPerformanceRevenueChart } from '@/components/ui/GamesPerformanceRevenueChart';
+import { MachineEvaluationSummary } from '@/components/ui/MachineEvaluationSummary';
+import { ManufacturerPerformanceChart } from '@/components/ui/ManufacturerPerformanceChart';
 import {
   ChartNoData,
   ChartSkeleton,
-  MachinesOverviewSkeleton,
   MachinesEvaluationSkeleton,
   MachinesOfflineSkeleton,
+  MachinesOverviewSkeleton,
 } from '@/components/ui/skeletons/ReportsSkeletons';
-import { MachineEvaluationSummary } from '@/components/ui/MachineEvaluationSummary';
-import { ManufacturerPerformanceChart } from '@/components/ui/ManufacturerPerformanceChart';
-import { GamesPerformanceChart } from '@/components/ui/GamesPerformanceChart';
-import { GamesPerformanceRevenueChart } from '@/components/ui/GamesPerformanceRevenueChart';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import type { MachineEvaluationData } from '@/lib/types';
 import type {
   MachineData,
   MachinesApiResponse,
   MachineStats,
   MachineStatsApiResponse,
 } from '@/shared/types/machines';
-import type { MachineEvaluationData } from '@/lib/types';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import { Trash2 } from 'lucide-react';
 
@@ -110,7 +111,8 @@ export default function MachinesTab() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { formatAmount, shouldShowCurrency, displayCurrency } = useCurrencyFormat();
+  const { formatAmount, shouldShowCurrency, displayCurrency } =
+    useCurrencyFormat();
   // Separate states for different purposes (streaming approach)
   const [overviewMachines, setOverviewMachines] = useState<MachineData[]>([]); // Paginated for overview
   const [allMachines, setAllMachines] = useState<MachineData[]>([]); // All machines for performance analysis
@@ -203,6 +205,8 @@ export default function MachinesTab() {
   const { selectedDateRange } = useReportsStore();
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
+  const licenseeName =
+    getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
   // Search states for different tabs
@@ -1632,7 +1636,7 @@ export default function MachinesTab() {
                                   colSpan={10}
                                   className="py-8 text-center text-gray-500"
                                 >
-                                  No machines found
+                                  {`No machines found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
                                 </td>
                               </tr>
                             )}
@@ -1822,7 +1826,7 @@ export default function MachinesTab() {
                       ))
                     ) : (
                       <div className="py-8 text-center text-gray-500">
-                        No machines found
+                        {`No machines found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
                       </div>
                     )}
                   </div>

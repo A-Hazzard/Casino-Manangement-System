@@ -1,6 +1,7 @@
 # 🎰 Casino Location Performance Color Coding Guide
 
-**Author:** Aaron Hazzard - Senior Software Engineer
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** November 3, 2025
 
 This guide explains how casino performance metrics are calculated and represented visually using color coding. The system allows quick identification of location efficiency based on key KPIs.
 

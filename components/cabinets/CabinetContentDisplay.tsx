@@ -3,25 +3,26 @@
  * Handles the main content display for machines section including table and card views
  */
 
-import { Button } from "@/components/ui/button";
-import CabinetCard from "@/components/ui/cabinets/CabinetCard";
-import CabinetCardSkeleton from "@/components/ui/cabinets/CabinetCardSkeleton";
-import { CabinetTableSkeleton } from "@/components/ui/cabinets/CabinetSkeletonLoader";
-import CabinetTable from "@/components/ui/cabinets/CabinetTable";
-import ClientOnly from "@/components/ui/common/ClientOnly";
-import { NetworkError } from "@/components/ui/errors";
-import type { CabinetSortOption } from "@/lib/hooks/data";
-import { useCabinetActionsStore } from "@/lib/store/cabinetActionsStore";
-import { getSerialNumberIdentifier } from "@/lib/utils/serialNumber";
-import type { GamingMachine as Machine } from "@/shared/types/entities";
+import { Button } from '@/components/ui/button';
+import CabinetCard from '@/components/ui/cabinets/CabinetCard';
+import CabinetCardSkeleton from '@/components/ui/cabinets/CabinetCardSkeleton';
+import { CabinetTableSkeleton } from '@/components/ui/cabinets/CabinetSkeletonLoader';
+import CabinetTable from '@/components/ui/cabinets/CabinetTable';
+import ClientOnly from '@/components/ui/common/ClientOnly';
+import { NetworkError } from '@/components/ui/errors';
+import type { CabinetSortOption } from '@/lib/hooks/data';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import { getLicenseeName } from '@/lib/utils/licenseeMapping';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import { animateCards, animateTableRows } from '@/lib/utils/ui';
+import type { GamingMachine as Machine } from '@/shared/types/entities';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
-} from "@radix-ui/react-icons";
-import { useEffect, useRef } from "react";
-import { animateTableRows, animateCards } from "@/lib/utils/ui";
+} from '@radix-ui/react-icons';
+import { useEffect, useRef } from 'react';
 
 type CabinetContentDisplayProps = {
   paginatedCabinets: Machine[];
@@ -31,7 +32,7 @@ type CabinetContentDisplayProps = {
   loading: boolean;
   error: string | null;
   sortOption: CabinetSortOption;
-  sortOrder: "asc" | "desc";
+  sortOrder: 'asc' | 'desc';
   currentPage: number;
   totalPages: number;
   onSort: (column: CabinetSortOption) => void;
@@ -40,6 +41,7 @@ type CabinetContentDisplayProps = {
   onDelete: (machine: Machine) => void;
   onRetry: () => void;
   transformCabinet: (cabinet: Machine) => Machine;
+  selectedLicencee?: string;
 };
 
 export const CabinetContentDisplay = ({
@@ -59,10 +61,13 @@ export const CabinetContentDisplay = ({
   onDelete: _onDelete,
   onRetry,
   transformCabinet,
+  selectedLicencee = 'all',
 }: CabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
+  const licenseeName =
+    getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
   // Animate when filtered data changes (filtering, sorting, pagination)
   useEffect(() => {
@@ -80,15 +85,15 @@ export const CabinetContentDisplay = ({
 
   // No data message component
   const NoDataMessage = ({ message }: { message: string }) => (
-    <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-md">
-      <div className="text-gray-500 text-lg mb-2">No Data Available</div>
-      <div className="text-gray-400 text-sm text-center">{message}</div>
+    <div className="flex flex-col items-center justify-center rounded-lg bg-white p-8 shadow-md">
+      <div className="mb-2 text-lg text-gray-500">No Data Available</div>
+      <div className="text-center text-sm text-gray-400">{message}</div>
     </div>
   );
 
   // Handle edit action with proper machine lookup
   const handleEdit = (machineProps: Machine) => {
-    const machine = paginatedCabinets.find((c) => c._id === machineProps._id);
+    const machine = paginatedCabinets.find(c => c._id === machineProps._id);
     if (machine) {
       openEditModal(machine);
     }
@@ -96,7 +101,7 @@ export const CabinetContentDisplay = ({
 
   // Handle delete action with proper machine lookup
   const handleDelete = (machineProps: Machine) => {
-    const machine = paginatedCabinets.find((c) => c._id === machineProps._id);
+    const machine = paginatedCabinets.find(c => c._id === machineProps._id);
     if (machine) {
       openDeleteModal(machine);
     }
@@ -156,14 +161,14 @@ export const CabinetContentDisplay = ({
       loading,
       error,
     });
-    
+
     return (
       <div className="mt-6">
         <NoDataMessage
           message={
             filteredCabinets.length === 0 && allCabinets.length > 0
-              ? "No machines match your search criteria."
-              : `No machines available for the selected filters. Total machines in DB: ${allCabinets.length}`
+              ? 'No machines match your search criteria.'
+              : `No machines found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`
           }
         />
         {allCabinets.length === 0 && (
@@ -196,22 +201,22 @@ export const CabinetContentDisplay = ({
 
       {/* Mobile Card View */}
       <div
-        className="block md:hidden mt-4 px-1 sm:px-2 space-y-3 sm:space-y-4 w-full max-w-full"
+        className="mt-4 block w-full max-w-full space-y-3 px-1 sm:space-y-4 sm:px-2 md:hidden"
         ref={cardsRef}
       >
         <ClientOnly fallback={<CabinetTableSkeleton />}>
-          {paginatedCabinets.map((machine) => (
+          {paginatedCabinets.map(machine => (
             <CabinetCard
               key={machine._id}
               _id={machine._id}
-              assetNumber={machine.assetNumber || ""}
-              game={machine.game || ""}
+              assetNumber={machine.assetNumber || ''}
+              game={machine.game || ''}
               smbId={
-                machine.relayId || machine.smbId || machine.smibBoard || ""
+                machine.relayId || machine.smbId || machine.smibBoard || ''
               }
               serialNumber={getSerialNumberIdentifier(machine)}
-              locationId={machine.locationId || ""}
-              locationName={machine.locationName || ""}
+              locationId={machine.locationId || ''}
+              locationName={machine.locationName || ''}
               moneyIn={machine.moneyIn || 0}
               moneyOut={machine.moneyOut || 0}
               cancelledCredits={machine.moneyOut || 0}
@@ -220,11 +225,11 @@ export const CabinetContentDisplay = ({
               lastOnline={
                 machine.lastOnline instanceof Date
                   ? machine.lastOnline.toISOString()
-                  : typeof machine.lastOnline === "string"
-                  ? machine.lastOnline
-                  : undefined
+                  : typeof machine.lastOnline === 'string'
+                    ? machine.lastOnline
+                    : undefined
               }
-              installedGame={machine.installedGame || machine.game || ""}
+              installedGame={machine.installedGame || machine.game || ''}
               onEdit={() => handleEdit(machine)}
               onDelete={() => handleDelete(machine)}
             />
@@ -240,7 +245,7 @@ export const CabinetContentDisplay = ({
             size="icon"
             onClick={() => onPageChange(0)}
             disabled={currentPage === 0}
-            className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+            className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
           >
             <DoubleArrowLeftIcon className="h-4 w-4" />
           </Button>
@@ -249,21 +254,21 @@ export const CabinetContentDisplay = ({
             size="icon"
             onClick={() => onPageChange(Math.max(0, currentPage - 1))}
             disabled={currentPage === 0}
-            className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+            className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
           >
             <ChevronLeftIcon className="h-4 w-4" />
           </Button>
-          <span className="text-gray-700 text-sm">Page</span>
+          <span className="text-sm text-gray-700">Page</span>
           <input
             type="number"
             min={1}
             max={totalPages}
             value={currentPage + 1}
             onChange={handlePageNumberChange}
-            className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm text-gray-700 focus:ring-buttonActive focus:border-buttonActive"
+            className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
             aria-label="Page number"
           />
-          <span className="text-gray-700 text-sm">of {totalPages}</span>
+          <span className="text-sm text-gray-700">of {totalPages}</span>
           <Button
             variant="outline"
             size="icon"
@@ -271,7 +276,7 @@ export const CabinetContentDisplay = ({
               onPageChange(Math.min(totalPages - 1, currentPage + 1))
             }
             disabled={currentPage === totalPages - 1}
-            className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+            className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
           >
             <ChevronRightIcon className="h-4 w-4" />
           </Button>
@@ -280,7 +285,7 @@ export const CabinetContentDisplay = ({
             size="icon"
             onClick={() => onPageChange(totalPages - 1)}
             disabled={currentPage === totalPages - 1}
-            className="bg-white border-button text-button hover:bg-button/10 disabled:opacity-50 disabled:text-gray-400 disabled:border-gray-300 p-2"
+            className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
           >
             <DoubleArrowRightIcon className="h-4 w-4" />
           </Button>

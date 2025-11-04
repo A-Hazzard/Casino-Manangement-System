@@ -38,7 +38,7 @@
 - 🔄 **URL Redirects & SEO Optimization** ([docs](Documentation/frontend/redirect-pages.md))
 - 📑 **Pages Overview & Architecture** ([docs](Documentation/frontend/pages-overview.md))
 - 🕐 **Timezone Management** ([docs](Documentation/timezone.md)) - **Trinidad (UTC-4) timezone support**
-- ⏰ **Gaming Day Offset System** ([docs](.cursor/gaming-day-offset-rules.md)) - **8 AM gaming day start time**
+- ⏰ **Gaming Day Offset System** ([docs](.cursor/gaming-day-offset-system.md)) - **8 AM gaming day start time**
 
 ## 🛠️ Tech Stack
 
@@ -349,7 +349,7 @@ Evolution1 CMS/
 - **Timezone:** Trinidad timezone handling and date conversion ([timezone.md](Documentation/timezone.md))
 - **Engineering Guidelines:** Development standards and best practices ([ENGINEERING_GUIDELINES.md](Documentation/ENGINEERING_GUIDELINES.md))
 - **Financial Metrics:** Financial calculations and metrics guide ([financial-metrics-guide.md](Documentation/financial-metrics-guide.md))
-- **Gaming Day Offset:** Complete gaming day offset implementation guide ([gaming-day-offset-rules.md](.cursor/gaming-day-offset-rules.md))
+- **Gaming Day Offset:** Complete gaming day offset system guide ([gaming-day-offset-system.md](.cursor/gaming-day-offset-system.md))
 - **SAS GROSS Calculation:** SAS GROSS calculation system and verification ([sas-gross-calculation-system.md](Documentation/backend/sas-gross-calculation-system.md))
 
 See [pages-overview.md](Documentation/frontend/pages-overview.md) for a full list of pages and documentation status.
@@ -380,4 +380,4 @@ Evolution1 CMS enforces strict engineering discipline in type safety, code style
 
 ---
 
-**Last Updated:** October 10th, 2025
+**Last Updated:** November 4th, 2025

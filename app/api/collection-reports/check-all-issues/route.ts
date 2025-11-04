@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { Collections } from "../../lib/models/collections";
-import { CollectionReport } from "../../lib/models/collectionReport";
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
+import { CollectionReport } from '../../lib/models/collectionReport';
+import { Collections } from '../../lib/models/collections';
 
 /**
  * GET /api/collection-reports/check-all-issues
@@ -13,18 +13,23 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(request.url);
-    const reportId = searchParams.get("reportId");
-    const machineId = searchParams.get("machineId");
+    const reportId = searchParams.get('reportId');
+    const machineId = searchParams.get('machineId');
 
-    console.warn(`📋 CHECK-ALL-ISSUES API CALLED: reportId=${reportId}, machineId=${machineId}`);
+    console.warn(
+      `📋 CHECK-ALL-ISSUES API CALLED: reportId=${reportId}, machineId=${machineId}`
+    );
     const startTime = Date.now();
 
     // Require either reportId or machineId - no more global scans
     if (!reportId && !machineId) {
-      return NextResponse.json({
-        success: false,
-        error: "Either reportId or machineId parameter is required",
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Either reportId or machineId parameter is required',
+        },
+        { status: 400 }
+      );
     }
 
     // Build filter for reports
@@ -34,7 +39,9 @@ export async function GET(request: NextRequest) {
       console.warn(`🎯 Single report mode: checking ONLY report ${reportId}`);
     } else if (machineId) {
       // For machine-specific checks, we'll find reports that contain this machine
-      console.warn(`🎯 Machine-specific mode: checking reports for machine ${machineId}`);
+      console.warn(
+        `🎯 Machine-specific mode: checking reports for machine ${machineId}`
+      );
     }
 
     // Get reports based on the filter
@@ -42,11 +49,15 @@ export async function GET(request: NextRequest) {
     if (machineId) {
       // For machine-specific checks, find reports that contain this machine
       const collections = await Collections.find({ machineId }).lean();
-      const locationReportIds = [...new Set(collections.map(c => c.locationReportId))];
-      reports = await CollectionReport.find({ 
-        locationReportId: { $in: locationReportIds } 
+      const locationReportIds = [
+        ...new Set(collections.map(c => c.locationReportId)),
+      ];
+      reports = await CollectionReport.find({
+        locationReportId: { $in: locationReportIds },
       }).sort({ timestamp: -1 });
-      console.warn(`📊 Found ${reports.length} reports containing machine ${machineId}`);
+      console.warn(
+        `📊 Found ${reports.length} reports containing machine ${machineId}`
+      );
     } else {
       reports = await CollectionReport.find(reportFilter).sort({
         timestamp: -1,
@@ -56,16 +67,16 @@ export async function GET(request: NextRequest) {
 
     const reportIssues: Record<
       string,
-      { issueCount: number; hasIssues: boolean }
+      { issueCount: number; hasIssues: boolean; machines: string[] }
     > = {};
 
     // Check each report for issues
     for (const report of reports) {
       // For machine-specific checks, only get collections for this specific machine
-      const collectionFilter = machineId 
+      const collectionFilter = machineId
         ? { locationReportId: report.locationReportId, machineId: machineId }
         : { locationReportId: report.locationReportId };
-        
+
       const collections = await Collections.find(collectionFilter);
 
       let issueCount = 0;
@@ -73,68 +84,87 @@ export async function GET(request: NextRequest) {
       // Check each collection for issues
       for (const collection of collections) {
         // 1. Check prevIn/prevOut accuracy using ACTUAL historical data
-        // Instead of relying on current machine state (which might be wrong), 
+        // Instead of relying on current machine state (which might be wrong),
         // check against actual previous collections in the database
-        const { Machine } = await import("@/app/api/lib/models/machines");
+        const { Machine } = await import('@/app/api/lib/models/machines');
         const machine = await Machine.findById(collection.machineId).lean();
-        
+
         if (machine) {
           const machineData = machine as Record<string, unknown>;
-          const currentCollectionMeters = (machineData.collectionMeters as Record<string, unknown>) || {
-            metersIn: 0,
-            metersOut: 0,
-          };
+          const currentCollectionMeters =
+            (machineData.collectionMeters as Record<string, unknown>) || {
+              metersIn: 0,
+              metersOut: 0,
+            };
 
           // Check if this collection should have previous values (not the first collection)
           const actualPreviousCollection = await Collections.findOne({
-          machineId: collection.machineId,
-          $and: [
-            {
-              $or: [
-                  { collectionTime: { $lt: collection.collectionTime || collection.timestamp } },
-                  { timestamp: { $lt: collection.collectionTime || collection.timestamp } },
-              ],
-            },
-            {
-              $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-            },
+            machineId: collection.machineId,
+            $and: [
+              {
+                $or: [
+                  {
+                    collectionTime: {
+                      $lt: collection.collectionTime || collection.timestamp,
+                    },
+                  },
+                  {
+                    timestamp: {
+                      $lt: collection.collectionTime || collection.timestamp,
+                    },
+                  },
+                ],
+              },
+              {
+                $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+              },
               // Only look for completed collections (from finalized reports)
               { isCompleted: true },
-          ],
-        })
-          .sort({ collectionTime: -1, timestamp: -1 })
-          .lean();
+            ],
+          })
+            .sort({ collectionTime: -1, timestamp: -1 })
+            .lean();
 
           if (actualPreviousCollection) {
-            // There IS a previous collection, so prevIn/prevOut should NOT be 0
+            // There IS a previous collection, so prevIn/prevOut should match it
             const expectedPrevIn = actualPreviousCollection.metersIn || 0;
             const expectedPrevOut = actualPreviousCollection.metersOut || 0;
-            
-            // Flag as issue if prevIn/prevOut are 0 when they should have actual values
+
+            // Flag as issue if prevIn/prevOut don't match the actual previous collection
             // Allow for minor precision differences (within 0.1)
             const prevInDiff = Math.abs(collection.prevIn - expectedPrevIn);
             const prevOutDiff = Math.abs(collection.prevOut - expectedPrevOut);
-            
+
             if (
-              (prevInDiff > 0.1) ||
-              (prevOutDiff > 0.1) ||
-              (collection.prevIn === 0 && collection.prevOut === 0 && expectedPrevIn > 0) // Special case: both 0 when they should have values
-          ) {
-            issueCount++;
-          }
-        } else {
-            // No previous collection exists, so prevIn/prevOut should be 0
-          if (collection.prevIn !== 0 || collection.prevOut !== 0) {
-            issueCount++;
-          }
+              prevInDiff > 0.1 ||
+              prevOutDiff > 0.1 ||
+              (collection.prevIn === 0 &&
+                collection.prevOut === 0 &&
+                expectedPrevIn > 0) // Special case: both 0 when they should have values
+            ) {
+              issueCount++;
+            }
+          } else {
+            // CRITICAL: No previous COLLECTION found, but this doesn't mean prevIn/prevOut should be 0!
+            // The creation logic uses machine.collectionMeters as fallback when no previous collection exists
+            // So we need to check if prevIn/prevOut match machine.collectionMeters (at the time of creation)
+            // We can't validate this accurately without knowing the historical machine.collectionMeters value
+            // So we should NOT flag this as an issue - it's expected behavior!
+            console.warn(`ℹ️ No previous collection found for ${collection.machineId}, prevIn/prevOut likely from machine.collectionMeters (expected behavior)`);
+            // Don't flag as issue - this is normal when using machine.collectionMeters fallback
           }
 
           // 3. Check machine collectionMeters accuracy
           // Check if machine's current collectionMeters match the collection's current meters
-          const machineMetersIn = (currentCollectionMeters.metersIn as number) || 0;
-          const machineMetersOut = (currentCollectionMeters.metersOut as number) || 0;
-          
-          if (machineMetersIn !== collection.metersIn || machineMetersOut !== collection.metersOut) {
+          const machineMetersIn =
+            (currentCollectionMeters.metersIn as number) || 0;
+          const machineMetersOut =
+            (currentCollectionMeters.metersOut as number) || 0;
+
+          if (
+            machineMetersIn !== collection.metersIn ||
+            machineMetersOut !== collection.metersOut
+          ) {
             issueCount++;
           }
         } else {
@@ -189,7 +219,7 @@ export async function GET(request: NextRequest) {
           const reportExists = await CollectionReport.findOne({
             locationReportId: collection.locationReportId,
           }).lean();
-          
+
           if (!reportExists) {
             // Collection has a locationReportId but the report doesn't exist
             issueCount++;
@@ -219,38 +249,47 @@ export async function GET(request: NextRequest) {
 
       // Initialize report issues entry BEFORE machine history check
       if (!reportIssues[report._id.toString()]) {
-      reportIssues[report._id.toString()] = {
+        reportIssues[report._id.toString()] = {
           issueCount: issueCount,
-        hasIssues: issueCount > 0,
-      };
-    }
+          hasIssues: issueCount > 0,
+          machines: [],
+        };
+      }
 
       // Check machine history issues for machines in this report
       // For machine-specific checks, only check the specific machine
-      const machineIds = machineId 
-        ? [machineId] 
-        : [...new Set(collections.map((c) => c.machineId))];
-        
+      const machineIds = machineId
+        ? [machineId]
+        : [...new Set(collections.map(c => c.machineId))];
+
       for (const machineIdToCheck of machineIds) {
-        const { Machine } = await import("@/app/api/lib/models/machines");
-        
+        const { Machine } = await import('@/app/api/lib/models/machines');
+
         // Try to find the machine using the existing model
         let machine = await Machine.findById(machineIdToCheck).lean();
-        
+
         // If not found, try findOne with _id
         if (!machine) {
           machine = await Machine.findOne({ _id: machineIdToCheck }).lean();
         }
-        
+
         if (machine) {
           const machineData = machine as Record<string, unknown>;
-          const history = (machineData.collectionMetersHistory as Record<string, unknown>[]) || [];
+          const history =
+            (machineData.collectionMetersHistory as Record<
+              string,
+              unknown
+            >[]) || [];
           let hasMachineHistoryIssues = false;
 
           // Check for orphaned entries (referencing non-existent collections or reports)
-          const { Collections } = await import("@/app/api/lib/models/collections");
-          const { CollectionReport } = await import("@/app/api/lib/models/collectionReport");
-          
+          const { Collections } = await import(
+            '@/app/api/lib/models/collections'
+          );
+          const { CollectionReport } = await import(
+            '@/app/api/lib/models/collectionReport'
+          );
+
           for (let i = 0; i < history.length; i++) {
             const entry = history[i];
             if (entry.locationReportId) {
@@ -258,19 +297,22 @@ export async function GET(request: NextRequest) {
               const collectionsExist = await Collections.findOne({
                 locationReportId: entry.locationReportId,
               }).lean();
-              
+
               // Check if the collection report itself exists
               const reportExists = await CollectionReport.findOne({
                 locationReportId: entry.locationReportId,
               }).lean();
-              
+
               if (!collectionsExist || !reportExists) {
-                console.warn(`🚨 Orphaned history entry detected for machine ${machineData.serialNumber || machineIdToCheck}:`, {
-                  locationReportId: entry.locationReportId,
-                  timestamp: entry.timestamp,
-                  hasCollections: !!collectionsExist,
-                  hasReport: !!reportExists
-                });
+                console.warn(
+                  `🚨 Orphaned history entry detected for machine ${machineData.serialNumber || machineIdToCheck}:`,
+                  {
+                    locationReportId: entry.locationReportId,
+                    timestamp: entry.timestamp,
+                    hasCollections: !!collectionsExist,
+                    hasReport: !!reportExists,
+                  }
+                );
                 hasMachineHistoryIssues = true;
               }
             }
@@ -282,10 +324,12 @@ export async function GET(request: NextRequest) {
             const entry = history[i];
             if (entry.timestamp) {
               // Get the date without time
-              const date = new Date(entry.timestamp as string).toISOString().split('T')[0];
+              const date = new Date(entry.timestamp as string)
+                .toISOString()
+                .split('T')[0];
               const count = dateMap.get(date) || 0;
               dateMap.set(date, count + 1);
-              
+
               if (count + 1 > 1) {
                 hasMachineHistoryIssues = true;
               }
@@ -295,6 +339,19 @@ export async function GET(request: NextRequest) {
           if (hasMachineHistoryIssues) {
             reportIssues[report._id.toString()].issueCount++;
             reportIssues[report._id.toString()].hasIssues = true;
+            // Add machine to the machines array
+            const machineName = String(
+              machineData.serialNumber ||
+                (machineData.custom as Record<string, unknown>)?.name ||
+                machineIdToCheck
+            );
+            if (
+              !reportIssues[report._id.toString()].machines.includes(
+                machineName
+              )
+            ) {
+              reportIssues[report._id.toString()].machines.push(machineName);
+            }
           }
         }
       }
@@ -344,9 +401,9 @@ export async function GET(request: NextRequest) {
       reportIssues,
     });
   } catch (error) {
-    console.error("Error checking report issues:", error);
+    console.error('Error checking report issues:', error);
     return NextResponse.json(
-      { error: "Failed to check report issues" },
+      { error: 'Failed to check report issues' },
       { status: 500 }
     );
   }

@@ -488,13 +488,12 @@ async function fixPrevMetersIssues(
         needsUpdate = true;
       }
       } else {
-        // No previous collection exists, so prevIn/prevOut should be 0
-        console.warn(`   🔍 No previous collection found for collection ${collection._id}, should be 0`);
-        if (collection.prevIn !== 0 || collection.prevOut !== 0) {
-          newPrevIn = 0;
-          newPrevOut = 0;
-          needsUpdate = true;
-        }
+        // CRITICAL: No previous COLLECTION found, but this doesn't mean prevIn/prevOut should be 0!
+        // When no previous collection exists, the creation logic uses machine.collectionMeters as fallback
+        // So prevIn/prevOut can have non-zero values from machine.collectionMeters
+        // This is EXPECTED BEHAVIOR and should NOT be "fixed"
+        console.warn(`   ℹ️ No previous collection found for collection ${collection._id}, prevIn=${collection.prevIn}, prevOut=${collection.prevOut} (from machine.collectionMeters, expected behavior)`);
+        // Don't "fix" this - it's correct behavior
       }
 
       if (needsUpdate) {

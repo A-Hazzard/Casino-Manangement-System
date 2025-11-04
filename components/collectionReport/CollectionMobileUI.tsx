@@ -4,6 +4,7 @@ import CollectionReportCardSkeleton from '@/components/collectionReport/Collecti
 import CollectionReportFilters from '@/components/collectionReport/CollectionReportFilters';
 import PaginationControls from '@/components/ui/PaginationControls';
 import type { CollectionMobileUIProps } from '@/lib/types/componentProps';
+import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 
 const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   loading,
@@ -29,7 +30,10 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   isSearching,
   onEdit,
   onDelete,
+  selectedLicencee,
 }) => {
+  const licenseeName = getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
+  
   return (
     <div className="mb-4 w-full space-y-4 rounded-lg bg-white p-4 shadow-md lg:hidden">
       {/* Filter Container - positioned at the top */}
@@ -65,7 +69,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
         ) : filteredReports.length === 0 ? (
           <div className="animate-in fade-in-0 slide-in-from-bottom-2">
             <p className="py-10 text-center text-gray-500">
-              No collection reports found.
+              {selectedLicencee ? `No collection reports found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.` : 'No collection reports found.'}
             </p>
           </div>
         ) : (

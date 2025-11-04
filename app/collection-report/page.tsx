@@ -1,107 +1,106 @@
-"use client";
+'use client';
 
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
+import { useSearchParams } from 'next/navigation';
+import {
   Suspense,
-} from "react";
-import { useSearchParams } from "next/navigation";
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 // Import Framer Motion with error handling
-import dynamic from "next/dynamic";
+import { useAsyncError } from '@/components/ui/ErrorBoundary';
+import axios from 'axios';
+import dynamic from 'next/dynamic';
+import { toast } from 'sonner';
 
 // Dynamically import Framer Motion to avoid SSR issues
 const MotionDiv = dynamic(
-  () => import("framer-motion").then((mod) => ({ default: mod.motion.div })),
+  () => import('framer-motion').then(mod => ({ default: mod.motion.div })),
   {
     ssr: false,
   }
 );
 
 const AnimatePresence = dynamic(
-  () =>
-    import("framer-motion").then((mod) => ({ default: mod.AnimatePresence })),
+  () => import('framer-motion').then(mod => ({ default: mod.AnimatePresence })),
   {
     ssr: false,
   }
 );
-import axios from "axios";
-import { toast } from "sonner";
-import { useAsyncError } from "@/components/ui/ErrorBoundary";
 
-import PageLayout from "@/components/layout/PageLayout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import PageLayout from '@/components/layout/PageLayout';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 // GSAP will be loaded dynamically in useEffect
 
-import { fetchAllGamingLocations } from "@/lib/helpers/locations";
-import { getLocationsWithMachines } from "@/lib/helpers/collectionReport";
-import type { LocationSelectItem } from "@/lib/types/location";
-import type { SchedulerTableRow } from "@/lib/types/componentProps";
-import type { CollectionReportLocationWithMachines } from "@/lib/types/api";
 import {
-  fetchMonthlyReportSummaryAndDetails,
   fetchAllLocationNames,
   fetchCollectionReportsByLicencee,
-} from "@/lib/helpers/collectionReport";
-import type {
-  MonthlyReportSummary,
-  MonthlyReportDetailsRow,
-  CollectionReportRow,
-} from "@/lib/types/componentProps";
-import { DateRange as RDPDateRange } from "react-day-picker";
+  fetchMonthlyReportSummaryAndDetails,
+  getLocationsWithMachines,
+} from '@/lib/helpers/collectionReport';
 import {
-  animatePagination,
+  handlePaginationWithAnimation,
+  handleTabChange,
+  resetCollectorFilters,
+  resetSchedulerFilters,
+  syncStateWithURL,
+} from '@/lib/helpers/collectionReportPage';
+import {
+  animateCards,
   animateContentTransition,
-  filterCollectionReports,
+  animatePagination,
+  animateTableRows,
   calculatePagination,
   fetchAndFormatSchedulers,
+  filterCollectionReports,
   setLastMonthDateRange,
-  animateTableRows,
-  animateCards,
-} from "@/lib/helpers/collectionReportPageV2";
-import { fetchAndFormatCollectorSchedules } from "@/lib/helpers/collectorSchedules";
-import {
-  handleTabChange,
-  syncStateWithURL,
-  handlePaginationWithAnimation,
-  resetSchedulerFilters,
-  resetCollectorFilters,
-} from "@/lib/helpers/collectionReportPage";
+} from '@/lib/helpers/collectionReportPageV2';
+import { fetchAndFormatCollectorSchedules } from '@/lib/helpers/collectorSchedules';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
+import type {
+  CollectionReportRow,
+  MonthlyReportDetailsRow,
+  MonthlyReportSummary,
+  SchedulerTableRow,
+} from '@/lib/types/componentProps';
+import type { LocationSelectItem } from '@/lib/types/location';
+import { DateRange as RDPDateRange } from 'react-day-picker';
 
-import CollectionMobileUI from "@/components/collectionReport/CollectionMobileUI";
-import CollectionDesktopUI from "@/components/collectionReport/CollectionDesktopUI";
-import MonthlyMobileUI from "@/components/collectionReport/MonthlyMobileUI";
-import MonthlyDesktopUI from "@/components/collectionReport/MonthlyDesktopUI";
-import ManagerMobileUI from "@/components/collectionReport/ManagerMobileUI";
-import ManagerDesktopUI from "@/components/collectionReport/ManagerDesktopUI";
-import CollectorMobileUI from "@/components/collectionReport/CollectorMobileUI";
-import CollectorDesktopUI from "@/components/collectionReport/CollectorDesktopUI";
-import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
-import NewCollectionModal from "@/components/collectionReport/NewCollectionModal";
-import EditCollectionModal from "@/components/collectionReport/EditCollectionModal";
-import MobileCollectionModal from "@/components/collectionReport/mobile/MobileCollectionModal";
-import MobileEditCollectionModal from "@/components/collectionReport/mobile/MobileEditCollectionModal";
-import ErrorBoundary from "@/components/ui/errors/ErrorBoundary";
-import { ConfirmationDialog } from "@/components/ui/ConfirmationDialog";
-import { CollectionReportPageSkeleton } from "@/components/ui/skeletons/CollectionReportPageSkeleton";
+import CollectionDesktopUI from '@/components/collectionReport/CollectionDesktopUI';
+import CollectionMobileUI from '@/components/collectionReport/CollectionMobileUI';
+import CollectorDesktopUI from '@/components/collectionReport/CollectorDesktopUI';
+import CollectorMobileUI from '@/components/collectionReport/CollectorMobileUI';
+import EditCollectionModal from '@/components/collectionReport/EditCollectionModal';
+import ManagerDesktopUI from '@/components/collectionReport/ManagerDesktopUI';
+import ManagerMobileUI from '@/components/collectionReport/ManagerMobileUI';
+import MobileCollectionModal from '@/components/collectionReport/mobile/MobileCollectionModal';
+import MobileEditCollectionModal from '@/components/collectionReport/mobile/MobileEditCollectionModal';
+import MonthlyDesktopUI from '@/components/collectionReport/MonthlyDesktopUI';
+import MonthlyMobileUI from '@/components/collectionReport/MonthlyMobileUI';
+import NewCollectionModal from '@/components/collectionReport/NewCollectionModal';
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
+import ErrorBoundary from '@/components/ui/errors/ErrorBoundary';
+import { CollectionReportPageSkeleton } from '@/components/ui/skeletons/CollectionReportPageSkeleton';
 
-import type { CollectorSchedule } from "@/lib/types/components";
+import type { CollectorSchedule } from '@/lib/types/components';
 
 // Icons
-import CollectionNavigation from "@/components/collectionReport/CollectionNavigation";
-import { COLLECTION_TABS_CONFIG } from "@/lib/constants/collection";
-import type { CollectionView } from "@/lib/types/collection";
-import { useCollectionNavigation } from "@/lib/hooks/navigation";
-import { useUrlProtection } from "@/lib/hooks/useUrlProtection";
-import Image from "next/image";
-import { IMAGES } from "@/lib/constants/images";
-import "./animations.css";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, PlusCircle } from "lucide-react";
+import CollectionNavigation from '@/components/collectionReport/CollectionNavigation';
+import { Button } from '@/components/ui/button';
+import { COLLECTION_TABS_CONFIG } from '@/lib/constants/collection';
+import { IMAGES } from '@/lib/constants/images';
+import { useCollectionNavigation } from '@/lib/hooks/navigation';
+import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
+import type { CollectionView } from '@/lib/types/collection';
+import { PlusCircle, RefreshCw } from 'lucide-react';
+import Image from 'next/image';
+import './animations.css';
 /**
  * Main page component for the Collection Report.
  * Handles tab switching, data fetching, filtering, and pagination for:
@@ -112,14 +111,14 @@ import { RefreshCw, PlusCircle } from "lucide-react";
  */
 const mapTimePeriodForAPI = (frontendTimePeriod: string): string => {
   switch (frontendTimePeriod) {
-    case "last7days":
-      return "7d";
-    case "last30days":
-      return "30d";
-    case "Today":
-    case "Yesterday":
-    case "All Time":
-    case "Custom":
+    case 'last7days':
+      return '7d';
+    case 'last30days':
+      return '30d';
+    case 'Today':
+    case 'Yesterday':
+    case 'All Time':
+    case 'Custom':
     default:
       return frontendTimePeriod;
   }
@@ -144,16 +143,16 @@ function CollectionReportContent() {
   } = useDashBoardStore();
 
   // State for dynamically loaded GSAP
-  const [gsap, setGsap] = useState<typeof import("gsap").gsap | null>(null);
+  const [gsap, setGsap] = useState<typeof import('gsap').gsap | null>(null);
 
   // Load GSAP dynamically
   useEffect(() => {
-    import("gsap")
-      .then((module) => {
+    import('gsap')
+      .then(module => {
         setGsap(module.gsap);
       })
-      .catch((error) => {
-        console.error("Failed to load GSAP:", error);
+      .catch(error => {
+        console.error('Failed to load GSAP:', error);
       });
   }, []);
 
@@ -162,20 +161,20 @@ function CollectionReportContent() {
 
   // Initialize activeTab from URL on first load
   const [activeTab, setActiveTab] = useState<CollectionView>(() => {
-    const section = searchParams?.get("section");
-    if (section === "monthly") return "monthly";
-    if (section === "manager") return "manager";
-    if (section === "collector") return "collector";
-    if (section === "collection") return "collection";
-    return "collection"; // default
+    const section = searchParams?.get('section');
+    if (section === 'monthly') return 'monthly';
+    if (section === 'manager') return 'manager';
+    if (section === 'collector') return 'collector';
+    if (section === 'collection') return 'collection';
+    return 'collection'; // default
   });
 
   // URL protection for collection report tabs
   useUrlProtection({
-    page: "collection-report",
-    allowedTabs: ["collection", "monthly", "manager", "collector"],
-    defaultTab: "collection",
-    redirectPath: "/unauthorized",
+    page: 'collection-report',
+    allowedTabs: ['collection', 'monthly', 'manager', 'collector'],
+    defaultTab: 'collection',
+    redirectPath: '/unauthorized',
   });
 
   // Update URL when tab changes
@@ -205,16 +204,16 @@ function CollectionReportContent() {
   const itemsPerPage = 10;
 
   // Sorting state
-  const [sortField, setSortField] = useState<keyof CollectionReportRow>("time");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [sortField, setSortField] = useState<keyof CollectionReportRow>('time');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Sort handler
   const handleSort = (field: keyof CollectionReportRow) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortDirection("desc");
+      setSortDirection('desc');
     }
     setDesktopPage(1); // Reset to first page when sorting
     setMobilePage(1);
@@ -280,8 +279,8 @@ function CollectionReportContent() {
 
   // Add resize listener
   useEffect(() => {
-    window.addEventListener("resize", handleModalResize);
-    return () => window.removeEventListener("resize", handleModalResize);
+    window.addEventListener('resize', handleModalResize);
+    return () => window.removeEventListener('resize', handleModalResize);
   }, [handleModalResize]);
 
   // CRITICAL: Auto-reopen edit modal for reports with isEditing: true
@@ -290,12 +289,12 @@ function CollectionReportContent() {
     const checkForUnfinishedEdits = async () => {
       try {
         // Query for most recent report with isEditing: true
-        const response = await axios.get("/api/collection-reports", {
+        const response = await axios.get('/api/collection-reports', {
           params: {
             isEditing: true,
             limit: 1,
-            sortBy: "updatedAt",
-            sortOrder: "desc",
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
           },
         });
 
@@ -309,9 +308,9 @@ function CollectionReportContent() {
           setEditingReportId(unfinishedReport._id);
 
           // Show toast notification
-          toast.info("Resuming unfinished edit...", {
+          toast.info('Resuming unfinished edit...', {
             duration: 3000,
-            position: "top-right",
+            position: 'top-right',
           });
 
           // Open the appropriate modal based on screen size
@@ -322,7 +321,7 @@ function CollectionReportContent() {
           }
         }
       } catch (error) {
-        console.error("Error checking for unfinished edits:", error);
+        console.error('Error checking for unfinished edits:', error);
         // Don't show error to user - this is a background check
       }
     };
@@ -334,18 +333,18 @@ function CollectionReportContent() {
   const [locationsWithMachines, setLocationsWithMachines] = useState<
     CollectionReportLocationWithMachines[]
   >([]);
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState<string>('');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
   // Manager Schedule state
   const [schedulers, setSchedulers] = useState<SchedulerTableRow[]>([]);
   const [loadingSchedulers, setLoadingSchedulers] = useState(true);
   const [selectedSchedulerLocation, setSelectedSchedulerLocation] =
-    useState("all");
-  const [selectedCollector, setSelectedCollector] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+    useState('all');
+  const [selectedCollector, setSelectedCollector] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [collectors, setCollectors] = useState<string[]>([]);
 
   // Collector Schedule state
@@ -355,23 +354,23 @@ function CollectionReportContent() {
   const [loadingCollectorSchedules, setLoadingCollectorSchedules] =
     useState(true);
   const [selectedCollectorLocation, setSelectedCollectorLocation] =
-    useState("all");
-  const [selectedCollectorFilter, setSelectedCollectorFilter] = useState("all");
-  const [selectedCollectorStatus, setSelectedCollectorStatus] = useState("all");
+    useState('all');
+  const [selectedCollectorFilter, setSelectedCollectorFilter] = useState('all');
+  const [selectedCollectorStatus, setSelectedCollectorStatus] = useState('all');
   const [collectorsList, setCollectorsList] = useState<string[]>([]);
 
   // Monthly Report state
   const [monthlySummary, setMonthlySummary] = useState<MonthlyReportSummary>({
-    drop: "-",
-    cancelledCredits: "-",
-    gross: "-",
-    sasGross: "-",
+    drop: '-',
+    cancelledCredits: '-',
+    gross: '-',
+    sasGross: '-',
   });
   const [monthlyDetails, setMonthlyDetails] = useState<
     MonthlyReportDetailsRow[]
   >([]);
   const [monthlyLoading, setMonthlyLoading] = useState(true);
-  const [monthlyLocation, setMonthlyLocation] = useState<string>("all");
+  const [monthlyLocation, setMonthlyLocation] = useState<string>('all');
   const now = new Date();
   const [monthlyDateRange, setMonthlyDateRange] = useState<RDPDateRange>({
     from: new Date(now.getFullYear(), now.getMonth(), 1),
@@ -387,41 +386,50 @@ function CollectionReportContent() {
 
   // Fetch all gaming locations for filter dropdown
   useEffect(() => {
-    fetchAllGamingLocations(selectedLicencee).then((locs) => {
+    fetchAllGamingLocations(selectedLicencee).then(locs => {
       console.warn(
-        "[LOCATIONS FETCH] Fetched locations for licensee:",
+        '[LOCATIONS FETCH] Fetched locations for licensee:',
         selectedLicencee
       );
       console.warn(`[LOCATIONS FETCH] Got ${locs.length} locations`);
-      setLocations(locs.map((l) => ({ _id: l.id, name: l.name })));
+      setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
 
       // Reset selectedLocation to "all" when licensee changes to avoid filtering issues
-      setSelectedLocation("all");
+      setSelectedLocation('all');
+    });
+  }, [selectedLicencee]);
+
+  // Function to refresh locations data with machines
+  const refreshLocations = useCallback(() => {
+    console.log('[refreshLocations] Fetching locations with machines for licensee:', selectedLicencee);
+    getLocationsWithMachines(selectedLicencee).then(locs => {
+      console.log('[refreshLocations] Received locations with machines:', locs.length);
+      setLocationsWithMachines(locs);
     });
   }, [selectedLicencee]);
 
   // Fetch locations with machines for the modal
   useEffect(() => {
-    getLocationsWithMachines(selectedLicencee).then(setLocationsWithMachines);
-  }, [selectedLicencee]);
+    refreshLocations();
+  }, [refreshLocations]);
 
   // Fetch collection reports data when collection tab is active
   useEffect(() => {
-    if (activeTab === "collection") {
+    if (activeTab === 'collection') {
       setLoading(true);
 
       // Determine parameters for fetch based on activeMetricsFilter
       let dateRangeForFetch = undefined;
       let timePeriodForFetch = undefined;
 
-      if (activeMetricsFilter === "Custom") {
+      if (activeMetricsFilter === 'Custom') {
         // For custom filter, check if both dates are set
         if (customDateRange?.startDate && customDateRange?.endDate) {
           dateRangeForFetch = {
             from: customDateRange.startDate,
             to: customDateRange.endDate,
           };
-          timePeriodForFetch = "Custom";
+          timePeriodForFetch = 'Custom';
         } else {
           // Custom selected but no range: do not fetch
           setLoading(false);
@@ -433,7 +441,7 @@ function CollectionReportContent() {
       }
 
       fetchCollectionReportsByLicencee(
-        selectedLicencee === "" ? undefined : selectedLicencee,
+        selectedLicencee === '' ? undefined : selectedLicencee,
         dateRangeForFetch,
         timePeriodForFetch
       )
@@ -461,19 +469,19 @@ function CollectionReportContent() {
   ]);
 
   const refreshCollectionReports = useCallback(() => {
-    if (activeTab === "collection") {
+    if (activeTab === 'collection') {
       setLoading(true);
 
       let dateRangeForFetch = undefined;
       let timePeriodForFetch = undefined;
 
-      if (activeMetricsFilter === "Custom") {
+      if (activeMetricsFilter === 'Custom') {
         if (customDateRange?.startDate && customDateRange?.endDate) {
           dateRangeForFetch = {
             from: customDateRange.startDate,
             to: customDateRange.endDate,
           };
-          timePeriodForFetch = "Custom";
+          timePeriodForFetch = 'Custom';
         } else {
           setLoading(false);
           return;
@@ -483,7 +491,7 @@ function CollectionReportContent() {
       }
 
       fetchCollectionReportsByLicencee(
-        selectedLicencee === "" ? undefined : selectedLicencee,
+        selectedLicencee === '' ? undefined : selectedLicencee,
         dateRangeForFetch,
         timePeriodForFetch
       )
@@ -521,7 +529,7 @@ function CollectionReportContent() {
     setMobilePage(1);
   }, [selectedLocation, search, showUncollectedOnly, selectedFilters]);
   useEffect(() => {
-    if (!loading && !isSearching && activeTab === "collection") {
+    if (!loading && !isSearching && activeTab === 'collection') {
       if (desktopTableRef.current) {
         animateTableRows(desktopTableRef);
       }
@@ -532,7 +540,7 @@ function CollectionReportContent() {
   }, [loading, isSearching, mobilePage, desktopPage, activeTab]);
 
   const filteredReports = useMemo(() => {
-    console.warn("[COLLECTION REPORT FILTERING - LICENSEE CHANGE DEBUG]");
+    console.warn('[COLLECTION REPORT FILTERING - LICENSEE CHANGE DEBUG]');
     console.warn(`Selected licensee: "${selectedLicencee}"`);
     console.warn(`Reports count: ${reports?.length || 0}`);
     console.warn(`Selected location: "${selectedLocation}"`);
@@ -542,13 +550,13 @@ function CollectionReportContent() {
     console.warn(`Selected filters: ${JSON.stringify(selectedFilters)}`);
 
     if (!reports || !Array.isArray(reports)) {
-      console.warn("No reports or reports is not an array");
+      console.warn('No reports or reports is not an array');
       return [];
     }
 
     // Log first few reports to see what data we have
     if (reports.length > 0) {
-      console.warn("First 3 reports:");
+      console.warn('First 3 reports:');
       reports.slice(0, 3).forEach((report, index) => {
         console.warn(
           `  ${index + 1}. Location: "${report.location}", Collector: "${
@@ -560,7 +568,7 @@ function CollectionReportContent() {
 
     // Log available locations
     if (locations.length > 0) {
-      console.warn("Available locations:");
+      console.warn('Available locations:');
       locations.slice(0, 5).forEach((location, index) => {
         console.warn(
           `  ${index + 1}. ID: "${location._id}", Name: "${location.name}"`
@@ -583,13 +591,13 @@ function CollectionReportContent() {
 
     // Apply SMIB filters
     if (selectedFilters.length > 0) {
-      const smibFiltered = filtered.filter((report) => {
-        return selectedFilters.some((filter) => {
-          if (filter === "SMIBLocationsOnly" && !report.noSMIBLocation)
+      const smibFiltered = filtered.filter(report => {
+        return selectedFilters.some(filter => {
+          if (filter === 'SMIBLocationsOnly' && !report.noSMIBLocation)
             return true;
-          if (filter === "NoSMIBLocation" && report.noSMIBLocation === true)
+          if (filter === 'NoSMIBLocation' && report.noSMIBLocation === true)
             return true;
-          if (filter === "LocalServersOnly" && report.isLocalServer)
+          if (filter === 'LocalServersOnly' && report.isLocalServer)
             return true;
           return false;
         });
@@ -606,24 +614,24 @@ function CollectionReportContent() {
       const bValue = b[sortField];
 
       // Special handling for time field - desc should show most recent first
-      if (sortField === "time") {
+      if (sortField === 'time') {
         const aTime =
-          typeof aValue === "string" || typeof aValue === "number"
+          typeof aValue === 'string' || typeof aValue === 'number'
             ? new Date(aValue).getTime()
             : 0;
         const bTime =
-          typeof bValue === "string" || typeof bValue === "number"
+          typeof bValue === 'string' || typeof bValue === 'number'
             ? new Date(bValue).getTime()
             : 0;
-        return sortDirection === "desc" ? bTime - aTime : aTime - bTime;
+        return sortDirection === 'desc' ? bTime - aTime : aTime - bTime;
       }
 
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
       }
 
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc"
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
@@ -651,23 +659,21 @@ function CollectionReportContent() {
     fetchMonthlyReportSummaryAndDetails({
       startDate: monthlyDateRange.from,
       endDate: monthlyDateRange.to,
-      locationName: monthlyLocation !== "all" ? monthlyLocation : undefined,
+      locationName: monthlyLocation !== 'all' ? monthlyLocation : undefined,
       licencee: selectedLicencee,
     })
       .then(({ summary, details }) => {
         // Calculate drop values for verification (development only)
         if (
-          process.env.NODE_ENV === "development" &&
+          process.env.NODE_ENV === 'development' &&
           details &&
           details.length > 0
         ) {
-          const dropValues = details.map(
-            (detail) => parseInt(detail.drop) || 0
-          );
+          const dropValues = details.map(detail => parseInt(detail.drop) || 0);
           const dropSum = dropValues.reduce((sum, drop) => sum + drop, 0);
           console.warn(
-            "DROP CALCULATION:",
-            `${dropValues.join(" + ")} = ${dropSum}`
+            'DROP CALCULATION:',
+            `${dropValues.join(' + ')} = ${dropSum}`
           );
         }
 
@@ -677,10 +683,10 @@ function CollectionReportContent() {
       })
       .catch(() => {
         setMonthlySummary({
-          drop: "-",
-          cancelledCredits: "-",
-          gross: "-",
-          sasGross: "-",
+          drop: '-',
+          cancelledCredits: '-',
+          gross: '-',
+          sasGross: '-',
         });
         setMonthlyDetails([]);
         setMonthlyLoading(false);
@@ -722,7 +728,7 @@ function CollectionReportContent() {
 
   // Fetch manager schedules and collectors when manager tab is active or filters change
   useEffect(() => {
-    if (activeTab === "manager") {
+    if (activeTab === 'manager') {
       setLoadingSchedulers(true);
       fetchAndFormatSchedulers(
         selectedSchedulerLocation,
@@ -735,9 +741,9 @@ function CollectionReportContent() {
           setSchedulers(schedulers);
           setLoadingSchedulers(false);
         })
-        .catch((error) => {
-          if (process.env.NODE_ENV === "development") {
-            console.error("Error fetching schedulers:", error);
+        .catch(error => {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error fetching schedulers:', error);
           }
           setLoadingSchedulers(false);
         });
@@ -761,10 +767,10 @@ function CollectionReportContent() {
 
   // Fetch collector schedules when collector tab is active or filters change
   useEffect(() => {
-    if (activeTab === "collector") {
+    if (activeTab === 'collector') {
       setLoadingCollectorSchedules(true);
       fetchAndFormatCollectorSchedules(
-        selectedLicencee === "" ? undefined : selectedLicencee,
+        selectedLicencee === '' ? undefined : selectedLicencee,
         selectedCollectorLocation,
         selectedCollectorFilter,
         selectedCollectorStatus
@@ -774,9 +780,9 @@ function CollectionReportContent() {
           setCollectorSchedules(collectorSchedules);
           setLoadingCollectorSchedules(false);
         })
-        .catch((error) => {
-          if (process.env.NODE_ENV === "development") {
-            console.error("Error fetching collector schedules:", error);
+        .catch(error => {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error fetching collector schedules:', error);
           }
           setLoadingCollectorSchedules(false);
         });
@@ -800,14 +806,14 @@ function CollectionReportContent() {
 
   // Fetch all location names and monthly data when monthly tab is active
   useEffect(() => {
-    if (activeTab === "monthly") {
+    if (activeTab === 'monthly') {
       fetchAllLocationNames()
         .then((names: string[]) => {
           setAllLocationNames(names);
         })
         .catch((error: Error) => {
-          if (process.env.NODE_ENV === "development") {
-            console.error("Error fetching locations:", error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error fetching locations:', error);
           }
           setAllLocationNames([]);
         });
@@ -817,7 +823,7 @@ function CollectionReportContent() {
 
   // Refetch monthly data when date range or location changes
   useEffect(() => {
-    if (activeTab === "monthly") {
+    if (activeTab === 'monthly') {
       fetchMonthlyData();
     }
   }, [monthlyDateRange, monthlyLocation, activeTab, fetchMonthlyData]);
@@ -837,7 +843,7 @@ function CollectionReportContent() {
   // Pagination for monthly report
   const paginateMonthly = (pageNumber: number) => {
     setMonthlyPage(pageNumber);
-    if (monthlyPaginationRef.current && activeTab === "monthly") {
+    if (monthlyPaginationRef.current && activeTab === 'monthly') {
       try {
         if (gsap) {
           gsap.fromTo(
@@ -847,12 +853,12 @@ function CollectionReportContent() {
               scale: 1,
               opacity: 1,
               duration: 0.3,
-              ease: "back.out(1.7)",
+              ease: 'back.out(1.7)',
             }
           );
         }
       } catch (error) {
-        console.error("GSAP animation error:", error);
+        console.error('GSAP animation error:', error);
       }
     }
   };
@@ -902,36 +908,36 @@ function CollectionReportContent() {
 
   const handleFilterChange = (filter: string, checked: boolean) => {
     if (checked) {
-      setSelectedFilters((prev) => [...prev, filter]);
+      setSelectedFilters(prev => [...prev, filter]);
     } else {
-      setSelectedFilters((prev) => prev.filter((f) => f !== filter));
+      setSelectedFilters(prev => prev.filter(f => f !== filter));
     }
   };
 
   const handleClearFilters = () => {
-    setSelectedLocation("all");
+    setSelectedLocation('all');
     setShowUncollectedOnly(false);
-    setSearch("");
+    setSearch('');
     setSelectedFilters([]);
   };
 
   // Handle edit collection report
   const handleEditCollectionReport = async (reportId: string) => {
     setEditingReportId(reportId);
-    
+
     // Ensure locations are loaded before opening modal
     if (locationsWithMachines.length === 0) {
-      console.warn("Locations not loaded yet, loading them now...");
+      console.warn('Locations not loaded yet, loading them now...');
       try {
         const locations = await getLocationsWithMachines(selectedLicencee);
         setLocationsWithMachines(locations);
       } catch (error) {
-        console.error("Failed to load locations:", error);
-        toast.error("Failed to load locations. Please try again.");
+        console.error('Failed to load locations:', error);
+        toast.error('Failed to load locations. Please try again.');
         return;
       }
     }
-    
+
     // Check if mobile or desktop and show appropriate modal
     if (isMobileSize()) {
       setShowMobileEditCollectionModal(true);
@@ -957,17 +963,17 @@ function CollectionReportContent() {
       );
 
       if (response.data.success) {
-        toast.success("Collection report deleted successfully!");
+        toast.success('Collection report deleted successfully!');
         // Refresh the reports list
         refreshCollectionReports();
       } else {
-        toast.error("Failed to delete collection report");
+        toast.error('Failed to delete collection report');
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error deleting collection report:", error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error deleting collection report:', error);
       }
-      toast.error("Failed to delete collection report. Please try again.");
+      toast.error('Failed to delete collection report. Please try again.');
     } finally {
       setShowDeleteConfirmation(false);
       setReportToDelete(null);
@@ -1012,53 +1018,53 @@ function CollectionReportContent() {
         showToaster={false}
       >
         {/* Header Section: Title, refresh icon, and create button */}
-        <div className="flex items-center justify-between mt-4 w-full max-w-full">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
-              Collection Report
+        <div className="mt-4 flex w-full max-w-full items-center justify-between">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800 sm:text-2xl md:text-3xl">
+            Collection Report
             <Image
               src={IMAGES.creditCardIcon}
               alt="Collection Report Icon"
               width={32}
               height={32}
-              className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex-shrink-0"
+              className="h-5 w-5 flex-shrink-0 sm:h-6 sm:w-6 md:h-8 md:w-8"
               suppressHydrationWarning
             />
           </h1>
 
           {/* Right side: Refresh icon and Create button */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center gap-2">
             {/* Refresh icon - always icon only */}
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="p-1.5 md:p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:p-2"
               aria-label="Refresh"
             >
               <RefreshCw
-                className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? "animate-spin" : ""}`}
-            />
+                className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
+              />
             </button>
 
             {/* Create button - Desktop full button, Mobile icon only */}
-          {activeTab === "collection" && (
+            {activeTab === 'collection' && (
               <>
                 {/* Desktop: Full button */}
                 <div className="hidden md:block">
                   {loading ? (
-                    <div className="w-36 h-10" />
+                    <div className="h-10 w-36" />
                   ) : (
-              <Button
-                onClick={() => {
-                    setShowDesktopCollectionModal(true);
-                }}
-                      className="bg-buttonActive text-white hover:bg-purple-700 transition-colors flex items-center gap-2"
+                    <Button
+                      onClick={() => {
+                        setShowDesktopCollectionModal(true);
+                      }}
+                      className="flex items-center gap-2 bg-buttonActive text-white transition-colors hover:bg-purple-700"
                       disabled={refreshing}
-                >
+                    >
                       <PlusCircle className="h-4 w-4" />
-                  Create Collection Report
-              </Button>
+                      Create Collection Report
+                    </Button>
                   )}
-            </div>
+                </div>
                 {/* Mobile: Icon only */}
                 <div className="md:hidden">
                   <button
@@ -1066,45 +1072,45 @@ function CollectionReportContent() {
                       setShowMobileCollectionModal(true);
                     }}
                     disabled={refreshing}
-                    className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                    className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label="Create Collection Report"
                   >
                     <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
                   </button>
                 </div>
               </>
-          )}
+            )}
           </div>
         </div>
 
-        <div className="mt-8 mb-8">
+        <div className="mb-8 mt-8">
           <CollectionNavigation
             tabs={COLLECTION_TABS_CONFIG}
             activeView={activeTab}
-            onChange={(v) => handleTabChangeLocal(v)}
+            onChange={v => handleTabChangeLocal(v)}
             isLoading={false}
           />
         </div>
 
-        {activeTab !== "monthly" && (
+        {activeTab !== 'monthly' && (
           <>
             <div className="hidden xl:block">
               <DashboardDateFilters
                 disabled={false}
                 onCustomRangeGo={() => {
-                  if (activeTab === "collection") {
+                  if (activeTab === 'collection') {
                     setLoading(true);
                   }
                 }}
                 hideAllTime={false}
               />
             </div>
-            <div className="xl:hidden mt-4">
+            <div className="mt-4 xl:hidden">
               <DashboardDateFilters
                 mode="auto"
                 disabled={false}
                 onCustomRangeGo={() => {
-                  if (activeTab === "collection") {
+                  if (activeTab === 'collection') {
                     setLoading(true);
                   }
                 }}
@@ -1114,7 +1120,7 @@ function CollectionReportContent() {
           </>
         )}
 
-        <div className="flex-1 overflow-hidden mt-6">
+        <div className="mt-6 flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             <MotionDiv
               key={activeTab}
@@ -1124,7 +1130,7 @@ function CollectionReportContent() {
               transition={{ duration: 0.2 }}
               className="h-full"
             >
-              {activeTab === "collection" && (
+              {activeTab === 'collection' && (
                 <div className="tab-content-wrapper">
                   <CollectionDesktopUI
                     loading={loading}
@@ -1156,6 +1162,7 @@ function CollectionReportContent() {
                     sortField={sortField}
                     sortDirection={sortDirection}
                     onSort={handleSort}
+                    selectedLicencee={selectedLicencee}
                   />
                   <CollectionMobileUI
                     loading={loading}
@@ -1184,10 +1191,11 @@ function CollectionReportContent() {
                     isSearching={isSearching}
                     onEdit={handleEditCollectionReport}
                     onDelete={handleDeleteCollectionReport}
+                    selectedLicencee={selectedLicencee}
                   />
                 </div>
               )}
-              {activeTab === "monthly" && (
+              {activeTab === 'monthly' && (
                 <div className="tab-content-wrapper">
                   <MonthlyDesktopUI
                     allLocationNames={allLocationNames}
@@ -1224,7 +1232,7 @@ function CollectionReportContent() {
                   />
                 </div>
               )}
-              {activeTab === "manager" && (
+              {activeTab === 'manager' && (
                 <div className="tab-content-wrapper">
                   <ManagerDesktopUI
                     locations={locations}
@@ -1254,7 +1262,7 @@ function CollectionReportContent() {
                   />
                 </div>
               )}
-              {activeTab === "collector" && (
+              {activeTab === 'collector' && (
                 <div className="tab-content-wrapper">
                   <CollectorDesktopUI
                     locations={locations}
@@ -1294,6 +1302,7 @@ function CollectionReportContent() {
         onClose={() => setShowMobileCollectionModal(false)}
         locations={locationsWithMachines}
         onRefresh={refreshCollectionReports}
+        onRefreshLocations={refreshLocations}
       />
 
       <NewCollectionModal
@@ -1301,6 +1310,7 @@ function CollectionReportContent() {
         onClose={() => setShowDesktopCollectionModal(false)}
         locations={locationsWithMachines}
         onRefresh={refreshCollectionReports}
+        onRefreshLocations={refreshLocations}
       />
 
       {editingReportId && (
@@ -1338,7 +1348,6 @@ function CollectionReportContent() {
         cancelText="Cancel"
         isLoading={false}
       />
-
     </>
   );
 }

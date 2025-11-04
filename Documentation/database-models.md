@@ -1,8 +1,8 @@
 # Database Models & Relationships
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 5th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 3, 2025  
+**Version:** 2.1.0
 
 ## Table of Contents
 
@@ -121,6 +121,12 @@ GamingLocation {
   _id: string;
   name: string;                   // Location name for UI display
   "rel.licencee": string;         // Links to Licencee
+  gameDayOffset: number;          // Gaming day start hour (0-23, default 8)
+  country: string;                // Links to Country for currency detection
+  geoCoords: {                    // Geographic coordinates for map display
+    latitude: number;
+    longitude: number;
+  };
   deletedAt?: Date;               // Soft delete flag
 }
 ```

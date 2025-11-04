@@ -151,7 +151,7 @@ export async function POST(request: Request) {
         licencee: rel?.licencee || '',
       },
       profitShare: profitShare || 50,
-      gameDayOffset: gameDayOffset || 8,
+      gameDayOffset: gameDayOffset ?? 8,
       isLocalServer: isLocalServer || false,
       geoCoords: {
         latitude: geoCoords?.latitude || 0,

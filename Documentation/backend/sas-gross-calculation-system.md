@@ -324,7 +324,7 @@ Total SAS GROSS = 2,268 + 620 + (-1,575) + 610 = 1,923
 ## Related Documentation
 
 - [Financial Metrics Guide](../financial-metrics-guide.md)
-- [Gaming Day Offset Implementation](../gaming-day-offset-implementation.md)
+- [Gaming Day Offset System](../../.cursor/gaming-day-offset-system.md)
 - [Collection Report System](../collections-api.md)
 - [Meters Collection Schema](../database-models.md)
 

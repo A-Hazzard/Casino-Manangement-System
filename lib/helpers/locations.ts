@@ -78,11 +78,14 @@ export default async function getAllGamingLocations(
     if (licencee && licencee !== 'all') {
       // Convert licensee name to ObjectId for API compatibility
       const licenseeObjectId = getLicenseeObjectId(licencee);
+      console.log('[getAllGamingLocations] Input licencee:', licencee);
+      console.log('[getAllGamingLocations] Converted ObjectId:', licenseeObjectId);
       if (licenseeObjectId) {
         params.licencee = licenseeObjectId;
       }
     }
 
+    console.log('[getAllGamingLocations] Calling /api/locations with params:', params);
     const response = await axios.get<{ locations: locations }>(
       '/api/locations',
       {
@@ -91,6 +94,7 @@ export default async function getAllGamingLocations(
       }
     );
     const fetchedLocations = response.data.locations;
+    console.log('[getAllGamingLocations] Received locations:', fetchedLocations?.length || 0);
 
     return Array.isArray(fetchedLocations) ? fetchedLocations : [];
   } catch (error) {

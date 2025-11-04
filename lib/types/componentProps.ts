@@ -203,6 +203,7 @@ export type NewCollectionModalProps = {
   onClose: () => void;
   locations: CollectionReportLocationWithMachines[];
   onRefresh?: () => void;
+  onRefreshLocations?: () => void;
 };
 
 // Collection Report UI Props Types
@@ -235,6 +236,7 @@ export type CollectionDesktopUIProps = {
   sortField?: keyof CollectionReportRow;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
+  selectedLicencee?: string;
 };
 
 export type CollectionMobileUIProps = {
@@ -263,6 +265,7 @@ export type CollectionMobileUIProps = {
   reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
+  selectedLicencee?: string;
 };
 
 export type MonthlyDesktopUIProps = {

@@ -352,6 +352,7 @@ function CabinetsPageContent() {
             }}
             onRetry={loadCabinets}
             transformCabinet={transformCabinet}
+            selectedLicencee={selectedLicencee}
           />
         ) : activeSection === "smib" ? (
           <SMIBManagementTab refreshTrigger={smibRefreshTrigger} />

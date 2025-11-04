@@ -1,7 +1,7 @@
 # Financial Metrics Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 9th, 2025  
+**Last Updated:** November 3, 2025  
 **Status:** Updated to reflect current implementation
 
 ## Quick Search Guide (Ctrl+F)
@@ -21,8 +21,8 @@
 
 This guide covers all financial metrics used in the Evolution One Casino Management System. All calculations follow standard casino industry practices and support regulatory reporting requirements.
 
-**Last Updated:** October 29th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 3, 2025  
+**Version:** 2.1.0
 
 ## Table of Contents
 
@@ -65,15 +65,6 @@ This document provides a comprehensive guide to the financial metrics used in th
 ### Money Out (Total Cancelled Credits)
 
 - **Definition**: Amount of money removed from machines through manual payouts
-
-- **Definition**: The total amount of money physically inserted into slot machines by players
-- **Data Source**: `movement.drop` field in meter readings
-- **UI Usage**: Primary metric displayed in Financial Metrics Cards and Dashboard
-- **Purpose**: Tracks actual cash flow into machines
-
-### Money Out (Total Cancelled Credits)
-
-- **Definition**: The amount of money removed from machines through manual payouts
 - **Data Source**: `movement.totalCancelledCredits` field in meter readings
 - **UI Usage**: Displayed in Financial Metrics Cards and Location Tables
 - **Purpose**: Tracks manual payouts processed by casino staff

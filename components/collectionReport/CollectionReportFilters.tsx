@@ -4,8 +4,7 @@ import React, { useRef, useEffect } from 'react';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-
-import { CustomSelect } from '@/components/ui/custom-select';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 
 import { gsap } from 'gsap';
 import type { CollectionReportFiltersProps } from '@/lib/types/components';
@@ -110,24 +109,20 @@ export default function CollectionReportFilters({
         </div>
 
         {/* Location Select Dropdown */}
-        <CustomSelect
-          value={selectedLocation}
-          onValueChange={value => {
+        <LocationSingleSelect
+          locations={locations.map(loc => ({
+            id: loc._id,
+            name: loc.name,
+            sasEnabled: false,
+          }))}
+          selectedLocation={selectedLocation}
+          onSelectionChange={value => {
             console.warn('[LOCATION SELECT] Value changed to:', value);
             onLocationChange(value);
           }}
-          options={[
-            { value: 'all', label: 'Select Location' },
-            ...locations.map(loc => ({
-              value: loc._id,
-              label: loc.name,
-            })),
-          ]}
           placeholder="Select Location"
           className="w-full lg:w-[240px] lg:min-w-[200px]"
-          triggerClassName="px-4 py-2 rounded-md text-sm border border-black bg-white"
-          searchable={true}
-          emptyMessage="No locations found"
+          includeAllOption={true}
         />
 
         {/* Clear Filters Button - only visible on lg and above */}
