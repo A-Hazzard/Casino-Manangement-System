@@ -1,40 +1,42 @@
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { formatCurrency } from "@/lib/utils";
-import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
-import axios from "axios";
-import { AccountingDetailsProps } from "@/lib/types/cabinetDetails";
 import {
   containerVariants,
   itemVariants,
-} from "@/lib/constants/animationVariants";
-import { UnifiedBillValidator } from "./UnifiedBillValidator";
+} from '@/lib/constants/animationVariants';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { AccountingDetailsProps } from '@/lib/types/cabinetDetails';
+import { formatCurrency } from '@/lib/utils';
+import axios from 'axios';
+import { AnimatePresence, motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { UnifiedBillValidator } from './UnifiedBillValidator';
 
-import ActivityLogSkeleton from "./ActivityLogSkeleton";
-import { ActivityLogTable } from "./ActivityLogTable";
-import { CollectionHistoryTable } from "./CollectionHistoryTable";
-import CollectionHistorySkeleton from "./CollectionHistorySkeleton";
-import ActivityLogDateFilter from "@/components/ui/ActivityLogDateFilter";
-import type { MachineEvent } from "./ActivityLogTable";
-import type { MachineDocument } from "@/shared/types/entities";
-import type { GamingMachine as Cabinet } from "@/shared/types/entities";
-import { useCabinetUIStore } from "@/lib/store/cabinetUIStore";
+import ActivityLogDateFilter from '@/components/ui/ActivityLogDateFilter';
+import { useCabinetUIStore } from '@/lib/store/cabinetUIStore';
+import type {
+  GamingMachine as Cabinet,
+  MachineDocument,
+} from '@/shared/types/entities';
+import ActivityLogSkeleton from './ActivityLogSkeleton';
+import type { MachineEvent } from './ActivityLogTable';
+import { ActivityLogTable } from './ActivityLogTable';
+import CollectionHistorySkeleton from './CollectionHistorySkeleton';
+import { CollectionHistoryTable } from './CollectionHistoryTable';
 
-import type { TimePeriod as ApiTimePeriod } from "@/shared/types/common";
+import type { TimePeriod as ApiTimePeriod } from '@/shared/types/common';
 
-type TimePeriod = "Today" | "Yesterday" | "7d" | "30d" | "All Time" | "Custom";
+type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
+} from '@/components/ui/select';
+import { toast } from 'sonner';
 
 // Type for collection data from machine's embedded collectionMetersHistory
 type CollectionData = {
@@ -50,18 +52,18 @@ type CollectionData = {
 // Skeleton loaders for individual tabs
 const MetricsSkeleton = () => (
   <div
-    className="flex flex-wrap gap-3 md:gap-4 max-w-full w-full"
-    style={{ rowGap: "1rem" }}
+    className="flex w-full max-w-full flex-wrap gap-3 md:gap-4"
+    style={{ rowGap: '1rem' }}
   >
-    {[1, 2, 3, 4].map((i) => (
+    {[1, 2, 3, 4].map(i => (
       <div
         key={i}
-        className="bg-container p-4 md:p-6 rounded-lg shadow w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto"
+        className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
       >
-        <div className="h-4 bg-gray-200 rounded mb-2 md:mb-4 animate-pulse"></div>
-        <div className="h-1 w-full bg-gray-300 mb-4 md:mb-6"></div>
-        <div className="flex justify-center items-center h-6">
-          <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+        <div className="mb-2 h-4 animate-pulse rounded bg-gray-200 md:mb-4"></div>
+        <div className="mb-4 h-1 w-full bg-gray-300 md:mb-6"></div>
+        <div className="flex h-6 items-center justify-center">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent md:h-5 md:w-5"></div>
         </div>
       </div>
     ))}
@@ -69,13 +71,13 @@ const MetricsSkeleton = () => (
 );
 
 const LiveMetricsSkeleton = () => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 max-w-full">
-    {[1, 2, 3, 4, 5, 6].map((i) => (
-      <div key={i} className="bg-container p-4 md:p-6 rounded-lg shadow">
-        <div className="h-4 bg-gray-200 rounded mb-2 md:mb-4 animate-pulse"></div>
-        <div className="h-1 w-full bg-gray-300 mb-4 md:mb-6"></div>
-        <div className="flex justify-center items-center h-6">
-          <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+  <div className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+    {[1, 2, 3, 4, 5, 6].map(i => (
+      <div key={i} className="rounded-lg bg-container p-4 shadow md:p-6">
+        <div className="mb-2 h-4 animate-pulse rounded bg-gray-200 md:mb-4"></div>
+        <div className="mb-4 h-1 w-full bg-gray-300 md:mb-6"></div>
+        <div className="flex h-6 items-center justify-center">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent md:h-5 md:w-5"></div>
         </div>
       </div>
     ))}
@@ -85,17 +87,17 @@ const LiveMetricsSkeleton = () => (
 // BillValidatorSkeleton removed - now handled by UnifiedBillValidator component
 
 const ConfigurationsSkeleton = () => (
-  <div className="flex flex-col items-center sm:flex-row sm:justify-start sm:items-stretch flex-wrap gap-4 w-full">
-    {[1, 2].map((i) => (
+  <div className="flex w-full flex-col flex-wrap items-center gap-4 sm:flex-row sm:items-stretch sm:justify-start">
+    {[1, 2].map(i => (
       <div
         key={i}
-        className="flex flex-col w-64 max-w-full rounded-lg shadow overflow-hidden"
+        className="flex w-64 max-w-full flex-col overflow-hidden rounded-lg shadow"
       >
-        <div className="bg-gray-400 p-3 flex items-center justify-center">
-          <div className="h-4 bg-gray-300 rounded w-32 animate-pulse"></div>
+        <div className="flex items-center justify-center bg-gray-400 p-3">
+          <div className="h-4 w-32 animate-pulse rounded bg-gray-300"></div>
         </div>
-        <div className="bg-white p-4 flex items-center justify-center">
-          <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
+        <div className="flex items-center justify-center bg-white p-4">
+          <div className="h-6 w-20 animate-pulse rounded bg-gray-200"></div>
         </div>
       </div>
     ))}
@@ -108,16 +110,16 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
 }) => {
   const [isEditCollection, setIsEditCollection] = useState(false);
   const [isUpdatingCollection, setIsUpdatingCollection] = useState(false);
-  const [collectionMetersIn, setCollectionMetersIn] = useState<string>("0");
-  const [collectionMetersOut, setCollectionMetersOut] = useState<string>("0");
+  const [collectionMetersIn, setCollectionMetersIn] = useState<string>('0');
+  const [collectionMetersOut, setCollectionMetersOut] = useState<string>('0');
   const [collectionDate, setCollectionDate] = useState<Date | null>(null);
   const [collectionHour, setCollectionHour] = useState<number>(0);
   const [collectorDenomination, setCollectorDenomination] =
-    useState<string>("1");
+    useState<string>('1');
 
   // Hour options for collection time
   const hourOptions = Array.from({ length: 24 }, (_, i) => ({
-    text: `${i.toString().padStart(2, "0")}:00`,
+    text: `${i.toString().padStart(2, '0')}:00`,
     value: i,
   }));
 
@@ -145,7 +147,7 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
     }
 
     if (!collectionDate) {
-      toast.error("Please select last collection time and save again.");
+      toast.error('Please select last collection time and save again.');
       return;
     }
 
@@ -167,35 +169,35 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
 
       // Make API call to update cabinet
       const response = await fetch(`/api/cabinets/${cabinet._id}`, {
-        method: "PATCH",
+        method: 'PATCH',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update collection settings");
+        throw new Error('Failed to update collection settings');
       }
 
       setIsEditCollection(false);
-      toast.success("Collection settings updated successfully!");
+      toast.success('Collection settings updated successfully!');
     } catch (error) {
-      console.error("Error saving collection settings:", error);
-      toast.error("Failed to save collection settings");
+      console.error('Error saving collection settings:', error);
+      toast.error('Failed to save collection settings');
     } finally {
       setIsUpdatingCollection(false);
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold mb-6 text-gray-800">
+    <div className="mx-auto w-full max-w-4xl">
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h3 className="mb-6 text-lg font-semibold text-gray-800">
           Collection Settings
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {/* Last Meters In */}
           <div className="space-y-2">
             <Label
@@ -208,7 +210,7 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
               id="metersIn"
               type="number"
               value={collectionMetersIn}
-              onChange={(e) => setCollectionMetersIn(e.target.value)}
+              onChange={e => setCollectionMetersIn(e.target.value)}
               disabled={!isEditCollection}
               className="w-full"
               placeholder="0"
@@ -227,7 +229,7 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
               id="metersOut"
               type="number"
               value={collectionMetersOut}
-              onChange={(e) => setCollectionMetersOut(e.target.value)}
+              onChange={e => setCollectionMetersOut(e.target.value)}
               disabled={!isEditCollection}
               className="w-full"
               placeholder="0"
@@ -246,9 +248,9 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
               id="collectionDate"
               type="date"
               value={
-                collectionDate ? collectionDate.toISOString().split("T")[0] : ""
+                collectionDate ? collectionDate.toISOString().split('T')[0] : ''
               }
-              onChange={(e) =>
+              onChange={e =>
                 setCollectionDate(
                   e.target.value ? new Date(e.target.value) : null
                 )
@@ -268,14 +270,14 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
             </Label>
             <Select
               value={collectionHour.toString()}
-              onValueChange={(value) => setCollectionHour(parseInt(value))}
+              onValueChange={value => setCollectionHour(parseInt(value))}
               disabled={!isEditCollection}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select hour" />
               </SelectTrigger>
               <SelectContent>
-                {hourOptions.map((option) => (
+                {hourOptions.map(option => (
                   <SelectItem
                     key={option.value}
                     value={option.value.toString()}
@@ -300,7 +302,7 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
               type="number"
               step="0.01"
               value={collectorDenomination}
-              onChange={(e) => setCollectorDenomination(e.target.value)}
+              onChange={e => setCollectorDenomination(e.target.value)}
               disabled={!isEditCollection}
               className="w-full"
               placeholder="1.00"
@@ -313,17 +315,17 @@ const CollectionSettingsContent: React.FC<{ cabinet: Cabinet }> = ({
           <Button
             onClick={handleSaveCollectionSettings}
             disabled={isUpdatingCollection}
-            className="bg-buttonActive hover:bg-buttonActive/90 text-white px-6 py-2"
+            className="bg-buttonActive px-6 py-2 text-white hover:bg-buttonActive/90"
           >
             {isUpdatingCollection ? (
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                 Saving...
               </div>
             ) : isEditCollection ? (
-              "Save"
+              'Save'
             ) : (
-              "Edit"
+              'Edit'
             )}
           </Button>
         </div>
@@ -341,9 +343,10 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   disableCurrencyConversion = false,
 }: AccountingDetailsProps) => {
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
-  
+
   // On specific cabinet pages, don't apply currency conversion
-  const shouldApplyCurrency = !disableCurrencyConversion && shouldShowCurrency();
+  const shouldApplyCurrency =
+    !disableCurrencyConversion && shouldShowCurrency();
 
   const [collectionHistory, setCollectionHistory] = useState<CollectionData[]>(
     []
@@ -358,101 +361,154 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     string | null
   >(null);
   const [activityLogError, setActivityLogError] = useState<string | null>(null);
-  
+
   // Collection history fix functionality
-  const [isFixingCollectionHistory, setIsFixingCollectionHistory] = useState(false);
-  const [hasCollectionHistoryIssues, setHasCollectionHistoryIssues] = useState(false);
+  const [isFixingCollectionHistory, setIsFixingCollectionHistory] =
+    useState(false);
+  const [hasCollectionHistoryIssues, setHasCollectionHistoryIssues] =
+    useState(false);
   const [isCheckingIssues, setIsCheckingIssues] = useState(false);
+  const [collectionHistoryIssues, setCollectionHistoryIssues] = useState<
+    Record<string, string>
+  >({});
 
   // Function to handle fixing collection history issues
-  const handleFixCollectionHistory = React.useCallback(async (isAutomatic: boolean = false) => {
-    if (!cabinet?._id) return;
-    
-    setIsFixingCollectionHistory(true);
-    try {
-      // Fix the issues using the existing fix-report endpoint
-      const fixResponse = await fetch('/api/collection-reports/fix-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          machineId: cabinet._id,
-          reportId: null // Fix for specific machine, not a report
-        }),
-        // Add timeout
-        signal: AbortSignal.timeout(60000) // 60 second timeout for fix operation
-      });
-      
-      if (!fixResponse.ok) {
-        throw new Error(`Fix API failed: ${fixResponse.status} ${fixResponse.statusText}`);
-      }
-      
-      const fixData = await fixResponse.json();
-      console.warn('🔧 Fix API response:', fixData);
-      
-      if (fixData.success) {
-        if (!isAutomatic) {
-          toast.success(`Fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`);
-          // Reload the page to get updated data
-          window.location.reload();
-        } else {
-          console.warn(`✅ Automatically fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`);
-          setHasCollectionHistoryIssues(false);
+  const handleFixCollectionHistory = React.useCallback(
+    async (isAutomatic: boolean = false) => {
+      if (!cabinet?._id) return;
+
+      setIsFixingCollectionHistory(true);
+      try {
+        // Fix the issues using the existing fix-report endpoint
+        const fixResponse = await fetch('/api/collection-reports/fix-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            machineId: cabinet._id,
+            reportId: null, // Fix for specific machine, not a report
+          }),
+          // Add timeout
+          signal: AbortSignal.timeout(60000), // 60 second timeout for fix operation
+        });
+
+        if (!fixResponse.ok) {
+          throw new Error(
+            `Fix API failed: ${fixResponse.status} ${fixResponse.statusText}`
+          );
         }
-      } else {
-        if (!isAutomatic) {
-          toast.error(fixData.message || 'Failed to fix collection history issues');
+
+        const fixData = await fixResponse.json();
+        console.warn('🔧 Fix API response:', fixData);
+
+        if (fixData.success) {
+          if (!isAutomatic) {
+            toast.success(
+              `Fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`
+            );
+            // Reload the page to get updated data
+            window.location.reload();
+          } else {
+            console.warn(
+              `✅ Automatically fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`
+            );
+            setHasCollectionHistoryIssues(false);
+          }
         } else {
-          console.error('Failed to automatically fix collection history issues:', fixData.message);
+          if (!isAutomatic) {
+            toast.error(
+              fixData.message || 'Failed to fix collection history issues'
+            );
+          } else {
+            console.error(
+              'Failed to automatically fix collection history issues:',
+              fixData.message
+            );
+          }
         }
+      } catch (error) {
+        console.error('Error fixing collection history:', error);
+        toast.error('Failed to fix collection history issues');
+      } finally {
+        setIsFixingCollectionHistory(false);
       }
-    } catch (error) {
-      console.error('Error fixing collection history:', error);
-      toast.error('Failed to fix collection history issues');
-    } finally {
-      setIsFixingCollectionHistory(false);
-    }
-  }, [cabinet._id]);
+    },
+    [cabinet._id]
+  );
 
   // Function to check for collection history issues
   const checkForCollectionHistoryIssues = React.useCallback(async () => {
     if (!cabinet?._id) return;
-    
+
     setIsCheckingIssues(true);
     try {
       const checkResponse = await fetch(
         `/api/collection-reports/check-all-issues?machineId=${cabinet._id}`,
-        { 
+        {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(60000) // 60 second timeout
+          signal: AbortSignal.timeout(60000), // 60 second timeout
         }
       );
-      
+
       if (!checkResponse.ok) {
-        throw new Error(`Check API failed: ${checkResponse.status} ${checkResponse.statusText}`);
+        throw new Error(
+          `Check API failed: ${checkResponse.status} ${checkResponse.statusText}`
+        );
       }
-      
+
       const checkData = await checkResponse.json();
       console.warn('🔍 Check API response:', checkData);
-      
-      setHasCollectionHistoryIssues(checkData.success && checkData.totalIssues > 0);
-      
-      if (checkData.success && checkData.totalIssues > 0) {
-        console.warn(`🔧 Found ${checkData.totalIssues} issues - automatically fixing...`);
-        // Automatically fix the issues when detected
-        await handleFixCollectionHistory(true);
+
+      // Extract detailed issue information per collection
+      const issuesMap: Record<string, string> = {};
+      if (
+        checkData.success &&
+        checkData.machines &&
+        checkData.machines.length > 0
+      ) {
+        const machineData = checkData.machines[0];
+        console.warn('🔍 Machine data:', machineData);
+
+        if (machineData.issues && Array.isArray(machineData.issues)) {
+          machineData.issues.forEach(
+            (issue: {
+              type: string;
+              locationReportId?: string;
+              message?: string;
+              details?: Record<string, unknown>;
+            }) => {
+              if (issue.locationReportId) {
+                // Use the message from the API directly, which now includes all details
+                const issueDescription =
+                  issue.message || `Issue: ${issue.type}`;
+                issuesMap[issue.locationReportId] = issueDescription;
+              }
+            }
+          );
+        }
+      }
+
+      setCollectionHistoryIssues(issuesMap);
+      setHasCollectionHistoryIssues(Object.keys(issuesMap).length > 0);
+
+      if (Object.keys(issuesMap).length > 0) {
+        console.warn(
+          `⚠️ Found ${Object.keys(issuesMap).length} collection history issues:`,
+          issuesMap
+        );
       } else {
-        console.warn('✅ No issues found');
+        console.warn('✅ No collection history issues found');
       }
     } catch (error) {
       console.error('Error checking collection history issues:', error);
       setHasCollectionHistoryIssues(false);
+      setCollectionHistoryIssues({});
     } finally {
       setIsCheckingIssues(false);
     }
-  }, [cabinet._id, handleFixCollectionHistory]);
+  }, [cabinet._id]);
 
   // Check for issues when component loads or cabinet changes
   React.useEffect(() => {
@@ -467,7 +523,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     { from: Date; to: Date } | undefined
   >();
   const [activityLogTimePeriod, setActivityLogTimePeriod] =
-    useState<ApiTimePeriod>("7d");
+    useState<ApiTimePeriod>('7d');
 
   // Use Zustand store for Bill Validator state (persists across page navigation)
   const { getBillValidatorState, setBillValidatorTimePeriod } =
@@ -479,11 +535,11 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   // Note: convertBillMetersToBills function removed - now using UnifiedBillValidator with acceptedBills API
 
   // Debug logging for filter states
-  console.warn("Activity Log Filters:", {
+  console.warn('Activity Log Filters:', {
     activityLogDateRange,
     activityLogTimePeriod,
   });
-  console.warn("Bill Validator Filters:", {
+  console.warn('Bill Validator Filters:', {
     billValidatorDateRange,
     billValidatorTimePeriod,
   });
@@ -491,7 +547,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   // Debug: Log when billValidatorTimePeriod changes
   useEffect(() => {
     console.warn(
-      "[DEBUG] billValidatorTimePeriod changed to:",
+      '[DEBUG] billValidatorTimePeriod changed to:',
       billValidatorTimePeriod
     );
   }, [billValidatorTimePeriod]);
@@ -520,17 +576,17 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                 // Handle MongoDB ObjectId format: { $oid: "STRING" }
                 let entryId: string;
-                if (id && typeof id === "object" && "$oid" in id) {
+                if (id && typeof id === 'object' && '$oid' in id) {
                   entryId = (id as { $oid: string }).$oid;
                 } else {
-                  entryId = String(id || "");
+                  entryId = String(id || '');
                 }
 
                 let entryTimestamp: string | Date;
                 if (
                   timestamp &&
-                  typeof timestamp === "object" &&
-                  "$date" in timestamp
+                  typeof timestamp === 'object' &&
+                  '$date' in timestamp
                 ) {
                   entryTimestamp = (timestamp as { $date: string }).$date;
                 } else {
@@ -544,7 +600,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                   metersOut: (entry.metersOut as number) || 0,
                   prevIn: (entry.prevMetersIn as number) || 0,
                   prevOut: (entry.prevMetersOut as number) || 0,
-                  locationReportId: (entry.locationReportId as string) || "",
+                  locationReportId: (entry.locationReportId as string) || '',
                 };
               })
               .sort((a, b) => {
@@ -555,7 +611,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
               });
 
             setCollectionHistory(transformedHistory);
-            
+
             // Don't automatically check for issues on every load - only when user requests it
             // This prevents performance issues when loading collection history
             setCollectionHistoryError(null);
@@ -565,27 +621,27 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
           }
 
           // Only fetch activity log data when Activity Log tab is active
-          if (activeMetricsTabContent === "Activity Log") {
+          if (activeMetricsTabContent === 'Activity Log') {
             setActivityLogLoading(true);
             setActivityLogError(null);
             try {
               // Build query parameters for date filtering
               const params = new URLSearchParams();
-              params.append("id", cabinet._id);
+              params.append('id', cabinet._id);
 
               // Add date range parameters if custom date range is selected
-              if (activityLogTimePeriod === "Custom" && activityLogDateRange) {
+              if (activityLogTimePeriod === 'Custom' && activityLogDateRange) {
                 params.append(
-                  "startDate",
+                  'startDate',
                   activityLogDateRange.from.toISOString()
                 );
-                params.append("endDate", activityLogDateRange.to.toISOString());
+                params.append('endDate', activityLogDateRange.to.toISOString());
               } else if (
                 activityLogTimePeriod &&
-                activityLogTimePeriod !== "All Time"
+                activityLogTimePeriod !== 'All Time'
               ) {
                 // Add time period parameter for predefined periods
-                params.append("timePeriod", activityLogTimePeriod);
+                params.append('timePeriod', activityLogTimePeriod);
               }
 
               const eventsRes = await axios.get(
@@ -595,12 +651,12 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
               setActivityLog(eventsData.events || []);
               setActivityLogError(null);
             } catch (error) {
-              console.error("Failed to fetch machine events:", error);
+              console.error('Failed to fetch machine events:', error);
               setActivityLog([]);
               setActivityLogError(
                 error instanceof Error
                   ? error.message
-                  : "Failed to fetch activity log"
+                  : 'Failed to fetch activity log'
               );
             } finally {
               setActivityLogLoading(false);
@@ -608,11 +664,11 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
           }
         }
       } catch (error) {
-        console.error("Error loading data:", error);
+        console.error('Error loading data:', error);
         setActivityLog([]);
         setMachine(null);
-        setCollectionHistoryError("Failed to load collection history");
-        setActivityLogError("Failed to load activity log");
+        setCollectionHistoryError('Failed to load collection history');
+        setActivityLogError('Failed to load activity log');
       }
     }
     loadData();
@@ -625,46 +681,46 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
   return (
     <motion.div
-      className="mt-2 bg-container rounded-lg shadow-md shadow-purple-200 p-4 md:p-6"
+      className="mt-2 rounded-lg bg-container p-4 shadow-md shadow-purple-200 md:p-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
     >
-      <h2 className="text-xl font-semibold mb-4">Accounting Details</h2>
+      <h2 className="mb-4 text-xl font-semibold">Accounting Details</h2>
 
-      <div className="flex flex-col md:flex-row mt-4">
+      <div className="mt-4 flex flex-col md:flex-row">
         <motion.aside
-          className="hidden lg:block w-48 flex-shrink-0 mb-4 lg:mb-0 lg:mr-6"
+          className="mb-4 hidden w-48 flex-shrink-0 lg:mb-0 lg:mr-6 lg:block"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {[
-            "Metrics",
-            "Live Metrics",
-            "Bill Validator",
-            "Activity Log",
-            "Collection History",
-            "Collection Settings",
-            "Configurations",
+            'Metrics',
+            'Live Metrics',
+            'Bill Validator',
+            'Activity Log',
+            'Collection History',
+            'Collection Settings',
+            'Configurations',
           ].map((menuItem, idx) => (
             <motion.button
               key={menuItem}
               variants={itemVariants}
               whileHover={{ x: 5 }}
-              className={`block w-full text-left py-2.5 px-4 text-sm ${
+              className={`block w-full px-4 py-2.5 text-left text-sm ${
                 activeMetricsTabContent ===
-                (menuItem === "Metrics" ? "Range Metrics" : menuItem)
-                  ? "text-buttonActive font-semibold bg-accent"
-                  : "text-grayHighlight hover:bg-muted"
+                (menuItem === 'Metrics' ? 'Range Metrics' : menuItem)
+                  ? 'bg-accent font-semibold text-buttonActive'
+                  : 'text-grayHighlight hover:bg-muted'
               } ${
                 idx === 4
-                  ? "md:rounded-b-md"
-                  : "border-b md:border-b-0 border-border"
+                  ? 'md:rounded-b-md'
+                  : 'border-b border-border md:border-b-0'
               }`}
               onClick={() =>
                 setActiveMetricsTabContent(
-                  menuItem === "Metrics" ? "Range Metrics" : menuItem
+                  menuItem === 'Metrics' ? 'Range Metrics' : menuItem
                 )
               }
             >
@@ -673,7 +729,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
           ))}
         </motion.aside>
 
-        <div className="flex-grow w-full">
+        <div className="w-full flex-grow">
           <AnimatePresence mode="wait">
             <motion.div
               key="meters"
@@ -683,20 +739,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
               transition={{ duration: 0.3 }}
               className="w-full"
             >
-              <h3 className="font-medium mb-4 text-center md:text-left hidden md:block">
-                {activeMetricsTabContent === "Range Metrics"
-                  ? "Metrics"
+              <h3 className="mb-4 hidden text-center font-medium md:block md:text-left">
+                {activeMetricsTabContent === 'Range Metrics'
+                  ? 'Metrics'
                   : activeMetricsTabContent}
               </h3>
               <AnimatePresence mode="wait">
-                {activeMetricsTabContent === "Range Metrics" ? (
+                {activeMetricsTabContent === 'Range Metrics' ? (
                   loading ? (
                     <MetricsSkeleton />
                   ) : (
                     <motion.div
                       key="range-metrics"
-                      className="flex flex-wrap gap-3 md:gap-4 max-w-full w-full"
-                      style={{ rowGap: "1rem" }}
+                      className="flex w-full max-w-full flex-wrap gap-3 md:gap-4"
+                      style={{ rowGap: '1rem' }}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
@@ -704,20 +760,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     >
                       {/* Money In */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto"
+                        className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4 truncate">
+                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
                           Money In
                         </h4>
-                        <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
+                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
                             {shouldApplyCurrency
                               ? formatAmount(
                                   Number(
@@ -739,20 +795,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                       {/* Total Cancelled Credits */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto"
+                        className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4 truncate">
+                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
                           Total Cancelled Credits
                         </h4>
-                        <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
+                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
                             {shouldApplyCurrency
                               ? formatAmount(
                                   Number(
@@ -776,20 +832,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                       {/* Gross */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto"
+                        className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4 truncate">
+                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
                           Gross
                         </h4>
-                        <div className="h-1 w-full bg-pinkHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
+                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
                             {shouldApplyCurrency
                               ? formatAmount(
                                   Number(
@@ -811,20 +867,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                       {/* Jackpot */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto"
+                        className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4 truncate">
+                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
                           Jackpot
                         </h4>
-                        <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold break-words truncate max-w-full">
+                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
                                 cabinet?.jackpot ??
@@ -837,13 +893,13 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       </motion.div>
                     </motion.div>
                   )
-                ) : activeMetricsTabContent === "Live Metrics" ? (
+                ) : activeMetricsTabContent === 'Live Metrics' ? (
                   loading ? (
                     <LiveMetricsSkeleton />
                   ) : (
                     <motion.div
                       key="live-metrics"
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 max-w-full"
+                      className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
@@ -851,20 +907,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     >
                       {/* Coin In */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow"
+                        className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4">
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
                           Coin In
                         </h4>
-                        <div className="h-1 w-full bg-greenHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-greenHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold">
+                          <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
                                 cabinet?.coinIn ??
@@ -879,20 +935,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                       {/* Coin Out */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow"
+                        className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4">
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
                           Coin Out
                         </h4>
-                        <div className="h-1 w-full bg-pinkHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold">
+                          <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
                                 cabinet?.coinOut ??
@@ -906,20 +962,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                       {/* Total Hand Paid Cancelled Credits */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow"
+                        className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4">
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
                           Total Hand Paid Cancelled Credits
                         </h4>
-                        <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold">
+                          <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
                                 cabinet?.sasMeters
@@ -935,20 +991,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                       {/* Current Credits */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow"
+                        className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4">
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
                           Current Credits
                         </h4>
-                        <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold">
+                          <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
                                 cabinet?.sasMeters?.currentCredits ??
@@ -963,20 +1019,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                       {/* Games Played */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow"
+                        className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4">
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
                           Games Played
                         </h4>
-                        <div className="h-1 w-full bg-orangeHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold">
+                          <p className="text-center text-base font-bold md:text-xl">
                             {cabinet?.gamesPlayed ??
                               cabinet?.sasMeters?.gamesPlayed ??
                               0}
@@ -986,20 +1042,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
 
                       {/* Games Won */}
                       <motion.div
-                        className="bg-container p-4 md:p-6 rounded-lg shadow"
+                        className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
                         whileHover={{
                           y: -5,
-                          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                         }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="text-center text-xs md:text-sm mb-2 md:mb-4">
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
                           Games Won
                         </h4>
-                        <div className="h-1 w-full bg-blueHighlight mb-4 md:mb-6"></div>
+                        <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="text-center text-base md:text-xl font-bold">
+                          <p className="text-center text-base font-bold md:text-xl">
                             {cabinet?.gamesWon ??
                               cabinet?.sasMeters?.gamesWon ??
                               0}
@@ -1008,7 +1064,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       </motion.div>
                     </motion.div>
                   )
-                ) : activeMetricsTabContent === "Bill Validator" ? (
+                ) : activeMetricsTabContent === 'Bill Validator' ? (
                   <motion.div
                     key="bill-validator"
                     className="w-full"
@@ -1022,25 +1078,25 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       timePeriod={billValidatorTimePeriod}
                       onTimePeriodChange={(timePeriod: TimePeriod) => {
                         console.warn(
-                          "[DEBUG] onTimePeriodChange called with:",
+                          '[DEBUG] onTimePeriodChange called with:',
                           timePeriod
                         );
                         console.warn(
-                          "[DEBUG] Current billValidatorTimePeriod:",
+                          '[DEBUG] Current billValidatorTimePeriod:',
                           billValidatorTimePeriod
                         );
                         setBillValidatorTimePeriod(cabinet._id, timePeriod);
                         console.warn(
-                          "[DEBUG] setBillValidatorTimePeriod called"
+                          '[DEBUG] setBillValidatorTimePeriod called'
                         );
                       }}
                       gameDayOffset={cabinet.gameDayOffset}
                     />
                   </motion.div>
-                ) : activeMetricsTabContent === "Activity Log" ? (
+                ) : activeMetricsTabContent === 'Activity Log' ? (
                   <motion.div
                     key="activity-log"
-                    className="bg-container p-6 rounded-lg shadow w-full"
+                    className="w-full rounded-lg bg-container p-6 shadow"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
@@ -1061,76 +1117,77 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                     {activityLogLoading ? (
                       <ActivityLogSkeleton />
                     ) : activityLogError ? (
-                      <div className="h-48 flex flex-col items-center justify-center w-full">
-                        <p className="text-red-500 text-center mb-2">
+                      <div className="flex h-48 w-full flex-col items-center justify-center">
+                        <p className="mb-2 text-center text-red-500">
                           Failed to load activity log
                         </p>
-                        <p className="text-grayHighlight text-center text-sm">
+                        <p className="text-center text-sm text-grayHighlight">
                           {activityLogError}
                         </p>
                       </div>
                     ) : activityLog.length > 0 ? (
                       <ActivityLogTable data={activityLog as MachineEvent[]} />
                     ) : (
-                      <div className="h-48 flex items-center justify-center w-full">
-                        <p className="text-grayHighlight text-center">
+                      <div className="flex h-48 w-full items-center justify-center">
+                        <p className="text-center text-grayHighlight">
                           No activity log data found for this machine.
                         </p>
                       </div>
                     )}
                   </motion.div>
-                ) : activeMetricsTabContent === "Collection History" ? (
+                ) : activeMetricsTabContent === 'Collection History' ? (
                   loading ? (
                     <CollectionHistorySkeleton />
                   ) : collectionHistoryError ? (
                     <motion.div
                       key="collection-history-error"
-                      className="bg-container p-6 rounded-lg shadow h-48 flex flex-col items-center justify-center w-full"
+                      className="flex h-48 w-full flex-col items-center justify-center rounded-lg bg-container p-6 shadow"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <p className="text-red-500 text-center mb-2">
+                      <p className="mb-2 text-center text-red-500">
                         Failed to load collection history
                       </p>
-                      <p className="text-grayHighlight text-center text-sm">
+                      <p className="text-center text-sm text-grayHighlight">
                         {collectionHistoryError}
                       </p>
                     </motion.div>
                   ) : collectionHistory.length > 0 ? (
                     <motion.div
                       key="collection-history"
-                      className="bg-container p-6 rounded-lg shadow w-full"
+                      className="w-full rounded-lg bg-container p-6 shadow"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <CollectionHistoryTable 
-                        data={collectionHistory} 
+                      <CollectionHistoryTable
+                        data={collectionHistory}
                         machineId={cabinet._id}
                         onFixHistory={() => handleFixCollectionHistory(false)}
                         isFixing={isFixingCollectionHistory}
                         hasIssues={hasCollectionHistoryIssues}
                         isCheckingIssues={isCheckingIssues}
+                        issuesMap={collectionHistoryIssues}
                       />
                     </motion.div>
                   ) : (
                     <motion.div
                       key="collection-history-empty"
-                      className="bg-container p-6 rounded-lg shadow h-48 flex items-center justify-center w-full"
+                      className="flex h-48 w-full items-center justify-center rounded-lg bg-container p-6 shadow"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <p className="text-grayHighlight text-center">
+                      <p className="text-center text-grayHighlight">
                         No collection history data found for this machine.
                       </p>
                     </motion.div>
                   )
-                ) : activeMetricsTabContent === "Collection Settings" ? (
+                ) : activeMetricsTabContent === 'Collection Settings' ? (
                   <motion.div
                     key="collection-settings"
                     className="w-full"
@@ -1141,13 +1198,13 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                   >
                     <CollectionSettingsContent cabinet={cabinet} />
                   </motion.div>
-                ) : activeMetricsTabContent === "Configurations" ? (
+                ) : activeMetricsTabContent === 'Configurations' ? (
                   loading ? (
                     <ConfigurationsSkeleton />
                   ) : (
                     <motion.div
                       key="configurations"
-                      className="flex flex-col items-center sm:flex-row sm:justify-start sm:items-stretch flex-wrap gap-4 w-full"
+                      className="flex w-full flex-col flex-wrap items-center gap-4 sm:flex-row sm:items-stretch sm:justify-start"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
@@ -1156,14 +1213,14 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       {/* Accounting Denomination */}
                       {machine?.gameConfig?.accountingDenomination !==
                         undefined && (
-                        <div className="flex flex-col w-64 max-w-full rounded-lg shadow overflow-hidden">
-                          <div className="bg-blue-500 p-3 flex items-center justify-center">
-                            <span className="text-white font-semibold text-base text-center w-full">
+                        <div className="flex w-64 max-w-full flex-col overflow-hidden rounded-lg shadow">
+                          <div className="flex items-center justify-center bg-blue-500 p-3">
+                            <span className="w-full text-center text-base font-semibold text-white">
                               Accounting Denomination
                             </span>
                           </div>
-                          <div className="bg-white p-4 flex items-center justify-center">
-                            <span className="text-gray-800 text-base font-medium">
+                          <div className="flex items-center justify-center bg-white p-4">
+                            <span className="text-base font-medium text-gray-800">
                               $
                               {machine.gameConfig.accountingDenomination?.toFixed(
                                 2
@@ -1176,14 +1233,14 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                       {machine?.gameConfig?.accountingDenomination !==
                         undefined &&
                         machine?.gameConfig?.theoreticalRtp !== undefined && (
-                          <div className="flex flex-col w-64 max-w-full rounded-lg shadow overflow-hidden">
-                            <div className="bg-green-400 p-3 flex items-center justify-center">
-                              <span className="text-white font-semibold text-base text-center w-full">
+                          <div className="flex w-64 max-w-full flex-col overflow-hidden rounded-lg shadow">
+                            <div className="flex items-center justify-center bg-green-400 p-3">
+                              <span className="w-full text-center text-base font-semibold text-white">
                                 Theoretical RTP
                               </span>
                             </div>
-                            <div className="bg-white p-4 flex items-center justify-center">
-                              <span className="text-gray-800 text-base font-medium">
+                            <div className="flex items-center justify-center bg-white p-4">
+                              <span className="text-base font-medium text-gray-800">
                                 {machine.gameConfig.theoreticalRtp}%
                               </span>
                             </div>
@@ -1194,7 +1251,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                 ) : (
                   <motion.div
                     key={activeMetricsTabContent}
-                    className="bg-container p-6 rounded-lg shadow h-48 flex items-center justify-center"
+                    className="flex h-48 items-center justify-center rounded-lg bg-container p-6 shadow"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}

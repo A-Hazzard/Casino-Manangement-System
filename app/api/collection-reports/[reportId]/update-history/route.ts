@@ -73,10 +73,6 @@ export async function PATCH(
         const {
           machineId,
           locationReportId,
-          metersIn,
-          metersOut,
-          prevMetersIn,
-          prevMetersOut,
           collectionId,
         } = change;
 
@@ -132,6 +128,20 @@ export async function PATCH(
           continue;
         }
 
+        // CRITICAL FIX: Fetch the actual collection document to get CORRECT prevIn/prevOut
+        // The collection's prevIn/prevOut may have been recalculated by the backend
+        // Don't trust the frontend payload which may have stale values
+        const actualCollection = await Collections.findById(collectionId);
+        if (!actualCollection) {
+          console.error(`❌ Collection ${collectionId} not found`);
+          results.failed++;
+          results.errors.push({
+            machineId,
+            error: 'Collection not found',
+          });
+          continue;
+        }
+
         const historyEntryExists = machine.collectionMetersHistory?.some(
           (h: { locationReportId: string }) =>
             h.locationReportId === locationReportId
@@ -142,14 +152,15 @@ export async function PATCH(
           console.warn(
             `🔄 Updating existing history entry for machine ${machineId}, reportId ${locationReportId}`
           );
+
           const historyUpdateResult = await Machine.findByIdAndUpdate(
             machineId,
             {
               $set: {
-                'collectionMetersHistory.$[elem].metersIn': metersIn,
-                'collectionMetersHistory.$[elem].metersOut': metersOut,
-                'collectionMetersHistory.$[elem].prevMetersIn': prevMetersIn,
-                'collectionMetersHistory.$[elem].prevMetersOut': prevMetersOut,
+                'collectionMetersHistory.$[elem].metersIn': actualCollection.metersIn,
+                'collectionMetersHistory.$[elem].metersOut': actualCollection.metersOut,
+                'collectionMetersHistory.$[elem].prevMetersIn': actualCollection.prevIn,      // ✅ FIX: Use collection's prevIn
+                'collectionMetersHistory.$[elem].prevMetersOut': actualCollection.prevOut,    // ✅ FIX: Use collection's prevOut
                 'collectionMetersHistory.$[elem].timestamp': new Date(),
                 updatedAt: new Date(),
               },
@@ -180,13 +191,14 @@ export async function PATCH(
           console.warn(
             `✨ Creating NEW history entry for machine ${machineId}, reportId ${locationReportId}`
           );
+
           const mongoose = await import('mongoose');
           const historyEntry = {
             _id: new mongoose.Types.ObjectId(),
-            metersIn: Number(metersIn) || 0,
-            metersOut: Number(metersOut) || 0,
-            prevMetersIn: Number(prevMetersIn) || 0,
-            prevMetersOut: Number(prevMetersOut) || 0,
+            metersIn: actualCollection.metersIn,       // ✅ FIX: Use collection's metersIn
+            metersOut: actualCollection.metersOut,     // ✅ FIX: Use collection's metersOut
+            prevMetersIn: actualCollection.prevIn,     // ✅ FIX: Use collection's prevIn
+            prevMetersOut: actualCollection.prevOut,   // ✅ FIX: Use collection's prevOut
             timestamp: new Date(),
             locationReportId: locationReportId,
           };
@@ -218,10 +230,11 @@ export async function PATCH(
         }
 
         // Update machine's current collectionMeters
+        // Use actualCollection values (already fetched above) to ensure consistency
         await Machine.findByIdAndUpdate(machineId, {
           $set: {
-            'collectionMeters.metersIn': metersIn,
-            'collectionMeters.metersOut': metersOut,
+            'collectionMeters.metersIn': actualCollection.metersIn,
+            'collectionMeters.metersOut': actualCollection.metersOut,
             collectionTime: new Date(),
             updatedAt: new Date(),
           },

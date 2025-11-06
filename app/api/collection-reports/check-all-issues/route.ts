@@ -391,6 +391,152 @@ export async function GET(request: NextRequest) {
       0
     );
 
+    // For machine-specific queries, return detailed issues for the frontend to display
+    const machineIssues: Array<{
+      machineId: string;
+      machineName: string;
+      issues: Array<{
+        type: string;
+        locationReportId: string;
+        message: string;
+        details?: Record<string, unknown>;
+      }>;
+    }> = [];
+
+    if (machineId) {
+      const { Machine } = await import('@/app/api/lib/models/machines');
+      const machine = await Machine.findById(machineId).lean();
+
+      if (machine) {
+        const machineData = machine as Record<string, unknown>;
+        const history =
+          (machineData.collectionMetersHistory as Array<Record<string, unknown>>) || [];
+        const machineName = String(
+          machineData.serialNumber ||
+            (machineData.custom as Record<string, unknown>)?.name ||
+            machineId
+        );
+
+        const issues: Array<{
+          type: string;
+          locationReportId: string;
+          message: string;
+          details?: Record<string, unknown>;
+        }> = [];
+
+        // Check for duplicate locationReportIds in history
+        const locationReportIdMap = new Map<string, number>();
+        for (const entry of history) {
+          if (entry.locationReportId) {
+            const reportId = entry.locationReportId as string;
+            const count = locationReportIdMap.get(reportId) || 0;
+            locationReportIdMap.set(reportId, count + 1);
+          }
+        }
+
+        // Flag duplicates
+        for (const [reportId, count] of locationReportIdMap.entries()) {
+          if (count > 1) {
+            issues.push({
+              type: 'duplicate_history',
+              locationReportId: reportId,
+              message: `Duplicate History: ${count} entries with the same report ID`,
+              details: { count },
+            });
+          }
+        }
+
+        // Check for orphaned entries
+        const { Collections } = await import('@/app/api/lib/models/collections');
+        const { CollectionReport } = await import(
+          '@/app/api/lib/models/collectionReport'
+        );
+
+        for (const entry of history) {
+          if (entry.locationReportId) {
+            const reportId = entry.locationReportId as string;
+            
+            // Check if collection exists
+            const collectionExists = await Collections.findOne({
+              machineId: machineId,
+              locationReportId: reportId,
+            }).lean();
+
+            // Check if report exists
+            const reportExists = await CollectionReport.findOne({
+              locationReportId: reportId,
+            }).lean();
+
+            if (!collectionExists && !reportExists) {
+              issues.push({
+                type: 'orphaned_history',
+                locationReportId: reportId,
+                message: 'Orphaned History: Collection and report no longer exist',
+              });
+            } else if (!collectionExists) {
+              issues.push({
+                type: 'missing_collection',
+                locationReportId: reportId,
+                message: 'Missing Collection: Report exists but collection document is missing',
+              });
+            } else if (!reportExists) {
+              issues.push({
+                type: 'missing_report',
+                locationReportId: reportId,
+                message: 'Missing Report: Collection exists but report document is missing',
+              });
+            }
+
+            // Check for history mismatch (if collection exists)
+            if (collectionExists) {
+              const historyMetersIn = entry.metersIn as number;
+              const historyMetersOut = entry.metersOut as number;
+              const historyPrevMetersIn = entry.prevMetersIn as number;
+              const historyPrevMetersOut = entry.prevMetersOut as number;
+
+              const collectionMetersIn = collectionExists.metersIn as number;
+              const collectionMetersOut = collectionExists.metersOut as number;
+              const collectionPrevIn = collectionExists.prevIn as number;
+              const collectionPrevOut = collectionExists.prevOut as number;
+
+              const metersInMatch = Math.abs(historyMetersIn - collectionMetersIn) < 0.1;
+              const metersOutMatch = Math.abs(historyMetersOut - collectionMetersOut) < 0.1;
+              const prevInMatch = Math.abs(historyPrevMetersIn - collectionPrevIn) < 0.1;
+              const prevOutMatch = Math.abs(historyPrevMetersOut - collectionPrevOut) < 0.1;
+
+              if (!metersInMatch || !metersOutMatch || !prevInMatch || !prevOutMatch) {
+                issues.push({
+                  type: 'history_mismatch',
+                  locationReportId: reportId,
+                  message: 'History Mismatch: Collection document and history entry have different values',
+                  details: {
+                    collection: {
+                      metersIn: collectionMetersIn,
+                      metersOut: collectionMetersOut,
+                      prevIn: collectionPrevIn,
+                      prevOut: collectionPrevOut,
+                    },
+                    history: {
+                      metersIn: historyMetersIn,
+                      metersOut: historyMetersOut,
+                      prevMetersIn: historyPrevMetersIn,
+                      prevMetersOut: historyPrevMetersOut,
+                    },
+                  },
+                });
+              }
+            }
+          }
+        }
+
+        machineIssues.push({
+          machineId,
+          machineName,
+          issues,
+        });
+      }
+    }
+
     const endTime = Date.now();
     const duration = endTime - startTime;
     console.warn(`⏱️ CHECK-ALL-ISSUES completed in ${duration}ms`);
@@ -399,6 +545,7 @@ export async function GET(request: NextRequest) {
       success: true,
       totalIssues,
       reportIssues,
+      machines: machineIssues, // Add detailed machine issues for cabinet details page
     });
   } catch (error) {
     console.error('Error checking report issues:', error);

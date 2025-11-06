@@ -1,5 +1,12 @@
-import React, { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -7,17 +14,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronUp,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useMemo, useState } from 'react';
 
 // Helper function to format large numbers compactly
 const formatLargeNumber = (num: number): string => {
@@ -40,9 +51,9 @@ type CollectionData = {
   locationReportId: string;
 };
 
-type SortField = "timestamp" | "metersIn" | "metersOut" | "prevIn" | "prevOut";
-type SortDirection = "asc" | "desc" | null;
-type TimeFilter = "all" | "today" | "yesterday" | "7d" | "30d" | "90d" | "1y";
+type SortField = 'timestamp' | 'metersIn' | 'metersOut' | 'prevIn' | 'prevOut';
+type SortDirection = 'asc' | 'desc' | null;
+type TimeFilter = 'all' | 'today' | 'yesterday' | '7d' | '30d' | '90d' | '1y';
 
 type CollectionHistoryTableProps = {
   data: CollectionData[];
@@ -51,22 +62,24 @@ type CollectionHistoryTableProps = {
   isFixing?: boolean;
   hasIssues?: boolean;
   isCheckingIssues?: boolean;
+  issuesMap?: Record<string, string>; // Map of locationReportId to issue description
 };
 
-export function CollectionHistoryTable({ 
-  data, 
-  machineId, 
-  onFixHistory, 
+export function CollectionHistoryTable({
+  data,
+  machineId,
+  onFixHistory,
   isFixing = false,
   hasIssues = false,
-  isCheckingIssues = false
+  isCheckingIssues = false,
+  issuesMap = {},
 }: CollectionHistoryTableProps) {
   const router = useRouter();
 
   // State for filtering and sorting
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
-  const [sortField, setSortField] = useState<SortField>("timestamp");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [sortField, setSortField] = useState<SortField>('timestamp');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Pagination (client-side) - must be before any early returns
   const [page, setPage] = useState(1);
@@ -77,13 +90,13 @@ export function CollectionHistoryTable({
     let filtered = [...data];
 
     // Apply time filter
-    if (timeFilter !== "all") {
+    if (timeFilter !== 'all') {
       const now = new Date();
       let startDate: Date;
       let endDate: Date;
 
       switch (timeFilter) {
-        case "today":
+        case 'today':
           startDate = new Date(
             now.getFullYear(),
             now.getMonth(),
@@ -95,7 +108,7 @@ export function CollectionHistoryTable({
             now.getDate() + 1
           );
           break;
-        case "yesterday":
+        case 'yesterday':
           startDate = new Date(
             now.getFullYear(),
             now.getMonth(),
@@ -103,19 +116,19 @@ export function CollectionHistoryTable({
           );
           endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           break;
-        case "7d":
+        case '7d':
           startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           endDate = new Date();
           break;
-        case "30d":
+        case '30d':
           startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           endDate = new Date();
           break;
-        case "90d":
+        case '90d':
           startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
           endDate = new Date();
           break;
-        case "1y":
+        case '1y':
           startDate = new Date(
             now.getFullYear() - 1,
             now.getMonth(),
@@ -128,7 +141,7 @@ export function CollectionHistoryTable({
           endDate = new Date();
       }
 
-      filtered = filtered.filter((item) => {
+      filtered = filtered.filter(item => {
         const itemDate = new Date(item.timestamp);
         return itemDate >= startDate && itemDate < endDate;
       });
@@ -137,12 +150,12 @@ export function CollectionHistoryTable({
     // Apply sorting
     if (sortField && sortDirection) {
       console.warn(
-        "Applying sort:",
+        'Applying sort:',
         sortField,
         sortDirection,
-        "on",
+        'on',
         filtered.length,
-        "items"
+        'items'
       );
       filtered.sort((a, b) => {
         let aValue: string | number | Date =
@@ -153,7 +166,7 @@ export function CollectionHistoryTable({
         // Debug logging
         if (filtered.length <= 3) {
           // Only log for small datasets to avoid spam
-          console.warn("Sorting values:", {
+          console.warn('Sorting values:', {
             field: sortField,
             aValue,
             bValue,
@@ -167,19 +180,19 @@ export function CollectionHistoryTable({
         if (bValue === undefined || bValue === null) bValue = 0;
 
         // Handle timestamp comparison
-        if (sortField === "timestamp") {
+        if (sortField === 'timestamp') {
           aValue = new Date(aValue).getTime();
           bValue = new Date(bValue).getTime();
         }
 
         // Handle numeric comparison
-        if (typeof aValue === "number" && typeof bValue === "number") {
-          return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
         }
 
         // Handle string comparison
-        if (typeof aValue === "string" && typeof bValue === "string") {
-          return sortDirection === "asc"
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortDirection === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
@@ -187,7 +200,7 @@ export function CollectionHistoryTable({
         // Fallback: convert to string and compare
         const aStr = String(aValue);
         const bStr = String(bValue);
-        return sortDirection === "asc"
+        return sortDirection === 'asc'
           ? aStr.localeCompare(bStr)
           : bStr.localeCompare(aStr);
       });
@@ -206,32 +219,32 @@ export function CollectionHistoryTable({
   );
 
   const goFirst = () => setPage(1);
-  const goPrev = () => setPage((p) => Math.max(1, p - 1));
-  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
+  const goPrev = () => setPage(p => Math.max(1, p - 1));
+  const goNext = () => setPage(p => Math.min(totalPages, p + 1));
   const goLast = () => setPage(totalPages);
 
   // Handle column sorting
   const handleSort = (field: SortField) => {
     console.warn(
-      "Sorting by field:",
+      'Sorting by field:',
       field,
-      "Current sort:",
+      'Current sort:',
       sortField,
       sortDirection
     );
 
     if (sortField === field) {
       // Cycle through: desc -> asc -> null (no sort)
-      if (sortDirection === "desc") {
-        setSortDirection("asc");
-      } else if (sortDirection === "asc") {
+      if (sortDirection === 'desc') {
+        setSortDirection('asc');
+      } else if (sortDirection === 'asc') {
         setSortDirection(null);
       } else {
-        setSortDirection("desc");
+        setSortDirection('desc');
       }
     } else {
       setSortField(field);
-      setSortDirection("desc");
+      setSortDirection('desc');
     }
     setPage(1); // Reset to first page when sorting changes
   };
@@ -241,10 +254,10 @@ export function CollectionHistoryTable({
     if (sortField !== field) {
       return <ChevronsUpDown className="h-4 w-4 opacity-50" />;
     }
-    if (sortDirection === "asc") {
+    if (sortDirection === 'asc') {
       return <ChevronUp className="h-4 w-4" />;
     }
-    if (sortDirection === "desc") {
+    if (sortDirection === 'desc') {
       return <ChevronDown className="h-4 w-4" />;
     }
     return <ChevronsUpDown className="h-4 w-4 opacity-50" />;
@@ -257,7 +270,7 @@ export function CollectionHistoryTable({
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-center py-8">
+      <div className="py-8 text-center">
         <p className="text-grayHighlight">
           No collection history data found for this machine.
         </p>
@@ -268,7 +281,7 @@ export function CollectionHistoryTable({
   return (
     <div className="w-full">
       {/* Time Filter */}
-      <div className="mb-4 flex justify-between items-center">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Filter by time:</span>
           <Select
@@ -303,18 +316,16 @@ export function CollectionHistoryTable({
             >
               {isCheckingIssues ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
                   Checking...
                 </>
               ) : isFixing ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
                   Fixing...
                 </>
               ) : (
-                <>
-                  🔧 Check & Fix History
-                </>
+                <>🔧 Check & Fix History</>
               )}
             </Button>
           )}
@@ -322,205 +333,246 @@ export function CollectionHistoryTable({
       </div>
 
       {/* Desktop Table View - Show on md and larger screens */}
-      <div className="hidden md:block w-full overflow-x-auto">
+      <div className="hidden w-full overflow-x-auto md:block">
         <div className="min-w-max">
           <Table className="w-full">
-          <TableHeader>
-            <TableRow>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none w-40"
-                onClick={() => handleSort("timestamp")}
-              >
-                <div className="flex items-center gap-2">
-                  Time
-                  {getSortIcon("timestamp")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none w-28"
-                onClick={() => handleSort("metersIn")}
-              >
-                <div className="flex items-center gap-2">
-                  Meters In
-                  {getSortIcon("metersIn")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none w-28"
-                onClick={() => handleSort("metersOut")}
-              >
-                <div className="flex items-center gap-2">
-                  Meters Out
-                  {getSortIcon("metersOut")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none w-28"
-                onClick={() => handleSort("prevIn")}
-              >
-                <div className="flex items-center gap-2">
-                  Prev. In
-                  {getSortIcon("prevIn")}
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none w-28"
-                onClick={() => handleSort("prevOut")}
-              >
-                <div className="flex items-center gap-2">
-                  Prev. Out
-                  {getSortIcon("prevOut")}
-                </div>
-              </TableHead>
-              <TableHead className="w-32">Collection Report</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paged.map((row, index) => (
-              <TableRow
-                key={`${row.locationReportId}-${row.timestamp}-${index}`}
-              >
-                <TableCell className="truncate">
-                  {new Date(row.timestamp).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                    second: "2-digit",
-                    hour12: true,
-                  })}
-                </TableCell>
-                <TableCell className="truncate text-right">
-                  {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
-                </TableCell>
-                <TableCell className="truncate text-right">
-                  {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
-                </TableCell>
-                <TableCell className="truncate text-right">
-                  {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
-                </TableCell>
-                <TableCell className="truncate text-right">
-                  {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
-                </TableCell>
-                <TableCell className="truncate">
-                  {row.locationReportId && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs px-2 py-1"
-                      onClick={() => {
-                        console.warn(
-                          "Navigating to collection report:",
-                          row.locationReportId
-                        );
-                        router.push(
-                          `/collection-report/report/${row.locationReportId}`
-                        );
-                      }}
-                    >
-                      VIEW REPORT
-                    </Button>
-                  )}
-                </TableCell>
+            <TableHeader>
+              <TableRow>
+                <TableHead
+                  className="w-40 cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('timestamp')}
+                >
+                  <div className="flex items-center gap-2">
+                    Time
+                    {getSortIcon('timestamp')}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-28 cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('metersIn')}
+                >
+                  <div className="flex items-center gap-2">
+                    Meters In
+                    {getSortIcon('metersIn')}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-28 cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('metersOut')}
+                >
+                  <div className="flex items-center gap-2">
+                    Meters Out
+                    {getSortIcon('metersOut')}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-28 cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('prevIn')}
+                >
+                  <div className="flex items-center gap-2">
+                    Prev. In
+                    {getSortIcon('prevIn')}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-28 cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('prevOut')}
+                >
+                  <div className="flex items-center gap-2">
+                    Prev. Out
+                    {getSortIcon('prevOut')}
+                  </div>
+                </TableHead>
+                <TableHead className="w-20 text-center">Status</TableHead>
+                <TableHead className="w-32">Collection Report</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {paged.map((row, index) => {
+                const hasIssue =
+                  row.locationReportId && issuesMap[row.locationReportId];
+                return (
+                  <TableRow
+                    key={`${row.locationReportId}-${row.timestamp}-${index}`}
+                    className={
+                      hasIssue ? 'bg-red-50/50 hover:bg-red-100/50' : ''
+                    }
+                  >
+                    <TableCell className="truncate">
+                      {new Date(row.timestamp).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                      })}
+                    </TableCell>
+                    <TableCell className="truncate text-right">
+                      {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
+                    </TableCell>
+                    <TableCell className="truncate text-right">
+                      {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
+                    </TableCell>
+                    <TableCell className="truncate text-right">
+                      {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
+                    </TableCell>
+                    <TableCell className="truncate text-right">
+                      {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {hasIssue && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <AlertCircle className="h-5 w-5 text-red-500" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="text-sm">
+                                {issuesMap[row.locationReportId]}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </TableCell>
+                    <TableCell className="truncate">
+                      {row.locationReportId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="px-2 py-1 text-xs"
+                          onClick={() => {
+                            console.warn(
+                              'Navigating to collection report:',
+                              row.locationReportId
+                            );
+                            router.push(
+                              `/collection-report/report/${row.locationReportId}`
+                            );
+                          }}
+                        >
+                          VIEW REPORT
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       </div>
 
       {/* Mobile Cards View */}
-      <div className="lg:hidden space-y-4 w-full">
-        {paged.map((row, index) => (
-          <Card key={`${row.locationReportId}-${row.timestamp}-${index}`}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center justify-between">
-                <span>Collection Entry</span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(row.timestamp).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
+      <div className="w-full space-y-4 lg:hidden">
+        {paged.map((row, index) => {
+          const hasIssue =
+            row.locationReportId && issuesMap[row.locationReportId];
+          return (
+            <Card
+              key={`${row.locationReportId}-${row.timestamp}-${index}`}
+              className={hasIssue ? 'border-red-500 bg-red-50/50' : ''}
+            >
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    Collection Entry
+                    {hasIssue && (
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(row.timestamp).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {hasIssue && (
+                  <div className="rounded border border-red-300 bg-red-100 p-2 text-xs text-red-800">
+                    <strong>⚠️ Issue:</strong> {issuesMap[row.locationReportId]}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-medium text-muted-foreground">
+                      Meters In:
+                    </span>
+                    <span className="font-medium">
+                      {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-muted-foreground">
+                      Meters Out:
+                    </span>
+                    <span className="font-medium">
+                      {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-muted-foreground">
+                      Prev. In:
+                    </span>
+                    <span className="font-medium">
+                      {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-muted-foreground">
+                      Prev. Out:
+                    </span>
+                    <span className="font-medium">
+                      {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-center text-xs text-muted-foreground">
+                  {new Date(row.timestamp).toLocaleString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
                   })}
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="font-medium text-muted-foreground">
-                    Meters In:
-                  </span>
-                  <span className="font-medium">
-                    {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
-                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium text-muted-foreground">
-                    Meters Out:
-                  </span>
-                  <span className="font-medium">
-                    {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium text-muted-foreground">
-                    Prev. In:
-                  </span>
-                  <span className="font-medium">
-                    {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium text-muted-foreground">
-                    Prev. Out:
-                  </span>
-                  <span className="font-medium">
-                    {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
-                  </span>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground text-center">
-                {new Date(row.timestamp).toLocaleString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  hour12: true,
-                })}
-              </div>
-              {row.locationReportId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    console.warn(
-                      "Navigating to collection report:",
-                      row.locationReportId
-                    );
-                    router.push(
-                      `/collection-report/report/${row.locationReportId}`
-                    );
-                  }}
-                >
-                  VIEW REPORT
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                {row.locationReportId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      console.warn(
+                        'Navigating to collection report:',
+                        row.locationReportId
+                      );
+                      router.push(
+                        `/collection-report/report/${row.locationReportId}`
+                      );
+                    }}
+                  >
+                    VIEW REPORT
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex justify-center items-center mt-6 gap-2">
+      <div className="mt-6 flex items-center justify-center gap-2">
         <Button
           variant="outline"
           size="sm"
           onClick={goFirst}
           disabled={page === 1}
         >
-          {"<<"}
+          {'<<'}
         </Button>
         <Button
           variant="outline"
@@ -528,7 +580,7 @@ export function CollectionHistoryTable({
           onClick={goPrev}
           disabled={page === 1}
         >
-          {"<"}
+          {'<'}
         </Button>
         <span className="px-2 text-sm">
           Page {page} of {totalPages}
@@ -539,7 +591,7 @@ export function CollectionHistoryTable({
           onClick={goNext}
           disabled={page === totalPages}
         >
-          {">"}
+          {'>'}
         </Button>
         <Button
           variant="outline"
@@ -547,7 +599,7 @@ export function CollectionHistoryTable({
           onClick={goLast}
           disabled={page === totalPages}
         >
-          {">>"}
+          {'>>'}
         </Button>
       </div>
     </div>

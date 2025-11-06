@@ -619,6 +619,9 @@ export default function MobileEditCollectionModal({
       // Prepare collection payload for API
       const collectionPayload = {
         machineId: String(modalState.selectedMachineData._id),
+        machineName: modalState.selectedMachineData.name || '',
+        machineCustomName: modalState.selectedMachineData.custom?.name || '',
+        serialNumber: modalState.selectedMachineData.serialNumber || '',
         location: selectedLocationName,
         collector: getUserDisplayName(user),
         metersIn: Number(modalState.formData.metersIn),
@@ -889,10 +892,13 @@ export default function MobileEditCollectionModal({
     }
 
     // Check if user has entered new machine data without adding it to the list
+    // This includes: machine selected OR any meter values entered OR notes entered
     if (
       !modalState.editingEntryId &&
-      modalState.selectedMachineData &&
-      (modalState.formData.metersIn || modalState.formData.metersOut)
+      (modalState.selectedMachineData || 
+       modalState.formData.metersIn || 
+       modalState.formData.metersOut || 
+       modalState.formData.notes?.trim())
     ) {
       const enteredMetersIn = modalState.formData.metersIn
         ? Number(modalState.formData.metersIn)
@@ -900,14 +906,18 @@ export default function MobileEditCollectionModal({
       const enteredMetersOut = modalState.formData.metersOut
         ? Number(modalState.formData.metersOut)
         : 0;
+      const hasNotes = modalState.formData.notes?.trim().length > 0;
 
-      if (enteredMetersIn > 0 || enteredMetersOut > 0) {
-        toast.warning(
-          `Unsaved meter data detected for ${modalState.selectedMachineData.name || modalState.selectedMachineData.serialNumber}. ` +
-            `Form values: In=${enteredMetersIn}, Out=${enteredMetersOut}. ` +
-            `Please add the machine to the list before updating the report.`,
+      // If ANY data has been entered (machine selected, meters entered, or notes added)
+      if (modalState.selectedMachineData || enteredMetersIn !== 0 || enteredMetersOut !== 0 || hasNotes) {
+        toast.error(
+          `You have unsaved machine data. ` +
+            (modalState.selectedMachineData ? `Machine: ${modalState.selectedMachineData.name || modalState.selectedMachineData.serialNumber}. ` : '') +
+            (enteredMetersIn !== 0 || enteredMetersOut !== 0 ? `Meters: In=${enteredMetersIn}, Out=${enteredMetersOut}. ` : '') +
+            (hasNotes ? `Notes: "${modalState.formData.notes.substring(0, 30)}${modalState.formData.notes.length > 30 ? '...' : ''}". ` : '') +
+            `Please add the machine to the list or cancel before updating the report.`,
           {
-            duration: 8000,
+            duration: 10000,
             position: 'top-left',
           }
         );
@@ -1137,6 +1147,7 @@ export default function MobileEditCollectionModal({
     modalState.selectedMachineData,
     modalState.formData.metersIn,
     modalState.formData.metersOut,
+    modalState.formData.notes,
     user,
     onRefresh,
     onClose,
@@ -1217,6 +1228,7 @@ export default function MobileEditCollectionModal({
             console.warn(
               '⚠️ Report has isEditing: true - marking as having unsaved edits'
             );
+            setModalState(prev => ({ ...prev, hasUnsavedEdits: true }));
           }
 
           // Fetch collections for this report
@@ -1626,6 +1638,28 @@ export default function MobileEditCollectionModal({
           if (!isOpen && modalState.hasUnsavedEdits) {
             setShowUnsavedChangesWarning(true);
             return;
+          }
+          // Check if user has unsaved machine data before closing
+          if (!isOpen && !modalState.editingEntryId && 
+              (modalState.selectedMachineData || 
+               modalState.formData.metersIn || 
+               modalState.formData.metersOut || 
+               modalState.formData.notes?.trim())) {
+            const enteredMetersIn = modalState.formData.metersIn ? Number(modalState.formData.metersIn) : 0;
+            const enteredMetersOut = modalState.formData.metersOut ? Number(modalState.formData.metersOut) : 0;
+            const hasNotes = modalState.formData.notes?.trim().length > 0;
+            
+            if (modalState.selectedMachineData || enteredMetersIn !== 0 || enteredMetersOut !== 0 || hasNotes) {
+              toast.error(
+                `You have unsaved machine data. Please add the machine to the list or cancel before closing.`,
+                {
+                  duration: 8000,
+                  position: 'top-left',
+                }
+              );
+              setShowUnsavedChangesWarning(true);
+              return;
+            }
           }
           if (!isOpen) {
             onClose();
@@ -3332,29 +3366,27 @@ export default function MobileEditCollectionModal({
                           {(() => {
                             const filteredMachines =
                               modalState.collectedMachines.filter(machine => {
-                                if (!modalState.collectedMachinesSearchTerm)
+                                if (
+                                  !modalState.collectedMachinesSearchTerm.trim()
+                                )
                                   return true;
                                 const searchTerm =
                                   modalState.collectedMachinesSearchTerm.toLowerCase();
                                 const machineName = (
                                   machine.machineName || ''
                                 ).toLowerCase();
-                                const machineCustomName = (
-                                  machine.machineCustomName || ''
-                                ).toLowerCase();
-                                const machineId = (
-                                  machine.machineId || ''
-                                ).toLowerCase();
                                 const serialNumber = (
                                   machine.serialNumber || ''
+                                ).toLowerCase();
+                                const machineCustomName = (
+                                  machine.machineCustomName || ''
                                 ).toLowerCase();
                                 const game = (machine.game || '').toLowerCase();
 
                                 return (
                                   machineName.includes(searchTerm) ||
-                                  machineCustomName.includes(searchTerm) ||
-                                  machineId.includes(searchTerm) ||
                                   serialNumber.includes(searchTerm) ||
+                                  machineCustomName.includes(searchTerm) ||
                                   game.includes(searchTerm)
                                 );
                               });
@@ -3391,6 +3423,7 @@ export default function MobileEditCollectionModal({
                                         custom: {
                                           name: machine.machineCustomName,
                                         },
+                                        game: machine.game,
                                       })}
                                     </p>
                                     <p className="mt-1 text-xs text-gray-600">

@@ -1,7 +1,8 @@
 # Collection Report Details Page - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 20th, 2025
+**Last Updated:** November 5, 2025  
+**Version:** 2.1.0
 
 ## Overview
 
@@ -133,6 +134,10 @@ Variation: 208.00 - (-127.00) = 335.00 ✅
 
 ## Issue Detection & Fix System
 
+### Overview
+
+The Collection Report Details page includes a comprehensive issue detection and automated fixing system that validates data integrity for all collections in a report. This system works alongside the Cabinet Details Collection History issue detection but serves a different purpose focused on report-level financial accuracy.
+
 ### Issue Types Detected
 
 **1. Movement Calculation Mismatches**
@@ -195,6 +200,35 @@ Variation: 208.00 - (-127.00) = 335.00 ✅
 - Real-time validation ensures accuracy
 - No manual intervention required for detection
 - Clear communication of issues and fixes
+
+### Comparison with Cabinet Details Issue Detection
+
+Both the Collection Report Details page and the Cabinet Details Collection History tab include issue detection systems, but they serve different purposes:
+
+| Feature | Collection Report Details | Cabinet Details Collection History |
+|---------|--------------------------|-------------------------------------|
+| **Focus** | Report-level financial accuracy | Machine-level data integrity |
+| **Scope** | All collections in ONE report | All collection history for ONE machine |
+| **Issue Types** | SAS times, movement calculations, prev meters, RAM clears | History/Collection sync (mismatch, orphaned, missing) |
+| **Auto-Fix** | ✅ Yes - "Fix Report" button | ❌ No - display only |
+| **Visual Style** | Warning banner with issue counts, issue modals | Red rows/cards with AlertCircle icons |
+| **User Action** | Click "Fix Report" to automatically repair | Investigate manually and fix if needed |
+| **Purpose** | Ensure accurate financial reporting | Validate collection history synchronization |
+| **When to Use** | Before finalizing financial reports | When investigating machine-specific issues |
+
+**Use Collection Report Details Fix When:**
+- Variation is too high and needs investigation
+- SAS times are inverted or missing
+- Movement calculations don't match meter readings
+- Previous meters are incorrect
+- You want to fix all issues in a report at once
+
+**Use Cabinet Details Issue Detection When:**
+- Investigating a specific machine's collection history
+- Checking if machine history matches collection documents
+- Identifying orphaned or missing history entries
+- Understanding machine-specific data integrity problems
+- No automated fix is needed, just visibility
 
 ## API Integration
 

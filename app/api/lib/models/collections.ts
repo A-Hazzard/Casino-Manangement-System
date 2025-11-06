@@ -1,5 +1,5 @@
-import mongoose, { Schema } from 'mongoose';
 import type { CollectionDocument } from '@/lib/types/collections';
+import mongoose, { Schema } from 'mongoose';
 
 const sasMetersSchema = new Schema(
   {
@@ -45,6 +45,7 @@ const collectionsSchema = new Schema(
     machineCustomName: { type: String },
     machineId: { type: String },
     machineName: { type: String },
+    game: { type: String },
     ramClear: { type: Boolean },
     ramClearMetersIn: { type: Number },
     ramClearMetersOut: { type: Number },

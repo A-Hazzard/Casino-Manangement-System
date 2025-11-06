@@ -1,8 +1,8 @@
 # Cabinet Details Page Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025  
-**Version:** 2.1.0
+**Last Updated:** November 5, 2025  
+**Version:** 2.2.0
 
 ## Quick Search Guide
 
@@ -11,11 +11,13 @@ Use **Ctrl+F** to find these key topics:
 - **bill validator** - How bill validator system works and tracks denominations
 - **collection settings** - How collection settings are configured and updated
 - **collection history** - How collection history is tracked and displayed
+- **issue detection** - How collection history issues are detected and displayed
 - **smib configuration** - How SMIB communication and network settings work
 - **machine metrics** - How financial metrics are calculated and displayed
 - **activity log** - How machine events and commands are tracked
 - **denomination tracking** - How bill denominations are tracked and managed
 - **database fields** - All model fields and their purposes
+- **data integrity** - How data consistency is validated and monitored
 
 ## Overview
 
@@ -141,6 +143,96 @@ The current balance is retrieved from `machine.billValidator.balance` and displa
 - **Data Structure Compatibility**: Automatic detection and processing of V1/V2 formats
 
 ## Collection System
+
+### Collection History Issue Detection
+
+The Collection History tab includes an automated issue detection system that validates data integrity between the machine's collection history and the collections database.
+
+#### Issue Types Detected
+
+**1. History Mismatch**
+- **What it means**: The collection history entry on the machine doesn't match the actual collection document data
+- **Common causes**: 
+  - Meter readings were updated after collection was created
+  - Manual database edits caused desynchronization
+  - Data corruption during collection process
+- **Visual indicator**: Red row/card with "History Mismatch" warning
+
+**2. Orphaned History**
+- **What it means**: A history entry exists on the machine but the corresponding collection document is missing or deleted
+- **Common causes**:
+  - Collection was soft-deleted or hard-deleted from database
+  - Collection report was deleted without cleaning up machine history
+  - Data migration or cleanup scripts removed collections
+- **Visual indicator**: Red row/card with "Orphaned History" warning
+
+**3. Missing History**
+- **What it means**: A collection document exists in the database but there's no matching entry in the machine's collectionMetersHistory array
+- **Common causes**:
+  - History entry failed to save during collection creation
+  - Machine document update failed partially
+  - Collection was created via script without updating machine
+- **Visual indicator**: Red row/card with "Missing History" warning
+
+#### Detection Process
+
+```typescript
+// For each collection report linked to this machine:
+1. Find the corresponding history entry in machine.collectionMetersHistory
+2. Find the corresponding collection document in collections collection
+3. Compare the data integrity:
+   - If history exists but collection is missing → "Orphaned History"
+   - If collection exists but history is missing → "Missing History"
+   - If both exist but data doesn't match → "History Mismatch"
+4. Store issue descriptions in state for display
+```
+
+#### Visual Presentation
+
+**Desktop View:**
+- Status column added to collection history table
+- Red background (`bg-red-50/50 hover:bg-red-100/50`) for rows with issues
+- AlertCircle icon with tooltip showing detailed issue description
+- Maintains table structure and readability
+
+**Mobile View:**
+- Red border (`border-red-500`) and background (`bg-red-50/50`) for cards with issues
+- AlertCircle icon prominently displayed
+- Warning box below collection details with full issue description
+- Maintains card layout and touch targets
+
+#### API Integration
+
+**Endpoint**: `GET /api/machines/by-id/collection-history?machineId=[id]`
+
+**Response includes**:
+```typescript
+{
+  history: CollectionHistoryEntry[],
+  issues: {
+    [locationReportId: string]: string  // Issue description
+  }
+}
+```
+
+**Frontend Hook**: `lib/hooks/data/useCollectionHistory.ts`
+
+**Components**:
+- `components/cabinetDetails/AccountingDetails.tsx` - Tab container and issue detection
+- `components/cabinetDetails/CollectionHistoryTable.tsx` - Display with visual indicators
+
+#### Differences from Collection Report Details
+
+While both the Cabinet Details Collection History and Collection Report Details pages detect issues, they serve different purposes:
+
+| Feature | Cabinet Details (Machine History) | Collection Report Details |
+|---------|-----------------------------------|---------------------------|
+| **Scope** | All collection history for ONE machine | All collections in ONE report |
+| **Issue Types** | History/Collection sync issues | SAS times, movement calculations, prev meters |
+| **Auto-Fix** | No - display only | Yes - "Fix Report" button available |
+| **Visual Style** | Red rows/cards with icons | Issue badges and warning cards |
+| **Purpose** | Machine-level data integrity | Report-level financial accuracy |
+| **User Action** | Investigate and manually fix if needed | Can use automated fix tools |
 
 ### Collection Settings Management
 
@@ -726,6 +818,7 @@ Machine (Many) ←→ (1) Location
 - **Amount Collected**: Gross amount taken from machine
 - **Machine Status**: Meters before and after collection
 - **Variance**: Any discrepancies in expected vs actual amounts
+- **Status Indicators**: Visual warnings for collections with data integrity issues
 
 ## Collection Settings - How It Works
 
@@ -1214,14 +1307,23 @@ Actual = Amount Collected
 
 ### **Collection History Tab**
 
-- **Purpose**: Historical record of all money collections from the machine
+- **Purpose**: Historical record of all money collections from the machine with data integrity monitoring
 - **Data Source**: `machine.collectionMetersHistory` array
 - **Data Structure**: Each entry contains:
   - Collection timestamp
   - Meters in/out readings
   - Previous collection readings
   - Location report ID for audit trail
+  - **Status indicators** for data integrity issues
 - **Update Frequency**: Updated after each collection
+- **Issue Detection**: Automatically checks for:
+  - **History Mismatch**: Collection history doesn't match corresponding collection document
+  - **Orphaned History**: History entry exists but corresponding collection is missing
+  - **Missing History**: Collection exists but no history entry on machine
+- **Visual Indicators**:
+  - **Desktop**: Red row background with AlertCircle icon and tooltip showing issue details
+  - **Mobile**: Red card border with warning box displaying issue description
+  - Issues are detected in real-time and displayed without auto-fixing data
 
 ### **Collection Settings Tab**
 

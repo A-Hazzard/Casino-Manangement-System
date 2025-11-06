@@ -220,6 +220,10 @@ export async function POST(req: NextRequest) {
         (machineData.customName as string) ||
         (machineData.serialNumber as string) ||
         'Unknown Machine',
+      game:
+        (machineData.game as string) ||
+        (machineData.installedGame as string) ||
+        '',
       ramClear: payload.ramClear || false,
       ramClearMetersIn: payload.ramClearMetersIn,
       ramClearMetersOut: payload.ramClearMetersOut,
