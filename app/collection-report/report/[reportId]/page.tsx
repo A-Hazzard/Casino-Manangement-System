@@ -301,47 +301,39 @@ function CollectionReportPageContent() {
         console.warn('🔍 Machine history check response:', issuesResponse.data);
         console.warn('🔍 Looking for reportId:', reportId);
 
-        const reportIssues = issuesResponse.data.reportIssues || {};
-        console.warn('🔍 All report issues keys:', Object.keys(reportIssues));
+        // CRITICAL: Check for actual machine-level history issues
+        // The machines array contains the actual issues, not reportIssues counts
+        const machinesData = issuesResponse.data.machines || [];
+        console.warn(`🔍 Machines in response: ${machinesData.length}`);
 
-        // The reportIssues object uses MongoDB _id as keys, and we're looking for our reportId
-        // Since we called the API with reportId, there should be exactly one entry in reportIssues
-        const reportKeys = Object.keys(reportIssues);
+        // Find machines that have actual history issues
+        const machinesWithHistoryIssues = machinesData.filter(
+          (m: { issues?: unknown[] }) => m.issues && m.issues.length > 0
+        );
 
-        if (reportKeys.length === 0) {
-          console.warn(`❌ No report issues found in response`);
-          setHasCollectionHistoryIssues(false);
+        console.warn(`🔍 Machines with actual issues: ${machinesWithHistoryIssues.length}`);
+
+        if (machinesWithHistoryIssues.length > 0) {
+          console.warn(
+            `✅ Setting hasCollectionHistoryIssues to true (${machinesWithHistoryIssues.length} machines with issues)`
+          );
+          setHasCollectionHistoryIssues(true);
+          
+          // Extract machine names from machines with issues
+          const machineNames = machinesWithHistoryIssues.map(
+            (m: { machineName?: string }) => m.machineName || 'Unknown'
+          );
+          console.warn(
+            `📋 Machines with collection history issues:`,
+            machineNames
+          );
+          setCollectionHistoryMachines(machineNames);
         } else {
-          // Get the first (and should be only) report's issues
-          const reportKey = reportKeys[0];
-          const reportIssueData = reportIssues[reportKey];
-
-          console.warn(`🔍 Found report key: ${reportKey}`);
-          console.warn(`🔍 Report issue data:`, reportIssueData);
-
-          if (
-            reportIssueData &&
-            reportIssueData.hasIssues &&
-            reportIssueData.issueCount > 0
-          ) {
-            console.warn(
-              `✅ Setting hasCollectionHistoryIssues to true (${reportIssueData.issueCount} issues found)`
-            );
-            setHasCollectionHistoryIssues(true);
-            // Store the machines with issues
-            const machinesWithIssues = reportIssueData.machines || [];
-            console.warn(
-              `📋 Machines with collection history issues:`,
-              machinesWithIssues
-            );
-            setCollectionHistoryMachines(machinesWithIssues);
-          } else {
-            console.warn(
-              `❌ No machine history issues found, hasCollectionHistoryIssues remains false`
-            );
-            setHasCollectionHistoryIssues(false);
-            setCollectionHistoryMachines([]);
-          }
+          console.warn(
+            `❌ No machine history issues found, hasCollectionHistoryIssues set to false`
+          );
+          setHasCollectionHistoryIssues(false);
+          setCollectionHistoryMachines([]);
         }
       } catch (error) {
         console.error('Error checking machine history issues:', error);
