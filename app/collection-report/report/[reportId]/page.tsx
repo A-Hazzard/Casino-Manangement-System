@@ -311,14 +311,16 @@ function CollectionReportPageContent() {
           (m: { issues?: unknown[] }) => m.issues && m.issues.length > 0
         );
 
-        console.warn(`🔍 Machines with actual issues: ${machinesWithHistoryIssues.length}`);
+        console.warn(
+          `🔍 Machines with actual issues: ${machinesWithHistoryIssues.length}`
+        );
 
         if (machinesWithHistoryIssues.length > 0) {
           console.warn(
             `✅ Setting hasCollectionHistoryIssues to true (${machinesWithHistoryIssues.length} machines with issues)`
           );
           setHasCollectionHistoryIssues(true);
-          
+
           // Extract machine names from machines with issues
           const machineNames = machinesWithHistoryIssues.map(
             (m: { machineName?: string }) => m.machineName || 'Unknown'
@@ -420,9 +422,9 @@ function CollectionReportPageContent() {
     fetchCollectionsByLocationReportId(reportId)
       .then(setCollections)
       .catch(() => setCollections([]));
-  // Note: checkForSasTimeIssues intentionally omitted to prevent dependency loop
-  // It's called once on initial load above (line 416), which is sufficient
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Note: checkForSasTimeIssues intentionally omitted to prevent dependency loop
+    // It's called once on initial load above (line 416), which is sufficient
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportId]);
 
   // AUTO-FIX: Automatically fix collection history issues when detected
@@ -433,25 +435,32 @@ function CollectionReportPageContent() {
     // Once auto-fix has run, it never runs again until page remounts
     // This prevents infinite loops even if requery finds new/different issues
     if (
-      (hasSasTimeIssues || hasCollectionHistoryIssues) && 
-      !isFixingReport && 
-      !loading && 
-      reportData && 
+      (hasSasTimeIssues || hasCollectionHistoryIssues) &&
+      !isFixingReport &&
+      !loading &&
+      reportData &&
       lastAutoFixIssuesRef.current === '' // Only run if never attempted
     ) {
-      console.warn('🔧 Auto-fix: Collection issues detected, automatically fixing (ONE TIME ONLY)...');
-      console.warn('   PRINCIPLE: Collection documents are source of truth, syncing history to match');
-      
+      console.warn(
+        '🔧 Auto-fix: Collection issues detected, automatically fixing (ONE TIME ONLY)...'
+      );
+      console.warn(
+        '   PRINCIPLE: Collection documents are source of truth, syncing history to match'
+      );
+
       // Mark that auto-fix has been attempted - NEVER reset during page session
       lastAutoFixIssuesRef.current = 'attempted';
-      
+
       // Automatically trigger fix
       const autoFix = async () => {
         setIsFixingReport(true);
         try {
-          const response = await axios.post(`/api/collection-reports/fix-report`, {
-            reportId,
-          });
+          const response = await axios.post(
+            `/api/collection-reports/fix-report`,
+            {
+              reportId,
+            }
+          );
 
           if (response.data.success) {
             const { results } = response.data;
@@ -463,18 +472,19 @@ function CollectionReportPageContent() {
               results.issuesFixed.machineHistoryFixed;
 
             console.warn(`✅ Auto-fix completed: Fixed ${issuesFixed} issues`);
-            
+
             // Silently refresh data
             const data = await fetchCollectionReportById(reportId);
             if (data) {
               setReportData(data);
             }
-            
+
             await checkForSasTimeIssues(reportId);
-            
-            const collectionsData = await fetchCollectionsByLocationReportId(reportId);
+
+            const collectionsData =
+              await fetchCollectionsByLocationReportId(reportId);
             setCollections(collectionsData);
-            
+
             // Show subtle success notification
             toast.success('Collection history automatically synchronized', {
               description: `${issuesFixed} issues resolved automatically`,
@@ -494,7 +504,13 @@ function CollectionReportPageContent() {
     // NOTE: lastAutoFixIssuesRef is NEVER reset during page session to prevent infinite loops
     // If user needs to re-run auto-fix, they must refresh the page or use manual "Fix Report" button
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasSasTimeIssues, hasCollectionHistoryIssues, isFixingReport, loading, reportId]);
+  }, [
+    hasSasTimeIssues,
+    hasCollectionHistoryIssues,
+    isFixingReport,
+    loading,
+    reportId,
+  ]);
 
   // Keep state in sync with URL changes (for browser back/forward)
   useEffect(() => {
