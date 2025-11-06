@@ -589,12 +589,15 @@ export async function GET(request: NextRequest) {
                 }
                 reportIssues[issue.locationReportId].issueCount++;
                 reportIssues[issue.locationReportId].hasIssues = true;
+                // Push machine name instead of ID for better UX
                 if (
                   !reportIssues[issue.locationReportId].machines.includes(
-                    machId
+                    machineName
                   )
                 ) {
-                  reportIssues[issue.locationReportId].machines.push(machId);
+                  reportIssues[issue.locationReportId].machines.push(
+                    machineName
+                  );
                 }
               }
             }
