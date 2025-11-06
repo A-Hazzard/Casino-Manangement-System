@@ -748,12 +748,28 @@ async function fixMachineHistoryIssues(
   fixResults: FixResults
 ) {
   try {
-    const machine = (await Machine.findById(
+    console.warn(`\n🔍 [fixMachineHistoryIssues] Processing collection:`);
+    console.warn(`   Collection ID: ${collection._id}`);
+    console.warn(`   locationReportId: ${collection.locationReportId}`);
+    console.warn(`   Collection prevIn/prevOut: ${collection.prevIn}/${collection.prevOut}`);
+    console.warn(`   Machine ID: ${collection.machineId} (type: ${typeof collection.machineId})`);
+    
+    let machine = (await Machine.findById(
       collection.machineId
     ).lean()) as MachineData | null;
-    if (!machine) return;
+    if (!machine) {
+      console.warn(`   ❌ Machine not found with findById: ${collection.machineId}`);
+      console.warn(`   ⚠️ Trying findOne instead...`);
+      machine = await Machine.findOne({ _id: collection.machineId }).lean() as MachineData | null;
+      if (!machine) {
+        console.warn(`   ❌ Machine STILL not found with findOne!`);
+        return;
+      }
+      console.warn(`   ✅ Machine found with findOne!`);
+    }
 
     const currentHistory = machine.collectionMetersHistory || [];
+    console.warn(`   Machine has ${currentHistory.length} history entries`);
 
     // Find history entry by locationReportId (unique identifier)
     const historyEntry = currentHistory.find(
@@ -762,6 +778,13 @@ async function fixMachineHistoryIssues(
     );
 
     if (!historyEntry) {
+      console.warn(
+        `   ⚠️ No history entry found for locationReportId: ${collection.locationReportId}`
+      );
+      console.warn(`   Available locationReportIds in history:`);
+      currentHistory.forEach((e: HistoryEntry, i: number) => {
+        console.warn(`     [${i}] ${e.locationReportId}`);
+      });
       console.warn(
         `   🔧 Creating missing history entry for collection ${collection._id}`
       );
@@ -785,6 +808,10 @@ async function fixMachineHistoryIssues(
         `   ✅ Created history entry for collection ${collection._id}`
       );
     } else {
+      console.warn(`   ✅ Found history entry`);
+      console.warn(`      History prevMetersIn/prevMetersOut: ${historyEntry.prevMetersIn}/${historyEntry.prevMetersOut}`);
+      console.warn(`      Collection prevIn/prevOut: ${collection.prevIn || 0}/${collection.prevOut || 0}`);
+      
       // CRITICAL: Always sync history entry with collection document values
       // This fixes discrepancies where history shows wrong values
       const needsUpdate =
@@ -792,6 +819,8 @@ async function fixMachineHistoryIssues(
         historyEntry.metersOut !== collection.metersOut ||
         historyEntry.prevMetersIn !== (collection.prevIn || 0) ||
         historyEntry.prevMetersOut !== (collection.prevOut || 0);
+
+      console.warn(`   needsUpdate: ${needsUpdate}`);
 
       if (needsUpdate) {
         console.warn(
@@ -803,9 +832,11 @@ async function fixMachineHistoryIssues(
         console.warn(
           `      History: metersIn=${historyEntry.metersIn}, metersOut=${historyEntry.metersOut}, prevMetersIn=${historyEntry.prevMetersIn}, prevMetersOut=${historyEntry.prevMetersOut}`
         );
+        console.warn(`   🔧 Attempting update with arrayFilters...`);
+        console.warn(`      arrayFilter: { 'elem.locationReportId': '${collection.locationReportId}' }`);
 
         // Use locationReportId to identify the specific entry to update
-        await Machine.findByIdAndUpdate(
+        const result = await Machine.findByIdAndUpdate(
           collection.machineId,
           {
             $set: {
@@ -827,8 +858,24 @@ async function fixMachineHistoryIssues(
                 'elem.locationReportId': collection.locationReportId,
               },
             ],
+            new: true, // Return updated document for verification
           }
         );
+
+        if (!result) {
+          console.warn(`   ❌ UPDATE FAILED! findByIdAndUpdate returned null`);
+          console.warn(`      This usually means document not found or update didn't match any elements`);
+        } else {
+          console.warn(`   ✅ UPDATE SUCCESSFUL!`);
+          const updatedEntry = result.collectionMetersHistory?.find(
+            (e: HistoryEntry) => e.locationReportId === collection.locationReportId
+          );
+          if (updatedEntry) {
+            console.warn(`   ✅ Verified - New prevMetersIn: ${updatedEntry.prevMetersIn}, prevMetersOut: ${updatedEntry.prevMetersOut}`);
+          } else {
+            console.warn(`   ⚠️ Could not verify update - entry not found in result`);
+          }
+        }
 
         fixResults.issuesFixed.machineHistoryFixed++;
         console.warn(
@@ -836,7 +883,7 @@ async function fixMachineHistoryIssues(
         );
       } else {
         console.warn(
-          `   ℹ️ History entry already matches collection ${collection._id}`
+          `   ℹ️ History entry already matches collection ${collection._id}, no sync needed`
         );
       }
     }
@@ -1237,34 +1284,75 @@ async function processMachinesForHistoryFix(
         }
       }
 
-      // Update machine history if changes were made
-      if (hasChanges) {
-        // CRITICAL: Before saving cleaned history, sync each entry's values with its collection
-        // This ensures we don't overwrite the fixes made in Phase 1
-        console.warn(
-          `   🔄 Syncing cleaned history entries with their collections...`
-        );
+      // CRITICAL: Always sync history entries with collections, regardless of whether duplicates were found
+      // This ensures history matches collections even when no cleanup was needed
+      console.warn(
+        `   🔄 Syncing ALL history entries with their collections...`
+      );
+      console.warn(`   Total cleaned entries: ${cleanedHistory.length}`);
+      console.warn(`   Total collections available: ${allMachineCollections.length}`);
 
-        for (const entry of cleanedHistory) {
-          if (entry.locationReportId) {
-            const matchingCollection = allMachineCollections.find(
-              c => c.locationReportId === entry.locationReportId
-            );
+      let syncMadeChanges = false;
+      for (const entry of cleanedHistory) {
+        if (entry.locationReportId) {
+          const matchingCollection = allMachineCollections.find(
+            c => c.locationReportId === entry.locationReportId
+          );
 
-            if (matchingCollection) {
-              // Sync ALL fields with the collection (source of truth)
-              entry.metersIn = matchingCollection.metersIn;
-              entry.metersOut = matchingCollection.metersOut;
-              entry.prevMetersIn = matchingCollection.prevIn || 0;
-              entry.prevMetersOut = matchingCollection.prevOut || 0;
-              entry.timestamp = new Date(matchingCollection.timestamp);
+          if (matchingCollection) {
+            // Check if values differ before syncing
+            const valuesDiffer =
+              entry.metersIn !== matchingCollection.metersIn ||
+              entry.metersOut !== matchingCollection.metersOut ||
+              entry.prevMetersIn !== (matchingCollection.prevIn || 0) ||
+              entry.prevMetersOut !== (matchingCollection.prevOut || 0);
+            
+            if (valuesDiffer) {
+              const reportIdStr = String(entry.locationReportId || '').substring(0, 20);
+              console.warn(`   ✅ Syncing ${reportIdStr}... (values differ)`);
+              console.warn(`      Before: prevMetersIn=${entry.prevMetersIn}, prevMetersOut=${entry.prevMetersOut}`);
+              syncMadeChanges = true;
             }
+            
+            // Sync ALL fields with the collection (source of truth)
+            entry.metersIn = matchingCollection.metersIn;
+            entry.metersOut = matchingCollection.metersOut;
+            entry.prevMetersIn = matchingCollection.prevIn || 0;
+            entry.prevMetersOut = matchingCollection.prevOut || 0;
+            entry.timestamp = new Date(matchingCollection.timestamp);
+            
+            if (valuesDiffer) {
+              console.warn(`      After: prevMetersIn=${entry.prevMetersIn}, prevMetersOut=${entry.prevMetersOut}`);
+            }
+          } else {
+            console.warn(`   ⚠️ No matching collection found for ${entry.locationReportId}`);
           }
         }
+      }
 
-        await Machine.findByIdAndUpdate(machineId, {
+      // Update if either cleanup made changes OR sync made changes
+      if (hasChanges || syncMadeChanges) {
+        console.warn(`   💾 Saving history to database... (hasChanges=${hasChanges}, syncMadeChanges=${syncMadeChanges})`);
+        const updateResult = await Machine.findByIdAndUpdate(machineId, {
           $set: { collectionMetersHistory: cleanedHistory },
-        });
+        }, { new: true });
+
+        if (!updateResult) {
+          console.warn(`   ❌ Phase 3 update FAILED! findByIdAndUpdate returned null`);
+          console.warn(`      Trying findOneAndUpdate instead...`);
+          const updateResultAlt = await Machine.findOneAndUpdate(
+            { _id: machineId },
+            { $set: { collectionMetersHistory: cleanedHistory } },
+            { new: true }
+          );
+          if (!updateResultAlt) {
+            console.warn(`   ❌ findOneAndUpdate ALSO FAILED!`);
+          } else {
+            console.warn(`   ✅ findOneAndUpdate SUCCEEDED!`);
+          }
+        } else {
+          console.warn(`   ✅ Phase 3 update successful!`);
+        }
 
         fixResults.issuesFixed.machineHistoryFixed++;
         console.warn(
@@ -1272,7 +1360,7 @@ async function processMachinesForHistoryFix(
         );
       } else {
         console.warn(
-          `   ℹ️ No orphaned entries or duplicate dates found for machine ${machineData.serialNumber || machineId}`
+          `   ℹ️ No changes needed for machine ${machineData.serialNumber || machineId} - history already matches collections`
         );
       }
     }

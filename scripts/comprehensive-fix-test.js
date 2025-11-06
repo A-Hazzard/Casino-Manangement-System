@@ -113,13 +113,14 @@ function generateTestData() {
         timestamp: new Date(now - 9 * day), // Oct 28
         locationReportId: reportIds.oct28,
       },
-      // Valid entry (Oct 21)
+      // CORRUPTION 6: "Future value" corruption (Oct 21 has values from Oct 29)
+      // This matches the TTRHP022 scenario
       {
         _id: new ObjectId().toString(),
         metersIn: 440104,
         metersOut: 357417.65,
-        prevMetersIn: 0,
-        prevMetersOut: 0,
+        prevMetersIn: 444773, // CORRUPTION: Future value from Oct 29!
+        prevMetersOut: 361214.4, // CORRUPTION: Future value from Oct 29!
         timestamp: new Date(now - 16 * day), // Oct 21
         locationReportId: reportIds.oct21,
       },
@@ -365,7 +366,8 @@ async function main() {
     console.log('  ✗ Wrong prevIn/prevOut in Oct 30 collection');
     console.log('  ✗ Wrong prevMetersIn/prevMetersOut in history entries');
     console.log('  ✗ Orphaned history entry (no collection exists)');
-    console.log('  ✗ No collection report for duplicate date entry\n');
+    console.log('  ✗ No collection report for duplicate date entry');
+    console.log('  ✗ Future value corruption (Oct 21 has values from Oct 29) ← TTRHP022 scenario\n');
 
     if (isDryRun) {
       console.log('🔍 DRY-RUN: Would insert test data into database');

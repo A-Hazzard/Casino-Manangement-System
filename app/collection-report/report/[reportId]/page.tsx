@@ -145,7 +145,7 @@ function CollectionReportPageContent() {
   const [selectedIssue, setSelectedIssue] = useState<CollectionIssue | null>(
     null
   );
-  
+
   // Track the issue state when auto-fix was last triggered to prevent infinite loops
   const lastAutoFixIssuesRef = useRef<string>('');
 

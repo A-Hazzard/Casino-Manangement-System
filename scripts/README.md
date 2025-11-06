@@ -220,13 +220,15 @@ History entries removed:    1523
 - ✅ Orphaned history entries (no collection exists) - **FIXED!**
 - ✅ History entries with no collection report - **FIXED!**
 - ✅ Mismatched meters between collection and history - **FIXED!**
+- ✅ **Future value corruption** (Oct 21 has prevMeters from Oct 29) - **FIXED!** ← TTRHP022 scenario
 
 **Test Results:**
 
-- Before fix: **6 total issues detected**
+- Before fix: **6 total issues detected** (including future value corruption)
 - After fix: **0 total issues** ✅
 - History entries: **7 → 4** (duplicates/orphaned removed)
-- Machine issues: **3 → 0** (all resolved)
+- Machine issues: **4 → 0** (all resolved, including future value)
+- machineHistoryFixed: **3** (duplicates + orphaned + future value sync)
 - Success rate: **100%** 🎉
 
 **Usage:**

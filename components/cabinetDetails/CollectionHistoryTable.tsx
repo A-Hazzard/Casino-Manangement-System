@@ -402,11 +402,13 @@ export function CollectionHistoryTable({
                     <TableCell className="text-left">
                       <div className="flex items-center gap-2">
                         {hasIssue && (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <div className="flex cursor-help">
+                                <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
+                              </div>
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
+                            <TooltipContent side="right" className="max-w-xs z-50 bg-slate-900 text-white">
                               <p className="text-xs">
                                 {issuesMap[row.locationReportId]}
                               </p>
