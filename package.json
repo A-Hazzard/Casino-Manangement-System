@@ -12,7 +12,15 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
     "check": "pnpm run type-check && pnpm run lint",
-    "cleanup:old-collections": "node scripts/cleanup-old-collections.js"
+    "cleanup:old-collections": "node scripts/cleanup-old-collections.js",
+    "test:history-fix": "node scripts/test-collection-history-fix.js",
+    "test:history-fix:revert": "node scripts/test-collection-history-fix.js --revert",
+    "test:verify-fix": "node scripts/verify-fix-via-api.js",
+    "test:fix-direct": "node scripts/test-fix-direct.js",
+    "test:fix-direct:revert": "node scripts/test-fix-direct.js --revert",
+    "test:setup-scenario": "node scripts/setup-test-scenario.js",
+    "test:setup-scenario:revert": "node scripts/setup-test-scenario.js --revert",
+    "test:get-report-id": "node scripts/get-report-id.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

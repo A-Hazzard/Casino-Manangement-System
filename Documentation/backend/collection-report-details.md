@@ -344,8 +344,15 @@ await Machine.findByIdAndUpdate(collection.machineId, {
 **Why This Works:**
 - `locationReportId` is unique per collection (more reliable than metersIn/metersOut)
 - Syncs all fields to ensure complete accuracy
-- Fixes cases where history has wrong prevIn/prevOut but collection is correct
+- Fixes cases where history has wrong values (ANY field: metersIn, metersOut, prevIn, prevOut)
 - Used by both "Fix Report" button and "Fix History" button on cabinet details
+
+**CRITICAL PRINCIPLE - Collections Are Always Right:**
+- ✅ Collection documents = Source of Truth (validated, finalized, audit-ready)
+- ✅ History = Denormalized copy (performance optimization, can get out of sync)
+- ✅ Fix direction: ALWAYS history ← collection (NEVER collection ← history)
+- ✅ All fields synced from collection to history without exception
+- ✅ If history shows 347.9K but collection shows 0 → history gets updated to 0
 
 **Response**:
 ```typescript

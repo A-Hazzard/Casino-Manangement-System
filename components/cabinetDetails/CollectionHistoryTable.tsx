@@ -16,12 +16,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
   AlertCircle,
   ChevronDown,
   ChevronsUpDown,
@@ -279,9 +273,9 @@ export function CollectionHistoryTable({
   }
 
   return (
-    <div className="w-full">
-      {/* Time Filter */}
-      <div className="mb-4 flex items-center justify-between">
+    <div className="w-full space-y-4">
+      {/* Time Filter - Responsive layout */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Filter by time:</span>
           <Select
@@ -302,7 +296,7 @@ export function CollectionHistoryTable({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
           <div className="text-sm text-muted-foreground">
             Showing {filteredAndSortedData.length} of {data.length} entries
           </div>
@@ -332,141 +326,122 @@ export function CollectionHistoryTable({
         </div>
       </div>
 
-      {/* Desktop Table View - Show on md and larger screens */}
-      <div className="hidden w-full overflow-x-auto md:block">
-        <div className="min-w-max">
-          <Table className="w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead
-                  className="w-40 cursor-pointer select-none hover:bg-muted/50"
-                  onClick={() => handleSort('timestamp')}
+      {/* Desktop Table View - Show on xl and larger screens only */}
+      <div className="hidden w-full overflow-x-auto xl:block">
+        <Table className="w-full table-fixed">
+          <TableHeader>
+            <TableRow>
+              <TableHead
+                className="w-[160px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                onClick={() => handleSort('timestamp')}
+              >
+                <div className="flex items-center gap-1">
+                  Time
+                  {getSortIcon('timestamp')}
+                </div>
+              </TableHead>
+              <TableHead
+                className="w-[85px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                onClick={() => handleSort('metersIn')}
+              >
+                <div className="flex items-center gap-1">
+                  Meters In
+                  {getSortIcon('metersIn')}
+                </div>
+              </TableHead>
+              <TableHead
+                className="w-[85px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                onClick={() => handleSort('metersOut')}
+              >
+                <div className="flex items-center gap-1">
+                  Meters Out
+                  {getSortIcon('metersOut')}
+                </div>
+              </TableHead>
+              <TableHead
+                className="w-[85px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                onClick={() => handleSort('prevIn')}
+              >
+                <div className="flex items-center gap-1">
+                  Prev. In
+                  {getSortIcon('prevIn')}
+                </div>
+              </TableHead>
+              <TableHead
+                className="w-[85px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                onClick={() => handleSort('prevOut')}
+              >
+                <div className="flex items-center gap-1">
+                  Prev. Out
+                  {getSortIcon('prevOut')}
+                </div>
+              </TableHead>
+              <TableHead className="w-[110px] px-2 text-left">
+                Collection Report
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paged.map((row, index) => {
+              const hasIssue =
+                row.locationReportId && issuesMap[row.locationReportId];
+              return (
+                <TableRow
+                  key={`${row.locationReportId}-${row.timestamp}-${index}`}
+                  className={hasIssue ? 'bg-red-50/50 hover:bg-red-100/50' : ''}
                 >
-                  <div className="flex items-center gap-2">
-                    Time
-                    {getSortIcon('timestamp')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="w-28 cursor-pointer select-none hover:bg-muted/50"
-                  onClick={() => handleSort('metersIn')}
-                >
-                  <div className="flex items-center gap-2">
-                    Meters In
-                    {getSortIcon('metersIn')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="w-28 cursor-pointer select-none hover:bg-muted/50"
-                  onClick={() => handleSort('metersOut')}
-                >
-                  <div className="flex items-center gap-2">
-                    Meters Out
-                    {getSortIcon('metersOut')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="w-28 cursor-pointer select-none hover:bg-muted/50"
-                  onClick={() => handleSort('prevIn')}
-                >
-                  <div className="flex items-center gap-2">
-                    Prev. In
-                    {getSortIcon('prevIn')}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="w-28 cursor-pointer select-none hover:bg-muted/50"
-                  onClick={() => handleSort('prevOut')}
-                >
-                  <div className="flex items-center gap-2">
-                    Prev. Out
-                    {getSortIcon('prevOut')}
-                  </div>
-                </TableHead>
-                <TableHead className="w-20 text-center">Status</TableHead>
-                <TableHead className="w-32">Collection Report</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paged.map((row, index) => {
-                const hasIssue =
-                  row.locationReportId && issuesMap[row.locationReportId];
-                return (
-                  <TableRow
-                    key={`${row.locationReportId}-${row.timestamp}-${index}`}
-                    className={
-                      hasIssue ? 'bg-red-50/50 hover:bg-red-100/50' : ''
-                    }
-                  >
-                    <TableCell className="truncate">
-                      {new Date(row.timestamp).toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        hour12: true,
-                      })}
-                    </TableCell>
-                    <TableCell className="truncate text-right">
-                      {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
-                    </TableCell>
-                    <TableCell className="truncate text-right">
-                      {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
-                    </TableCell>
-                    <TableCell className="truncate text-right">
-                      {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
-                    </TableCell>
-                    <TableCell className="truncate text-right">
-                      {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {hasIssue && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <AlertCircle className="h-5 w-5 text-red-500" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="text-sm">
-                                {issuesMap[row.locationReportId]}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </TableCell>
-                    <TableCell className="truncate">
-                      {row.locationReportId && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="px-2 py-1 text-xs"
-                          onClick={() => {
-                            console.warn(
-                              'Navigating to collection report:',
-                              row.locationReportId
-                            );
-                            router.push(
-                              `/collection-report/report/${row.locationReportId}`
-                            );
-                          }}
-                        >
-                          VIEW REPORT
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                  <TableCell className="truncate text-left">
+                    {new Date(row.timestamp).toLocaleString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: true,
+                    })}
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    {row.locationReportId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="px-2 py-1 text-xs"
+                        onClick={() => {
+                          console.warn(
+                            'Navigating to collection report:',
+                            row.locationReportId
+                          );
+                          router.push(
+                            `/collection-report/report/${row.locationReportId}`
+                          );
+                        }}
+                      >
+                        VIEW REPORT
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
 
-      {/* Mobile Cards View */}
-      <div className="w-full space-y-4 lg:hidden">
+      {/* Card View - Show on mobile, tablet, and lg screens (below xl) */}
+      <div className="w-full space-y-3 xl:hidden">
         {paged.map((row, index) => {
           const hasIssue =
             row.locationReportId && issuesMap[row.locationReportId];
@@ -475,12 +450,12 @@ export function CollectionHistoryTable({
               key={`${row.locationReportId}-${row.timestamp}-${index}`}
               className={hasIssue ? 'border-red-500 bg-red-50/50' : ''}
             >
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center justify-between text-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
                   <span className="flex items-center gap-2">
                     Collection Entry
                     {hasIssue && (
-                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
                     )}
                   </span>
                   <span className="text-xs text-muted-foreground">
@@ -492,42 +467,45 @@ export function CollectionHistoryTable({
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2">
                 {hasIssue && (
-                  <div className="rounded border border-red-300 bg-red-100 p-2 text-xs text-red-800">
-                    <strong>⚠️ Issue:</strong> {issuesMap[row.locationReportId]}
+                  <div className="rounded border border-red-300 bg-red-100 p-2 text-xs leading-tight text-red-800">
+                    <strong className="block pb-1">⚠️ Issue:</strong>
+                    <span className="break-words">
+                      {issuesMap[row.locationReportId]}
+                    </span>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="font-medium text-muted-foreground">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">
                       Meters In:
                     </span>
-                    <span className="font-medium">
+                    <span className="font-semibold">
                       {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium text-muted-foreground">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">
                       Meters Out:
                     </span>
-                    <span className="font-medium">
+                    <span className="font-semibold">
                       {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium text-muted-foreground">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">
                       Prev. In:
                     </span>
-                    <span className="font-medium">
+                    <span className="font-semibold">
                       {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium text-muted-foreground">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">
                       Prev. Out:
                     </span>
-                    <span className="font-medium">
+                    <span className="font-semibold">
                       {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
                     </span>
                   </div>

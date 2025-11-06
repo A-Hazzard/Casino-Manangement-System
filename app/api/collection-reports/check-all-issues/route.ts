@@ -150,7 +150,9 @@ export async function GET(request: NextRequest) {
             // So we need to check if prevIn/prevOut match machine.collectionMeters (at the time of creation)
             // We can't validate this accurately without knowing the historical machine.collectionMeters value
             // So we should NOT flag this as an issue - it's expected behavior!
-            console.warn(`ℹ️ No previous collection found for ${collection.machineId}, prevIn/prevOut likely from machine.collectionMeters (expected behavior)`);
+            console.warn(
+              `ℹ️ No previous collection found for ${collection.machineId}, prevIn/prevOut likely from machine.collectionMeters (expected behavior)`
+            );
             // Don't flag as issue - this is normal when using machine.collectionMeters fallback
           }
 
@@ -391,7 +393,8 @@ export async function GET(request: NextRequest) {
       0
     );
 
-    // For machine-specific queries, return detailed issues for the frontend to display
+    // For machine-specific queries OR report-specific queries, check machine history
+    // This ensures we detect history mismatches for collections in the report
     const machineIssues: Array<{
       machineId: string;
       machineName: string;
@@ -403,139 +406,202 @@ export async function GET(request: NextRequest) {
       }>;
     }> = [];
 
+    // Get list of machine IDs to check
+    let machineIdsToCheck: string[] = [];
     if (machineId) {
+      machineIdsToCheck = [machineId];
+    } else if (reportId) {
+      // Get all machines in this report
+      const { Collections } = await import('@/app/api/lib/models/collections');
+      const collections = await Collections.find({
+        locationReportId: reportId,
+      }).lean();
+      machineIdsToCheck = [
+        ...new Set(collections.map(c => String(c.machineId))),
+      ];
+      console.warn(
+        `📋 Checking machine history for ${machineIdsToCheck.length} machines in report ${reportId}`
+      );
+    }
+
+    if (machineIdsToCheck.length > 0) {
       const { Machine } = await import('@/app/api/lib/models/machines');
-      const machine = await Machine.findById(machineId).lean();
 
-      if (machine) {
-        const machineData = machine as Record<string, unknown>;
-        const history =
-          (machineData.collectionMetersHistory as Array<Record<string, unknown>>) || [];
-        const machineName = String(
-          machineData.serialNumber ||
-            (machineData.custom as Record<string, unknown>)?.name ||
-            machineId
-        );
+      for (const machId of machineIdsToCheck) {
+        const machine = await Machine.findById(machId).lean();
 
-        const issues: Array<{
-          type: string;
-          locationReportId: string;
-          message: string;
-          details?: Record<string, unknown>;
-        }> = [];
+        if (machine) {
+          const machineData = machine as Record<string, unknown>;
+          const history =
+            (machineData.collectionMetersHistory as Array<
+              Record<string, unknown>
+            >) || [];
+          const machineName = String(
+            machineData.serialNumber ||
+              (machineData.custom as Record<string, unknown>)?.name ||
+              machId
+          );
 
-        // Check for duplicate locationReportIds in history
-        const locationReportIdMap = new Map<string, number>();
-        for (const entry of history) {
-          if (entry.locationReportId) {
-            const reportId = entry.locationReportId as string;
-            const count = locationReportIdMap.get(reportId) || 0;
-            locationReportIdMap.set(reportId, count + 1);
+          const issues: Array<{
+            type: string;
+            locationReportId: string;
+            message: string;
+            details?: Record<string, unknown>;
+          }> = [];
+
+          // Check for duplicate locationReportIds in history
+          const locationReportIdMap = new Map<string, number>();
+          for (const entry of history) {
+            if (entry.locationReportId) {
+              const reportId = entry.locationReportId as string;
+              const count = locationReportIdMap.get(reportId) || 0;
+              locationReportIdMap.set(reportId, count + 1);
+            }
           }
-        }
 
-        // Flag duplicates
-        for (const [reportId, count] of locationReportIdMap.entries()) {
-          if (count > 1) {
-            issues.push({
-              type: 'duplicate_history',
-              locationReportId: reportId,
-              message: `Duplicate History: ${count} entries with the same report ID`,
-              details: { count },
-            });
-          }
-        }
-
-        // Check for orphaned entries
-        const { Collections } = await import('@/app/api/lib/models/collections');
-        const { CollectionReport } = await import(
-          '@/app/api/lib/models/collectionReport'
-        );
-
-        for (const entry of history) {
-          if (entry.locationReportId) {
-            const reportId = entry.locationReportId as string;
-            
-            // Check if collection exists
-            const collectionExists = await Collections.findOne({
-              machineId: machineId,
-              locationReportId: reportId,
-            }).lean();
-
-            // Check if report exists
-            const reportExists = await CollectionReport.findOne({
-              locationReportId: reportId,
-            }).lean();
-
-            if (!collectionExists && !reportExists) {
+          // Flag duplicates
+          for (const [reportId, count] of locationReportIdMap.entries()) {
+            if (count > 1) {
               issues.push({
-                type: 'orphaned_history',
+                type: 'duplicate_history',
                 locationReportId: reportId,
-                message: 'Orphaned History: Collection and report no longer exist',
-              });
-            } else if (!collectionExists) {
-              issues.push({
-                type: 'missing_collection',
-                locationReportId: reportId,
-                message: 'Missing Collection: Report exists but collection document is missing',
-              });
-            } else if (!reportExists) {
-              issues.push({
-                type: 'missing_report',
-                locationReportId: reportId,
-                message: 'Missing Report: Collection exists but report document is missing',
+                message: `Duplicate History: ${count} entries with the same report ID`,
+                details: { count },
               });
             }
+          }
 
-            // Check for history mismatch (if collection exists)
-            if (collectionExists) {
-              const historyMetersIn = entry.metersIn as number;
-              const historyMetersOut = entry.metersOut as number;
-              const historyPrevMetersIn = entry.prevMetersIn as number;
-              const historyPrevMetersOut = entry.prevMetersOut as number;
+          // Check for orphaned entries
+          const { Collections } = await import(
+            '@/app/api/lib/models/collections'
+          );
+          const { CollectionReport } = await import(
+            '@/app/api/lib/models/collectionReport'
+          );
 
-              const collectionMetersIn = collectionExists.metersIn as number;
-              const collectionMetersOut = collectionExists.metersOut as number;
-              const collectionPrevIn = collectionExists.prevIn as number;
-              const collectionPrevOut = collectionExists.prevOut as number;
+          for (const entry of history) {
+            if (entry.locationReportId) {
+              const reportId = entry.locationReportId as string;
 
-              const metersInMatch = Math.abs(historyMetersIn - collectionMetersIn) < 0.1;
-              const metersOutMatch = Math.abs(historyMetersOut - collectionMetersOut) < 0.1;
-              const prevInMatch = Math.abs(historyPrevMetersIn - collectionPrevIn) < 0.1;
-              const prevOutMatch = Math.abs(historyPrevMetersOut - collectionPrevOut) < 0.1;
+              // Check if collection exists
+              const collectionExists = await Collections.findOne({
+                machineId: machId,
+                locationReportId: reportId,
+              }).lean();
 
-              if (!metersInMatch || !metersOutMatch || !prevInMatch || !prevOutMatch) {
+              // Check if report exists
+              const reportExists = await CollectionReport.findOne({
+                locationReportId: reportId,
+              }).lean();
+
+              if (!collectionExists && !reportExists) {
                 issues.push({
-                  type: 'history_mismatch',
+                  type: 'orphaned_history',
                   locationReportId: reportId,
-                  message: 'History Mismatch: Collection document and history entry have different values',
-                  details: {
-                    collection: {
-                      metersIn: collectionMetersIn,
-                      metersOut: collectionMetersOut,
-                      prevIn: collectionPrevIn,
-                      prevOut: collectionPrevOut,
-                    },
-                    history: {
-                      metersIn: historyMetersIn,
-                      metersOut: historyMetersOut,
-                      prevMetersIn: historyPrevMetersIn,
-                      prevMetersOut: historyPrevMetersOut,
-                    },
-                  },
+                  message:
+                    'Orphaned History: Collection and report no longer exist',
                 });
+              } else if (!collectionExists) {
+                issues.push({
+                  type: 'missing_collection',
+                  locationReportId: reportId,
+                  message:
+                    'Missing Collection: Report exists but collection document is missing',
+                });
+              } else if (!reportExists) {
+                issues.push({
+                  type: 'missing_report',
+                  locationReportId: reportId,
+                  message:
+                    'Missing Report: Collection exists but report document is missing',
+                });
+              }
+
+              // Check for history mismatch (if collection exists)
+              if (collectionExists) {
+                const historyMetersIn = entry.metersIn as number;
+                const historyMetersOut = entry.metersOut as number;
+                const historyPrevMetersIn = entry.prevMetersIn as number;
+                const historyPrevMetersOut = entry.prevMetersOut as number;
+
+                const collectionMetersIn = collectionExists.metersIn as number;
+                const collectionMetersOut =
+                  collectionExists.metersOut as number;
+                const collectionPrevIn = collectionExists.prevIn as number;
+                const collectionPrevOut = collectionExists.prevOut as number;
+
+                const metersInMatch =
+                  Math.abs(historyMetersIn - collectionMetersIn) < 0.1;
+                const metersOutMatch =
+                  Math.abs(historyMetersOut - collectionMetersOut) < 0.1;
+                const prevInMatch =
+                  Math.abs(historyPrevMetersIn - collectionPrevIn) < 0.1;
+                const prevOutMatch =
+                  Math.abs(historyPrevMetersOut - collectionPrevOut) < 0.1;
+
+                if (
+                  !metersInMatch ||
+                  !metersOutMatch ||
+                  !prevInMatch ||
+                  !prevOutMatch
+                ) {
+                  issues.push({
+                    type: 'history_mismatch',
+                    locationReportId: reportId,
+                    message:
+                      'History Mismatch: Collection document and history entry have different values',
+                    details: {
+                      collection: {
+                        metersIn: collectionMetersIn,
+                        metersOut: collectionMetersOut,
+                        prevIn: collectionPrevIn,
+                        prevOut: collectionPrevOut,
+                      },
+                      history: {
+                        metersIn: historyMetersIn,
+                        metersOut: historyMetersOut,
+                        prevMetersIn: historyPrevMetersIn,
+                        prevMetersOut: historyPrevMetersOut,
+                      },
+                    },
+                  });
+                }
               }
             }
           }
-        }
 
-        machineIssues.push({
-          machineId,
-          machineName,
-          issues,
-        });
-      }
-    }
+          machineIssues.push({
+            machineId: machId,
+            machineName,
+            issues,
+          });
+
+          // Update reportIssues for each report that has issues
+          if (issues.length > 0) {
+            for (const issue of issues) {
+              if (issue.locationReportId) {
+                if (!reportIssues[issue.locationReportId]) {
+                  reportIssues[issue.locationReportId] = {
+                    issueCount: 0,
+                    hasIssues: false,
+                    machines: [],
+                  };
+                }
+                reportIssues[issue.locationReportId].issueCount++;
+                reportIssues[issue.locationReportId].hasIssues = true;
+                if (
+                  !reportIssues[issue.locationReportId].machines.includes(
+                    machId
+                  )
+                ) {
+                  reportIssues[issue.locationReportId].machines.push(machId);
+                }
+              }
+            }
+          }
+        } // Close if (machine)
+      } // Close for (const machId of machineIdsToCheck)
+    } // Close if (machineIdsToCheck.length > 0)
 
     const endTime = Date.now();
     const duration = endTime - startTime;

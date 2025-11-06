@@ -207,10 +207,42 @@ The Collection Report Details page includes a comprehensive issue detection and 
 - Refreshes automatically after fix completes
 - Hides button after successful fix
 
-### Smart Issue Detection
+**CRITICAL PRINCIPLE - Collections Are Always the Source of Truth:**
+- ✅ Collection documents are ALWAYS correct (validated, finalized, audit-ready)
+- ✅ `collectionMetersHistory` is a denormalized copy (can get out of sync)
+- ✅ Fix ALWAYS updates history to match collection (NEVER the reverse)
+- ✅ ALL fields synced: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`
+- ✅ Example: If history shows "Prev In: 347.9K" but collection has `prevIn: 0`, history gets updated to 0
+
+### Smart Issue Detection & Auto-Fix
+
+**Updated:** November 6th, 2025 - Auto-fix functionality added
+
+**Issue Detection:**
 - Issues detected automatically on page load
 - Real-time validation ensures accuracy
 - No manual intervention required for detection
+
+**Auto-Fix (NEW):**
+- **Automatically fixes issues when detected** - No user action required
+- Runs silently in the background after issue detection
+- Shows success toast: "Collection history automatically synchronized"
+- Manual "Fix Report" / "Fix History" buttons remain available as backup
+- PRINCIPLE: Collections are always right, auto-fix syncs history to match
+
+**User Experience:**
+1. Page loads → Detects issues
+2. Auto-fix triggers automatically
+3. Issues resolved in background
+4. Success toast appears
+5. Warning banners disappear
+6. Data displays correctly
+
+**Benefits:**
+- Zero-click resolution for users
+- Immediate data consistency
+- Better user experience
+- Maintains data integrity automatically
 - Clear communication of issues and fixes
 
 ### Comparison with Cabinet Details Issue Detection

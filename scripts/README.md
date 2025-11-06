@@ -1,19 +1,23 @@
-# Database Cleanup Scripts
+# Database Maintenance & Test Scripts
 
-This directory contains maintenance and cleanup scripts for the Evolution One Casino Management System database.
+This directory contains maintenance, cleanup, and testing scripts for the Evolution One Casino Management System database.
 
 ## Available Scripts
 
-### cleanup-old-collections.js
+### Cleanup Scripts
+
+#### cleanup-old-collections.js
 
 **Purpose:** Deletes all collections, collection reports, and collection history from machines that are older than January 1, 2025.
 
 **What it does:**
+
 1. Deletes all `collections` documents with `timestamp < 2025-01-01`
 2. Deletes all `collectionReport` documents with `timestamp < 2025-01-01`
 3. Removes all `collectionMetersHistory` entries from machines with `timestamp < 2025-01-01`
 
 **Safety Features:**
+
 - **Dry-run mode by default** - Preview changes before executing
 - Detailed sample output showing what will be deleted
 - Must pass `--execute` flag to actually delete data
@@ -32,12 +36,14 @@ node scripts/cleanup-old-collections.js --execute
 ```
 
 **Prerequisites:**
+
 - Ensure `MONGO_URI` is set in your `.env` or `.env.local` file
 - **CRITICAL:** Always backup your database before running this script with `--execute`
 - Recommended: Always run in dry-run mode first to preview changes
 
 **Output:**
 The script provides detailed console output including:
+
 - Number of collections deleted
 - Number of collection reports deleted
 - Number of machines updated
@@ -45,6 +51,7 @@ The script provides detailed console output including:
 - Summary of any errors encountered
 
 **Example Output (Dry Run):**
+
 ```
 ✅ Connected to MongoDB
 
@@ -112,6 +119,7 @@ To actually delete this data, run:
 ```
 
 **Example Output (Execute Mode):**
+
 ```
 ✅ Connected to MongoDB
 
@@ -164,6 +172,7 @@ History entries removed:    1523
 ```
 
 **Safety Features:**
+
 - Warning message before execution
 - Detailed logging of all operations
 - Error handling and reporting
@@ -171,15 +180,167 @@ History entries removed:    1523
 - Non-zero exit code on errors
 
 **When to Run:**
+
 - Database optimization and cleanup
 - Archiving old data
 - Performance improvements
 - Storage management
 
 **Documentation References:**
+
 - [Backend Collection Report Guide](../Documentation/backend/collection-report.md)
 - [Database Models](../Documentation/database-models.md)
 - [Engineering Guidelines](../Documentation/ENGINEERING_GUIDELINES.md)
+
+---
+
+### Test Scripts
+
+#### test-collection-history-fix.js
+
+**Purpose:** Test if the fix-report API properly syncs `collectionMetersHistory` with collection documents.
+
+**What it does:**
+
+1. Finds collections for test machine (AARON BOARD)
+2. Backs up current state to `backup-aaron-test.json`
+3. Modifies `collectionMetersHistory` with WRONG prevMetersIn/prevMetersOut values
+4. Calls the fix-report API
+5. Verifies history was updated to match collection document
+6. Provides option to revert changes
+
+**Usage:**
+
+```bash
+# Run the test
+node scripts/test-collection-history-fix.js
+
+# Revert changes to original state
+node scripts/test-collection-history-fix.js --revert
+```
+
+**Prerequisites:**
+
+- Ensure `MONGO_URI` is set in your `.env` or `.env.local` file
+- Machine must have at least one completed collection
+- API server must be running on http://localhost:32081
+
+**Test Flow:**
+
+```
+1. Fetch machine and collections
+2. Backup current state
+3. Set history prevMetersIn/prevMetersOut to WRONG values (e.g., 347900/262500)
+4. Call POST /api/collection-reports/fix-report with machineId
+5. Verify history was updated to match collection (e.g., 0/0)
+6. Report SUCCESS or FAILURE
+```
+
+**Example Output:**
+
+```
+🧪 TESTING COLLECTION HISTORY FIX
+📋 Machine ID: 68f90c0c98e7920bc598e945 (AARON BOARD)
+
+🔍 Step 1: Fetching machine document...
+   ✅ Found machine: AARON BOARD
+   Current collectionMetersHistory entries: 1
+
+🔍 Step 2: Finding collections for this machine...
+   Found 1 collections
+
+🔍 Step 5: Verifying WRONG state before fix...
+   State BEFORE fix:
+   Collection: prevIn=0, prevOut=0
+   History: prevMetersIn=347900, prevMetersOut=262500
+   Match? ❌ NO (this is intentional for testing)
+
+🔧 Step 6: Calling fix-report API...
+   ✅ Fix API completed successfully
+
+🔍 Step 7: Verifying fix worked...
+   State AFTER fix:
+   Collection: prevIn=0, prevOut=0
+   History: prevMetersIn=0, prevMetersOut=0
+   Match? ✅ YES - FIX WORKED!
+
+📊 TEST SUMMARY
+Before Fix:
+  Collection: prevIn=0, prevOut=0
+  History:    prevMetersIn=347900, prevMetersOut=262500
+  Status: ❌ Mismatch
+
+After Fix:
+  Collection: prevIn=0, prevOut=0
+  History:    prevMetersIn=0, prevMetersOut=0
+  Status: ✅ Match - FIX WORKED!
+
+🎉 SUCCESS! The fix properly synced collectionMetersHistory with collection document
+```
+
+**Safety:**
+
+- Always creates backup before modifications
+- Changes can be reverted with `--revert` flag
+- Only modifies test machine (AARON BOARD)
+
+#### verify-fix-via-api.js
+
+**Purpose:** Verify collection history is displayed correctly via the cabinet details API endpoint.
+
+**What it does:**
+
+1. Calls GET `/api/cabinets/[machineId]`
+2. Displays collection history from API response
+3. Compares history with actual collection documents in database
+4. Reports any mismatches
+
+**Usage:**
+
+```bash
+# Verify fix worked
+node scripts/verify-fix-via-api.js
+```
+
+**Prerequisites:**
+
+- API server must be running on http://localhost:32081
+- Ensure `MONGO_URI` is set in your `.env` or `.env.local` file
+
+**Example Output:**
+
+```
+🔍 VERIFYING FIX VIA CABINET DETAILS API
+
+🔍 Step 1: Fetching cabinet details...
+   ✅ Found cabinet: AARON BOARD
+
+🔍 Step 2: Checking collection history...
+   Total history entries: 1
+
+   Collection History Entries:
+   ----------------------------------------------------------------------------
+   Date                 | Meters In  | Meters Out | Prev In    | Prev Out
+   ----------------------------------------------------------------------------
+   2025-10-21           | 347982     | 261523.7   | 0          | 0
+   ----------------------------------------------------------------------------
+
+🔍 Step 3: Comparing with actual collection documents...
+   Found 1 collections in database
+
+📊 VERIFICATION RESULTS
+✅ SUCCESS! All collection history entries match collection documents
+
+   The fix-report API is working correctly!
+   - All metersIn/metersOut values match
+   - All prevMetersIn/prevMetersOut values match
+```
+
+**Use Cases:**
+
+- Verify fix worked after running test-collection-history-fix.js
+- Check if displayed values match database
+- Validate API response format
 
 ## Creating New Scripts
 

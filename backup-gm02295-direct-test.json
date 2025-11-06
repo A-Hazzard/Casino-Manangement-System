@@ -1,0 +1,28 @@
+{
+  "machine": {
+    "_id": "69ee59c4b8a19640bd047ce0",
+    "serialNumber": "1",
+    "customName": "GM02295",
+    "collectionMetersHistory": [
+      {
+        "_id": "68e3fc7160932aad7d4a26be",
+        "metersIn": 2000,
+        "metersOut": 4000,
+        "prevMetersIn": 347900,
+        "prevMetersOut": 262500,
+        "timestamp": "2025-10-06T17:29:21.607Z",
+        "locationReportId": "50b938ce-8190-48a8-b9fe-191e0f1fe4be"
+      }
+    ]
+  },
+  "collections": [
+    {
+      "_id": "68e40ae2b9e36e78d8f1e8fa",
+      "metersIn": 2000,
+      "metersOut": 4000,
+      "prevIn": 0,
+      "prevOut": 0,
+      "locationReportId": "50b938ce-8190-48a8-b9fe-191e0f1fe4be"
+    }
+  ]
+}

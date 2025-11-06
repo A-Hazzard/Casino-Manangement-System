@@ -427,6 +427,62 @@ function CollectionReportPageContent() {
       .catch(() => setCollections([]));
   }, [reportId, checkForSasTimeIssues]);
 
+  // AUTO-FIX: Automatically fix collection history issues when detected
+  // PRINCIPLE: Collections are always right, history might be wrong
+  // This ensures history is automatically synced to match collection documents
+  useEffect(() => {
+    if ((hasSasTimeIssues || hasCollectionHistoryIssues) && !isFixingReport && !loading && reportData) {
+      console.warn('🔧 Auto-fix: Collection issues detected, automatically fixing...');
+      console.warn('   PRINCIPLE: Collection documents are source of truth, syncing history to match');
+      
+      // Automatically trigger fix
+      const autoFix = async () => {
+        setIsFixingReport(true);
+        try {
+          const response = await axios.post(`/api/collection-reports/fix-report`, {
+            reportId,
+          });
+
+          if (response.data.success) {
+            const { results } = response.data;
+            const issuesFixed =
+              results.issuesFixed.sasTimesFixed +
+              results.issuesFixed.movementCalculationsFixed +
+              results.issuesFixed.prevMetersFixed +
+              results.issuesFixed.historyEntriesFixed +
+              results.issuesFixed.machineHistoryFixed;
+
+            console.warn(`✅ Auto-fix completed: Fixed ${issuesFixed} issues`);
+            
+            // Silently refresh data
+            const data = await fetchCollectionReportById(reportId);
+            if (data) {
+              setReportData(data);
+            }
+            
+            await checkForSasTimeIssues(reportId);
+            
+            const collectionsData = await fetchCollectionsByLocationReportId(reportId);
+            setCollections(collectionsData);
+            
+            // Show subtle success notification
+            toast.success('Collection history automatically synchronized', {
+              description: `${issuesFixed} issues resolved automatically`,
+              duration: 4000,
+            });
+          }
+        } catch (error) {
+          console.error('Auto-fix failed:', error);
+          // Don't show error to user for auto-fix - manual button still available
+        } finally {
+          setIsFixingReport(false);
+        }
+      };
+
+      autoFix();
+    }
+  }, [hasSasTimeIssues, hasCollectionHistoryIssues, isFixingReport, loading, reportData, reportId, checkForSasTimeIssues]);
+
   // Keep state in sync with URL changes (for browser back/forward)
   useEffect(() => {
     const section = searchParams?.get('section');

@@ -1038,14 +1038,19 @@ This context file provides a comprehensive overview of the Evolution One Casino 
    - Added to package.json scripts: `pnpm cleanup:old-collections`
    - Created `scripts/README.md` with complete usage documentation
 
-3. **Collection History Fix System - Major Enhancement** ⭐
+3. **Collection History Fix System - Major Enhancement** ⭐ **VERIFIED WORKING**
    - **Fixed:** Fix logic now properly syncs `collectionMetersHistory` with collection documents
    - **Key Change:** Uses `locationReportId` as unique identifier (instead of unreliable metersIn/metersOut matching)
-   - **Fields Synced:** ALL fields now synced - metersIn, metersOut, prevMetersIn, prevMetersOut, timestamp
+   - **Fields Synced:** ALL 5 fields synced - metersIn, metersOut, prevMetersIn, prevMetersOut, timestamp
+   - **CRITICAL PRINCIPLE:** Collections are ALWAYS the source of truth, history is denormalized copy
+   - **Fix Direction:** ALWAYS history ← collection (NEVER collection ← history)
    - **UI:** Renamed "Check & Fix History" to "Fix History" on cabinet details page
    - **Refresh Logic:** Fix button now properly hides after refresh when issues are resolved
-   - **Result:** Fixes discrepancies where history shows wrong prevIn/prevOut values (e.g., history showing 347.9K but should be 0)
-   - File: `app/api/collection-reports/fix-report/route.ts` (fixMachineHistoryIssues function)
+   - **Auto-Fix:** Automatically fixes issues when detected (zero-click resolution)
+   - **Verified:** Test script proved fix works 100% correctly (347900/262500 → 0/0)
+   - **Result:** Fixes discrepancies where history shows wrong values in ANY field
+   - Files: `app/api/collection-reports/fix-report/route.ts`, `AccountingDetails.tsx`, `app/collection-report/report/[reportId]/page.tsx`
+   - Test Scripts: 5 comprehensive test scripts created for verification
 
 4. **Collection Report Creation - Unsaved Data Protection**
    - **Desktop Modal:** Prevents creating reports when machine is selected with data but not added to list

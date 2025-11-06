@@ -680,7 +680,13 @@ async function fixCollectionHistoryIssues(
 /**
  * Fix machine history issues - sync collectionMetersHistory with collection documents
  * 
- * CRITICAL: This function ensures collectionMetersHistory matches the actual collection documents
+ * CRITICAL PRINCIPLE: Collection documents are ALWAYS the source of truth
+ * - If history doesn't match collection → history is WRONG, update history to match collection
+ * - NEVER update collection to match history
+ * - Collection documents are validated and finalized through proper workflow
+ * - History is just a denormalized copy for performance
+ * 
+ * This function ensures collectionMetersHistory matches the actual collection documents
  * It syncs: metersIn, metersOut, prevMetersIn, prevMetersOut, timestamp
  * Uses locationReportId as the unique identifier
  */

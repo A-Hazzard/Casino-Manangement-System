@@ -12,8 +12,14 @@
 
 - Uses `locationReportId` instead of metersIn/metersOut to uniquely identify history entries
 - Syncs ALL fields: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`
-- Fixes discrepancies where history shows incorrect prevIn/prevOut values
+- Fixes discrepancies where history shows incorrect values (prevIn/prevOut OR metersIn/metersOut)
 - Works reliably even when multiple collections have similar meter readings
+
+**CRITICAL PRINCIPLE - Single Source of Truth:**
+- ✅ **Collection documents are ALWAYS correct** (validated through proper workflow)
+- ✅ **History might be wrong** (denormalized copy, can get out of sync)
+- ✅ **Fix always updates history to match collection** (NEVER the reverse)
+- ✅ **All mismatches are resolved by syncing history from collection**
 
 **UI Changes:**
 - Cabinet Details: Renamed "Check & Fix History" button to "Fix History"
@@ -1031,9 +1037,15 @@ When `locationsWithMachines=1` is set:
 The fix now properly syncs `collectionMetersHistory` entries with actual collection documents:
 
 - **Identifier**: Uses `locationReportId` as unique identifier (more reliable than metersIn/metersOut)
-- **Fields Synced**: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`
+- **Fields Synced**: ALL fields - `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`
 - **Logic**: Finds history entry by `locationReportId`, then updates ALL fields to match collection document
-- **Result**: Fixes discrepancies where history shows incorrect prevIn/prevOut values
+- **Result**: Fixes discrepancies where history shows incorrect values (ANY field can be wrong)
+
+**CRITICAL PRINCIPLE - Collections Are Always Right:**
+- Collection documents = Source of Truth (validated, finalized, audit-ready)
+- History = Denormalized copy (performance optimization, can drift)
+- Fix direction: ALWAYS history ← collection (NEVER collection ← history)
+- All fields synced from collection to history, no exceptions
 
 **Example**:
 ```typescript
