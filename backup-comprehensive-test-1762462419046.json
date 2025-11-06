@@ -1,0 +1,218 @@
+{
+  "machine": {
+    "_id": "690d0ad3b1c838101abad78d",
+    "serialNumber": "TEST-MACHINE-001",
+    "custom": {
+      "name": "Test Machine 001"
+    },
+    "isSasMachine": true,
+    "gamingLocation": "test-location-id",
+    "collectionMeters": {
+      "metersIn": 444773,
+      "metersOut": 361214.4
+    },
+    "collectionMetersHistory": [
+      {
+        "_id": "690d0ad3b1c838101abad78e",
+        "metersIn": 450000,
+        "metersOut": 365000,
+        "prevMetersIn": 450000,
+        "prevMetersOut": 365000,
+        "timestamp": "2025-10-30T20:53:39.609Z",
+        "locationReportId": "report-oct30-1762462419609"
+      },
+      {
+        "_id": "690d0ad3b1c838101abad78f",
+        "metersIn": 450000,
+        "metersOut": 365000,
+        "prevMetersIn": 450000,
+        "prevMetersOut": 365000,
+        "timestamp": "2025-11-06T20:53:39.609Z",
+        "locationReportId": "report-oct30-1762462419609"
+      },
+      {
+        "_id": "690d0ad3b1c838101abad790",
+        "metersIn": 444773,
+        "metersOut": 361214.4,
+        "prevMetersIn": 444014,
+        "prevMetersOut": 360151.65,
+        "timestamp": "2025-10-29T20:53:39.609Z",
+        "locationReportId": "report-oct29-1762462419609"
+      },
+      {
+        "_id": "690d0ad3b1c838101abad791",
+        "metersIn": 440000,
+        "metersOut": 358000,
+        "prevMetersIn": 440104,
+        "prevMetersOut": 357417.65,
+        "timestamp": "2025-10-29T20:53:39.609Z",
+        "locationReportId": "duplicate-date-1762462419609"
+      },
+      {
+        "_id": "690d0ad3b1c838101abad792",
+        "metersIn": 444014,
+        "metersOut": 360151.65,
+        "prevMetersIn": 440104,
+        "prevMetersOut": 357417.65,
+        "timestamp": "2025-10-28T20:53:39.609Z",
+        "locationReportId": "report-oct28-1762462419609"
+      },
+      {
+        "_id": "690d0ad3b1c838101abad793",
+        "metersIn": 440104,
+        "metersOut": 357417.65,
+        "prevMetersIn": 0,
+        "prevMetersOut": 0,
+        "timestamp": "2025-10-21T20:53:39.609Z",
+        "locationReportId": "report-oct21-1762462419609"
+      },
+      {
+        "_id": "690d0ad3b1c838101abad794",
+        "metersIn": 400000,
+        "metersOut": 350000,
+        "prevMetersIn": 390000,
+        "prevMetersOut": 340000,
+        "timestamp": "2025-10-17T20:53:39.609Z",
+        "locationReportId": "report-orphaned-1762462419609"
+      }
+    ],
+    "assetStatus": "functional",
+    "createdAt": "2025-10-07T20:53:39.609Z",
+    "updatedAt": "2025-11-06T20:53:39.609Z"
+  },
+  "collections": [
+    {
+      "_id": "690d0ad3b1c838101abad795",
+      "machineId": "690d0ad3b1c838101abad78d",
+      "locationReportId": "report-oct21-1762462419609",
+      "isCompleted": true,
+      "metersIn": 440104,
+      "metersOut": 357417.65,
+      "prevIn": 0,
+      "prevOut": 0,
+      "movement": {
+        "metersIn": 440104,
+        "metersOut": 357417.65,
+        "gross": 82686.35
+      },
+      "timestamp": "2025-10-21T20:53:39.609Z",
+      "collectionTime": "2025-10-21T20:53:39.609Z",
+      "location": "Test Location",
+      "collector": "Test Admin",
+      "serialNumber": "TEST-MACHINE-001",
+      "createdAt": "2025-10-21T20:53:39.609Z",
+      "updatedAt": "2025-10-21T20:53:39.609Z"
+    },
+    {
+      "_id": "690d0ad3b1c838101abad796",
+      "machineId": "690d0ad3b1c838101abad78d",
+      "locationReportId": "report-oct28-1762462419609",
+      "isCompleted": true,
+      "metersIn": 444014,
+      "metersOut": 360151.65,
+      "prevIn": 440104,
+      "prevOut": 357417.65,
+      "movement": {
+        "metersIn": 3910,
+        "metersOut": 2734,
+        "gross": 1176
+      },
+      "timestamp": "2025-10-28T20:53:39.609Z",
+      "collectionTime": "2025-10-28T20:53:39.609Z",
+      "location": "Test Location",
+      "collector": "Test Admin",
+      "serialNumber": "TEST-MACHINE-001",
+      "createdAt": "2025-10-28T20:53:39.609Z",
+      "updatedAt": "2025-10-28T20:53:39.609Z"
+    },
+    {
+      "_id": "690d0ad3b1c838101abad797",
+      "machineId": "690d0ad3b1c838101abad78d",
+      "locationReportId": "report-oct29-1762462419609",
+      "isCompleted": true,
+      "metersIn": 444773,
+      "metersOut": 361214.4,
+      "prevIn": 444014,
+      "prevOut": 360151.65,
+      "movement": {
+        "metersIn": 759,
+        "metersOut": 1062.75,
+        "gross": -303.75
+      },
+      "timestamp": "2025-10-29T20:53:39.609Z",
+      "collectionTime": "2025-10-29T20:53:39.609Z",
+      "location": "Test Location",
+      "collector": "Test Admin",
+      "serialNumber": "TEST-MACHINE-001",
+      "createdAt": "2025-10-29T20:53:39.609Z",
+      "updatedAt": "2025-10-29T20:53:39.609Z"
+    },
+    {
+      "_id": "690d0ad3b1c838101abad798",
+      "machineId": "690d0ad3b1c838101abad78d",
+      "locationReportId": "report-oct30-1762462419609",
+      "isCompleted": true,
+      "metersIn": 450000,
+      "metersOut": 365000,
+      "prevIn": 450000,
+      "prevOut": 365000,
+      "movement": {
+        "metersIn": 0,
+        "metersOut": 0,
+        "gross": 0
+      },
+      "timestamp": "2025-10-30T20:53:39.609Z",
+      "collectionTime": "2025-10-30T20:53:39.609Z",
+      "location": "Test Location",
+      "collector": "Test Admin",
+      "serialNumber": "TEST-MACHINE-001",
+      "createdAt": "2025-10-30T20:53:39.609Z",
+      "updatedAt": "2025-10-30T20:53:39.609Z"
+    }
+  ],
+  "collectionReports": [
+    {
+      "_id": "690d0ad3b1c838101abad799",
+      "locationReportId": "report-oct21-1762462419609",
+      "timestamp": "2025-10-21T20:53:39.609Z",
+      "location": "Test Location",
+      "collector": "Test Admin",
+      "createdAt": "2025-10-21T20:53:39.609Z",
+      "updatedAt": "2025-10-21T20:53:39.609Z"
+    },
+    {
+      "_id": "690d0ad3b1c838101abad79a",
+      "locationReportId": "report-oct28-1762462419609",
+      "timestamp": "2025-10-28T20:53:39.609Z",
+      "location": "Test Location",
+      "collector": "Test Admin",
+      "createdAt": "2025-10-28T20:53:39.609Z",
+      "updatedAt": "2025-10-28T20:53:39.609Z"
+    },
+    {
+      "_id": "690d0ad3b1c838101abad79b",
+      "locationReportId": "report-oct29-1762462419609",
+      "timestamp": "2025-10-29T20:53:39.609Z",
+      "location": "Test Location",
+      "collector": "Test Admin",
+      "createdAt": "2025-10-29T20:53:39.609Z",
+      "updatedAt": "2025-10-29T20:53:39.609Z"
+    },
+    {
+      "_id": "690d0ad3b1c838101abad79c",
+      "locationReportId": "report-oct30-1762462419609",
+      "timestamp": "2025-10-30T20:53:39.609Z",
+      "location": "Test Location",
+      "collector": "Test Admin",
+      "createdAt": "2025-10-30T20:53:39.609Z",
+      "updatedAt": "2025-10-30T20:53:39.609Z"
+    }
+  ],
+  "reportIds": {
+    "oct21": "report-oct21-1762462419609",
+    "oct28": "report-oct28-1762462419609",
+    "oct29": "report-oct29-1762462419609",
+    "oct30": "report-oct30-1762462419609",
+    "orphaned": "report-orphaned-1762462419609"
+  }
+}

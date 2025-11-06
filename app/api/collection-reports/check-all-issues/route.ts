@@ -81,6 +81,21 @@ export async function GET(request: NextRequest) {
 
       let issueCount = 0;
 
+      // CRITICAL: Get the most recent collection for this machine to compare with machine.collectionMeters
+      // Only the MOST RECENT collection should match machine.collectionMeters, not all collections!
+      let mostRecentCollectionForMachine: Record<string, unknown> | null = null;
+      if (machineId) {
+        mostRecentCollectionForMachine = await Collections.findOne({
+          machineId: machineId,
+          $and: [
+            { $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }] },
+            { isCompleted: true },
+          ],
+        })
+          .sort({ collectionTime: -1, timestamp: -1 })
+          .lean();
+      }
+
       // Check each collection for issues
       for (const collection of collections) {
         // 1. Check prevIn/prevOut accuracy using ACTUAL historical data
@@ -157,17 +172,25 @@ export async function GET(request: NextRequest) {
           }
 
           // 3. Check machine collectionMeters accuracy
-          // Check if machine's current collectionMeters match the collection's current meters
-          const machineMetersIn =
-            (currentCollectionMeters.metersIn as number) || 0;
-          const machineMetersOut =
-            (currentCollectionMeters.metersOut as number) || 0;
+          // CRITICAL: Only check if machine.collectionMeters match THIS collection
+          // if this IS the most recent collection for this machine
+          // Older collections should NOT be compared to machine.collectionMeters!
+          const isThisMostRecent =
+            mostRecentCollectionForMachine &&
+            mostRecentCollectionForMachine._id === collection._id;
 
-          if (
-            machineMetersIn !== collection.metersIn ||
-            machineMetersOut !== collection.metersOut
-          ) {
-            issueCount++;
+          if (isThisMostRecent) {
+            const machineMetersIn =
+              (currentCollectionMeters.metersIn as number) || 0;
+            const machineMetersOut =
+              (currentCollectionMeters.metersOut as number) || 0;
+
+            if (
+              machineMetersIn !== collection.metersIn ||
+              machineMetersOut !== collection.metersOut
+            ) {
+              issueCount++;
+            }
           }
         } else {
           // Machine not found - this is an error

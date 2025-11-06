@@ -1,9 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { Collections } from "../../lib/models/collections";
-import { CollectionReport } from "../../lib/models/collectionReport";
-import { Machine } from "../../lib/models/machines";
-import { getUserIdFromServer, getUserById } from "../../lib/helpers/users";
+import {
+  calculateSasMetrics,
+  getSasTimePeriod,
+} from '@/lib/helpers/collectionCreation';
+import {
+  CollectionData,
+  FixResults,
+  HistoryEntry,
+  MachineData,
+} from '@/lib/types/fixReport';
+import { calculateMovement } from '@/lib/utils/movementCalculation';
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
+import { connectDB } from '../../lib/middleware/db';
+import { CollectionReport } from '../../lib/models/collectionReport';
+import { Collections } from '../../lib/models/collections';
+import { Machine } from '../../lib/models/machines';
 
 // Type for machine document with collectionMetersHistory
 type MachineWithHistory = {
@@ -18,17 +29,6 @@ type MachineWithHistory = {
     locationReportId?: string;
   }>;
 };
-import { calculateMovement } from "@/lib/utils/movementCalculation";
-import {
-  calculateSasMetrics,
-  getSasTimePeriod,
-} from "@/lib/helpers/collectionCreation";
-import {
-  FixResults,
-  CollectionData,
-  MachineData,
-  HistoryEntry,
-} from "@/lib/types/fixReport";
 
 /**
  * Unified Fix Report API
@@ -46,30 +46,32 @@ import {
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    console.warn("🔧 Starting unified fix report process...");
+    console.warn('🔧 Starting unified fix report process...');
 
     const body = await request.json().catch(() => ({}));
     const { reportId, machineId } = body;
-    console.warn(`🔧 FIX-REPORT API CALLED: machineId=${machineId}, reportId=${reportId}`);
+    console.warn(
+      `🔧 FIX-REPORT API CALLED: machineId=${machineId}, reportId=${reportId}`
+    );
 
     // Check authentication
-    if (process.env.NODE_ENV !== "development") {
+    if (process.env.NODE_ENV !== 'development') {
       const userId = await getUserIdFromServer();
       if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
       const user = await getUserById(userId);
       if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
       if (
-        !user.roles?.includes("admin") &&
-        !user.roles?.includes("evolution admin")
+        !user.roles?.includes('admin') &&
+        !user.roles?.includes('evolution admin')
       ) {
         return NextResponse.json(
-          { error: "Insufficient permissions" },
+          { error: 'Insufficient permissions' },
           { status: 403 }
         );
       }
@@ -81,19 +83,19 @@ export async function POST(request: NextRequest) {
     if (machineId && !reportId) {
       // Fix specific machine history issues
       console.warn(`🔧 Fixing machine history for machine: ${machineId}`);
-      
+
       // Get all collections for this machine
       targetCollections = await Collections.find({
         machineId: machineId,
       }).lean();
-      
+
       if (targetCollections.length === 0) {
         return NextResponse.json(
-          { error: "No collections found for this machine" },
+          { error: 'No collections found for this machine' },
           { status: 404 }
         );
       }
-      
+
       // Create a dummy report object for the fix process
       targetReport = {
         _id: machineId,
@@ -105,9 +107,9 @@ export async function POST(request: NextRequest) {
       // reportId can be either MongoDB _id or locationReportId (UUID)
       // Try to find by locationReportId first (most common case from frontend)
       targetReport = await CollectionReport.findOne({
-        locationReportId: reportId
+        locationReportId: reportId,
       }).lean();
-      
+
       // If not found, try by MongoDB _id
       if (!targetReport) {
         try {
@@ -116,10 +118,10 @@ export async function POST(request: NextRequest) {
           // Invalid ObjectId format, ignore
         }
       }
-      
+
       if (!targetReport) {
         return NextResponse.json(
-          { error: "Report not found" },
+          { error: 'Report not found' },
           { status: 404 }
         );
       }
@@ -136,7 +138,7 @@ export async function POST(request: NextRequest) {
         .lean();
       if (!targetReport) {
         return NextResponse.json(
-          { error: "No reports found" },
+          { error: 'No reports found' },
           { status: 404 }
         );
       }
@@ -208,7 +210,9 @@ export async function POST(request: NextRequest) {
     }
 
     // PHASE 2: Update machine collectionMeters to be consistent with fixed collection data
-    console.warn(`\n🔍 PHASE 2 - Updating machine collectionMeters for consistency`);
+    console.warn(
+      `\n🔍 PHASE 2 - Updating machine collectionMeters for consistency`
+    );
     for (const collection of targetCollections) {
       if (machineId && collection.machineId !== machineId) {
         continue;
@@ -233,13 +237,23 @@ export async function POST(request: NextRequest) {
     console.warn(`\n🔍 PHASE 3 - Cleaning up machine history`);
     if (machineId && !reportId) {
       // Fix for specific machine
+      console.warn(
+        `   🔧 Calling fixMachineHistoryOrphanedAndDuplicates with machineId: ${machineId}`
+      );
       await fixMachineHistoryOrphanedAndDuplicates(machineId, fixResults, true);
+      console.warn(
+        `   ✅ Phase 3 completed. machineHistoryFixed: ${fixResults.issuesFixed.machineHistoryFixed}`
+      );
     } else if (reportId) {
       // Fix for specific report
       await fixMachineHistoryOrphanedAndDuplicates(reportId, fixResults, false);
     } else if (targetReport) {
       // Fix for most recent report
-      await fixMachineHistoryOrphanedAndDuplicates(targetReport._id.toString(), fixResults, false);
+      await fixMachineHistoryOrphanedAndDuplicates(
+        targetReport._id.toString(),
+        fixResults,
+        false
+      );
     }
 
     console.warn(`\n✅ Fix report completed:`);
@@ -263,14 +277,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Report fix completed",
+      message: 'Report fix completed',
       results: fixResults,
     });
   } catch (error) {
-    console.error("❌ Fix report failed:", error);
+    console.error('❌ Fix report failed:', error);
     return NextResponse.json(
       {
-        error: "Fix report failed",
+        error: 'Fix report failed',
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
@@ -460,8 +474,16 @@ async function fixPrevMetersIssues(
         $and: [
           {
             $or: [
-              { collectionTime: { $lt: collection.collectionTime || collection.timestamp } },
-              { timestamp: { $lt: collection.collectionTime || collection.timestamp } },
+              {
+                collectionTime: {
+                  $lt: collection.collectionTime || collection.timestamp,
+                },
+              },
+              {
+                timestamp: {
+                  $lt: collection.collectionTime || collection.timestamp,
+                },
+              },
             ],
           },
           {
@@ -479,34 +501,41 @@ async function fixPrevMetersIssues(
         const expectedPrevIn = actualPreviousCollection.metersIn || 0;
         const expectedPrevOut = actualPreviousCollection.metersOut || 0;
 
-        console.warn(`   🔍 Checking prev meters for collection ${collection._id}:`, {
-          currentPrevIn: collection.prevIn,
-          currentPrevOut: collection.prevOut,
-          expectedPrevIn,
-          expectedPrevOut,
-          previousCollectionId: actualPreviousCollection._id,
-          previousCollectionTime: actualPreviousCollection.timestamp,
-        });
+        console.warn(
+          `   🔍 Checking prev meters for collection ${collection._id}:`,
+          {
+            currentPrevIn: collection.prevIn,
+            currentPrevOut: collection.prevOut,
+            expectedPrevIn,
+            expectedPrevOut,
+            previousCollectionId: actualPreviousCollection._id,
+            previousCollectionTime: actualPreviousCollection.timestamp,
+          }
+        );
 
-      // Allow for minor precision differences (within 0.1)
-      const prevInDiff = Math.abs(collection.prevIn - expectedPrevIn);
-      const prevOutDiff = Math.abs(collection.prevOut - expectedPrevOut);
-      
-      if (
-        (prevInDiff > 0.1) ||
-        (prevOutDiff > 0.1) ||
-        (collection.prevIn === 0 && collection.prevOut === 0 && expectedPrevIn > 0) // Special case: both 0 when they should have values
-      ) {
-        newPrevIn = expectedPrevIn;
-        newPrevOut = expectedPrevOut;
-        needsUpdate = true;
-      }
+        // Allow for minor precision differences (within 0.1)
+        const prevInDiff = Math.abs(collection.prevIn - expectedPrevIn);
+        const prevOutDiff = Math.abs(collection.prevOut - expectedPrevOut);
+
+        if (
+          prevInDiff > 0.1 ||
+          prevOutDiff > 0.1 ||
+          (collection.prevIn === 0 &&
+            collection.prevOut === 0 &&
+            expectedPrevIn > 0) // Special case: both 0 when they should have values
+        ) {
+          newPrevIn = expectedPrevIn;
+          newPrevOut = expectedPrevOut;
+          needsUpdate = true;
+        }
       } else {
         // CRITICAL: No previous COLLECTION found, but this doesn't mean prevIn/prevOut should be 0!
         // When no previous collection exists, the creation logic uses machine.collectionMeters as fallback
         // So prevIn/prevOut can have non-zero values from machine.collectionMeters
         // This is EXPECTED BEHAVIOR and should NOT be "fixed"
-        console.warn(`   ℹ️ No previous collection found for collection ${collection._id}, prevIn=${collection.prevIn}, prevOut=${collection.prevOut} (from machine.collectionMeters, expected behavior)`);
+        console.warn(
+          `   ℹ️ No previous collection found for collection ${collection._id}, prevIn=${collection.prevIn}, prevOut=${collection.prevOut} (from machine.collectionMeters, expected behavior)`
+        );
         // Don't "fix" this - it's correct behavior
       }
 
@@ -535,20 +564,20 @@ async function fixPrevMetersIssues(
           $set: {
             prevIn: newPrevIn,
             prevOut: newPrevOut,
-            "movement.metersIn": Number(newMovementIn.toFixed(2)),
-            "movement.metersOut": Number(newMovementOut.toFixed(2)),
-            "movement.gross": Number(newMovementGross.toFixed(2)),
+            'movement.metersIn': Number(newMovementIn.toFixed(2)),
+            'movement.metersOut': Number(newMovementOut.toFixed(2)),
+            'movement.gross': Number(newMovementGross.toFixed(2)),
           },
         });
 
         // CRITICAL: Also update the machine's collectionMeters to match the fixed prev values
         // This ensures consistency between the collection and the machine's current meters
         if (updateMachineMeters) {
-          const { Machine } = await import("@/app/api/lib/models/machines");
+          const { Machine } = await import('@/app/api/lib/models/machines');
           await Machine.findByIdAndUpdate(collection.machineId, {
             $set: {
-              "collectionMeters.metersIn": newPrevIn,
-              "collectionMeters.metersOut": newPrevOut,
+              'collectionMeters.metersIn': newPrevIn,
+              'collectionMeters.metersOut': newPrevOut,
               updatedAt: new Date(),
             },
           });
@@ -584,17 +613,22 @@ async function fixMachineCollectionMetersIssues(
   fixResults: FixResults
 ) {
   try {
-    const { Machine } = await import("@/app/api/lib/models/machines");
-    
+    const { Machine } = await import('@/app/api/lib/models/machines');
+
     // Get the machine's current collectionMeters
     const machine = await Machine.findById(collection.machineId).lean();
     if (!machine) {
-      console.warn(`   ⚠️ Machine ${collection.machineId} not found, skipping collectionMeters fix`);
+      console.warn(
+        `   ⚠️ Machine ${collection.machineId} not found, skipping collectionMeters fix`
+      );
       return;
     }
 
     const machineData = machine as Record<string, unknown>;
-    const collectionMeters = (machineData.collectionMeters as Record<string, unknown>) || {
+    const collectionMeters = (machineData.collectionMeters as Record<
+      string,
+      unknown
+    >) || {
       metersIn: 0,
       metersOut: 0,
     };
@@ -603,34 +637,39 @@ async function fixMachineCollectionMetersIssues(
     const expectedMetersIn = collection.metersIn || 0;
     const expectedMetersOut = collection.metersOut || 0;
 
-    console.warn(`   🔍 Checking machine collectionMeters for collection ${collection._id}:`, {
-      currentMachineMetersIn,
-      currentMachineMetersOut,
-      expectedMetersIn,
-      expectedMetersOut,
-      machineId: collection.machineId,
-    });
+    console.warn(
+      `   🔍 Checking machine collectionMeters for collection ${collection._id}:`,
+      {
+        currentMachineMetersIn,
+        currentMachineMetersOut,
+        expectedMetersIn,
+        expectedMetersOut,
+        machineId: collection.machineId,
+      }
+    );
 
     // Check if machine's collectionMeters match the collection's current meters
-    const needsUpdate = currentMachineMetersIn !== expectedMetersIn || 
-                       currentMachineMetersOut !== expectedMetersOut;
+    const needsUpdate =
+      currentMachineMetersIn !== expectedMetersIn ||
+      currentMachineMetersOut !== expectedMetersOut;
 
     if (needsUpdate) {
       console.warn(
         `   🔧 Fixing machine collectionMeters for collection ${collection._id}: ` +
-        `${currentMachineMetersIn}, ${currentMachineMetersOut} → ${expectedMetersIn}, ${expectedMetersOut}`
+          `${currentMachineMetersIn}, ${currentMachineMetersOut} → ${expectedMetersIn}, ${expectedMetersOut}`
       );
 
       // Update the machine's collectionMeters to match the collection's current meters
       await Machine.findByIdAndUpdate(collection.machineId, {
         $set: {
-          "collectionMeters.metersIn": expectedMetersIn,
-          "collectionMeters.metersOut": expectedMetersOut,
+          'collectionMeters.metersIn': expectedMetersIn,
+          'collectionMeters.metersOut': expectedMetersOut,
           updatedAt: new Date(),
         },
       });
 
-      fixResults.issuesFixed.machineCollectionMetersFixed = (fixResults.issuesFixed.machineCollectionMetersFixed || 0) + 1;
+      fixResults.issuesFixed.machineCollectionMetersFixed =
+        (fixResults.issuesFixed.machineCollectionMetersFixed || 0) + 1;
       console.warn(
         `   ✅ Fixed machine collectionMeters for collection ${collection._id}`
       );
@@ -658,7 +697,7 @@ async function fixCollectionHistoryIssues(
     // Ensure collection has proper locationReportId
     if (
       !collection.locationReportId ||
-      collection.locationReportId.trim() === ""
+      collection.locationReportId.trim() === ''
     ) {
       console.warn(
         `   🔧 Fixing missing locationReportId for collection ${collection._id}`
@@ -693,13 +732,13 @@ async function fixCollectionHistoryIssues(
 
 /**
  * Fix machine history issues - sync collectionMetersHistory with collection documents
- * 
+ *
  * CRITICAL PRINCIPLE: Collection documents are ALWAYS the source of truth
  * - If history doesn't match collection → history is WRONG, update history to match collection
  * - NEVER update collection to match history
  * - Collection documents are validated and finalized through proper workflow
  * - History is just a denormalized copy for performance
- * 
+ *
  * This function ensures collectionMetersHistory matches the actual collection documents
  * It syncs: metersIn, metersOut, prevMetersIn, prevMetersOut, timestamp
  * Uses locationReportId as the unique identifier
@@ -728,7 +767,7 @@ async function fixMachineHistoryIssues(
       );
 
       const newHistoryEntry = {
-        _id: new (await import("mongoose")).default.Types.ObjectId(),
+        _id: new (await import('mongoose')).default.Types.ObjectId(),
         metersIn: collection.metersIn,
         metersOut: collection.metersOut,
         prevMetersIn: collection.prevIn || 0,
@@ -758,26 +797,34 @@ async function fixMachineHistoryIssues(
         console.warn(
           `   🔧 Syncing history entry with collection ${collection._id}:`
         );
-        console.warn(`      Collection: metersIn=${collection.metersIn}, metersOut=${collection.metersOut}, prevIn=${collection.prevIn || 0}, prevOut=${collection.prevOut || 0}`);
-        console.warn(`      History: metersIn=${historyEntry.metersIn}, metersOut=${historyEntry.metersOut}, prevMetersIn=${historyEntry.prevMetersIn}, prevMetersOut=${historyEntry.prevMetersOut}`);
+        console.warn(
+          `      Collection: metersIn=${collection.metersIn}, metersOut=${collection.metersOut}, prevIn=${collection.prevIn || 0}, prevOut=${collection.prevOut || 0}`
+        );
+        console.warn(
+          `      History: metersIn=${historyEntry.metersIn}, metersOut=${historyEntry.metersOut}, prevMetersIn=${historyEntry.prevMetersIn}, prevMetersOut=${historyEntry.prevMetersOut}`
+        );
 
         // Use locationReportId to identify the specific entry to update
         await Machine.findByIdAndUpdate(
           collection.machineId,
           {
             $set: {
-              "collectionMetersHistory.$[elem].metersIn": collection.metersIn,
-              "collectionMetersHistory.$[elem].metersOut": collection.metersOut,
-              "collectionMetersHistory.$[elem].prevMetersIn": collection.prevIn || 0,
-              "collectionMetersHistory.$[elem].prevMetersOut": collection.prevOut || 0,
-              "collectionMetersHistory.$[elem].timestamp": new Date(collection.timestamp),
+              'collectionMetersHistory.$[elem].metersIn': collection.metersIn,
+              'collectionMetersHistory.$[elem].metersOut': collection.metersOut,
+              'collectionMetersHistory.$[elem].prevMetersIn':
+                collection.prevIn || 0,
+              'collectionMetersHistory.$[elem].prevMetersOut':
+                collection.prevOut || 0,
+              'collectionMetersHistory.$[elem].timestamp': new Date(
+                collection.timestamp
+              ),
               updatedAt: new Date(),
             },
           },
           {
             arrayFilters: [
               {
-                "elem.locationReportId": collection.locationReportId,
+                'elem.locationReportId': collection.locationReportId,
               },
             ],
           }
@@ -797,8 +844,8 @@ async function fixMachineHistoryIssues(
     // Update machine's current collection meters
     await Machine.findByIdAndUpdate(collection.machineId, {
       $set: {
-        "collectionMeters.metersIn": collection.metersIn,
-        "collectionMeters.metersOut": collection.metersOut,
+        'collectionMeters.metersIn': collection.metersIn,
+        'collectionMeters.metersOut': collection.metersOut,
         updatedAt: new Date(),
       },
     });
@@ -901,40 +948,59 @@ async function fixMachineHistoryOrphanedAndDuplicates(
 ) {
   try {
     if (isMachineSpecific) {
-      console.warn(`🔧 Fixing orphaned entries and duplicate dates for machine ${reportIdOrMachineId}`);
-      
+      console.warn(
+        `🔧 Fixing orphaned entries and duplicate dates for machine ${reportIdOrMachineId}`
+      );
+
       // Get all collections for this machine
       const collections = await Collections.find({
         machineId: reportIdOrMachineId,
       });
-      
+
       if (collections.length === 0) {
-        console.warn(`   ℹ️ No collections found for machine ${reportIdOrMachineId}`);
+        console.warn(
+          `   ℹ️ No collections found for machine ${reportIdOrMachineId}`
+        );
         return;
       }
 
       // Process only this specific machine
       const machineIds = [reportIdOrMachineId];
-      await processMachinesForHistoryFix(machineIds, collections as unknown as Record<string, unknown>[], fixResults);
+      await processMachinesForHistoryFix(
+        machineIds,
+        collections as unknown as Record<string, unknown>[],
+        fixResults
+      );
     } else {
-      console.warn(`🔧 Fixing orphaned entries and duplicate dates for report ${reportIdOrMachineId}`);
-      
+      console.warn(
+        `🔧 Fixing orphaned entries and duplicate dates for report ${reportIdOrMachineId}`
+      );
+
       // Get all collections for this report
       const collections = await Collections.find({
         locationReportId: reportIdOrMachineId,
       });
-      
+
       if (collections.length === 0) {
-        console.warn(`   ℹ️ No collections found for report ${reportIdOrMachineId}`);
+        console.warn(
+          `   ℹ️ No collections found for report ${reportIdOrMachineId}`
+        );
         return;
       }
 
       // Get unique machine IDs
-      const machineIds = [...new Set(collections.map((c) => c.machineId))];
-      await processMachinesForHistoryFix(machineIds, collections as unknown as Record<string, unknown>[], fixResults);
+      const machineIds = [...new Set(collections.map(c => c.machineId))];
+      await processMachinesForHistoryFix(
+        machineIds,
+        collections as unknown as Record<string, unknown>[],
+        fixResults
+      );
     }
   } catch (error) {
-    console.error(`❌ Error fixing orphaned entries and duplicate dates:`, error);
+    console.error(
+      `❌ Error fixing orphaned entries and duplicate dates:`,
+      error
+    );
     fixResults.errors.push({
       collectionId: 'machine-history-cleanup',
       error: error instanceof Error ? error.message : String(error),
@@ -951,18 +1017,21 @@ async function processMachinesForHistoryFix(
   fixResults: FixResults
 ) {
   try {
-    
     for (const machineId of machineIds) {
       const machine = await Machine.findById(machineId).lean();
       if (!machine) continue;
 
       const machineData = machine as Record<string, unknown>;
-      const history = (machineData.collectionMetersHistory as Record<string, unknown>[]) || [];
-      
+      const history =
+        (machineData.collectionMetersHistory as Record<string, unknown>[]) ||
+        [];
+
       if (history.length === 0) continue;
 
-      console.warn(`   🔧 Processing machine ${machineData.serialNumber || machineId} with ${history.length} history entries`);
-      
+      console.warn(
+        `   🔧 Processing machine ${machineData.serialNumber || machineId} with ${history.length} history entries`
+      );
+
       let cleanedHistory = [...history];
       let hasChanges = false;
 
@@ -971,10 +1040,12 @@ async function processMachinesForHistoryFix(
       const allMachineCollections = await Collections.find({
         machineId: machineId,
       }).lean();
-      
+
       // Also check if collection reports exist
-      const { CollectionReport } = await import("@/app/api/lib/models/collectionReport");
-      
+      const { CollectionReport } = await import(
+        '@/app/api/lib/models/collectionReport'
+      );
+
       // Process each history entry to check for orphaned entries
       const validHistoryEntries = [];
       for (const entry of cleanedHistory) {
@@ -982,33 +1053,123 @@ async function processMachinesForHistoryFix(
           validHistoryEntries.push(entry); // Keep entries without locationReportId
           continue;
         }
-        
+
         // Check if collections exist for this locationReportId
-        const hasCollections = allMachineCollections.some(c => c.locationReportId === entry.locationReportId);
-        
+        const hasCollections = allMachineCollections.some(
+          c => c.locationReportId === entry.locationReportId
+        );
+
         // Check if the collection report itself exists
         const hasReport = await CollectionReport.findOne({
           locationReportId: entry.locationReportId,
         }).lean();
-        
+
         if (!hasCollections || !hasReport) {
-          console.warn(`   🗑️ Removing orphaned history entry: ${entry.locationReportId} (hasCollections: ${!!hasCollections}, hasReport: ${!!hasReport})`);
+          console.warn(
+            `   🗑️ Removing orphaned history entry: ${entry.locationReportId} (hasCollections: ${!!hasCollections}, hasReport: ${!!hasReport})`
+          );
           hasChanges = true;
         } else {
-          console.warn(`   ✅ Keeping valid history entry: ${entry.locationReportId} (hasCollections: ${!!hasCollections}, hasReport: ${!!hasReport})`);
+          console.warn(
+            `   ✅ Keeping valid history entry: ${entry.locationReportId} (hasCollections: ${!!hasCollections}, hasReport: ${!!hasReport})`
+          );
           validHistoryEntries.push(entry);
         }
       }
-      
+
       cleanedHistory = validHistoryEntries;
 
-      // 2. Fix duplicate dates by keeping the most accurate entry
+      // 2. Remove duplicate locationReportIds (keep the one closest to collection timestamp)
+      const locationReportIdGroups = new Map<
+        string,
+        Record<string, unknown>[]
+      >();
+
+      // Group entries by locationReportId
+      for (const entry of cleanedHistory) {
+        if (entry.locationReportId) {
+          const reportId = entry.locationReportId as string;
+          if (!locationReportIdGroups.has(reportId)) {
+            locationReportIdGroups.set(reportId, []);
+          }
+          locationReportIdGroups.get(reportId)!.push(entry);
+        }
+      }
+
+      // Process each locationReportId group to remove duplicates
+      for (const [reportId, entries] of locationReportIdGroups) {
+        if (entries.length > 1) {
+          console.warn(
+            `   🔧 Found ${entries.length} duplicate entries with locationReportId ${reportId}`
+          );
+
+          // Find the collection document for this locationReportId
+          const matchingCollection = allMachineCollections.find(
+            c => c.locationReportId === reportId
+          );
+
+          if (matchingCollection) {
+            // Keep the entry that best matches the collection
+            let bestEntry = entries[0];
+            let bestScore = 0;
+
+            for (const entry of entries) {
+              let score = 0;
+
+              // Score based on how well it matches the collection
+              if (entry.metersIn === matchingCollection.metersIn) score += 10;
+              if (entry.metersOut === matchingCollection.metersOut) score += 10;
+              if (entry.prevMetersIn === (matchingCollection.prevIn || 0))
+                score += 5;
+              if (entry.prevMetersOut === (matchingCollection.prevOut || 0))
+                score += 5;
+
+              // Prefer entries with timestamp close to collection timestamp
+              const entryTime = new Date(entry.timestamp as string).getTime();
+              const collectionTime = new Date(
+                typeof matchingCollection.timestamp === 'string'
+                  ? matchingCollection.timestamp
+                  : (matchingCollection.timestamp as Date).toISOString()
+              ).getTime();
+              const timeDiff = Math.abs(entryTime - collectionTime);
+              if (timeDiff < 60000) score += 3; // Within 1 minute
+
+              if (score > bestScore) {
+                bestScore = score;
+                bestEntry = entry;
+              }
+            }
+
+            console.warn(
+              `   ✅ Keeping best entry (score: ${bestScore}), removing ${entries.length - 1} duplicates`
+            );
+
+            // Remove all entries with this locationReportId except the best one
+            cleanedHistory = cleanedHistory.filter(entry => {
+              if (entry.locationReportId === reportId) {
+                return entry === bestEntry;
+              }
+              return true;
+            });
+
+            hasChanges = true;
+          } else {
+            console.warn(
+              `   ⚠️ No matching collection found for locationReportId ${reportId}, keeping all entries`
+            );
+          }
+        }
+      }
+
+      // 3. Fix duplicate dates by keeping the most accurate entry
       const dateGroups = new Map<string, Record<string, unknown>[]>();
-      
+
       // Group entries by date
       for (const entry of cleanedHistory) {
         if (entry.timestamp) {
-          const date = new Date(entry.timestamp as string).toISOString().split('T')[0];
+          const date = new Date(entry.timestamp as string)
+            .toISOString()
+            .split('T')[0];
           if (!dateGroups.has(date)) {
             dateGroups.set(date, []);
           }
@@ -1019,67 +1180,107 @@ async function processMachinesForHistoryFix(
       // Process each date group
       for (const [date, entries] of dateGroups) {
         if (entries.length > 1) {
-          console.warn(`   🔧 Found ${entries.length} duplicate entries for date ${date}`);
-          
+          console.warn(
+            `   🔧 Found ${entries.length} duplicate entries for date ${date}`
+          );
+
           // Find the most accurate entry (the one with matching collections)
           let bestEntry = entries[0];
           let bestScore = 0;
-          
+
           for (const entry of entries) {
             let score = 0;
-            
+
             // Check if this entry has a matching collection
             if (entry.locationReportId) {
-              const hasMatchingCollection = allMachineCollections.some(c => 
-                c.locationReportId === entry.locationReportId &&
-                c.metersIn === entry.metersIn &&
-                c.metersOut === entry.metersOut
+              const hasMatchingCollection = allMachineCollections.some(
+                c =>
+                  c.locationReportId === entry.locationReportId &&
+                  c.metersIn === entry.metersIn &&
+                  c.metersOut === entry.metersOut
               );
               if (hasMatchingCollection) score += 10;
             }
-            
+
             // Prefer entries with proper prevMeters values
-            if (entry.prevMetersIn !== undefined && entry.prevMetersOut !== undefined) {
+            if (
+              entry.prevMetersIn !== undefined &&
+              entry.prevMetersOut !== undefined
+            ) {
               score += 5;
             }
-            
+
             if (score > bestScore) {
               bestScore = score;
               bestEntry = entry;
             }
           }
-          
-          console.warn(`   ✅ Keeping best entry for date ${date}, removing ${entries.length - 1} duplicates`);
-          
+
+          console.warn(
+            `   ✅ Keeping best entry for date ${date}, removing ${entries.length - 1} duplicates`
+          );
+
           // Remove all entries for this date except the best one
-          cleanedHistory = cleanedHistory.filter((entry) => {
+          cleanedHistory = cleanedHistory.filter(entry => {
             if (entry.timestamp) {
-              const entryDate = new Date(entry.timestamp as string).toISOString().split('T')[0];
+              const entryDate = new Date(entry.timestamp as string)
+                .toISOString()
+                .split('T')[0];
               if (entryDate === date) {
                 return entry === bestEntry;
               }
             }
             return true;
           });
-          
+
           hasChanges = true;
         }
       }
 
       // Update machine history if changes were made
       if (hasChanges) {
+        // CRITICAL: Before saving cleaned history, sync each entry's values with its collection
+        // This ensures we don't overwrite the fixes made in Phase 1
+        console.warn(
+          `   🔄 Syncing cleaned history entries with their collections...`
+        );
+
+        for (const entry of cleanedHistory) {
+          if (entry.locationReportId) {
+            const matchingCollection = allMachineCollections.find(
+              c => c.locationReportId === entry.locationReportId
+            );
+
+            if (matchingCollection) {
+              // Sync ALL fields with the collection (source of truth)
+              entry.metersIn = matchingCollection.metersIn;
+              entry.metersOut = matchingCollection.metersOut;
+              entry.prevMetersIn = matchingCollection.prevIn || 0;
+              entry.prevMetersOut = matchingCollection.prevOut || 0;
+              entry.timestamp = new Date(matchingCollection.timestamp);
+            }
+          }
+        }
+
         await Machine.findByIdAndUpdate(machineId, {
-          $set: { collectionMetersHistory: cleanedHistory }
+          $set: { collectionMetersHistory: cleanedHistory },
         });
-        
+
         fixResults.issuesFixed.machineHistoryFixed++;
-        console.warn(`   ✅ Fixed machine history for machine ${machineData.serialNumber || machineId}`);
+        console.warn(
+          `   ✅ Fixed and synced machine history for machine ${machineData.serialNumber || machineId}`
+        );
       } else {
-        console.warn(`   ℹ️ No orphaned entries or duplicate dates found for machine ${machineData.serialNumber || machineId}`);
+        console.warn(
+          `   ℹ️ No orphaned entries or duplicate dates found for machine ${machineData.serialNumber || machineId}`
+        );
       }
     }
   } catch (error) {
-    console.error(`❌ Error fixing orphaned entries and duplicate dates:`, error);
+    console.error(
+      `❌ Error fixing orphaned entries and duplicate dates:`,
+      error
+    );
     fixResults.errors.push({
       collectionId: 'machine-history-cleanup',
       error: error instanceof Error ? error.message : String(error),

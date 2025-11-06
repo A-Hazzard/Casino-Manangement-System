@@ -20,7 +20,10 @@
     "test:fix-direct:revert": "node scripts/test-fix-direct.js --revert",
     "test:setup-scenario": "node scripts/setup-test-scenario.js",
     "test:setup-scenario:revert": "node scripts/setup-test-scenario.js --revert",
-    "test:get-report-id": "node scripts/get-report-id.js"
+    "test:get-report-id": "node scripts/get-report-id.js",
+    "test:comprehensive": "node scripts/comprehensive-fix-test.js",
+    "test:comprehensive:execute": "node scripts/comprehensive-fix-test.js --execute",
+    "test:comprehensive:revert": "node scripts/comprehensive-fix-test.js --revert"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

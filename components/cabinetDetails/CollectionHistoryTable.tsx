@@ -16,6 +16,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   AlertCircle,
   ChevronDown,
   ChevronsUpDown,
@@ -390,16 +395,32 @@ export function CollectionHistoryTable({
                   key={`${row.locationReportId}-${row.timestamp}-${index}`}
                   className={hasIssue ? 'bg-red-50/50 hover:bg-red-100/50' : ''}
                 >
-                  <TableCell className="truncate text-left">
-                    {new Date(row.timestamp).toLocaleString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      second: '2-digit',
-                      hour12: true,
-                    })}
+                  <TableCell className="text-left">
+                    <div className="flex items-center gap-2">
+                      {hasIssue && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-xs">
+                              {issuesMap[row.locationReportId]}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      <span className="truncate">
+                        {new Date(row.timestamp).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: true,
+                        })}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="truncate px-2 text-left">
                     {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
