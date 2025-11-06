@@ -7,6 +7,10 @@ import {
   updateLicensee as updateLicenseeHelper,
   deleteLicensee as deleteLicenseeHelper,
 } from '@/app/api/lib/helpers/licensees';
+import {
+  getAccessContext,
+  constrainLicenceeQuery,
+} from '@/app/api/lib/utils/accessControl';
 import { apiLogger } from '@/app/api/lib/utils/logger';
 
 export async function GET(request: NextRequest) {
@@ -14,103 +18,61 @@ export async function GET(request: NextRequest) {
   apiLogger.startLogging();
 
   try {
-    await connectDB();
-    const { searchParams } = new URL(request.url);
-    const licenseeFilter = searchParams.get('licensee');
+      await connectDB();
+      const { searchParams } = new URL(request.url);
+      const licenseeFilter = searchParams.get('licensee');
 
-    // Get user authentication info
-    const authResponse = await fetch(
-      `${request.nextUrl.origin}/api/auth/token`,
-      {
-        headers: {
-          cookie: request.headers.get('cookie') || '',
-        },
+      const accessContext = await getAccessContext();
+
+      if (!accessContext) {
+        return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), {
+          status: 401,
+        });
       }
-    );
 
-    let userRoles: string[] = [];
-    let userLocations: string[] = [];
+      const licensees = await getAllLicensees();
+      let formattedLicensees = await formatLicenseesForResponse(licensees);
 
-    if (authResponse.ok) {
-      const authData = await authResponse.json();
-      if (authData.userId) {
-        // Fetch user data to get roles and locations
-        const userResponse = await fetch(
-          `${request.nextUrl.origin}/api/users/${authData.userId}`,
-          {
-            headers: {
-              cookie: request.headers.get('cookie') || '',
-            },
-          }
+      if (!accessContext.isAdmin) {
+        if (!accessContext.accessibleLicenseeIds.length) {
+          formattedLicensees = [];
+        } else {
+          formattedLicensees = formattedLicensees.filter(licensee => {
+            const licenseeId = (licensee as Record<string, unknown>)._id as string;
+            return accessContext.accessibleLicenseeIds.includes(licenseeId);
+          });
+        }
+      }
+
+      const licenceeConstraint = constrainLicenceeQuery<Record<string, unknown>>(
+        accessContext,
+        licenseeFilter
+      );
+
+      if (!licenceeConstraint && licenseeFilter && licenseeFilter !== 'all') {
+        return new Response(
+          JSON.stringify({ success: false, message: 'Forbidden licensee scope' }),
+          { status: 403 }
         );
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          if (userData.success && userData.user) {
-            userRoles = userData.user.roles || [];
-            userLocations =
-              userData.user.resourcePermissions?.['gaming-locations']
-                ?.resources || [];
-          }
-        }
-      }
-    }
-
-    const licensees = await getAllLicensees();
-    let formattedLicensees = await formatLicenseesForResponse(licensees);
-
-    // Apply location-based filtering for non-admin users
-    if (
-      userRoles.length > 0 &&
-      !userRoles.includes('evolution admin') &&
-      !userRoles.includes('admin')
-    ) {
-      // Get all locations to determine licensee relationships
-      // We need full location data including licensee information
-      const response = await fetch(`${request.nextUrl.origin}/api/locations`, {
-        headers: {
-          cookie: request.headers.get('cookie') || '',
-        },
-      });
-
-      let allLocations: Array<{ _id: string; 'rel.licencee'?: string }> = [];
-      if (response.ok) {
-        const data = await response.json();
-        allLocations = data.locations || [];
       }
 
-      // Create a map of location ID to licensee ID
-      const locationToLicenseeMap = new Map<string, string>();
-      allLocations.forEach(location => {
-        if (location['rel.licencee']) {
-          locationToLicenseeMap.set(location._id, location['rel.licencee']);
+      if (licenceeConstraint && licenceeConstraint['rel.licencee']) {
+        const constraintValue = licenceeConstraint['rel.licencee'];
+
+        if (typeof constraintValue === 'string') {
+          formattedLicensees = formattedLicensees.filter(licensee => {
+            const licenseeId = (licensee as Record<string, unknown>)._id as string;
+            const licenseeName = (licensee as Record<string, unknown>)
+              .name as string;
+            return licenseeId === constraintValue || licenseeName === constraintValue;
+          });
+        } else if (constraintValue && typeof constraintValue === 'object') {
+          const permittedIds = (constraintValue as { $in: string[] }).$in || [];
+          formattedLicensees = formattedLicensees.filter(licensee =>
+            permittedIds.includes((licensee as Record<string, unknown>)._id as string)
+          );
         }
-      });
-
-      // Filter licensees based on user's accessible locations
-      const accessibleLicenseeIds = new Set<string>();
-      userLocations.forEach(locationId => {
-        const licenseeId = locationToLicenseeMap.get(locationId);
-        if (licenseeId) {
-          accessibleLicenseeIds.add(licenseeId);
-        }
-      });
-
-      formattedLicensees = formattedLicensees.filter(licensee => {
-        const licenseeId = (licensee as Record<string, unknown>)._id as string;
-        return accessibleLicenseeIds.has(licenseeId);
-      });
-    }
-
-    // Filter by licensee if provided
-    if (licenseeFilter && licenseeFilter !== 'all') {
-      formattedLicensees = formattedLicensees.filter(licensee => {
-        const licenseeId = (licensee as Record<string, unknown>)._id as string;
-        const licenseeName = (licensee as Record<string, unknown>)
-          .name as string;
-        return licenseeId === licenseeFilter || licenseeName === licenseeFilter;
-      });
-    }
+      }
 
     apiLogger.logSuccess(
       context,

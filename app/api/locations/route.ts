@@ -5,6 +5,10 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { apiLogger } from '@/app/api/lib/utils/logger';
 import { UpdateLocationData } from '@/lib/types/location';
 import { generateMongoId } from '@/lib/utils/id';
+import {
+  getAccessContext,
+  constrainLicenceeQuery,
+} from '@/app/api/lib/utils/accessControl';
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { Countries } from '@/app/api/lib/models/countries';
@@ -22,21 +26,54 @@ export async function GET(request: Request) {
     await connectDB();
 
     // Get query parameters
-    const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get('licencee');
-    const minimal = searchParams.get('minimal') === '1';
+      const { searchParams } = new URL(request.url);
+      const licencee = searchParams.get('licencee');
+      const minimal = searchParams.get('minimal') === '1';
 
-    // Build query filter
-    const queryFilter: Record<string, unknown> = {};
-    if (licencee && licencee !== 'all') {
-      queryFilter['rel.licencee'] = licencee;
-    }
+      const accessContext = await getAccessContext();
 
-    // Exclude deleted locations
-    queryFilter.$or = [
-      { deletedAt: null },
-      { deletedAt: { $lt: new Date('2020-01-01') } },
-    ];
+      if (!accessContext) {
+        return NextResponse.json(
+          { success: false, message: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+
+      // Build query filter
+      const queryFilter: Record<string, unknown> = {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      };
+
+      if (accessContext.isAdmin) {
+        if (licencee && licencee !== 'all') {
+          queryFilter['rel.licencee'] = licencee;
+        }
+      } else {
+        if (!accessContext.accessibleLocationIds.length) {
+          return NextResponse.json({ locations: [] }, { status: 200 });
+        }
+
+        queryFilter._id = { $in: accessContext.accessibleLocationIds };
+
+        const licenceeConstraint = constrainLicenceeQuery<Record<string, unknown>>(
+          accessContext,
+          licencee
+        );
+
+        if (!licenceeConstraint && licencee && licencee !== 'all') {
+          return NextResponse.json(
+            { success: false, message: 'Forbidden licensee scope' },
+            { status: 403 }
+          );
+        }
+
+        if (licenceeConstraint && licenceeConstraint['rel.licencee']) {
+          queryFilter['rel.licencee'] = licenceeConstraint['rel.licencee'];
+        }
+      }
 
     // Fetch locations. If minimal is requested, project minimal fields only.
     const projection = minimal ? { _id: 1, name: 1, geoCoords: 1 } : undefined;
