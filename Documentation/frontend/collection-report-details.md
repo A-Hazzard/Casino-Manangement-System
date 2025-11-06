@@ -1,8 +1,8 @@
 # Collection Report Details Page - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 5, 2025  
-**Version:** 2.1.0
+**Last Updated:** November 6, 2025  
+**Version:** 2.2.0
 
 ## Overview
 
@@ -176,6 +176,8 @@ The Collection Report Details page includes a comprehensive issue detection and 
 
 ### Fix System
 
+**Updated:** November 6th, 2025 - Enhanced history sync logic
+
 **"Fix Report" Button:**
 - Appears in header when issues detected
 - Fixes all detected issues in current report
@@ -183,17 +185,27 @@ The Collection Report Details page includes a comprehensive issue detection and 
   - Movement recalculation
   - SAS time correction
   - Previous meter updates
-  - Machine history updates
+  - **Machine history synchronization** (ENHANCED)
   - Chain validation
 
 **Fix Operations:**
 1. Recalculates movement values using proper formulas
 2. Fixes inverted or invalid SAS time ranges
-3. Corrects `prevIn`/`prevOut` references
-4. Updates `collectionMetersHistory` entries
+3. Corrects `prevIn`/`prevOut` references in collections
+4. **Syncs `collectionMetersHistory` with collection documents** (ENHANCED)
+   - Uses `locationReportId` as unique identifier
+   - Updates: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`
+   - Fixes discrepancies where history shows incorrect values
 5. Removes orphaned history entries
 6. Fixes duplicate history entries
 7. Ensures data consistency across collection timeline
+
+**Cabinet Details "Fix History" Button:**
+- Renamed from "Check & Fix History" (November 6th, 2025)
+- Appears when collection history issues detected
+- Performs same comprehensive fix operations as "Fix Report"
+- Refreshes automatically after fix completes
+- Hides button after successful fix
 
 ### Smart Issue Detection
 - Issues detected automatically on page load

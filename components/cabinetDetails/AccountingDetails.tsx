@@ -510,12 +510,12 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     }
   }, [cabinet._id]);
 
-  // Check for issues when component loads or cabinet changes
+  // Check for issues when component loads, cabinet changes, or after refresh
   React.useEffect(() => {
-    if (cabinet?._id) {
+    if (cabinet?._id && !loading && activeMetricsTabContent === 'Collection History') {
       checkForCollectionHistoryIssues();
     }
-  }, [cabinet?._id, checkForCollectionHistoryIssues]);
+  }, [cabinet?._id, loading, activeMetricsTabContent, checkForCollectionHistoryIssues]);
 
   // Separate date filter states for Activity Log and Bill Validator
 

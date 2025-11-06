@@ -1,10 +1,23 @@
 # Collection Report System - Backend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 4th, 2025  
-**Version:** 2.2.0
+**Last Updated:** November 6th, 2025  
+**Version:** 2.3.0
 
 ## Recent Critical Fixes
+
+### November 6th, 2025 - Collection History Sync Enhancement ✅
+
+**Fixed:** POST `/api/collection-reports/fix-report` endpoint now properly syncs `collectionMetersHistory` entries with actual collection documents using `locationReportId` as the unique identifier. Previously, the fix would fail when multiple collections had the same metersIn/metersOut values or would not update all fields correctly. The enhanced logic now:
+
+- Uses `locationReportId` instead of metersIn/metersOut to uniquely identify history entries
+- Syncs ALL fields: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`
+- Fixes discrepancies where history shows incorrect prevIn/prevOut values
+- Works reliably even when multiple collections have similar meter readings
+
+**UI Changes:**
+- Cabinet Details: Renamed "Check & Fix History" button to "Fix History"
+- Refresh logic now rechecks issues after fix to hide button when resolved
 
 ### November 4th, 2025 - Previous Meters Recalculation Bug ✅
 
@@ -986,7 +999,9 @@ When `locationsWithMachines=1` is set:
 
 ### POST /api/collection-reports/fix-report
 
-**Purpose**: Fix detected issues in report or machine
+**Purpose**: Fix detected issues in report or machine and sync collectionMetersHistory with collection documents
+
+**Updated:** November 6th, 2025 - Enhanced history sync logic
 
 **Parameters**:
 
@@ -998,9 +1013,31 @@ When `locationsWithMachines=1` is set:
 1. Movement recalculation
 2. SAS time correction
 3. Previous meter updates
-4. Remove orphaned history entries
-5. Fix duplicate history entries
-6. Update machine collection meters
+4. **Sync collectionMetersHistory with collection documents** (ENHANCED)
+5. Remove orphaned history entries
+6. Fix duplicate history entries
+7. Update machine collection meters
+
+**Critical Enhancement - History Sync**:
+
+The fix now properly syncs `collectionMetersHistory` entries with actual collection documents:
+
+- **Identifier**: Uses `locationReportId` as unique identifier (more reliable than metersIn/metersOut)
+- **Fields Synced**: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`
+- **Logic**: Finds history entry by `locationReportId`, then updates ALL fields to match collection document
+- **Result**: Fixes discrepancies where history shows incorrect prevIn/prevOut values
+
+**Example**:
+```typescript
+// Collection document has:
+{ prevIn: 0, prevOut: 0, metersIn: 347982, metersOut: 261523 }
+
+// But collectionMetersHistory shows:
+{ prevMetersIn: 347400, prevMetersOut: 261700, ... }
+
+// Fix updates history to match collection:
+{ prevMetersIn: 0, prevMetersOut: 0, metersIn: 347982, metersOut: 261523 }
+```
 
 **Returns**:
 

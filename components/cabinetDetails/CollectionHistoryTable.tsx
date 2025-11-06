@@ -325,7 +325,7 @@ export function CollectionHistoryTable({
                   Fixing...
                 </>
               ) : (
-                <>🔧 Check & Fix History</>
+                <>🔧 Fix History</>
               )}
             </Button>
           )}

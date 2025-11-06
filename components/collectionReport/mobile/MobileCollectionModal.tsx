@@ -1766,6 +1766,25 @@ export default function MobileCollectionModal({
                   modalState.isProcessing
                 )
                   return;
+                
+                // Check if there's unsaved data (machine selected with form data but not added)
+                const hasUnsavedData =
+                  modalState.selectedMachineData &&
+                  (modalState.formData.metersIn.trim() !== '' ||
+                    modalState.formData.metersOut.trim() !== '' ||
+                    modalState.formData.notes.trim() !== '');
+
+                if (hasUnsavedData) {
+                  toast.error(
+                    'You have unsaved machine data. Please click "Add Machine to List" or cancel the current machine entry before creating the report.',
+                    {
+                      duration: 6000,
+                      position: 'top-center',
+                    }
+                  );
+                  return;
+                }
+                
                 setShowCreateReportConfirmation(true);
               }}
             />

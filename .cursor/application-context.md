@@ -976,7 +976,44 @@ Native Currency (TTD $20)
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** November 4th, 2025 - Collection Report System Critical Fixes
+**Last Major Update:** November 6th, 2025 - Collection History Fix Enhancement & System Improvements
+
+**November 6th, 2025 Major Work:**
+
+1. **Documentation Structure Enhancement**
+   - Added Essential Documentation References section at top of application-context.md
+   - Clear categorization: Collection Report System, Database & Types, Financial Metrics
+   - Critical Guidelines for modifying Collection Reports, Database Models, and Financial Calculations
+   - Quick reference to all important documentation files
+
+2. **Database Cleanup Script**
+   - Created `scripts/cleanup-old-collections.js` - Node.js script to delete collections older than 2025
+   - **Dry-run mode by default** - Preview changes before executing
+   - Removes collections, collection reports, and machine collection history
+   - Shows sample data (first 5 items) before deletion
+   - Comprehensive logging and error handling
+   - Added to package.json scripts: `pnpm cleanup:old-collections`
+   - Created `scripts/README.md` with complete usage documentation
+
+3. **Collection History Fix System - Major Enhancement** ⭐
+   - **Fixed:** Fix logic now properly syncs `collectionMetersHistory` with collection documents
+   - **Key Change:** Uses `locationReportId` as unique identifier (instead of unreliable metersIn/metersOut matching)
+   - **Fields Synced:** ALL fields now synced - metersIn, metersOut, prevMetersIn, prevMetersOut, timestamp
+   - **UI:** Renamed "Check & Fix History" to "Fix History" on cabinet details page
+   - **Refresh Logic:** Fix button now properly hides after refresh when issues are resolved
+   - **Result:** Fixes discrepancies where history shows wrong prevIn/prevOut values (e.g., history showing 347.9K but should be 0)
+   - File: `app/api/collection-reports/fix-report/route.ts` (fixMachineHistoryIssues function)
+
+4. **Collection Report Creation - Unsaved Data Protection**
+   - **Desktop Modal:** Prevents creating reports when machine is selected with data but not added to list
+   - **Mobile Modal:** Same validation for mobile users
+   - **Error Message:** Clear 6-second toast explaining user must add machine or cancel
+   - **Prevention:** Report creation blocked until user addresses unsaved data
+   - Files: `NewCollectionModal.tsx`, `MobileCollectionModal.tsx`
+
+5. **Balance Correction Default Value**
+   - Changed balance correction default from blank to '0' in NewCollectionModal
+   - Provides better UX with sensible default value
 
 **November 4th, 2025 Major Work:**
 

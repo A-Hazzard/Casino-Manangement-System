@@ -1,7 +1,7 @@
 # Collection Report Details - Backend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 20th, 2025
+**Last Updated:** November 6th, 2025
 
 ## Overview
 
@@ -303,6 +303,8 @@ for (const [date, entries] of dateGroups) {
 ### Fix Report Endpoint
 **Endpoint**: `POST /api/collection-reports/fix-report`
 
+**Updated:** November 6th, 2025 - Enhanced history sync logic
+
 **Parameters**:
 - `reportId`: Fix specific report
 - `machineId`: Fix specific machine
@@ -311,8 +313,39 @@ for (const [date, entries] of dateGroups) {
 1. Movement recalculation
 2. SAS time correction
 3. Previous meter updates
-4. Machine history cleanup
-5. Data consistency validation
+4. **Machine history synchronization** (ENHANCED)
+5. Machine history cleanup
+6. Data consistency validation
+
+**Critical Enhancement - History Sync (November 6th, 2025)**:
+
+The fix now properly syncs `collectionMetersHistory` with actual collection documents:
+
+```typescript
+// Finds history entry by locationReportId (unique identifier)
+const historyEntry = currentHistory.find(
+  entry => entry.locationReportId === collection.locationReportId
+);
+
+// Syncs ALL fields from collection to history
+await Machine.findByIdAndUpdate(collection.machineId, {
+  $set: {
+    "collectionMetersHistory.$[elem].metersIn": collection.metersIn,
+    "collectionMetersHistory.$[elem].metersOut": collection.metersOut,
+    "collectionMetersHistory.$[elem].prevMetersIn": collection.prevIn || 0,
+    "collectionMetersHistory.$[elem].prevMetersOut": collection.prevOut || 0,
+    "collectionMetersHistory.$[elem].timestamp": new Date(collection.timestamp),
+  },
+}, {
+  arrayFilters: [{ "elem.locationReportId": collection.locationReportId }],
+});
+```
+
+**Why This Works:**
+- `locationReportId` is unique per collection (more reliable than metersIn/metersOut)
+- Syncs all fields to ensure complete accuracy
+- Fixes cases where history has wrong prevIn/prevOut but collection is correct
+- Used by both "Fix Report" button and "Fix History" button on cabinet details
 
 **Response**:
 ```typescript

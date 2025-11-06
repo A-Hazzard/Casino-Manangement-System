@@ -339,7 +339,7 @@ export default function NewCollectionModal({
     varianceReason: '',
     amountToCollect: '0',
     collectedAmount: '',
-    balanceCorrection: '',
+    balanceCorrection: '0',
     balanceCorrectionReason: '',
     previousBalance: '0',
     reasonForShortagePayment: '',
@@ -3138,6 +3138,25 @@ export default function NewCollectionModal({
                   currentCollectionTime: currentCollectionTime,
                 });
                 if (!isCreateReportsEnabled || isProcessing) return;
+                
+                // Check if there's unsaved data (machine selected with form data but not added)
+                const hasUnsavedData =
+                  selectedMachineId &&
+                  (currentMetersIn.trim() !== '' ||
+                    currentMetersOut.trim() !== '' ||
+                    currentMachineNotes.trim() !== '');
+
+                if (hasUnsavedData) {
+                  toast.error(
+                    'You have unsaved machine data. Please click "Add Machine to List" or cancel the current machine entry before creating the report.',
+                    {
+                      duration: 6000,
+                      position: 'top-center',
+                    }
+                  );
+                  return;
+                }
+                
                 // Show confirmation dialog
                 setShowCreateReportConfirmation(true);
               }}

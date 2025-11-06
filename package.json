@@ -11,7 +11,8 @@
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
-    "check": "pnpm run type-check && pnpm run lint"
+    "check": "pnpm run type-check && pnpm run lint",
+    "cleanup:old-collections": "node scripts/cleanup-old-collections.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

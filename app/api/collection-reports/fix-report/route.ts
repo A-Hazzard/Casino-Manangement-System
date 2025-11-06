@@ -678,7 +678,11 @@ async function fixCollectionHistoryIssues(
 }
 
 /**
- * Fix machine history issues
+ * Fix machine history issues - sync collectionMetersHistory with collection documents
+ * 
+ * CRITICAL: This function ensures collectionMetersHistory matches the actual collection documents
+ * It syncs: metersIn, metersOut, prevMetersIn, prevMetersOut, timestamp
+ * Uses locationReportId as the unique identifier
  */
 async function fixMachineHistoryIssues(
   collection: CollectionData,
@@ -692,11 +696,9 @@ async function fixMachineHistoryIssues(
 
     const currentHistory = machine.collectionMetersHistory || [];
 
-    // Find or create history entry for this collection
+    // Find history entry by locationReportId (unique identifier)
     const historyEntry = currentHistory.find(
       (entry: HistoryEntry) =>
-        entry.metersIn === collection.metersIn &&
-        entry.metersOut === collection.metersOut &&
         entry.locationReportId === collection.locationReportId
     );
 
@@ -724,34 +726,38 @@ async function fixMachineHistoryIssues(
         `   ✅ Created history entry for collection ${collection._id}`
       );
     } else {
-      // Update existing history entry if needed
+      // CRITICAL: Always sync history entry with collection document values
+      // This fixes discrepancies where history shows wrong values
       const needsUpdate =
+        historyEntry.metersIn !== collection.metersIn ||
+        historyEntry.metersOut !== collection.metersOut ||
         historyEntry.prevMetersIn !== (collection.prevIn || 0) ||
-        historyEntry.prevMetersOut !== (collection.prevOut || 0) ||
-        historyEntry.locationReportId !== collection.locationReportId;
+        historyEntry.prevMetersOut !== (collection.prevOut || 0);
 
       if (needsUpdate) {
         console.warn(
-          `   🔧 Updating history entry for collection ${collection._id}`
+          `   🔧 Syncing history entry with collection ${collection._id}:`
         );
+        console.warn(`      Collection: metersIn=${collection.metersIn}, metersOut=${collection.metersOut}, prevIn=${collection.prevIn || 0}, prevOut=${collection.prevOut || 0}`);
+        console.warn(`      History: metersIn=${historyEntry.metersIn}, metersOut=${historyEntry.metersOut}, prevMetersIn=${historyEntry.prevMetersIn}, prevMetersOut=${historyEntry.prevMetersOut}`);
 
+        // Use locationReportId to identify the specific entry to update
         await Machine.findByIdAndUpdate(
           collection.machineId,
           {
             $set: {
-              "collectionMetersHistory.$[elem].prevMetersIn":
-                collection.prevIn || 0,
-              "collectionMetersHistory.$[elem].prevMetersOut":
-                collection.prevOut || 0,
-              "collectionMetersHistory.$[elem].locationReportId":
-                collection.locationReportId,
+              "collectionMetersHistory.$[elem].metersIn": collection.metersIn,
+              "collectionMetersHistory.$[elem].metersOut": collection.metersOut,
+              "collectionMetersHistory.$[elem].prevMetersIn": collection.prevIn || 0,
+              "collectionMetersHistory.$[elem].prevMetersOut": collection.prevOut || 0,
+              "collectionMetersHistory.$[elem].timestamp": new Date(collection.timestamp),
+              updatedAt: new Date(),
             },
           },
           {
             arrayFilters: [
               {
-                "elem.metersIn": collection.metersIn,
-                "elem.metersOut": collection.metersOut,
+                "elem.locationReportId": collection.locationReportId,
               },
             ],
           }
@@ -759,7 +765,11 @@ async function fixMachineHistoryIssues(
 
         fixResults.issuesFixed.machineHistoryFixed++;
         console.warn(
-          `   ✅ Updated history entry for collection ${collection._id}`
+          `   ✅ Synced history entry with collection ${collection._id}: prevMetersIn=${collection.prevIn || 0}, prevMetersOut=${collection.prevOut || 0}`
+        );
+      } else {
+        console.warn(
+          `   ℹ️ History entry already matches collection ${collection._id}`
         );
       }
     }
