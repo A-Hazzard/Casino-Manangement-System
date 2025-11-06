@@ -32,9 +32,21 @@ if (reportIssueData && reportIssueData.hasIssues && reportIssueData.issueCount >
 - Users saw false warnings on every page
 - Loss of trust in the system
 
-**The Solution:**
+**The Solution (Two-Part Fix):**
+
+**Part A: API Fix** (`app/api/collection-reports/check-all-issues/route.ts` line 596-604)
 ```typescript
-// NEW CODE - FIXED:
+// OLD: Pushed ALL machines, even with no issues
+machineIssues.push({ machineId, machineName, issues });
+
+// NEW: Only push machines that have issues
+if (issues.length > 0) {
+  machineIssues.push({ machineId, machineName, issues });
+}
+```
+
+**Part B: Frontend Fix** (`app/collection-report/report/[reportId]/page.tsx` line 304-337)
+```typescript
 // Check the machines array for actual history issues
 const machinesData = issuesResponse.data.machines || [];
 const machinesWithHistoryIssues = machinesData.filter(
@@ -51,7 +63,8 @@ if (machinesWithHistoryIssues.length > 0) {
 ```
 
 **Result:**
-- ✅ Warning only shows when machines actually have history issues
+- ✅ API only returns machines with actual issues
+- ✅ Frontend only shows warning if machines array has entries
 - ✅ No more false positives on every report
 - ✅ Users trust the warning system again
 

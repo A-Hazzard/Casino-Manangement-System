@@ -593,11 +593,15 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          machineIssues.push({
-            machineId: machId,
-            machineName,
-            issues,
-          });
+          // Only include machines that actually have issues
+          // This prevents false positives in the frontend
+          if (issues.length > 0) {
+            machineIssues.push({
+              machineId: machId,
+              machineName,
+              issues,
+            });
+          }
 
           // Update reportIssues for each report that has issues
           if (issues.length > 0) {
