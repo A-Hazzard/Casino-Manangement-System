@@ -341,7 +341,8 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   activeMetricsTabContent,
   setActiveMetricsTabContent,
   disableCurrencyConversion = false,
-}: AccountingDetailsProps) => {
+  onDataRefresh,
+}) => {
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
   // On specific cabinet pages, don't apply currency conversion
@@ -371,6 +372,9 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   const [collectionHistoryIssues, setCollectionHistoryIssues] = useState<
     Record<string, string>
   >({});
+
+  // Track if auto-fix has been attempted to prevent infinite loops
+  const autoFixAttemptedRef = React.useRef(false);
 
   // Function to check for collection history issues (defined first as it's used by handleFix)
   const checkForCollectionHistoryIssues = React.useCallback(async () => {
@@ -486,12 +490,20 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
             console.warn(
               `✅ Automatically fixed ${fixData.results.issuesFixed.machineHistoryFixed} collection history issues`
             );
-            
+
             // AUTO-REQUERY: After auto-fix, recheck for issues to update UI state
             // This ensures the warning banner and buttons hide if all issues are resolved
-            console.warn('🔄 Auto-requering collection history to verify fix...');
+            console.warn(
+              '🔄 Auto-requering collection history to verify fix...'
+            );
             await checkForCollectionHistoryIssues();
-            
+
+            // Refresh parent cabinet data if callback provided
+            if (onDataRefresh) {
+              console.warn('🔄 Refreshing parent cabinet data...');
+              await onDataRefresh();
+            }
+
             toast.success('Collection history automatically synchronized', {
               description: `${fixData.results.issuesFixed.machineHistoryFixed} issues resolved`,
               duration: 4000,
@@ -518,27 +530,53 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
         setIsFixingCollectionHistory(false);
       }
     },
-    [cabinet._id, checkForCollectionHistoryIssues]
+    [cabinet._id, checkForCollectionHistoryIssues, onDataRefresh]
   );
 
   // Check for issues when component loads, cabinet changes, or after refresh
   // AUTO-FIX: Automatically fixes issues when detected (can be disabled if needed)
   React.useEffect(() => {
-    if (cabinet?._id && !loading && activeMetricsTabContent === 'Collection History') {
+    if (
+      cabinet?._id &&
+      !loading &&
+      activeMetricsTabContent === 'Collection History'
+    ) {
       checkForCollectionHistoryIssues();
     }
-  }, [cabinet?._id, loading, activeMetricsTabContent, checkForCollectionHistoryIssues]);
+  }, [
+    cabinet?._id,
+    loading,
+    activeMetricsTabContent,
+    checkForCollectionHistoryIssues,
+  ]);
 
   // AUTO-FIX: Automatically call fix when issues are detected
   // PRINCIPLE: Collections are always right, history might be wrong
   // This ensures history is automatically synced to match collection documents
+  // Note: handleFixCollectionHistory intentionally omitted from deps to prevent infinite loop
+  // Auto-fix runs ONCE per page session and never again (prevents infinite loops)
   React.useEffect(() => {
-    if (hasCollectionHistoryIssues && !isFixingCollectionHistory && !isCheckingIssues) {
-      console.warn('🔧 Auto-fix: Collection history issues detected, automatically fixing...');
-      console.warn('   PRINCIPLE: Collection documents are source of truth, syncing history to match');
+    if (
+      hasCollectionHistoryIssues &&
+      !isFixingCollectionHistory &&
+      !isCheckingIssues &&
+      !autoFixAttemptedRef.current // Only run if never attempted
+    ) {
+      console.warn(
+        '🔧 Auto-fix: Collection history issues detected, automatically fixing (ONE TIME ONLY)...'
+      );
+      console.warn(
+        '   PRINCIPLE: Collection documents are source of truth, syncing history to match'
+      );
+
+      // Mark auto-fix attempted - NEVER reset during page session
+      autoFixAttemptedRef.current = true;
       handleFixCollectionHistory(true); // true = automatic/silent fix
     }
-  }, [hasCollectionHistoryIssues, isFixingCollectionHistory, isCheckingIssues, handleFixCollectionHistory]);
+    // NOTE: autoFixAttemptedRef is NEVER reset during page session to prevent infinite loops
+    // If user needs to re-run auto-fix, they must refresh the page or use manual "Fix History" button
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasCollectionHistoryIssues, isFixingCollectionHistory, isCheckingIssues]);
 
   // Separate date filter states for Activity Log and Bill Validator
 

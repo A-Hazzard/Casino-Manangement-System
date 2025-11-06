@@ -27,5 +27,14 @@
   "tailwindCSS.experimental.classRegex": [
     ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
     ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+  ],
+  "cSpell.words": [
+    "componentized",
+    "Geolocation",
+    "GMID",
+    "requeries",
+    "sashourly",
+    "smibs",
+    "uuidv"
   ]
 }

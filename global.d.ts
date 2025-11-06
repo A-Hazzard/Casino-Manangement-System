@@ -81,6 +81,7 @@ declare module '@/components/cabinetDetails/AccountingDetails' {
     activeMetricsTabContent: string;
     setActiveMetricsTabContent: (tab: string) => void;
     activeMetricsFilter?: TimePeriod;
+    onDataRefresh?: () => Promise<void>; // Optional callback to refresh parent data after auto-fix
   };
 
   export const AccountingDetails: React.FC<AccountingDetailsProps>;

@@ -64,6 +64,58 @@ Presents machine-level outcomes within a single location's collection report, in
 
 **File**: `app/api/collection-report/[reportId]/check-sas-times/route.ts`
 
+### GET /api/collection-reports/check-all-issues
+**Purpose**: Check collection reports and machine history for data integrity issues
+
+**Updated:** November 6th, 2025 - Enhanced to check machine history for reports
+
+**Parameters**:
+- `reportId` (optional): Check specific report and all machines in it
+- `machineId` (optional): Check specific machine's history across all reports
+
+**Flow**:
+1. Validates either `reportId` or `machineId` is provided (no global scans)
+2. If `reportId`:
+   - Fetches all collections in the report
+   - Gets all unique machine IDs from those collections
+   - Checks machine history for each machine
+3. If `machineId`:
+   - Checks machine history for that specific machine
+4. For each machine, checks:
+   - Duplicate `locationReportId` entries in history
+   - Orphaned history entries (collection/report no longer exists)
+   - History mismatches (history values don't match collection document)
+5. Compares ALL fields: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`
+6. Returns detailed machine issues grouped by report
+
+**Key Enhancement (November 6th, 2025):**
+Previously only checked machine history when `machineId` was provided. Now also checks all machines when `reportId` is provided, enabling collection report details page to detect history corruption automatically.
+
+**Returns**:
+```typescript
+{
+  success: boolean;
+  totalIssues: number;
+  reportIssues: Record<string, {
+    issueCount: number;
+    hasIssues: boolean;
+    machines: string[];
+  }>;
+  machines: Array<{
+    machineId: string;
+    machineName: string;
+    issues: Array<{
+      type: 'history_mismatch' | 'orphaned_history' | 'duplicate_history';
+      locationReportId: string;
+      message: string;
+      details?: object;
+    }>;
+  }>;
+}
+```
+
+**File**: `app/api/collection-reports/check-all-issues/route.ts`
+
 ### POST /api/collection-report/[reportId]/fix-sas-times
 **Purpose**: Fix all detected issues in specific report
 
@@ -353,6 +405,16 @@ await Machine.findByIdAndUpdate(collection.machineId, {
 - ✅ Fix direction: ALWAYS history ← collection (NEVER collection ← history)
 - ✅ All fields synced from collection to history without exception
 - ✅ If history shows 347.9K but collection shows 0 → history gets updated to 0
+
+**Frontend Integration (Auto-Fix & Auto-Requery):**
+- Frontend automatically calls this endpoint when issues are detected
+- After fix completes, frontend automatically requeries:
+  - Collection report data
+  - Collection history issues
+  - Machine metrics
+- UI automatically updates to hide warning banners and buttons
+- No page reload required - seamless user experience
+- Shows success toast: "Collection history automatically synchronized"
 
 **Response**:
 ```typescript

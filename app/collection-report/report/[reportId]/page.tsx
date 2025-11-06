@@ -145,6 +145,9 @@ function CollectionReportPageContent() {
   const [selectedIssue, setSelectedIssue] = useState<CollectionIssue | null>(
     null
   );
+  
+  // Track the issue state when auto-fix was last triggered to prevent infinite loops
+  const lastAutoFixIssuesRef = useRef<string>('');
 
   // Search and sort state
   const [searchTerm, setSearchTerm] = useState('');
@@ -425,15 +428,30 @@ function CollectionReportPageContent() {
     fetchCollectionsByLocationReportId(reportId)
       .then(setCollections)
       .catch(() => setCollections([]));
-  }, [reportId, checkForSasTimeIssues]);
+  // Note: checkForSasTimeIssues intentionally omitted to prevent dependency loop
+  // It's called once on initial load above (line 416), which is sufficient
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportId]);
 
   // AUTO-FIX: Automatically fix collection history issues when detected
   // PRINCIPLE: Collections are always right, history might be wrong
   // This ensures history is automatically synced to match collection documents
   useEffect(() => {
-    if ((hasSasTimeIssues || hasCollectionHistoryIssues) && !isFixingReport && !loading && reportData) {
-      console.warn('🔧 Auto-fix: Collection issues detected, automatically fixing...');
+    // Only trigger auto-fix once per page session
+    // Once auto-fix has run, it never runs again until page remounts
+    // This prevents infinite loops even if requery finds new/different issues
+    if (
+      (hasSasTimeIssues || hasCollectionHistoryIssues) && 
+      !isFixingReport && 
+      !loading && 
+      reportData && 
+      lastAutoFixIssuesRef.current === '' // Only run if never attempted
+    ) {
+      console.warn('🔧 Auto-fix: Collection issues detected, automatically fixing (ONE TIME ONLY)...');
       console.warn('   PRINCIPLE: Collection documents are source of truth, syncing history to match');
+      
+      // Mark that auto-fix has been attempted - NEVER reset during page session
+      lastAutoFixIssuesRef.current = 'attempted';
       
       // Automatically trigger fix
       const autoFix = async () => {
@@ -481,7 +499,10 @@ function CollectionReportPageContent() {
 
       autoFix();
     }
-  }, [hasSasTimeIssues, hasCollectionHistoryIssues, isFixingReport, loading, reportData, reportId, checkForSasTimeIssues]);
+    // NOTE: lastAutoFixIssuesRef is NEVER reset during page session to prevent infinite loops
+    // If user needs to re-run auto-fix, they must refresh the page or use manual "Fix Report" button
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSasTimeIssues, hasCollectionHistoryIssues, isFixingReport, loading, reportId]);
 
   // Keep state in sync with URL changes (for browser back/forward)
   useEffect(() => {

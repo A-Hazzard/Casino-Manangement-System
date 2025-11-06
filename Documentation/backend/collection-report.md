@@ -978,20 +978,34 @@ When `locationsWithMachines=1` is set:
 
 ### GET /api/collection-reports/check-all-issues
 
-**Purpose**: Check for data inconsistencies
+**Purpose**: Check for data inconsistencies in reports and machine history
+
+**Updated:** November 6th, 2025 - Enhanced to check machine history for reports
 
 **Parameters**:
 
-- `reportId`: Check specific report
-- `machineId`: Check specific machine
+- `reportId`: Check specific report and all machines in it
+- `machineId`: Check specific machine across all reports
 
 **Checks Performed**:
 
 1. Movement calculation mismatches (precision tolerance 0.1)
 2. Inverted SAS times
 3. Previous meter mismatches
-4. Collection history orphaned entries
-5. Collection history duplicate dates
+4. **Collection history mismatches** (NEW - all fields: metersIn, metersOut, prevIn, prevOut)
+5. Collection history orphaned entries
+6. Collection history duplicate dates
+
+**Key Enhancement (November 6th, 2025):**
+When `reportId` is provided, the API now:
+- Fetches all collections in the report
+- Gets unique machine IDs from those collections
+- Checks `collectionMetersHistory` for each machine
+- Compares history entries with actual collection documents
+- Detects mismatches in ANY field (metersIn, metersOut, prevMetersIn, prevMetersOut)
+- Returns detailed machine issues grouped by report
+
+This enables the Collection Report Details page to automatically detect and fix history corruption.
 
 **Returns**:
 
@@ -1006,6 +1020,16 @@ When `locationsWithMachines=1` is set:
       machines: string[];
     };
   };
+  machines: Array<{
+    machineId: string;
+    machineName: string;
+    issues: Array<{
+      type: 'history_mismatch' | 'orphaned_history' | 'duplicate_history';
+      locationReportId: string;
+      message: string;
+      details?: object;
+    }>;
+  }>;
 }
 ```
 

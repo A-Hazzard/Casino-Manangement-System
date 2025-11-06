@@ -38,6 +38,7 @@ declare module '@/components/cabinetDetails/AccountingDetails' {
     setActiveMetricsTabContent: (tab: string) => void;
     activeMetricsFilter?: TimePeriod;
     disableCurrencyConversion?: boolean; // For specific cabinet pages
+    onDataRefresh?: () => Promise<void>; // Optional callback to refresh parent data after auto-fix
   };
 
   export const AccountingDetails: React.FC<AccountingDetailsProps>;

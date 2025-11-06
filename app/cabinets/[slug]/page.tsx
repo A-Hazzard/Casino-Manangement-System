@@ -1828,6 +1828,7 @@ function CabinetDetailPageContent() {
             activeMetricsTabContent={activeMetricsTabContent}
             disableCurrencyConversion={true}
             setActiveMetricsTabContent={handleTabChange}
+            onDataRefresh={fetchCabinetDetailsData}
           />
         ) : null}
 

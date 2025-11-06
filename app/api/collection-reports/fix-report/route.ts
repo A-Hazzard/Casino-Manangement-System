@@ -102,7 +102,21 @@ export async function POST(request: NextRequest) {
       };
     } else if (reportId) {
       // Fix specific report
-      targetReport = await CollectionReport.findById(reportId).lean();
+      // reportId can be either MongoDB _id or locationReportId (UUID)
+      // Try to find by locationReportId first (most common case from frontend)
+      targetReport = await CollectionReport.findOne({
+        locationReportId: reportId
+      }).lean();
+      
+      // If not found, try by MongoDB _id
+      if (!targetReport) {
+        try {
+          targetReport = await CollectionReport.findById(reportId).lean();
+        } catch {
+          // Invalid ObjectId format, ignore
+        }
+      }
+      
       if (!targetReport) {
         return NextResponse.json(
           { error: "Report not found" },

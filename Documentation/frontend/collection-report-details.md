@@ -203,7 +203,10 @@ The Collection Report Details page includes a comprehensive issue detection and 
 **Cabinet Details "Fix History" Button:**
 - Renamed from "Check & Fix History" (November 6th, 2025)
 - Appears when collection history issues detected
+- **Auto-fix triggers automatically when issues detected** (zero-click)
+- **Auto-requeries data after fix** to verify all issues resolved
 - Performs same comprehensive fix operations as "Fix Report"
+- Warning buttons and badges disappear automatically after fix
 - Refreshes automatically after fix completes
 - Hides button after successful fix
 
@@ -216,27 +219,40 @@ The Collection Report Details page includes a comprehensive issue detection and 
 
 ### Smart Issue Detection & Auto-Fix
 
-**Updated:** November 6th, 2025 - Auto-fix functionality added
+**Updated:** November 6th, 2025 - Auto-fix with auto-requery functionality added
 
 **Issue Detection:**
 - Issues detected automatically on page load
 - Real-time validation ensures accuracy
 - No manual intervention required for detection
+- Uses enhanced `check-all-issues` API that checks machine history for reports
 
 **Auto-Fix (NEW):**
 - **Automatically fixes issues when detected** - No user action required
 - Runs silently in the background after issue detection
+- **Auto-requeries data after fix** to verify all issues are resolved
 - Shows success toast: "Collection history automatically synchronized"
 - Manual "Fix Report" / "Fix History" buttons remain available as backup
 - PRINCIPLE: Collections are always right, auto-fix syncs history to match
+
+**Auto-Requery After Fix (NEW):**
+- After auto-fix completes, the page automatically requeries:
+  - Collection report data
+  - SAS time issues
+  - Collection history issues
+  - Machine metrics
+- UI automatically updates to reflect fixed state
+- Warning banners disappear automatically when issues are resolved
+- No page reload required - seamless UX
 
 **User Experience:**
 1. Page loads → Detects issues
 2. Auto-fix triggers automatically
 3. Issues resolved in background
-4. Success toast appears
-5. Warning banners disappear
-6. Data displays correctly
+4. **Data automatically requeried to verify fix**
+5. Success toast appears
+6. Warning banners disappear automatically
+7. Data displays correctly
 
 **Benefits:**
 - Zero-click resolution for users
@@ -244,6 +260,8 @@ The Collection Report Details page includes a comprehensive issue detection and 
 - Better user experience
 - Maintains data integrity automatically
 - Clear communication of issues and fixes
+- **Seamless UI updates without page reload**
+- **Automatic verification that fixes worked**
 
 ### Comparison with Cabinet Details Issue Detection
 
@@ -254,9 +272,10 @@ Both the Collection Report Details page and the Cabinet Details Collection Histo
 | **Focus** | Report-level financial accuracy | Machine-level data integrity |
 | **Scope** | All collections in ONE report | All collection history for ONE machine |
 | **Issue Types** | SAS times, movement calculations, prev meters, RAM clears | History/Collection sync (mismatch, orphaned, missing) |
-| **Auto-Fix** | ✅ Yes - "Fix Report" button | ❌ No - display only |
+| **Auto-Fix** | ✅ Yes - Automatic when issues detected | ✅ Yes - Automatic when issues detected |
+| **Auto-Requery** | ✅ Yes - After fix completes | ✅ Yes - After fix completes |
 | **Visual Style** | Warning banner with issue counts, issue modals | Red rows/cards with AlertCircle icons |
-| **User Action** | Click "Fix Report" to automatically repair | Investigate manually and fix if needed |
+| **User Action** | Zero-click (automatic) | Zero-click (automatic) |
 | **Purpose** | Ensure accurate financial reporting | Validate collection history synchronization |
 | **When to Use** | Before finalizing financial reports | When investigating machine-specific issues |
 
@@ -325,6 +344,94 @@ if (!reportData || !collections || collections.length === 0) {
 - Smooth animations for tab transitions
 - Responsive design for mobile/desktop
 - Efficient re-rendering strategies
+
+## Collection History Table Component
+
+**Updated:** November 6th, 2025 - Responsiveness and breakpoint improvements
+
+### Component Details
+**File**: `components/cabinetDetails/CollectionHistoryTable.tsx`
+
+**Used In:**
+- Cabinet Details page (Collection History tab)
+- Shows machine's complete collection history from `collectionMetersHistory`
+
+### Responsive Design Strategy
+
+**Breakpoint Strategy:**
+- **Mobile & Tablet (< 1280px)**: Card layout for better readability
+- **Desktop XL (1280px+)**: Table layout with sortable columns
+
+```tsx
+// Desktop table - only on xl: breakpoint
+<div className="hidden xl:block">
+  <Table className="w-full table-fixed">
+    // ... table content
+  </Table>
+</div>
+
+// Card view - on mobile, tablet, and lg: screens
+<div className="xl:hidden">
+  // ... card content
+</div>
+```
+
+### Table Design (XL+ Screens)
+
+**Features:**
+- Fixed table layout (`table-fixed`) to enforce column widths
+- Sortable columns with visual indicators
+- Compact padding (`px-2`) for efficient space usage
+- Left-aligned text for better readability
+- Perfect vertical alignment between headers and data
+
+**Column Widths:**
+- Time: `160px` - Displays full date/time without truncation
+- Meters In/Out: `85px` - Compact for numeric values
+- Prev. In/Out: `85px` - Compact for numeric values
+- Collection Report: `110px` - Fits "VIEW REPORT" button
+
+**Key Design Decisions:**
+- Removed Status column (November 6th, 2025) - not needed
+- Used `table-fixed` layout to enforce column widths
+- Reduced padding from `p-4` (16px) to `px-2` (8px) for compact design
+- All text left-aligned for consistent vertical alignment
+
+### Card Design (Mobile/Tablet/LG Screens)
+
+**Layout:**
+- Card-based design for better mobile UX
+- Vertical column layout for meter values
+- Responsive header that stacks on mobile, inline on tablet
+- Issue warnings with proper text wrapping (`break-words`)
+
+**Features:**
+- Clear visual separation of metrics
+- Prominent "VIEW REPORT" button
+- Issue alerts displayed inline with details
+- Compact spacing for efficient use of screen space
+
+### Filter Controls
+
+**Responsive Behavior:**
+- **Mobile**: Stacks vertically (`flex-col`)
+- **Tablet+**: Horizontal layout (`sm:flex-row`)
+- Time filter dropdown with pre-defined ranges
+- Entry count display
+- "Fix History" button (appears when issues detected)
+
+### Issue Detection Integration
+
+**Visual Indicators:**
+- **Table**: Red background on rows with issues
+- **Cards**: Red border and red background on cards with issues
+- **Both**: AlertCircle icon for visual prominence
+
+**Auto-Fix Behavior:**
+- Issues detected automatically
+- Fix triggers without user action
+- Data requeries after fix
+- Visual indicators disappear when resolved
 
 ## Accessibility
 
