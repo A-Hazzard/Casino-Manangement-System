@@ -2,7 +2,50 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** November 4th, 2025
+**Last Updated:** November 6th, 2025
+
+## 📚 Essential Documentation References
+
+Before working on any part of the Collection Report system or making database changes, **always reference these documents:**
+
+### Collection Report System Documentation
+
+- **[Backend Collection Report Guide](../Documentation/backend/collection-report.md)** - Complete backend implementation, API endpoints, data flow diagrams, critical timing rules, and isEditing flag system
+- **[Frontend Collection Report Guide](../Documentation/frontend/collection-report.md)** - UI components, user flows, financial calculations, and component architecture
+- **[Collection Report Details Backend](../Documentation/backend/collection-report-details.md)** - Report details page implementation, issue detection, and fix operations
+- **[Collection Report Details Frontend](../Documentation/frontend/collection-report-details.md)** - Machine metrics, location metrics, SAS comparisons, and issue detection UI
+- **[isEditing Flag System Guide](./isediting-system.md)** - High-level conceptual guide to the isEditing flag system and unsaved changes protection
+
+### Database & Type System Documentation
+
+- **[Database Models & Relationships](../Documentation/database-models.md)** - Core entity hierarchy, financial data flow, and database relationships
+- **[TypeScript Type Safety Rules](../Documentation/typescript-type-safety-rules.md)** - Type organization structure, type safety rules, and validation workflows
+- **[Financial Metrics Guide](../Documentation/financial-metrics-guide.md)** - All financial calculations, metrics definitions, and data sources
+- **[Engineering Guidelines](../Documentation/ENGINEERING_GUIDELINES.md)** - Folder structure, code standards, security, and timezone handling
+
+### Critical Guidelines
+
+⚠️ **Before modifying Collection Reports:**
+
+1. Read the backend and frontend collection-report.md files
+2. Understand the data flow diagrams and timing rules
+3. Check the issue detection and fix systems documentation
+4. Understand the isEditing flag system for unsaved changes protection
+5. Follow the "Common Pitfalls to Avoid" sections
+
+⚠️ **Before modifying Database Models:**
+
+1. Review database-models.md for entity relationships
+2. Check typescript-type-safety-rules.md for type organization
+3. Understand financial data flow and metric calculations
+4. Follow engineering guidelines for database operations
+
+⚠️ **Before implementing Financial Calculations:**
+
+1. Reference financial-metrics-guide.md for all formulas
+2. Verify data sources and field mappings
+3. Use Movement Delta Method for all calculations
+4. Test against MongoDB scripts for accuracy
 
 ## System Overview
 

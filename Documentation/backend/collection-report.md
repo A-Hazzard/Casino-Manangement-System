@@ -19,6 +19,14 @@
 - Cabinet Details: Renamed "Check & Fix History" button to "Fix History"
 - Refresh logic now rechecks issues after fix to hide button when resolved
 
+### November 6th, 2025 - `isEditing` Flag & History Mismatch Bug ✅
+
+**Fixed:** Two critical issues resolved:
+1. **History Mismatch:** `update-history` endpoint was using stale frontend `prevIn`/`prevOut` values instead of fetching from collection documents. Now always fetches actual collection data as single source of truth.
+2. **Unsaved Data Protection:** Enhanced validation in Edit Collection Modal (desktop & mobile) to prevent users from updating/closing modal with unsaved machine data. Modal now properly detects `isEditing` flag and enforces completion.
+
+See [`isEditing` Flag System](#isediting-flag-system---unsaved-changes-protection) for complete documentation.
+
 ### November 4th, 2025 - Previous Meters Recalculation Bug ✅
 
 **Fixed:** PATCH `/api/collections` endpoint now correctly recalculates `prevIn`, `prevOut`, and `movement` values when editing collections. Previously, the endpoint was blindly updating values without looking up the actual previous collection, causing revenue calculation errors up to 99.7%. See [PATCH Implementation](#patch-apicollections-edit-collection-implementation) for details.
@@ -1849,3 +1857,412 @@ export async function PATCH(req: NextRequest) {
 - Revenue difference: $92,787.58 (99.7% error)
 
 This fix ensures that editing collection reports maintains the same data integrity as creating them.
+
+---
+
+## `isEditing` Flag System - Unsaved Changes Protection
+
+### Overview
+
+The `isEditing` flag is a **boolean field** on the `CollectionReport` model that tracks whether a report has **unsaved changes** requiring finalization. It's a critical safety mechanism that prevents data loss and ensures report integrity.
+
+**Database Field:**
+```typescript
+{
+  isEditing: { type: Boolean, default: false }
+}
+```
+
+**Location:** `app/api/lib/models/collectionReport.ts` (line 32)
+
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ISEDITING FLAG LIFECYCLE                  │
+└─────────────────────────────────────────────────────────────┘
+
+1. REPORT CREATION
+   CollectionReport.create({ isEditing: false, ... })
+   ↓
+   Report is complete and finalized
+
+2. USER EDITS METERS (PATCH /api/collections/[id])
+   ↓
+   Collection document updated
+   ↓
+   CollectionReport.findOneAndUpdate(
+     { locationReportId },
+     { $set: { isEditing: true } }
+   )
+   ↓
+   Report marked as "in-progress"
+
+3. USER FINALIZES REPORT (PATCH /api/collection-report/[reportId])
+   ↓
+   Financial data updated
+   ↓
+   CollectionReport.findOneAndUpdate(
+     { _id: reportId },
+     { isEditing: false, ...reportData }
+   )
+   ↓
+   /update-history called to sync machine histories
+   ↓
+   Report fully finalized
+```
+
+### Trigger Points
+
+#### 1. Set to `true` - Editing Begins
+
+**Endpoint:** `PATCH /api/collections/[id]`  
+**File:** `app/api/collections/[id]/route.ts` (lines 244-267)
+
+**Trigger Conditions:**
+- User edits an existing collection via Edit Collection Modal
+- `metersIn` OR `metersOut` is modified
+- Collection has a `locationReportId` (part of a finalized report)
+
+**Implementation:**
+```typescript
+// After updating collection document
+if (finalUpdatedCollection && 
+    (updateData.metersIn !== undefined || updateData.metersOut !== undefined)) {
+  
+  const reportIdToUpdate = finalUpdatedCollection.locationReportId;
+  
+  if (reportIdToUpdate && reportIdToUpdate.trim() !== "") {
+    const updateResult = await CollectionReport.findOneAndUpdate(
+      { locationReportId: reportIdToUpdate },
+      {
+        $set: {
+          isEditing: true,
+          updatedAt: new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    if (updateResult) {
+      console.warn(`✅ Marked report ${reportIdToUpdate} as isEditing: true`);
+    }
+  }
+}
+```
+
+**Result:**
+- ✅ Report marked as having unsaved changes
+- ✅ Frontend can detect incomplete edits on reload
+- ✅ Data integrity preserved across sessions
+
+#### 2. Set to `false` - Editing Completes
+
+**Endpoint:** `PATCH /api/collection-report/[reportId]`  
+**File:** `app/api/collection-report/[reportId]/route.ts` (line 97)
+
+**Trigger Conditions:**
+- User clicks "Update Report" in Edit Collection Modal
+- All validations pass
+- Financial data is complete
+
+**Implementation:**
+```typescript
+const updatedReport = await CollectionReport.findOneAndUpdate(
+  { _id: reportId },
+  {
+    ...body,
+    isEditing: false, // Mark as NOT editing when report is finalized
+    updatedAt: new Date(),
+  },
+  { new: true }
+);
+```
+
+**Subsequent Actions:**
+1. Frontend calls `/api/collection-reports/[reportId]/update-history`
+2. Machine `collectionMetersHistory` entries are synchronized
+3. Machine `collectionMeters` fields are updated
+4. Report is fully finalized
+
+**Result:**
+- ✅ Report marked as complete
+- ✅ All machine histories synchronized
+- ✅ Safe for financial reporting
+
+#### 3. NOT Modified - History Sync
+
+**Endpoint:** `PATCH /api/collection-reports/[reportId]/update-history`  
+**File:** `app/api/collection-reports/[reportId]/update-history/route.ts` (lines 265-266)
+
+**Important Note:**
+```typescript
+// NOTE: We do NOT set isEditing: false here
+// That is handled by the main collection-report PATCH endpoint
+// This endpoint only updates machine histories
+```
+
+This endpoint is **intentionally designed** to NOT touch the `isEditing` flag. It only synchronizes machine history data after the main report update has already set `isEditing: false`.
+
+### Frontend Integration
+
+#### Detection on Modal Open
+
+**Desktop:** `components/collectionReport/EditCollectionModal.tsx` (lines 514-518)
+**Mobile:** `components/collectionReport/mobile/MobileEditCollectionModal.tsx` (line 1230)
+
+```typescript
+useEffect(() => {
+  if (show && reportId) {
+    fetchCollectionReportById(reportId)
+      .then(data => {
+        setReportData(data);
+
+        // CRITICAL: If report has isEditing: true, there are unsaved changes
+        if (data.isEditing) {
+          console.warn('⚠️ Report has isEditing: true - marking as having unsaved edits');
+          setHasUnsavedEdits(true); // Prevents premature closing
+        }
+
+        // ... load financial data
+      });
+  }
+}, [show, reportId]);
+```
+
+**Effect:**
+- Modal detects incomplete edits
+- Sets internal `hasUnsavedEdits` state
+- Activates validation guards
+- Prevents data loss
+
+#### Validation Guards
+
+**Before Closing Modal:**
+```typescript
+const handleClose = useCallback(() => {
+  // Check for unsaved machine data in form
+  if (selectedMachineId || currentMetersIn || currentMetersOut || currentMachineNotes.trim()) {
+    if (!editingEntryId) {
+      toast.error('You have unsaved machine data. Please add or cancel.');
+      setShowUnsavedChangesWarning(true);
+      return; // PREVENT CLOSING
+    }
+  }
+
+  // Check for general unsaved edits (from isEditing flag)
+  if (hasUnsavedEdits) {
+    setShowUnsavedChangesWarning(true);
+    return; // PREVENT CLOSING
+  }
+
+  onClose(); // Safe to close
+}, [selectedMachineId, currentMetersIn, currentMetersOut, currentMachineNotes, hasUnsavedEdits]);
+```
+
+**Before Updating Report:**
+```typescript
+const handleUpdateReport = useCallback(async () => {
+  // Enhanced validation (lines 1314-1339 in EditCollectionModal.tsx)
+  if (selectedMachineId || currentMetersIn || currentMetersOut || currentMachineNotes) {
+    if (!editingEntryId) {
+      toast.error('You have unsaved machine data in the form.');
+      return; // PREVENT UPDATE
+    }
+  }
+
+  // Proceed with report update...
+  await updateReport(); // Sets isEditing: false on backend
+}, [selectedMachineId, currentMetersIn, currentMetersOut, editingEntryId]);
+```
+
+### Data Flow Example
+
+**Scenario: User Edits Meters Mid-Session**
+
+```
+TIME: 10:00 AM
+ACTION: User creates report "RPT-001"
+STATE: { isEditing: false }
+
+TIME: 10:05 AM
+ACTION: User realizes GM00066 meters are wrong
+ACTION: Opens Edit Collection Modal for "RPT-001"
+STATE: { isEditing: false } ← Still false
+
+TIME: 10:06 AM
+ACTION: User changes GM00066 metersIn: 583676 → 585000
+ACTION: Clicks "Update Entry in List"
+BACKEND: PATCH /api/collections/[collectionId]
+  ↓ Updates collection document
+  ↓ Finds parent report by locationReportId
+  ↓ Sets isEditing: true
+STATE: { isEditing: true } ← NOW TRUE
+
+TIME: 10:07 AM
+ACTION: User's browser crashes
+RESULT: Report remains { isEditing: true }
+        Collections are updated
+        Machine histories NOT yet synced
+
+───────────────────────────────────────────
+
+TIME: 2:00 PM (4 hours later)
+ACTION: User returns, opens Edit Collection Modal again
+FRONTEND: Fetches report data
+  ↓ Detects isEditing: true
+  ↓ Sets hasUnsavedEdits: true
+  ↓ Loads existing collections in list
+  ↓ Prevents premature modal closing
+RESULT: User can review and finalize
+
+TIME: 2:02 PM
+ACTION: User reviews financials, clicks "Update Report"
+BACKEND: PATCH /api/collection-report/[reportId]
+  ↓ Updates report with financial data
+  ↓ Sets isEditing: false
+  ↓ Calls /update-history
+  ↓ Synchronizes machine histories
+STATE: { isEditing: false } ← COMPLETE
+
+RESULT: ✅ Report fully finalized
+        ✅ Machine histories synchronized
+        ✅ Data integrity maintained
+```
+
+### Critical Rules for Developers
+
+#### ✅ DO:
+1. **Always check `isEditing` when debugging** collection issues
+2. **Respect the flag's state** - don't bypass validation
+3. **Use the flag** to determine if a report needs attention
+4. **Test edge cases** like browser crashes mid-edit
+5. **Verify machine history sync** after finalizing
+
+#### ❌ DON'T:
+1. **Never manually set `isEditing: false`** without syncing histories
+2. **Never bypass validation** in modal close handlers
+3. **Never delete collections** without checking `isEditing` state
+4. **Never assume `isEditing: false`** means histories are synced
+5. **Never use stale frontend data** for history updates
+
+### Troubleshooting
+
+#### Problem: Report Stuck with `isEditing: true`
+
+**Symptoms:**
+- Report shows as incomplete
+- Modal auto-loads with existing collections
+- Cannot create new collections for same location/time
+
+**Diagnosis:**
+```bash
+# MongoDB query
+db.collectionreports.findOne({ locationReportId: "RPT-001" })
+# Check: isEditing: true?
+```
+
+**Solutions:**
+
+**Option 1: Complete the Edit (Recommended)**
+1. Open Edit Collection Modal
+2. Review existing collections
+3. Verify financial data
+4. Click "Update Report"
+5. Let system finalize automatically
+
+**Option 2: Manual Reset (Use Sparingly)**
+```javascript
+// Only if collections are already correct
+await CollectionReport.findOneAndUpdate(
+  { locationReportId: "RPT-001" },
+  { $set: { isEditing: false } }
+);
+
+// CRITICAL: Also sync machine histories
+await fetch(`/api/collection-reports/RPT-001/update-history`, {
+  method: 'PATCH',
+  body: JSON.stringify({ changes: [...] })
+});
+```
+
+**Option 3: Use Fix Report API**
+```bash
+POST /api/collection-reports/fix-report
+Body: { reportId: "RPT-001" }
+```
+
+#### Problem: History Mismatch After Edit
+
+**Symptoms:**
+- `prevIn`/`prevOut` don't match between collection and history
+- Movement calculations incorrect
+- Variation discrepancies
+
+**Root Cause:**
+- Update-history endpoint received stale frontend data (FIXED Nov 6, 2025)
+
+**Verification:**
+```javascript
+// Check collection document
+const collection = await Collections.findById(collectionId);
+
+// Check machine history
+const machine = await Machine.findById(collection.machineId);
+const historyEntry = machine.collectionMetersHistory.find(
+  h => h.locationReportId === reportId
+);
+
+// Compare values
+console.log('Collection prevIn:', collection.prevIn);
+console.log('History prevIn:', historyEntry.prevMetersIn);
+// Should match!
+```
+
+**Fix:**
+- Update-history now fetches collection document directly
+- Uses collection values as single source of truth
+- No longer trusts frontend payload for prevIn/prevOut
+
+### Best Practices
+
+1. **Monitor `isEditing` in production:**
+   ```javascript
+   // Alert on reports stuck in editing state > 24 hours
+   const stuckReports = await CollectionReport.find({
+     isEditing: true,
+     updatedAt: { $lt: new Date(Date.now() - 24*60*60*1000) }
+   });
+   ```
+
+2. **Include `isEditing` in report queries:**
+   ```javascript
+   GET /api/collectionReport?isEditing=true
+   // Returns only reports needing finalization
+   ```
+
+3. **Add visual indicators in UI:**
+   ```tsx
+   {report.isEditing && (
+     <Badge variant="warning">
+       ⚠️ Incomplete Edit
+     </Badge>
+   )}
+   ```
+
+4. **Log all flag transitions:**
+   ```typescript
+   console.warn(`🔄 Report ${reportId}: isEditing ${oldValue} → ${newValue}`);
+   ```
+
+5. **Test recovery scenarios:**
+   - Browser crash during edit
+   - Network failure during update
+   - Multiple concurrent editors
+   - Incomplete financial data entry
+
+### Related Documentation
+
+- **Frontend:** See [Documentation/frontend/collection-report.md](../frontend/collection-report.md)
+- **High-Level Guide:** See [.cursor/isediting-system.md](../../.cursor/isediting-system.md)
+- **Collection Guidelines:** See [.cursor/collection-reports-guidelines.md](../../.cursor/collection-reports-guidelines.md)

@@ -1,7 +1,8 @@
 # Collection Report System - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 3rd, 2025
+**Last Updated:** November 6th, 2025  
+**Version:** 2.1.0
 
 ## Overview
 
