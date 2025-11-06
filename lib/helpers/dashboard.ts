@@ -279,6 +279,5 @@ export const getTimeFilterButtons = () => [
   { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
   { label: 'Last 7 days', value: '7d' as TimePeriod },
   { label: '30 days', value: '30d' as TimePeriod },
-  { label: 'All Time', value: 'All Time' as TimePeriod },
   { label: 'Custom', value: 'Custom' as TimePeriod },
 ];

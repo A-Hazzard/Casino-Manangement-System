@@ -87,7 +87,7 @@ export const DashboardHeader = ({
         <div className="min-w-0 flex-1">
           <DashboardDateFilters
             disabled={loadingChartData}
-            hideAllTime={false}
+            hideAllTime={true}
             onCustomRangeGo={onCustomRangeGo}
           />
         </div>
