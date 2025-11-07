@@ -20,6 +20,8 @@ import { shouldShowNavigationLinkDb } from '@/lib/utils/permissionsDb';
 import { CACHE_KEYS, fetchUserWithCache } from '@/lib/utils/userCache';
 import {
   BarChart3,
+  ChevronDown,
+  ChevronUp,
   Clock,
   FileText,
   MapPin,
@@ -598,14 +600,21 @@ export default function AppSidebar() {
                   </div>
                   <div className="truncate text-xs text-gray-600">{email}</div>
                 </div>
-                <span
-                  className={cn(
-                    'ml-auto text-gray-600',
-                    collapsed ? 'md:hidden' : ''
-                  )}
-                >
-                  ?
-                </span>
+                {menuOpen ? (
+                  <ChevronUp
+                    className={cn(
+                      'ml-auto h-4 w-4 text-gray-600',
+                      collapsed ? 'md:hidden' : ''
+                    )}
+                  />
+                ) : (
+                  <ChevronDown
+                    className={cn(
+                      'ml-auto h-4 w-4 text-gray-600',
+                      collapsed ? 'md:hidden' : ''
+                    )}
+                  />
+                )}
               </button>
             )}
             {menuOpen &&
