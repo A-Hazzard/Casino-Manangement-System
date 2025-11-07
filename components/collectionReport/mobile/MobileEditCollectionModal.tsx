@@ -455,13 +455,6 @@ export default function MobileEditCollectionModal({
     locations,
   ]);
 
-  // Sync updateAllDate with form collection time
-  useEffect(() => {
-    if (modalState.formData.collectionTime) {
-      setUpdateAllDate(modalState.formData.collectionTime);
-    }
-  }, [modalState.formData.collectionTime]);
-
   // Real-time validation for meter inputs
   const validateMeterInputs = useCallback(() => {
     if (
@@ -3383,9 +3376,23 @@ export default function MobileEditCollectionModal({
                                 Update All Dates
                               </label>
                               <p className="mb-2 text-xs text-gray-600">
-                                Apply the same date/time to all{' '}
+                                Select date/time to apply to all{' '}
                                 {modalState.collectedMachines.length} machines
                               </p>
+                              <PCDateTimePicker
+                                date={updateAllDate}
+                                setDate={date => {
+                                  if (
+                                    date &&
+                                    date instanceof Date &&
+                                    !isNaN(date.getTime())
+                                  ) {
+                                    setUpdateAllDate(date);
+                                  }
+                                }}
+                                disabled={modalState.isProcessing}
+                                placeholder="Select date/time"
+                              />
                               <button
                                 onClick={() => {
                                   if (!updateAllDate) {
@@ -3410,16 +3417,9 @@ export default function MobileEditCollectionModal({
                                   );
                                 }}
                                 disabled={!updateAllDate || modalState.isProcessing}
-                                className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                               >
-                                {updateAllDate
-                                  ? `Apply ${updateAllDate.toLocaleString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: 'numeric',
-                                      minute: '2-digit',
-                                    })} to All`
-                                  : 'Select date in form first'}
+                                Apply to All Machines
                               </button>
                             </div>
                           )}

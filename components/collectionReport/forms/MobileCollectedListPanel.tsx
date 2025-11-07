@@ -1,5 +1,6 @@
 'use client';
 
+import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
 import type { CollectionDocument } from '@/lib/types/collections';
 import { ArrowLeft, Edit3, Trash2 } from 'lucide-react';
 import React from 'react';
@@ -33,6 +34,7 @@ type MobileCollectedListPanelProps = {
 
   // Update all dates feature
   updateAllDate: Date | undefined;
+  onUpdateAllDate: (date: Date | undefined) => void;
   onApplyAllDates: () => void;
 
   // Callbacks
@@ -66,6 +68,7 @@ export const MobileCollectedListPanel: React.FC<
   isProcessing,
   isCreateReportsEnabled,
   updateAllDate,
+  onUpdateAllDate,
   onApplyAllDates,
   formatMachineDisplay,
   formatDate,
@@ -344,21 +347,28 @@ export const MobileCollectedListPanel: React.FC<
                         Update All Dates
                       </label>
                       <p className="mb-2 text-xs text-gray-600">
-                        Apply the same date/time to all {collectedMachines.length} machines
+                        Select date/time to apply to all {collectedMachines.length} machines
                       </p>
+                      <PCDateTimePicker
+                        date={updateAllDate}
+                        setDate={date => {
+                          if (
+                            date &&
+                            date instanceof Date &&
+                            !isNaN(date.getTime())
+                          ) {
+                            onUpdateAllDate(date);
+                          }
+                        }}
+                        disabled={isProcessing}
+                        placeholder="Select date/time"
+                      />
                       <button
                         onClick={onApplyAllDates}
                         disabled={!updateAllDate || isProcessing}
-                        className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {updateAllDate
-                          ? `Apply ${updateAllDate.toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })} to All`
-                          : 'Select date in form first'}
+                        Apply to All Machines
                       </button>
                     </div>
                   )}

@@ -259,13 +259,6 @@ export default function MobileCollectionModal({
     });
   }, []);
 
-  // Sync updateAllDate with form collection time
-  useEffect(() => {
-    if (modalState.formData.collectionTime) {
-      setUpdateAllDate(modalState.formData.collectionTime);
-    }
-  }, [modalState.formData.collectionTime]);
-
   // Confirmation dialog state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
@@ -1779,6 +1772,7 @@ export default function MobileCollectionModal({
               isProcessing={modalState.isProcessing}
               isCreateReportsEnabled={isCreateReportsEnabled}
               updateAllDate={updateAllDate}
+              onUpdateAllDate={setUpdateAllDate}
               onApplyAllDates={handleApplyAllDates}
               formatMachineDisplay={formatMachineDisplayNameWithBold}
               formatDate={formatDate}
