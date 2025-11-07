@@ -32,6 +32,7 @@ Before working on any part of the Collection Report system or making database ch
 3. Check the issue detection and fix systems documentation
 4. Understand the isEditing flag system for unsaved changes protection
 5. Follow the "Common Pitfalls to Avoid" sections
+6. **Review `.cursor/known-issues-and-solutions.md`** for common pitfalls and solutions
 
 ⚠️ **Before modifying Database Models:**
 
@@ -994,6 +995,8 @@ Native Currency (TTD $20)
 - **`.cursor/application-context.md`** (this file): Complete system overview and current status
 - **`.cursor/rules/nextjs-rules.mdc`**: Engineering rules and best practices
 - **`.cursor/gaming-day-offset-rules.md`**: Gaming day offset implementation guide
+- **`.cursor/known-issues-and-solutions.md`**: Common pitfalls, root causes, and proven solutions
+- **`.cursor/isediting-system.md`**: isEditing flag system for unsaved changes protection
 
 ### Feature Documentation
 
@@ -1019,7 +1022,37 @@ Native Currency (TTD $20)
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** November 6th, 2025 - Collection History Fix Enhancement & System Improvements
+**Last Major Update:** November 7th, 2025 - UI Improvements & Documentation Enhancements
+
+**November 7th, 2025 Major Work:**
+
+1. **Sidebar UI Enhancement**
+   - Replaced question mark (?) icon with dynamic chevron icons
+   - Shows ChevronDown (▼) when profile menu is closed
+   - Shows ChevronUp (▲) when profile menu is open
+   - Provides clearer visual indication of dropdown functionality
+   - Maintains same responsive behavior (hidden on collapsed desktop view)
+   - File: `components/layout/AppSidebar.tsx`
+
+2. **Database Update Fixes - Collection Modals** ⭐ **CRITICAL FIX**
+   - **Mobile Create Modal Fix:** Fixed database updates not working in mobile create modal
+     - Root Cause: Used `collectedMachines` from Zustand store instead of `modalState.collectedMachines`
+     - Solution: Use current component state, update both modalState and Zustand store
+   - **Improved Error Handling:** Changed to `Promise.allSettled` for partial failure handling
+   - **Enhanced Logging:** Added detailed logging to track `_id` presence and update status
+   - **Consistency:** Applied same patterns to all 4 collection modals (Desktop/Mobile Create/Edit)
+   - **Result:** Database updates now work correctly across all collection modal types
+   - Files: `MobileCollectionModal.tsx`, `MobileEditCollectionModal.tsx`, `NewCollectionModal.tsx`, `EditCollectionModal.tsx`
+
+3. **Documentation Enhancements**
+   - **Known Issues & Solutions:** Created comprehensive `.cursor/known-issues-and-solutions.md`
+     - Catalogs 20 major issues encountered during development
+     - Provides root causes, solutions, and prevention strategies
+     - Organized by category: Collection Reports, Database, UI/UX, State Management, API, TypeScript, Mobile, Build
+     - Includes code examples showing wrong vs. correct approaches
+     - Best practices summary for each category
+   - **Application Context:** Updated to reference new known issues file
+   - **Critical Guidelines:** Added step to review known issues before modifying collection reports
 
 **November 6th, 2025 Major Work:**
 
