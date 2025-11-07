@@ -3391,11 +3391,17 @@ export default function MobileEditCollectionModal({
                                       id: 'update-all-dates',
                                     });
 
+                                    console.warn('🔄 Updating machines:', modalState.collectedMachines.map(m => ({ id: m._id, has_id: !!m._id })));
+
                                     // Update all collections in database
                                     const results = await Promise.allSettled(
                                       modalState.collectedMachines.map(async entry => {
-                                        if (!entry._id) return;
+                                        if (!entry._id) {
+                                          console.warn('⚠️ Skipping entry without _id:', entry);
+                                          return;
+                                        }
 
+                                        console.warn(`📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`);
                                         return await axios.patch(
                                           `/api/collections?id=${entry._id}`,
                                           {

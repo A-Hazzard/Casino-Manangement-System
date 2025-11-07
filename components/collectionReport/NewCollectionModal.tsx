@@ -2999,13 +2999,24 @@ export default function NewCollectionModal({
                         if (!updateAllDate) return;
                         
                         setIsProcessing(true);
+                        
                         try {
+                          toast.loading('Updating all machines...', {
+                            id: 'update-all-dates',
+                          });
+
+                          console.warn('🔄 Updating machines:', collectedMachineEntries.map(m => ({ id: m._id, has_id: !!m._id })));
+
                           // Update all collections in database
-                          await Promise.all(
+                          const results = await Promise.allSettled(
                             collectedMachineEntries.map(async entry => {
-                              if (!entry._id) return;
+                              if (!entry._id) {
+                                console.warn('⚠️ Skipping entry without _id:', entry);
+                                return;
+                              }
                               
-                              await axios.patch(
+                              console.warn(`📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`);
+                              return await axios.patch(
                                 `/api/collections?id=${entry._id}`,
                                 {
                                   timestamp: updateAllDate.toISOString(),
@@ -3014,6 +3025,11 @@ export default function NewCollectionModal({
                               );
                             })
                           );
+
+                          // Check for failures
+                          const failed = results.filter(
+                            r => r.status === 'rejected'
+                          ).length;
 
                           // Update frontend state
                           setCollectedMachineEntries(prev =>
@@ -3024,12 +3040,21 @@ export default function NewCollectionModal({
                             }))
                           );
 
-                          toast.success(
-                            `Updated ${collectedMachineEntries.length} machines in database`
-                          );
+                          toast.dismiss('update-all-dates');
+
+                          if (failed > 0) {
+                            toast.warning(
+                              `Updated ${collectedMachineEntries.length - failed} machines, ${failed} failed`
+                            );
+                          } else {
+                            toast.success(
+                              `Updated ${collectedMachineEntries.length} machines in database`
+                            );
+                          }
                         } catch (error) {
+                          toast.dismiss('update-all-dates');
                           console.error('Failed to update dates:', error);
-                          toast.error('Failed to update some machines');
+                          toast.error('Failed to update machines');
                         } finally {
                           setIsProcessing(false);
                         }

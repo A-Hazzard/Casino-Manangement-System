@@ -850,11 +850,20 @@ export default function MobileCollectionModal({
     try {
       toast.loading('Updating all machines...', { id: 'update-all-dates' });
 
+      // Use modalState.collectedMachines for current state
+      const machinesToUpdate = modalState.collectedMachines;
+      
+      console.warn('🔄 Updating machines:', machinesToUpdate.map(m => ({ id: m._id, has_id: !!m._id })));
+
       // Update all collections in database
       const results = await Promise.allSettled(
-        collectedMachines.map(async entry => {
-          if (!entry._id) return;
+        machinesToUpdate.map(async entry => {
+          if (!entry._id) {
+            console.warn('⚠️ Skipping entry without _id:', entry);
+            return;
+          }
           
+          console.warn(`📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`);
           return await axios.patch(`/api/collections?id=${entry._id}`, {
             timestamp: updateAllDate.toISOString(),
             collectionTime: updateAllDate.toISOString(),
@@ -865,24 +874,29 @@ export default function MobileCollectionModal({
       // Check for failures
       const failed = results.filter(r => r.status === 'rejected').length;
 
-      // Update Zustand store
-      setStoreCollectedMachines(
-        collectedMachines.map(entry => ({
-          ...entry,
-          timestamp: updateAllDate,
-          collectionTime: updateAllDate,
-        }))
-      );
+      // Update both modalState and Zustand store
+      const updatedMachines = machinesToUpdate.map(entry => ({
+        ...entry,
+        timestamp: updateAllDate,
+        collectionTime: updateAllDate,
+      }));
+
+      setModalState(prev => ({
+        ...prev,
+        collectedMachines: updatedMachines,
+      }));
+      
+      setStoreCollectedMachines(updatedMachines);
 
       toast.dismiss('update-all-dates');
       
       if (failed > 0) {
         toast.warning(
-          `Updated ${collectedMachines.length - failed} machines, ${failed} failed`
+          `Updated ${machinesToUpdate.length - failed} machines, ${failed} failed`
         );
       } else {
         toast.success(
-          `Updated ${collectedMachines.length} machines in database`
+          `Updated ${machinesToUpdate.length} machines in database`
         );
       }
     } catch (error) {
@@ -892,7 +906,7 @@ export default function MobileCollectionModal({
     } finally {
       setModalState(prev => ({ ...prev, isProcessing: false }));
     }
-  }, [updateAllDate, collectedMachines, setStoreCollectedMachines]);
+  }, [updateAllDate, modalState.collectedMachines, setStoreCollectedMachines]);
 
   // Create collection report
   const createCollectionReport = useCallback(async () => {
