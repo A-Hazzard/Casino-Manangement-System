@@ -98,6 +98,9 @@ export function PCDateTimePicker({
           ampm={true}
           format="MM/dd/yyyy hh:mm a"
           closeOnSelect={false}
+          views={['year', 'month', 'day', 'hours', 'minutes']}
+          openTo="day"
+          timeSteps={{ hours: 1, minutes: 1 }}
           slotProps={{
             textField: {
               InputProps: {
@@ -165,18 +168,79 @@ export function PCDateTimePicker({
                   flexDirection: 'column',
                   width: '100%',
                 },
-                // Time picker responsiveness - position below calendar
+                // Hide analog clock - we want digital scrollable lists only
                 '& .MuiTimeClock-root': {
-                  maxWidth: 'min(280px, calc(100vw - 4rem))',
-                  margin: '0 auto',
-                  marginTop: '16px',
+                  display: 'none !important',
                 },
-                // Digital time input below calendar
+                // Hide clock pointer and numbers
+                '& .MuiClock-root': {
+                  display: 'none !important',
+                },
+                // Digital time input below calendar - three columns (hour | minute | AM/PM)
                 '& .MuiMultiSectionDigitalClock-root': {
                   width: '100%',
                   marginTop: '16px',
-                  display: 'flex',
+                  display: 'flex !important',
+                  flexDirection: 'row !important',
                   justifyContent: 'center',
+                  gap: '0px',
+                  padding: '0 8px',
+                  borderTop: '1px solid #E5E7EB',
+                  paddingTop: '16px',
+                },
+                // Individual time section (hours, minutes, AM/PM) - vertical scrollable columns
+                '& .MuiMultiSectionDigitalClockSection-root': {
+                  flex: '1 1 0',
+                  maxWidth: '80px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                },
+                // Section labels (Hour, Minute, AM/PM)
+                '& .MuiTypography-overline': {
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: '#6B7280',
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
+                },
+                // Scrollable list container - vertical scroll for each column
+                '& .MuiMultiSectionDigitalClockSection-root .MuiList-root': {
+                  maxHeight: '180px',
+                  overflowY: 'auto',
+                  scrollbarWidth: 'thin',
+                  width: '100%',
+                  padding: '4px',
+                  '&::-webkit-scrollbar': {
+                    width: '4px',
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    background: '#F3F4F6',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    background: '#D1D5DB',
+                    borderRadius: '2px',
+                  },
+                },
+                // Time option styling - larger touch targets
+                '& .MuiMenuItem-root': {
+                  justifyContent: 'center',
+                  padding: '10px 12px',
+                  minHeight: '44px',
+                  fontSize: '16px',
+                  borderRadius: '6px',
+                  margin: '2px 4px',
+                  transition: 'all 0.2s',
+                  '&.Mui-selected': {
+                    backgroundColor: '#3B82F6 !important',
+                    color: '#FFFFFF !important',
+                    fontWeight: 700,
+                    transform: 'scale(1.05)',
+                  },
+                  '&:hover': {
+                    backgroundColor: '#DBEAFE !important',
+                    cursor: 'pointer !important',
+                  },
                 },
                 // Time toolbar below calendar
                 '& .MuiPickersToolbar-root': {
@@ -203,43 +267,31 @@ export function PCDateTimePicker({
                 '& *': {
                   pointerEvents: 'auto !important',
                 },
-                // Calendar day cells
+                // Calendar day cells - larger touch targets
                 '& .MuiPickersDay-root': {
                   cursor: 'pointer !important',
                   pointerEvents: 'auto !important',
-                  fontSize: '14px',
-                  width: '36px',
-                  height: '36px',
+                  fontSize: '15px',
+                  width: '40px',
+                  height: '40px',
+                  margin: '2px',
                   '&:hover': {
-                    backgroundColor: '#f3f4f6 !important',
+                    backgroundColor: '#DBEAFE !important',
+                  },
+                  '&.Mui-selected': {
+                    backgroundColor: '#3B82F6 !important',
+                    '&:hover': {
+                      backgroundColor: '#2563EB !important',
+                    },
                   },
                 },
-                // Month/year navigation
+                // Month/year navigation - larger buttons
                 '& .MuiPickersArrowSwitcher-root button': {
                   cursor: 'pointer !important',
                   pointerEvents: 'auto !important',
+                  padding: '12px',
                   '&:hover': {
-                    backgroundColor: '#f3f4f6 !important',
-                  },
-                },
-                // Time picker elements
-                '& .MuiClock-root *': {
-                  cursor: 'pointer !important',
-                  pointerEvents: 'auto !important',
-                },
-                '& .MuiClock-meridiemButton': {
-                  cursor: 'pointer !important',
-                  '&:hover': {
-                    backgroundColor: '#f3f4f6 !important',
-                  },
-                },
-                // Hour and minute selectors
-                '& .MuiTimePickerToolbar-root .MuiTypography-root': {
-                  cursor: 'pointer !important',
-                  pointerEvents: 'auto !important',
-                  '&:hover': {
-                    backgroundColor: '#f3f4f6 !important',
-                    borderRadius: '4px !important',
+                    backgroundColor: '#F3F4F6 !important',
                   },
                 },
                 // Action buttons
