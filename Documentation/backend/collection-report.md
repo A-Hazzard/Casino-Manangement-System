@@ -1,10 +1,93 @@
 # Collection Report System - Backend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 6th, 2025  
-**Version:** 2.3.0
+**Last Updated:** November 7th, 2025  
+**Version:** 2.4.0
 
 ## Recent Critical Fixes
+
+### November 7th, 2025 - Report Creation Order & Detection API Scope ✅
+
+**Issue 1: Orphaned Collections from Wrong Operation Order**
+
+32 incomplete collections were found with `locationReportId` but no parent `CollectionReport` document. This happened because both desktop and mobile modals updated collections BEFORE creating the parent report.
+
+**Root Cause:**
+```javascript
+// BEFORE (BROKEN):
+Step 1: Update collections with locationReportId + isCompleted: true ✅
+Step 2: Create parent CollectionReport → ❌ FAILS
+Result: Collections orphaned with reportId pointing to non-existent report
+```
+
+**The Fix:**
+Reversed the order of operations in both modals to create an atomic transaction:
+
+Desktop (`NewCollectionModal.tsx` lines 1868-1961):
+```javascript
+// Step 1: Create parent report FIRST
+await createCollectionReport(payload);
+
+// Step 2: ONLY IF successful, update collections
+await updateCollectionsWithReportId(collectedMachineEntries, reportId);
+```
+
+Mobile (`MobileCollectionModal.tsx` lines 1050-1074):
+```javascript
+// Step 1: Create parent report FIRST
+const result = await createReportAPI(payload);
+
+// Step 2: ONLY IF successful, update collections
+const updatePromises = machinesForReport.map(async collection => {
+  await axios.patch(`/api/collections?id=${collection._id}`, {
+    locationReportId: reportId,
+    isCompleted: true,
+  });
+});
+await Promise.all(updatePromises);
+```
+
+**Impact:**
+- ✅ If report creation fails, collections remain untouched (no orphaned collections)
+- ✅ If report succeeds but collection updates fail, report exists (fixable via `/update-history`)
+- ✅ Atomic operation prevents data inconsistencies
+- ✅ Better error messages with full API response details
+
+**Issue 2: Detection API Not Finding Previous Collections Across Reports**
+
+The SAS time detection API (`/api/collection-report/[reportId]/check-sas-times`) was only searching collections within the current report, causing "No previous collection found" errors when a machine's previous collection was in a different report.
+
+**Root Cause:**
+```javascript
+// BEFORE (BROKEN):
+const collections = await Collections.find({
+  locationReportId: reportId,  // Only current report
+});
+// Couldn't find previous collection in different report
+```
+
+**The Fix:**
+```javascript
+// AFTER (FIXED):
+const allCollections = await Collections.find({
+  isCompleted: true,
+  locationReportId: { $exists: true, $ne: '' },
+}).sort({ timestamp: 1, collectionTime: 1 });
+// Searches ALL collections across ALL reports
+```
+
+**Impact:**
+- ✅ Detection API now finds previous collections regardless of which report they're in
+- ✅ Correct expected SAS times calculated from actual previous collection
+- ✅ "No previous collection found" only shown when truly no previous exists
+- ✅ Matches fix-report API logic for consistency
+
+**Related Files:**
+- `components/collectionReport/NewCollectionModal.tsx`
+- `components/collectionReport/mobile/MobileCollectionModal.tsx`
+- `app/api/collection-report/[reportId]/check-sas-times/route.ts`
+- `scripts/detect-incomplete-collections.js`
+- `scripts/diagnose-fixed-machine.js`
 
 ### November 6th, 2025 - Collection History Sync Enhancement ✅
 

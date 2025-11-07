@@ -1,8 +1,8 @@
 # Collection Report System - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 6th, 2025  
-**Version:** 2.1.0
+**Last Updated:** November 7th, 2025  
+**Version:** 2.2.0
 
 ## Overview
 
@@ -40,11 +40,16 @@ The Collection Report System manages casino slot machine money collection operat
 - ✅ View issue indicators and warnings
 - ❌ Limited access to advanced fix tools
 
-### Collector & Other Roles
+### Collector & Location Collector
 
 - ✅ Create collection reports
-- ❌ Cannot edit or delete reports
-- ❌ No access to issue indicators or fix tools
+- ✅ Edit and delete reports (most recent per location only - see Edit Restrictions below)
+- ✅ View issue indicators
+- ❌ No access to advanced fix tools
+
+### Other Roles
+
+- Limited or no access to collection report features
 
 ## Collection Report Creation
 
@@ -93,24 +98,51 @@ The Collection Report System manages casino slot machine money collection operat
 
 **5. Report Finalization (Create Report)**
 
-Desktop (`NewCollectionModal.tsx`):
+**CRITICAL: Correct Order of Operations (November 7th, 2025 Fix)**
 
+Both desktop and mobile modals now follow this atomic operation order to prevent orphaned collections:
+
+**Step 1: Create Parent Report FIRST**
 - Validates all data using `validateCollectionReportPayload`
 - Generates `locationReportId` using `uuidv4()`
 - Calls `/api/collectionReport POST` with complete payload
-- Backend handles all updates automatically
+- **If this fails, collections remain untouched (no side effects)**
 
-Mobile (`MobileCollectionModal.tsx`):
-
+**Step 2: Update Collections ONLY IF Report Created Successfully**
 - Updates all collections with `locationReportId` via `/api/collections PATCH`
 - Marks collections as completed (`isCompleted: true`)
-- Calls `/api/collectionReport POST` with complete payload
+- **If this fails, report still exists and can be fixed via `/update-history`**
+
+**Why This Order Matters:**
+
+Before (BROKEN - caused 32 orphaned collections):
+```
+1. Update collections → locationReportId + isCompleted: true ✅
+2. Create parent report → ❌ FAILS
+Result: Collections orphaned with reportId but no parent report!
+```
+
+After (FIXED):
+```
+1. Create parent report → ✅ SUCCESS
+2. Update collections → locationReportId + isCompleted: true ✅
+Result: Atomic operation! If report fails, collections untouched.
+```
+
+Desktop (`NewCollectionModal.tsx` lines 1868-1961):
+- Creates CollectionReport first
+- Only on success, calls `updateCollectionsWithReportId()`
+
+Mobile (`MobileCollectionModal.tsx` lines 1050-1074):
+- Creates CollectionReport first
+- Only on success, updates collections via PATCH
+- Non-throwing on collection update failure (report already exists)
 
 Backend (`/api/collectionReport POST`):
 
 - Validates payload and checks for duplicate reports on same gaming day
 - Creates CollectionReport document
-- Updates all collections with `locationReportId`
+- Updates all collections with `locationReportId` (if not already done by frontend)
 - Creates `collectionMetersHistory` entries for all machines
 - Updates `machine.collectionMeters` to current values
 - Updates `machine.collectionTime` and `previousCollectionTime`
@@ -532,6 +564,85 @@ Result:
 - **POST** `/api/sync-meters` - Sync meter data with SAS system
 - **GET** `/api/meters/[machineId]` - Get meter data for machine
 
+## Edit & Delete Restrictions
+
+### Most Recent Report Per Location Rule (November 7th, 2025)
+
+**Requirement:**
+- Edit and delete buttons ONLY appear on the **most recent collection report** for each location
+- Example: If there are 3 locations with 5 reports each, only **3 edit icons** appear total (1 per location)
+
+**Implementation:**
+
+**Frontend Logic (`app/collection-report/page.tsx` lines 655-693):**
+
+```typescript
+// Step 1: Check user permissions
+const canUserEdit = useMemo(() => {
+  if (!user || !user.roles) return false;
+  return hasManagerAccess(user.roles); // collectors, locationCollector, manager, admin, evoAdmin
+}, [user]);
+
+// Step 2: Find most recent report per location
+const editableReportIds = useMemo(() => {
+  if (!canUserEdit) return new Set<string>();
+  
+  const reportsByLocation = new Map<string, CollectionReportRow>();
+  
+  filteredReports.forEach(report => {
+    const existing = reportsByLocation.get(report.location);
+    if (!existing || new Date(report.time) > new Date(existing.time)) {
+      reportsByLocation.set(report.location, report);
+    }
+  });
+  
+  return new Set(
+    Array.from(reportsByLocation.values()).map(r => r.locationReportId)
+  );
+}, [filteredReports, canUserEdit]);
+```
+
+**Conditional Rendering:**
+
+Table (`CollectionReportTable.tsx` line 257):
+```typescript
+{canEditDelete && editableReportIds?.has(row.locationReportId) && (
+  <div className="flex gap-1">
+    <Button onClick={() => onEdit(row.locationReportId)}>
+      <Edit3 />
+    </Button>
+    <Button onClick={() => onDelete(row.locationReportId)}>
+      <Trash2 />
+    </Button>
+  </div>
+)}
+```
+
+Cards (`CollectionReportCards.tsx` line 189):
+```typescript
+{canEditDelete && editableReportIds?.has(row.locationReportId) && (
+  // Edit/Delete buttons
+)}
+```
+
+**Authorized Roles:**
+- ✅ Collector
+- ✅ Location Collector
+- ✅ Manager
+- ✅ Admin
+- ✅ Evolution Admin
+
+**Behavior:**
+- Unauthorized users: See **0 edit icons** (regardless of report count)
+- Authorized users: See **1 edit icon per location** (only on most recent report)
+- Older reports: **No edit/delete buttons** (prevents editing historical data)
+
+**Why This Restriction:**
+- Prevents accidental modification of historical reports
+- Maintains data integrity and audit trail
+- Users should only edit the current/latest collection report
+- Historical reports should remain immutable for accounting purposes
+
 ## Best Practices
 
 ### Data Integrity
@@ -540,6 +651,7 @@ Result:
 - Ensure proper timing of collection operations
 - Maintain audit trail for all changes
 - Use atomic operations for critical updates
+- **Create parent report BEFORE updating collections** (prevents orphaned collections)
 
 ### Performance
 

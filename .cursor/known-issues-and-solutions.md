@@ -25,7 +25,116 @@ This document catalogs common issues, pitfalls, and their solutions encountered 
 
 ## Collection Report System Issues
 
-### Issue #1: Database Updates Not Working in Mobile Create Modal
+### Issue #1: Orphaned Collections from Wrong Report Creation Order ⚠️ CRITICAL
+
+**Problem:**
+- Report creation failed, leaving 32 orphaned collections in database
+- Collections had `locationReportId` but no parent `CollectionReport` document
+- Collections couldn't be used in new reports (already had reportId)
+- System in inconsistent state requiring manual database cleanup
+
+**Symptoms:**
+- User clicks "Create Report", gets error message
+- Collections marked with `isCompleted: false` but have `locationReportId`
+- Multiple attempts create more orphaned collections with different `locationReportId`s
+- Collections don't appear in "Create New Report" modal (have reportId but not completed)
+
+**Root Cause:**
+Both desktop and mobile modals updated collections BEFORE creating the parent report:
+
+```javascript
+// BROKEN ORDER:
+Step 1: Update collections with locationReportId + isCompleted: true ✅
+Step 2: Create parent CollectionReport → ❌ FAILS
+Result: Collections orphaned with reportId but no parent report!
+```
+
+**Why This Happens:**
+1. User adds machines to collection list
+2. Modal generates `locationReportId` (e.g., `ec5e93e2-b727-4a20-8142-b983abae282a`)
+3. Modal updates each collection: `{ locationReportId: xxx, isCompleted: true }`
+4. Modal attempts to create parent `CollectionReport` document
+5. Parent report creation FAILS (validation error, network issue, duplicate report, etc.)
+6. Collections are left with `locationReportId` pointing to non-existent report
+7. Collections are stuck - can't be used in new reports or edited
+
+**Solution:**
+Reverse the order - create parent report FIRST, then update collections:
+
+```typescript
+// ✅ CORRECT ORDER:
+// Step 1: Create parent report FIRST
+await createCollectionReport(payload);
+
+// Step 2: ONLY IF successful, update collections
+await updateCollectionsWithReportId(collectedMachineEntries, reportId);
+```
+
+**Implementation:**
+
+Desktop (`NewCollectionModal.tsx` lines 1868-1961):
+```typescript
+// Create the collection report FIRST
+await createCollectionReport(payload);
+
+// Step 2: ONLY AFTER report is successfully created, update collections
+await updateCollectionsWithReportId(collectedMachineEntries, reportId);
+```
+
+Mobile (`MobileCollectionModal.tsx` lines 1050-1074):
+```typescript
+// Create the collection report FIRST
+const result = await createReportAPI(payload);
+
+// Step 2: ONLY AFTER report is successfully created, update collections
+const updatePromises = machinesForReport.map(async collection => {
+  await axios.patch(`/api/collections?id=${collection._id}`, {
+    locationReportId: reportId,
+    isCompleted: true,
+  });
+});
+await Promise.all(updatePromises);
+```
+
+**Prevention:**
+- ✅ Atomic operation: If report fails, no side effects on collections
+- ✅ If report succeeds but collection update fails, report exists (fixable via `/update-history`)
+- ✅ No more orphaned collections
+- ✅ Enhanced error logging shows exact failure point
+
+**Manual Cleanup for Existing Orphaned Collections:**
+
+Option 1 - Reset locationReportId (Recommended):
+```javascript
+db.collections.updateMany(
+  { isCompleted: false },
+  { $set: { locationReportId: '' } }
+)
+```
+
+Option 2 - Delete orphaned collections:
+```javascript
+db.collections.deleteMany({ 
+  isCompleted: false,
+  locationReportId: { $ne: '' }
+})
+```
+
+**Detection Script:**
+```bash
+node scripts/detect-incomplete-collections.js
+```
+
+**Affected Components:**
+- `components/collectionReport/NewCollectionModal.tsx`
+- `components/collectionReport/mobile/MobileCollectionModal.tsx`
+- `scripts/detect-incomplete-collections.js`
+
+**Date Fixed:** November 7th, 2025
+
+---
+
+### Issue #2: Database Updates Not Working in Mobile Create Modal
 
 **Problem:**
 - Desktop collection modal successfully updates database when using "Update All Dates"
@@ -162,7 +271,104 @@ if (Math.abs(historyPrevIn - collectionPrevIn) > 0.1) {
 
 ---
 
-### Issue #4: Fix API Not Fixing "Future Value" Corruption
+### Issue #4: Detection API Not Finding Previous Collections Across Reports
+
+**Problem:**
+- SAS time detection showing "No previous collection found" for machines that DO have previous collections
+- Modal displays incorrect expected SAS times
+- Fix button doesn't work because detection can't find the issue correctly
+- Example: "FIXED MACHINE" had previous collection in Oct 6th report, but Nov 5th report couldn't find it
+
+**Symptoms:**
+- Modal shows: "No previous collection found, using 24 hours before current"
+- Expected SAS start time calculated incorrectly
+- Large time difference (e.g., 40889 minutes off)
+- Previous collection exists in database but detection doesn't see it
+
+**Root Cause:**
+Detection API only searched collections within the CURRENT report:
+
+```javascript
+// BROKEN - Only searches current report
+const collections = await Collections.find({
+  locationReportId: reportId,  // Only this specific report
+});
+
+const previousCollection = collections.filter(c => 
+  c.machineId === machineId && c.timestamp < current
+)[0];
+// Can't find previous collection if it's in a different report!
+```
+
+**Why This Happens:**
+1. Machine collected on Oct 6th in report `A`
+2. Machine collected on Nov 5th in report `B`
+3. User opens report `B` to check for issues
+4. Detection API only looks at collections in report `B`
+5. Previous collection is in report `A`, so detection can't find it
+6. Detection incorrectly calculates expected SAS time as "24 hours ago"
+
+**Solution:**
+Fetch ALL completed collections across ALL reports (match fix-report API logic):
+
+```typescript
+// ✅ CORRECT - Searches all reports
+const allCollections = await Collections.find({
+  isCompleted: true,
+  locationReportId: { $exists: true, $ne: '' },
+}).sort({ timestamp: 1, collectionTime: 1 });
+
+const previousCollection = allCollections.filter(c =>
+  c.machineId === machineId && 
+  new Date(c.timestamp || c.collectionTime) < currentTimestamp &&
+  c.isCompleted === true
+).sort((a, b) => bTime - aTime)[0];
+// Now finds previous collection regardless of which report it's in!
+```
+
+**Implementation:**
+
+`app/api/collection-report/[reportId]/check-sas-times/route.ts` (lines 58-102):
+```typescript
+// Fetch ALL completed collections across ALL reports
+const allCollections = await Collections.find({
+  isCompleted: true,
+  locationReportId: { $exists: true, $ne: '' },
+}).sort({ timestamp: 1, collectionTime: 1 });
+
+// Use allCollections instead of sortedCollections
+const previousCollection = allCollections.filter(/* ... */)
+```
+
+**Impact:**
+- ✅ Detection now correctly finds previous collections across different reports
+- ✅ Accurate expected SAS times based on actual previous collection
+- ✅ "No previous collection found" only when truly no previous exists
+- ✅ Matches fix-report API logic for consistency
+- ✅ Fix button works correctly
+
+**Comparison with Other APIs:**
+
+| API Endpoint | Previous Collection Search Scope | Status |
+|-------------|----------------------------------|--------|
+| `/check-sas-times` | ❌ Was: Current report only | ✅ Fixed: All reports |
+| `/fix-report` | ✅ Correct: All reports | ✅ Working |
+| `/check-all-issues` | ✅ Correct: All reports | ✅ Working |
+
+**Diagnostic Script:**
+```bash
+node scripts/diagnose-fixed-machine.js
+```
+
+**Affected Files:**
+- `app/api/collection-report/[reportId]/check-sas-times/route.ts`
+- `scripts/diagnose-fixed-machine.js`
+
+**Date Fixed:** November 7th, 2025
+
+---
+
+### Issue #5: Fix API Not Fixing "Future Value" Corruption
 
 **Problem:**
 - Machine GM02407 had Oct 21 history entry with `prevMetersIn` from Oct 29 (future value)
@@ -459,6 +665,108 @@ if (isThisMostRecent) {
 ---
 
 ## UI/UX Issues
+
+### Issue #9: Edit Icons Shown on All Reports Instead of Most Recent Only
+
+**Problem:**
+- Edit and delete icons appeared on ALL collection reports
+- Users could edit historical reports, causing data integrity issues
+- No restriction to most recent report per location
+
+**Requirement:**
+- Edit/delete buttons should ONLY appear on the **most recent** collection report for each location
+- Example: 3 locations with 5 reports each = only **3 edit icons** total (1 per location)
+- Only authorized users should see edit icons (collectors, location collectors, managers, admins, evo admins)
+
+**Root Cause:**
+- No logic to determine which reports are the most recent for each location
+- Edit icons shown based solely on user permissions
+- All reports for authorized users had edit/delete buttons
+
+**Solution:**
+
+**Step 1: Calculate Most Recent Reports (`app/collection-report/page.tsx` lines 665-693)**
+```typescript
+const editableReportIds = useMemo(() => {
+  if (!canUserEdit) return new Set<string>();
+  
+  const reportsByLocation = new Map<string, CollectionReportRow>();
+  
+  // Find most recent report for each location
+  filteredReports.forEach(report => {
+    const existing = reportsByLocation.get(report.location);
+    if (!existing || new Date(report.time) > new Date(existing.time)) {
+      reportsByLocation.set(report.location, report);
+    }
+  });
+  
+  return new Set(
+    Array.from(reportsByLocation.values()).map(r => r.locationReportId)
+  );
+}, [filteredReports, canUserEdit]);
+```
+
+**Step 2: Conditional Rendering**
+
+Table (`CollectionReportTable.tsx` line 257):
+```typescript
+// BEFORE: Showed for all reports
+{canEditDelete && (
+  <Button onClick={() => onEdit(row.locationReportId)}>
+    <Edit3 />
+  </Button>
+)}
+
+// AFTER: Only shows for most recent reports
+{canEditDelete && editableReportIds?.has(row.locationReportId) && (
+  <Button onClick={() => onEdit(row.locationReportId)}>
+    <Edit3 />
+  </Button>
+)}
+```
+
+**Behavior:**
+
+Before:
+- Dueces (10 reports) → **10 edit icons** (all reports)
+- DevLabTuna (5 reports) → **5 edit icons** (all reports)
+- Total: **15 edit icons**
+
+After:
+- Dueces (10 reports) → **1 edit icon** (latest only)
+- DevLabTuna (5 reports) → **1 edit icon** (latest only)
+- Total: **2 edit icons**
+
+**Authorized Roles:**
+- ✅ Collector
+- ✅ Location Collector
+- ✅ Manager
+- ✅ Admin
+- ✅ Evolution Admin
+
+**Why This Restriction:**
+- Prevents accidental modification of historical reports
+- Maintains data integrity and audit trail
+- Users should only edit current/latest collection report
+- Historical reports remain immutable for accounting purposes
+
+**Type Updates:**
+- `CollectionDesktopUIProps` - Added `editableReportIds?: Set<string>`
+- `CollectionMobileUIProps` - Added `editableReportIds?: Set<string>`
+- `ExtendedCollectionReportTableProps` - Added `editableReportIds?: Set<string>`
+- `ExtendedCollectionReportCardsProps` - Added `editableReportIds?: Set<string>`
+
+**Affected Files:**
+- `app/collection-report/page.tsx`
+- `lib/types/componentProps.ts`
+- `components/collectionReport/CollectionDesktopUI.tsx`
+- `components/collectionReport/CollectionMobileUI.tsx`
+- `components/collectionReport/CollectionReportTable.tsx`
+- `components/collectionReport/CollectionReportCards.tsx`
+
+**Date Implemented:** November 7th, 2025
+
+---
 
 ### Issue #10: Collection History Table Overflowing on Mobile/Tablet
 
