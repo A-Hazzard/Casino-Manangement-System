@@ -307,6 +307,9 @@ export default function NewCollectionModal({
   >([]);
   const [collectedMachinesSearchTerm, setCollectedMachinesSearchTerm] =
     useState('');
+  const [updateAllDate, setUpdateAllDate] = useState<Date | undefined>(
+    undefined
+  );
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isModalLoading, _setIsModalLoading] = useState(false);
@@ -2970,6 +2973,51 @@ export default function NewCollectionModal({
                 <h3 className="text-lg font-semibold text-gray-700">
                   Collected Machines ({collectedMachineEntries.length})
                 </h3>
+
+                {/* Update All Dates - Show if there are 2 or more machines */}
+                {collectedMachineEntries.length >= 2 && (
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      Update All Dates
+                    </label>
+                    <PCDateTimePicker
+                      date={updateAllDate}
+                      setDate={date => {
+                        if (
+                          date &&
+                          date instanceof Date &&
+                          !isNaN(date.getTime())
+                        ) {
+                          setUpdateAllDate(date);
+                        }
+                      }}
+                      disabled={isProcessing}
+                      placeholder="Select date/time"
+                    />
+                    <Button
+                      onClick={() => {
+                        if (updateAllDate) {
+                          setCollectedMachineEntries(prev =>
+                            prev.map(entry => ({
+                              ...entry,
+                              timestamp: updateAllDate,
+                              collectionTime: updateAllDate,
+                            }))
+                          );
+                          toast.success(
+                            `Updated ${collectedMachineEntries.length} machines to ${updateAllDate.toLocaleString()}`
+                          );
+                        }
+                      }}
+                      disabled={!updateAllDate || isProcessing}
+                      className="mt-2 w-full bg-blue-600 text-xs hover:bg-blue-700"
+                      size="sm"
+                    >
+                      Apply to All Machines
+                    </Button>
+                  </div>
+                )}
+
                 {/* Search bar for collected machines if more than 6 */}
                 {collectedMachineEntries.length > 6 && (
                   <div className="mt-2">
@@ -3138,7 +3186,7 @@ export default function NewCollectionModal({
                   currentCollectionTime: currentCollectionTime,
                 });
                 if (!isCreateReportsEnabled || isProcessing) return;
-                
+
                 // Check if there's unsaved data (machine selected with form data but not added)
                 const hasUnsavedData =
                   selectedMachineId &&
@@ -3156,7 +3204,7 @@ export default function NewCollectionModal({
                   );
                   return;
                 }
-                
+
                 // Show confirmation dialog
                 setShowCreateReportConfirmation(true);
               }}

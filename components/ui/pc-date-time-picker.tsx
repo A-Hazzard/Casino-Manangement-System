@@ -141,28 +141,59 @@ export function PCDateTimePicker({
                   maxWidth: 'min(320px, calc(100vw - 2rem))',
                   margin: '0 auto',
                 },
-                // Stack calendar and time picker vertically on mobile
+                // Stack calendar and time picker vertically
                 '& .MuiPickersLayout-root': {
-                  flexDirection: 'column',
+                  flexDirection: 'column !important',
                   maxWidth: '100%',
+                  display: 'flex !important',
                 },
                 '& .MuiPickersLayout-contentWrapper': {
                   maxWidth: '100%',
+                  display: 'flex',
+                  flexDirection: 'column !important',
                 },
-                // Time picker responsiveness
+                // Force vertical stacking of calendar and time sections
+                '& .MuiDateTimePickerTabs-root': {
+                  display: 'none', // Hide tabs if present
+                },
+                '& .MuiPickersLayout-toolbar': {
+                  display: 'flex',
+                  flexDirection: 'column',
+                  width: '100%',
+                },
+                // Time picker responsiveness - position below calendar
                 '& .MuiTimeClock-root': {
                   maxWidth: 'min(280px, calc(100vw - 4rem))',
                   margin: '0 auto',
+                  marginTop: '16px',
                 },
-                // Ensure single column month view on mobile
+                // Digital time input below calendar
+                '& .MuiMultiSectionDigitalClock-root': {
+                  width: '100%',
+                  marginTop: '16px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                },
+                // Time toolbar below calendar
+                '& .MuiPickersToolbar-root': {
+                  width: '100%',
+                  marginTop: '8px',
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
+                },
+                // Ensure single column month view
                 '& .MuiPickersCalendarHeader-root': {
                   maxWidth: '100%',
                   paddingLeft: '8px',
                   paddingRight: '8px',
                 },
-                // Adjust day grid for mobile
+                // Adjust day grid
                 '& .MuiDayCalendar-weekContainer': {
                   justifyContent: 'space-around',
+                },
+                // Calendar and time sections stacked vertically
+                '& .MuiDateCalendar-root + *': {
+                  marginTop: '16px !important',
                 },
                 // Force pointer events on all elements
                 '& *': {

@@ -141,6 +141,9 @@ export default function EditCollectionModal({
   const [collectedMachinesSearchTerm, setCollectedMachinesSearchTerm] =
     useState('');
   const [machineSearchTerm, setMachineSearchTerm] = useState('');
+  const [updateAllDate, setUpdateAllDate] = useState<Date | undefined>(
+    undefined
+  );
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -224,18 +227,37 @@ export default function EditCollectionModal({
     }
 
     // Check if user has unsaved machine data (selected machine or entered data)
-    if (!editingEntryId && (selectedMachineId || currentMetersIn || currentMetersOut || currentMachineNotes.trim())) {
+    if (
+      !editingEntryId &&
+      (selectedMachineId ||
+        currentMetersIn ||
+        currentMetersOut ||
+        currentMachineNotes.trim())
+    ) {
       const enteredMetersIn = currentMetersIn ? Number(currentMetersIn) : 0;
       const enteredMetersOut = currentMetersOut ? Number(currentMetersOut) : 0;
       const hasNotes = currentMachineNotes.trim().length > 0;
 
-      if (selectedMachineId || enteredMetersIn !== 0 || enteredMetersOut !== 0 || hasNotes) {
-        console.warn('🚫 Preventing modal close - unsaved machine data detected');
+      if (
+        selectedMachineId ||
+        enteredMetersIn !== 0 ||
+        enteredMetersOut !== 0 ||
+        hasNotes
+      ) {
+        console.warn(
+          '🚫 Preventing modal close - unsaved machine data detected'
+        );
         toast.error(
           `You have unsaved machine data. ` +
-            (selectedMachineId ? `Machine: ${machineForDataEntry?.name || machineForDataEntry?.serialNumber || 'selected machine'}. ` : '') +
-            (enteredMetersIn !== 0 || enteredMetersOut !== 0 ? `Meters: In=${enteredMetersIn}, Out=${enteredMetersOut}. ` : '') +
-            (hasNotes ? `Notes: "${currentMachineNotes.substring(0, 30)}${currentMachineNotes.length > 30 ? '...' : ''}". ` : '') +
+            (selectedMachineId
+              ? `Machine: ${machineForDataEntry?.name || machineForDataEntry?.serialNumber || 'selected machine'}. `
+              : '') +
+            (enteredMetersIn !== 0 || enteredMetersOut !== 0
+              ? `Meters: In=${enteredMetersIn}, Out=${enteredMetersOut}. `
+              : '') +
+            (hasNotes
+              ? `Notes: "${currentMachineNotes.substring(0, 30)}${currentMachineNotes.length > 30 ? '...' : ''}". `
+              : '') +
             `Please click "Add Machine to List" to save this data, or cancel by clicking the X button and confirming you want to discard changes.`,
           {
             duration: 10000,
@@ -253,7 +275,19 @@ export default function EditCollectionModal({
     onClose();
     return true; // Indicate that close was allowed
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasChanges, onRefresh, onClose, hasUnsavedEdits, editingEntryId, selectedMachineId, currentMetersIn, currentMetersOut, currentMachineNotes, machinesOfSelectedLocation, collectedMachineEntries]);
+  }, [
+    hasChanges,
+    onRefresh,
+    onClose,
+    hasUnsavedEdits,
+    editingEntryId,
+    selectedMachineId,
+    currentMetersIn,
+    currentMetersOut,
+    currentMachineNotes,
+    machinesOfSelectedLocation,
+    collectedMachineEntries,
+  ]);
 
   // Update collection time when location changes (only if not already set from report data)
   useEffect(() => {
@@ -1340,19 +1374,33 @@ export default function EditCollectionModal({
     // This includes: machine selected OR any meter values entered OR notes entered
     if (
       !editingEntryId &&
-      (selectedMachineId || currentMetersIn || currentMetersOut || currentMachineNotes)
+      (selectedMachineId ||
+        currentMetersIn ||
+        currentMetersOut ||
+        currentMachineNotes)
     ) {
       const enteredMetersIn = currentMetersIn ? Number(currentMetersIn) : 0;
       const enteredMetersOut = currentMetersOut ? Number(currentMetersOut) : 0;
       const hasNotes = currentMachineNotes.trim().length > 0;
 
       // If ANY data has been entered (machine selected, meters entered, or notes added)
-      if (selectedMachineId || enteredMetersIn !== 0 || enteredMetersOut !== 0 || hasNotes) {
+      if (
+        selectedMachineId ||
+        enteredMetersIn !== 0 ||
+        enteredMetersOut !== 0 ||
+        hasNotes
+      ) {
         toast.error(
           `You have unsaved machine data. ` +
-            (selectedMachineId ? `Machine: ${machineForDataEntry?.name || machineForDataEntry?.serialNumber || 'selected machine'}. ` : '') +
-            (enteredMetersIn !== 0 || enteredMetersOut !== 0 ? `Meters: In=${enteredMetersIn}, Out=${enteredMetersOut}. ` : '') +
-            (hasNotes ? `Notes: "${currentMachineNotes.substring(0, 30)}${currentMachineNotes.length > 30 ? '...' : ''}". ` : '') +
+            (selectedMachineId
+              ? `Machine: ${machineForDataEntry?.name || machineForDataEntry?.serialNumber || 'selected machine'}. `
+              : '') +
+            (enteredMetersIn !== 0 || enteredMetersOut !== 0
+              ? `Meters: In=${enteredMetersIn}, Out=${enteredMetersOut}. `
+              : '') +
+            (hasNotes
+              ? `Notes: "${currentMachineNotes.substring(0, 30)}${currentMachineNotes.length > 30 ? '...' : ''}". `
+              : '') +
             `Please click "Add Machine to List" to save this data, or cancel by unselecting the machine and clearing the form before updating the report.`,
           {
             duration: 10000,
@@ -1619,6 +1667,52 @@ export default function EditCollectionModal({
                       }
                       className="w-full"
                     />
+                  </div>
+                )}
+
+              {/* Update All Dates - Show if there are 2 or more machines in collected view */}
+              {viewMode === 'collected' &&
+                collectedMachineEntries.length >= 2 && (
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      Update All Dates
+                    </label>
+                    <PCDateTimePicker
+                      date={updateAllDate}
+                      setDate={date => {
+                        if (
+                          date &&
+                          date instanceof Date &&
+                          !isNaN(date.getTime())
+                        ) {
+                          setUpdateAllDate(date);
+                        }
+                      }}
+                      disabled={isProcessing}
+                      placeholder="Select date/time"
+                    />
+                    <Button
+                      onClick={() => {
+                        if (updateAllDate) {
+                          setCollectedMachineEntries(prev =>
+                            prev.map(entry => ({
+                              ...entry,
+                              timestamp: updateAllDate,
+                              collectionTime: updateAllDate,
+                            }))
+                          );
+                          setHasUnsavedEdits(true);
+                          toast.success(
+                            `Updated ${collectedMachineEntries.length} machines to ${updateAllDate.toLocaleString()}`
+                          );
+                        }
+                      }}
+                      disabled={!updateAllDate || isProcessing}
+                      className="mt-2 w-full bg-blue-600 text-xs hover:bg-blue-700"
+                      size="sm"
+                    >
+                      Apply to All Machines
+                    </Button>
                   </div>
                 )}
 
@@ -2597,8 +2691,8 @@ export default function EditCollectionModal({
         title="Unsaved Machine Data"
         message={
           editingEntryId
-            ? "You have unsaved changes to a machine entry. Do you want to discard these changes and close?"
-            : "You have unsaved machine data (selected machine, entered meters, or notes). Do you want to discard this data and close?"
+            ? 'You have unsaved changes to a machine entry. Do you want to discard these changes and close?'
+            : 'You have unsaved machine data (selected machine, entered meters, or notes). Do you want to discard this data and close?'
         }
         confirmText="Discard & Close"
         cancelText="Keep Editing"

@@ -31,6 +31,10 @@ type MobileCollectedListPanelProps = {
   isProcessing: boolean;
   isCreateReportsEnabled: boolean;
 
+  // Update all dates feature
+  updateAllDate: Date | undefined;
+  onApplyAllDates: () => void;
+
   // Callbacks
   formatMachineDisplay: (machine: {
     serialNumber?: string;
@@ -61,6 +65,8 @@ export const MobileCollectedListPanel: React.FC<
   financials,
   isProcessing,
   isCreateReportsEnabled,
+  updateAllDate,
+  onApplyAllDates,
   formatMachineDisplay,
   formatDate,
   sortMachines,
@@ -330,6 +336,32 @@ export const MobileCollectedListPanel: React.FC<
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+
+                  {/* Update All Dates - Show if there are 2 or more machines */}
+                  {collectedMachines.length >= 2 && (
+                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <label className="mb-2 block text-sm font-medium text-gray-700">
+                        Update All Dates
+                      </label>
+                      <p className="mb-2 text-xs text-gray-600">
+                        Apply the same date/time to all {collectedMachines.length} machines
+                      </p>
+                      <button
+                        onClick={onApplyAllDates}
+                        disabled={!updateAllDate || isProcessing}
+                        className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {updateAllDate
+                          ? `Apply ${updateAllDate.toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })} to All`
+                          : 'Select date in form first'}
+                      </button>
+                    </div>
+                  )}
 
                   {sortedMachines.length === 0 && searchTerm ? (
                     <div className="py-8 text-center text-gray-500">

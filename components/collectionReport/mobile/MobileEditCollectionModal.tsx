@@ -166,6 +166,11 @@ export default function MobileEditCollectionModal({
     setCollectedMachines: setStoreCollectedMachines,
   } = useCollectionModalStore();
 
+  // Update all dates state - syncs with form collection time
+  const [updateAllDate, setUpdateAllDate] = useState<Date | undefined>(
+    undefined
+  );
+
   // Initialize only mobile-specific UI state
   const [modalState, setModalState] = useState<MobileModalState>(() => ({
     isMachineListVisible: false,
@@ -449,6 +454,13 @@ export default function MobileEditCollectionModal({
     selectedLocationId,
     locations,
   ]);
+
+  // Sync updateAllDate with form collection time
+  useEffect(() => {
+    if (modalState.formData.collectionTime) {
+      setUpdateAllDate(modalState.formData.collectionTime);
+    }
+  }, [modalState.formData.collectionTime]);
 
   // Real-time validation for meter inputs
   const validateMeterInputs = useCallback(() => {
@@ -3363,6 +3375,55 @@ export default function MobileEditCollectionModal({
                               className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
+
+                          {/* Update All Dates - Show if there are 2 or more machines */}
+                          {modalState.collectedMachines.length >= 2 && (
+                            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                              <label className="mb-2 block text-sm font-medium text-gray-700">
+                                Update All Dates
+                              </label>
+                              <p className="mb-2 text-xs text-gray-600">
+                                Apply the same date/time to all{' '}
+                                {modalState.collectedMachines.length} machines
+                              </p>
+                              <button
+                                onClick={() => {
+                                  if (!updateAllDate) {
+                                    toast.error('Please select a date/time first');
+                                    return;
+                                  }
+
+                                  setModalState(prev => ({
+                                    ...prev,
+                                    collectedMachines: prev.collectedMachines.map(
+                                      entry => ({
+                                        ...entry,
+                                        timestamp: updateAllDate,
+                                        collectionTime: updateAllDate,
+                                      })
+                                    ),
+                                    hasUnsavedEdits: true,
+                                  }));
+
+                                  toast.success(
+                                    `Updated ${modalState.collectedMachines.length} machines to ${updateAllDate.toLocaleString()}`
+                                  );
+                                }}
+                                disabled={!updateAllDate || modalState.isProcessing}
+                                className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {updateAllDate
+                                  ? `Apply ${updateAllDate.toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                    })} to All`
+                                  : 'Select date in form first'}
+                              </button>
+                            </div>
+                          )}
+
                           {(() => {
                             const filteredMachines =
                               modalState.collectedMachines.filter(machine => {

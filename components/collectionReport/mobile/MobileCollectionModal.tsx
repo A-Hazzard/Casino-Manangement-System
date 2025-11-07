@@ -174,6 +174,11 @@ export default function MobileCollectionModal({
     setCollectedMachines: setStoreCollectedMachines,
   } = useCollectionModalStore();
 
+  // Update all dates state - syncs with form collection time
+  const [updateAllDate, setUpdateAllDate] = useState<Date | undefined>(
+    undefined
+  );
+
   // Initialize only mobile-specific UI state
   const [modalState, setModalState] = useState<MobileModalState>(() => ({
     isMachineListVisible: false,
@@ -253,6 +258,13 @@ export default function MobileCollectionModal({
       return newState;
     });
   }, []);
+
+  // Sync updateAllDate with form collection time
+  useEffect(() => {
+    if (modalState.formData.collectionTime) {
+      setUpdateAllDate(modalState.formData.collectionTime);
+    }
+  }, [modalState.formData.collectionTime]);
 
   // Confirmation dialog state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -832,6 +844,26 @@ export default function MobileCollectionModal({
       setStoreSelectedLocation,
     ]
   );
+
+  // Apply date to all machines
+  const handleApplyAllDates = useCallback(() => {
+    if (!updateAllDate) {
+      toast.error('Please select a date/time first');
+      return;
+    }
+
+    setStoreCollectedMachines(
+      collectedMachines.map(entry => ({
+        ...entry,
+        timestamp: updateAllDate,
+        collectionTime: updateAllDate,
+      }))
+    );
+
+    toast.success(
+      `Updated ${collectedMachines.length} machines to ${updateAllDate.toLocaleString()}`
+    );
+  }, [updateAllDate, collectedMachines, setStoreCollectedMachines]);
 
   // Create collection report
   const createCollectionReport = useCallback(async () => {
@@ -1746,6 +1778,8 @@ export default function MobileCollectionModal({
               financials={modalState.financials}
               isProcessing={modalState.isProcessing}
               isCreateReportsEnabled={isCreateReportsEnabled}
+              updateAllDate={updateAllDate}
+              onApplyAllDates={handleApplyAllDates}
               formatMachineDisplay={formatMachineDisplayNameWithBold}
               formatDate={formatDate}
               sortMachines={sortMachinesAlphabetically}
