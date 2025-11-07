@@ -1,12 +1,12 @@
 'use client';
 
-import * as React from 'react';
-import { useEffect, useRef } from 'react';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { cn } from '@/lib/utils';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DesktopDateTimePicker } from '@mui/x-date-pickers/DesktopDateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import * as React from 'react';
+import { useEffect, useRef } from 'react';
 import './pc-date-time-picker.css';
 
 export type PCDateTimePickerProps = {
@@ -47,7 +47,7 @@ export function PCDateTimePicker({
 
       // Check if clicking inside the input container
       const isClickInsideContainer = containerRef.current?.contains(target);
-      
+
       // Check if clicking inside the date picker popper (rendered in portal)
       const isClickInsideDatePicker = target.closest(
         '.MuiPickersPopper-root, .MuiDialog-root, .MuiModal-root, .MuiPaper-root, .MuiPickersLayout-root'
@@ -59,7 +59,11 @@ export function PCDateTimePicker({
       );
 
       // Only close if clicking outside BOTH the container AND the picker
-      if (!isClickInsideContainer && !isClickInsideDatePicker && !isClickOnMuiElement) {
+      if (
+        !isClickInsideContainer &&
+        !isClickInsideDatePicker &&
+        !isClickOnMuiElement
+      ) {
         setOpen(false);
       }
     };
@@ -75,7 +79,7 @@ export function PCDateTimePicker({
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
-    
+
     return () => {
       // Cleanup function for when picker is not open
     };
