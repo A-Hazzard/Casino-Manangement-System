@@ -1,12 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { CustomSelect } from '@/components/ui/custom-select';
 import {
   DateRangePicker,
   type DateRange,
 } from '@/components/ui/dateRangePicker';
-import { CustomSelect } from '@/components/ui/custom-select';
 import { Label } from '@/components/ui/label';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 type ModernDateRangePickerProps = {
   value?: DateRange;
@@ -25,19 +31,21 @@ const TimePicker = React.memo<{
   id: string;
 }>(({ value, onChange, label, id }) => {
   // Memoize options to prevent recreation on every render
-  const hours = useMemo(() => 
-    Array.from({ length: 24 }, (_, i) => ({
-      value: i.toString().padStart(2, '0'),
-      label: i.toString().padStart(2, '0'),
-    })),
+  const hours = useMemo(
+    () =>
+      Array.from({ length: 24 }, (_, i) => ({
+        value: i.toString().padStart(2, '0'),
+        label: i.toString().padStart(2, '0'),
+      })),
     []
   );
 
-  const minutes = useMemo(() =>
-    Array.from({ length: 60 }, (_, i) => ({
-      value: i.toString().padStart(2, '0'),
-      label: i.toString().padStart(2, '0'),
-    })),
+  const minutes = useMemo(
+    () =>
+      Array.from({ length: 60 }, (_, i) => ({
+        value: i.toString().padStart(2, '0'),
+        label: i.toString().padStart(2, '0'),
+      })),
     []
   );
 
@@ -45,7 +53,7 @@ const TimePicker = React.memo<{
   const [selectedMinute, setSelectedMinute] = useState(
     value.split(':')[1] || '00'
   );
-  
+
   // Use ref to track internal changes instead of state to avoid extra renders
   const isInternalChangeRef = useRef(false);
 
@@ -66,19 +74,25 @@ const TimePicker = React.memo<{
   }, [value, selectedHour, selectedMinute]);
 
   // Memoize handlers to prevent recreation
-  const handleHourChange = useCallback((newHour: string) => {
-    setSelectedHour(newHour);
-    isInternalChangeRef.current = true;
-    const newTime = `${newHour}:${selectedMinute}`;
-    onChange(newTime);
-  }, [selectedMinute, onChange]);
+  const handleHourChange = useCallback(
+    (newHour: string) => {
+      setSelectedHour(newHour);
+      isInternalChangeRef.current = true;
+      const newTime = `${newHour}:${selectedMinute}`;
+      onChange(newTime);
+    },
+    [selectedMinute, onChange]
+  );
 
-  const handleMinuteChange = useCallback((newMinute: string) => {
-    setSelectedMinute(newMinute);
-    isInternalChangeRef.current = true;
-    const newTime = `${selectedHour}:${newMinute}`;
-    onChange(newTime);
-  }, [selectedHour, onChange]);
+  const handleMinuteChange = useCallback(
+    (newMinute: string) => {
+      setSelectedMinute(newMinute);
+      isInternalChangeRef.current = true;
+      const newTime = `${selectedHour}:${newMinute}`;
+      onChange(newTime);
+    },
+    [selectedHour, onChange]
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -131,7 +145,7 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   // Time input states - Default to 8 AM for both start and end time
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('08:00');
-  
+
   // Track if time was initialized to prevent unnecessary updates
   const timeInitializedRef = useRef(false);
 
@@ -142,12 +156,12 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
       const fromMinutes = value.from.getMinutes().toString().padStart(2, '0');
       const toHours = value.to.getHours().toString().padStart(2, '0');
       const toMinutes = value.to.getMinutes().toString().padStart(2, '0');
-      
+
       setStartTime(`${fromHours}:${fromMinutes}`);
       setEndTime(`${toHours}:${toMinutes}`);
       timeInitializedRef.current = true;
     }
-    
+
     // Reset flag when value is cleared
     if (!value?.from || !value?.to) {
       timeInitializedRef.current = false;
@@ -155,98 +169,104 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   }, [value?.from, value?.to]);
 
   // Memoized date range change handler
-  const handleDateRangeChange = useCallback((range?: DateRange) => {
-    if (range?.from && range?.to) {
-      // Apply start time to the from date
-      const [startHours, startMinutes] = startTime.split(':').map(Number);
-      const newFromDate = new Date(range.from);
-      newFromDate.setHours(startHours, startMinutes, 0, 0);
+  const handleDateRangeChange = useCallback(
+    (range?: DateRange) => {
+      if (range?.from && range?.to) {
+        // Apply start time to the from date
+        const [startHours, startMinutes] = startTime.split(':').map(Number);
+        const newFromDate = new Date(range.from);
+        newFromDate.setHours(startHours, startMinutes, 0, 0);
 
-      // Apply end time to the to date
-      const [endHours, endMinutes] = endTime.split(':').map(Number);
-      const newToDate = new Date(range.to);
-      newToDate.setHours(endHours, endMinutes, 59, 999);
+        // Apply end time to the to date
+        const [endHours, endMinutes] = endTime.split(':').map(Number);
+        const newToDate = new Date(range.to);
+        newToDate.setHours(endHours, endMinutes, 59, 999);
 
-      // Validate that the dates are valid
-      if (isNaN(newFromDate.getTime()) || isNaN(newToDate.getTime())) {
-        return;
+        // Validate that the dates are valid
+        if (isNaN(newFromDate.getTime()) || isNaN(newToDate.getTime())) {
+          return;
+        }
+
+        // Validate that start date is not after end date
+        if (newFromDate > newToDate) {
+          return;
+        }
+
+        onChange({
+          from: newFromDate,
+          to: newToDate,
+        });
+      } else if (range?.from) {
+        // Handle partial selection (only from date selected)
+        const [startHours, startMinutes] = startTime.split(':').map(Number);
+        const newFromDate = new Date(range.from);
+        newFromDate.setHours(startHours, startMinutes, 0, 0);
+
+        if (isNaN(newFromDate.getTime())) {
+          return;
+        }
+
+        onChange({
+          from: newFromDate,
+          to: undefined,
+        });
+      } else {
+        // No date selected, clear the range
+        onChange(range);
       }
-
-      // Validate that start date is not after end date
-      if (newFromDate > newToDate) {
-        return;
-      }
-
-      onChange({
-        from: newFromDate,
-        to: newToDate,
-      });
-    } else if (range?.from) {
-      // Handle partial selection (only from date selected)
-      const [startHours, startMinutes] = startTime.split(':').map(Number);
-      const newFromDate = new Date(range.from);
-      newFromDate.setHours(startHours, startMinutes, 0, 0);
-
-      if (isNaN(newFromDate.getTime())) {
-        return;
-      }
-
-      onChange({
-        from: newFromDate,
-        to: undefined,
-      });
-    } else {
-      // No date selected, clear the range
-      onChange(range);
-    }
-  }, [startTime, endTime, onChange]);
+    },
+    [startTime, endTime, onChange]
+  );
 
   // Memoized time change handler
-  const handleTimeChange = useCallback((timeType: 'start' | 'end', time: string) => {
-    // Only process time changes if we have valid dates
-    if (!value?.from || !value?.to) {
-      return;
-    }
-
-    // Validate that the existing dates are valid
-    if (isNaN(value.from.getTime()) || isNaN(value.to.getTime())) {
-      return;
-    }
-
-    if (timeType === 'start') {
-      setStartTime(time);
-      const [hours, minutes] = time.split(':').map(Number);
-
-      const newFromDate = new Date(value.from);
-      newFromDate.setHours(hours, minutes, 0, 0);
-
-      // Validate that start date is not after end date
-      if (newFromDate > value.to) {
+  const handleTimeChange = useCallback(
+    (timeType: 'start' | 'end', time: string) => {
+      // Only process time changes if we have valid dates
+      if (!value?.from || !value?.to) {
         return;
       }
 
-      onChange({
-        from: newFromDate,
-        to: value.to,
-      });
-    } else {
-      setEndTime(time);
-      const [hours, minutes] = time.split(':').map(Number);
-
-      const newToDate = new Date(value.to);
-      newToDate.setHours(hours, minutes, 59, 999);
-
-      // Validate that end date is not before start date
-      if (newToDate < value.from) {
+      // Validate that the existing dates are valid
+      if (isNaN(value.from.getTime()) || isNaN(value.to.getTime())) {
         return;
       }
 
-      onChange({
-        from: value.from,
-        to: newToDate,
-      });
-    }
-  }, [value, onChange]);
+      if (timeType === 'start') {
+        setStartTime(time);
+        const [hours, minutes] = time.split(':').map(Number);
+
+        const newFromDate = new Date(value.from);
+        newFromDate.setHours(hours, minutes, 0, 0);
+
+        // Validate that start date is not after end date
+        if (newFromDate > value.to) {
+          return;
+        }
+
+        onChange({
+          from: newFromDate,
+          to: value.to,
+        });
+      } else {
+        setEndTime(time);
+        const [hours, minutes] = time.split(':').map(Number);
+
+        const newToDate = new Date(value.to);
+        newToDate.setHours(hours, minutes, 59, 999);
+
+        // Validate that end date is not before start date
+        if (newToDate < value.from) {
+          return;
+        }
+
+        onChange({
+          from: value.from,
+          to: newToDate,
+        });
+      }
+    },
+    [value, onChange]
+  );
 
   return (
     <div className="flex flex-col gap-4 rounded-b-lg bg-gray-50 px-4 py-3">
