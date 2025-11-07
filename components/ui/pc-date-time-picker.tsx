@@ -33,43 +33,51 @@ export function PCDateTimePicker({
     }
   };
 
-  const handleClose = (event?: unknown, reason?: string) => {
-    // Don't close on backdrop click or other internal actions
-    if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-      return;
-    }
+  const handleClose = () => {
+    // Let MUI handle the close behavior naturally
     setOpen(false);
   };
 
-  // Handle click outside to close picker - but only for clicks outside the MUI picker itself
+  // Handle click outside to close picker - only when clicking outside both input and picker
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!open) return;
 
       const target = event.target as HTMLElement;
 
-      // Don't close if clicking inside the date picker popper
+      // Check if clicking inside the input container
+      const isClickInsideContainer = containerRef.current?.contains(target);
+      
+      // Check if clicking inside the date picker popper (rendered in portal)
       const isClickInsideDatePicker = target.closest(
-        '.MuiPickersPopper-root, .MuiDialog-root, .MuiModal-root'
+        '.MuiPickersPopper-root, .MuiDialog-root, .MuiModal-root, .MuiPaper-root, .MuiPickersLayout-root'
       );
 
-      if (isClickInsideDatePicker) {
-        return; // Allow clicks inside the picker
-      }
+      // Check if clicking on any MUI interactive element
+      const isClickOnMuiElement = target.closest(
+        'button, [role="button"], .MuiPickersDay-root, .MuiClockNumber-root, .MuiPickersCalendarHeader-switchViewButton'
+      );
 
-      // Close if clicking outside the container and outside the picker
-      if (containerRef.current && !containerRef.current.contains(target)) {
+      // Only close if clicking outside BOTH the container AND the picker
+      if (!isClickInsideContainer && !isClickInsideDatePicker && !isClickOnMuiElement) {
         setOpen(false);
       }
     };
 
     if (open) {
-      // Use capture phase to handle clicks before they bubble
-      document.addEventListener('mousedown', handleClickOutside, true);
-    }
+      // Use timeout to ensure picker is rendered before attaching listener
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 100);
 
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+    
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside, true);
+      // Cleanup function for when picker is not open
     };
   }, [open]);
 
@@ -85,6 +93,7 @@ export function PCDateTimePicker({
           disabled={disabled}
           ampm={true}
           format="MM/dd/yyyy hh:mm a"
+          closeOnSelect={false}
           slotProps={{
             textField: {
               InputProps: {
@@ -114,12 +123,46 @@ export function PCDateTimePicker({
               },
             },
             popper: {
+              disablePortal: false,
               sx: {
                 zIndex: 9999,
+                // Mobile responsiveness - constrain width and enable vertical layout
+                maxWidth: 'calc(100vw - 2rem)',
                 '& .MuiPaper-root': {
                   boxShadow:
                     '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                   borderRadius: '8px',
+                  maxWidth: '100%',
+                  // Prevent any unwanted pointer events that close the picker
+                  userSelect: 'none',
+                },
+                // Mobile-friendly calendar layout
+                '& .MuiDateCalendar-root': {
+                  maxWidth: 'min(320px, calc(100vw - 2rem))',
+                  margin: '0 auto',
+                },
+                // Stack calendar and time picker vertically on mobile
+                '& .MuiPickersLayout-root': {
+                  flexDirection: 'column',
+                  maxWidth: '100%',
+                },
+                '& .MuiPickersLayout-contentWrapper': {
+                  maxWidth: '100%',
+                },
+                // Time picker responsiveness
+                '& .MuiTimeClock-root': {
+                  maxWidth: 'min(280px, calc(100vw - 4rem))',
+                  margin: '0 auto',
+                },
+                // Ensure single column month view on mobile
+                '& .MuiPickersCalendarHeader-root': {
+                  maxWidth: '100%',
+                  paddingLeft: '8px',
+                  paddingRight: '8px',
+                },
+                // Adjust day grid for mobile
+                '& .MuiDayCalendar-weekContainer': {
+                  justifyContent: 'space-around',
                 },
                 // Force pointer events on all elements
                 '& *': {
@@ -129,6 +172,9 @@ export function PCDateTimePicker({
                 '& .MuiPickersDay-root': {
                   cursor: 'pointer !important',
                   pointerEvents: 'auto !important',
+                  fontSize: '14px',
+                  width: '36px',
+                  height: '36px',
                   '&:hover': {
                     backgroundColor: '#f3f4f6 !important',
                   },
@@ -177,8 +223,38 @@ export function PCDateTimePicker({
                     backgroundColor: '#f3f4f6 !important',
                   },
                 },
+                // Action bar buttons styling
+                '& .MuiDialogActions-root': {
+                  padding: '16px',
+                  gap: '8px',
+                },
+                '& .MuiDialogActions-root button': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  minWidth: '80px',
+                },
               },
               placement: 'bottom-start',
+              modifiers: [
+                {
+                  name: 'preventOverflow',
+                  options: {
+                    padding: 8,
+                  },
+                },
+                {
+                  name: 'flip',
+                  options: {
+                    fallbackPlacements: ['top-start', 'bottom-end', 'top-end'],
+                  },
+                },
+              ],
+            },
+            actionBar: {
+              actions: ['accept', 'cancel'],
             },
           }}
         />

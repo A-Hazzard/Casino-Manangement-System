@@ -166,7 +166,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           {displayValue}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent 
+        className="w-auto p-0 max-w-[calc(100vw-2rem)]" 
+        align="start"
+        sideOffset={4}
+      >
         <ErrorBoundary>
           <DayPicker
             mode="range"
@@ -184,6 +188,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             showOutsideDays
             classNames={
               {
+                months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                month: "space-y-4",
                 // Add any custom Tailwind classes for styling if needed
                 // Example from your previous DayPicker setup:
                 // caption: "text-buttonActive",
