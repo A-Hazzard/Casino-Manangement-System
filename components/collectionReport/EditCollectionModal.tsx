@@ -1673,7 +1673,7 @@ export default function EditCollectionModal({
               {/* Update All Dates - Show if there are 2 or more machines in collected view */}
               {viewMode === 'collected' &&
                 collectedMachineEntries.length >= 2 && (
-                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
                     <label className="mb-1 block text-xs font-medium text-gray-700">
                       Update All Dates
                     </label>
@@ -1692,8 +1692,27 @@ export default function EditCollectionModal({
                       placeholder="Select date/time"
                     />
                     <Button
-                      onClick={() => {
-                        if (updateAllDate) {
+                      onClick={async () => {
+                        if (!updateAllDate) return;
+                        
+                        setIsProcessing(true);
+                        try {
+                          // Update all collections in database
+                          await Promise.all(
+                            collectedMachineEntries.map(async entry => {
+                              if (!entry._id) return;
+                              
+                              await axios.patch(
+                                `/api/collections?id=${entry._id}`,
+                                {
+                                  timestamp: updateAllDate.toISOString(),
+                                  collectionTime: updateAllDate.toISOString(),
+                                }
+                              );
+                            })
+                          );
+
+                          // Update frontend state
                           setCollectedMachineEntries(prev =>
                             prev.map(entry => ({
                               ...entry,
@@ -1701,17 +1720,23 @@ export default function EditCollectionModal({
                               collectionTime: updateAllDate,
                             }))
                           );
+                          
                           setHasUnsavedEdits(true);
                           toast.success(
-                            `Updated ${collectedMachineEntries.length} machines to ${updateAllDate.toLocaleString()}`
+                            `Updated ${collectedMachineEntries.length} machines in database`
                           );
+                        } catch (error) {
+                          console.error('Failed to update dates:', error);
+                          toast.error('Failed to update some machines');
+                        } finally {
+                          setIsProcessing(false);
                         }
                       }}
                       disabled={!updateAllDate || isProcessing}
                       className="mt-2 w-full bg-blue-600 text-xs hover:bg-blue-700"
                       size="sm"
                     >
-                      Apply to All Machines
+                      {isProcessing ? 'Updating...' : 'Apply to All Machines'}
                     </Button>
                   </div>
                 )}

@@ -838,24 +838,60 @@ export default function MobileCollectionModal({
     ]
   );
 
-  // Apply date to all machines
-  const handleApplyAllDates = useCallback(() => {
+  // Apply date to all machines - updates database
+  const handleApplyAllDates = useCallback(async () => {
     if (!updateAllDate) {
       toast.error('Please select a date/time first');
       return;
     }
 
-    setStoreCollectedMachines(
-      collectedMachines.map(entry => ({
-        ...entry,
-        timestamp: updateAllDate,
-        collectionTime: updateAllDate,
-      }))
-    );
+    setModalState(prev => ({ ...prev, isProcessing: true }));
+    
+    try {
+      toast.loading('Updating all machines...', { id: 'update-all-dates' });
 
-    toast.success(
-      `Updated ${collectedMachines.length} machines to ${updateAllDate.toLocaleString()}`
-    );
+      // Update all collections in database
+      const results = await Promise.allSettled(
+        collectedMachines.map(async entry => {
+          if (!entry._id) return;
+          
+          return await axios.patch(`/api/collections?id=${entry._id}`, {
+            timestamp: updateAllDate.toISOString(),
+            collectionTime: updateAllDate.toISOString(),
+          });
+        })
+      );
+
+      // Check for failures
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      // Update Zustand store
+      setStoreCollectedMachines(
+        collectedMachines.map(entry => ({
+          ...entry,
+          timestamp: updateAllDate,
+          collectionTime: updateAllDate,
+        }))
+      );
+
+      toast.dismiss('update-all-dates');
+      
+      if (failed > 0) {
+        toast.warning(
+          `Updated ${collectedMachines.length - failed} machines, ${failed} failed`
+        );
+      } else {
+        toast.success(
+          `Updated ${collectedMachines.length} machines in database`
+        );
+      }
+    } catch (error) {
+      toast.dismiss('update-all-dates');
+      console.error('Failed to update dates:', error);
+      toast.error('Failed to update machines');
+    } finally {
+      setModalState(prev => ({ ...prev, isProcessing: false }));
+    }
   }, [updateAllDate, collectedMachines, setStoreCollectedMachines]);
 
   // Create collection report

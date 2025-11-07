@@ -3353,25 +3353,9 @@ export default function MobileEditCollectionModal({
                       // Show Machine List
                       <div className="mobile-collection-scrollbar flex-1 overflow-y-scroll">
                         <div className="space-y-3 p-4 pb-4">
-                          {/* Search bar for collected machines */}
-                          <div className="mb-4">
-                            <input
-                              type="text"
-                              placeholder="Search collected machines..."
-                              value={modalState.collectedMachinesSearchTerm}
-                              onChange={e =>
-                                setModalState(prev => ({
-                                  ...prev,
-                                  collectedMachinesSearchTerm: e.target.value,
-                                }))
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-
                           {/* Update All Dates - Show if there are 2 or more machines */}
                           {modalState.collectedMachines.length >= 2 && (
-                            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                            <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
                               <label className="mb-2 block text-sm font-medium text-gray-700">
                                 Update All Dates
                               </label>
@@ -3394,35 +3378,94 @@ export default function MobileEditCollectionModal({
                                 placeholder="Select date/time"
                               />
                               <button
-                                onClick={() => {
+                                onClick={async () => {
                                   if (!updateAllDate) {
                                     toast.error('Please select a date/time first');
                                     return;
                                   }
 
-                                  setModalState(prev => ({
-                                    ...prev,
-                                    collectedMachines: prev.collectedMachines.map(
-                                      entry => ({
-                                        ...entry,
-                                        timestamp: updateAllDate,
-                                        collectionTime: updateAllDate,
-                                      })
-                                    ),
-                                    hasUnsavedEdits: true,
-                                  }));
+                                  setModalState(prev => ({ ...prev, isProcessing: true }));
 
-                                  toast.success(
-                                    `Updated ${modalState.collectedMachines.length} machines to ${updateAllDate.toLocaleString()}`
-                                  );
+                                  try {
+                                    toast.loading('Updating all machines...', {
+                                      id: 'update-all-dates',
+                                    });
+
+                                    // Update all collections in database
+                                    const results = await Promise.allSettled(
+                                      modalState.collectedMachines.map(async entry => {
+                                        if (!entry._id) return;
+
+                                        return await axios.patch(
+                                          `/api/collections?id=${entry._id}`,
+                                          {
+                                            timestamp: updateAllDate.toISOString(),
+                                            collectionTime: updateAllDate.toISOString(),
+                                          }
+                                        );
+                                      })
+                                    );
+
+                                    // Check for failures
+                                    const failed = results.filter(
+                                      r => r.status === 'rejected'
+                                    ).length;
+
+                                    // Update frontend state
+                                    setModalState(prev => ({
+                                      ...prev,
+                                      collectedMachines: prev.collectedMachines.map(
+                                        entry => ({
+                                          ...entry,
+                                          timestamp: updateAllDate,
+                                          collectionTime: updateAllDate,
+                                        })
+                                      ),
+                                      hasUnsavedEdits: true,
+                                    }));
+
+                                    toast.dismiss('update-all-dates');
+
+                                    if (failed > 0) {
+                                      toast.warning(
+                                        `Updated ${modalState.collectedMachines.length - failed} machines, ${failed} failed`
+                                      );
+                                    } else {
+                                      toast.success(
+                                        `Updated ${modalState.collectedMachines.length} machines in database`
+                                      );
+                                    }
+                                  } catch (error) {
+                                    toast.dismiss('update-all-dates');
+                                    console.error('Failed to update dates:', error);
+                                    toast.error('Failed to update machines');
+                                  } finally {
+                                    setModalState(prev => ({ ...prev, isProcessing: false }));
+                                  }
                                 }}
                                 disabled={!updateAllDate || modalState.isProcessing}
                                 className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                               >
-                                Apply to All Machines
+                                {modalState.isProcessing ? 'Updating...' : 'Apply to All Machines'}
                               </button>
                             </div>
                           )}
+
+                          {/* Search bar for collected machines */}
+                          <div className="mb-4">
+                            <input
+                              type="text"
+                              placeholder="Search collected machines..."
+                              value={modalState.collectedMachinesSearchTerm}
+                              onChange={e =>
+                                setModalState(prev => ({
+                                  ...prev,
+                                  collectedMachinesSearchTerm: e.target.value,
+                                }))
+                              }
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
 
                           {(() => {
                             const filteredMachines =

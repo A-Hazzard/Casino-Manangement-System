@@ -329,20 +329,9 @@ export const MobileCollectedListPanel: React.FC<
               // Show Machine List
               <div className="mobile-collection-scrollbar flex-1 overflow-y-auto">
                 <div className="space-y-3 p-4 pb-4">
-                  {/* Search bar for collected machines */}
-                  <div className="mb-4">
-                    <input
-                      type="text"
-                      placeholder="Search collected machines..."
-                      value={searchTerm}
-                      onChange={e => onSearchChange(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
                   {/* Update All Dates - Show if there are 2 or more machines */}
                   {collectedMachines.length >= 2 && (
-                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
                       <label className="mb-2 block text-sm font-medium text-gray-700">
                         Update All Dates
                       </label>
@@ -368,10 +357,21 @@ export const MobileCollectedListPanel: React.FC<
                         disabled={!updateAllDate || isProcessing}
                         className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Apply to All Machines
+                        {isProcessing ? 'Updating...' : 'Apply to All Machines'}
                       </button>
                     </div>
                   )}
+
+                  {/* Search bar for collected machines */}
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Search collected machines..."
+                      value={searchTerm}
+                      onChange={e => onSearchChange(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
                   {sortedMachines.length === 0 && searchTerm ? (
                     <div className="py-8 text-center text-gray-500">
