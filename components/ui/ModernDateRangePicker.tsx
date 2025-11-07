@@ -18,12 +18,12 @@ type ModernDateRangePickerProps = {
 };
 
 // Custom Time Picker Component - Optimized for mobile performance
-const TimePicker: React.FC<{
+const TimePicker = React.memo<{
   value: string;
   onChange: (time: string) => void;
   label: string;
   id: string;
-}> = React.memo(({ value, onChange, label, id }) => {
+}>(({ value, onChange, label, id }) => {
   // Memoize options to prevent recreation on every render
   const hours = useMemo(() => 
     Array.from({ length: 24 }, (_, i) => ({
@@ -117,6 +117,8 @@ const TimePicker: React.FC<{
     </div>
   );
 });
+
+TimePicker.displayName = 'TimePicker';
 
 export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   value,
