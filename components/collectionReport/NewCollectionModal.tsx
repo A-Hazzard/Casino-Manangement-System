@@ -264,23 +264,61 @@ export default function NewCollectionModal({
     undefined
   );
 
-  // Filter machines based on search term when location is selected
+  // Utility function for proper alphabetical and numerical sorting
+  const sortMachinesAlphabetically = useCallback(<
+    T extends { name?: string; serialNumber?: string },
+  >(
+    machines: T[]
+  ): T[] => {
+    return machines.sort((a, b) => {
+      const nameA = (a.name || a.serialNumber || '').toString();
+      const nameB = (b.name || b.serialNumber || '').toString();
+
+      // Extract the base name and number parts
+      const matchA = nameA.match(/^(.+?)(\d+)?$/);
+      const matchB = nameB.match(/^(.+?)(\d+)?$/);
+
+      if (!matchA || !matchB) {
+        return nameA.localeCompare(nameB);
+      }
+
+      const [, baseA, numA] = matchA;
+      const [, baseB, numB] = matchB;
+
+      // First compare the base part alphabetically
+      const baseCompare = baseA.localeCompare(baseB);
+      if (baseCompare !== 0) {
+        return baseCompare;
+      }
+
+      // If base parts are the same, compare numerically
+      const numAInt = numA ? parseInt(numA, 10) : 0;
+      const numBInt = numB ? parseInt(numB, 10) : 0;
+
+      return numAInt - numBInt;
+    });
+  }, []);
+
+  // Filter and sort machines based on search term when location is selected
   const filteredMachines = useMemo(() => {
-    if (!machineSearchTerm.trim()) {
-      return machinesOfSelectedLocation;
+    let result = machinesOfSelectedLocation;
+
+    if (machineSearchTerm.trim()) {
+      const searchLower = machineSearchTerm.toLowerCase();
+      result = machinesOfSelectedLocation.filter(
+        machine =>
+          (machine.name && machine.name.toLowerCase().includes(searchLower)) ||
+          (machine.serialNumber &&
+            machine.serialNumber.toLowerCase().includes(searchLower)) ||
+          (machine.custom?.name &&
+            machine.custom.name.toLowerCase().includes(searchLower)) ||
+          (machine.game && machine.game.toLowerCase().includes(searchLower))
+      );
     }
 
-    const searchLower = machineSearchTerm.toLowerCase();
-    return machinesOfSelectedLocation.filter(
-      machine =>
-        (machine.name && machine.name.toLowerCase().includes(searchLower)) ||
-        (machine.serialNumber &&
-          machine.serialNumber.toLowerCase().includes(searchLower)) ||
-        (machine.custom?.name &&
-          machine.custom.name.toLowerCase().includes(searchLower)) ||
-        (machine.game && machine.game.toLowerCase().includes(searchLower))
-    );
-  }, [machinesOfSelectedLocation, machineSearchTerm]);
+    // Always sort alphabetically and numerically
+    return sortMachinesAlphabetically(result);
+  }, [machinesOfSelectedLocation, machineSearchTerm, sortMachinesAlphabetically]);
 
   const [selectedMachineId, setSelectedMachineId] = useState<
     string | undefined
@@ -1130,6 +1168,8 @@ export default function NewCollectionModal({
   const debouncedCurrentMetersIn = useDebounce(currentMetersIn, 1500);
   const debouncedCurrentMetersOut = useDebounce(currentMetersOut, 1500);
   const debouncedCurrentMachineNotes = useDebounce(currentMachineNotes, 1500);
+  const debouncedCurrentRamClearMetersIn = useDebounce(currentRamClearMetersIn, 1500);
+  const debouncedCurrentRamClearMetersOut = useDebounce(currentRamClearMetersOut, 1500);
 
   useEffect(() => {
     if (
@@ -1825,10 +1865,7 @@ export default function NewCollectionModal({
         id: 'create-reports-toast',
       });
 
-      // Step 1: Update all existing collections with the report ID and mark as completed
-      await updateCollectionsWithReportId(collectedMachineEntries, reportId);
-
-      // Step 2: Create a single collection report with all the financial data
+      // Step 1: Create a single collection report with all the financial data FIRST
       // Use the global collection time as the report timestamp
       const reportTimestamp = currentCollectionTime;
 
@@ -1916,8 +1953,12 @@ export default function NewCollectionModal({
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
 
-      // Create the collection report
+      // Create the collection report FIRST
       await createCollectionReport(payload);
+
+      // Step 2: ONLY AFTER report is successfully created, update collections with the report ID
+      console.warn('💾 Updating collections with reportId and isCompleted: true...');
+      await updateCollectionsWithReportId(collectedMachineEntries, reportId);
 
       toast.dismiss('create-reports-toast');
       toast.success(
@@ -2405,13 +2446,13 @@ export default function NewCollectionModal({
                       <p className="mt-1 text-xs text-grayHighlight">
                         Prev In: {prevIn !== null ? prevIn : 'N/A'}
                       </p>
-                      {/* Regular Meters In Validation */}
-                      {currentMetersIn &&
+                      {/* Regular Meters In Validation - Debounced */}
+                      {debouncedCurrentMetersIn &&
                         prevIn &&
-                        Number(currentMetersIn) < Number(prevIn) && (
+                        Number(debouncedCurrentMetersIn) < Number(prevIn) && (
                           <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                             <p className="text-xs text-red-600">
-                              Warning: Meters In ({currentMetersIn}) should be
+                              Warning: Meters In ({debouncedCurrentMetersIn}) should be
                               higher than or equal to Previous Meters In (
                               {prevIn})
                             </p>
@@ -2439,13 +2480,13 @@ export default function NewCollectionModal({
                       <p className="mt-1 text-xs text-grayHighlight">
                         Prev Out: {prevOut !== null ? prevOut : 'N/A'}
                       </p>
-                      {/* Regular Meters Out Validation */}
-                      {currentMetersOut &&
+                      {/* Regular Meters Out Validation - Debounced */}
+                      {debouncedCurrentMetersOut &&
                         prevOut &&
-                        Number(currentMetersOut) < Number(prevOut) && (
+                        Number(debouncedCurrentMetersOut) < Number(prevOut) && (
                           <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                             <p className="text-xs text-red-600">
-                              Warning: Meters Out ({currentMetersOut}) should be
+                              Warning: Meters Out ({debouncedCurrentMetersOut}) should be
                               higher than or equal to Previous Meters Out (
                               {prevOut})
                             </p>
@@ -2481,22 +2522,22 @@ export default function NewCollectionModal({
                             }}
                             disabled={!inputsEnabled || isProcessing}
                             className={`border-blue-300 focus:border-blue-500 ${
-                              currentRamClearMetersIn &&
+                              debouncedCurrentRamClearMetersIn &&
                               prevIn &&
-                              Number(currentRamClearMetersIn) > Number(prevIn)
+                              Number(debouncedCurrentRamClearMetersIn) > Number(prevIn)
                                 ? 'border-red-500 focus:border-red-500'
                                 : ''
                             }`}
                           />
-                          {/* RAM Clear Meters In Validation */}
-                          {currentRamClearMetersIn &&
+                          {/* RAM Clear Meters In Validation - Debounced */}
+                          {debouncedCurrentRamClearMetersIn &&
                             prevIn &&
-                            Number(currentRamClearMetersIn) >
+                            Number(debouncedCurrentRamClearMetersIn) >
                               Number(prevIn) && (
                               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                                 <p className="text-xs text-red-600">
                                   Warning: RAM Clear Meters In (
-                                  {currentRamClearMetersIn}) should be lower
+                                  {debouncedCurrentRamClearMetersIn}) should be lower
                                   than or equal to Previous Meters In ({prevIn})
                                 </p>
                               </div>
@@ -2518,22 +2559,22 @@ export default function NewCollectionModal({
                             }}
                             disabled={!inputsEnabled || isProcessing}
                             className={`border-blue-300 focus:border-blue-500 ${
-                              currentRamClearMetersOut &&
+                              debouncedCurrentRamClearMetersOut &&
                               prevOut &&
-                              Number(currentRamClearMetersOut) > Number(prevOut)
+                              Number(debouncedCurrentRamClearMetersOut) > Number(prevOut)
                                 ? 'border-red-500 focus:border-red-500'
                                 : ''
                             }`}
                           />
-                          {/* RAM Clear Meters Out Validation */}
-                          {currentRamClearMetersOut &&
+                          {/* RAM Clear Meters Out Validation - Debounced */}
+                          {debouncedCurrentRamClearMetersOut &&
                             prevOut &&
-                            Number(currentRamClearMetersOut) >
+                            Number(debouncedCurrentRamClearMetersOut) >
                               Number(prevOut) && (
                               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                                 <p className="text-xs text-red-600">
                                   Warning: RAM Clear Meters Out (
-                                  {currentRamClearMetersOut}) should be lower
+                                  {debouncedCurrentRamClearMetersOut}) should be lower
                                   than or equal to Previous Meters Out (
                                   {prevOut})
                                 </p>

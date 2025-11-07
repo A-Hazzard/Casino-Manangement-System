@@ -35,6 +35,7 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   sortDirection,
   onSort,
   selectedLicencee,
+  editableReportIds,
 }) => {
   const licenseeName = getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
   
@@ -83,6 +84,7 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={onSort}
+              editableReportIds={editableReportIds}
             />
           </div>
         )}

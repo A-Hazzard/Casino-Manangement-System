@@ -910,7 +910,10 @@ export default function MobileCollectionModal({
 
   // Create collection report
   const createCollectionReport = useCallback(async () => {
-    if (collectedMachines.length === 0) {
+    // CRITICAL: Use modalState.collectedMachines, not Zustand store (may be stale)
+    const machinesForReport = modalState.collectedMachines;
+
+    if (machinesForReport.length === 0) {
       return;
     }
 
@@ -936,35 +939,23 @@ export default function MobileCollectionModal({
       // Generate a single locationReportId for all collections in this report
       const reportId = uuidv4();
 
-      // Step 1: Update all existing collections with the report ID and mark as completed
-      const updatePromises = collectedMachines.map(async collection => {
-        try {
-          await axios.patch(`/api/collections?id=${collection._id}`, {
-            locationReportId: reportId,
-            isCompleted: true,
-          });
-        } catch (error) {
-          console.error(
-            `Failed to update collection ${collection._id}:`,
-            error
-          );
-          throw error;
-        }
+      console.warn('📱 Mobile - Creating report with machines:', {
+        count: machinesForReport.length,
+        machineIds: machinesForReport.map(m => m._id),
+        firstMachine: machinesForReport[0],
       });
 
-      await Promise.all(updatePromises);
-
-      // Step 2: Create a single collection report with all the financial data
+      // Step 1: Create a single collection report with all the financial data FIRST
       // Use the collection time from the first machine as the report timestamp
       const reportTimestamp =
-        collectedMachines[0].timestamp instanceof Date
-          ? collectedMachines[0].timestamp
-          : new Date(collectedMachines[0].timestamp);
+        machinesForReport[0].timestamp instanceof Date
+          ? machinesForReport[0].timestamp
+          : new Date(machinesForReport[0].timestamp);
 
       console.warn('📱 Creating collection report:', {
         reportId,
         reportTimestamp: reportTimestamp.toISOString(),
-        collectedMachinesCount: collectedMachines.length,
+        collectedMachinesCount: machinesForReport.length,
         locationName: selectedLocationName,
         locationId: selectedLocationId,
       });
@@ -1012,7 +1003,7 @@ export default function MobileCollectionModal({
         reasonShortagePayment: modalState.financials.reasonForShortagePayment,
         balanceCorrection: Number(modalState.financials.balanceCorrection) || 0,
         balanceCorrectionReas: modalState.financials.balanceCorrectionReason,
-        machines: collectedMachines.map(entry => ({
+        machines: machinesForReport.map(entry => ({
           machineId: entry.machineId,
           machineName: entry.machineName,
           collectionTime:
@@ -1039,13 +1030,48 @@ export default function MobileCollectionModal({
       };
 
       // Validate payload before sending
+      console.warn('📱 Mobile - Validating payload:', {
+        hasCollectorName: !!payload.collectorName,
+        hasLocationName: !!payload.locationName,
+        hasLocationReportId: !!payload.locationReportId,
+        hasLocation: !!payload.location,
+        hasTimestamp: !!payload.timestamp,
+        machinesCount: payload.machines?.length || 0,
+        amountToCollect: payload.amountToCollect,
+        balanceCorrection: payload.balanceCorrection,
+      });
+
       const validation = validateCollectionReportPayload(payload);
       if (!validation.isValid) {
+        console.error('❌ Validation failed:', validation.errors);
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
 
-      // Create the collection report
-      await createReportAPI(payload);
+      console.warn('📱 Mobile - Creating report via API...');
+      // Create the collection report FIRST
+      const result = await createReportAPI(payload);
+      console.warn('📱 Mobile - Report created successfully:', result);
+
+      // Step 2: ONLY AFTER report is successfully created, update collections with the report ID
+      console.warn('📱 Mobile - Updating collections with reportId and isCompleted: true...');
+      const updatePromises = machinesForReport.map(async collection => {
+        try {
+          await axios.patch(`/api/collections?id=${collection._id}`, {
+            locationReportId: reportId,
+            isCompleted: true,
+          });
+        } catch (error) {
+          console.error(
+            `Failed to update collection ${collection._id}:`,
+            error
+          );
+          // Don't throw here - report is already created, just log the error
+          // The /update-history endpoint will handle fixing this later
+        }
+      });
+
+      await Promise.all(updatePromises);
+      console.warn('📱 Mobile - All collections updated successfully');
 
       toast.dismiss('mobile-create-report-toast');
       toast.success('Collection report created successfully!');
@@ -1056,19 +1082,28 @@ export default function MobileCollectionModal({
     } catch (error) {
       toast.dismiss('mobile-create-report-toast');
       console.error('❌ Failed to create collection report:', error);
+      
+      // Enhanced error message with more details
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: unknown } };
+        errorMessage = JSON.stringify(axiosError.response?.data || error);
+      }
+      
       toast.error(
-        `Failed to create collection report: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`
+        `Failed to create collection report: ${errorMessage}`,
+        { duration: 8000 }
       );
     } finally {
       setModalState(prev => ({ ...prev, isProcessing: false }));
     }
   }, [
-    collectedMachines,
+    modalState.collectedMachines,
+    modalState.financials,
     selectedLocationId,
     selectedLocationName,
-    modalState.financials,
     user,
     onRefresh,
     onClose,

@@ -1,7 +1,4 @@
-import {
-  calculateSasMetrics,
-  getSasTimePeriod,
-} from '@/lib/helpers/collectionCreation';
+import { calculateSasMetrics } from '@/lib/helpers/collectionCreation';
 import {
   CollectionData,
   FixResults,
@@ -103,7 +100,7 @@ export async function POST(request: NextRequest) {
         timestamp: new Date(),
       };
     } else if (reportId) {
-      // Fix specific report
+      // Fix specific report BUT also fix ALL collections for SAS time chain integrity
       // reportId can be either MongoDB _id or locationReportId (UUID)
       // Try to find by locationReportId first (most common case from frontend)
       targetReport = await CollectionReport.findOne({
@@ -126,11 +123,26 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      targetCollections = await Collections.find({
-        locationReportId: targetReport.locationReportId,
-      }).lean();
+      // CRITICAL: Get ALL completed collections across ALL reports for SAS time chain integrity
+      // SAS times depend on previous collections, so we must process ALL chronologically
+      // This ensures each collection's SAS times are calculated from the correct previous collection
+      console.warn(
+        `🔧 Requested fix for report: ${targetReport.locationReportId}`
+      );
+      console.warn(
+        `🔧 But will fix ALL collections chronologically for data integrity`
+      );
 
-      console.warn(`🔧 Fixing report: ${targetReport.locationReportId}`);
+      targetCollections = await Collections.find({
+        isCompleted: true,
+        locationReportId: { $exists: true, $ne: '' },
+      })
+        .sort({ timestamp: 1 })
+        .lean();
+
+      console.warn(
+        `🔧 Processing ${targetCollections.length} total collections across all reports`
+      );
     } else {
       // Fix most recent report
       targetReport = await CollectionReport.findOne({})
@@ -181,7 +193,7 @@ export async function POST(request: NextRequest) {
 
       try {
         // 1. Fix SAS Times Issues
-        await fixSasTimesIssues(collection, fixResults);
+        await fixSasTimesIssues(collection, fixResults, targetCollections);
 
         // 2. Fix Movement Calculation Issues
         await fixMovementCalculationIssues(collection, fixResults);
@@ -293,84 +305,124 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Fix SAS times issues (inverted, missing, incorrect)
+ * Fix SAS times issues (inverted, missing, incorrect, wrong start/end times)
+ * CRITICAL: This must match the working logic from scripts/detect-and-fix-sas-times.js
  */
 async function fixSasTimesIssues(
   collection: CollectionData,
-  fixResults: FixResults
+  fixResults: FixResults,
+  allCollections: CollectionData[]
 ) {
   try {
     let needsUpdate = false;
     const updateData: Record<string, unknown> = {};
 
-    // Check for missing SAS times
-    if (
-      !collection.sasMeters?.sasStartTime ||
-      !collection.sasMeters?.sasEndTime
-    ) {
+    // Get expected SAS times by finding the previous collection
+    const currentTimestamp = new Date(
+      (collection.timestamp || collection.collectionTime) as string | Date
+    );
+
+    // Find the previous collection for this machine
+    const previousCollection = allCollections
+      .filter(
+        c =>
+          c.machineId === collection.machineId &&
+          new Date((c.timestamp || c.collectionTime) as string | Date) <
+            currentTimestamp &&
+          c.isCompleted === true &&
+          c.locationReportId &&
+          c.locationReportId.trim() !== '' &&
+          c._id.toString() !== collection._id.toString()
+      )
+      .sort((a, b) => {
+        const aTime = new Date(
+          (a.timestamp || a.collectionTime) as string | Date
+        ).getTime();
+        const bTime = new Date(
+          (b.timestamp || b.collectionTime) as string | Date
+        ).getTime();
+        return bTime - aTime; // descending
+      })[0];
+
+    const expectedSasStartTime = previousCollection
+      ? new Date(
+          (previousCollection.timestamp ||
+            previousCollection.collectionTime) as string | Date
+        )
+      : new Date(currentTimestamp.getTime() - 24 * 60 * 60 * 1000);
+
+    const expectedSasEndTime = currentTimestamp;
+
+    // Check if we need to fix SAS times
+    const hasSasTimes =
+      collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime;
+
+    if (!hasSasTimes) {
+      // Missing SAS times
       console.warn(
         `   🔧 Fixing missing SAS times for collection ${collection._id}`
       );
-
-      const { sasStartTime, sasEndTime } = await getSasTimePeriod(
-        collection.machineId,
-        undefined,
-        new Date(collection.timestamp)
-      );
-
-      const sasMetrics = await calculateSasMetrics(
-        collection.machineId,
-        sasStartTime,
-        sasEndTime
-      );
-
-      updateData.sasMeters = {
-        ...collection.sasMeters,
-        ...sasMetrics,
-        sasStartTime: sasStartTime.toISOString(),
-        sasEndTime: sasEndTime.toISOString(),
-        machine: collection.sasMeters?.machine || collection.machineId,
-      };
-
       needsUpdate = true;
-      fixResults.issuesFixed.sasTimesFixed++;
-    }
-    // Check for inverted SAS times
-    else if (
-      new Date(collection.sasMeters.sasStartTime) >=
-      new Date(collection.sasMeters.sasEndTime)
-    ) {
-      console.warn(
-        `   🔧 Fixing inverted SAS times for collection ${collection._id}`
+    } else {
+      const sasStartTime = new Date(
+        collection.sasMeters!.sasStartTime as string
       );
+      const sasEndTime = new Date(collection.sasMeters!.sasEndTime as string);
 
-      const { sasStartTime, sasEndTime } = await getSasTimePeriod(
-        collection.machineId,
-        undefined,
-        new Date(collection.timestamp)
+      // Check for inverted times
+      if (sasStartTime >= sasEndTime) {
+        console.warn(
+          `   🔧 Fixing inverted SAS times for collection ${collection._id}`
+        );
+        needsUpdate = true;
+      }
+
+      // Check if sasStartTime matches expected
+      const startDiff = Math.abs(
+        sasStartTime.getTime() - expectedSasStartTime.getTime()
       );
+      if (startDiff > 1000) {
+        console.warn(
+          `   🔧 Fixing wrong SAS start time for collection ${collection._id} (off by ${Math.round(startDiff / 1000 / 60)} minutes)`
+        );
+        needsUpdate = true;
+      }
 
-      const sasMetrics = await calculateSasMetrics(
-        collection.machineId,
-        sasStartTime,
-        sasEndTime
+      // Check if sasEndTime matches expected
+      const endDiff = Math.abs(
+        sasEndTime.getTime() - expectedSasEndTime.getTime()
       );
-
-      updateData.sasMeters = {
-        ...collection.sasMeters,
-        ...sasMetrics,
-        sasStartTime: sasStartTime.toISOString(),
-        sasEndTime: sasEndTime.toISOString(),
-        machine: collection.sasMeters?.machine || collection.machineId,
-      };
-
-      needsUpdate = true;
-      fixResults.issuesFixed.sasTimesFixed++;
+      if (endDiff > 1000) {
+        console.warn(
+          `   🔧 Fixing wrong SAS end time for collection ${collection._id} (off by ${Math.round(endDiff / 1000 / 60)} minutes)`
+        );
+        needsUpdate = true;
+      }
     }
 
     if (needsUpdate) {
+      // Recalculate SAS metrics with correct time window
+      const sasMetrics = await calculateSasMetrics(
+        collection.machineId,
+        expectedSasStartTime,
+        expectedSasEndTime
+      );
+
+      updateData.sasMeters = {
+        ...collection.sasMeters,
+        drop: sasMetrics.drop,
+        totalCancelledCredits: sasMetrics.totalCancelledCredits,
+        gross: sasMetrics.gross,
+        gamesPlayed: sasMetrics.gamesPlayed,
+        jackpot: sasMetrics.jackpot,
+        sasStartTime: expectedSasStartTime.toISOString(),
+        sasEndTime: expectedSasEndTime.toISOString(),
+        machine: collection.sasMeters?.machine || collection.machineId,
+      };
+
       await Collections.findByIdAndUpdate(collection._id, { $set: updateData });
       console.warn(`   ✅ Fixed SAS times for collection ${collection._id}`);
+      fixResults.issuesFixed.sasTimesFixed++;
     }
   } catch (error) {
     console.error(
@@ -751,16 +803,24 @@ async function fixMachineHistoryIssues(
     console.warn(`\n🔍 [fixMachineHistoryIssues] Processing collection:`);
     console.warn(`   Collection ID: ${collection._id}`);
     console.warn(`   locationReportId: ${collection.locationReportId}`);
-    console.warn(`   Collection prevIn/prevOut: ${collection.prevIn}/${collection.prevOut}`);
-    console.warn(`   Machine ID: ${collection.machineId} (type: ${typeof collection.machineId})`);
-    
+    console.warn(
+      `   Collection prevIn/prevOut: ${collection.prevIn}/${collection.prevOut}`
+    );
+    console.warn(
+      `   Machine ID: ${collection.machineId} (type: ${typeof collection.machineId})`
+    );
+
     let machine = (await Machine.findById(
       collection.machineId
     ).lean()) as MachineData | null;
     if (!machine) {
-      console.warn(`   ❌ Machine not found with findById: ${collection.machineId}`);
+      console.warn(
+        `   ❌ Machine not found with findById: ${collection.machineId}`
+      );
       console.warn(`   ⚠️ Trying findOne instead...`);
-      machine = await Machine.findOne({ _id: collection.machineId }).lean() as MachineData | null;
+      machine = (await Machine.findOne({
+        _id: collection.machineId,
+      }).lean()) as MachineData | null;
       if (!machine) {
         console.warn(`   ❌ Machine STILL not found with findOne!`);
         return;
@@ -809,9 +869,13 @@ async function fixMachineHistoryIssues(
       );
     } else {
       console.warn(`   ✅ Found history entry`);
-      console.warn(`      History prevMetersIn/prevMetersOut: ${historyEntry.prevMetersIn}/${historyEntry.prevMetersOut}`);
-      console.warn(`      Collection prevIn/prevOut: ${collection.prevIn || 0}/${collection.prevOut || 0}`);
-      
+      console.warn(
+        `      History prevMetersIn/prevMetersOut: ${historyEntry.prevMetersIn}/${historyEntry.prevMetersOut}`
+      );
+      console.warn(
+        `      Collection prevIn/prevOut: ${collection.prevIn || 0}/${collection.prevOut || 0}`
+      );
+
       // CRITICAL: Always sync history entry with collection document values
       // This fixes discrepancies where history shows wrong values
       const needsUpdate =
@@ -833,7 +897,9 @@ async function fixMachineHistoryIssues(
           `      History: metersIn=${historyEntry.metersIn}, metersOut=${historyEntry.metersOut}, prevMetersIn=${historyEntry.prevMetersIn}, prevMetersOut=${historyEntry.prevMetersOut}`
         );
         console.warn(`   🔧 Attempting update with arrayFilters...`);
-        console.warn(`      arrayFilter: { 'elem.locationReportId': '${collection.locationReportId}' }`);
+        console.warn(
+          `      arrayFilter: { 'elem.locationReportId': '${collection.locationReportId}' }`
+        );
 
         // Use locationReportId to identify the specific entry to update
         const result = await Machine.findByIdAndUpdate(
@@ -864,16 +930,23 @@ async function fixMachineHistoryIssues(
 
         if (!result) {
           console.warn(`   ❌ UPDATE FAILED! findByIdAndUpdate returned null`);
-          console.warn(`      This usually means document not found or update didn't match any elements`);
+          console.warn(
+            `      This usually means document not found or update didn't match any elements`
+          );
         } else {
           console.warn(`   ✅ UPDATE SUCCESSFUL!`);
           const updatedEntry = result.collectionMetersHistory?.find(
-            (e: HistoryEntry) => e.locationReportId === collection.locationReportId
+            (e: HistoryEntry) =>
+              e.locationReportId === collection.locationReportId
           );
           if (updatedEntry) {
-            console.warn(`   ✅ Verified - New prevMetersIn: ${updatedEntry.prevMetersIn}, prevMetersOut: ${updatedEntry.prevMetersOut}`);
+            console.warn(
+              `   ✅ Verified - New prevMetersIn: ${updatedEntry.prevMetersIn}, prevMetersOut: ${updatedEntry.prevMetersOut}`
+            );
           } else {
-            console.warn(`   ⚠️ Could not verify update - entry not found in result`);
+            console.warn(
+              `   ⚠️ Could not verify update - entry not found in result`
+            );
           }
         }
 
@@ -1290,7 +1363,9 @@ async function processMachinesForHistoryFix(
         `   🔄 Syncing ALL history entries with their collections...`
       );
       console.warn(`   Total cleaned entries: ${cleanedHistory.length}`);
-      console.warn(`   Total collections available: ${allMachineCollections.length}`);
+      console.warn(
+        `   Total collections available: ${allMachineCollections.length}`
+      );
 
       let syncMadeChanges = false;
       for (const entry of cleanedHistory) {
@@ -1306,39 +1381,55 @@ async function processMachinesForHistoryFix(
               entry.metersOut !== matchingCollection.metersOut ||
               entry.prevMetersIn !== (matchingCollection.prevIn || 0) ||
               entry.prevMetersOut !== (matchingCollection.prevOut || 0);
-            
+
             if (valuesDiffer) {
-              const reportIdStr = String(entry.locationReportId || '').substring(0, 20);
+              const reportIdStr = String(
+                entry.locationReportId || ''
+              ).substring(0, 20);
               console.warn(`   ✅ Syncing ${reportIdStr}... (values differ)`);
-              console.warn(`      Before: prevMetersIn=${entry.prevMetersIn}, prevMetersOut=${entry.prevMetersOut}`);
+              console.warn(
+                `      Before: prevMetersIn=${entry.prevMetersIn}, prevMetersOut=${entry.prevMetersOut}`
+              );
               syncMadeChanges = true;
             }
-            
+
             // Sync ALL fields with the collection (source of truth)
             entry.metersIn = matchingCollection.metersIn;
             entry.metersOut = matchingCollection.metersOut;
             entry.prevMetersIn = matchingCollection.prevIn || 0;
             entry.prevMetersOut = matchingCollection.prevOut || 0;
             entry.timestamp = new Date(matchingCollection.timestamp);
-            
+
             if (valuesDiffer) {
-              console.warn(`      After: prevMetersIn=${entry.prevMetersIn}, prevMetersOut=${entry.prevMetersOut}`);
+              console.warn(
+                `      After: prevMetersIn=${entry.prevMetersIn}, prevMetersOut=${entry.prevMetersOut}`
+              );
             }
           } else {
-            console.warn(`   ⚠️ No matching collection found for ${entry.locationReportId}`);
+            console.warn(
+              `   ⚠️ No matching collection found for ${entry.locationReportId}`
+            );
           }
         }
       }
 
       // Update if either cleanup made changes OR sync made changes
       if (hasChanges || syncMadeChanges) {
-        console.warn(`   💾 Saving history to database... (hasChanges=${hasChanges}, syncMadeChanges=${syncMadeChanges})`);
-        const updateResult = await Machine.findByIdAndUpdate(machineId, {
-          $set: { collectionMetersHistory: cleanedHistory },
-        }, { new: true });
+        console.warn(
+          `   💾 Saving history to database... (hasChanges=${hasChanges}, syncMadeChanges=${syncMadeChanges})`
+        );
+        const updateResult = await Machine.findByIdAndUpdate(
+          machineId,
+          {
+            $set: { collectionMetersHistory: cleanedHistory },
+          },
+          { new: true }
+        );
 
         if (!updateResult) {
-          console.warn(`   ❌ Phase 3 update FAILED! findByIdAndUpdate returned null`);
+          console.warn(
+            `   ❌ Phase 3 update FAILED! findByIdAndUpdate returned null`
+          );
           console.warn(`      Trying findOneAndUpdate instead...`);
           const updateResultAlt = await Machine.findOneAndUpdate(
             { _id: machineId },

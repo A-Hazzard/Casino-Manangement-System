@@ -18,6 +18,7 @@ type ExtendedCollectionReportCardsProps = {
   reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
+  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited
 };
 
 export default function CollectionReportCards({
@@ -26,6 +27,7 @@ export default function CollectionReportCards({
   reportIssues,
   onEdit,
   onDelete,
+  editableReportIds,
 }: ExtendedCollectionReportCardsProps) {
   const router = useRouter();
   const {
@@ -183,9 +185,8 @@ export default function CollectionReportCards({
                       width={16}
                       height={16}
                     />
-                    <span className="hidden md:inline">VIEW DETAILS</span>
                   </Button>
-                  {canEditDelete && (
+                  {canEditDelete && editableReportIds?.has(row?.locationReportId || "") && (
                     <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                       {onEdit && (
                         <Button
@@ -195,7 +196,6 @@ export default function CollectionReportCards({
                           aria-label="Edit Report"
                         >
                           <Edit3 className="h-4 w-4" />
-                          <span className="hidden md:inline">EDIT</span>
                         </Button>
                       )}
                       {onDelete && (
@@ -206,7 +206,6 @@ export default function CollectionReportCards({
                           aria-label="Delete Report"
                         >
                           <Trash2 className="h-4 w-4" />
-                          <span className="hidden md:inline">DELETE</span>
                         </Button>
                       )}
                     </div>

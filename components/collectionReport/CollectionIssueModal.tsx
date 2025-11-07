@@ -37,6 +37,25 @@ const issueTypeConfig = {
     color: 'warning',
     description: "SAS time range doesn't align properly with collection timing",
   },
+  wrong_sas_start_time: {
+    title: 'Wrong SAS Start Time',
+    icon: Clock,
+    color: 'warning',
+    description:
+      "SAS start time doesn't match the previous collection's timestamp",
+  },
+  wrong_sas_end_time: {
+    title: 'Wrong SAS End Time',
+    icon: Clock,
+    color: 'warning',
+    description: "SAS end time doesn't match the collection timestamp",
+  },
+  missing_sas_times: {
+    title: 'Missing SAS Times',
+    icon: AlertTriangle,
+    color: 'destructive',
+    description: 'SAS times are missing from this collection',
+  },
   history_mismatch: {
     title: 'Collection History Timestamp',
     icon: RefreshCw,

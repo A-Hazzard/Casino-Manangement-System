@@ -33,6 +33,8 @@ const AnimatePresence = dynamic(
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
+import { hasManagerAccess } from '@/lib/utils/permissions';
 
 // GSAP will be loaded dynamically in useEffect
 
@@ -141,6 +143,7 @@ function CollectionReportContent() {
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+  const user = useUserStore(state => state.user);
 
   // State for dynamically loaded GSAP
   const [gsap, setGsap] = useState<typeof import('gsap').gsap | null>(null);
@@ -401,9 +404,15 @@ function CollectionReportContent() {
 
   // Function to refresh locations data with machines
   const refreshLocations = useCallback(() => {
-    console.log('[refreshLocations] Fetching locations with machines for licensee:', selectedLicencee);
+    console.log(
+      '[refreshLocations] Fetching locations with machines for licensee:',
+      selectedLicencee
+    );
     getLocationsWithMachines(selectedLicencee).then(locs => {
-      console.log('[refreshLocations] Received locations with machines:', locs.length);
+      console.log(
+        '[refreshLocations] Received locations with machines:',
+        locs.length
+      );
       setLocationsWithMachines(locs);
     });
   }, [selectedLicencee]);
@@ -651,6 +660,43 @@ function CollectionReportContent() {
     sortField,
     sortDirection,
   ]);
+
+  // Check if user has permission to edit reports
+  // Only collectors, location collectors, managers, admins, and evolution admins can edit
+  const canUserEdit = useMemo(() => {
+    if (!user || !user.roles) return false;
+    return hasManagerAccess(user.roles); // hasManagerAccess includes: collector, locationCollector, manager, admin, evoAdmin
+  }, [user]);
+
+  // Determine which reports can be edited (only most recent per location)
+  const editableReportIds = useMemo(() => {
+    // If user doesn't have permission, return empty set
+    if (!canUserEdit) {
+      return new Set<string>();
+    }
+
+    const reportsByLocation = new Map<string, CollectionReportRow>();
+
+    // Group reports by location and find the most recent one for each
+    filteredReports.forEach(report => {
+      const existing = reportsByLocation.get(report.location);
+      if (!existing) {
+        reportsByLocation.set(report.location, report);
+      } else {
+        // Compare timestamps to find most recent
+        const existingTime = new Date(existing.time).getTime();
+        const currentTime = new Date(report.time).getTime();
+        if (currentTime > existingTime) {
+          reportsByLocation.set(report.location, report);
+        }
+      }
+    });
+
+    // Return set of locationReportIds that are the most recent for their location
+    return new Set(
+      Array.from(reportsByLocation.values()).map(r => r.locationReportId)
+    );
+  }, [filteredReports, canUserEdit]);
 
   const fetchMonthlyData = useCallback(() => {
     if (!monthlyDateRange.from || !monthlyDateRange.to) return;
@@ -1163,6 +1209,7 @@ function CollectionReportContent() {
                     sortDirection={sortDirection}
                     onSort={handleSort}
                     selectedLicencee={selectedLicencee}
+                    editableReportIds={editableReportIds}
                   />
                   <CollectionMobileUI
                     loading={loading}
@@ -1192,6 +1239,7 @@ function CollectionReportContent() {
                     onEdit={handleEditCollectionReport}
                     onDelete={handleDeleteCollectionReport}
                     selectedLicencee={selectedLicencee}
+                    editableReportIds={editableReportIds}
                   />
                 </div>
               )}

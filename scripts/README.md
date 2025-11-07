@@ -4,6 +4,98 @@ This directory contains maintenance, cleanup, and testing scripts for the Evolut
 
 ## Available Scripts
 
+### Diagnostic & Fix Scripts
+
+#### detect-and-fix-sas-times.js
+
+**Purpose:** Detects and fixes SAS time issues in collection reports caused by bulk timestamp updates or incorrect SAS time calculations.
+
+**Problem Solved:** When using the "Update All Dates" feature in collection modals, SAS times (sasStartTime/sasEndTime) were not being recalculated, leading to:
+- Incorrect SAS windows (e.g., Oct 30th → Nov 3rd instead of Oct 30th → Oct 31st)
+- Wrong SAS metrics (drop, cancelled credits, gross)
+- Cascading errors in subsequent collections
+
+**What it does:**
+
+1. **Backup Mode:** Exports all collections and reports to timestamped JSON backup files
+2. **Detect Mode:** Scans all reports chronologically and identifies SAS time issues:
+   - Wrong sasStartTime (doesn't match previous collection's timestamp)
+   - Wrong sasEndTime (doesn't match current collection's timestamp)  
+   - Inverted times (start >= end)
+   - Extremely long spans (> 30 days with time mismatches)
+3. **Test Mode:** Simulates fixes without writing to database, verifies 0 issues after fix
+4. **Fix Mode:** Applies fixes to database chronologically from oldest to newest
+5. **Restore Mode:** Restores data from backup if needed
+
+**Safety Features:**
+
+- Multiple modes for safe testing before applying fixes
+- Chronological processing (oldest first) to maintain data integrity
+- Backup and restore capabilities
+- Detailed reporting of all changes
+- Confirmation prompts before destructive operations
+
+**Usage:**
+
+```bash
+# Step 1: Create backup (ALWAYS do this first)
+node scripts/detect-and-fix-sas-times.js --mode=backup
+
+# Step 2: Detect issues
+node scripts/detect-and-fix-sas-times.js --mode=detect
+
+# Step 3: Test fixes (dry-run, no database writes)
+node scripts/detect-and-fix-sas-times.js --mode=test
+
+# Step 4: Apply fixes (requires confirmation)
+node scripts/detect-and-fix-sas-times.js --mode=fix
+
+# Step 5: Verify (should show 0 issues)
+node scripts/detect-and-fix-sas-times.js --mode=detect
+
+# If needed: Restore from backup
+node scripts/detect-and-fix-sas-times.js --mode=restore --backup-dir=./backups/sas-times-backup-2025-11-07T...
+```
+
+**Prerequisites:**
+
+- `MONGO_URI` must be set in `.env` file
+- Node.js and required dependencies installed
+- **CRITICAL:** Always backup before running `--mode=fix`
+
+**Output Examples:**
+
+**Detect Mode:**
+```
+═══════════════════════════════════════════════════════════
+                    DETECTION SUMMARY                      
+═══════════════════════════════════════════════════════════
+
+❌ Found issues in 4 reports
+
+📊 Report: Dueces - 2025-10-31 12:00:35
+   Machines with issues: 17
+   Total issues: 17
+
+   🔧 Machine: GMID1
+      Current SAS: 2025-10-30 12:00:29 → 2025-11-03 12:00:35
+      Expected SAS: 2025-10-30 12:00:29 → 2025-10-31 12:00:35
+      ❌ wrong_end_time: SAS end time doesn't match collection timestamp
+```
+
+**Test Mode:**
+```
+Issues before fix: 103
+Issues after fix:  0
+Issues resolved:   103
+
+✅ All issues would be resolved by applying fixes!
+```
+
+**Related Fix:** The `PATCH /api/collections` endpoint has been updated to automatically recalculate SAS times when timestamps are changed, preventing this issue in future bulk updates.
+
+---
+
 ### Cleanup Scripts
 
 #### cleanup-old-collections.js

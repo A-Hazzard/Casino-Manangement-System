@@ -237,6 +237,7 @@ export type CollectionDesktopUIProps = {
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
   selectedLicencee?: string;
+  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited (most recent per location)
 };
 
 export type CollectionMobileUIProps = {
@@ -266,6 +267,7 @@ export type CollectionMobileUIProps = {
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
   selectedLicencee?: string;
+  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited (most recent per location)
 };
 
 export type MonthlyDesktopUIProps = {

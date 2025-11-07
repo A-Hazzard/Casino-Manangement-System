@@ -2,7 +2,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { calculateChanges, logActivity } from '@/lib/helpers/activityLogger';
-import { createCollectionWithCalculations } from '@/lib/helpers/collectionCreation';
+import {
+  calculateSasMetrics,
+  createCollectionWithCalculations,
+  getSasTimePeriod,
+} from '@/lib/helpers/collectionCreation';
 import type {
   CollectionDocument,
   CreateCollectionPayload,
@@ -17,7 +21,8 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const locationReportId = searchParams.get('locationReportId');
-    const location = searchParams.get('location');
+    const location =
+      searchParams.get('location') || searchParams.get('locationId'); // Accept both location and locationId
     const collector = searchParams.get('collector');
     const isCompleted = searchParams.get('isCompleted');
     const incompleteOnly = searchParams.get('incompleteOnly');
@@ -332,6 +337,13 @@ export async function PATCH(req: NextRequest) {
       updateData.ramClearMetersIn !== undefined ||
       updateData.ramClearMetersOut !== undefined;
 
+    // CRITICAL FIX: When timestamp changes, we must recalculate SAS times and metrics
+    // This fixes the "Update All Dates" button issue where SAS times weren't being recalculated
+    const timestampChanged =
+      updateData.timestamp !== undefined &&
+      new Date(updateData.timestamp).getTime() !==
+        new Date(originalCollection.timestamp).getTime();
+
     if (metersChanged) {
       console.warn(
         '🔄 Meters changed, recalculating prevIn/prevOut and movement for collection:',
@@ -420,6 +432,62 @@ export async function PATCH(req: NextRequest) {
       };
 
       console.warn('✅ Recalculated movement:', updateData.movement);
+    }
+
+    // CRITICAL FIX: When timestamp changes, recalculate SAS times and metrics
+    // This ensures "Update All Dates" button properly updates SAS windows
+    if (timestampChanged || metersChanged) {
+      console.warn(
+        '🔄 Timestamp or meters changed, recalculating SAS times and metrics for collection:',
+        id
+      );
+
+      try {
+        // Use the new timestamp if provided, otherwise use original
+        const collectionTimestamp = updateData.timestamp
+          ? new Date(updateData.timestamp)
+          : originalCollection.timestamp;
+
+        // Get correct SAS time period based on previous collections
+        const { sasStartTime, sasEndTime } = await getSasTimePeriod(
+          originalCollection.machineId as string,
+          undefined,
+          collectionTimestamp
+        );
+
+        // Recalculate SAS metrics with the correct time window
+        const sasMetrics = await calculateSasMetrics(
+          originalCollection.machineId as string,
+          sasStartTime,
+          sasEndTime
+        );
+
+        // Update sasMeters in the update data
+        updateData.sasMeters = {
+          ...originalCollection.sasMeters,
+          drop: sasMetrics.drop,
+          totalCancelledCredits: sasMetrics.totalCancelledCredits,
+          gross: sasMetrics.gross,
+          gamesPlayed: sasMetrics.gamesPlayed,
+          jackpot: sasMetrics.jackpot,
+          sasStartTime: sasMetrics.sasStartTime,
+          sasEndTime: sasMetrics.sasEndTime,
+          machine:
+            originalCollection.sasMeters?.machine ||
+            originalCollection.machineId,
+        };
+
+        console.warn('✅ Recalculated SAS times and metrics:', {
+          sasStartTime: sasMetrics.sasStartTime,
+          sasEndTime: sasMetrics.sasEndTime,
+          drop: sasMetrics.drop,
+          gross: sasMetrics.gross,
+        });
+      } catch (sasError) {
+        console.error('❌ Error recalculating SAS metrics:', sasError);
+        // Continue with update even if SAS calculation fails
+        // This prevents the entire update from failing
+      }
     }
 
     const updated = await Collections.findByIdAndUpdate(

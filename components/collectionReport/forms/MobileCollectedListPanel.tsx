@@ -41,6 +41,7 @@ type MobileCollectedListPanelProps = {
   formatMachineDisplay: (machine: {
     serialNumber?: string;
     custom: { name?: string };
+    game?: string;
   }) => React.ReactElement;
   formatDate: (date: Date) => string;
   sortMachines: (machines: CollectionDocument[]) => CollectionDocument[];
@@ -391,6 +392,7 @@ export const MobileCollectedListPanel: React.FC<
                                 custom: {
                                   name: machine.machineCustomName,
                                 },
+                                game: machine.game,
                               })}
                             </p>
                             <p className="mt-1 text-xs text-gray-600">

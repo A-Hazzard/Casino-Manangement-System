@@ -89,9 +89,9 @@ export default function CollectionReportFilters({
       className="flex w-full flex-col gap-y-3 border border-gray-200 bg-white p-4 lg:gap-y-4 lg:bg-buttonActive"
     >
       {/* Top row - Search, Location, and Clear Button (only on lg and above) */}
-      <div className="flex flex-col gap-y-3 lg:flex-row lg:items-center lg:gap-4">
+      <div className="flex flex-col gap-y-3 md:flex-row md:flex-wrap lg:items-center lg:gap-4">
         {/* Search Input */}
-        <div className="relative w-full lg:w-[320px] lg:min-w-[280px]">
+        <div className="relative w-full md:flex-1 md:min-w-[200px] lg:w-[320px] lg:flex-none lg:min-w-[280px]">
           <input
             type="text"
             placeholder="Search Collector or Location..."
@@ -121,7 +121,7 @@ export default function CollectionReportFilters({
             onLocationChange(value);
           }}
           placeholder="Select Location"
-          className="w-full lg:w-[240px] lg:min-w-[200px]"
+          className="w-full md:flex-1 md:min-w-[200px] lg:w-[240px] lg:flex-none lg:min-w-[200px]"
           includeAllOption={true}
         />
 
@@ -173,8 +173,8 @@ export default function CollectionReportFilters({
           </label>
         </div>
 
-        {/* SMIB Filter Checkboxes */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* SMIB Filter Checkboxes - Flexible layout */}
+        <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3">
           <div className="flex items-center space-x-2">
             <Checkbox
               id="smibFilter"
@@ -225,17 +225,17 @@ export default function CollectionReportFilters({
               Local Server
             </label>
           </div>
-        </div>
 
-        {/* Clear Filters Button - only visible on xl and below lg */}
-        <div className="flex w-full items-center lg:hidden">
-          <Button
-            variant="outline"
-            onClick={onClearFilters}
-            className="w-full whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-          >
-            Clear Filters
-          </Button>
+          {/* Clear Filters Button - flexible positioning on md, full width on mobile */}
+          <div className="flex w-full md:w-auto md:flex-1 md:min-w-[120px] items-center">
+            <Button
+              variant="outline"
+              onClick={onClearFilters}
+              className="w-full whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+            >
+              Clear Filters
+            </Button>
+          </div>
         </div>
       </div>
     </div>

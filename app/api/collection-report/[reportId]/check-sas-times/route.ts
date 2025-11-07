@@ -55,17 +55,59 @@ export async function GET(
       });
     }
 
+    // CRITICAL: Fetch ALL completed collections across ALL reports to find previous collections
+    // This is necessary because a machine's previous collection might be in a different report
+    const allCollections = await Collections.find({
+      isCompleted: true,
+      locationReportId: { $exists: true, $ne: '' },
+    }).sort({ timestamp: 1, collectionTime: 1 });
+
     const issues: CollectionIssue[] = [];
     const affectedMachines = new Set<string>();
 
+    // Sort collections chronologically for proper validation
+    const sortedCollections = collections.sort((a, b) => {
+      const aTime = new Date(a.timestamp || a.collectionTime).getTime();
+      const bTime = new Date(b.timestamp || b.collectionTime).getTime();
+      return aTime - bTime;
+    });
+
     // Check each collection for issues
-    for (const collection of collections) {
+    for (const collection of sortedCollections) {
       const machineId = collection.machineId;
       if (!machineId) continue;
 
       affectedMachines.add(machineId);
 
-      // Check for inverted SAS times
+      // Get expected SAS times by finding the previous collection
+      const currentTimestamp = new Date(
+        collection.timestamp || collection.collectionTime
+      );
+
+      // Find the previous collection for this machine (search ALL collections, not just this report)
+      const previousCollection = allCollections
+        .filter(
+          c =>
+            c.machineId === machineId &&
+            new Date(c.timestamp || c.collectionTime) < currentTimestamp &&
+            c.isCompleted === true &&
+            c.locationReportId &&
+            c.locationReportId.trim() !== '' &&
+            c._id.toString() !== collection._id.toString()
+        )
+        .sort((a, b) => {
+          const aTime = new Date(a.timestamp || a.collectionTime).getTime();
+          const bTime = new Date(b.timestamp || b.collectionTime).getTime();
+          return bTime - aTime; // descending
+        })[0];
+
+      const expectedSasStartTime = previousCollection
+        ? new Date(previousCollection.timestamp || previousCollection.collectionTime)
+        : new Date(currentTimestamp.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago if no previous
+
+      const expectedSasEndTime = currentTimestamp;
+
+      // Check SAS times if they exist
       if (
         collection.sasMeters?.sasStartTime &&
         collection.sasMeters?.sasEndTime
@@ -73,6 +115,7 @@ export async function GET(
         const sasStartTime = new Date(collection.sasMeters.sasStartTime);
         const sasEndTime = new Date(collection.sasMeters.sasEndTime);
 
+        // Check for inverted SAS times
         if (sasStartTime >= sasEndTime) {
           issues.push({
             collectionId: collection._id.toString(),
@@ -87,14 +130,94 @@ export async function GET(
                 sasEndTime: sasEndTime.toISOString(),
               },
               expected: {
-                sasStartTime: 'Should be before sasEndTime',
-                sasEndTime: 'Should be after sasStartTime',
+                sasStartTime: expectedSasStartTime.toISOString(),
+                sasEndTime: expectedSasEndTime.toISOString(),
               },
               explanation:
                 'SAS start time is after or equal to SAS end time, creating an invalid time range',
             },
           });
         }
+
+        // Check if sasStartTime matches expected (previous collection's timestamp)
+        const startDiff = Math.abs(
+          sasStartTime.getTime() - expectedSasStartTime.getTime()
+        );
+        if (startDiff > 1000) {
+          // Allow 1 second tolerance
+          issues.push({
+            collectionId: collection._id.toString(),
+            machineName:
+              collection.machineName ||
+              collection.machineCustomName ||
+              'Unknown',
+            issueType: 'wrong_sas_start_time',
+            details: {
+              current: {
+                sasStartTime: sasStartTime.toISOString(),
+              },
+              expected: {
+                sasStartTime: expectedSasStartTime.toISOString(),
+                explanation: previousCollection
+                  ? `Should match previous collection's timestamp`
+                  : `No previous collection found, using 24 hours before current`,
+              },
+              explanation: `SAS start time doesn't match ${
+                previousCollection
+                  ? "previous collection's timestamp"
+                  : 'expected value (24 hours before)'
+              }. Difference: ${Math.round(startDiff / 1000 / 60)} minutes`,
+            },
+          });
+        }
+
+        // Check if sasEndTime matches expected (current collection's timestamp)
+        const endDiff = Math.abs(
+          sasEndTime.getTime() - expectedSasEndTime.getTime()
+        );
+        if (endDiff > 1000) {
+          // Allow 1 second tolerance
+          issues.push({
+            collectionId: collection._id.toString(),
+            machineName:
+              collection.machineName ||
+              collection.machineCustomName ||
+              'Unknown',
+            issueType: 'wrong_sas_end_time',
+            details: {
+              current: {
+                sasEndTime: sasEndTime.toISOString(),
+              },
+              expected: {
+                sasEndTime: expectedSasEndTime.toISOString(),
+              },
+              explanation: `SAS end time doesn't match collection timestamp. Difference: ${Math.round(
+                endDiff / 1000 / 60
+              )} minutes`,
+            },
+          });
+        }
+      } else {
+        // Missing SAS times
+        issues.push({
+          collectionId: collection._id.toString(),
+          machineName:
+            collection.machineName ||
+            collection.machineCustomName ||
+            'Unknown',
+          issueType: 'missing_sas_times',
+          details: {
+            current: {
+              sasStartTime: collection.sasMeters?.sasStartTime || null,
+              sasEndTime: collection.sasMeters?.sasEndTime || null,
+            },
+            expected: {
+              sasStartTime: expectedSasStartTime.toISOString(),
+              sasEndTime: expectedSasEndTime.toISOString(),
+            },
+            explanation: 'SAS times are missing from this collection',
+          },
+        });
       }
 
       // Check for previous meters mismatch

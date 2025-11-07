@@ -729,6 +729,9 @@ export type CollectionIssue = {
     | 'inverted_times'
     | 'prev_meters_mismatch'
     | 'sas_time_wrong'
+    | 'wrong_sas_start_time'
+    | 'wrong_sas_end_time'
+    | 'missing_sas_times'
     | 'history_mismatch'
     | 'machine_time_mismatch';
   details: {

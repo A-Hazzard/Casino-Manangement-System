@@ -31,6 +31,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   onEdit,
   onDelete,
   selectedLicencee,
+  editableReportIds,
 }) => {
   const licenseeName = getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
   
@@ -82,6 +83,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
                 reportIssues={reportIssues}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                editableReportIds={editableReportIds}
               />
             </div>
 
@@ -93,6 +95,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
                 reportIssues={reportIssues}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                editableReportIds={editableReportIds}
               />
             </div>
 

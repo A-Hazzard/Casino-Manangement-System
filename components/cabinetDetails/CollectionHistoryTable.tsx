@@ -30,7 +30,7 @@ import {
 import { useRouter } from 'next/navigation';
 import React, { useMemo, useState } from 'react';
 
-// Helper function to format large numbers compactly
+// Helper function to format large numbers compactly (only when needed)
 const formatLargeNumber = (num: number): string => {
   if (num === 0) return '0';
   if (num < 1000) return num.toLocaleString();
@@ -38,6 +38,40 @@ const formatLargeNumber = (num: number): string => {
   if (num < 1000000000) return `${(num / 1000000).toFixed(1)}M`;
   if (num < 1000000000000) return `${(num / 1000000000).toFixed(1)}B`;
   return `${(num / 1000000000000).toFixed(1)}T`;
+};
+
+// Smart number display component - only abbreviates if it would overflow
+// Shows tooltip with full value on hover
+const SmartNumberDisplay: React.FC<{ value: number }> = ({
+  value,
+}) => {
+  const formattedFull = value.toLocaleString();
+  const formattedCompact = formatLargeNumber(value);
+  
+  // Use compact format if number is >= 1000 (likely to overflow in typical column width)
+  const shouldAbbreviate = value >= 1000;
+  const displayValue = shouldAbbreviate ? formattedCompact : formattedFull;
+
+  if (!shouldAbbreviate) {
+    // No abbreviation needed, show directly
+    return <span>{displayValue}</span>;
+  }
+
+  // Show abbreviated with tooltip
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="cursor-help underline decoration-dotted underline-offset-2">
+            {displayValue}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <p className="text-sm font-mono">{formattedFull}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 };
 
 // Type for collection data from machine's embedded collectionMetersHistory
@@ -429,16 +463,16 @@ export function CollectionHistoryTable({
                       </div>
                     </TableCell>
                     <TableCell className="truncate px-2 text-left">
-                      {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
+                      <SmartNumberDisplay value={row.metersIn || 0} />
                     </TableCell>
                     <TableCell className="truncate px-2 text-left">
-                      {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
+                      <SmartNumberDisplay value={row.metersOut || 0} />
                     </TableCell>
                     <TableCell className="truncate px-2 text-left">
-                      {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
+                      <SmartNumberDisplay value={row.prevIn || 0} />
                     </TableCell>
                     <TableCell className="truncate px-2 text-left">
-                      {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
+                      <SmartNumberDisplay value={row.prevOut || 0} />
                     </TableCell>
                     <TableCell className="truncate px-2 text-left">
                       {row.locationReportId && (
@@ -509,7 +543,7 @@ export function CollectionHistoryTable({
                         Meters In:
                       </span>
                       <span className="font-semibold">
-                        {row.metersIn ? formatLargeNumber(row.metersIn) : '0'}
+                        <SmartNumberDisplay value={row.metersIn || 0} />
                       </span>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -517,7 +551,7 @@ export function CollectionHistoryTable({
                         Meters Out:
                       </span>
                       <span className="font-semibold">
-                        {row.metersOut ? formatLargeNumber(row.metersOut) : '0'}
+                        <SmartNumberDisplay value={row.metersOut || 0} />
                       </span>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -525,7 +559,7 @@ export function CollectionHistoryTable({
                         Prev. In:
                       </span>
                       <span className="font-semibold">
-                        {row.prevIn ? formatLargeNumber(row.prevIn) : '0'}
+                        <SmartNumberDisplay value={row.prevIn || 0} />
                       </span>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -533,7 +567,7 @@ export function CollectionHistoryTable({
                         Prev. Out:
                       </span>
                       <span className="font-semibold">
-                        {row.prevOut ? formatLargeNumber(row.prevOut) : '0'}
+                        <SmartNumberDisplay value={row.prevOut || 0} />
                       </span>
                     </div>
                   </div>

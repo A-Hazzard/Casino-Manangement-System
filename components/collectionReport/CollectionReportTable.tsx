@@ -34,6 +34,7 @@ type ExtendedCollectionReportTableProps = {
   sortField?: keyof CollectionReportRow;
   sortDirection?: "asc" | "desc";
   onSort?: (field: keyof CollectionReportRow) => void;
+  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited
 };
 
 export default function CollectionReportTable({
@@ -44,6 +45,7 @@ export default function CollectionReportTable({
   sortField = "time",
   sortDirection = "desc",
   onSort,
+  editableReportIds,
 }: ExtendedCollectionReportTableProps) {
   const {
     formatAmount: _formatAmount,
@@ -252,7 +254,7 @@ export default function CollectionReportTable({
                         height={16}
                       />
                     </Button>
-                    {canEditDelete && (
+                    {canEditDelete && editableReportIds?.has(row?.locationReportId || "") && (
                       <div className="flex gap-1">
                         {onEdit && (
                           <Button
