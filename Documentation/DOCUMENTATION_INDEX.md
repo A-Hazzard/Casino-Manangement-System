@@ -243,12 +243,12 @@
 ## 🔍 Quick Reference
 
 ### Access Control
-- **Full System Access**: Evolution Admin, Admin (no restrictions)
+- **Full System Access**: Developer, Admin (no restrictions)
 - **Licensee-Level Access**: Manager (all locations for assigned licensees)
 - **Location-Level Access**: Collector, Location Admin, Technician (specific locations only)
 
 ### Licensee Dropdown
-- **Always Shown**: Evolution Admin, Admin
+- **Always Shown**: Developer, Admin
 - **Conditionally Shown**: Manager (2+ licensees), Collector (2+ licensees)
 - **Never Shown**: Location Admin, Technician (single location scope)
 

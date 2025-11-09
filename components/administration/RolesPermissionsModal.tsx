@@ -8,7 +8,7 @@ import { X } from 'lucide-react';
 import gsap from 'gsap';
 
 const ROLE_OPTIONS = [
-  { label: 'Evolution Admin', value: 'evolution admin' },
+  { label: 'Developer', value: 'developer' },
   { label: 'Administrator', value: 'admin' },
   { label: 'Manager', value: 'manager' },
   { label: 'Location Admin', value: 'location admin' },

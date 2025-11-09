@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     console.log('[REPORTS/LOCATIONS] User location permissions:', userLocationPermissions);
     
     // Check if user is admin or manager
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('evolution admin');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
     const isManager = userRoles.includes('manager');
 
     // Build location filter

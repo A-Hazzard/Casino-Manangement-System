@@ -11,7 +11,7 @@ The Evolution One Casino Management System implements a hierarchical role-based 
 
 The system uses seven distinct roles arranged in priority order:
 
-1. **Evolution Admin** - Full platform access with all permissions
+1. **Developer** - Full platform access with all permissions
 2. **Admin** - High-level administrative functions with most system access
 3. **Manager** - Operational oversight with management-level permissions
 4. **Location Admin** - Location-specific management within assigned locations
@@ -25,7 +25,7 @@ The system uses seven distinct roles arranged in priority order:
 
 - Users can have multiple roles assigned
 - Access is determined by the highest priority role
-- Example: A user with "Collector" + "Evolution Admin" gets full platform access
+- Example: A user with "Collector" + "Developer" gets full platform access
 - Example: A user with "Technician" + "Location Admin" can access locations page
 
 ### **Progressive Access Model**
@@ -38,7 +38,7 @@ The system uses seven distinct roles arranged in priority order:
 
 ### **Dashboard Access**
 
-- **Allowed**: Evolution Admin, Admin, Manager, Location Admin
+- **Allowed**: Developer, Admin, Manager, Location Admin
 - **Restricted**: Technician, Collector, Collector Meters
 - **Rationale**: Operational roles focus on specific tasks rather than overview
 
@@ -50,50 +50,50 @@ The system uses seven distinct roles arranged in priority order:
 
 ### **Locations Page**
 
-- **Allowed**: Evolution Admin, Admin, Manager, Location Admin
+- **Allowed**: Developer, Admin, Manager, Location Admin
 - **Restricted**: Technician, Collector, Collector Meters
 - **Direct Link Access**: Technicians can access location details via direct links
 - **Rationale**: Location management is administrative, but technicians need access to specific locations
 
 ### **Members Page**
 
-- **Allowed**: Evolution Admin, Admin, Manager
+- **Allowed**: Developer, Admin, Manager
 - **Restricted**: Location Admin, Technician, Collector, Collector Meters
 - **Direct Link Access**: Location Admin and Technicians can access member details via direct links
 - **Rationale**: Member management is high-level administrative function
 
 ### **Collection Reports Page**
 
-- **Allowed**: Evolution Admin, Admin, Manager, Location Admin, Collector, Collector Meters
+- **Allowed**: Developer, Admin, Manager, Location Admin, Collector, Collector Meters
 - **Restricted**: Technician
 - **Rationale**: Collection operations are specialized functions
 
 ### **Sessions Page**
 
-- **Allowed**: Evolution Admin, Admin, Manager, Location Admin, Technician
+- **Allowed**: Developer, Admin, Manager, Location Admin, Technician
 - **Restricted**: Collector, Collector Meters
 - **Rationale**: Session monitoring is operational oversight function
 
 ### **Administration Page**
 
-- **Allowed**: Evolution Admin, Admin only
+- **Allowed**: Developer, Admin only
 - **Rationale**: System administration requires highest security clearance
 
 ## Tab-Level Access Control
 
 ### **Administration Page Tabs**
 
-- **Users Tab**: Evolution Admin, Admin
-- **Licensees Tab**: Evolution Admin only
-- **Activity Logs Tab**: Evolution Admin only
+- **Users Tab**: Developer, Admin
+- **Licensees Tab**: Developer only
+- **Activity Logs Tab**: Developer only
 - **Rationale**: Different administrative functions require different clearance levels
 
 ### **Collection Reports Page Tabs**
 
 - **Collection Reports**: All roles with page access
-- **Monthly Reports**: Evolution Admin, Admin, Manager, Location Admin
-- **Manager Schedules**: Evolution Admin, Admin, Manager
-- **Collector Schedules**: Evolution Admin, Admin, Manager, Location Admin
+- **Monthly Reports**: Developer, Admin, Manager, Location Admin
+- **Manager Schedules**: Developer, Admin, Manager
+- **Collector Schedules**: Developer, Admin, Manager, Location Admin
 - **Rationale**: Different reporting functions serve different operational needs
 
 ## Licensee Filtering Strategy

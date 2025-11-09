@@ -46,7 +46,7 @@ This document summarizes all documentation updates made to reflect the new **Lic
 **Last Updated:** October 29th, 2025 → November 9th, 2025
 
 **Changes:**
-- Updated **Access Level**: "All authenticated users" → "Evolution Admin, Admin, Manager (with assigned licensees)"
+- Updated **Access Level**: "All authenticated users" → "Developer, Admin, Manager (with assigned licensees)"
 - Added **Licensee Filtering**: ✅ Supported
 - Expanded **Licensee Selection** section with role-based filtering details
 - Added comprehensive **Licensee & Location-Based Filtering** section with:
@@ -64,10 +64,10 @@ This document summarizes all documentation updates made to reflect the new **Lic
 **Last Updated:** October 29th, 2025 → November 9th, 2025
 
 **Changes:**
-- Updated **Access Level**: "All authenticated users" → "Evolution Admin, Admin, Manager, Location Admin (with assigned locations)"
+- Updated **Access Level**: "All authenticated users" → "Developer, Admin, Manager, Location Admin (with assigned locations)"
 - Added **Licensee Filtering**: ✅ Supported
 - Expanded **Search and Filtering** section with role-dependent filtering:
-  - Evolution Admin/Admin: Can filter by any licensee
+  - Developer/Admin: Can filter by any licensee
   - Manager: Can filter by assigned licensees only
   - Location Admin: No dropdown (auto-filtered)
 - Completely rewrote **Security Features** section:
@@ -103,7 +103,7 @@ This document summarizes all documentation updates made to reflect the new **Lic
 
 **Changes:**
 - Updated **User Roles & Permissions** section with detailed access rules:
-  - **Admin & Evolution Admin**: Full access across all licensees, licensee dropdown
+  - **Admin & Developer**: Full access across all licensees, licensee dropdown
   - **Manager**: Access to assigned licensees, dropdown shown if 2+
   - **Collector**: Only assigned locations, dropdown if multi-licensee
   - **Location Admin**: Assigned locations only, no dropdown
@@ -168,7 +168,7 @@ This document summarizes all documentation updates made to reflect the new **Lic
 **Changes:**
 - Updated **Role-Based Access** section with current 6 roles:
   - Removed outdated `viewer` role
-  - Added `evolution admin`, `location admin`, `technician`
+  - Added `developer`, `location admin`, `technician`
   - Described access level for each role
 - Added **Licensee Filtering** section to Common Query Parameters:
   - Parameter names (`licensee` preferred, `licencee` for backwards compatibility)
@@ -227,7 +227,7 @@ All following endpoints now support `licensee`/`licencee` query parameter:
 
 ### 1. Licensee Assignment
 - Users have `rel.licencee` array containing assigned licensee IDs
-- Evolution Admin/Admin don't need assignments (implicit all access)
+- Developer/Admin don't need assignments (implicit all access)
 - Managers see all locations for assigned licensees
 - Non-managers see only specifically assigned locations
 
@@ -244,13 +244,13 @@ All following endpoints now support `licensee`/`licencee` query parameter:
 - Mismatch triggers 401 Unauthorized → auto-logout
 
 ### 4. Filtering Logic
-- Evolution Admin/Admin: `licensee` parameter is optional filter
+- Developer/Admin: `licensee` parameter is optional filter
 - Manager: `licensee` parameter filters within assigned licensees
 - Collector/Location Admin/Technician: Auto-filtered, parameter ignored
 - Backend function: `getUserLocationFilter(selectedLicenseeFilter?)`
 
 ### 5. Dropdown Visibility
-- Evolution Admin/Admin: Always shown
+- Developer/Admin: Always shown
 - Manager: Shown if 2+ assigned licensees
 - Others: Not shown (implicit filtering)
 
@@ -259,14 +259,14 @@ All following endpoints now support `licensee`/`licencee` query parameter:
 ## Testing Coverage
 
 ### Test Users Created
-- `ahzzard` - Evolution Admin (all access)
+- `ahzzard` - Developer (all access)
 - `test_manager` - Manager (Barbados, Cabana, TTG)
 - `test_collector` - Collector (3 locations across Barbados + Cabana)
 - `test_location_admin` - Location Admin (2 Cabana locations)
 - `test_technician` - Technician (2 TTG locations)
 
 ### Verified Scenarios
-1. ✅ Evolution Admin can filter by any licensee or view all
+1. ✅ Developer can filter by any licensee or view all
 2. ✅ Manager with 3 licensees sees all 3 in dropdown
 3. ✅ Manager filtering works correctly for each licensee
 4. ✅ Collector sees only assigned locations

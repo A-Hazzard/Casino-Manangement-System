@@ -2,7 +2,7 @@ import type { UserAuthPayload } from '@/shared/types/auth';
 
 /**
  * Determines if the licensee filter should be shown to the user
- * - Always show for admin/evolution admin
+ * - Always show for admin/developer
  * - Show for non-admin users with multiple licensees
  * - Hide for non-admin users with single or no licensee
  */
@@ -10,7 +10,7 @@ export function shouldShowLicenseeFilter(user: UserAuthPayload | null): boolean 
   if (!user) return false;
   
   const roles = user.roles || [];
-  const isAdmin = roles.includes('admin') || roles.includes('evolution admin');
+  const isAdmin = roles.includes('admin') || roles.includes('developer');
   
   // Always show for admins
   if (isAdmin) return true;
@@ -26,7 +26,7 @@ export function shouldShowLicenseeFilter(user: UserAuthPayload | null): boolean 
 export function canAccessAllLicensees(user: UserAuthPayload | null): boolean {
   if (!user) return false;
   const roles = user.roles || [];
-  return roles.includes('admin') || roles.includes('evolution admin');
+  return roles.includes('admin') || roles.includes('developer');
 }
 
 /**

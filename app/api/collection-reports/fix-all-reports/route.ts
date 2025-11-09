@@ -47,7 +47,7 @@ export async function POST(_request: NextRequest) {
 
       if (
         !user.roles?.includes("admin") &&
-        !user.roles?.includes("evolution admin")
+        !user.roles?.includes("developer")
       ) {
         return NextResponse.json(
           { error: "Insufficient permissions" },

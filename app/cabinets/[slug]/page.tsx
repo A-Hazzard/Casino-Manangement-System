@@ -3,9 +3,9 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
-import { useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import { IMAGES } from '@/lib/constants/images';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,8 @@ import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -78,11 +78,14 @@ function CabinetDetailPageContent() {
   // Get current user for permission checking
   const { user } = useUserStore();
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  // Only Developer, Admin, and Technician can access SMIB Configuration
   const canAccessSmibConfig =
     user &&
     user.roles &&
     user.roles.length > 0 &&
-    ['technician', 'manager', 'admin', 'evo_admin'].includes(user.roles[0]);
+    user.roles.some(role =>
+      ['technician', 'admin', 'developer'].includes(role)
+    );
 
   const {
     selectedLicencee,
@@ -485,7 +488,7 @@ function CabinetDetailPageContent() {
       </PageLayout>
     );
   }
-  
+
   // 1. SECOND: If initial loading (no cabinet data yet), show skeleton loaders
   if (!cabinet && !error) {
     return (
@@ -613,13 +616,13 @@ function CabinetDetailPageContent() {
           >
             <div className="flex flex-col justify-between md:flex-row md:items-center">
               <div className="mb-4 md:mb-0">
-                <h1 className="flex items-center text-2xl font-bold gap-2">
+                <h1 className="flex items-center gap-2 text-2xl font-bold">
                   <Image
                     src={IMAGES.cabinetsIcon}
                     alt="Cabinet Icon"
                     width={32}
                     height={32}
-                    className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
+                    className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
                   />
                   Name: {cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1'}
                   <motion.button
@@ -863,33 +866,31 @@ function CabinetDetailPageContent() {
                     <ChevronDownIcon className="h-5 w-5" />
                   </motion.div>
                 ) : (
-                  <Button
-                    onClick={() =>
-                      cabinet && fetchSmibConfiguration(cabinet.relayId)
-                    }
-                    disabled={isManuallyFetching || !canAccessSmibConfig}
-                    className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4 sm:text-sm"
-                    title={
-                      !canAccessSmibConfig
-                        ? 'Access restricted to Technicians, Managers, Admins, and Evo Admins'
-                        : ''
-                    }
-                  >
-                    {isManuallyFetching ? (
-                      <>
-                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                        <span className="hidden sm:inline">Fetching...</span>
-                        <span className="sm:hidden">Loading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="hidden sm:inline">
-                          Get SMIB Configuration
-                        </span>
-                        <span className="sm:hidden">Get SMIB Config</span>
-                      </>
-                    )}
-                  </Button>
+                  // Only show button if user has permission (Developer, Admin, or Technician)
+                  canAccessSmibConfig && (
+                    <Button
+                      onClick={() =>
+                        cabinet && fetchSmibConfiguration(cabinet.relayId)
+                      }
+                      disabled={isManuallyFetching}
+                      className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4 sm:text-sm"
+                    >
+                      {isManuallyFetching ? (
+                        <>
+                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                          <span className="hidden sm:inline">Fetching...</span>
+                          <span className="sm:hidden">Loading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="hidden sm:inline">
+                            Get SMIB Configuration
+                          </span>
+                          <span className="sm:hidden">Get SMIB Config</span>
+                        </>
+                      )}
+                    </Button>
+                  )
                 )}
               </div>
             </div>

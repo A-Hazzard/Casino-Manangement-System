@@ -227,10 +227,10 @@ CabinetsPage (app/cabinets/page.tsx)
 
 - **Authentication:** JWT-based authentication with `sessionVersion` validation
 - **Authorization:** Role-based access to cabinet operations
-  - **Full Access**: Evolution Admin, Admin, Manager
+  - **Full Access**: Developer, Admin, Manager
   - **Restricted Access**: Collector, Location Admin, Technician (see only assigned locations)
 - **Licensee-Based Filtering:** Users only see cabinets for their assigned licensees/locations
-  - **Evolution Admin/Admin**: Can view all cabinets or filter by specific licensee
+  - **Developer/Admin**: Can view all cabinets or filter by specific licensee
   - **Manager**: Can view all cabinets for assigned licensees, dropdown filters between them
   - **Collector/Location Admin/Technician**: See ONLY cabinets at their assigned locations (no licensee dropdown)
 - **Location Permission Validation:**

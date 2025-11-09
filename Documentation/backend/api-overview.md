@@ -255,7 +255,7 @@ All endpoints return consistent error format:
 
 ### Role-Based Access
 
-- `evolution admin` - Full system access across all licensees
+- `developer` - Full system access across all licensees
 - `admin` - Full system access across all licensees
 - `manager` - Access to ALL locations within assigned licensees
 - `collector` - Access to specifically assigned locations only
@@ -506,7 +506,7 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 - `licensee` (string): Licensee ID to filter data (preferred spelling)
 - `licencee` (string): Alternate spelling (backwards compatibility)
 - **Behavior**:
-  - Evolution Admin/Admin: Optional filter, defaults to all licensees
+  - Developer/Admin: Optional filter, defaults to all licensees
   - Manager: Must be one of user's assigned licensees
   - Collector/Location Admin/Technician: Ignored (auto-filtered to assigned locations)
 

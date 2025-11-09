@@ -462,6 +462,9 @@ export async function fetchAggregatedLocationsData(
       queryParams.push(`filters=${encodeURIComponent(filterString)}`);
     if (displayCurrency)
       queryParams.push(`currency=${encodeURIComponent(displayCurrency)}`);
+    
+    // CRITICAL: Request ALL locations for client-side pagination (matches locations page requirement)
+    queryParams.push('showAllLocations=true');
 
     // Handle custom date range
     if (timePeriod === 'Custom' && dateRange?.from && dateRange?.to) {

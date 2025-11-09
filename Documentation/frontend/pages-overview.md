@@ -48,7 +48,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/`
 - **Documentation:** `dashboard.md`
 - **Status:** Main landing page with real-time metrics and analytics
-- **Access:** Evolution Admin, Admin, Manager (with assigned licensees)
+- **Access:** Developer, Admin, Manager (with assigned licensees)
 - **Licensee Filtering:** ✅ Supported
 - **Features:** Real-time financial metrics, machine status, performance charts, date filtering, licensee dropdown
 
@@ -66,7 +66,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/administration`
 - **Documentation:** `administration.md`
 - **Status:** User and licensee management with roles and permissions
-- **Access:** Evolution Admin, Admin only
+- **Access:** Developer, Admin only
 - **Licensee Filtering:** N/A (manages all licensees)
 - **Features:** User management with licensee assignment, session tracking, location permissions, role-based access, activity logs
 
@@ -76,7 +76,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/collection-report`
 - **Documentation:** `collection-report.md`
 - **Status:** Comprehensive collection reporting and management
-- **Access:** Evolution Admin, Admin, Manager, Collector, Location Admin
+- **Access:** Developer, Admin, Manager, Collector, Location Admin
 - **Licensee Filtering:** ✅ Supported (role-dependent)
 - **Features:** Collection reports, monthly reports, manager/collector schedules, filtering, role-based edit restrictions
 
@@ -96,7 +96,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/locations`
 - **Documentation:** `locations.md`
 - **Status:** Location management with performance metrics
-- **Access:** Evolution Admin, Admin, Manager, Location Admin
+- **Access:** Developer, Admin, Manager, Location Admin
 - **Licensee Filtering:** ✅ Supported (role-dependent visibility)
 - **Features:** Location listing, filtering, sorting, machine status tracking, CRUD operations, licensee-based filtering
 
@@ -106,7 +106,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/reports`
 - **Documentation:** `Reports FRD.md`
 - **Status:** Comprehensive reporting module with multi-tab layout
-- **Access:** Evolution Admin only
+- **Access:** Developer only
 - **Licensee Filtering:** ✅ Supported
 - **Features:** Dashboard, locations, machines, and meters reports with export functionality
 
@@ -116,7 +116,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/members`
 - **Documentation:** `members.md`
 - **Status:** Complete member management with session tracking
-- **Access:** Evolution Admin only
+- **Access:** Developer only
 - **Licensee Filtering:** ✅ Supported
 - **Features:** Member profiles, session analytics, data export, performance tracking
 
@@ -126,7 +126,7 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/sessions`
 - **Documentation:** `sessions.md`
 - **Status:** Comprehensive session monitoring and machine event tracking
-- **Access:** Evolution Admin only
+- **Access:** Developer only
 - **Licensee Filtering:** ✅ Supported
 - **Features:** Session listing, search, filtering, machine event monitoring
 
@@ -296,7 +296,7 @@ All pages maintain consistent navigation through the sidebar and follow the esta
 
 ### Page Access by Role
 
-| Page | Evolution Admin | Admin | Manager | Collector | Location Admin | Technician |
+| Page | Developer | Admin | Manager | Collector | Location Admin | Technician |
 |------|----------------|-------|---------|-----------|----------------|------------|
 | **Dashboard** | ✅ Full | ✅ Full | ✅ Filtered | ❌ | ❌ | ❌ |
 | **Locations** | ✅ Full | ✅ Full | ✅ Filtered | ❌ | ✅ Filtered | ❌ |
@@ -311,7 +311,7 @@ All pages maintain consistent navigation through the sidebar and follow the esta
 
 | Role | Licensee Dropdown | Filtering Behavior | Location Access |
 |------|------------------|-------------------|----------------|
-| **Evolution Admin** | ✅ Always shown | Can view all or filter by specific licensee | All locations |
+| **Developer** | ✅ Always shown | Can view all or filter by specific licensee | All locations |
 | **Admin** | ✅ Always shown | Can view all or filter by specific licensee | All locations |
 | **Manager** | ✅ If 2+ licensees | Shows ONLY assigned licensees | All locations for assigned licensees |
 | **Collector** | ✅ If 2+ licensees | Shows ONLY assigned licensees | ONLY assigned locations (intersection) |
@@ -320,7 +320,7 @@ All pages maintain consistent navigation through the sidebar and follow the esta
 
 ### Data Isolation Rules
 
-1. **Evolution Admin / Admin**:
+1. **Developer / Admin**:
    - No licensee restrictions (can assign/view all)
    - Licensee dropdown is an optional filter
    - Full CRUD access across all licensees

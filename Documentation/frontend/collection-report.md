@@ -27,7 +27,7 @@ The Collection Report System manages casino slot machine money collection operat
 
 ## User Roles & Permissions
 
-### Admin & Evolution Admin
+### Admin & Developer
 
 - ✅ Full access to all features across all licensees
 - ✅ Create, edit, delete collection reports for any location
@@ -471,7 +471,7 @@ Result:
 - **Warning Banners**: Display detailed issue information
 - **Yellow Highlighting**: Problematic reports highlighted
 - **Issue Count Badges**: Show number of issues found
-- **Visibility**: Only shown to Admin, Evolution Admin, and Manager users
+- **Visibility**: Only shown to Admin, Developer, and Manager users
 
 ## Database Structure
 
@@ -645,7 +645,7 @@ Cards (`CollectionReportCards.tsx` line 189):
 - ✅ Location Collector
 - ✅ Manager
 - ✅ Admin
-- ✅ Evolution Admin
+- ✅ Developer
 
 **Behavior:**
 - Unauthorized users: See **0 edit icons** (regardless of report count)
@@ -679,13 +679,13 @@ Cards (`CollectionReportCards.tsx` line 189):
 
 - **Authentication**: JWT-based with `sessionVersion` validation
 - **Role-Based Access Control**:
-  - Evolution Admin/Admin: Full access to all reports across all licensees
+  - Developer/Admin: Full access to all reports across all licensees
   - Manager: Access to reports for assigned licensees only
   - Collector: Access to reports for assigned locations only
   - Location Admin: Access to reports for assigned locations only
   - Technician: No access (redirected)
 - **Licensee-Based Filtering**: Users only see reports for their assigned licensees/locations
-  - Evolution Admin/Admin: Can filter by any licensee or view all
+  - Developer/Admin: Can filter by any licensee or view all
   - Manager: Can filter by assigned licensees (dropdown shown if 2+)
   - Collector/Location Admin: See only assigned locations (no dropdown if single licensee)
 - **Location Permission Validation**: Server validates access to each location before returning reports

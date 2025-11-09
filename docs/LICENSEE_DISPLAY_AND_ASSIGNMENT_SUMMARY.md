@@ -10,7 +10,7 @@ This document summarizes the implementation of licensee display in the user prof
 
 1. ✅ **Show licensees in the profile modal** - Display which licensees a user belongs to
 2. ✅ **Allow admins to assign licensees** - Add multi-select licensee assignment in the admin user modal (similar to locations)
-3. ✅ **Exempt admin roles from "No Licensee Assigned" logic** - Admin and Evolution Admin users should never see this message
+3. ✅ **Exempt admin roles from "No Licensee Assigned" logic** - Admin and Developer users should never see this message
 
 ---
 
@@ -27,7 +27,7 @@ This document summarizes the implementation of licensee display in the user prof
 - Added `useEffect` to fetch all licensees when modal opens
 - Added "Assigned Licensees" section after the Roles section
 - Displays licensee names (mapped from IDs)
-- Shows "All Licensees (Admin)" for admin/evolution admin users
+- Shows "All Licensees (Admin)" for admin/developer users
 - Shows "None" for users with no licensees
 
 **Visual Location:**
@@ -99,7 +99,7 @@ export function shouldShowNoLicenseeMessage(
 ): boolean {
   if (!user) return false;
   
-  // ✅ Admin check - returns false for admin/evolution admin
+  // ✅ Admin check - returns false for admin/developer
   if (canAccessAllLicensees(user)) {
     return false;
   }
@@ -114,13 +114,13 @@ The `canAccessAllLicensees()` function checks:
 export function canAccessAllLicensees(user: UserAuthPayload | null): boolean {
   if (!user) return false;
   const roles = user.roles || [];
-  return roles.includes('admin') || roles.includes('evolution admin');
+  return roles.includes('admin') || roles.includes('developer');
 }
 ```
 
 **Result:**
 - ✅ Admin users never see "No Licensee Assigned" message
-- ✅ Evolution Admin users never see "No Licensee Assigned" message
+- ✅ Developer users never see "No Licensee Assigned" message
 - ✅ Regular users without licensees see the message
 
 ---
@@ -178,7 +178,7 @@ const updatedUser = await UserModel.findByIdAndUpdate(
 - [ ] Verify "No Licensee Assigned" message appears on protected pages
 - [ ] Login as admin user
 - [ ] Verify "No Licensee Assigned" message never appears
-- [ ] Login as evolution admin user
+- [ ] Login as developer user
 - [ ] Verify "No Licensee Assigned" message never appears
 
 ### Backend API
@@ -253,7 +253,7 @@ const updatedUser = await UserModel.findByIdAndUpdate(
 
 **Admin Exemption:**
 ```
-1. Check if user has 'admin' or 'evolution admin' role
+1. Check if user has 'admin' or 'developer' role
 2. If yes, canAccessAllLicensees() returns true
 3. If yes, shouldShowNoLicenseeMessage() returns false
 4. User never sees "No Licensee Assigned" message

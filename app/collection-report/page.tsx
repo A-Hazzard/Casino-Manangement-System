@@ -664,7 +664,7 @@ function CollectionReportContent() {
   ]);
 
   // Check if user has permission to edit reports
-  // Only collectors, location collectors, managers, admins, and evolution admins can edit
+  // Only collectors, location collectors, managers, admins, and developers can edit
   const canUserEdit = useMemo(() => {
     if (!user || !user.roles) return false;
     return hasManagerAccess(user.roles); // hasManagerAccess includes: collector, locationCollector, manager, admin, evoAdmin

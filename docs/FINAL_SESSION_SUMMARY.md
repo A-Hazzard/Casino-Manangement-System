@@ -14,7 +14,7 @@ This document summarizes **everything** implemented in this session, from initia
 - ✅ Backend APIs filter by licensee + location permissions (intersection)
 - ✅ Frontend components check access before rendering
 - ✅ "No Licensee Assigned" message for users without licensees
-- ✅ Admin/Evolution Admin users exempt from restrictions
+- ✅ Admin/Developer users exempt from restrictions
 
 ### 2. **Profile & User Management**
 - ✅ Profile modal shows licensee **names** (not IDs) - e.g., "Barbados"

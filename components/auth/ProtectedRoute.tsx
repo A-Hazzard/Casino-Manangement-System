@@ -56,7 +56,7 @@ export default function ProtectedRoute({
       if (requireAdminAccess && user.roles) {
         const hasAdminLocal =
           user.roles.includes('admin') ||
-          user.roles.includes('evolution admin');
+          user.roles.includes('developer');
         if (!hasAdminLocal) {
           router.push('/'); // Redirect to dashboard if not admin
           return;
@@ -78,7 +78,7 @@ export default function ProtectedRoute({
           requireAdminAccess &&
           (!user.roles ||
             (!user.roles.includes('admin') &&
-              !user.roles.includes('evolution admin')))
+              !user.roles.includes('developer')))
         ) {
           const hasAdmin = await hasAdminAccessDb();
           if (!hasAdmin) {
@@ -108,7 +108,7 @@ export default function ProtectedRoute({
           requireAdminAccess &&
           user.roles &&
           !user.roles.includes('admin') &&
-          !user.roles.includes('evolution admin')
+          !user.roles.includes('developer')
         ) {
           router.push('/');
         } else if (

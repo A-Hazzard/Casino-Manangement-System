@@ -291,10 +291,10 @@ AdministrationPage (app/administration/page.tsx)
 
 ### Security Features
 
-- **Role-Based Access:** Granular permissions for different user types (only Evolution Admin and Admin can access)
+- **Role-Based Access:** Granular permissions for different user types (only Developer and Admin can access)
 - **Licensee Assignment System:**
   - Multi-select dropdown to assign users to one or more licensees
-  - **Evolution Admin/Admin**: No licensee restriction (implicit access to all)
+  - **Developer/Admin**: No licensee restriction (implicit access to all)
   - **Manager**: Requires licensee assignment to access data
   - **Collector/Location Admin/Technician**: Requires both licensee AND location assignments
   - Changes trigger `sessionVersion` increment for active users

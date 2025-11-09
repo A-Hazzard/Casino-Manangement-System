@@ -26,7 +26,7 @@ The Evolution CMS implements a comprehensive **licensee and location-based filte
 
 - ✅ **Multi-Licensee Support**: Users can belong to multiple licensees
 - ✅ **Granular Location Permissions**: Fine-grained access control at the location level
-- ✅ **Role-Based Access**: Different access levels for Evolution Admin, Admin, Manager, Collector, Location Admin, and Technician
+- ✅ **Role-Based Access**: Different access levels for Developer, Admin, Manager, Collector, Location Admin, and Technician
 - ✅ **Dynamic Filtering**: Real-time filtering across all pages (Dashboard, Locations, Cabinets, Collection Reports)
 - ✅ **Session Invalidation**: Automatic logout when permissions change
 - ✅ **No Data Leakage**: Complete isolation between licensees
@@ -42,7 +42,7 @@ The Evolution CMS implements a comprehensive **licensee and location-based filte
 {
   _id: string;
   username: string;
-  roles: string[]; // e.g., ['evolution admin', 'manager', 'collector']
+  roles: string[]; // e.g., ['developer', 'manager', 'collector']
   rel: {
     licencee: string[]; // Array of licensee IDs the user has access to
   };
@@ -85,7 +85,7 @@ The Evolution CMS implements a comprehensive **licensee and location-based filte
 
 | Role | Dashboard | Locations | Cabinets | Collection Reports | Sessions | Members | Reports | Admin | Licensee Dropdown |
 |------|-----------|-----------|----------|-------------------|----------|---------|---------|-------|-------------------|
-| **Evolution Admin** | ✅ Full | ✅ Full | ✅ Full | ✅ Full | ✅ | ✅ | ✅ | ✅ | ✅ All licensees |
+| **Developer** | ✅ Full | ✅ Full | ✅ Full | ✅ Full | ✅ | ✅ | ✅ | ✅ | ✅ All licensees |
 | **Admin** | ✅ Full | ✅ Full | ✅ Full | ✅ Full | ✅ | ✅ | ✅ | ✅ | ✅ All licensees |
 | **Manager** | ✅ Filtered | ✅ Filtered | ✅ Filtered | ✅ Filtered | ❌ | ❌ | ❌ | ❌ | ✅ Assigned licensees |
 | **Collector** | ❌ | ❌ | ✅ Filtered | ✅ Filtered | ❌ | ❌ | ❌ | ❌ | ✅ Assigned licensees (if >1) |
@@ -94,7 +94,7 @@ The Evolution CMS implements a comprehensive **licensee and location-based filte
 
 ### Role Descriptions
 
-#### Evolution Admin / Admin
+#### Developer / Admin
 - **Full Access**: Can view and manage ALL data across ALL licensees
 - **Licensee Dropdown**: Optional filter to view specific licensee data
 - **Location Access**: All locations across all licensees
@@ -176,7 +176,7 @@ export function applyLicenseeFilterToAggregation(
 
 **Filtering Logic:**
 
-1. **Evolution Admin / Admin**:
+1. **Developer / Admin**:
    - If `selectedLicenseeFilter` is provided → Filter by that licensee
    - If no filter → Return `'all'` (access to everything)
 
@@ -315,7 +315,7 @@ if (dbUser.sessionVersion !== payload.sessionVersion) {
 
 **Features:**
 - Dynamically fetches user's accessible licensees
-- Only shown to users with 2+ licensees OR admin/evolution admin roles
+- Only shown to users with 2+ licensees OR admin/developer roles
 - Persists selection in `localStorage`
 - Triggers data refresh on change
 
@@ -325,7 +325,7 @@ const shouldShowLicenseeDropdown = (user: User | null): boolean => {
   if (!user) return false;
   
   const hasAdminRole = user.roles?.some(role => 
-    ['evolution admin', 'admin'].includes(role.toLowerCase())
+    ['developer', 'admin'].includes(role.toLowerCase())
   );
   
   const licenseeCount = user.rel?.licencee?.length || 0;
@@ -385,7 +385,7 @@ Created test users for each role:
 
 | Username | Password | Role | Licensees | Locations |
 |----------|----------|------|-----------|-----------|
-| `ahzzard` | `Decrypted12!` | Evolution Admin | None (All Access) | All |
+| `ahzzard` | `Decrypted12!` | Developer | None (All Access) | All |
 | `test_manager` | `Test123!` | Manager | Barbados, Cabana, TTG | All for licensees |
 | `test_collector` | `Test123!` | Collector | Barbados, Cabana | 3 specific locations |
 | `test_location_admin` | `Test123!` | Location Admin | Cabana | 2 Cabana locations |
@@ -395,7 +395,7 @@ Created test users for each role:
 
 **✅ All tests passed:**
 
-1. **Evolution Admin**: Can filter by any licensee or view all data
+1. **Developer**: Can filter by any licensee or view all data
 2. **Manager with 3 licensees**: Dropdown shows all 3, filtering works correctly
 3. **Collector with 2 licensees**: Sees only assigned locations, dropdown filters correctly
 4. **Location Admin**: No dropdown, sees only assigned locations
@@ -403,8 +403,8 @@ Created test users for each role:
 
 ### Manual Testing Checklist
 
-- [ ] Evolution Admin can view all licensees
-- [ ] Evolution Admin can filter by specific licensee
+- [ ] Developer can view all licensees
+- [ ] Developer can filter by specific licensee
 - [ ] Manager sees only assigned licensees in dropdown
 - [ ] Manager can filter between assigned licensees
 - [ ] Manager sees all locations for selected licensee

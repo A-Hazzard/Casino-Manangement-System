@@ -7,8 +7,8 @@
 
 ### **Account 1: Admin (aaronhazzard2018@gmail.com)**
 - **Password**: `Decrypted12!`
-- **Roles**: Admin, Evolution Admin
-- **Licensees**: All (Admin/Evo Admin see everything)
+- **Roles**: Admin, Developer
+- **Licensees**: All (Admin/Developer see everything)
 - **Locations**: All
 - **Expected Access**: Full access to all pages and data
 
@@ -30,22 +30,22 @@
 
 | Test # | Role | Page | Expected Result |
 |--------|------|------|-----------------|
-| 1.1 | Evolution Admin | Dashboard | ✅ Access granted |
+| 1.1 | Developer | Dashboard | ✅ Access granted |
 | 1.2 | Admin | Dashboard | ✅ Access granted |
 | 1.3 | Manager | Dashboard | ✅ Access granted |
 | 1.4 | Location Admin | Dashboard | ❌ Access denied / No Data |
 | 1.5 | Collector | Dashboard | ❌ Access denied / No Data |
-| 1.6 | Evolution Admin | Sessions | ✅ Access granted |
+| 1.6 | Developer | Sessions | ✅ Access granted |
 | 1.7 | Admin | Sessions | ❌ Access denied |
 | 1.8 | Manager | Sessions | ❌ Access denied |
-| 1.9 | Evolution Admin | Members | ✅ Access granted |
+| 1.9 | Developer | Members | ✅ Access granted |
 | 1.10 | Admin | Members | ❌ Access denied |
-| 1.11 | Evolution Admin | Reports | ✅ Access granted |
+| 1.11 | Developer | Reports | ✅ Access granted |
 | 1.12 | Admin | Reports | ❌ Access denied |
 | 1.13 | All Roles | Locations | ✅ Access granted (filtered by permissions) |
 | 1.14 | All Roles | Cabinets | ✅ Access granted (filtered by permissions) |
 | 1.15 | All Roles | Collection Reports | ✅ Access granted (filtered by permissions) |
-| 1.16 | Admin/Evo Admin | Administration | ✅ Access granted |
+| 1.16 | Admin/Developer | Administration | ✅ Access granted |
 | 1.17 | Manager/Location Admin/Collector | Administration | ❌ Access denied |
 
 ---
@@ -129,7 +129,7 @@
 
 ---
 
-### **8. USER PROFILE EDITING (Admin/Evo Admin)**
+### **8. USER PROFILE EDITING (Admin/Developer)**
 
 | Test # | Scenario | Steps | Expected Result |
 |--------|----------|-------|-----------------|

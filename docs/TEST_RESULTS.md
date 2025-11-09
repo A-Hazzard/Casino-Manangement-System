@@ -25,7 +25,7 @@
 ### **Admin Account** (aaronhazzard2018@gmail.com)
 
 - **Password**: Decrypted12!
-- **Roles**: Admin, Evolution Admin
+- **Roles**: Admin, Developer
 - **Licensees**: ALL
 - **Locations**: ALL
 - **Session Version**: v1 (at test start)
@@ -59,13 +59,13 @@
 
 ### **Section 1: User Roles & Page Access**
 
-#### Test 1.1 & 1.2: Evolution Admin/Admin - Dashboard Access
+#### Test 1.1 & 1.2: Developer/Admin - Dashboard Access
 
 - **Status**: ✅ **PASSED**
 - **Expected**: Access granted with full navigation menu
 - **Actual**: Successfully accessed Dashboard, full sidebar visible including Sessions, Members, Reports, Administration links
 - **Dashboard Data (Last 30 Days)**: Money In: $107.13 | Money Out: $70.56 | Gross: $36.56
-- **Notes**: Admin/Evo Admin see all navigation options as expected
+- **Notes**: Admin/Developer see all navigation options as expected
 
 #### Test 1.3: Manager - Dashboard Access
 
@@ -88,17 +88,17 @@
 - **Actual**:
 - **Notes**:
 
-#### Test 1.6: Evolution Admin - Sessions Access
+#### Test 1.6: Developer - Sessions Access
 
 - **Status**: ✅ **PASSED**
 - **Expected**: Access granted
 - **Actual**: Sessions page loaded successfully with time period selector, search functionality, showing "No sessions found for the selected criteria"
-- **Notes**: Evolution Admin has full access to Sessions page
+- **Notes**: Developer has full access to Sessions page
 
 #### Test 1.7: Admin - Sessions Access
 
 - **Status**: ⏳ Pending (Need to test with Admin-only account)
-- **Expected**: Access denied (Sessions restricted to Evolution Admin only)
+- **Expected**: Access denied (Sessions restricted to Developer only)
 - **Actual**:
 - **Notes**: Will test after creating Admin-only test user
 
@@ -109,7 +109,7 @@
 - **Actual**:
 - **Notes**:
 
-#### Test 1.9: Evolution Admin - Members Access
+#### Test 1.9: Developer - Members Access
 
 - **Status**: ✅ **PASSED**
 - **Expected**: Access granted
@@ -119,11 +119,11 @@
 #### Test 1.10: Admin - Members Access
 
 - **Status**: ⏳ Pending (Need to test with Admin-only account)
-- **Expected**: Access denied (Members restricted to Evolution Admin only)
+- **Expected**: Access denied (Members restricted to Developer only)
 - **Actual**:
 - **Notes**:
 
-#### Test 1.11: Evolution Admin - Reports Access
+#### Test 1.11: Developer - Reports Access
 
 - **Status**: ✅ **PASSED**
 - **Expected**: Access granted
@@ -133,7 +133,7 @@
 #### Test 1.12: Admin - Reports Access
 
 - **Status**: ⏳ Pending (Need to test with Admin-only account)
-- **Expected**: Access denied (Reports restricted to Evolution Admin only)
+- **Expected**: Access denied (Reports restricted to Developer only)
 - **Actual**:
 - **Notes**:
 
@@ -158,7 +158,7 @@
 - **Actual**: ✅ testuser can access Collection Reports page. Shows "No collection reports found" (no reports created yet)
 - **Notes**: Access granted correctly. Location filter available.
 
-#### Test 1.16: Admin/Evo Admin - Administration Access
+#### Test 1.16: Admin/Developer - Administration Access
 
 - **Status**: ⏳ Not Tested
 - **Expected**: Access granted
@@ -472,7 +472,7 @@ _Tests will be added as we progress..._
 - **Status**: ✅ **PASSED**
 - **Expected**: Location Admin redirected from /members
 - **Actual**: ✅ Redirected to /locations
-- **Notes**: Evolution Admin-only restriction working
+- **Notes**: Developer-only restriction working
 
 #### Test 13.8: Profile Modal - Licensee & Location Display
 
@@ -570,12 +570,12 @@ All pages show **identical financial data** for Last 30 Days:
 
 ### **✅ Tests Passed (17/98):**
 
-**Evolution Admin/Admin Account:**
+**Developer/Admin Account:**
 
 1. ✅ Dashboard access with full navigation
-2. ✅ Sessions page access (Evolution Admin only)
-3. ✅ Members page access (Evolution Admin only)
-4. ✅ Reports page access (Evolution Admin only)
+2. ✅ Sessions page access (Developer only)
+3. ✅ Members page access (Developer only)
+4. ✅ Reports page access (Developer only)
 5. ✅ Administration page access
 6. ✅ Dashboard data accuracy (matches Locations/Reports exactly)
 7. ✅ Session counters displaying (Login Count, Last Login, Session Version)

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     console.log('[COLLECTION REPORTS] User location permissions:', userLocationPermissions);
     
     // Check if user is admin or manager
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('evolution admin');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
     const isManager = userRoles.includes('manager');
     
     // Build the query

@@ -66,9 +66,9 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
 
   // Page permissions mapping
   const pagePermissions: Record<PageName, UserRole[]> = {
-    dashboard: ['evolution admin', 'admin', 'manager'], // ✅ Removed 'location admin'
+    dashboard: ['developer', 'admin', 'manager'], // ✅ Removed 'location admin'
     machines: [
-      'evolution admin',
+      'developer',
       'admin',
       'manager',
       'location admin',
@@ -76,27 +76,27 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'collector',
       'collector meters',
     ],
-    locations: ['evolution admin', 'admin', 'manager', 'location admin'],
+    locations: ['developer', 'admin', 'manager', 'location admin'],
     'location-details': [
-      'evolution admin',
+      'developer',
       'admin',
       'manager',
       'location admin',
       'technician',
     ],
-    members: ['evolution admin'], // ✅ Restricted to evolution admin only
-    'member-details': ['evolution admin'], // ✅ Restricted to evolution admin only
+    members: ['developer'], // ✅ Restricted to developer only
+    'member-details': ['developer'], // ✅ Restricted to developer only
     'collection-report': [
-      'evolution admin',
+      'developer',
       'admin',
       'manager',
       'location admin',
       'collector',
       'collector meters',
     ],
-    reports: ['evolution admin'], // ✅ Restricted to evolution admin only
-    sessions: ['evolution admin'], // ✅ Restricted to evolution admin only
-    administration: ['evolution admin', 'admin'],
+    reports: ['developer'], // ✅ Restricted to developer only
+    sessions: ['developer'], // ✅ Restricted to developer only
+    administration: ['developer', 'admin'],
   };
 
   const allowedRoles = pagePermissions[page] || [];
@@ -121,23 +121,23 @@ export async function hasTabAccessDb(
   // Tab permissions mapping
   const tabPermissions: Record<string, Record<string, UserRole[]>> = {
     administration: {
-      users: ['evolution admin', 'admin'],
-      licensees: ['evolution admin'],
-      'activity-logs': ['evolution admin'],
+      users: ['developer', 'admin'],
+      licensees: ['developer'],
+      'activity-logs': ['developer'],
     },
     'collection-reports': {
       collection: [
-        'evolution admin',
+        'developer',
         'admin',
         'manager',
         'location admin',
         'collector',
         'collector meters',
       ],
-      monthly: ['evolution admin', 'admin', 'manager', 'location admin'],
-      'manager-schedules': ['evolution admin', 'admin', 'manager'],
+      monthly: ['developer', 'admin', 'manager', 'location admin'],
+      'manager-schedules': ['developer', 'admin', 'manager'],
       'collector-schedules': [
-        'evolution admin',
+        'developer',
         'admin',
         'manager',
         'location admin',
@@ -145,15 +145,15 @@ export async function hasTabAccessDb(
     },
     reports: {
       machines: [
-        'evolution admin',
+        'developer',
         'admin',
         'manager',
         'location admin',
         'technician',
       ],
-      locations: ['evolution admin', 'admin', 'manager', 'location admin'],
+      locations: ['developer', 'admin', 'manager', 'location admin'],
       meters: [
-        'evolution admin',
+        'developer',
         'admin',
         'manager',
         'location admin',
@@ -181,7 +181,7 @@ export async function hasAdminAccessDb(): Promise<boolean> {
   }
 
   const { roles } = userData;
-  return roles.includes('evolution admin') || roles.includes('admin');
+  return roles.includes('developer') || roles.includes('admin');
 }
 
 /**
@@ -206,7 +206,7 @@ export async function getHighestPriorityRoleDb(): Promise<UserRole | null> {
   const { roles } = userData;
 
   const rolePriority: UserRole[] = [
-    'evolution admin',
+    'developer',
     'admin',
     'manager',
     'location admin',

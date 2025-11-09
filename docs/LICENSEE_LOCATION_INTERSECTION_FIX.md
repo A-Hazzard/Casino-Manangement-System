@@ -44,7 +44,7 @@ return licensee?.name || `Unknown (${licenseeId})`;
 **Logic:**
 ```typescript
 const userLicensees = user?.rel?.licencee || [];
-const isAdmin = userRoles.includes('admin') || userRoles.includes('evolution admin');
+const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
 const shouldShowLicenseeSelect = isAdmin || userLicensees.length > 1;
 
 {!hideLicenceeFilter && shouldShowLicenseeSelect && (

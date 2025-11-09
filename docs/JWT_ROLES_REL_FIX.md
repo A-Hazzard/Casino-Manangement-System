@@ -34,7 +34,7 @@ When a user logs in, the system generates a JWT access token via `generateAccess
   emailAddress: "...",
   username: "...",
   isEnabled: true,
-  roles: ["admin", "evolution admin"],  // ✅ NEEDED!
+  roles: ["admin", "developer"],  // ✅ NEEDED!
   rel: {                                 // ✅ NEEDED!
     licencee: ["licenseeId1", "licenseeId2"]
   },
@@ -217,7 +217,7 @@ const newToken = await generateAccessToken({
   "emailAddress": "aaronhazzard2018@gmail.com",
   "username": "aaron",
   "isEnabled": true,
-  "roles": ["admin", "evolution admin"],  // ✅ SHOULD BE HERE
+  "roles": ["admin", "developer"],  // ✅ SHOULD BE HERE
   "rel": {                                 // ✅ SHOULD BE HERE
     "licencee": ["licenseeId1", "licenseeId2"]
   },
@@ -261,7 +261,7 @@ The token refresh endpoint (`/api/auth/refresh-token`) will preserve `roles` and
 
 ## 🎯 Expected Behavior After Fix
 
-### Admin Users (with `admin` or `evolution admin` role)
+### Admin Users (with `admin` or `developer` role)
 - ✅ Can see **all locations** via `/api/locations?showAll=true`
 - ✅ Can assign **any location** to any user
 - ✅ Can assign **any licensee** to any user

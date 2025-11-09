@@ -1,0 +1,100 @@
+# Evolution CMS - Cursor AI Context Rules
+
+## Critical System Context
+
+### Licensee & Location Access Control System
+
+**READ FIRST:** `.cursor/licensee-access-context.md` for complete details.
+
+---
+
+## 🚨 ALWAYS Follow These Rules
+
+### 1. Database Queries
+- ✅ Use `findOne({ _id: id })` for finding by ID (String IDs, not ObjectId)
+- ❌ NEVER use `findById(id)` (it expects ObjectId)
+- ✅ Use `findOneAndUpdate({ _id: id }, ...)` for updates
+- ❌ NEVER use `findByIdAndUpdate(id, ...)`
+
+### 2. API Parameter Handling
+- ✅ ALWAYS support both `licensee` and `licencee` spellings:
+  ```typescript
+  const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+  ```
+- ✅ ALWAYS filter data by user's accessible licensees/locations
+- ✅ ALWAYS use helper functions from `licenseeFilter.ts`
+
+### 3. User Permission Changes
+- ✅ ALWAYS increment `sessionVersion` when changing:
+  - `rel.licencee` (licensee assignments)
+  - `resourcePermissions.gaming-locations.resources` (location permissions)
+  - `roles` (user roles)
+- ✅ Use `$inc: { sessionVersion: 1 }` in update operations
+
+### 4. Frontend Data Fetching
+- ✅ ALWAYS include `selectedLicencee` in API calls
+- ✅ ALWAYS add `selectedLicencee` to useEffect dependencies
+- ✅ ALWAYS check `shouldShowNoLicenseeMessage(user)` before rendering data
+
+---
+
+## 🎯 Role-Based Access Logic
+
+### Who Sees What?
+
+- **Developer/Admin**: ALL data (licensee dropdown is optional filter)
+- **Manager**: ALL locations for assigned licensees (no intersection)
+- **Collector/Location Admin/Technician**: ONLY intersection of (licensee locations ∩ assigned locations)
+
+### Dropdown Visibility
+
+- **Always Show**: Developer, Admin
+- **Conditionally Show**: Manager (2+ licensees), Collector (2+ licensees)
+- **Never Show**: Location Admin, Technician
+
+---
+
+## 📚 Key Files to Reference
+
+### Backend Helpers
+- `app/api/lib/helpers/licenseeFilter.ts` - Core filtering functions
+- `app/api/lib/helpers/users.ts` - User fetching with session validation
+
+### Frontend Utilities
+- `lib/utils/licenseeAccess.ts` - Client-side access checks
+- `lib/store/dashboardStore.ts` - Licensee selection state
+- `components/ui/LicenceeSelect.tsx` - Licensee dropdown
+
+### Documentation
+- `.cursor/licensee-access-context.md` - Complete system guide
+- `Documentation/licensee-location-filtering.md` - Comprehensive reference
+
+---
+
+## ⚡ Quick Reference
+
+### Backend Pattern
+```typescript
+const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
+if (allowedLocationIds !== 'all') {
+  matchStage['gamingLocation'] = { $in: allowedLocationIds };
+}
+```
+
+### Frontend Pattern
+```typescript
+if (shouldShowNoLicenseeMessage(currentUser)) {
+  return <NoLicenseeAssigned />;
+}
+
+const { data } = useQuery({
+  queryKey: ['data', selectedLicencee],
+  queryFn: () => fetchData({ licensee: selectedLicencee })
+});
+```
+
+---
+
+**For complete details, see:** `.cursor/licensee-access-context.md`
+

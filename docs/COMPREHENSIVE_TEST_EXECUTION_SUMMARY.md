@@ -10,13 +10,13 @@
 
 ### **🔐 ROLE-BASED ACCESS CONTROL**
 
-#### **Evolution Admin/Admin Account** (aaronhazzard2018@gmail.com)
+#### **Developer/Admin Account** (aaronhazzard2018@gmail.com)
 
 1. ✅ **Full Navigation Access** - Dashboard, Locations, Cabinets, Collection Reports, Sessions, Members, Reports, Administration
 2. ✅ **Dashboard Access** - Granted, shows all licensee data
-3. ✅ **Sessions Page** - Accessible (Evolution Admin only restriction working)
-4. ✅ **Members Page** - Accessible (Evolution Admin only restriction working)
-5. ✅ **Reports Page** - Accessible (Evolution Admin only restriction working)
+3. ✅ **Sessions Page** - Accessible (Developer only restriction working)
+4. ✅ **Members Page** - Accessible (Developer only restriction working)
+5. ✅ **Reports Page** - Accessible (Developer only restriction working)
 6. ✅ **Administration Page** - Full access to user management
 7. ✅ **Session Counters** - Login Count, Last Login, Session Version all displaying correctly
 
@@ -72,7 +72,7 @@
 
 ### **Access Control Matrix (Verified)**
 
-| Page               | Evo Admin | Admin | Manager | Collector            |
+| Page               | Developer | Admin | Manager | Collector            |
 | ------------------ | --------- | ----- | ------- | -------------------- |
 | Dashboard          | ✅        | ✅    | ✅      | ❌ Redirected        |
 | Locations          | ✅        | ✅    | ✅      | ✅ (no sidebar link) |
@@ -85,7 +85,7 @@
 
 ### **Sidebar Visibility (Verified)**
 
-| Link               | Evo Admin | Admin | Manager | Collector |
+| Link               | Developer | Admin | Manager | Collector |
 | ------------------ | --------- | ----- | ------- | --------- |
 | Dashboard          | ✅        | ✅    | ✅      | ❌        |
 | Locations          | ✅        | ✅    | ✅      | ❌        |
@@ -156,7 +156,7 @@
 - 🔄 **Cabinet Details Page** - Test access control for individual machine pages
 - 🔄 **Location Admin Role** - Create and test Location Admin user
 - 🔄 **Technician Role** - Test Technician permissions
-- 🔄 **Admin-Only Role** - Test Admin without Evolution Admin permissions
+- 🔄 **Admin-Only Role** - Test Admin without Developer permissions
 - 🔄 **Multiple Licensees** - Test user with Barbados + Cabana + TTG access
 - 🔄 **Profile Modal Editing** - Test admin changing own permissions
 

@@ -52,7 +52,7 @@ export default function Header({
 
   // Get user's licensee assignments
   const userLicensees = user?.rel?.licencee || [];
-  const isAdmin = userRoles.includes('admin') || userRoles.includes('evolution admin');
+  const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
   
   // Determine if licensee select should be shown
   // Show if: admin OR user has multiple licensees

@@ -35,7 +35,7 @@ The Locations page provides comprehensive casino location management, including 
 - **URL Pattern:** `/locations`
 - **Component Type:** Location Management Page
 - **Authentication:** Required
-- **Access Level:** Evolution Admin, Admin, Manager, Location Admin (with assigned locations)
+- **Access Level:** Developer, Admin, Manager, Location Admin (with assigned locations)
 - **Licensee Filtering:** ✅ Supported
 
 ### System Integration
@@ -62,7 +62,7 @@ The Locations page provides comprehensive casino location management, including 
 - **Search and Filtering:**
   - Search locations by name or address.
   - Filter by licensee (role-dependent):
-    - **Evolution Admin/Admin**: Can filter by any licensee or view all
+    - **Developer/Admin**: Can filter by any licensee or view all
     - **Manager**: Can filter by assigned licensees only
     - **Location Admin**: No dropdown (automatically filtered to assigned locations)
   - Filter by date range for financial metrics.
@@ -216,10 +216,10 @@ LocationsPage (app/locations/page.tsx)
 
 - **Authentication:** JWT-based authentication with `sessionVersion` validation
 - **Authorization:** Role-based access to location operations
-  - **Allowed Roles**: Evolution Admin, Admin, Manager, Location Admin
+  - **Allowed Roles**: Developer, Admin, Manager, Location Admin
   - **Denied Roles**: Collector, Technician (redirected to Cabinets page)
 - **Licensee-Based Filtering:** Users only see locations for their assigned licensees
-  - **Evolution Admin/Admin**: Can view all locations or filter by specific licensee
+  - **Developer/Admin**: Can view all locations or filter by specific licensee
   - **Manager**: Can only view locations for assigned licensees
   - **Location Admin**: Can only view their specifically assigned locations
 - **Location Permission Validation:**

@@ -742,7 +742,7 @@ After:
 - ✅ Location Collector
 - ✅ Manager
 - ✅ Admin
-- ✅ Evolution Admin
+- ✅ Developer
 
 **Why This Restriction:**
 - Prevents accidental modification of historical reports

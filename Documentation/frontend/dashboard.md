@@ -34,7 +34,7 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 - **URL Pattern:** `/`
 - **Component Type:** Main Landing Page
 - **Authentication:** Required
-- **Access Level:** Evolution Admin, Admin, Manager (with assigned licensees)
+- **Access Level:** Developer, Admin, Manager (with assigned licensees)
 - **Licensee Filtering:** ✅ Supported
 
 ### System Integration
@@ -71,7 +71,7 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 
 - **Multi-licensee Support**: Dropdown to switch between different licensees
 - **Role-Based Filtering**:
-  - **Evolution Admin/Admin**: Can view all licensees or filter by specific licensee
+  - **Developer/Admin**: Can view all licensees or filter by specific licensee
   - **Manager**: Dropdown shows ONLY assigned licensees (if 2+)
   - **Collector/Location Admin/Technician**: Cannot access Dashboard
 - **Data Filtering**: All dashboard data (totals, charts, top performing, map) filtered based on selected licensee
@@ -485,7 +485,7 @@ Daily Data (7d/30d/Custom):
 **Access Control Logic:**
 
 1. **Role-Based Page Access:**
-   - **Allowed Roles**: Evolution Admin, Admin, Manager
+   - **Allowed Roles**: Developer, Admin, Manager
    - **Denied Roles**: Collector, Location Admin, Technician (redirected to `/unauthorized`)
 
 2. **Licensee Assignment Check:**
@@ -497,7 +497,7 @@ Daily Data (7d/30d/Custom):
    ```
 
 3. **Licensee Dropdown Logic:**
-   - **Evolution Admin/Admin**: Can view all licensees or filter by specific licensee
+   - **Developer/Admin**: Can view all licensees or filter by specific licensee
    - **Manager**: Dropdown shows ONLY assigned licensees (if 2+)
    - **Visibility**: `showDropdown = isAdmin || (isManager && licenseeCount >= 2)`
 
@@ -513,7 +513,7 @@ GET /api/dashboard/totals?licensee=732b094083226f216b3fc11a&timePeriod=Today
 ```
 
 **Backend Filtering:**
-- Evolution Admin/Admin: Can view selected licensee or all licensees
+- Developer/Admin: Can view selected licensee or all licensees
 - Manager: Can only view data for assigned licensees
 - All components (Totals, Charts, Top Performing, Map) respect filter
 

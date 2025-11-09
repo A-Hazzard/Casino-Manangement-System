@@ -60,7 +60,7 @@ The licensee-based access control system has been successfully implemented acros
 
 ### For Admin Users
 1. Admin logs in
-2. Their `roles` include 'admin' or 'evolution admin'
+2. Their `roles` include 'admin' or 'developer'
 3. Licensee filter IS ALWAYS VISIBLE in header
 4. Dropdown shows ALL licensees in system
 5. No data restrictions - full access to everything
@@ -189,7 +189,7 @@ db.users.findOne({ username: "username" }, { rel: 1 })
 ```
 
 ### Issue: Admin can't see all data
-**Solution**: Verify user's roles include 'admin' or 'evolution admin'
+**Solution**: Verify user's roles include 'admin' or 'developer'
 ```javascript
 db.users.findOne({ username: "admin" }, { roles: 1 })
 ```

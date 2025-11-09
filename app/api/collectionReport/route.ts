@@ -260,7 +260,7 @@ export async function GET(req: NextRequest) {
     console.warn(`[COLLECTION REPORT] Licensee param: ${licencee || 'All'}`);
 
     // Check if user is admin or manager
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('evolution admin');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
     const isManager = userRoles.includes('manager');
     
     // Determine which location IDs the user can access

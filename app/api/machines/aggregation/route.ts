@@ -5,7 +5,6 @@ import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import { MachineAggregationMatchStage } from '@/shared/types/mongo';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../lib/middleware/db';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '../../lib/helpers/licenseeFilter';
@@ -294,8 +293,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Apply currency conversion if "All Licensee" is selected
-    if (shouldApplyCurrencyConversion(licensee)) {
+    // ALWAYS apply currency conversion to display currency (regardless of licensee filter)
+    // The conversion uses each machine's location's licensee, not the filter parameter
+    if (displayCurrency && displayCurrency !== '') {
       // Get licensee details for currency mapping
       const db = await connectDB();
       if (!db) {

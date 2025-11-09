@@ -47,7 +47,7 @@ Before testing, **log out and log back in** to get a new JWT token with `roles` 
 - ✅ Users see only their assigned licensees' data
 - ✅ Profile shows which licensees they belong to
 - ✅ "No Licensee Assigned" message for users without licensees
-- ✅ Admin/Evolution Admin exempt from licensee restrictions
+- ✅ Admin/Developer exempt from licensee restrictions
 
 ### Admin Features:
 - ✅ Assign licensees to users (multi-select dropdown)

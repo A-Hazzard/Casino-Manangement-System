@@ -92,7 +92,7 @@ export function useUrlProtection({
           // Skip database check for admin users on most tabs
           if (
             userRoles.includes('admin') ||
-            userRoles.includes('evolution admin')
+            userRoles.includes('developer')
           ) {
             // Admin users have access to all tabs, skip database check
             return;

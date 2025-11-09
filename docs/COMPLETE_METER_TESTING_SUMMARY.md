@@ -89,7 +89,7 @@
 - **Total**: 50 fake logs
 - **Actions**: create, update, delete, view, login_success, logout
 - **Resources**: user, licensee, location, machine, collection
-- **Users**: admin (Evolution Admin), mkirton (Collector), testuser (Location Admin)
+- **Users**: admin (Developer), mkirton (Collector), testuser (Location Admin)
 - **Time Range**: Last 72 hours
 
 ---

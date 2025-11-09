@@ -27,7 +27,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const ROLE_OPTIONS = [
-  { label: 'Evolution Admin', value: 'evolution admin' },
+  { label: 'Developer', value: 'developer' },
   { label: 'Administrator', value: 'admin' },
   { label: 'Manager', value: 'manager' },
   { label: 'Location Admin', value: 'location admin' },

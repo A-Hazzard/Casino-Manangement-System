@@ -425,7 +425,7 @@ export default function ProfileModal({
     // Only include roles if user is admin/evo admin
     if (
       authUser?.roles?.includes('admin') ||
-      authUser?.roles?.includes('evolution admin')
+      authUser?.roles?.includes('developer')
     ) {
       payload.roles = selectedRoles;
     }
@@ -538,7 +538,7 @@ export default function ProfileModal({
 
     // Check if admin/evo admin is changing their own permission-related fields
     const isAdminOrEvoAdmin = userData.roles?.some(role => 
-      role.toLowerCase() === 'admin' || role.toLowerCase() === 'evolution admin'
+      role.toLowerCase() === 'admin' || role.toLowerCase() === 'developer'
     );
     
     if (isAdminOrEvoAdmin) {
@@ -550,7 +550,7 @@ export default function ProfileModal({
       });
       
       if (permissionFieldsChanged) {
-        console.log('[ProfileModal] 🔄 Admin/Evo Admin changing own permissions - incrementing sessionVersion');
+        console.log('[ProfileModal] 🔄 Admin/Developer changing own permissions - incrementing sessionVersion');
         updatePayload.$inc = { sessionVersion: 1 };
       }
     }
@@ -971,10 +971,10 @@ export default function ProfileModal({
                         </label>
                         {isEditMode &&
                         (authUser?.roles?.includes('admin') ||
-                          authUser?.roles?.includes('evolution admin')) ? (
+                          authUser?.roles?.includes('developer')) ? (
                           <div className="flex flex-wrap gap-2 rounded-md border border-border bg-white p-2">
                             {[
-                              'evolution admin',
+                              'developer',
                               'admin',
                               'manager',
                               'location admin',
@@ -1063,7 +1063,7 @@ export default function ProfileModal({
                                     })
                                     .join(', ');
                                 })()
-                              : authUser?.roles?.includes('admin') || authUser?.roles?.includes('evolution admin')
+                              : authUser?.roles?.includes('admin') || authUser?.roles?.includes('developer')
                               ? 'All Licensees (Admin)'
                               : 'None'}
                           </p>
@@ -1086,7 +1086,7 @@ export default function ProfileModal({
                               
                               // Managers don't need location assignments
                               const isManager = userData?.roles?.includes('manager');
-                              const isAdmin = userData?.roles?.includes('admin') || userData?.roles?.includes('evolution admin');
+                              const isAdmin = userData?.roles?.includes('admin') || userData?.roles?.includes('developer');
                               
                               if (isAdmin && locationPermissions.length === 0) {
                                 return 'All Locations (Admin)';

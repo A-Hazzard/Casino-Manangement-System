@@ -14,7 +14,7 @@ import type { UserRole } from './permissions';
  */
 export function getDefaultRedirectPath(userRole: UserRole): string {
   const roleRedirectMap: Record<UserRole, string> = {
-    'evolution admin': '/',
+    'developer': '/',
     admin: '/',
     manager: '/',
     'location admin': '/locations',
@@ -40,7 +40,7 @@ export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
 
   // Role priority order (highest to lowest)
   const rolePriority: UserRole[] = [
-    'evolution admin',
+    'developer',
     'admin',
     'manager',
     'location admin',
@@ -69,7 +69,7 @@ export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
  */
 export function getRedirectDestinationName(userRole: UserRole): string {
   const destinationNames: Record<UserRole, string> = {
-    'evolution admin': 'Dashboard',
+    'developer': 'Dashboard',
     admin: 'Dashboard',
     manager: 'Dashboard',
     'location admin': 'Locations',
@@ -96,7 +96,7 @@ export function getRedirectDestinationNameFromRoles(
 
   // Role priority order (highest to lowest)
   const rolePriority: UserRole[] = [
-    'evolution admin',
+    'developer',
     'admin',
     'manager',
     'location admin',

@@ -3,7 +3,7 @@ import { GamingLocations } from '../models/gaminglocations';
 
 /**
  * Gets the licensees a user can access from JWT token
- * - Returns 'all' for admin/evolution admin
+ * - Returns 'all' for admin/developer
  * - Returns array of licensee IDs for non-admins
  */
 export async function getUserAccessibleLicenseesFromToken(): Promise<string[] | 'all'> {
@@ -15,7 +15,7 @@ export async function getUserAccessibleLicenseesFromToken(): Promise<string[] | 
     }
 
     const roles = (userPayload.roles as string[]) || [];
-    const isAdmin = roles.includes('admin') || roles.includes('evolution admin');
+    const isAdmin = roles.includes('admin') || roles.includes('developer');
 
     if (isAdmin) {
       return 'all';
@@ -136,7 +136,7 @@ export async function getLicenseeLocationFilter(
  * This ensures users only see data from locations they have access to within their assigned licensees
  * 
  * ROLE-BASED BEHAVIOR:
- * - Admin/Evo Admin: See all locations (or restricted by location permissions if assigned)
+ * - Admin/Developer: See all locations (or restricted by location permissions if assigned)
  * - Manager: See ALL locations for their assigned licensees (location permissions ignored)
  * - Collector/Technician: See only intersection of licensee locations + their assigned locations
  * 
@@ -153,7 +153,7 @@ export async function getUserLocationFilter(
   userRoles: string[] = []
 ): Promise<string[] | 'all'> {
   // Check if user is admin or manager
-  const isAdmin = userAccessibleLicensees === 'all' || userRoles.includes('admin') || userRoles.includes('evolution admin');
+  const isAdmin = userAccessibleLicensees === 'all' || userRoles.includes('admin') || userRoles.includes('developer');
   const isManager = userRoles.includes('manager');
   
   console.log('[getUserLocationFilter] User roles:', userRoles);

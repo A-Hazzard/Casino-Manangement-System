@@ -12,7 +12,7 @@ This document defines the comprehensive access control system for the Evolution 
 
 The system implements three tiers of access based on user roles:
 
-#### **Tier 1: Admin / Evolution Admin**
+#### **Tier 1: Admin / Developer**
 - **Behavior**: Full system access
 - **Licensee Restriction**: None (sees all licensees)
 - **Location Restriction**: None by default
@@ -59,7 +59,7 @@ async function getUserLocationFilter(
 #### **Logic Flow**:
 
 ```typescript
-1. Check if user is Admin/Evo Admin
+1. Check if user is Admin/Developer
    → If admin with NO location permissions → Return 'all'
    → If admin WITH location permissions → Return those locations only
 
@@ -299,7 +299,7 @@ When implementing or modifying an API endpoint, verify:
   emailAddress: string;
   username: string;
   isEnabled: boolean;
-  roles: string[];  // ['admin', 'manager', 'collector', 'technician', 'evolution admin']
+  roles: string[];  // ['admin', 'manager', 'collector', 'technician', 'developer']
   rel: {
     licencee: string[];  // Array of licensee IDs user is assigned to
   };

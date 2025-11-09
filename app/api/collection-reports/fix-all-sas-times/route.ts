@@ -8,7 +8,7 @@ import { getUserIdFromServer, getUserById } from '../../lib/helpers/users';
 /**
  * POST /api/collection-reports/fix-all-sas-times
  * Fix SAS times for ALL collection reports that have issues
- * Only accessible by admin and evolution admin users
+ * Only accessible by admin and developer users
  */
 export async function POST(_request: NextRequest) {
   try {
@@ -36,7 +36,7 @@ export async function POST(_request: NextRequest) {
 
     // Check if user has admin access
     const hasAdminAccess =
-      userRoles.includes('admin') || userRoles.includes('evolution admin');
+      userRoles.includes('admin') || userRoles.includes('developer');
     if (!hasAdminAccess) {
       return NextResponse.json(
         {

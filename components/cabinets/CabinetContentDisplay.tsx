@@ -186,7 +186,7 @@ export const CabinetContentDisplay = ({
     
     // Determine the appropriate message based on user's licensee assignments
     let emptyMessage = '';
-    const isAdmin = user?.roles?.includes('admin') || user?.roles?.includes('evolution admin');
+    const isAdmin = user?.roles?.includes('admin') || user?.roles?.includes('developer');
     
     if (filteredCabinets.length === 0 && allCabinets.length > 0) {
       // User filtered and got no results

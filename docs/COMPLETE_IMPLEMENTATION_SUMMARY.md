@@ -15,7 +15,7 @@ This document summarizes the complete implementation of licensee-based access co
 - ✅ Backend API endpoints filter data by user's accessible licensees
 - ✅ Frontend components check licensee access before rendering
 - ✅ "No Licensee Assigned" message for users without licensees
-- ✅ Admin/Evolution Admin users exempt from licensee restrictions
+- ✅ Admin/Developer users exempt from licensee restrictions
 
 ### 2. **Profile & User Management Features**
 
@@ -197,7 +197,7 @@ The JWT token structure changed to include `roles` and `rel.licencee` fields. Ol
 
 ```json
 {
-  "roles": ["admin", "evolution admin"],
+  "roles": ["admin", "developer"],
   "rel": {
     "licencee": ["licenseeId1", "licenseeId2"]
   }
@@ -283,7 +283,7 @@ All pages use `shouldShowNoLicenseeMessage()` check:
 1. **Deploy the changes** to your environment
 2. **Force all users to re-login** (clear old JWT tokens)
 3. **Test with different user roles:**
-   - Admin/Evolution Admin (full access)
+   - Admin/Developer (full access)
    - Manager/Location Admin (licensee-restricted)
    - Collector/Technician (licensee-restricted)
 4. **Assign licensees** to users who need access

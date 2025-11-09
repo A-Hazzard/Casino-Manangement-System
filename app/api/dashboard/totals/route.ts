@@ -159,7 +159,7 @@ export async function GET(req: NextRequest) {
         
         // Apply location permissions based on role
         const isManager = userRoles.includes('manager');
-        const isAdmin = userAccessibleLicensees === 'all' || userRoles.includes('admin') || userRoles.includes('evolution admin');
+        const isAdmin = userAccessibleLicensees === 'all' || userRoles.includes('admin') || userRoles.includes('developer');
         
         if (!isAdmin && !isManager) {
           // Non-managers MUST have location permissions
@@ -423,7 +423,7 @@ export async function GET(req: NextRequest) {
         
         // Apply location permissions based on role
         const isManager = userRoles.includes('manager');
-        const isAdmin = userAccessibleLicensees === 'all' || userRoles.includes('admin') || userRoles.includes('evolution admin');
+        const isAdmin = userAccessibleLicensees === 'all' || userRoles.includes('admin') || userRoles.includes('developer');
         
         if (!isAdmin && !isManager) {
           // Non-managers MUST have location permissions
