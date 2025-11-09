@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import type { User, ResourcePermissions } from '@/lib/types/administration';
 import type { LocationSelectItem } from '@/lib/types/location';
 import { X } from 'lucide-react';
@@ -68,13 +67,29 @@ export default function RolesPermissionsModal({
   }, [open, user, locations]);
 
   useEffect(() => {
-    fetchAllGamingLocations().then(locs => {
-      const formattedLocs = locs.map(loc => {
-        let _id = '';
-        if ('id' in loc && typeof loc.id === 'string') _id = loc.id;
-        else if ('_id' in loc && typeof loc._id === 'string') _id = loc._id;
-        return { _id, name: loc.name };
-      });
+    const loadLocations = async () => {
+      try {
+        // Fetch all locations with showAll parameter for admin access
+        const response = await fetch('/api/locations?showAll=true', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to fetch locations');
+          return;
+        }
+        
+        const data = await response.json();
+        const locationsList = data.locations || [];
+        
+        const formattedLocs = locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string }) => ({
+          _id: (loc._id?.toString() || loc.id?.toString() || ''),
+          name: (loc.name || loc.locationName || 'Unknown Location'),
+        }));
+        
       setLocations(formattedLocs);
 
       // Check if all locations are selected
@@ -85,7 +100,12 @@ export default function RolesPermissionsModal({
           userLocationIds.length === formattedLocs.length
         );
       }
-    });
+      } catch (error) {
+        console.error('Error loading locations:', error);
+      }
+    };
+    
+    loadLocations();
   }, [user]);
 
   useEffect(() => {
@@ -164,7 +184,7 @@ export default function RolesPermissionsModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center md:items-center">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"

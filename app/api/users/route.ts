@@ -41,6 +41,10 @@ export async function GET(request: NextRequest): Promise<Response> {
       profilePicture: user.profilePicture ?? null,
       profile: user.profile,
       resourcePermissions: user.resourcePermissions,
+      rel: user.rel,
+      loginCount: user.loginCount,
+      lastLoginAt: user.lastLoginAt,
+      sessionVersion: user.sessionVersion,
     }));
 
     // Filter by licensee if provided

@@ -4,6 +4,7 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { getUserAccessibleLicenseesFromToken } from '../../lib/helpers/licenseeFilter';
 
 /**
  * GET /api/machines/[machineId]
@@ -59,14 +60,27 @@ export async function GET(
         const location = (await GamingLocations.findOne({
           _id: machine.gamingLocation,
         })
-          .select('name locationName gameDayOffset')
+          .select('name locationName gameDayOffset rel')
           .lean()) as {
           name?: string;
           locationName?: string;
           gameDayOffset?: number;
+          rel?: { licencee?: string };
         } | null;
 
         if (location) {
+          // Validate user has access to this location's licensee
+          const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+          if (userAccessibleLicensees !== 'all') {
+            const locationLicensee = location.rel?.licencee;
+            if (locationLicensee && !userAccessibleLicensees.includes(locationLicensee)) {
+              return NextResponse.json(
+                { success: false, error: 'Unauthorized: You do not have access to this cabinet' },
+                { status: 403 }
+              );
+            }
+          }
+          
           locationName =
             location.name || location.locationName || 'Unknown Location';
           gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time

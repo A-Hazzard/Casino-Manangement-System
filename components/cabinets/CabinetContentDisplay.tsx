@@ -12,6 +12,7 @@ import ClientOnly from '@/components/ui/common/ClientOnly';
 import { NetworkError } from '@/components/ui/errors';
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import { useUserStore } from '@/lib/store/userStore';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
@@ -22,7 +23,8 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 
 type CabinetContentDisplayProps = {
   paginatedCabinets: Machine[];
@@ -66,8 +68,28 @@ export const CabinetContentDisplay = ({
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
+  const user = useUserStore(state => state.user);
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
+  
+  // Get user's assigned licensees for better empty state message
+  const [licenseeNames, setLicenseeNames] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const loadLicenseeNames = async () => {
+      if (user?.rel?.licencee && user.rel.licencee.length > 0) {
+        const allLicensees = await fetchLicensees();
+        const names = user.rel.licencee
+          .map(id => {
+            const licensee = allLicensees.find(l => String(l._id) === String(id));
+            return licensee?.name;
+          })
+          .filter((name): name is string => name !== undefined);
+        setLicenseeNames(names);
+      }
+    };
+    loadLicenseeNames();
+  }, [user]);
 
   // Animate when filtered data changes (filtering, sorting, pagination)
   useEffect(() => {
@@ -161,16 +183,34 @@ export const CabinetContentDisplay = ({
       loading,
       error,
     });
+    
+    // Determine the appropriate message based on user's licensee assignments
+    let emptyMessage = '';
+    const isAdmin = user?.roles?.includes('admin') || user?.roles?.includes('evolution admin');
+    
+    if (filteredCabinets.length === 0 && allCabinets.length > 0) {
+      // User filtered and got no results
+      emptyMessage = 'No machines match your search criteria.';
+    } else if (allCabinets.length === 0) {
+      // No cabinets at all
+      if (isAdmin) {
+        emptyMessage = selectedLicencee && selectedLicencee !== 'all' && selectedLicencee !== ''
+          ? `No machines found for ${licenseeName}.`
+          : 'No machines found in the system.';
+      } else if (licenseeNames.length > 0) {
+        const licenseeList = licenseeNames.join(', ');
+        emptyMessage = `No machines found in your allowed locations for ${licenseeList}.`;
+      } else {
+        emptyMessage = 'No machines found in your allowed locations.';
+      }
+    } else {
+      // Default fallback
+      emptyMessage = `No machines found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`;
+    }
 
     return (
       <div className="mt-6">
-        <NoDataMessage
-          message={
-            filteredCabinets.length === 0 && allCabinets.length > 0
-              ? 'No machines match your search criteria.'
-              : `No machines found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`
-          }
-        />
+        <NoDataMessage message={emptyMessage} />
         {allCabinets.length === 0 && (
           <div className="mt-4 text-center">
             <Button onClick={onRetry} variant="outline">

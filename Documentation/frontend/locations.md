@@ -1,8 +1,8 @@
 # Locations Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 9th, 2025  
+**Version:** 2.1.0
 
 ## Table of Contents
 
@@ -35,7 +35,8 @@ The Locations page provides comprehensive casino location management, including 
 - **URL Pattern:** `/locations`
 - **Component Type:** Location Management Page
 - **Authentication:** Required
-- **Access Level:** All authenticated users
+- **Access Level:** Evolution Admin, Admin, Manager, Location Admin (with assigned locations)
+- **Licensee Filtering:** ✅ Supported
 
 ### System Integration
 
@@ -60,7 +61,12 @@ The Locations page provides comprehensive casino location management, including 
   - Location-specific cabinet management.
 - **Search and Filtering:**
   - Search locations by name or address.
-  - Filter by licensee and date range.
+  - Filter by licensee (role-dependent):
+    - **Evolution Admin/Admin**: Can filter by any licensee or view all
+    - **Manager**: Can filter by assigned licensees only
+    - **Location Admin**: No dropdown (automatically filtered to assigned locations)
+  - Filter by date range for financial metrics.
+  - Filter by SMIB status (SMIB/No SMIB/Local Server).
   - Sort by various performance metrics.
 - **Responsive Design:**
   - Desktop table view with detailed metrics.
@@ -208,10 +214,21 @@ LocationsPage (app/locations/page.tsx)
 
 ### Security Features
 
-- **Authentication:** Secure API calls with authentication headers
+- **Authentication:** JWT-based authentication with `sessionVersion` validation
 - **Authorization:** Role-based access to location operations
+  - **Allowed Roles**: Evolution Admin, Admin, Manager, Location Admin
+  - **Denied Roles**: Collector, Technician (redirected to Cabinets page)
+- **Licensee-Based Filtering:** Users only see locations for their assigned licensees
+  - **Evolution Admin/Admin**: Can view all locations or filter by specific licensee
+  - **Manager**: Can only view locations for assigned licensees
+  - **Location Admin**: Can only view their specifically assigned locations
+- **Location Permission Validation:**
+  - Server validates user has access to each location before returning data
+  - Complete isolation between licensees (no data leakage)
+  - Intersection logic for users with both licensee and location permissions
 - **Input Validation:** Comprehensive validation for all form inputs
 - **Data Sanitization:** Safe handling of user input
+- **Session Invalidation**: Auto-logout when permissions change
 
 ### Error Handling
 

@@ -1,18 +1,19 @@
-import { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
-import { JWTPayload, jwtVerify } from 'jose';
-import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
-import UserModel from '../models/user';
-import { hashPassword, comparePassword } from '../utils/validation';
 import type { ResourcePermissions } from '@/lib/types/administration';
-import { logActivity } from './activityLogger';
+import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import type {
   CurrentUser,
+  OriginalUserType,
   UserDocument,
   UserDocumentWithPassword,
-  OriginalUserType,
 } from '@/shared/types/users';
+import { JWTPayload, jwtVerify } from 'jose';
+import { cookies } from 'next/headers';
+import { NextRequest } from 'next/server';
+import { connectDB } from '../middleware/db';
+import UserModel from '../models/user';
+import { comparePassword, hashPassword } from '../utils/validation';
+import { logActivity } from './activityLogger';
 
 /**
  * Validates database context from JWT token
@@ -56,12 +57,30 @@ function validateDatabaseContext(
 }
 
 /**
- * Server-side function to get user from JWT token in cookies
+ * Server-side function to get user from JWT token in cookies or Authorization header
  */
 export async function getUserFromServer(): Promise<JWTPayload | null> {
+  // Try to get token from cookies first
   const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
+  let token = cookieStore.get('token')?.value;
+
+  // If not in cookies, try Authorization header (for client-side axios requests)
+  if (!token) {
+    try {
+      const { headers } = await import('next/headers');
+      const headersList = await headers();
+      const authHeader = headersList.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.substring(7); // Remove 'Bearer ' prefix
+      }
+    } catch (error) {
+      // Headers might not be available in all contexts
+      console.debug('Could not read headers:', error);
+    }
+  }
+
   if (!token) return null;
+
   try {
     const { payload } = await jwtVerify(
       token,
@@ -76,7 +95,31 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       return null;
     }
 
-    return payload as JWTPayload;
+    // Validate session version (permission changes invalidate the session)
+    const jwtPayload = payload as JWTPayload;
+    if (jwtPayload.sessionVersion !== undefined && jwtPayload._id) {
+      try {
+        await connectDB();
+        const UserModel = (await import('../models/user')).default;
+        const user = (await UserModel.findOne({ _id: jwtPayload._id })
+          .select('sessionVersion')
+          .lean()) as { sessionVersion?: number } | null;
+
+        if (user && user.sessionVersion !== undefined) {
+          if (user.sessionVersion !== jwtPayload.sessionVersion) {
+            console.warn(
+              `[SESSION INVALIDATION] User ${jwtPayload._id} session version mismatch. DB: ${user.sessionVersion}, JWT: ${jwtPayload.sessionVersion}`
+            );
+            return null; // Session invalidated - user needs to re-login
+          }
+        }
+      } catch (error) {
+        console.error('Session version validation failed:', error);
+        // Continue even if validation fails - don't block legitimate requests
+      }
+    }
+
+    return jwtPayload;
   } catch (error) {
     console.error('JWT verification failed:', error);
     return null;
@@ -154,9 +197,10 @@ export async function getAllUsers() {
 
 /**
  * Retrieves a user by ID from database
+ * Note: _id is stored as String in the schema, not ObjectId
  */
 export async function getUserById(userId: string) {
-  return await UserModel.findById(userId, '-password');
+  return await UserModel.findOne({ _id: userId }, '-password');
 }
 
 /**
@@ -267,7 +311,7 @@ export async function updateUser(
   request: NextRequest
 ) {
   // Find user with password field included (needed for password verification)
-  const user = await UserModel.findById(_id).select('+password');
+  const user = await UserModel.findOne({ _id }).select('+password');
   if (!user) {
     throw new Error('User not found');
   }
@@ -296,7 +340,9 @@ export async function updateUser(
       }
 
       // Validate new password strength
-      const { validatePasswordStrength } = await import('@/lib/utils/validation');
+      const { validatePasswordStrength } = await import(
+        '@/lib/utils/validation'
+      );
       const passwordValidation = validatePasswordStrength(passwordObj.new);
       if (!passwordValidation.isValid) {
         throw new Error(
@@ -310,8 +356,12 @@ export async function updateUser(
       updateFields.password = await hashPassword(passwordObj.new);
     } else if (typeof updateFields.password === 'string') {
       // Legacy support: if password is a string, validate and hash it
-      const { validatePasswordStrength } = await import('@/lib/utils/validation');
-      const passwordValidation = validatePasswordStrength(updateFields.password);
+      const { validatePasswordStrength } = await import(
+        '@/lib/utils/validation'
+      );
+      const passwordValidation = validatePasswordStrength(
+        updateFields.password
+      );
       if (!passwordValidation.isValid) {
         throw new Error(
           `Password requirements not met: ${passwordValidation.feedback.join(
@@ -323,17 +373,49 @@ export async function updateUser(
       updateFields.password = await hashPassword(updateFields.password);
     } else {
       // Invalid password format
-      throw new Error('Invalid password format. Expected string or object with current and new properties.');
+      throw new Error(
+        'Invalid password format. Expected string or object with current and new properties.'
+      );
     }
   }
 
-  // Calculate changes for activity log
-  const changes = calculateUserChanges(user.toObject(), updateFields);
+  // Separate MongoDB operators from regular fields
+  const mongoOperators: Record<string, unknown> = {};
+  const regularFields: Record<string, unknown> = {};
+
+  Object.keys(updateFields).forEach(key => {
+    if (key.startsWith('$')) {
+      // MongoDB operator (like $inc, $push, etc.)
+      mongoOperators[key] = updateFields[key];
+    } else {
+      // Regular field
+      regularFields[key] = updateFields[key];
+    }
+  });
+
+  // Calculate changes for activity log (only from regular fields, not operators)
+  const changes = calculateUserChanges(user.toObject(), regularFields);
+
+  // Build the update operation
+  const updateOperation: Record<string, unknown> = {};
+  if (Object.keys(regularFields).length > 0) {
+    updateOperation.$set = regularFields;
+  }
+
+  // Add other MongoDB operators (like $inc for sessionVersion)
+  Object.keys(mongoOperators).forEach(key => {
+    updateOperation[key] = mongoOperators[key];
+  });
+
+  console.log(
+    '[updateUser] Update operation:',
+    JSON.stringify(updateOperation, null, 2)
+  );
 
   // Update user
-  const updatedUser = await UserModel.findByIdAndUpdate(
-    _id,
-    { $set: updateFields },
+  const updatedUser = await UserModel.findOneAndUpdate(
+    { _id },
+    updateOperation,
     { new: true }
   );
 
@@ -351,7 +433,7 @@ export async function updateUser(
       metadata: {
         userId: currentUser._id,
         userEmail: currentUser.emailAddress,
-        userRole: currentUser.roles[0] || 'user',
+        userRole: currentUser.roles?.[0] || 'user',
         resource: 'user',
         resourceId: _id,
         resourceName: updatedUser.username || '',
@@ -367,8 +449,8 @@ export async function updateUser(
  * Deletes a user with activity logging (soft delete)
  */
 export async function deleteUser(_id: string, request: NextRequest) {
-  const deletedUser = await UserModel.findByIdAndUpdate(
-    _id,
+  const deletedUser = await UserModel.findOneAndUpdate(
+    { _id },
     {
       deletedAt: new Date(),
       updatedAt: new Date(),

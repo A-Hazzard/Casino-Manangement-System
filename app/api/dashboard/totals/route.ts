@@ -5,6 +5,8 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
+import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 
 /**
  * Gets overall dashboard totals (Money In, Money Out, Gross) across ALL locations
@@ -24,10 +26,19 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const timePeriod = searchParams.get('timePeriod');
-    const licencee = searchParams.get('licencee');
+    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
+    const licencee = searchParams.get('licensee') || searchParams.get('licencee');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
+    // Get user's accessible licensees, roles, and location permissions from JWT token for access control
+    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    
+    // Get user's roles and location permissions
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const userLocationPermissions = 
+      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
 
     // Only proceed if timePeriod is provided
     if (!timePeriod) {
@@ -35,6 +46,16 @@ export async function GET(req: NextRequest) {
         { error: 'timePeriod parameter is required' },
         { status: 400 }
       );
+    }
+    
+    // Validate licensee access if specific licensee requested
+    if (licencee && licencee !== 'all' && userAccessibleLicensees !== 'all') {
+      if (!userAccessibleLicensees.includes(licencee)) {
+        return NextResponse.json(
+          { error: 'Unauthorized: You do not have access to this licensee' },
+          { status: 403 }
+        );
+      }
     }
 
     // Parse custom dates if provided
@@ -61,7 +82,7 @@ export async function GET(req: NextRequest) {
     if (shouldApplyCurrencyConversion(licencee)) {
 
       // Get all licensee IDs (including null for locations without a licensee)
-      const allLicenseeIds = await db
+      let allLicenseeIds = await db
         .collection('gaminglocations')
         .distinct('rel.licencee', {
           $or: [
@@ -69,6 +90,13 @@ export async function GET(req: NextRequest) {
             { deletedAt: { $lt: new Date('2020-01-01') } },
           ],
         });
+      
+      // Filter licensees based on user access
+      if (userAccessibleLicensees !== 'all') {
+        allLicenseeIds = allLicenseeIds.filter(id => 
+          id === null || userAccessibleLicensees.includes(id)
+        );
+      }
       
       // Add null to the list to process locations without a licensee
       if (!allLicenseeIds.includes(null)) {
@@ -127,7 +155,25 @@ export async function GET(req: NextRequest) {
           )
           .toArray();
 
-        const locationIds = locations.map(l => l._id);
+        let locationIds = locations.map(l => l._id.toString());
+        
+        // Apply location permissions based on role
+        const isManager = userRoles.includes('manager');
+        const isAdmin = userAccessibleLicensees === 'all' || userRoles.includes('admin') || userRoles.includes('evolution admin');
+        
+        if (!isAdmin && !isManager) {
+          // Non-managers MUST have location permissions
+          if (userLocationPermissions.length === 0) {
+            // No permissions = no access
+            continue;
+          }
+          // Filter to only assigned locations
+          locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
+        } else if (!isAdmin && isManager && userLocationPermissions.length > 0) {
+          // Admins with specific location restrictions (rare case)
+          locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
+        }
+        // Managers and Admins with no location restrictions see all licensee locations
 
         if (locationIds.length === 0) continue;
 
@@ -168,10 +214,15 @@ export async function GET(req: NextRequest) {
             { projection: { _id: 1, gameDayOffset: 1, country: 1, rel: 1 } }
           )
           .toArray();
+        
+        // Apply location permissions if user has restrictions
+        const filteredLocationsWithOffset = userLocationPermissions.length > 0
+          ? locationsWithOffset.filter(loc => userLocationPermissions.includes(loc._id.toString()))
+          : locationsWithOffset;
 
         // Calculate gaming day ranges for each location
         const gamingDayRanges = getGamingDayRangesForLocations(
-          locationsWithOffset.map(loc => ({
+          filteredLocationsWithOffset.map(loc => ({
             _id: loc._id.toString(),
             gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM
           })),
@@ -185,7 +236,7 @@ export async function GET(req: NextRequest) {
         let licenseeGross = 0;
 
         // Process each location separately with its gaming day range
-        for (const location of locationsWithOffset) {
+        for (const location of filteredLocationsWithOffset) {
           const locationId = location._id.toString();
           const gameDayRange = gamingDayRanges.get(locationId);
 
@@ -368,18 +419,47 @@ export async function GET(req: NextRequest) {
           )
           .toArray();
 
-        if (locations.length === 0) {
-          // No locations for this licencee, return 0 values
+        let locationIds = locations.map(l => l._id.toString());
+        
+        // Apply location permissions based on role
+        const isManager = userRoles.includes('manager');
+        const isAdmin = userAccessibleLicensees === 'all' || userRoles.includes('admin') || userRoles.includes('evolution admin');
+        
+        if (!isAdmin && !isManager) {
+          // Non-managers MUST have location permissions
+          if (userLocationPermissions.length === 0) {
+            // No permissions = no access
+            return NextResponse.json({
+              moneyIn: 0,
+              moneyOut: 0,
+              gross: 0,
+            });
+          }
+          // Filter to only assigned locations
+          locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
+        } else if (!isAdmin && isManager && userLocationPermissions.length > 0) {
+          // Admins with specific location restrictions (rare case)
+          locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
+        }
+        // Managers and Admins with no location restrictions see all licensee locations
+
+        if (locationIds.length === 0) {
+          // No locations accessible, return 0 values
           return NextResponse.json({
             moneyIn: 0,
             moneyOut: 0,
             gross: 0,
           });
         }
+        
+        // Rebuild locations array with only accessible locations
+        const accessibleLocations = locations.filter(loc => 
+          locationIds.includes(loc._id.toString())
+        );
 
         // Calculate gaming day ranges for each location
         const gamingDayRanges = getGamingDayRangesForLocations(
-          locations.map(loc => ({
+          accessibleLocations.map(loc => ({
             _id: loc._id.toString(),
             gameDayOffset: loc.gameDayOffset ?? 8, // Default to 8 AM
           })),
@@ -474,17 +554,36 @@ export async function GET(req: NextRequest) {
         };
       } else {
         // No licensee filter - process all locations with their individual gaming day offsets
+        // But still respect user's location permissions, licensee access, and roles
+        const allowedLocationIds = await getUserLocationFilter(
+          userAccessibleLicensees,
+          undefined,
+          userLocationPermissions,
+          userRoles
+        );
+        
+        const locationQuery: Record<string, unknown> = {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+          ...(allowedLocationIds !== 'all' && allowedLocationIds.length > 0
+            ? { _id: { $in: allowedLocationIds } }
+            : {}),
+        };
+        
+        // Check if user has no accessible locations
+        if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
+          return NextResponse.json({
+            moneyIn: 0,
+            moneyOut: 0,
+            gross: 0,
+          });
+        }
+        
         const allLocations = await db
           .collection('gaminglocations')
-          .find(
-            {
-              $or: [
-                { deletedAt: null },
-                { deletedAt: { $lt: new Date('2020-01-01') } },
-              ],
-            },
-            { projection: { _id: 1, gameDayOffset: 1 } }
-          )
+          .find(locationQuery, { projection: { _id: 1, gameDayOffset: 1 } })
           .toArray();
 
         // Calculate gaming day ranges for each location

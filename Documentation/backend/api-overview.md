@@ -1,7 +1,8 @@
 # API Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 26th, 2025
+**Last Updated:** November 9th, 2025  
+**Version:** 2.1.0
 
 ## Quick Search Guide (Ctrl+F)
 
@@ -254,10 +255,12 @@ All endpoints return consistent error format:
 
 ### Role-Based Access
 
-- `admin` - Full system access
-- `manager` - Location and collection management
-- `collector` - Collection operations only
-- `viewer` - Read-only access
+- `evolution admin` - Full system access across all licensees
+- `admin` - Full system access across all licensees
+- `manager` - Access to ALL locations within assigned licensees
+- `collector` - Access to specifically assigned locations only
+- `location admin` - Access to specifically assigned locations only
+- `technician` - Access to specifically assigned locations (Cabinets only)
 
 ### Rate Limiting
 
@@ -498,6 +501,15 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 
 ## Common Query Parameters
 
+### Licensee Filtering
+
+- `licensee` (string): Licensee ID to filter data (preferred spelling)
+- `licencee` (string): Alternate spelling (backwards compatibility)
+- **Behavior**:
+  - Evolution Admin/Admin: Optional filter, defaults to all licensees
+  - Manager: Must be one of user's assigned licensees
+  - Collector/Location Admin/Technician: Ignored (auto-filtered to assigned locations)
+
 ### Pagination
 
 - `page` (number): Page number (default: 1)
@@ -552,10 +564,14 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 
 ### Authorization
 
-- Role-based access control (RBAC)
-- Resource-level permissions
-- Granular permission system
-- Session management
+- **Role-based access control (RBAC)**: 6 distinct roles with different permission levels
+- **Licensee-based filtering**: Users assigned to specific licensees, data isolated by licensee
+- **Location-level permissions**: Granular resource permissions for location-specific access
+- **Session version management**: `sessionVersion` incremented on permission changes
+- **Automatic session invalidation**: JWT validation checks session version on every request
+- **Permission intersection logic**:
+  - Managers: See all locations for assigned licensees
+  - Non-managers: See intersection of (licensee locations ∩ assigned locations)
 
 ### Data Protection
 

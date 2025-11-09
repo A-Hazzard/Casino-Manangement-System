@@ -66,7 +66,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
 
   // Page permissions mapping
   const pagePermissions: Record<PageName, UserRole[]> = {
-    dashboard: ['evolution admin', 'admin', 'manager', 'location admin'],
+    dashboard: ['evolution admin', 'admin', 'manager'], // ✅ Removed 'location admin'
     machines: [
       'evolution admin',
       'admin',
@@ -84,8 +84,8 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'location admin',
       'technician',
     ],
-    members: ['evolution admin', 'admin', 'manager'],
-    'member-details': ['evolution admin', 'admin', 'manager', 'location admin'],
+    members: ['evolution admin'], // ✅ Restricted to evolution admin only
+    'member-details': ['evolution admin'], // ✅ Restricted to evolution admin only
     'collection-report': [
       'evolution admin',
       'admin',
@@ -94,14 +94,8 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'collector',
       'collector meters',
     ],
-    reports: ['evolution admin', 'admin', 'manager', 'location admin'],
-    sessions: [
-      'evolution admin',
-      'admin',
-      'manager',
-      'location admin',
-      'technician',
-    ],
+    reports: ['evolution admin'], // ✅ Restricted to evolution admin only
+    sessions: ['evolution admin'], // ✅ Restricted to evolution admin only
     administration: ['evolution admin', 'admin'],
   };
 

@@ -151,13 +151,40 @@ export async function updateUser(
     throw new Error('User not found');
   }
 
-  // Calculate changes for activity log
-  const changes = calculateUserChanges(user.toObject(), updateFields);
+  // Separate MongoDB operators from regular fields
+  const mongoOperators: Record<string, unknown> = {};
+  const regularFields: Record<string, unknown> = {};
+  
+  Object.keys(updateFields).forEach(key => {
+    if (key.startsWith('$')) {
+      // MongoDB operator (like $inc, $push, etc.)
+      mongoOperators[key] = updateFields[key];
+    } else {
+      // Regular field
+      regularFields[key] = updateFields[key];
+    }
+  });
+  
+  // Calculate changes for activity log (only from regular fields, not operators)
+  const changes = calculateUserChanges(user.toObject(), regularFields);
+  
+  // Build the update operation
+  const updateOperation: Record<string, unknown> = {};
+  if (Object.keys(regularFields).length > 0) {
+    updateOperation.$set = regularFields;
+  }
+  
+  // Add other MongoDB operators (like $inc for sessionVersion)
+  Object.keys(mongoOperators).forEach(key => {
+    updateOperation[key] = mongoOperators[key];
+  });
+  
+  console.log('[updateUser] Update operation:', JSON.stringify(updateOperation, null, 2));
 
   // Update user
   const updatedUser = await UserModel.findByIdAndUpdate(
     _id,
-    { $set: updateFields },
+    updateOperation,
     { new: true }
   );
 

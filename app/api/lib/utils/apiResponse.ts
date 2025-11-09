@@ -40,6 +40,7 @@ export function createErrorResponse(
     {
       success: false,
       error,
+      message: error,  // Include 'message' field for frontend compatibility
       code,
       details,
       timestamp: new Date().toISOString(),

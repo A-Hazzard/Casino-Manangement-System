@@ -32,8 +32,10 @@ export async function GET(req: NextRequest) {
       (searchParams.get('activeTab') as ActiveTab) || 'locations';
     const timePeriod: TimePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || '7d';
+    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
+    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
 
-    const data = await getTopPerformingMetrics(db, activeTab, timePeriod);
+    const data = await getTopPerformingMetrics(db, activeTab, timePeriod, licensee || undefined);
 
     return NextResponse.json({ activeTab, timePeriod, data });
   } catch (error) {

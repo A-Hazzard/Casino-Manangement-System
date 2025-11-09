@@ -14,6 +14,8 @@ import {
   validatePasswordStrength,
   getPasswordStrengthLabel,
 } from '@/lib/utils/validation';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
+import type { Licensee } from '@/lib/types/licensee';
 import cameraIcon from '@/public/cameraIcon.svg';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -58,6 +60,15 @@ export default function ProfileModal({
   // Countries state
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
+
+  // Licensees state
+  const [licensees, setLicensees] = useState<Licensee[]>([]);
+  const [licenseesLoading, setLicenseesLoading] = useState(false);
+
+  // Locations state
+  const [locations, setLocations] = useState<{ _id: string; name: string }[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
+  const [missingLocationNames, setMissingLocationNames] = useState<Record<string, string>>({});
 
   // Password strength state
   const [passwordStrength, setPasswordStrength] = useState<{
@@ -229,6 +240,94 @@ export default function ProfileModal({
       loadCountries();
     }
   }, [open]);
+
+  // Load licensees
+  useEffect(() => {
+    const loadLicensees = async () => {
+      setLicenseesLoading(true);
+      try {
+        const licenseesData = await fetchLicensees();
+        console.log('[ProfileModal] Fetched licensees:', licenseesData);
+        console.log('[ProfileModal] Licensees count:', licenseesData.length);
+        console.log('[ProfileModal] Licensee IDs:', licenseesData.map(l => ({ id: String(l._id), name: l.name })));
+        setLicensees(licenseesData);
+      } catch (error) {
+        console.error('[ProfileModal] Failed to fetch licensees:', error);
+        toast.error('Failed to load licensees');
+      } finally {
+        setLicenseesLoading(false);
+      }
+    };
+
+    if (open) {
+      loadLicensees();
+    }
+  }, [open]);
+
+  // Load locations
+  useEffect(() => {
+    const loadLocations = async () => {
+      setLocationsLoading(true);
+      try {
+        const response = await axios.get('/api/locations?minimal=1');
+        const locationsData = response.data?.locations || [];
+        console.log('[ProfileModal] Fetched locations:', locationsData.length);
+        setLocations(locationsData);
+      } catch (error) {
+        console.error('[ProfileModal] Failed to fetch locations:', error);
+        toast.error('Failed to load locations');
+      } finally {
+        setLocationsLoading(false);
+      }
+    };
+
+    if (open) {
+      loadLocations();
+    }
+  }, [open]);
+
+  // Fetch missing location names by ID
+  useEffect(() => {
+    const fetchMissingLocations = async () => {
+      if (!userData?.resourcePermissions?.['gaming-locations']?.resources) return;
+      
+      const locationIds = userData.resourcePermissions['gaming-locations'].resources;
+      const missingIds = locationIds.filter(
+        id => !locations.find(l => String(l._id) === String(id))
+      );
+      
+      if (missingIds.length === 0) return;
+      
+      console.log('[ProfileModal] Fetching missing location names for IDs:', missingIds);
+      
+      // Fetch each missing location by ID
+      const fetchPromises = missingIds.map(async (locationId) => {
+        try {
+          const response = await axios.get(`/api/locations/${locationId}`);
+          const locationData = response.data?.location || response.data;
+          if (locationData?.name) {
+            return { id: locationId, name: locationData.name };
+          }
+          return { id: locationId, name: `Unknown Location` };
+        } catch (error) {
+          console.error(`[ProfileModal] Failed to fetch location ${locationId}:`, error);
+          return { id: locationId, name: `Unknown (${locationId})` };
+        }
+      });
+      
+      const results = await Promise.all(fetchPromises);
+      const namesMap: Record<string, string> = {};
+      results.forEach(result => {
+        namesMap[result.id] = result.name;
+      });
+      
+      setMissingLocationNames(namesMap);
+    };
+    
+    if (open && userData && locations.length > 0) {
+      fetchMissingLocations();
+    }
+  }, [open, userData, locations]);
 
   // Update password strength when new password changes
   useEffect(() => {
@@ -435,6 +534,25 @@ export default function ProfileModal({
         current: passwordData.currentPassword,
         new: passwordData.newPassword,
       };
+    }
+
+    // Check if admin/evo admin is changing their own permission-related fields
+    const isAdminOrEvoAdmin = userData.roles?.some(role => 
+      role.toLowerCase() === 'admin' || role.toLowerCase() === 'evolution admin'
+    );
+    
+    if (isAdminOrEvoAdmin) {
+      const permissionFieldsChanged = meaningfulChanges.some(change => {
+        const fieldPath = change.path;
+        return fieldPath === 'roles' || 
+               fieldPath.startsWith('resourcePermissions') || 
+               fieldPath.startsWith('rel');
+      });
+      
+      if (permissionFieldsChanged) {
+        console.log('[ProfileModal] 🔄 Admin/Evo Admin changing own permissions - incrementing sessionVersion');
+        updatePayload.$inc = { sessionVersion: 1 };
+      }
     }
 
     try {
@@ -897,6 +1015,123 @@ export default function ProfileModal({
                               ? selectedRoles.join(', ')
                               : '-'}
                           </p>
+                        )}
+                      </div>
+
+                      {/* Assigned Licensees */}
+                      <div className="md:col-span-2">
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                          Assigned Licensees
+                        </label>
+                        {licenseesLoading ? (
+                          <div className="p-2">
+                            <Skeleton className="h-5 w-32" />
+                          </div>
+                        ) : (
+                          <p className="p-2">
+                            {userData?.rel?.licencee && userData.rel.licencee.length > 0
+                              ? (() => {
+                                  console.log('[ProfileModal] User licensee IDs:', userData.rel.licencee);
+                                  console.log('[ProfileModal] Loaded licensees:', licensees.length);
+                                  console.log('[ProfileModal] Licensees loading:', licenseesLoading);
+                                  
+                                  if (licensees.length === 0 && !licenseesLoading) {
+                                    return 'Error loading licensees';
+                                  }
+                                  
+                                  return userData.rel.licencee
+                                    .map(licenseeId => {
+                                      console.log('[ProfileModal] Processing licensee ID:', licenseeId, 'Type:', typeof licenseeId);
+                                      
+                                      // Find licensee by ID with exact string matching
+                                      const licensee = licensees.find(l => {
+                                        const licId = String(l._id);
+                                        const userId = String(licenseeId);
+                                        const match = licId === userId;
+                                        console.log('[ProfileModal] Comparing:', { licId, userId, match });
+                                        return match;
+                                      });
+                                      
+                                      if (!licensee) {
+                                        console.error('[ProfileModal] ❌ Licensee not found for ID:', licenseeId);
+                                        console.error('[ProfileModal] Available IDs:', licensees.map(l => String(l._id)));
+                                      } else {
+                                        console.log('[ProfileModal] ✅ Found licensee:', licensee.name);
+                                      }
+                                      
+                                      return licensee?.name || `Unknown (${licenseeId})`;
+                                    })
+                                    .join(', ');
+                                })()
+                              : authUser?.roles?.includes('admin') || authUser?.roles?.includes('evolution admin')
+                              ? 'All Licensees (Admin)'
+                              : 'None'}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Assigned Locations */}
+                      <div className="md:col-span-2">
+                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                          Assigned Locations
+                        </label>
+                        {locationsLoading ? (
+                          <div className="p-2">
+                            <Skeleton className="h-5 w-32" />
+                          </div>
+                        ) : (
+                          <div className="p-2">
+                            {(() => {
+                              const locationPermissions = userData?.resourcePermissions?.['gaming-locations']?.resources || [];
+                              
+                              // Managers don't need location assignments
+                              const isManager = userData?.roles?.includes('manager');
+                              const isAdmin = userData?.roles?.includes('admin') || userData?.roles?.includes('evolution admin');
+                              
+                              if (isAdmin && locationPermissions.length === 0) {
+                                return 'All Locations (Admin)';
+                              }
+                              
+                              if (isManager && locationPermissions.length === 0) {
+                                return 'All Locations for assigned licensees (Manager)';
+                              }
+                              
+                              if (locationPermissions.length === 0) {
+                                return 'No locations assigned';
+                              }
+                              
+                              // Check if we're still fetching missing location names
+                              const hasMissingLocations = locationPermissions.some(locationId => {
+                                const location = locations.find(l => String(l._id) === String(locationId));
+                                return !location && !missingLocationNames[locationId];
+                              });
+                              
+                              if (hasMissingLocations) {
+                                return <Skeleton className="h-5 w-48 inline-block" />;
+                              }
+                              
+                              // Map location IDs to names
+                              const locationNames = locationPermissions
+                                .map(locationId => {
+                                  // First check in the main locations list
+                                  const location = locations.find(l => String(l._id) === String(locationId));
+                                  if (location) {
+                                    return location.name;
+                                  }
+                                  
+                                  // Check if we've fetched this missing location's name
+                                  if (missingLocationNames[locationId]) {
+                                    return missingLocationNames[locationId];
+                                  }
+                                  
+                                  // Shouldn't reach here due to hasMissingLocations check above
+                                  return `Unknown (${locationId})`;
+                                })
+                                .join(', ');
+                              
+                              return locationNames || 'No locations found';
+                            })()}
+                          </div>
                         )}
                       </div>
                     </div>

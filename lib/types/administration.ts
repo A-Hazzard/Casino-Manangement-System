@@ -1,5 +1,5 @@
-import type { Licensee } from '@/lib/types/licensee';
 import type { ActivityLogData } from '@/lib/types/hooks';
+import type { Licensee } from '@/lib/types/licensee';
 
 export type GamingLocationsResource = {
   entity: 'gaming-locations';
@@ -20,6 +20,9 @@ export type User = {
   roles: string[];
   profilePicture: string | null;
   resourcePermissions?: ResourcePermissions;
+  rel?: {
+    licencee?: string[];
+  };
   password?: string;
   profile?: {
     firstName?: string;
@@ -41,6 +44,10 @@ export type User = {
       notes?: string;
     };
   };
+  // Session and login tracking
+  loginCount?: number;
+  lastLoginAt?: Date | string;
+  sessionVersion?: number;
 };
 
 export type SortKey = keyof User | null;

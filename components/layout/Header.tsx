@@ -50,6 +50,15 @@ export default function Header({
   // Get user roles for permission checking
   const userRoles = user?.roles || [];
 
+  // Get user's licensee assignments
+  const userLicensees = user?.rel?.licencee || [];
+  const isAdmin = userRoles.includes('admin') || userRoles.includes('evolution admin');
+  
+  // Determine if licensee select should be shown
+  // Show if: admin OR user has multiple licensees
+  // Hide if: user has 0 or 1 licensee
+  const shouldShowLicenseeSelect = isAdmin || userLicensees.length > 1;
+
   // Wrapper function to handle licensee changes
   const handleLicenseeChange = async (newLicensee: string) => {
     if (setSelectedLicencee) {
@@ -139,12 +148,13 @@ export default function Header({
             </div>
 
             {/* Right side: Filters */}
-            {!hideLicenceeFilter && (
+            {!hideLicenceeFilter && shouldShowLicenseeSelect && (
               <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                 <div className="min-w-0 max-w-[120px] sm:max-w-[160px] md:max-w-none">
                   <LicenceeSelect
                     selected={selectedLicencee || ''}
                     onChange={handleLicenseeChange}
+                    userLicenseeIds={isAdmin ? undefined : userLicensees}
                     disabled={disabled}
                   />
                 </div>

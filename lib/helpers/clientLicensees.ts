@@ -10,21 +10,33 @@ import type { Licensee } from '@/lib/types/licensee';
  */
 export async function fetchLicensees(): Promise<Licensee[]> {
   try {
+    console.log('[fetchLicensees] Calling /api/licensees...');
     const response = await fetch('/api/licensees', {
       method: 'GET',
+      credentials: 'include', // Include cookies for authentication
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
+    console.log('[fetchLicensees] Response status:', response.status);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[fetchLicensees] API error:', response.status, errorText);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.licensees || [];
+    console.log('[fetchLicensees] Response data:', data);
+    console.log('[fetchLicensees] Licensees count:', data.licensees?.length || 0);
+    
+    const licensees = data.licensees || [];
+    console.log('[fetchLicensees] Returning licensees:', licensees.map((l: Licensee) => ({ id: l._id, name: l.name })));
+    
+    return licensees;
   } catch (error) {
-    console.error('Failed to fetch licensees:', error);
+    console.error('[fetchLicensees] Failed to fetch licensees:', error);
     return [];
   }
 }

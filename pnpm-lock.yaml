@@ -104,6 +104,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.1.13
         version: 4.1.13
+      '@tanstack/react-query':
+        specifier: ^5.90.7
+        version: 5.90.7(react@18.3.1)
       '@types/bcryptjs':
         specifier: ^3.0.0
         version: 3.0.0
@@ -2694,6 +2697,14 @@ packages:
 
   '@tailwindcss/postcss@4.1.13':
     resolution: {integrity: sha512-HLgx6YSFKJT7rJqh9oJs/TkBFhxuMOfUKSBEPYwV+t78POOBsdQ7crhZLzwcH3T0UyUuOzU/GK5pk5eKr3wCiQ==}
+
+  '@tanstack/query-core@5.90.7':
+    resolution: {integrity: sha512-6PN65csiuTNfBMXqQUxQhCNdtm1rV+9kC9YwWAIKcaxAauq3Wu7p18j3gQY3YIBJU70jT/wzCCZ2uqto/vQgiQ==}
+
+  '@tanstack/react-query@5.90.7':
+    resolution: {integrity: sha512-wAHc/cgKzW7LZNFloThyHnV/AX9gTg3w5yAv0gvQHPZoCnepwqCMtzbuPbb2UvfvO32XZ46e8bPOYbfZhzVnnQ==}
+    peerDependencies:
+      react: ^18 || ^19
 
   '@tanstack/react-virtual@3.11.3':
     resolution: {integrity: sha512-vCU+OTylXN3hdC8RKg68tPlBPjjxtzon7Ys46MgrSLE+JhSjSTPvoQifV6DQJeJmA8Q3KT6CphJbejupx85vFw==}
@@ -9170,6 +9181,13 @@ snapshots:
       '@tailwindcss/oxide': 4.1.13
       postcss: 8.5.6
       tailwindcss: 4.1.13
+
+  '@tanstack/query-core@5.90.7': {}
+
+  '@tanstack/react-query@5.90.7(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.90.7
+      react: 18.3.1
 
   '@tanstack/react-virtual@3.11.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:

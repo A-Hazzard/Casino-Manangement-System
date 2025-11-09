@@ -4,7 +4,7 @@ export type MachineMatchStage = {
 };
 
 export type MachineAggregationMatchStage = {
-  _id?: string;
+  _id?: string | { $in: string[] };
   $or?: Array<{
     deletedAt: null | { $lt: Date };
   }>;

@@ -23,7 +23,18 @@
     "test:get-report-id": "node scripts/get-report-id.js",
     "test:comprehensive": "node scripts/comprehensive-fix-test.js",
     "test:comprehensive:execute": "node scripts/comprehensive-fix-test.js --execute",
-    "test:comprehensive:revert": "node scripts/comprehensive-fix-test.js --revert"
+    "test:comprehensive:revert": "node scripts/comprehensive-fix-test.js --revert",
+    "migrate:session-version": "node scripts/migrate-add-session-version.js",
+    "migrate:session-version:dry": "node scripts/migrate-add-session-version.js --dry-run",
+    "test-data:generate": "node scripts/generate-test-data.js",
+    "test-data:generate:dry": "node scripts/generate-test-data.js --dry-run",
+    "test-data:cleanup": "node scripts/cleanup-test-data.js",
+    "test-data:cleanup:dry": "node scripts/cleanup-test-data.js --dry-run",
+    "test-user:create": "node scripts/create-test-user.js",
+    "test-meters:generate": "node scripts/generate-test-meters.js",
+    "test-meters:generate:dry": "node scripts/generate-test-meters.js --dry-run",
+    "test:comprehensive-suite": "node scripts/comprehensive-test-suite.js",
+    "test:verify-aggregation": "node scripts/verify-aggregation-accuracy.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -57,6 +68,7 @@
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.10.57",
     "@tailwindcss/postcss": "^4.1.13",
+    "@tanstack/react-query": "^5.90.7",
     "@types/bcryptjs": "^3.0.0",
     "@types/file-saver": "^2.0.7",
     "@types/leaflet-geosearch": "^3.0.0",

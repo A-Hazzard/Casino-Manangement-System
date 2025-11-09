@@ -2,7 +2,7 @@
 export type CurrentUser = {
   _id: string;
   emailAddress: string;
-  roles: string[];
+  roles?: string[];
 };
 
 export type UserDocument = {

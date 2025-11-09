@@ -109,6 +109,7 @@ export type licenceeSelectProps = {
   selected: string;
   onChange: (_value: string) => void;
   disabled?: boolean;
+  userLicenseeIds?: string[]; // If provided, only show these licensees (for non-admins)
 };
 
 // Centralized props type for date filters to comply with Next.js rules on shared typing

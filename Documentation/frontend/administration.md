@@ -18,8 +18,8 @@
 The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, and activity logging.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 6th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 9th, 2025  
+**Version:** 2.1.0
 
 ### File Information
 
@@ -33,10 +33,13 @@ The Administration page provides comprehensive user and licensee management for 
 - **User Management:**
   - View, search, sort, add, edit, and delete users
   - Assign roles and permissions with granular control
-  - Resource-based permissions (location and module access)
+  - **Licensee Assignment:** Multi-select dropdown to assign users to one or more licensees
+  - **Location Permissions:** Resource-based permissions for location-specific access
   - User profile management with detailed personal information
   - **Profile Picture Management:** Upload, crop (circular format), and remove profile pictures
+  - **Session Management:** Display login count, last login, and session version
   - Password reset and account status management
+  - **Session Invalidation:** Auto-increment `sessionVersion` when changing permissions (forces re-login)
   - Activity logs for user actions and system events
 - **Licensee Management:**
   - View, search, add, edit, and delete licensees
@@ -266,6 +269,17 @@ AdministrationPage (app/administration/page.tsx)
 ### Business Logic
 
 - **User Management:** Complete CRUD operations with role-based permissions
+- **Licensee Assignment Workflow:**
+  1. Admin edits user in user modal
+  2. Selects licensees from multi-select dropdown (can select 0 to N licensees)
+  3. On save, if licensees changed → `sessionVersion` incremented
+  4. User automatically logged out if currently logged in
+  5. User must re-login to access system with new licensee permissions
+- **Location Permission Assignment:**
+  1. Admin assigns specific locations to user
+  2. For non-managers: Access = Intersection(licensee locations, assigned locations)
+  3. For managers: Access = All locations for assigned licensees
+  4. Changes trigger session invalidation
 - **Licensee Management:** Licensee lifecycle management with payment tracking
 - **Search & Filtering:** Real-time search across multiple fields
 - **Sorting:** Multi-column sorting with direction indicators
@@ -277,7 +291,21 @@ AdministrationPage (app/administration/page.tsx)
 
 ### Security Features
 
-- **Role-Based Access:** Granular permissions for different user types
+- **Role-Based Access:** Granular permissions for different user types (only Evolution Admin and Admin can access)
+- **Licensee Assignment System:**
+  - Multi-select dropdown to assign users to one or more licensees
+  - **Evolution Admin/Admin**: No licensee restriction (implicit access to all)
+  - **Manager**: Requires licensee assignment to access data
+  - **Collector/Location Admin/Technician**: Requires both licensee AND location assignments
+  - Changes trigger `sessionVersion` increment for active users
+- **Location Permission Management:**
+  - Resource-based permissions for location-specific access
+  - Intersection logic: Users see locations that match BOTH their licensee access AND location permissions
+  - Managers: See all locations for assigned licensees (location permissions don't restrict)
+  - Non-managers: See only locations in intersection
+- **Session Tracking:**
+  - Display `loginCount` (total logins), `lastLoginAt` (timestamp), `sessionVersion` (current session)
+  - Visible in both user cards and user table
 - **Resource Permissions:** Location and module-specific access controls
 - **Input Validation:** Comprehensive validation for all form inputs
 - **Audit Trail:** Activity logging for security and compliance

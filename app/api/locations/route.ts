@@ -10,6 +10,7 @@ import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { Countries } from '@/app/api/lib/models/countries';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { getUserFromServer } from '../lib/helpers/users';
+import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 
 export async function GET(request: Request) {
   const context = apiLogger.createContext(
@@ -23,20 +24,54 @@ export async function GET(request: Request) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get('licencee');
+    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
+    const licencee = searchParams.get('licensee') || searchParams.get('licencee');
     const minimal = searchParams.get('minimal') === '1';
+    const showAll = searchParams.get('showAll') === 'true';
 
-    // Build query filter
-    const queryFilter: Record<string, unknown> = {};
-    if (licencee && licencee !== 'all') {
-      queryFilter['rel.licencee'] = licencee;
+    // Get user's accessible licensees, roles, and location permissions from JWT token
+    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    
+    // Get user's roles and location permissions
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const userLocationPermissions = 
+      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
+
+    // Build base query filter
+    const deletionFilter = {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
+      ],
+    };
+
+    let queryFilter: Record<string, unknown>;
+
+    // Apply location filtering based on licensee + location permissions
+    if (showAll && userAccessibleLicensees === 'all' && userLocationPermissions.length === 0) {
+      // Admin with no restrictions requesting all locations - no filter needed
+      queryFilter = deletionFilter;
+    } else {
+      // Apply intersection of licensee access + location permissions (respecting roles)
+      const allowedLocationIds = await getUserLocationFilter(
+        userAccessibleLicensees,
+        licencee || undefined,
+        userLocationPermissions,
+        userRoles
+      );
+
+      if (allowedLocationIds !== 'all') {
+        if (allowedLocationIds.length === 0) {
+          // No accessible locations
+          queryFilter = { ...deletionFilter, _id: null };
+        } else {
+          queryFilter = { ...deletionFilter, _id: { $in: allowedLocationIds } };
+        }
+      } else {
+        queryFilter = deletionFilter;
+      }
     }
-
-    // Exclude deleted locations
-    queryFilter.$or = [
-      { deletedAt: null },
-      { deletedAt: { $lt: new Date('2020-01-01') } },
-    ];
 
     // Fetch locations. If minimal is requested, project minimal fields only.
     const projection = minimal ? { _id: 1, name: 1, geoCoords: 1 } : undefined;
@@ -44,14 +79,11 @@ export async function GET(request: Request) {
       .sort({ name: 1 })
       .lean();
 
-    // Return minimal or full set based on query
-    const locationsToReturn = minimal ? locations : locations;
-
     apiLogger.logSuccess(
       context,
-      `Successfully fetched ${locationsToReturn.length} locations (minimal: ${minimal})`
+      `Successfully fetched ${locations.length} locations (minimal: ${minimal}, showAll: ${showAll})`
     );
-    return NextResponse.json({ locations: locationsToReturn }, { status: 200 });
+    return NextResponse.json({ locations }, { status: 200 });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -64,12 +96,6 @@ export async function POST(request: Request) {
   try {
     await connectDB();
     const body = await request.json();
-
-    // Debug: Log the incoming request body
-    // console.log(
-    //   "POST /api/locations - Request body:",
-    //   JSON.stringify(body, null, 2)
-    // );
 
     const {
       name,
@@ -84,9 +110,7 @@ export async function POST(request: Request) {
     } = body;
 
     // Validate required fields
-    // console.log("Validating name:", name);
     if (!name) {
-      // console.log("Validation failed: Location name is required");
       return NextResponse.json(
         { success: false, message: 'Location name is required' },
         { status: 400 }
@@ -123,13 +147,9 @@ export async function POST(request: Request) {
     }
 
     // If a country ID is provided, verify it exists (country is optional)
-    // console.log("Validating country:", country);
     if (country && typeof country === 'string' && country.trim().length > 0) {
-      // console.log("Looking up country with ID:", country);
       const countryDoc = await Countries.findById(country).lean();
-      // console.log("Country found:", !!countryDoc);
       if (!countryDoc) {
-        // console.log("Validation failed: Invalid country ID");
         return NextResponse.json(
           { success: false, message: 'Invalid country ID' },
           { status: 400 }
@@ -188,7 +208,6 @@ export async function POST(request: Request) {
         const createChanges = [
           { field: 'name', oldValue: null, newValue: name },
           { field: 'country', oldValue: null, newValue: country },
-
           {
             field: 'address.street',
             oldValue: null,
@@ -206,37 +225,10 @@ export async function POST(request: Request) {
           },
           { field: 'profitShare', oldValue: null, newValue: profitShare || 50 },
           {
-            field: 'isLocalServer',
+            field: 'gameDayOffset',
             oldValue: null,
-            newValue: isLocalServer || false,
+            newValue: gameDayOffset ?? 8,
           },
-          {
-            field: 'geoCoords.latitude',
-            oldValue: null,
-            newValue: geoCoords?.latitude || 0,
-          },
-          {
-            field: 'geoCoords.longitude',
-            oldValue: null,
-            newValue: geoCoords?.longitude || 0,
-          },
-
-          {
-            field: 'address.street',
-            oldValue: null,
-            newValue: address?.street || '',
-          },
-          {
-            field: 'address.city',
-            oldValue: null,
-            newValue: address?.city || '',
-          },
-          {
-            field: 'rel.licencee',
-            oldValue: null,
-            newValue: rel?.licencee || '',
-          },
-          { field: 'profitShare', oldValue: null, newValue: profitShare || 50 },
           {
             field: 'isLocalServer',
             oldValue: null,
@@ -437,8 +429,6 @@ export async function PUT(request: Request) {
         updateData.billValidatorOptions = Object.fromEntries(
           Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
         ) as UpdateLocationData['billValidatorOptions'];
-
-        updateData.billValidatorOptions = billValidatorOptions;
       }
 
       // Always update the updatedAt timestamp
@@ -456,16 +446,6 @@ export async function PUT(request: Request) {
           { status: 400 }
         );
       }
-
-      // Activity logging is handled by the frontend
-      // Backend logging disabled to prevent user session issues
-
-      // Debug logging for troubleshooting
-      console.warn('[LOCATIONS API] Update successful:', {
-        locationId,
-        updatedFields: Object.keys(updateData),
-        locationName: name,
-      });
 
       return NextResponse.json(
         {
@@ -527,48 +507,6 @@ export async function DELETE(request: Request) {
       try {
         const deleteChanges = [
           { field: 'name', oldValue: locationToDelete.name, newValue: null },
-
-          {
-            field: 'country',
-            oldValue: locationToDelete.country,
-            newValue: null,
-          },
-          {
-            field: 'address.street',
-            oldValue: locationToDelete.address?.street || '',
-            newValue: null,
-          },
-          {
-            field: 'address.city',
-            oldValue: locationToDelete.address?.city || '',
-            newValue: null,
-          },
-          {
-            field: 'rel.licencee',
-            oldValue: locationToDelete.rel?.licencee || '',
-            newValue: null,
-          },
-          {
-            field: 'profitShare',
-            oldValue: locationToDelete.profitShare,
-            newValue: null,
-          },
-          {
-            field: 'isLocalServer',
-            oldValue: locationToDelete.isLocalServer,
-            newValue: null,
-          },
-          {
-            field: 'geoCoords.latitude',
-            oldValue: locationToDelete.geoCoords?.latitude || 0,
-            newValue: null,
-          },
-          {
-            field: 'geoCoords.longitude',
-            oldValue: locationToDelete.geoCoords?.longitude || 0,
-            newValue: null,
-          },
-
           {
             field: 'country',
             oldValue: locationToDelete.country,

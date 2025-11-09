@@ -1,8 +1,8 @@
 # Collection Report System - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 7th, 2025  
-**Version:** 2.2.0
+**Last Updated:** November 9th, 2025  
+**Version:** 2.3.0
 
 ## Overview
 
@@ -29,27 +29,42 @@ The Collection Report System manages casino slot machine money collection operat
 
 ### Admin & Evolution Admin
 
-- ✅ Full access to all features
-- ✅ Create, edit, delete collection reports
+- ✅ Full access to all features across all licensees
+- ✅ Create, edit, delete collection reports for any location
 - ✅ View and use issue detection and fix tools
 - ✅ Access all validation and repair tools
+- ✅ Licensee dropdown to filter reports by specific licensee
+- ✅ Can view all licensees or filter by specific licensee
 
 ### Manager
 
-- ✅ Create, edit, delete collection reports
+- ✅ Create, edit, delete collection reports for assigned licensees
 - ✅ View issue indicators and warnings
+- ✅ Can view all locations for their assigned licensees
+- ✅ Licensee dropdown shows ONLY assigned licensees (if 2+)
+- ❌ Cannot access reports for licensees they're not assigned to
 - ❌ Limited access to advanced fix tools
 
 ### Collector & Location Collector
 
-- ✅ Create collection reports
+- ✅ Create collection reports for assigned locations only
 - ✅ Edit and delete reports (most recent per location only - see Edit Restrictions below)
 - ✅ View issue indicators
+- ✅ Can only see locations they have permission to access
+- ✅ Licensee dropdown shown if they have locations in multiple licensees
 - ❌ No access to advanced fix tools
+- ❌ Cannot see reports for other collectors' locations
 
-### Other Roles
+### Location Admin
 
-- Limited or no access to collection report features
+- ✅ Can view collection reports for assigned locations
+- ✅ Location-specific access only
+- ❌ No licensee dropdown (implicitly filtered)
+- ❌ Cannot access dashboard
+
+### Technician
+
+- ❌ No access to collection reports (redirected to Cabinets)
 
 ## Collection Report Creation
 
@@ -662,10 +677,22 @@ Cards (`CollectionReportCards.tsx` line 189):
 
 ### Security
 
-- Implement role-based access control
-- Validate all user inputs
-- Log all sensitive operations
-- Use secure authentication
+- **Authentication**: JWT-based with `sessionVersion` validation
+- **Role-Based Access Control**:
+  - Evolution Admin/Admin: Full access to all reports across all licensees
+  - Manager: Access to reports for assigned licensees only
+  - Collector: Access to reports for assigned locations only
+  - Location Admin: Access to reports for assigned locations only
+  - Technician: No access (redirected)
+- **Licensee-Based Filtering**: Users only see reports for their assigned licensees/locations
+  - Evolution Admin/Admin: Can filter by any licensee or view all
+  - Manager: Can filter by assigned licensees (dropdown shown if 2+)
+  - Collector/Location Admin: See only assigned locations (no dropdown if single licensee)
+- **Location Permission Validation**: Server validates access to each location before returning reports
+- **Session Invalidation**: Auto-logout when permissions change
+- **Input Validation**: Comprehensive validation for all form inputs
+- **Audit Trail**: All create/edit/delete operations logged
+- **Secure Authentication**: JWT tokens with role and permission validation
 
 ### User Experience
 

@@ -1,6 +1,7 @@
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -102,11 +103,15 @@ import type {
 
 // Components
 import { CollectionIssueModal } from '@/components/collectionReport/CollectionIssueModal';
+import { useUserStore } from '@/lib/store/userStore';
+import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 
 function CollectionReportPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  const user = useUserStore(state => state.user);
 
   const reportId = params.reportId as string;
   const [reportData, setReportData] = useState<CollectionReportData | null>(
@@ -1914,6 +1919,26 @@ function CollectionReportPageContent() {
         return <MachineMetricsContent loading={false} />;
     }
   };
+
+  // Show "No Licensee Assigned" message for non-admin users without licensees
+  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  if (showNoLicenseeMessage) {
+    return (
+      <PageLayout
+        headerProps={{
+          containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
+          disabled: false,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        <NoLicenseeAssigned />
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout

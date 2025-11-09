@@ -365,7 +365,7 @@ export default function AppSidebar() {
             )}
           </div>
           {/* Navigation Section: Main navigation menu with permission-based filtering */}
-          <nav className="relative flex-1 space-y-1 overflow-hidden px-2 py-4">
+          <nav className="relative flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
             {navigationLoading
               ? // Show loading skeleton for all items with square icon skeletons
                 items.map(item => (

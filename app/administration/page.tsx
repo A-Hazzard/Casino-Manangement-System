@@ -349,6 +349,7 @@ function AdministrationPageContent() {
       roles: selectedUser.roles,
       resourcePermissions: selectedUser.resourcePermissions,
       profilePicture: selectedUser.profilePicture,
+      rel: selectedUser.rel,
     };
 
     const formDataComparison = {
@@ -359,17 +360,46 @@ function AdministrationPageContent() {
       resourcePermissions: updated.resourcePermissions,
       profilePicture: updated.profilePicture,
       password: updated.password, // Include if changing password
+      rel: updated.rel,
     };
 
     // Detect changes by comparing ONLY editable fields
     const changes = detectChanges(originalData, formDataComparison);
     const meaningfulChanges = filterMeaningfulChanges(changes);
 
+    console.log('[Administration] handleSaveUser - Change Detection:');
+    console.log('  Original rel:', originalData.rel);
+    console.log('  Updated rel:', formDataComparison.rel);
+    console.log('  Meaningful changes:', meaningfulChanges);
+    console.log('  Changes summary:', meaningfulChanges.map(c => `${c.path}: ${JSON.stringify(c.oldValue)} → ${JSON.stringify(c.newValue)}`));
+
     // Only proceed if there are actual changes
     if (meaningfulChanges.length === 0) {
+      console.error('[Administration] ❌ No changes detected - blocking save');
       toast.info('No changes detected');
       return;
     }
+    
+    console.log('[Administration] ✅ Changes detected, proceeding with save');
+
+    // Check if permission-related fields changed (roles, resourcePermissions, rel)
+    console.log('[Administration] Checking for permission field changes...');
+    console.log('[Administration] All changed paths:', meaningfulChanges.map(c => c.path));
+    
+    const permissionFieldsChanged = meaningfulChanges.some(change => {
+      const fieldPath = change.path;
+      const isPermissionField = fieldPath === 'roles' || 
+             fieldPath.startsWith('resourcePermissions') || 
+             fieldPath.startsWith('rel');
+      
+      if (isPermissionField) {
+        console.log('[Administration] Found permission field change:', fieldPath);
+      }
+      
+      return isPermissionField;
+    });
+    
+    console.log('[Administration] Permission fields changed:', permissionFieldsChanged);
 
     // Build update payload with only changed fields + required _id
     const updatePayload: Record<string, unknown> = { _id: selectedUser._id };
@@ -381,7 +411,7 @@ function AdministrationPageContent() {
         const [parent, child] = fieldPath.split('.');
         
         // Special handling for objects that must be sent whole
-        if (parent === 'profile' || parent === 'resourcePermissions') {
+        if (parent === 'profile' || parent === 'resourcePermissions' || parent === 'rel') {
           updatePayload[parent] = updated[parent as keyof typeof updated];
         } else {
           if (!updatePayload[parent]) {
@@ -393,6 +423,15 @@ function AdministrationPageContent() {
         updatePayload[fieldPath] = updated[fieldPath as keyof typeof updated];
       }
     });
+
+    // If permission-related fields changed, increment sessionVersion to invalidate existing JWT
+    if (permissionFieldsChanged) {
+      updatePayload.$inc = { sessionVersion: 1 };
+      console.log('[Administration] 🔒 Permission fields changed - incrementing sessionVersion to invalidate user session');
+    }
+
+    console.log('[Administration] Update payload:', updatePayload);
+    console.log('[Administration] Update payload rel:', updatePayload.rel);
 
     try {
       await updateUser(updatePayload as never);

@@ -186,7 +186,8 @@ export const fetchTopPerformingDataHelper = async (
   activeTab: ActiveTab,
   activePieChartFilter: TimePeriod,
   setTopPerformingData: (data: TopPerformingData[]) => void,
-  setLoadingTopPerforming: (loading: boolean) => void
+  setLoadingTopPerforming: (loading: boolean) => void,
+  selectedLicencee?: string
 ) => {
   // Only fetch data if there's a valid filter
   if (!activePieChartFilter) {
@@ -196,7 +197,7 @@ export const fetchTopPerformingDataHelper = async (
 
   try {
     setLoadingTopPerforming(true);
-    const data = await fetchTopPerformingData(activeTab, activePieChartFilter);
+    const data = await fetchTopPerformingData(activeTab, activePieChartFilter, selectedLicencee);
     setTopPerformingData(data);
   } catch (error) {
     const apiError = classifyError(error);

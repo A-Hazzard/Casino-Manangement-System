@@ -8,6 +8,8 @@ import { connectDB } from '../../lib/middleware/db';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '../../lib/helpers/licenseeFilter';
+import { getUserFromServer } from '../../lib/helpers/users';
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +20,8 @@ export async function GET(req: NextRequest) {
     // Get parameters from search params
     const locationId = searchParams.get('locationId');
     const searchTerm = searchParams.get('search')?.trim() || '';
-    const licensee = searchParams.get('licensee');
+    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
+    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
     const timePeriod = searchParams.get('timePeriod');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
@@ -32,6 +35,51 @@ export async function GET(req: NextRequest) {
     }
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
+
+    // Get user's accessible licensees, roles, and location permissions
+    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const userLocationPermissions = 
+      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
+
+    console.log('[MACHINES AGGREGATION] User accessible licensees:', userAccessibleLicensees);
+    console.log('[MACHINES AGGREGATION] User roles:', userRoles);
+    console.log('[MACHINES AGGREGATION] User location permissions:', userLocationPermissions);
+    console.log('[MACHINES AGGREGATION] Licensee filter:', licensee);
+
+    // Get allowed location IDs (intersection of licensee + location permissions, respecting roles)
+    const allowedLocationIds = await getUserLocationFilter(
+      userAccessibleLicensees,
+      licensee || undefined,
+      userLocationPermissions,
+      userRoles
+    );
+
+    console.log('[MACHINES AGGREGATION] Allowed location IDs:', allowedLocationIds);
+
+    // DEBUG: Return debug info if ?debug=true
+    const debug = searchParams.get('debug') === 'true';
+
+    // If user has no accessible locations, return empty
+    if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
+      console.log('[MACHINES AGGREGATION] No accessible locations - returning empty array');
+      const response = { success: true, data: [] };
+      if (debug) {
+        return NextResponse.json({
+          ...response,
+          debug: {
+            userAccessibleLicensees,
+            userRoles,
+            userLocationPermissions,
+            licenseeParam: licensee,
+            allowedLocationIds: 'EMPTY',
+            reason: 'No accessible locations'
+          }
+        });
+      }
+      return NextResponse.json(response);
+    }
 
     // We'll calculate gaming day ranges per location instead of using a single range
     let timePeriodForGamingDay: string;
@@ -47,29 +95,33 @@ export async function GET(req: NextRequest) {
       timePeriodForGamingDay = timePeriod;
     }
 
-    // We only want "active" locations
+    // Build location match stage with access control
     const matchStage: MachineAggregationMatchStage = {
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
+    
+    // Apply location filter based on user permissions
     if (locationId) {
+      // Specific location requested - validate access
+      if (allowedLocationIds !== 'all' && !allowedLocationIds.includes(locationId)) {
+        console.log('[MACHINES AGGREGATION] User does not have access to location:', locationId);
+        return NextResponse.json({ success: true, data: [] });
+      }
       matchStage._id = locationId;
+    } else if (allowedLocationIds !== 'all') {
+      // Apply allowed locations filter
+      matchStage._id = { $in: allowedLocationIds };
     }
 
-    if (licensee) {
-      matchStage['rel.licencee'] = licensee;
-    }
+    console.log('[MACHINES AGGREGATION] Location match stage:', matchStage);
 
     // Get all locations with their gameDayOffset
-    const locations = await GamingLocations.find({
-      ...matchStage,
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    }).lean();
+    const locations = await GamingLocations.find(matchStage).lean();
+
+    console.log('[MACHINES AGGREGATION] Found locations:', locations.length);
 
     if (locations.length === 0) {
       return NextResponse.json({ success: true, data: [] });
@@ -99,8 +151,9 @@ export async function GET(req: NextRequest) {
       if (!gameDayRange) continue;
 
       // Get machines for this location (without any metrics - we'll add those next)
+      // Use locationIdStr (string) instead of location._id (ObjectId) to match the gamingLocation field
       const locationMachines = await Machine.find({
-        gamingLocation: location._id,
+        gamingLocation: locationIdStr,
         $or: [
           { deletedAt: null },
           { deletedAt: { $lt: new Date('2020-01-01') } },
@@ -355,7 +408,46 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, data: filteredMachines });
+    interface DebugInfo {
+      userAccessibleLicensees: string[] | 'all';
+      userRoles: string[];
+      userLocationPermissions: string[];
+      licenseeParam: string | null | undefined;
+      allowedLocationIds: string | string[];
+      locationsFound: number;
+      locationSample: Array<{ id: string; name: string; licensee?: string }>;
+      machinesReturned: number;
+      timePeriod: string | undefined;
+    }
+
+    interface ApiResponse {
+      success: boolean;
+      data: typeof filteredMachines;
+      debug?: DebugInfo;
+    }
+
+    const response: ApiResponse = { success: true, data: filteredMachines };
+    
+    // DEBUG: Add debug info if ?debug=true
+    if (debug) {
+      response.debug = {
+        userAccessibleLicensees,
+        userRoles,
+        userLocationPermissions,
+        licenseeParam: licensee,
+        allowedLocationIds: allowedLocationIds === 'all' ? 'ALL' : allowedLocationIds?.slice(0, 10),
+        locationsFound: locations.length,
+        locationSample: locations.slice(0, 3).map((l) => ({ 
+          id: String(l._id), 
+          name: String(l.name), 
+          licensee: l.rel?.licencee ? String(l.rel.licencee) : undefined 
+        })),
+        machinesReturned: filteredMachines.length,
+        timePeriod: timePeriodForGamingDay
+      };
+    }
+    
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error in machineAggregation route:', error);
     return NextResponse.json(

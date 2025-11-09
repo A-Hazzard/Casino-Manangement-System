@@ -10,6 +10,7 @@ import { sendEmail } from '../../lib/utils/email';
 import { comparePassword } from '../utils/validation';
 import { logActivity } from './activityLogger';
 import { getUserByEmail, getUserByUsername } from './users';
+import UserModel from '../models/user';
 
 /**
  * Validates user credentials and generates JWT tokens on success.
@@ -122,11 +123,16 @@ export async function authenticateUser(
       // Lock account after 5 failed attempts for 30 minutes
       if (failedAttempts >= 5) {
         const lockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-        await user.updateOne({
-          failedLoginAttempts: failedAttempts,
-          isLocked: true,
-          lockedUntil: lockedUntil,
-        });
+        await UserModel.findOneAndUpdate(
+          { _id: user._id },
+          {
+            $set: {
+              failedLoginAttempts: failedAttempts,
+              isLocked: true,
+              lockedUntil: lockedUntil,
+            },
+          }
+        );
 
         await logActivity({
           action: 'account_locked',
@@ -143,7 +149,10 @@ export async function authenticateUser(
             'Account locked due to multiple failed login attempts. Please try again in 30 minutes.',
         };
       } else {
-        await user.updateOne({ failedLoginAttempts: failedAttempts });
+        await UserModel.findOneAndUpdate(
+          { _id: user._id },
+          { $set: { failedLoginAttempts: failedAttempts } }
+        );
       }
 
       await logActivity({
@@ -159,13 +168,21 @@ export async function authenticateUser(
     }
 
     // Reset failed login attempts and unlock account on successful login
-    await user.updateOne({
-      failedLoginAttempts: 0,
-      isLocked: false,
-      lockedUntil: null,
-      lastLoginAt: new Date(),
-      loginCount: (user.loginCount || 0) + 1,
-    });
+    await UserModel.findOneAndUpdate(
+      { _id: user._id },
+      {
+        $set: {
+          failedLoginAttempts: 0,
+          isLocked: false,
+          lockedUntil: null,
+          lastLoginAt: new Date(),
+        },
+        $inc: {
+          loginCount: 1,
+        },
+      },
+      { new: true }
+    );
 
     // Clear rate limiting for successful login
     loginRateLimiter.clearAttempts(ipAddress);
@@ -183,33 +200,46 @@ export async function authenticateUser(
     const hasInvalidFields = Object.values(invalidFields).some(Boolean);
     if (hasInvalidFields) {
       // Return success but with a flag to prompt profile update
-      const userObject = user.toObject({ getters: true });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userObject = (user as any).toJSON();
 
       const sessionId = userObject._id.toString();
+
+      // resourcePermissions should already be a plain object after toJSON()
+      const resourcePermissionsPlain =
+        userObject.resourcePermissions || undefined;
+
       const accessToken = await generateAccessToken({
         _id: userObject._id.toString(),
         emailAddress: userObject.emailAddress,
         username: String(userObject.username || ''),
         isEnabled: userObject.isEnabled,
+        roles: userObject.roles || [],
+        rel: userObject.rel || undefined,
+        resourcePermissions: resourcePermissionsPlain as never,
         sessionId: sessionId,
+        sessionVersion: Number(userObject.sessionVersion) || 1,
         dbContext: {
           connectionString: getCurrentDbConnectionString(),
           timestamp: Date.now(),
         },
-      });
+      } as never);
 
       const refreshToken = await generateRefreshToken(
         userObject._id.toString(),
         userObject._id.toString()
       );
 
-      const userPayload: UserAuthPayload = {
+      const userPayload = {
         _id: userObject._id.toString(),
         emailAddress: userObject.emailAddress,
         username: String(userObject.username || ''),
         isEnabled: userObject.isEnabled,
         roles: userObject.roles || [],
+        rel: userObject.rel || undefined,
         profile: userObject.profile || undefined,
+        resourcePermissions: resourcePermissionsPlain,
+        sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
         isLocked: false,
@@ -217,7 +247,7 @@ export async function authenticateUser(
         failedLoginAttempts: 0,
         requiresProfileUpdate: true, // Flag to indicate invalid profile fields
         invalidProfileFields: invalidFields,
-      };
+      } as UserAuthPayload;
 
       // Log successful login
       await logActivity({
@@ -245,40 +275,54 @@ export async function authenticateUser(
       };
     }
 
-    const userObject = user.toObject({ getters: true });
+    // Use toJSON() which properly serializes Mongoose Maps
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userObject = (user as any).toJSON();
 
     // Generate tokens
     const sessionId = userObject._id.toString(); // Use user ID as session ID
+
+    // resourcePermissions should already be a plain object after toJSON()
+    const resourcePermissionsPlain =
+      userObject.resourcePermissions || undefined;
+
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
       username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
+      roles: userObject.roles || [],
+      rel: userObject.rel || undefined,
+      resourcePermissions: resourcePermissionsPlain as never,
       sessionId: sessionId,
+      sessionVersion: Number(userObject.sessionVersion) || 1,
       dbContext: {
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),
       },
-    });
+    } as never);
 
     const refreshToken = await generateRefreshToken(
       userObject._id.toString(),
       userObject._id.toString() // Using user ID as session ID for simplicity
     );
 
-    const userPayload: UserAuthPayload = {
+    const userPayload = {
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
       username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
+      rel: userObject.rel || undefined,
       profile: userObject.profile || undefined,
+      resourcePermissions: resourcePermissionsPlain,
+      sessionVersion: Number(userObject.sessionVersion) || 1,
       lastLoginAt: new Date(),
       loginCount: (Number(userObject.loginCount) || 0) + 1,
       isLocked: false,
       lockedUntil: undefined,
       failedLoginAttempts: 0,
-    };
+    } as UserAuthPayload;
 
     // Log successful login
     await logActivity({
@@ -360,20 +404,30 @@ export async function refreshAccessToken(
     }
 
     // Generate new access token
-    const userObject = user.toObject({ getters: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userObject = (user as any).toJSON();
 
     const sessionId = userObject._id.toString();
+
+    // resourcePermissions should already be a plain object after toJSON()
+    const resourcePermissionsPlain =
+      userObject.resourcePermissions || undefined;
+
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
       username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
+      roles: userObject.roles || [],
+      rel: userObject.rel || undefined,
+      resourcePermissions: resourcePermissionsPlain as never,
       sessionId: sessionId,
+      sessionVersion: Number(userObject.sessionVersion) || 1,
       dbContext: {
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),
       },
-    });
+    } as never);
 
     return { success: true, token: accessToken };
   } catch (error) {

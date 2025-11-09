@@ -41,8 +41,8 @@ export type Address = {
 };
 
 export type RelationshipInfo = {
-  licencee?: string;
-  [key: string]: string | undefined;
+  licencee?: string[];
+  [key: string]: string | string[] | undefined;
 };
 
 export type GeoCoordinates = {
@@ -363,6 +363,9 @@ export type User = {
   roles: string[];
   profilePicture: string | null;
   resourcePermissions?: ResourcePermissions;
+  rel?: {
+    licencee?: string[];
+  };
   password?: string;
   profile?: {
     firstName?: string;
@@ -390,6 +393,7 @@ export type User = {
   failedLoginAttempts?: number;
   lastLoginAt?: Date | string;
   loginCount?: number;
+  sessionVersion?: number;
   deletedAt?: Date | string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;

@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import GlobalErrorBoundary from '@/components/layout/GlobalErrorBoundary';
 import GlobalSidebarWrapper from '@/components/layout/GlobalSidebarWrapper';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
+import { QueryProvider } from '@/lib/providers/QueryProvider';
 // Removed AuthProvider and AuthGuard to prevent conflicts with ProtectedRoute
 
 export const metadata: Metadata = {
@@ -70,6 +71,7 @@ export default function RootLayout({
     >
       <body suppressHydrationWarning>
         <GlobalErrorBoundary>
+          <QueryProvider>
           <CurrencyProvider>
             <SidebarProvider>
               <GlobalSidebarWrapper />
@@ -77,6 +79,7 @@ export default function RootLayout({
             </SidebarProvider>
             <Toaster position="top-right" />
           </CurrencyProvider>
+          </QueryProvider>
         </GlobalErrorBoundary>
       </body>
     </html>

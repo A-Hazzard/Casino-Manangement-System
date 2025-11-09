@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { UserAuthPayload } from '@/shared/types/auth';
 import { clearUserCache } from '@/lib/utils/userCache';
+import type { UserAuthPayload } from '@/shared/types/auth';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 type UserStore = {
   user: UserAuthPayload | null;

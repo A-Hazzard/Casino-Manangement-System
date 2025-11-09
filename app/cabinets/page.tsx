@@ -2,6 +2,7 @@
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PageLayout from "@/components/layout/PageLayout";
+import { NoLicenseeAssigned } from "@/components/ui/NoLicenseeAssigned";
 import Image from "next/image";
 import { Suspense, useState } from "react";
 
@@ -41,6 +42,10 @@ import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
 
 // Store hooks
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
+import { useUserStore } from "@/lib/store/userStore";
+
+// Utilities
+import { shouldShowNoLicenseeMessage } from "@/lib/utils/licenseeAccess";
 
 // Constants and types
 import { CABINET_TABS_CONFIG } from "@/lib/constants/cabinets";
@@ -54,6 +59,8 @@ function CabinetsPageContent() {
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+  
+  const user = useUserStore(state => state.user);
 
   const { displayCurrency } = useCurrencyFormat();
 
@@ -157,6 +164,24 @@ function CabinetsPageContent() {
     // This will be handled by the useCabinetSorting hook
     // Sort logic is managed by the hook
   };
+
+  // Show "No Licensee Assigned" message for non-admin users without licensees
+  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  if (showNoLicenseeMessage) {
+    return (
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+          disabled: false,
+        }}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        <NoLicenseeAssigned />
+      </PageLayout>
+    );
+  }
 
   return (
     <>

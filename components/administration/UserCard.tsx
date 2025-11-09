@@ -67,7 +67,7 @@ export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
             <span className="italic text-red-500">No email provided</span>
           )}
         </div>
-        <div className="mb-3 text-sm text-gray-700">
+        <div className="mb-1 text-sm text-gray-700">
           <span className="font-semibold">Enabled:</span>{' '}
           {user.enabled !== undefined ? (
             user.enabled ? (
@@ -77,6 +77,34 @@ export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
             )
           ) : (
             <span className="italic text-red-500">Status unknown</span>
+          )}
+        </div>
+        <div className="mb-1 text-sm text-gray-700">
+          <span className="font-semibold">Login Count:</span>{' '}
+          {user.loginCount !== undefined ? (
+            <span className="text-blue-600">{user.loginCount}</span>
+          ) : (
+            <span className="italic text-gray-400">0</span>
+          )}
+        </div>
+        <div className="mb-1 text-sm text-gray-700">
+          <span className="font-semibold">Last Login:</span>{' '}
+          {user.lastLoginAt ? (
+            <span className="text-sm">
+              {new Date(user.lastLoginAt).toLocaleString()}
+            </span>
+          ) : (
+            <span className="italic text-gray-400">Never</span>
+          )}
+        </div>
+        <div className="mb-3 text-sm text-gray-700">
+          <span className="font-semibold">Session:</span>{' '}
+          {user.sessionVersion !== undefined ? (
+            <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-mono text-purple-700">
+              v{user.sessionVersion}
+            </span>
+          ) : (
+            <span className="italic text-gray-400">-</span>
           )}
         </div>
 

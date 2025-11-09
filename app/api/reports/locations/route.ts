@@ -4,6 +4,7 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromServer } from '../../lib/helpers/users';
 
 // Force recompilation to pick up rates.ts changes
 // Removed auto-index creation to avoid conflicts and extra latency
@@ -12,12 +13,15 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
-    const licencee = searchParams.get('licencee') || undefined;
+    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
+    const licencee = searchParams.get('licensee') || searchParams.get('licencee') || undefined;
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
     const searchTerm = searchParams.get('search')?.trim() || '';
 
     const showAllLocations = searchParams.get('showAllLocations') === 'true';
+    
+    console.log('[REPORTS/LOCATIONS] Query params:', { licencee, timePeriod, displayCurrency });
 
     // Pagination parameters
     const page = parseInt(searchParams.get('page') || '1');
@@ -43,8 +47,6 @@ export async function GET(req: NextRequest) {
       customEndDate = new Date(customEnd);
     }
 
-    // Debug logging removed to reduce spam
-
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -53,8 +55,24 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Ensure indexes are created for optimal performance
-    // Do not auto-create indexes on every request
+    // Get user data from JWT
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const userLicensees = (userPayload?.rel as { licencee?: string[] })?.licencee || [];
+    const userLocationPermissions = 
+      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
+    
+    console.log('[REPORTS/LOCATIONS] User roles:', userRoles);
+    console.log('[REPORTS/LOCATIONS] User licensees:', userLicensees);
+    console.log('[REPORTS/LOCATIONS] User location permissions:', userLocationPermissions);
+    
+    // Check if user is admin or manager
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('evolution admin');
+    const isManager = userRoles.includes('manager');
 
     // Build location filter
     const locationMatchStage: Record<string, unknown> = {
@@ -64,8 +82,85 @@ export async function GET(req: NextRequest) {
       ],
     };
 
+    // Apply user-based filtering
+    if (isAdmin && userLocationPermissions.length === 0) {
+      // Admin with no location restrictions - optionally filter by licencee param
+      console.log('[REPORTS/LOCATIONS] Admin with no restrictions');
     if (licencee && licencee !== 'all') {
       locationMatchStage['rel.licencee'] = licencee;
+      }
+    } else if (isAdmin && userLocationPermissions.length > 0) {
+      // Admin with location restrictions
+      console.log('[REPORTS/LOCATIONS] Admin with location restrictions:', userLocationPermissions);
+      locationMatchStage['_id'] = { $in: userLocationPermissions };
+    } else if (isManager) {
+      // Manager - get ALL locations for their assigned licensees
+      console.log('[REPORTS/LOCATIONS] Manager - filtering by licensees:', userLicensees);
+      if (userLicensees.length === 0) {
+        console.log('[REPORTS/LOCATIONS] Manager has no licensees - returning empty');
+        return NextResponse.json({
+          data: [],
+          pagination: { page, limit, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false },
+          currency: displayCurrency,
+          converted: false,
+        });
+      }
+      
+      // Filter by user's licensees
+      let managerLicenseesFilter = userLicensees;
+      
+      // If a specific licensee is selected via query param, further restrict to that licensee
+      if (licencee && licencee !== 'all') {
+        // Only show the selected licensee if user has access to it
+        if (userLicensees.includes(licencee)) {
+          managerLicenseesFilter = [licencee];
+        } else {
+          // User doesn't have access to the requested licensee
+          console.log('[REPORTS/LOCATIONS] Manager requested licensee they dont have access to');
+          return NextResponse.json({
+            data: [],
+            pagination: { page, limit, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false },
+            currency: displayCurrency,
+            converted: false,
+          });
+        }
+      }
+      
+      locationMatchStage['rel.licencee'] = { $in: managerLicenseesFilter };
+    } else {
+      // Collector/Technician - use ONLY their assigned location permissions
+      console.log('[REPORTS/LOCATIONS] Collector/Technician - filtering by locations:', userLocationPermissions);
+      if (userLocationPermissions.length === 0) {
+        console.log('[REPORTS/LOCATIONS] No location permissions - returning empty');
+        return NextResponse.json({
+          data: [],
+          pagination: { page, limit, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false },
+          currency: displayCurrency,
+          converted: false,
+        });
+      }
+      
+      // Start with location permissions
+      locationMatchStage['_id'] = { $in: userLocationPermissions };
+      
+      // If a specific licensee is selected, also filter by that licensee
+      if (licencee && licencee !== 'all') {
+        // User can only see their assigned locations that also belong to the selected licensee
+        if (userLicensees.length > 0 && !userLicensees.includes(licencee)) {
+          // User doesn't have access to the requested licensee
+          console.log('[REPORTS/LOCATIONS] Collector/Technician requested licensee they dont have access to');
+          return NextResponse.json({
+            data: [],
+            pagination: { page, limit, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false },
+            currency: displayCurrency,
+            converted: false,
+          });
+        }
+        locationMatchStage['rel.licencee'] = licencee;
+      } else if (userLicensees.length > 0) {
+        // Filter by user's assigned licensees
+        locationMatchStage['rel.licencee'] = { $in: userLicensees };
+      }
     }
 
     // Add search filter for location name or _id

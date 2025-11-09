@@ -240,27 +240,81 @@ export async function GET(req: NextRequest) {
       endDate = customEnd;
     }
 
-    console.warn('Fetching collection reports...');
-    console.warn(`[COLLECTION REPORTS] Time Period: ${timePeriod || 'Custom'}`);
-    console.warn(
-      `[COLLECTION REPORTS] Start Date: ${startDate?.toISOString() || 'None'}`
-    );
-    console.warn(
-      `[COLLECTION REPORTS] End Date: ${endDate?.toISOString() || 'None'}`
-    );
-    console.warn(`[COLLECTION REPORTS] Licensee: ${licencee || 'All'}`);
+    // Get user data from JWT for access control
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const userLicensees = (userPayload?.rel as { licencee?: string[] })?.licencee || [];
+    const userLocationPermissions = 
+      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
+    
+    console.warn('[COLLECTION REPORT] User roles:', userRoles);
+    console.warn('[COLLECTION REPORT] User licensees:', userLicensees);
+    console.warn('[COLLECTION REPORT] User location permissions:', userLocationPermissions);
+    console.warn(`[COLLECTION REPORT] Time Period: ${timePeriod || 'Custom'}`);
+    console.warn(`[COLLECTION REPORT] Start Date: ${startDate?.toISOString() || 'None'}`);
+    console.warn(`[COLLECTION REPORT] End Date: ${endDate?.toISOString() || 'None'}`);
+    console.warn(`[COLLECTION REPORT] Licensee param: ${licencee || 'All'}`);
+
+    // Check if user is admin or manager
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('evolution admin');
+    const isManager = userRoles.includes('manager');
+    
+    // Determine which location IDs the user can access
+    let allowedLocationIds: string[] | 'all';
+    
+    if (isAdmin && userLocationPermissions.length === 0) {
+      // Admin with no location restrictions
+      allowedLocationIds = 'all';
+      console.warn('[COLLECTION REPORT] Admin with no restrictions - no location filter');
+    } else if (isAdmin && userLocationPermissions.length > 0) {
+      // Admin with location restrictions
+      allowedLocationIds = userLocationPermissions;
+      console.warn('[COLLECTION REPORT] Admin with location restrictions:', allowedLocationIds);
+    } else if (isManager) {
+      // Manager - get ALL locations for their assigned licensees
+      console.warn('[COLLECTION REPORT] Manager - fetching all locations for licensees:', userLicensees);
+      
+      if (userLicensees.length === 0) {
+        console.warn('[COLLECTION REPORT] Manager has no licensees - returning empty');
+        return NextResponse.json([]);
+      }
+      
+      const db = await connectDB();
+      if (!db) {
+        return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+      }
+      
+      const managerLocations = await db.collection('gaminglocations').find({
+        'rel.licencee': { $in: userLicensees },
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      }, { projection: { _id: 1 } }).toArray();
+      
+      allowedLocationIds = managerLocations.map(loc => String(loc._id));
+      console.warn('[COLLECTION REPORT] Manager allowed location IDs:', allowedLocationIds);
+      
+      if (allowedLocationIds.length === 0) {
+        console.warn('[COLLECTION REPORT] No locations found for manager licensees - returning empty');
+        return NextResponse.json([]);
+      }
+    } else {
+      // Collector/Technician - use ONLY their assigned location permissions
+      if (userLocationPermissions.length === 0) {
+        console.warn('[COLLECTION REPORT] Non-manager with no location permissions - returning empty');
+        return NextResponse.json([]);
+      }
+      
+      allowedLocationIds = userLocationPermissions;
+      console.warn('[COLLECTION REPORT] Collector/Technician - allowed location IDs:', allowedLocationIds);
+    }
 
     const startTime = Date.now();
-
-    console.warn(
-      `[COLLECTION REPORTS] Calling getAllCollectionReportsWithMachineCounts with:`
-    );
-    console.warn(`  - licencee: ${licencee}`);
-    console.warn(`  - startDate: ${startDate?.toISOString()}`);
-    console.warn(`  - endDate: ${endDate?.toISOString()}`);
-    console.warn(`  - timePeriod: ${timePeriod}`);
-    console.warn(`  - startDateStr: ${startDateStr}`);
-    console.warn(`  - endDateStr: ${endDateStr}`);
 
     const reports = await getAllCollectionReportsWithMachineCounts(
       licencee,
@@ -271,21 +325,63 @@ export async function GET(req: NextRequest) {
     console.warn(
       `Collection reports fetched in ${Date.now() - startTime}ms (${
         reports.length
-      } reports)`
+      } reports before filtering)`
     );
 
+    // Get location names for the allowed location IDs
+    let allowedLocationNames: string[] = [];
+    if (allowedLocationIds !== 'all') {
+      const db = await connectDB();
+      if (!db) {
+        return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+      }
+      
+      // allowedLocationIds are strings, not ObjectIds, which is how they're stored in our database
+      const allowedLocations = await db.collection('gaminglocations')
+        .find({
+          _id: { $in: allowedLocationIds as never }  // Type assertion needed as DB uses string IDs, not ObjectIds
+        }, { projection: { _id: 1, name: 1 } })
+        .toArray();
+      
+      allowedLocationNames = allowedLocations.map(loc => String(loc.name));
+      console.warn('[COLLECTION REPORT] Allowed location names:', allowedLocationNames);
+    }
+    
+    // Filter reports by allowed locations (using location name since that's what's stored)
+    let filteredReports = reports;
+    if (allowedLocationIds !== 'all') {
+      console.warn('[COLLECTION REPORT] Filtering reports...');
+      console.warn('[COLLECTION REPORT] Allowed location IDs:', allowedLocationIds);
+      console.warn('[COLLECTION REPORT] Allowed location names:', allowedLocationNames);
+      console.warn('[COLLECTION REPORT] Sample reports:', reports.slice(0, 3).map(r => ({
+        location: r.location,
+        type: typeof r.location
+      })));
+      
+      filteredReports = reports.filter(report => {
+        // Collection reports store location NAME in the location field, not ID
+        const reportLocationName = String(report.location);
+        const included = allowedLocationNames.includes(reportLocationName);
+        if (!included) {
+          console.warn(`[COLLECTION REPORT] Report location "${reportLocationName}" NOT in allowed names: ${allowedLocationNames.join(', ')}`);
+        }
+        return included;
+      });
+      console.warn(`[COLLECTION REPORT] Filtered to ${filteredReports.length} reports for allowed locations`);
+    }
+
     console.warn(
-      `[COLLECTION REPORTS API] About to return ${reports.length} reports`
+      `[COLLECTION REPORT] About to return ${filteredReports.length} reports`
     );
-    if (reports.length > 0) {
-      console.warn(`[COLLECTION REPORTS API] Sample report:`, {
-        location: reports[0].location,
-        time: reports[0].time,
-        collector: reports[0].collector,
+    if (filteredReports.length > 0) {
+      console.warn(`[COLLECTION REPORT] Sample report:`, {
+        location: filteredReports[0].location,
+        time: filteredReports[0].time,
+        collector: filteredReports[0].collector,
       });
     }
 
-    return NextResponse.json(reports);
+    return NextResponse.json(filteredReports);
   } catch (error) {
     console.error('Error in collectionReport GET endpoint:', error);
     return NextResponse.json(

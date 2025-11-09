@@ -51,7 +51,7 @@ export type TabName =
  */
 export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
   const pagePermissions: Record<PageName, string[]> = {
-    dashboard: ['evolution admin', 'admin', 'manager', 'location admin'],
+    dashboard: ['evolution admin', 'admin', 'manager'], // ✅ Removed 'location admin'
     machines: [
       'evolution admin',
       'admin',
@@ -78,14 +78,8 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'collector',
       'collector meters',
     ],
-    members: ['evolution admin', 'admin', 'manager'],
-    'member-details': [
-      'evolution admin',
-      'admin',
-      'manager',
-      'location admin',
-      'technician',
-    ],
+    members: ['evolution admin'], // ✅ Restricted to evolution admin only
+    'member-details': ['evolution admin'], // ✅ Restricted to evolution admin only
     'collection-report': [
       'evolution admin',
       'admin',
@@ -95,14 +89,8 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'collector meters',
       'technician',
     ],
-    reports: ['evolution admin', 'admin', 'manager', 'location admin'],
-    sessions: [
-      'evolution admin',
-      'admin',
-      'manager',
-      'location admin',
-      'technician',
-    ],
+    reports: ['evolution admin'], // ✅ Restricted to evolution admin only
+    sessions: ['evolution admin'], // ✅ Restricted to evolution admin only
     administration: ['evolution admin', 'admin'],
   };
 

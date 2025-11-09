@@ -15,12 +15,14 @@ type ActiveTab = 'locations' | 'Cabinets';
  * @param db - MongoDB database instance.
  * @param activeTab - The current tab the user is on ("locations" or "Cabinets").
  * @param timePeriod - The time range (e.g., "7d", "30d").
+ * @param licensee - (Optional) Licensee filter to restrict results.
  * @returns Promise resolving to aggregated results sorted by performance.
  */
 export async function getTopPerformingMetrics(
   db: Db,
   activeTab: ActiveTab,
-  timePeriod: TimePeriod
+  timePeriod: TimePeriod,
+  licensee?: string
 ) {
   const { startDate, endDate }: CustomDate = getDatesForTimePeriod(timePeriod);
 
@@ -33,8 +35,8 @@ export async function getTopPerformingMetrics(
 
   const aggregationQuery =
     activeTab === 'Cabinets'
-      ? aggregateMetersForTop5Machines(filter)
-      : aggregateMetersForTop5Locations(filter);
+      ? aggregateMetersForTop5Machines(filter, licensee)
+      : aggregateMetersForTop5Locations(filter, licensee);
 
   return db.collection('meters').aggregate(aggregationQuery).toArray();
 }
@@ -43,9 +45,10 @@ export async function getTopPerformingMetrics(
  * Aggregates meters for the top 5 performing locations.
  *
  * @param filter - MongoDB filter object for date range.
+ * @param licensee - (Optional) Licensee filter to restrict results.
  * @returns MongoDB aggregation pipeline for top 5 locations.
  */
-function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
+function aggregateMetersForTop5Locations(filter: QueryFilter, licensee?: string): PipelineStage[] {
   return [
     { $match: filter },
     {
@@ -65,6 +68,12 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
       },
     },
     { $unwind: '$locationDetails' },
+    // Filter by licensee if specified
+    ...(licensee ? [{
+      $match: {
+        'locationDetails.rel.licencee': licensee
+      }
+    }] : []),
     {
       $project: {
         _id: 0,
@@ -101,9 +110,10 @@ function aggregateMetersForTop5Locations(filter: QueryFilter): PipelineStage[] {
  * Aggregates meters for the top 5 performing machines.
  *
  * @param filter - MongoDB filter object for date range.
+ * @param licensee - (Optional) Licensee filter to restrict results.
  * @returns MongoDB aggregation pipeline for top 5 machines.
  */
-function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
+function aggregateMetersForTop5Machines(filter: QueryFilter, licensee?: string): PipelineStage[] {
   return [
     { $match: filter },
     {
@@ -135,6 +145,12 @@ function aggregateMetersForTop5Machines(filter: QueryFilter): PipelineStage[] {
       },
     },
     { $unwind: '$locationDetails' },
+    // Filter by licensee if specified
+    ...(licensee ? [{
+      $match: {
+        'locationDetails.rel.licencee': licensee
+      }
+    }] : []),
     {
       $project: {
         _id: 0,

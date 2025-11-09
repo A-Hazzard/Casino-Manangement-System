@@ -34,7 +34,7 @@ export default function UserTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            {['NAME', 'USERNAME', 'EMAIL ADDRESS', 'ENABLED', 'ACTIONS'].map(
+            {['NAME', 'USERNAME', 'EMAIL ADDRESS', 'ENABLED', 'LOGIN COUNT', 'LAST LOGIN', 'SESSION', 'ACTIONS'].map(
               col => {
                 const sortKey = col.toLowerCase().replace(' ', '') as SortKey;
                 return (
@@ -125,6 +125,32 @@ export default function UserTable({
                   )
                 ) : (
                   <span className="italic text-red-500">Status unknown</span>
+                )}
+              </TableCell>
+              <TableCell className="text-left text-gray-600">
+                {user.loginCount !== undefined ? (
+                  <span className="font-semibold text-blue-600">{user.loginCount}</span>
+                ) : (
+                  <span className="italic text-gray-400">0</span>
+                )}
+              </TableCell>
+              <TableCell className="text-left text-gray-600">
+                {user.lastLoginAt ? (
+                  <span className="text-xs">
+                    {new Date(user.lastLoginAt).toLocaleDateString()} <br />
+                    {new Date(user.lastLoginAt).toLocaleTimeString()}
+                  </span>
+                ) : (
+                  <span className="italic text-gray-400">Never</span>
+                )}
+              </TableCell>
+              <TableCell className="text-left">
+                {user.sessionVersion !== undefined ? (
+                  <span className="rounded bg-purple-100 px-2 py-1 text-xs font-mono text-purple-700">
+                    v{user.sessionVersion}
+                  </span>
+                ) : (
+                  <span className="italic text-gray-400">-</span>
                 )}
               </TableCell>
               <TableCell className="text-left">

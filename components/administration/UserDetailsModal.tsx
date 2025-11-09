@@ -124,7 +124,7 @@ export default function UserDetailsModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
+      <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center">
         <div
           ref={backdropRef}
           className="absolute inset-0 bg-black/50"

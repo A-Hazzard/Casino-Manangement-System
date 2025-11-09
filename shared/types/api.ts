@@ -34,6 +34,7 @@ export type PaginatedApiResponse<T> = {
 export type ApiErrorResponse = {
   success: false;
   error: string;
+  message?: string;  // For frontend compatibility (same as error)
   code?: string;
   details?: Record<string, unknown>;
   timestamp: string;

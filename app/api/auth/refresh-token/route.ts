@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
       emailAddress: payload.emailAddress,
       username: payload.username,
       isEnabled: payload.isEnabled,
+      roles: payload.roles,
+      rel: payload.rel,
       sessionId: payload.sessionId,
       dbContext: payload.dbContext,
     });

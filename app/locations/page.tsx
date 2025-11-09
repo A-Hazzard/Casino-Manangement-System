@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PageErrorBoundary from "@/components/ui/errors/PageErrorBoundary";
+import { NoLicenseeAssigned } from "@/components/ui/NoLicenseeAssigned";
 import { useLocationActionsStore } from "@/lib/store/locationActionsStore";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
 import { LocationFilter } from "@/lib/types/location";
@@ -49,6 +50,8 @@ import {
 import { useGlobalErrorHandler } from "@/lib/hooks/data/useGlobalErrorHandler";
 import { animateTableRows, animateCards } from "@/lib/utils/ui";
 import { getLicenseeName } from "@/lib/utils/licenseeMapping";
+import { useUserStore } from "@/lib/store/userStore";
+import { shouldShowNoLicenseeMessage } from "@/lib/utils/licenseeAccess";
 
 function LocationsPageContent() {
   const { handleApiCallWithRetry: _handleApiCallWithRetry } =
@@ -59,6 +62,7 @@ function LocationsPageContent() {
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+  const user = useUserStore(state => state.user);
   const licenseeName = getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
   const { openEditModal } = useLocationActionsStore();
@@ -159,6 +163,12 @@ function LocationsPageContent() {
       }
     }
   }, [currentItems, selectedFilters, searchTerm, sortOption, sortOrder, isLoading]);
+
+  // Show "No Licensee Assigned" message for non-admin users without licensees
+  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  if (showNoLicenseeMessage) {
+    return <NoLicenseeAssigned />;
+  }
 
   return (
     <>

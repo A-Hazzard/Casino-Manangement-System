@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import LoginForm from '@/components/auth/LoginForm';
+import LiquidGradient from '@/components/ui/LiquidGradient';
+import PasswordUpdateModal from '@/components/ui/PasswordUpdateModal';
+import ProfileValidationModal from '@/components/ui/ProfileValidationModal';
+import { LoginPageSkeleton } from '@/components/ui/skeletons/LoginSkeletons';
 import { loginUser } from '@/lib/helpers/clientAuth';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useUserStore } from '@/lib/store/userStore';
-import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
 import { checkForDatabaseMismatch } from '@/lib/utils/databaseMismatch';
-import LiquidGradient from '@/components/ui/LiquidGradient';
-import LoginForm from '@/components/auth/LoginForm';
-import { LoginPageSkeleton } from '@/components/ui/skeletons/LoginSkeletons';
-import PasswordUpdateModal from '@/components/ui/PasswordUpdateModal';
-import ProfileValidationModal from '@/components/ui/ProfileValidationModal';
+import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 
 // Import images as variables for better performance
 import EOSLogo from '/public/EOS_Logo.png';

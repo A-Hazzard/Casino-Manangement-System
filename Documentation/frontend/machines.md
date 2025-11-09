@@ -20,8 +20,8 @@
 The Cabinets page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, SMIB configuration with live MQTT updates, and operational controls. This page serves as the central hub for managing all gaming cabinets across casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025  
-**Version:** 2.1.1
+**Last Updated:** November 9th, 2025  
+**Version:** 2.2.0
 
 ## Recent Updates (October 29th, 2025)
 
@@ -38,6 +38,8 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 - **URL Pattern:** `/cabinets`
 - **Component Type:** Cabinet Management Page
 - **Authentication:** Required
+- **Access Level:** All authenticated users (with role-based restrictions)
+- **Licensee Filtering:** ✅ Supported
 
 ## Main Features
 
@@ -223,10 +225,21 @@ CabinetsPage (app/cabinets/page.tsx)
 
 ### Security Features
 
-- **Authentication:** Secure API calls with authentication headers
+- **Authentication:** JWT-based authentication with `sessionVersion` validation
 - **Authorization:** Role-based access to cabinet operations
+  - **Full Access**: Evolution Admin, Admin, Manager
+  - **Restricted Access**: Collector, Location Admin, Technician (see only assigned locations)
+- **Licensee-Based Filtering:** Users only see cabinets for their assigned licensees/locations
+  - **Evolution Admin/Admin**: Can view all cabinets or filter by specific licensee
+  - **Manager**: Can view all cabinets for assigned licensees, dropdown filters between them
+  - **Collector/Location Admin/Technician**: See ONLY cabinets at their assigned locations (no licensee dropdown)
+- **Location Permission Validation:**
+  - Server validates user has access to cabinet's location before returning data
+  - Complete isolation between licensees
+  - Machines filtered by intersection of licensee access and location permissions
 - **Audit Trail:** Movement request tracking and approval workflow
-- **Input Validation:** Comprehensive validation for all form inputs
+- **Input Validation:** Comprehensive validation for all form inputs (SMIB board hex validation, serial number format, etc.)
+- **Session Invalidation**: Auto-logout when admin changes permissions
 
 ### Error Handling
 

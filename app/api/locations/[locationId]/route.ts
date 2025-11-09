@@ -5,6 +5,7 @@ import { TransformedCabinet } from '@/lib/types/mongo';
 import { TimePeriod } from '../../lib/types';
 import mongoose from 'mongoose';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { getUserAccessibleLicenseesFromToken } from '../../lib/helpers/licenseeFilter';
 
 // Helper function to safely convert an ID to ObjectId if possible
 function safeObjectId(id: string): string | mongoose.Types.ObjectId {
@@ -38,6 +39,18 @@ export async function GET(request: NextRequest) {
           { success: false, message: 'Location not found' },
           { status: 404 }
         );
+      }
+      
+      // Validate user has access to this location's licensee
+      const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+      if (userAccessibleLicensees !== 'all') {
+        const locationLicensee = location.rel?.licencee;
+        if (locationLicensee && !userAccessibleLicensees.includes(locationLicensee)) {
+          return NextResponse.json(
+            { success: false, message: 'Unauthorized: You do not have access to this location' },
+            { status: 403 }
+          );
+        }
       }
 
       return NextResponse.json({

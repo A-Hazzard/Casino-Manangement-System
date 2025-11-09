@@ -35,6 +35,7 @@ export async function GET(_request: NextRequest) {
         emailAddress: user.emailAddress || '',
         profile: user.profile || {},
         roles: user.roles || [],
+        rel: user.rel || undefined,
         isEnabled: user.isEnabled ?? true,
         resourcePermissions: user.resourcePermissions || {},
         createdAt: user.createdAt || new Date(),

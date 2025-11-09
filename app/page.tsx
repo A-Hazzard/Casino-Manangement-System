@@ -5,6 +5,7 @@ import MobileLayout from '@/components/layout/MobileLayout';
 import PcLayout from '@/components/layout/PcLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageErrorBoundary from '@/components/ui/errors/PageErrorBoundary';
+import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -28,6 +29,8 @@ import {
   useDashboardScroll,
 } from '@/lib/hooks/data';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
+import { useUserStore } from '@/lib/store/userStore';
+import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 
 /**
  * Dashboard Page Component
@@ -51,11 +54,13 @@ export default function Home() {
 function DashboardContent() {
   const { handleApiCallWithRetry } = useGlobalErrorHandler();
   const { displayCurrency } = useCurrency();
+  const user = useUserStore(state => state.user);
 
   // Create a stable reference to prevent infinite loops
   const stableHandleApiCallWithRetry = useCallback(handleApiCallWithRetry, [
     handleApiCallWithRetry,
   ]);
+  
   const {
     loadingChartData,
     setLoadingChartData,
@@ -157,13 +162,14 @@ function DashboardContent() {
             (activePieChartFilter || 'Today') as TimePeriod,
             (data: TopPerformingData[]) =>
               setTopPerformingData(data as unknown as TopPerformingData),
-            setLoadingTopPerforming
+            setLoadingTopPerforming,
+            selectedLicencee  // Pass selected licensee for filtering
           ),
         'Dashboard Top Performing Data'
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, activePieChartFilter, stableHandleApiCallWithRetry]);
+  }, [activeTab, activePieChartFilter, selectedLicencee, stableHandleApiCallWithRetry]);
 
   // Handle custom date range changes separately
   useEffect(() => {
@@ -218,6 +224,12 @@ function DashboardContent() {
   const renderCustomizedLabel = (props: CustomizedLabelProps) => {
     return <PieChartLabelRenderer props={props} />;
   };
+
+  // Show "No Licensee Assigned" message for non-admin users without licensees
+  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  if (showNoLicenseeMessage) {
+    return <NoLicenseeAssigned />;
+  }
 
   return (
     <PageLayout

@@ -463,9 +463,6 @@ export async function fetchAggregatedLocationsData(
     if (displayCurrency)
       queryParams.push(`currency=${encodeURIComponent(displayCurrency)}`);
 
-    // Always show all locations, even those with 0 meters (like cabinets page)
-    queryParams.push(`showAllLocations=true`);
-
     // Handle custom date range
     if (timePeriod === 'Custom' && dateRange?.from && dateRange?.to) {
       // Extract just the date part (YYYY-MM-DD)

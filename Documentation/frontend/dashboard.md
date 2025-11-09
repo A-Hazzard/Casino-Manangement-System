@@ -1,8 +1,8 @@
 # Dashboard Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 9th, 2025  
+**Version:** 2.1.0
 
 ## Table of Contents
 
@@ -34,7 +34,8 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 - **URL Pattern:** `/`
 - **Component Type:** Main Landing Page
 - **Authentication:** Required
-- **Access Level:** All authenticated users
+- **Access Level:** Evolution Admin, Admin, Manager (with assigned licensees)
+- **Licensee Filtering:** ✅ Supported
 
 ### System Integration
 
@@ -66,12 +67,17 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 - **Real-time Updates**: Data automatically updates based on selected filters
 - **Smart Period Switching**: Automatic adjustment based on data availability
 
-### Licensee Selection
+### Licensee Selection & Access Control
 
 - **Multi-licensee Support**: Dropdown to switch between different licensees
-- **Data Filtering**: All dashboard data filtered based on selected licensee
-- **Global Overview**: "All Licensees" option for system-wide metrics
-- **Context Switching**: Seamless switching between licensee contexts
+- **Role-Based Filtering**:
+  - **Evolution Admin/Admin**: Can view all licensees or filter by specific licensee
+  - **Manager**: Dropdown shows ONLY assigned licensees (if 2+)
+  - **Collector/Location Admin/Technician**: Cannot access Dashboard
+- **Data Filtering**: All dashboard data (totals, charts, top performing, map) filtered based on selected licensee
+- **Global Overview**: "All Licensees" option for admins or managers viewing all assigned licensees
+- **Context Switching**: Seamless switching between licensee contexts with state persistence
+- **No Licensee Assigned**: Non-admin users without licensees see informational message
 
 ### Responsive Layout
 
@@ -474,14 +480,59 @@ Daily Data (7d/30d/Custom):
 
 ### Data Validation & Error Handling
 
+#### **Licensee & Location-Based Filtering** ✅
+
+**Access Control Logic:**
+
+1. **Role-Based Page Access:**
+   - **Allowed Roles**: Evolution Admin, Admin, Manager
+   - **Denied Roles**: Collector, Location Admin, Technician (redirected to `/unauthorized`)
+
+2. **Licensee Assignment Check:**
+   ```typescript
+   // Non-admin users without licensees see informational message
+   if (shouldShowNoLicenseeMessage(currentUser)) {
+     return <NoLicenseeAssigned />;
+   }
+   ```
+
+3. **Licensee Dropdown Logic:**
+   - **Evolution Admin/Admin**: Can view all licensees or filter by specific licensee
+   - **Manager**: Dropdown shows ONLY assigned licensees (if 2+)
+   - **Visibility**: `showDropdown = isAdmin || (isManager && licenseeCount >= 2)`
+
+4. **Data Filtering Flow:**
+   - All API calls include `licensee` parameter from dropdown selection
+   - Server validates user has access to selected licensee
+   - Response filtered to show only allowed data
+   - Complete isolation between licensees (no data leakage)
+
+**API Request:**
+```
+GET /api/dashboard/totals?licensee=732b094083226f216b3fc11a&timePeriod=Today
+```
+
+**Backend Filtering:**
+- Evolution Admin/Admin: Can view selected licensee or all licensees
+- Manager: Can only view data for assigned licensees
+- All components (Totals, Charts, Top Performing, Map) respect filter
+
+**Session Invalidation:**
+- When admin changes user permissions, `sessionVersion` increments
+- User's JWT becomes invalid
+- Automatic logout with toast notification
+- User must re-login to access system with new permissions
+
 #### **Input Validation ✅**
 
 - **Date Range**: Validates ISO date format for custom ranges
 - **Time Period**: Validates against allowed values (Today, Yesterday, 7d, 30d)
-- **Licensee**: Optional string validation for licensee filtering
+- **Licensee**: Validates user has access to selected licensee
+- **User Permissions**: Server-side validation on every API call
 
 #### **Data Integrity ✅**
 
 - **Null Handling**: Uses `$ifNull` operators to default missing values to 0
 - **Negative Values**: Prevents negative financial calculations
 - **Missing Machines**: Gracefully handles deleted or inactive machines
+- **Permission Errors**: Graceful handling of unauthorized access attempts

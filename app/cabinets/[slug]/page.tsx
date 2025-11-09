@@ -2,6 +2,7 @@
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
+import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { IMAGES } from '@/lib/constants/images';
@@ -15,6 +16,7 @@ import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -75,6 +77,7 @@ function CabinetDetailPageContent() {
 
   // Get current user for permission checking
   const { user } = useUserStore();
+  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
   const canAccessSmibConfig =
     user &&
     user.roles &&
@@ -464,7 +467,26 @@ function CabinetDetailPageContent() {
     }
   };
 
-  // 1. FIRST: If initial loading (no cabinet data yet), show skeleton loaders
+  // 0. FIRST: Show "No Licensee Assigned" message for non-admin users without licensees
+  if (showNoLicenseeMessage) {
+    return (
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
+        showToaster={false}
+      >
+        <NoLicenseeAssigned />
+      </PageLayout>
+    );
+  }
+  
+  // 1. SECOND: If initial loading (no cabinet data yet), show skeleton loaders
   if (!cabinet && !error) {
     return (
       <CabinetDetailsLoadingState

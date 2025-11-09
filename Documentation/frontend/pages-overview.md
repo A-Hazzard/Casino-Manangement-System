@@ -1,8 +1,8 @@
 # Pages Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 9th, 2025  
+**Version:** 2.1.0
 
 ## Table of Contents
 
@@ -48,7 +48,9 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/`
 - **Documentation:** `dashboard.md`
 - **Status:** Main landing page with real-time metrics and analytics
-- **Features:** Real-time financial metrics, machine status, performance charts, date filtering
+- **Access:** Evolution Admin, Admin, Manager (with assigned licensees)
+- **Licensee Filtering:** ✅ Supported
+- **Features:** Real-time financial metrics, machine status, performance charts, date filtering, licensee dropdown
 
 ### ✅ Login
 
@@ -64,7 +66,9 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/administration`
 - **Documentation:** `administration.md`
 - **Status:** User and licensee management with roles and permissions
-- **Features:** User management, licensee management, activity logs, role-based access
+- **Access:** Evolution Admin, Admin only
+- **Licensee Filtering:** N/A (manages all licensees)
+- **Features:** User management with licensee assignment, session tracking, location permissions, role-based access, activity logs
 
 ### ✅ Collection Report
 
@@ -72,15 +76,19 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/collection-report`
 - **Documentation:** `collection-report.md`
 - **Status:** Comprehensive collection reporting and management
-- **Features:** Collection reports, monthly reports, manager/collector schedules, filtering
+- **Access:** Evolution Admin, Admin, Manager, Collector, Location Admin
+- **Licensee Filtering:** ✅ Supported (role-dependent)
+- **Features:** Collection reports, monthly reports, manager/collector schedules, filtering, role-based edit restrictions
 
 ### ✅ Cabinets
 
 - **File:** `app/cabinets/page.tsx`
 - **URL:** `/cabinets`
-- **Documentation:** `cabinets.md`
+- **Documentation:** `machines.md`
 - **Status:** Cabinet management with SMIB configuration and firmware
-- **Features:** Cabinet listing, filtering, sorting, movement requests, SMIB data upload
+- **Access:** All authenticated users (data filtered by role)
+- **Licensee Filtering:** ✅ Supported (admins/managers see dropdown, others auto-filtered)
+- **Features:** Cabinet listing, filtering, sorting, movement requests, SMIB data upload, location-based filtering
 
 ### ✅ Locations
 
@@ -88,7 +96,9 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/locations`
 - **Documentation:** `locations.md`
 - **Status:** Location management with performance metrics
-- **Features:** Location listing, filtering, sorting, machine status tracking, management
+- **Access:** Evolution Admin, Admin, Manager, Location Admin
+- **Licensee Filtering:** ✅ Supported (role-dependent visibility)
+- **Features:** Location listing, filtering, sorting, machine status tracking, CRUD operations, licensee-based filtering
 
 ### ✅ Reports
 
@@ -96,6 +106,8 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/reports`
 - **Documentation:** `Reports FRD.md`
 - **Status:** Comprehensive reporting module with multi-tab layout
+- **Access:** Evolution Admin only
+- **Licensee Filtering:** ✅ Supported
 - **Features:** Dashboard, locations, machines, and meters reports with export functionality
 
 ### ✅ Members
@@ -104,6 +116,8 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/members`
 - **Documentation:** `members.md`
 - **Status:** Complete member management with session tracking
+- **Access:** Evolution Admin only
+- **Licensee Filtering:** ✅ Supported
 - **Features:** Member profiles, session analytics, data export, performance tracking
 
 ### ✅ Sessions
@@ -112,6 +126,8 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/sessions`
 - **Documentation:** `sessions.md`
 - **Status:** Comprehensive session monitoring and machine event tracking
+- **Access:** Evolution Admin only
+- **Licensee Filtering:** ✅ Supported
 - **Features:** Session listing, search, filtering, machine event monitoring
 
 ## Detail Pages
@@ -276,4 +292,72 @@ All pages maintain consistent navigation through the sidebar and follow the esta
 
 ---
 
-**Last Updated:** October 20th, 2025
+## Role-Based Access Control Matrix
+
+### Page Access by Role
+
+| Page | Evolution Admin | Admin | Manager | Collector | Location Admin | Technician |
+|------|----------------|-------|---------|-----------|----------------|------------|
+| **Dashboard** | ✅ Full | ✅ Full | ✅ Filtered | ❌ | ❌ | ❌ |
+| **Locations** | ✅ Full | ✅ Full | ✅ Filtered | ❌ | ✅ Filtered | ❌ |
+| **Cabinets** | ✅ Full | ✅ Full | ✅ Filtered | ✅ Filtered | ✅ Filtered | ✅ Filtered |
+| **Collection Reports** | ✅ Full | ✅ Full | ✅ Filtered | ✅ Filtered | ✅ Filtered | ❌ |
+| **Sessions** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ | ❌ |
+| **Members** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ | ❌ |
+| **Reports** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ | ❌ |
+| **Administration** | ✅ Full | ✅ Full | ❌ | ❌ | ❌ | ❌ |
+
+### Licensee Filtering by Role
+
+| Role | Licensee Dropdown | Filtering Behavior | Location Access |
+|------|------------------|-------------------|----------------|
+| **Evolution Admin** | ✅ Always shown | Can view all or filter by specific licensee | All locations |
+| **Admin** | ✅ Always shown | Can view all or filter by specific licensee | All locations |
+| **Manager** | ✅ If 2+ licensees | Shows ONLY assigned licensees | All locations for assigned licensees |
+| **Collector** | ✅ If 2+ licensees | Shows ONLY assigned licensees | ONLY assigned locations (intersection) |
+| **Location Admin** | ❌ Never shown | Auto-filtered to assigned locations | ONLY assigned locations |
+| **Technician** | ❌ Never shown | Auto-filtered to assigned locations | ONLY assigned locations |
+
+### Data Isolation Rules
+
+1. **Evolution Admin / Admin**:
+   - No licensee restrictions (can assign/view all)
+   - Licensee dropdown is an optional filter
+   - Full CRUD access across all licensees
+
+2. **Manager**:
+   - MUST be assigned to 1+ licensees
+   - Can view ALL locations within assigned licensees
+   - Location permissions don't restrict (see all for licensee)
+   - Cannot see data from non-assigned licensees
+
+3. **Collector / Location Admin / Technician**:
+   - MUST be assigned to 1+ licensees
+   - MUST be assigned to specific locations
+   - Can ONLY see locations in: `Intersection(licensee locations, assigned locations)`
+   - Cannot see data from other locations or licensees
+
+### Session Management
+
+- **Session Version**: Incremented when admin changes user permissions (licensees, locations, roles)
+- **Auto-Logout**: User automatically logged out when `sessionVersion` increments
+- **Toast Notification**: User sees "Your session has been invalidated" message
+- **Re-authentication**: User must login again to get new JWT with updated permissions
+
+### Permission Change Flow
+
+```
+1. Admin edits user permissions (licensees/locations/roles)
+2. Server increments user.sessionVersion
+3. User's current JWT becomes invalid (version mismatch)
+4. Next API call fails with 401 Unauthorized
+5. Frontend Axios interceptor catches 401
+6. User redirected to /login with toast message
+7. User logs in with new credentials
+8. New JWT issued with updated permissions
+```
+
+---
+
+**Last Updated:** November 9th, 2025  
+**Version:** 2.1.0

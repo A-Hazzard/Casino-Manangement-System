@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fetchCountries } from '@/lib/helpers/countries';
 import type { Country } from '@/lib/types/country';
-import { fetchAllGamingLocations } from '@/lib/helpers/locations';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import type { ResourcePermissions, User } from '@/lib/types/administration';
 import type { LocationSelectItem } from '@/lib/types/location';
+import type { Licensee } from '@/lib/types/licensee';
 import {
   detectChanges,
   filterMeaningfulChanges,
@@ -104,6 +105,13 @@ export default function UserModal({
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
 
+  // Licensees state
+  const [licensees, setLicensees] = useState<Licensee[]>([]);
+  const [selectedLicenseeIds, setSelectedLicenseeIds] = useState<string[]>([]);
+  const [licenseeSearch, setLicenseeSearch] = useState('');
+  const [licenseeDropdownOpen, setLicenseeDropdownOpen] = useState(false);
+  const [allLicenseesSelected, setAllLicenseesSelected] = useState(false);
+
   // Countries state
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
@@ -111,6 +119,15 @@ export default function UserModal({
   // Initialize form data when user changes
   useEffect(() => {
     if (user) {
+      console.log('[UserModal] Initializing with user:', {
+        username: user.username,
+        hasRel: !!user.rel,
+        relLicencee: user.rel?.licencee,
+        relLicenceeType: typeof user.rel?.licencee,
+        relLicenceeIsArray: Array.isArray(user.rel?.licencee),
+        locationPermissions: user.resourcePermissions?.['gaming-locations']?.resources,
+      });
+      
       setIsLoading(false);
       setFormData({
         firstName: user.profile?.firstName || '',
@@ -133,6 +150,10 @@ export default function UserModal({
       setSelectedLocationIds(
         user.resourcePermissions?.['gaming-locations']?.resources || []
       );
+      
+      const initialLicenseeIds = user.rel?.licencee || [];
+      console.log('[UserModal] Setting initial licensee IDs:', initialLicenseeIds);
+      setSelectedLicenseeIds(initialLicenseeIds);
     } else if (open) {
       setIsLoading(true);
     }
@@ -140,21 +161,57 @@ export default function UserModal({
 
   // Load locations
   useEffect(() => {
-    fetchAllGamingLocations().then(locs => {
-      const formattedLocs = locs.map(loc => {
-        let _id = '';
-        if ('id' in loc && typeof loc.id === 'string') _id = loc.id;
-        else if ('_id' in loc && typeof loc._id === 'string') _id = loc._id;
-        return { _id, name: loc.name };
-      });
-      setLocations(formattedLocs);
+    const loadLocations = async () => {
+      try {
+        // Fetch all locations with showAll parameter for admin access
+        const response = await fetch('/api/locations?showAll=true', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to fetch locations');
+          return;
+        }
+        
+        const data = await response.json();
+        const locationsList = data.locations || [];
+        
+        const formattedLocs = locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string }) => ({
+          _id: (loc._id?.toString() || loc.id?.toString() || ''),
+          name: (loc.name || loc.locationName || 'Unknown Location'),
+        }));
+        
+        setLocations(formattedLocs);
 
-      // Check if all locations are selected
-      const userLocationIds =
-        user?.resourcePermissions?.['gaming-locations']?.resources || [];
-      if (userLocationIds.length > 0 && formattedLocs.length > 0) {
-        setAllLocationsSelected(
-          userLocationIds.length === formattedLocs.length
+        // Check if all locations are selected
+        const userLocationIds =
+          user?.resourcePermissions?.['gaming-locations']?.resources || [];
+        if (userLocationIds.length > 0 && formattedLocs.length > 0) {
+          setAllLocationsSelected(
+            userLocationIds.length === formattedLocs.length
+          );
+        }
+      } catch (error) {
+        console.error('Error loading locations:', error);
+      }
+    };
+    
+    loadLocations();
+  }, [user]);
+
+  // Load licensees
+  useEffect(() => {
+    fetchLicensees().then(lics => {
+      setLicensees(lics);
+
+      // Check if all licensees are selected
+      const userLicenseeIds = user?.rel?.licencee || [];
+      if (userLicenseeIds.length > 0 && lics.length > 0) {
+        setAllLicenseesSelected(
+          userLicenseeIds.length === lics.length
         );
       }
     });
@@ -318,6 +375,46 @@ export default function UserModal({
     loc.name.toLowerCase().includes(locationSearch.toLowerCase())
   );
 
+  // Licensee selection handlers
+  const handleLicenseeSelect = (id: string) => {
+    console.log('[UserModal] handleLicenseeSelect called with ID:', id);
+    console.log('[UserModal] Current selectedLicenseeIds:', selectedLicenseeIds);
+    
+    if (!selectedLicenseeIds.includes(id)) {
+      const newSelectedIds = [...selectedLicenseeIds, id];
+      console.log('[UserModal] Adding licensee, new array:', newSelectedIds);
+      setSelectedLicenseeIds(newSelectedIds);
+
+      // Check if all licensees are now selected
+      if (newSelectedIds.length === licensees.length) {
+        setAllLicenseesSelected(true);
+      }
+    } else {
+      console.log('[UserModal] Licensee already selected, not adding');
+    }
+  };
+
+  const handleLicenseeRemove = (id: string) => {
+    console.log('[UserModal] handleLicenseeRemove called with ID:', id);
+    const newSelectedIds = selectedLicenseeIds.filter(licId => licId !== id);
+    console.log('[UserModal] Removing licensee, new array:', newSelectedIds);
+    setSelectedLicenseeIds(newSelectedIds);
+    setAllLicenseesSelected(false);
+  };
+
+  const handleAllLicenseesChange = (checked: boolean) => {
+    setAllLicenseesSelected(checked);
+    if (checked) {
+      setSelectedLicenseeIds(licensees.map(lic => String(lic._id)));
+    } else {
+      setSelectedLicenseeIds([]);
+    }
+  };
+
+  const filteredLicensees = licensees.filter(lic =>
+    lic.name.toLowerCase().includes(licenseeSearch.toLowerCase())
+  );
+
   const handleSave = async () => {
     if (password && password !== confirmPassword) {
       toast.error('Passwords do not match');
@@ -359,6 +456,9 @@ export default function UserModal({
       profilePicture: formData.profilePicture || null,
       roles,
       password: password || undefined,
+      rel: {
+        licencee: selectedLicenseeIds,
+      },
       resourcePermissions: {
         ...(user?.resourcePermissions || {}),
         'gaming-locations': {
@@ -403,16 +503,54 @@ export default function UserModal({
     const changes = detectChanges(user, updatedUser);
     const meaningfulChanges = filterMeaningfulChanges(changes);
 
+    // Check for location and licensee changes separately (array comparison)
+    const oldLocationIds = user?.resourcePermissions?.['gaming-locations']?.resources || [];
+    const newLocationIds = selectedLocationIds;
+    const locationIdsChanged = 
+      oldLocationIds.length !== newLocationIds.length ||
+      !oldLocationIds.every((id, idx) => id === newLocationIds[idx]) ||
+      !newLocationIds.every((id, idx) => id === oldLocationIds[idx]);
+
+    const oldLicenseeIds = user?.rel?.licencee || [];
+    const newLicenseeIds = selectedLicenseeIds;
+    
+    // Normalize IDs to strings for comparison
+    const oldLicenseeIdsNormalized = oldLicenseeIds.map(id => String(id));
+    const newLicenseeIdsNormalized = newLicenseeIds.map(id => String(id));
+    
+    const licenseeIdsChanged = 
+      oldLicenseeIdsNormalized.length !== newLicenseeIdsNormalized.length ||
+      !oldLicenseeIdsNormalized.every(id => newLicenseeIdsNormalized.includes(id)) ||
+      !newLicenseeIdsNormalized.every(id => oldLicenseeIdsNormalized.includes(id));
+
+    // Log for debugging
+    console.log('[UserModal] Change Detection Debug:');
+    console.log('  Old licensee IDs:', oldLicenseeIds);
+    console.log('  New licensee IDs:', newLicenseeIds);
+    console.log('  Old normalized:', oldLicenseeIdsNormalized);
+    console.log('  New normalized:', newLicenseeIdsNormalized);
+    console.log('  Licensee IDs changed:', licenseeIdsChanged);
+    console.log('  Location IDs changed:', locationIdsChanged);
+    console.log('  Meaningful changes:', meaningfulChanges.length);
+
     // Only proceed if there are actual changes
-    if (meaningfulChanges.length === 0) {
+    if (meaningfulChanges.length === 0 && !locationIdsChanged && !licenseeIdsChanged) {
+      console.error('[UserModal] ❌ No changes detected - blocking save');
+      console.error('  This might be a bug if you just made changes!');
       toast.info('No changes detected');
       return;
     }
 
     // Log the changes for debugging
     if (process.env.NODE_ENV === 'development') {
+      console.warn('✅ Changes detected - proceeding with save');
       console.warn('Detected changes:', meaningfulChanges);
       console.warn('Changes summary:', getChangesSummary(meaningfulChanges));
+      console.warn('Location IDs changed:', locationIdsChanged, { oldLocationIds, newLocationIds });
+      console.warn('Licensee IDs changed:', licenseeIdsChanged, { 
+        old: oldLicenseeIdsNormalized, 
+        new: newLicenseeIdsNormalized 
+      });
     }
 
     setIsLoading(true);
@@ -460,7 +598,7 @@ export default function UserModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
+      <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center">
         <div
           ref={backdropRef}
           className="absolute inset-0 bg-black/50"
@@ -1110,6 +1248,134 @@ export default function UserModal({
                                   )
                                   .join(', ')
                               : 'No roles assigned'}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Licensees Section */}
+                    <div className="mb-6">
+                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
+                        Assigned Licensees
+                      </h4>
+
+                      {isEditMode ? (
+                        <>
+                          {/* All Licensees Checkbox */}
+                          <div className="mb-3">
+                            <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
+                              <Checkbox
+                                checked={allLicenseesSelected}
+                                onCheckedChange={checked =>
+                                  handleAllLicenseesChange(checked === true)
+                                }
+                                className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
+                              />
+                              All Licensees
+                            </label>
+                          </div>
+
+                          <div className="relative mb-2">
+                            <Input
+                              value={licenseeSearch}
+                              onChange={e => {
+                                setLicenseeSearch(e.target.value);
+                                setLicenseeDropdownOpen(true);
+                              }}
+                              onFocus={() => setLicenseeDropdownOpen(true)}
+                              onBlur={() =>
+                                setTimeout(
+                                  () => setLicenseeDropdownOpen(false),
+                                  150
+                                )
+                              }
+                              placeholder={
+                                allLicenseesSelected
+                                  ? 'All licensees are selected'
+                                  : 'Select Licensee..'
+                              }
+                              className="w-full rounded-md pr-10"
+                              autoComplete="off"
+                              disabled={allLicenseesSelected}
+                            />
+                            {/* Dropdown of filtered licensees, or all if no search */}
+                            {!allLicenseesSelected &&
+                              licenseeDropdownOpen &&
+                              (filteredLicensees.length > 0 ||
+                                licenseeSearch === '') && (
+                                <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                  {(licenseeSearch
+                                    ? filteredLicensees
+                                    : licensees
+                                  ).map(lic => (
+                                    <button
+                                      key={lic._id}
+                                      type="button"
+                                      className="w-full px-4 py-2 text-left text-gray-900 hover:bg-blue-100"
+                                      onClick={() => {
+                                        handleLicenseeSelect(String(lic._id));
+                                        setLicenseeSearch('');
+                                        setLicenseeDropdownOpen(false);
+                                      }}
+                                    >
+                                      {lic.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {allLicenseesSelected ? (
+                              <span className="flex items-center rounded-full bg-green-500 px-4 py-2 text-sm font-medium text-white">
+                                All Licensees Selected ({licensees.length}{' '}
+                                licensees)
+                                <button
+                                  className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
+                                  onClick={() =>
+                                    handleAllLicenseesChange(false)
+                                  }
+                                  type="button"
+                                  title="Remove all licensees"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </span>
+                            ) : (
+                              selectedLicenseeIds.map(id => {
+                                const lic = licensees.find(l => String(l._id) === String(id));
+                                return lic ? (
+                                  <span
+                                    key={id}
+                                    className="flex items-center rounded-full bg-purple-400 px-3 py-1 text-sm text-white"
+                                  >
+                                    {lic.name}
+                                    <button
+                                      className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
+                                      onClick={() => handleLicenseeRemove(id)}
+                                      type="button"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </button>
+                                  </span>
+                                ) : null;
+                              })
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center">
+                          <div className="text-gray-700">
+                            {allLicenseesSelected
+                              ? `All Licensees (${licensees.length} licensees)`
+                              : selectedLicenseeIds.length > 0
+                                ? selectedLicenseeIds
+                                    .map(
+                                      id =>
+                                        licensees.find(l => String(l._id) === String(id))?.name
+                                    )
+                                    .filter(Boolean)
+                                    .join(', ')
+                                : 'No licensees assigned'}
                           </div>
                         </div>
                       )}

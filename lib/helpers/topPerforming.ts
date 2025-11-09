@@ -9,14 +9,19 @@ type ActiveTab = 'locations' | 'Cabinets';
  *
  * @param activeTab - Either "locations" or "Cabinets".
  * @param timePeriod - The time period (7d, 30d, etc.).
+ * @param licensee - (Optional) Licensee filter for restricting results.
  * @returns Promise resolving to an array of top-performing entities with color assignment.
  */
 export async function fetchTopPerformingData(
   activeTab: ActiveTab,
-  timePeriod: string
+  timePeriod: string,
+  licensee?: string
 ): Promise<TopPerformingData[]> {
   try {
-    const params = { activeTab, timePeriod };
+    const params: Record<string, string> = { activeTab, timePeriod };
+    if (licensee) {
+      params.licensee = licensee;
+    }
     const headers = { 'Content-Type': 'application/json' };
     const response = await axios.get(`/api/metrics/top-performing`, {
       params,

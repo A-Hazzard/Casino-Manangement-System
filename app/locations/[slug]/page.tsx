@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
+import { NoLicenseeAssigned } from "@/components/ui/NoLicenseeAssigned";
 
 import { Button } from "@/components/ui/button";
 import { useDashBoardStore } from "@/lib/store/dashboardStore";
@@ -48,6 +49,8 @@ import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
+import { useUserStore } from "@/lib/store/userStore";
+import { shouldShowNoLicenseeMessage } from "@/lib/utils/licenseeAccess";
 
 type CabinetSortOption =
   | "assetNumber"
@@ -73,6 +76,8 @@ export default function LocationPage() {
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+  
+  const user = useUserStore(state => state.user);
 
   // State for tracking date filter initialization
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
@@ -484,6 +489,27 @@ export default function LocationPage() {
   };
 
   const { openCabinetModal } = useNewCabinetStore();
+
+  // Show "No Licensee Assigned" message for non-admin users without licensees
+  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  if (showNoLicenseeMessage) {
+    return (
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+          disabled: false,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        <NoLicenseeAssigned />
+      </PageLayout>
+    );
+  }
 
   return (
     <>

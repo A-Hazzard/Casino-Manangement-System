@@ -32,9 +32,11 @@ const AnimatePresence = dynamic(
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
+import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { hasManagerAccess } from '@/lib/utils/permissions';
+import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 
 // GSAP will be loaded dynamically in useEffect
 
@@ -1051,6 +1053,26 @@ function CollectionReportContent() {
   //   console.log("DEBUG: desktopPage", desktopPage);
   //   console.log("DEBUG: mobilePage", mobilePage);
   // }
+
+  // Show "No Licensee Assigned" message for non-admin users without licensees
+  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  if (showNoLicenseeMessage) {
+    return (
+      <PageLayout
+        headerProps={{
+          selectedLicencee,
+          setSelectedLicencee,
+        }}
+        pageTitle="Collection Reports"
+        hideOptions={false}
+        hideLicenceeFilter={false}
+        mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
+        showToaster={true}
+      >
+        <NoLicenseeAssigned />
+      </PageLayout>
+    );
+  }
 
   return (
     <>
