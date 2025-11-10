@@ -179,6 +179,7 @@ export default function EditCollectionModal({
   );
   const [prevIn, setPrevIn] = useState<number | null>(null);
   const [prevOut, setPrevOut] = useState<number | null>(null);
+  const [isFirstCollection, setIsFirstCollection] = useState(false);
 
   // Confirmation dialog state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -350,6 +351,23 @@ export default function EditCollectionModal({
       setIsLoadingMachines(false);
     }
   }, [selectedLocationId]);
+
+  // Check if this is the first collection for the selected machine
+  useEffect(() => {
+    if (selectedMachineId) {
+      axios
+        .get(`/api/collections/check-first-collection?machineId=${selectedMachineId}`)
+        .then(response => {
+          setIsFirstCollection(response.data.isFirstCollection);
+        })
+        .catch(error => {
+          console.error('Error checking first collection:', error);
+          setIsFirstCollection(false); // Default to false on error (hide advanced)
+        });
+    } else {
+      setIsFirstCollection(false);
+    }
+  }, [selectedMachineId]);
 
   // Filter machines based on search term
   // Utility function for proper alphabetical and numerical sorting
@@ -2094,19 +2112,21 @@ export default function EditCollectionModal({
                     </p>
                   </div>
 
-                  {/* Advanced SAS Start override */}
-                  <div className="mb-2">
-                    <button
-                      type="button"
-                      className="text-xs text-button underline"
-                      onClick={() => setShowAdvancedSas(p => !p)}
-                    >
-                      {showAdvancedSas
-                        ? 'Hide Advanced'
-                        : 'Advanced: Custom previous SAS start'}
-                    </button>
-                  </div>
-                  {showAdvancedSas && (
+                  {/* Advanced SAS Start override - Only show for first collection */}
+                  {isFirstCollection && (
+                    <div className="mb-2">
+                      <button
+                        type="button"
+                        className="text-xs text-button underline"
+                        onClick={() => setShowAdvancedSas(p => !p)}
+                      >
+                        {showAdvancedSas
+                          ? 'Hide Advanced'
+                          : 'Advanced: Custom previous SAS start'}
+                      </button>
+                    </div>
+                  )}
+                  {isFirstCollection && showAdvancedSas && (
                     <div className="mb-4">
                       <label className="mb-2 block text-sm font-medium text-grayHighlight">
                         Previous SAS Start (optional):

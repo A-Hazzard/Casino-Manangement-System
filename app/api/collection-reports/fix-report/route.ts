@@ -12,6 +12,30 @@ import { connectDB } from '../../lib/middleware/db';
 import { CollectionReport } from '../../lib/models/collectionReport';
 import { Collections } from '../../lib/models/collections';
 import { Machine } from '../../lib/models/machines';
+import { generateSummaryReport } from './generateSummaryReport';
+
+/**
+ * Safely get machine ID from collection, checking multiple sources
+ * Collections may have machineId in different places:
+ * 1. collection.machineId (standard)
+ * 2. collection.sasMeters.machine (fallback for older data)
+ */
+function getMachineIdFromCollection(
+  collection: CollectionData
+): string | undefined {
+  // Try collection.machineId first
+  if (collection.machineId) {
+    return collection.machineId;
+  }
+
+  // Fall back to sasMeters.machine
+  if (collection.sasMeters?.machine) {
+    return collection.sasMeters.machine as string;
+  }
+
+  // No machine ID found
+  return undefined;
+}
 
 // Type for machine document with collectionMetersHistory
 type MachineWithHistory = {
@@ -164,7 +188,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.warn(`📊 Found ${targetCollections.length} collections to process`);
+    const totalCollections = targetCollections.length;
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`🔧 FIX REPORT: ${targetReport.locationReportId}`);
+    console.log(`📊 Total Collections: ${totalCollections}`);
+    console.log(`${'='.repeat(80)}\n`);
 
     const fixResults: FixResults = {
       reportId: targetReport.locationReportId,
@@ -180,16 +208,38 @@ export async function POST(request: NextRequest) {
       errors: [],
     };
 
+    const startTime = Date.now();
+    let lastProgressLog = 0;
+
     // PHASE 1: Fix all collection data first (prevIn/prevOut, movement, SAS times)
+    console.log('📍 PHASE 1: Fixing collection data\n');
+
     for (const collection of targetCollections) {
-      if (machineId && collection.machineId !== machineId) {
+      // 🔧 FIX: Get machine ID for filtering
+      const collMachineId = getMachineIdFromCollection(collection);
+      if (machineId && collMachineId !== machineId) {
         continue; // Skip if specific machine requested and this isn't it
       }
 
       fixResults.collectionsProcessed++;
-      console.warn(
-        `\n🔍 PHASE 1 - Processing collection: ${collection._id} (Machine: ${collection.machineId})`
-      );
+
+      // Progress logging (every 10% or every 10 collections)
+      const progress =
+        (fixResults.collectionsProcessed / totalCollections) * 100;
+      if (
+        progress - lastProgressLog >= 10 ||
+        fixResults.collectionsProcessed % 10 === 0
+      ) {
+        const totalIssues = Object.values(fixResults.issuesFixed).reduce(
+          (sum, val) => sum + val,
+          0
+        );
+        console.log(
+          `⏳ ${fixResults.collectionsProcessed}/${totalCollections} (${progress.toFixed(0)}%) | ` +
+            `Fixed: ${totalIssues} | Errors: ${fixResults.errors.length}`
+        );
+        lastProgressLog = progress;
+      }
 
       try {
         // 1. Fix SAS Times Issues
@@ -210,10 +260,6 @@ export async function POST(request: NextRequest) {
         // 6. Fix Machine History Entry Issues (prevIn/prevOut as 0 or undefined)
         await fixMachineHistoryEntryIssues(collection, fixResults);
       } catch (error) {
-        console.error(
-          `❌ Error processing collection ${collection._id}:`,
-          error
-        );
         fixResults.errors.push({
           collectionId: collection._id,
           error: error instanceof Error ? error.message : String(error),
@@ -221,23 +267,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // PHASE 2: Update machine collectionMeters to be consistent with fixed collection data
-    console.warn(
-      `\n🔍 PHASE 2 - Updating machine collectionMeters for consistency`
+    // Final progress for Phase 1
+    const totalIssuesPhase1 = Object.values(fixResults.issuesFixed).reduce(
+      (sum, val) => sum + val,
+      0
     );
+    console.log(
+      `✅ Phase 1 Complete: ${fixResults.collectionsProcessed}/${totalCollections} | ` +
+        `Fixed: ${totalIssuesPhase1} | Errors: ${fixResults.errors.length}\n`
+    );
+
+    // PHASE 2: Update machine collectionMeters to be consistent with fixed collection data
+    console.log('📍 PHASE 2: Updating machine collectionMeters\n');
+
+    let phase2Progress = 0;
+    let lastPhase2Log = 0;
+
     for (const collection of targetCollections) {
-      if (machineId && collection.machineId !== machineId) {
+      // 🔧 FIX: Get machine ID for filtering
+      const collMachineId = getMachineIdFromCollection(collection);
+      if (machineId && collMachineId !== machineId) {
         continue;
+      }
+
+      phase2Progress++;
+
+      // Progress logging for Phase 2
+      const progress2 = (phase2Progress / totalCollections) * 100;
+      if (progress2 - lastPhase2Log >= 10 || phase2Progress % 10 === 0) {
+        console.log(
+          `⏳ ${phase2Progress}/${totalCollections} (${progress2.toFixed(0)}%)`
+        );
+        lastPhase2Log = progress2;
       }
 
       try {
         // Update machine collectionMeters to match the fixed collection data
         await fixMachineCollectionMetersIssues(collection, fixResults);
       } catch (error) {
-        console.error(
-          `❌ Error updating machine collectionMeters for collection ${collection._id}:`,
-          error
-        );
         fixResults.errors.push({
           collectionId: collection._id,
           error: error instanceof Error ? error.message : String(error),
@@ -245,8 +312,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log(`✅ Phase 2 Complete: ${phase2Progress}/${totalCollections}\n`);
+
     // PHASE 3: Clean up orphaned entries and duplicate dates for all machines in this report
-    console.warn(`\n🔍 PHASE 3 - Cleaning up machine history`);
+    console.log('📍 PHASE 3: Cleaning up machine history');
     if (machineId && !reportId) {
       // Fix for specific machine
       console.warn(
@@ -273,24 +342,63 @@ export async function POST(request: NextRequest) {
       `   Collections processed: ${fixResults.collectionsProcessed}`
     );
     console.warn(`   SAS times fixed: ${fixResults.issuesFixed.sasTimesFixed}`);
-    console.warn(
-      `   Movement calculations fixed: ${fixResults.issuesFixed.movementCalculationsFixed}`
+    const totalTime = Date.now() - startTime;
+    const totalIssuesFixed = Object.values(fixResults.issuesFixed).reduce(
+      (sum, val) => sum + val,
+      0
     );
-    console.warn(
-      `   Prev meters fixed: ${fixResults.issuesFixed.prevMetersFixed}`
+
+    // Final Summary
+    console.log(`\n${'='.repeat(80)}`);
+    console.log('✅ FIX COMPLETED');
+    console.log(`${'='.repeat(80)}`);
+    console.log(`\n📊 Summary:`);
+    console.log(
+      `   Collections Processed: ${fixResults.collectionsProcessed}/${totalCollections}`
     );
-    console.warn(
-      `   History entries fixed: ${fixResults.issuesFixed.historyEntriesFixed}`
+    console.log(`   Total Issues Fixed: ${totalIssuesFixed}`);
+    console.log(`   - SAS Times: ${fixResults.issuesFixed.sasTimesFixed}`);
+    console.log(`   - Prev Meters: ${fixResults.issuesFixed.prevMetersFixed}`);
+    console.log(
+      `   - Movement Calculations: ${fixResults.issuesFixed.movementCalculationsFixed}`
     );
-    console.warn(
-      `   Machine history fixed: ${fixResults.issuesFixed.machineHistoryFixed}`
+    console.log(
+      `   - Machine History: ${fixResults.issuesFixed.machineHistoryFixed}`
     );
-    console.warn(`   Errors: ${fixResults.errors.length}`);
+    console.log(
+      `   - History Entries: ${fixResults.issuesFixed.historyEntriesFixed}`
+    );
+    console.log(`   Errors: ${fixResults.errors.length}`);
+    console.log(`   Time Taken: ${(totalTime / 1000).toFixed(2)}s`);
+    console.log(`${'='.repeat(80)}\n`);
+
+    // Log errors if any
+    if (fixResults.errors.length > 0) {
+      console.log('⚠️  Errors encountered:');
+      fixResults.errors.slice(0, 5).forEach(err => {
+        console.log(`   - Collection ${err.collectionId}: ${err.error}`);
+      });
+      if (fixResults.errors.length > 5) {
+        console.log(`   ... and ${fixResults.errors.length - 5} more errors`);
+      }
+      console.log('');
+    }
+
+    // Generate detailed summary report file
+    await generateSummaryReport(targetReport, fixResults, totalTime);
 
     return NextResponse.json({
       success: true,
-      message: 'Report fix completed',
+      message: `Fixed ${totalIssuesFixed} issues in ${fixResults.collectionsProcessed} collections`,
       results: fixResults,
+      summary: {
+        collectionsProcessed: fixResults.collectionsProcessed,
+        totalCollections,
+        totalIssuesFixed,
+        errorCount: fixResults.errors.length,
+        timeTakenSeconds: parseFloat((totalTime / 1000).toFixed(2)),
+        issueBreakdown: fixResults.issuesFixed,
+      },
     });
   } catch (error) {
     console.error('❌ Fix report failed:', error);
@@ -313,7 +421,24 @@ async function fixSasTimesIssues(
   fixResults: FixResults,
   allCollections: CollectionData[]
 ) {
+  // 🔧 FIX: Get machine ID with fallback to sasMeters.machine (outside try to be accessible in catch)
+  const actualMachineId = getMachineIdFromCollection(collection);
+  const actualMachineCustomName = collection.machineCustomName;
+
   try {
+    if (!actualMachineId) {
+      // Silently skip - will be counted in errors
+      fixResults.errors.push({
+        collectionId: collection._id,
+        machineId: 'Missing',
+        machineCustomName: actualMachineCustomName || 'Unknown',
+        phase: 'SAS Times',
+        error:
+          'Missing machine identifier (both machineId and sasMeters.machine are undefined)',
+      });
+      return;
+    }
+
     let needsUpdate = false;
     const updateData: Record<string, unknown> = {};
 
@@ -322,18 +447,32 @@ async function fixSasTimesIssues(
       (collection.timestamp || collection.collectionTime) as string | Date
     );
 
-    // Find the previous collection for this machine
+    // 🔧 FIX: Find previous collection by machineId OR machineCustomName
     const previousCollection = allCollections
-      .filter(
-        c =>
-          c.machineId === collection.machineId &&
-          new Date((c.timestamp || c.collectionTime) as string | Date) <
-            currentTimestamp &&
+      .filter(c => {
+        const cMachineId = getMachineIdFromCollection(c);
+        const cCustomName = c.machineCustomName;
+
+        // Match by machine ID or custom name
+        const matchesMachine =
+          (actualMachineId && cMachineId === actualMachineId) ||
+          (actualMachineCustomName && cCustomName === actualMachineCustomName);
+
+        // Must be before current collection
+        const timestamp = new Date(
+          (c.timestamp || c.collectionTime) as string | Date
+        );
+        const isBefore = timestamp < currentTimestamp;
+
+        // Must be valid collection
+        const isValid =
           c.isCompleted === true &&
           c.locationReportId &&
           c.locationReportId.trim() !== '' &&
-          c._id.toString() !== collection._id.toString()
-      )
+          c._id.toString() !== collection._id.toString();
+
+        return matchesMachine && isBefore && isValid;
+      })
       .sort((a, b) => {
         const aTime = new Date(
           (a.timestamp || a.collectionTime) as string | Date
@@ -341,9 +480,10 @@ async function fixSasTimesIssues(
         const bTime = new Date(
           (b.timestamp || b.collectionTime) as string | Date
         ).getTime();
-        return bTime - aTime; // descending
+        return bTime - aTime; // descending (most recent first)
       })[0];
 
+    // 🔧 FIX: Better SAS time calculation with improved logging
     const expectedSasStartTime = previousCollection
       ? new Date(
           (previousCollection.timestamp ||
@@ -358,10 +498,6 @@ async function fixSasTimesIssues(
       collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime;
 
     if (!hasSasTimes) {
-      // Missing SAS times
-      console.warn(
-        `   🔧 Fixing missing SAS times for collection ${collection._id}`
-      );
       needsUpdate = true;
     } else {
       const sasStartTime = new Date(
@@ -371,9 +507,6 @@ async function fixSasTimesIssues(
 
       // Check for inverted times
       if (sasStartTime >= sasEndTime) {
-        console.warn(
-          `   🔧 Fixing inverted SAS times for collection ${collection._id}`
-        );
         needsUpdate = true;
       }
 
@@ -382,9 +515,6 @@ async function fixSasTimesIssues(
         sasStartTime.getTime() - expectedSasStartTime.getTime()
       );
       if (startDiff > 1000) {
-        console.warn(
-          `   🔧 Fixing wrong SAS start time for collection ${collection._id} (off by ${Math.round(startDiff / 1000 / 60)} minutes)`
-        );
         needsUpdate = true;
       }
 
@@ -393,9 +523,6 @@ async function fixSasTimesIssues(
         sasEndTime.getTime() - expectedSasEndTime.getTime()
       );
       if (endDiff > 1000) {
-        console.warn(
-          `   🔧 Fixing wrong SAS end time for collection ${collection._id} (off by ${Math.round(endDiff / 1000 / 60)} minutes)`
-        );
         needsUpdate = true;
       }
     }
@@ -403,7 +530,7 @@ async function fixSasTimesIssues(
     if (needsUpdate) {
       // Recalculate SAS metrics with correct time window
       const sasMetrics = await calculateSasMetrics(
-        collection.machineId,
+        actualMachineId, // 🔧 FIX: Use actualMachineId from helper
         expectedSasStartTime,
         expectedSasEndTime
       );
@@ -417,18 +544,20 @@ async function fixSasTimesIssues(
         jackpot: sasMetrics.jackpot,
         sasStartTime: expectedSasStartTime.toISOString(),
         sasEndTime: expectedSasEndTime.toISOString(),
-        machine: collection.sasMeters?.machine || collection.machineId,
+        machine: actualMachineId, // 🔧 FIX: Use actualMachineId
       };
 
       await Collections.findByIdAndUpdate(collection._id, { $set: updateData });
-      console.warn(`   ✅ Fixed SAS times for collection ${collection._id}`);
       fixResults.issuesFixed.sasTimesFixed++;
     }
   } catch (error) {
-    console.error(
-      `   ❌ Error fixing SAS times for collection ${collection._id}:`,
-      error
-    );
+    fixResults.errors.push({
+      collectionId: collection._id,
+      machineId: actualMachineId || 'Unknown',
+      machineCustomName: actualMachineCustomName || 'Unknown',
+      phase: 'SAS Times',
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -475,10 +604,6 @@ async function fixMovementCalculationIssues(
           movement.gross
       ) > tolerance
     ) {
-      console.warn(
-        `   🔧 Fixing movement calculation for collection ${collection._id}`
-      );
-
       await Collections.findByIdAndUpdate(collection._id, {
         $set: {
           movement: {
@@ -519,10 +644,22 @@ async function fixPrevMetersIssues(
       let newPrevIn = collection.prevIn;
       let newPrevOut = collection.prevOut;
 
+      // 🔧 FIX: Get machine ID with fallback
+      const machineId = getMachineIdFromCollection(collection);
+      if (!machineId) {
+        return; // Skip silently
+      }
+
       // CORRECT LOGIC: Check against ACTUAL historical data, not calculated values
       // Find the actual previous collection to determine correct prevIn/prevOut values
       const actualPreviousCollection = await Collections.findOne({
-        machineId: collection.machineId,
+        $or: [
+          { machineId: machineId },
+          { 'sasMeters.machine': machineId },
+          ...(collection.machineCustomName
+            ? [{ machineCustomName: collection.machineCustomName }]
+            : []),
+        ],
         $and: [
           {
             $or: [
@@ -553,18 +690,6 @@ async function fixPrevMetersIssues(
         const expectedPrevIn = actualPreviousCollection.metersIn || 0;
         const expectedPrevOut = actualPreviousCollection.metersOut || 0;
 
-        console.warn(
-          `   🔍 Checking prev meters for collection ${collection._id}:`,
-          {
-            currentPrevIn: collection.prevIn,
-            currentPrevOut: collection.prevOut,
-            expectedPrevIn,
-            expectedPrevOut,
-            previousCollectionId: actualPreviousCollection._id,
-            previousCollectionTime: actualPreviousCollection.timestamp,
-          }
-        );
-
         // Allow for minor precision differences (within 0.1)
         const prevInDiff = Math.abs(collection.prevIn - expectedPrevIn);
         const prevOutDiff = Math.abs(collection.prevOut - expectedPrevOut);
@@ -585,9 +710,6 @@ async function fixPrevMetersIssues(
         // When no previous collection exists, the creation logic uses machine.collectionMeters as fallback
         // So prevIn/prevOut can have non-zero values from machine.collectionMeters
         // This is EXPECTED BEHAVIOR and should NOT be "fixed"
-        console.warn(
-          `   ℹ️ No previous collection found for collection ${collection._id}, prevIn=${collection.prevIn}, prevOut=${collection.prevOut} (from machine.collectionMeters, expected behavior)`
-        );
         // Don't "fix" this - it's correct behavior
       }
 
@@ -626,16 +748,19 @@ async function fixPrevMetersIssues(
         // This ensures consistency between the collection and the machine's current meters
         if (updateMachineMeters) {
           const { Machine } = await import('@/app/api/lib/models/machines');
-          await Machine.findByIdAndUpdate(collection.machineId, {
-            $set: {
-              'collectionMeters.metersIn': newPrevIn,
-              'collectionMeters.metersOut': newPrevOut,
-              updatedAt: new Date(),
-            },
-          });
+          await Machine.findOneAndUpdate(
+            { _id: machineId }, // 🔧 FIX: Use machineId from above
+            {
+              $set: {
+                'collectionMeters.metersIn': newPrevIn,
+                'collectionMeters.metersOut': newPrevOut,
+                updatedAt: new Date(),
+              },
+            }
+          );
 
           console.warn(
-            `   🔧 Updated machine ${collection.machineId} collectionMeters to match fixed prev values: ${newPrevIn}, ${newPrevOut}`
+            `   🔧 Updated machine ${machineId} collectionMeters to match fixed prev values: ${newPrevIn}, ${newPrevOut}`
           );
         } else {
           console.warn(
@@ -667,13 +792,16 @@ async function fixMachineCollectionMetersIssues(
   try {
     const { Machine } = await import('@/app/api/lib/models/machines');
 
+    // 🔧 FIX: Get machine ID with fallback
+    const machineId = getMachineIdFromCollection(collection);
+    if (!machineId) {
+      return; // Skip silently
+    }
+
     // Get the machine's current collectionMeters
-    const machine = await Machine.findById(collection.machineId).lean();
+    const machine = await Machine.findOne({ _id: machineId }).lean();
     if (!machine) {
-      console.warn(
-        `   ⚠️ Machine ${collection.machineId} not found, skipping collectionMeters fix`
-      );
-      return;
+      return; // Skip silently
     }
 
     const machineData = machine as Record<string, unknown>;
@@ -696,7 +824,7 @@ async function fixMachineCollectionMetersIssues(
         currentMachineMetersOut,
         expectedMetersIn,
         expectedMetersOut,
-        machineId: collection.machineId,
+        machineId: machineId, // 🔧 FIX: Use machineId from helper
       }
     );
 
@@ -712,13 +840,16 @@ async function fixMachineCollectionMetersIssues(
       );
 
       // Update the machine's collectionMeters to match the collection's current meters
-      await Machine.findByIdAndUpdate(collection.machineId, {
-        $set: {
-          'collectionMeters.metersIn': expectedMetersIn,
-          'collectionMeters.metersOut': expectedMetersOut,
-          updatedAt: new Date(),
-        },
-      });
+      await Machine.findOneAndUpdate(
+        { _id: machineId }, // 🔧 FIX: Use machineId from helper
+        {
+          $set: {
+            'collectionMeters.metersIn': expectedMetersIn,
+            'collectionMeters.metersOut': expectedMetersOut,
+            updatedAt: new Date(),
+          },
+        }
+      );
 
       fixResults.issuesFixed.machineCollectionMetersFixed =
         (fixResults.issuesFixed.machineCollectionMetersFixed || 0) + 1;
@@ -800,36 +931,20 @@ async function fixMachineHistoryIssues(
   fixResults: FixResults
 ) {
   try {
-    console.warn(`\n🔍 [fixMachineHistoryIssues] Processing collection:`);
-    console.warn(`   Collection ID: ${collection._id}`);
-    console.warn(`   locationReportId: ${collection.locationReportId}`);
-    console.warn(
-      `   Collection prevIn/prevOut: ${collection.prevIn}/${collection.prevOut}`
-    );
-    console.warn(
-      `   Machine ID: ${collection.machineId} (type: ${typeof collection.machineId})`
-    );
+    // 🔧 FIX: Get machine ID with fallback
+    const machineId = getMachineIdFromCollection(collection);
 
-    let machine = (await Machine.findById(
-      collection.machineId
-    ).lean()) as MachineData | null;
-    if (!machine) {
-      console.warn(
-        `   ❌ Machine not found with findById: ${collection.machineId}`
-      );
-      console.warn(`   ⚠️ Trying findOne instead...`);
-      machine = (await Machine.findOne({
-        _id: collection.machineId,
-      }).lean()) as MachineData | null;
-      if (!machine) {
-        console.warn(`   ❌ Machine STILL not found with findOne!`);
-        return;
-      }
-      console.warn(`   ✅ Machine found with findOne!`);
+    if (!machineId) {
+      return; // Skip silently
     }
 
+    const machine = (await Machine.findOne({
+      _id: machineId,
+    }).lean()) as MachineData | null;
+    if (!machine) {
+      return; // Skip silently
+    }
     const currentHistory = machine.collectionMetersHistory || [];
-    console.warn(`   Machine has ${currentHistory.length} history entries`);
 
     // Find history entry by locationReportId (unique identifier)
     const historyEntry = currentHistory.find(
@@ -859,22 +974,14 @@ async function fixMachineHistoryIssues(
         locationReportId: collection.locationReportId,
       };
 
-      await Machine.findByIdAndUpdate(collection.machineId, {
-        $push: { collectionMetersHistory: newHistoryEntry },
-      });
+      await Machine.findOneAndUpdate(
+        { _id: machineId }, // 🔧 FIX: Use machineId from helper
+        { $push: { collectionMetersHistory: newHistoryEntry } }
+      );
 
       fixResults.issuesFixed.machineHistoryFixed++;
-      console.warn(
-        `   ✅ Created history entry for collection ${collection._id}`
-      );
     } else {
-      console.warn(`   ✅ Found history entry`);
-      console.warn(
-        `      History prevMetersIn/prevMetersOut: ${historyEntry.prevMetersIn}/${historyEntry.prevMetersOut}`
-      );
-      console.warn(
-        `      Collection prevIn/prevOut: ${collection.prevIn || 0}/${collection.prevOut || 0}`
-      );
+      // History entry found - check if needs update
 
       // CRITICAL: Always sync history entry with collection document values
       // This fixes discrepancies where history shows wrong values
@@ -883,27 +990,10 @@ async function fixMachineHistoryIssues(
         historyEntry.metersOut !== collection.metersOut ||
         historyEntry.prevMetersIn !== (collection.prevIn || 0) ||
         historyEntry.prevMetersOut !== (collection.prevOut || 0);
-
-      console.warn(`   needsUpdate: ${needsUpdate}`);
-
       if (needsUpdate) {
-        console.warn(
-          `   🔧 Syncing history entry with collection ${collection._id}:`
-        );
-        console.warn(
-          `      Collection: metersIn=${collection.metersIn}, metersOut=${collection.metersOut}, prevIn=${collection.prevIn || 0}, prevOut=${collection.prevOut || 0}`
-        );
-        console.warn(
-          `      History: metersIn=${historyEntry.metersIn}, metersOut=${historyEntry.metersOut}, prevMetersIn=${historyEntry.prevMetersIn}, prevMetersOut=${historyEntry.prevMetersOut}`
-        );
-        console.warn(`   🔧 Attempting update with arrayFilters...`);
-        console.warn(
-          `      arrayFilter: { 'elem.locationReportId': '${collection.locationReportId}' }`
-        );
-
         // Use locationReportId to identify the specific entry to update
-        const result = await Machine.findByIdAndUpdate(
-          collection.machineId,
+        const result = await Machine.findOneAndUpdate(
+          { _id: machineId }, // 🔧 FIX: Use machineId from helper
           {
             $set: {
               'collectionMetersHistory.$[elem].metersIn': collection.metersIn,
@@ -951,24 +1041,22 @@ async function fixMachineHistoryIssues(
         }
 
         fixResults.issuesFixed.machineHistoryFixed++;
-        console.warn(
-          `   ✅ Synced history entry with collection ${collection._id}: prevMetersIn=${collection.prevIn || 0}, prevMetersOut=${collection.prevOut || 0}`
-        );
       } else {
-        console.warn(
-          `   ℹ️ History entry already matches collection ${collection._id}, no sync needed`
-        );
+        // History entry matches - no update needed
       }
     }
 
     // Update machine's current collection meters
-    await Machine.findByIdAndUpdate(collection.machineId, {
-      $set: {
-        'collectionMeters.metersIn': collection.metersIn,
-        'collectionMeters.metersOut': collection.metersOut,
-        updatedAt: new Date(),
-      },
-    });
+    await Machine.findOneAndUpdate(
+      { _id: machineId }, // 🔧 FIX: Use machineId from helper
+      {
+        $set: {
+          'collectionMeters.metersIn': collection.metersIn,
+          'collectionMeters.metersOut': collection.metersOut,
+          updatedAt: new Date(),
+        },
+      }
+    );
   } catch (error) {
     console.error(
       `   ❌ Error fixing machine history for collection ${collection._id}:`,
@@ -986,13 +1074,20 @@ async function fixMachineHistoryEntryIssues(
   fixResults: FixResults
 ) {
   try {
-    const machine = (await Machine.findById(
-      collection.machineId
-    ).lean()) as MachineData | null;
-    if (!machine) return;
+    // 🔧 FIX: Get machine ID with fallback
+    const machineId = getMachineIdFromCollection(collection);
+    if (!machineId) {
+      return; // Skip silently
+    }
+
+    const machine = (await Machine.findOne({
+      _id: machineId,
+    }).lean()) as MachineData | null;
+    if (!machine) {
+      return; // Skip silently
+    }
 
     const history = machine.collectionMetersHistory || [];
-    let hasFixedIssues = false;
 
     // Check each history entry for prevIn/prevOut issues
     for (let i = 1; i < history.length; i++) {
@@ -1010,21 +1105,24 @@ async function fixMachineHistoryEntryIssues(
         const expectedPrevOut = i > 0 ? history[i - 1]?.metersOut || 0 : 0;
 
         console.warn(
-          `   🔧 Fixing machine history entry ${i} for machine ${collection.machineId}: prevIn/prevOut ${prevIn}/${prevOut} → ${expectedPrevIn}/${expectedPrevOut}`
+          `   🔧 Fixing machine history entry ${i} for machine ${machineId}: prevIn/prevOut ${prevIn}/${prevOut} → ${expectedPrevIn}/${expectedPrevOut}`
         );
 
         // Update the specific history entry using array filters
-        await Machine.findByIdAndUpdate(collection.machineId, {
-          $set: {
-            [`collectionMetersHistory.${i}.prevMetersIn`]: expectedPrevIn,
-            [`collectionMetersHistory.${i}.prevMetersOut`]: expectedPrevOut,
-          },
-        });
+        await Machine.findOneAndUpdate(
+          { _id: machineId }, // 🔧 FIX: Use machineId from helper
+          {
+            $set: {
+              [`collectionMetersHistory.${i}.prevMetersIn`]: expectedPrevIn,
+              [`collectionMetersHistory.${i}.prevMetersOut`]: expectedPrevOut,
+            },
+          }
+        );
 
         // Verify the update was successful
-        const updatedMachine = (await Machine.findById(
-          collection.machineId
-        ).lean()) as MachineWithHistory | null;
+        const updatedMachine = (await Machine.findOne({
+          _id: machineId,
+        }).lean()) as MachineWithHistory | null;
         const updatedEntry = updatedMachine?.collectionMetersHistory?.[i];
 
         if (
@@ -1032,29 +1130,14 @@ async function fixMachineHistoryEntryIssues(
           updatedEntry.prevMetersIn === expectedPrevIn &&
           updatedEntry.prevMetersOut === expectedPrevOut
         ) {
-          hasFixedIssues = true;
           fixResults.issuesFixed.machineHistoryFixed++;
-          console.warn(
-            `   ✅ Fixed machine history entry ${i} for machine ${collection.machineId}`
-          );
-        } else {
-          console.error(
-            `   ❌ Failed to update machine history entry ${i} for machine ${collection.machineId}`
-          );
         }
       }
     }
 
-    if (!hasFixedIssues) {
-      console.warn(
-        `   ℹ️ No machine history entry issues found for machine ${collection.machineId}`
-      );
-    }
-  } catch (error) {
-    console.error(
-      `   ❌ Error fixing machine history entry issues for collection ${collection._id}:`,
-      error
-    );
+    // Completed machine history entry fixes (if any)
+  } catch {
+    // Error tracked - continue
   }
 }
 

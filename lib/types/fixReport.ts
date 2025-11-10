@@ -18,22 +18,29 @@ export interface FixResults {
   };
   errors: Array<{
     collectionId: string;
+    machineId?: string;
+    machineCustomName?: string;
+    phase?: string;
     error: string;
+    details?: string;
   }>;
 }
 
 export interface CollectionData {
   _id: string;
   machineId: string;
+  machineCustomName?: string;
   metersIn: number;
   metersOut: number;
   prevIn: number;
   prevOut: number;
   timestamp: string | Date;
+  collectionTime?: string | Date;
   locationReportId: string;
+  isCompleted?: boolean;
   sasMeters?: {
-    sasStartTime: string;
-    sasEndTime: string;
+    sasStartTime?: string;
+    sasEndTime?: string;
     machine?: string;
     [key: string]: unknown;
   };

@@ -60,6 +60,22 @@ function validateDatabaseContext(
  * Server-side function to get user from JWT token in cookies or Authorization header
  */
 export async function getUserFromServer(): Promise<JWTPayload | null> {
+  // 🔧 DEVELOPMENT MODE: Skip authentication for easier testing
+  if (
+    process.env.NODE_ENV === 'development' &&
+    process.env.SKIP_AUTH === 'true'
+  ) {
+    return {
+      _id: 'dev-user-id',
+      emailAddress: 'dev@example.com',
+      username: 'developer',
+      roles: ['developer', 'admin'],
+      rel: { licencee: [] },
+      resourcePermissions: { 'gaming-locations': { resources: [] } },
+      sessionVersion: 1,
+    } as JWTPayload;
+  }
+
   // Try to get token from cookies first
   const cookieStore = await cookies();
   let token = cookieStore.get('token')?.value;

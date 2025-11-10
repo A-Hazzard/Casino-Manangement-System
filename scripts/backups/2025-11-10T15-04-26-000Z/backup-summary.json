@@ -1,0 +1,14 @@
+{
+  "timestamp": "2025-11-10T15:04:26-04:00",
+  "collections": [
+    "machines",
+    "collectionreports",
+    "collections"
+  ],
+  "documentCounts": {
+    "collectionreports": 4568,
+    "collections": 41660,
+    "machines": 2536
+  },
+  "backupDir": "backups\\2025-11-10T15-04-26-000Z"
+}

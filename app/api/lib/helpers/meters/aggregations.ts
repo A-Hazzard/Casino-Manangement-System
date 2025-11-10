@@ -2,53 +2,8 @@ import { Db } from 'mongodb';
 import { PipelineStage } from 'mongoose';
 import { CustomDate, QueryFilter } from '../../types';
 
-/**
- * Returns meter field projections based on whether account denominations are used.
- *
- * @param useAccountDenom - Boolean flag indicating whether to use account denominations.
- * @returns MongoDB projection object.
- */
-function getMeterFieldProjections(useAccountDenom: boolean) {
-  const meterFieldProjectionsWithAccountDenom = {
-    drop: '$_totalDrop',
-    totalCancelledCredits: '$_totalCancelledCredits',
-    gross: {
-      $subtract: [
-        {
-          $subtract: [
-            { $ifNull: ['$_totalDrop', 0] },
-            { $ifNull: ['$_totalJackpot', 0] },
-          ],
-        },
-        { $ifNull: ['$_totalCancelledCredits', 0] },
-      ],
-    },
-    gamesPlayed: '$totalGamesPlayed',
-    jackpot: '$_totalJackpot',
-  };
-
-  const meterFieldProjectionsWithoutAccountDenom = {
-    drop: '$totalDrop',
-    totalCancelledCredits: '$totalCancelledCredits',
-    gross: {
-      $subtract: [
-        {
-          $subtract: [
-            { $ifNull: ['$totalDrop', 0] },
-            { $ifNull: ['$totalJackpot', 0] },
-          ],
-        },
-        { $ifNull: ['$totalCancelledCredits', 0] },
-      ],
-    },
-    gamesPlayed: '$totalGamesPlayed',
-    jackpot: '$totalJackpot',
-  };
-
-  return useAccountDenom
-    ? meterFieldProjectionsWithAccountDenom
-    : meterFieldProjectionsWithoutAccountDenom;
-}
+// NOTE: Old helper functions removed - replaced with optimized direct query approach
+// Backup available in aggregations.ts.bak if needed for reference
 
 /**
  * Aggregates meters without considering location sessions.
@@ -162,87 +117,8 @@ export function aggregateMetersWithoutLocationSession(
   ];
 }
 
-/**
- * Creates a simplified aggregation pipeline that matches the totals API logic.
- * This groups by day only (not by location and time) to ensure chart data matches totals.
- *
- * @param useAccountDenom - Boolean flag indicating whether to use account denominations.
- * @returns MongoDB aggregation pipeline array.
- */
-function aggregateByDayOnlyStages(useAccountDenom: boolean): PipelineStage[] {
-  return [
-    // Stage 1: Group by day only (not by time) for daily aggregation
-    {
-      $group: {
-        _id: { day: '$day' },
-        totalDrop: { $sum: '$movementDrop' },
-        _totalDrop: { $sum: '$_viewingAccountDenomination.movementDrop' },
-        totalCancelledCredits: { $sum: '$movementTotalCancelledCredits' },
-        _totalCancelledCredits: {
-          $sum: '$_viewingAccountDenomination.movementTotalCancelledCredits',
-        },
-        _totalJackpot: { $sum: '$_viewingAccountDenomination.movementJackpot' },
-        // Keep the first location and geoCoords for display purposes
-        location: { $first: '$location' },
-        geoCoords: { $first: '$geoCoords' },
-      },
-    },
-
-    // Stage 2: Project final fields with proper meter calculations
-    {
-      $project: {
-        _id: 0,
-        location: '$location',
-        day: '$_id.day',
-        time: '00:00', // Default time for daily aggregation
-        geoCoords: '$geoCoords',
-        ...getMeterFieldProjections(useAccountDenom),
-      },
-    },
-  ];
-}
-
-/**
- * Creates an aggregation pipeline that groups by day and time for hourly charts.
- * This is used for single-day custom ranges to show hourly breakdown.
- *
- * @param useAccountDenom - Boolean flag indicating whether to use account denominations.
- * @returns MongoDB aggregation pipeline array.
- */
-function aggregateByDayAndTimeStages(
-  useAccountDenom: boolean
-): PipelineStage[] {
-  return [
-    // Stage 1: Group by both day and time for hourly aggregation
-    {
-      $group: {
-        _id: { day: '$day', time: '$time' },
-        totalDrop: { $sum: '$movementDrop' },
-        _totalDrop: { $sum: '$_viewingAccountDenomination.movementDrop' },
-        totalCancelledCredits: { $sum: '$movementTotalCancelledCredits' },
-        _totalCancelledCredits: {
-          $sum: '$_viewingAccountDenomination.movementTotalCancelledCredits',
-        },
-        _totalJackpot: { $sum: '$_viewingAccountDenomination.movementJackpot' },
-        // Keep the first location and geoCoords for display purposes
-        location: { $first: '$location' },
-        geoCoords: { $first: '$geoCoords' },
-      },
-    },
-
-    // Stage 2: Project final fields with hourly time data
-    {
-      $project: {
-        _id: 0,
-        location: '$location',
-        day: '$_id.day',
-        time: '$_id.time', // Include actual time for hourly aggregation
-        geoCoords: '$geoCoords',
-        ...getMeterFieldProjections(useAccountDenom),
-      },
-    },
-  ];
-}
+// NOTE: Old aggregation functions removed - replaced with optimized direct query approach
+// Backup available in aggregations.ts.bak if needed for reference
 
 /**
  * Entry Point for Aggregations. Aggregates metrics for locations over a given timeframe.
@@ -259,25 +135,61 @@ function aggregateByDayAndTimeStages(
 export async function getMetricsForLocations(
   db: Db,
   timeframe: CustomDate,
-  useAccountDenom = false,
+  _useAccountDenom = false,
   licencee?: string,
   timePeriod?: string
 ) {
+  // 🚀 OPTIMIZED: Pre-filter machines by licensee to avoid expensive lookups in aggregation
+  let machineIds: string[] | undefined;
+  
+  if (licencee) {
+    // Step 1: Get machines for this licensee's locations (ONE lookup, not per-meter)
+    const machinesForLicensee = await db.collection('machines').aggregate([
+      {
+        $match: {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          let: { gamingLoc: { $toString: '$gamingLocation' } },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: [{ $toString: '$_id' }, '$$gamingLoc'] },
+                'rel.licencee': licencee,
+              },
+            },
+          ],
+          as: 'location',
+        },
+      },
+      { $match: { location: { $ne: [] } } },
+      { $project: { _id: 1 } },
+    ]).toArray();
+    
+    machineIds = machinesForLicensee.map(m => m._id.toString());
+    
+    // If no machines found for this licensee, return empty array
+    if (machineIds.length === 0) {
+      return [];
+    }
+  }
+
   // Handle "All Time" case where timeframe is undefined
-  const filter: QueryFilter = {};
+  const filter: Record<string, unknown> = {};
 
   if (timeframe.startDate && timeframe.endDate) {
     filter.readAt = { $gte: timeframe.startDate, $lte: timeframe.endDate };
   }
-
-  const metersStageAggregationQuery =
-    aggregateMetersWithoutLocationSession(filter);
-
-  if (licencee) {
-    // Insert the licencee filter after $unwind stage (index 4)
-    metersStageAggregationQuery.splice(4, 0, {
-      $match: { 'locationDetails.rel.licencee': licencee },
-    });
+  
+  // Add machine filter if we have licensee-specific machines
+  if (machineIds) {
+    filter.machine = { $in: machineIds };
   }
 
   // Determine if we should use hourly or daily aggregation
@@ -297,18 +209,68 @@ export async function getMetricsForLocations(
     shouldUseHourlyAggregation = diffInDays <= 1;
   }
 
-  // Choose the appropriate aggregation pipeline
-  const locationStageAggregationQuery = shouldUseHourlyAggregation
-    ? aggregateByDayAndTimeStages(useAccountDenom)
-    : aggregateByDayOnlyStages(useAccountDenom);
+  // 🚀 OPTIMIZED: Direct aggregation without expensive lookups
+  const aggregationPipeline: PipelineStage[] = [
+    // Stage 1: Filter meters by date and machines
+    { $match: filter },
+    
+    // Stage 2: Add day and time fields
+    {
+      $addFields: {
+        day: { $dateToString: { date: '$readAt', format: '%Y-%m-%d' } },
+        time: { $dateToString: { date: '$readAt', format: '%H:%M' } },
+      },
+    },
+  ];
+
+  // Stage 3: Group by day (and time if hourly)
+  if (shouldUseHourlyAggregation) {
+    aggregationPipeline.push({
+      $group: {
+        _id: { day: '$day', time: '$time' },
+        totalDrop: { $sum: '$movement.drop' },
+        totalCancelledCredits: { $sum: '$movement.totalCancelledCredits' },
+        totalJackpot: { $sum: '$movement.jackpot' },
+      },
+    });
+  } else {
+    aggregationPipeline.push({
+      $group: {
+        _id: { day: '$day' },
+        totalDrop: { $sum: '$movement.drop' },
+        totalCancelledCredits: { $sum: '$movement.totalCancelledCredits' },
+        totalJackpot: { $sum: '$movement.jackpot' },
+      },
+    });
+  }
+
+  // Stage 4: Project final fields
+  aggregationPipeline.push({
+    $project: {
+      _id: 0,
+      day: '$_id.day',
+      time: shouldUseHourlyAggregation ? '$_id.time' : '00:00',
+      drop: '$totalDrop',
+      totalCancelledCredits: '$totalCancelledCredits',
+      gross: {
+        $subtract: [
+          { $subtract: [{ $ifNull: ['$totalDrop', 0] }, { $ifNull: ['$totalJackpot', 0] }] },
+          { $ifNull: ['$totalCancelledCredits', 0] },
+        ],
+      },
+      gamesPlayed: { $literal: 0 }, // Not calculated in this optimized version
+      jackpot: '$totalJackpot',
+    },
+  });
+
+  // Stage 5: Sort
+  aggregationPipeline.push({ $sort: { day: 1, time: 1 } });
 
   return db
     .collection('meters')
-    .aggregate(
-      metersStageAggregationQuery.concat(locationStageAggregationQuery),
-      {
-        allowDiskUse: true,
-      }
-    )
+    .aggregate(aggregationPipeline, {
+      allowDiskUse: true,
+      maxTimeMS: 60000, // 60 second timeout
+    })
     .toArray();
 }

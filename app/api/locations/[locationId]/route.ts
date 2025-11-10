@@ -21,6 +21,8 @@ function safeObjectId(id: string): string | mongoose.Types.ObjectId {
 }
 
 export async function GET(request: NextRequest) {
+  const perfStart = Date.now();
+  
   try {
     // Extract locationId from the URL
     const url = request.nextUrl;
@@ -322,6 +324,9 @@ export async function GET(request: NextRequest) {
         metersData: null, // This was in the original structure
       })
     );
+
+    const totalTime = Date.now() - perfStart;
+    console.log(`⚡ /api/locations/${locationId} - ${totalTime}ms | ${transformedCabinets.length} machines | ${timePeriod}`);
 
     return NextResponse.json(transformedCabinets);
   } catch (error) {

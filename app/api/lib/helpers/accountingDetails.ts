@@ -471,8 +471,8 @@ export async function getCollectionReportById(
             typeof variation === 'string'
               ? variation
               : formatSmartDecimal(variation),
-          sasStartTime: collection.sasMeters?.sasStartTime || '-',
-          sasEndTime: collection.sasMeters?.sasEndTime || '-',
+          sasStartTime: collection.sasMeters?.sasStartTime || null,
+          sasEndTime: collection.sasMeters?.sasEndTime || null,
           hasIssue: false,
           ramClear: collection.ramClear || false,
         };
