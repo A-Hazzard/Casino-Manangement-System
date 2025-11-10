@@ -1435,7 +1435,7 @@ function AdministrationPageContent() {
 
 export default function AdministrationPage() {
   return (
-    <ProtectedRoute requireAdminAccess={true}>
+    <ProtectedRoute requiredPage="administration">
       <Suspense fallback={<UserTableSkeleton />}>
         <AdministrationPageContent />
       </Suspense>

@@ -65,7 +65,7 @@ export function AccessDeniedState({}: AccessDeniedProps) {
         </h2>
         <p className="mb-4 text-gray-600">
           You don&apos;t have permission to access any reports. Please contact
-          your administrator for access.
+          your Manager or Customer Support for access.
         </p>
         <Button
           onClick={() => router.push('/')}

@@ -5,6 +5,7 @@ import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import { MachineAggregationMatchStage } from '@/shared/types/mongo';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../lib/middleware/db';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '../../lib/helpers/licenseeFilter';
@@ -293,9 +294,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ALWAYS apply currency conversion to display currency (regardless of licensee filter)
-    // The conversion uses each machine's location's licensee, not the filter parameter
-    if (displayCurrency && displayCurrency !== '') {
+    // Get current user's role to determine if currency conversion should apply
+    const currentUser = await getUserFromServer();
+    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    const isAdminOrDev = currentUserRoles.includes('admin') || currentUserRoles.includes('developer');
+    
+    // Currency conversion ONLY for Admin/Developer when viewing "All Licensees"
+    // Managers and other users ALWAYS see native currency (TTD for TTG, GYD for Cabana, etc.)
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
       // Get licensee details for currency mapping
       const db = await connectDB();
       if (!db) {

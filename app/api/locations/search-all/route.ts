@@ -3,6 +3,7 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromServer } from '../../lib/helpers/users';
 
 type LocationAggregationResult = {
   _id: string;
@@ -191,8 +192,13 @@ export async function GET(request: NextRequest) {
       ])
       .toArray()) as LocationAggregationResult[];
 
-    // Apply currency conversion if "All Licensee" is selected
-    if (shouldApplyCurrencyConversion(licencee)) {
+    // Get current user's role to determine if currency conversion should apply
+    const currentUser = await getUserFromServer();
+    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    const isAdminOrDev = currentUserRoles.includes('admin') || currentUserRoles.includes('developer');
+    
+    // Apply currency conversion ONLY for Admin/Developer viewing "All Licensees"
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       // Get licensee details for currency mapping
       const licenseesData = await db
         .collection('licencees')

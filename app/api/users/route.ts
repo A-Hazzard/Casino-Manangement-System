@@ -7,6 +7,7 @@ import {
   createUser as createUserHelper,
   updateUser as updateUserHelper,
   deleteUser as deleteUserHelper,
+  getUserFromServer,
 } from '@/app/api/lib/helpers/users';
 import { apiLogger } from '@/app/api/lib/utils/logger';
 
@@ -28,6 +29,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get('licensee');
 
+    // Get current user to check permissions
+    const currentUser = await getUserFromServer();
+    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    const currentUserLicensees = (currentUser?.rel as { licencee?: string[] })?.licencee || [];
+    
+    const isAdmin = currentUserRoles.includes('admin') || currentUserRoles.includes('developer');
+    const isManager = currentUserRoles.includes('manager');
+
     const users = await getAllUsers();
     let result = users.map(user => ({
       _id: user._id,
@@ -47,14 +56,21 @@ export async function GET(request: NextRequest): Promise<Response> {
       sessionVersion: user.sessionVersion,
     }));
 
-    // Filter by licensee if provided
+    // Filter users based on requesting user's role
+    if (isManager && !isAdmin) {
+      // Managers can only see users with same licensees
+      result = result.filter(user => {
+        const userLicensees = (user.rel as { licencee?: string[] })?.licencee || [];
+        // User must have at least one licensee in common with the manager
+        return userLicensees.some(userLic => currentUserLicensees.includes(userLic));
+      });
+    }
+
+    // Filter by licensee if provided (additional filter on top of role-based filtering)
     if (licensee && licensee !== 'all') {
-      // Note: This assumes users have a licensee field or relationship
-      // You may need to adjust this based on your actual user data structure
-      result = result.filter(() => {
-        // For now, return all users since the user model may not have licensee filtering
-        // This can be updated when the user model includes licensee information
-        return true;
+      result = result.filter(user => {
+        const userLicensees = (user.rel as { licencee?: string[] })?.licencee || [];
+        return userLicensees.includes(licensee);
       });
     }
 

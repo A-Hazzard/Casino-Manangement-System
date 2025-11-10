@@ -11,7 +11,7 @@ export function NoLicenseeAssigned() {
         </AlertTitle>
         <AlertDescription className="mt-2 text-orange-800">
           You have not been assigned to any licensee yet. Please contact your
-          administrator to be added to a licensee so you can access the system.
+          Manager or Customer Support to be added to a licensee so you can access the system.
         </AlertDescription>
       </Alert>
     </div>

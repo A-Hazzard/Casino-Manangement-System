@@ -351,12 +351,16 @@ export async function GET(req: NextRequest) {
     // Need to convert to display currency
     let convertedData = paginatedData;
 
+    // Currency conversion ONLY for Admin/Developer viewing "All Licensees"
+    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
+    
     console.log(`🔍 [LOCATIONS API] shouldApplyCurrencyConversion: ${shouldApplyCurrencyConversion(licencee)}`);
+    console.log(`🔍 [LOCATIONS API] isAdminOrDev: ${isAdminOrDev}`);
     console.log(`🔍 [LOCATIONS API] displayCurrency: ${displayCurrency}`);
     console.log(`🔍 [LOCATIONS API] licencee param: ${licencee}`);
     console.log(`🔍 [LOCATIONS API] paginatedData before conversion:`, JSON.stringify(paginatedData, null, 2));
 
-    if (shouldApplyCurrencyConversion(licencee)) {
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       try {
         console.log(`💱 Starting currency conversion...`);
         

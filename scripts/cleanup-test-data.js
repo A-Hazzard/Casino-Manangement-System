@@ -1,109 +1,102 @@
-/**
- * Cleanup Test Data Script
- * Removes all test locations and machines created by generate-test-data.js
- * 
- * Run with: node scripts/cleanup-test-data.js
- * Dry run: node scripts/cleanup-test-data.js --dry-run
- */
-
 require('dotenv').config();
-const mongoose = require('mongoose');
+const { MongoClient } = require('mongodb');
 
-const isDryRun = process.argv.includes('--dry-run');
+const DEVLABTUNA_LOCATION_ID = '2691c7cb97750118b3ec290e';
+const KEEP_LICENSEES = ['TTG', 'Cabana', 'Barbados'];
 
-console.log('\n🧹 TEST DATA CLEANUP SCRIPT');
-console.log(`Mode: ${isDryRun ? '🔍 DRY RUN (no changes)' : '⚠️  DELETE MODE (will remove data)'}\n`);
-
-const connectDB = async () => {
+async function cleanupTestData() {
+  const client = new MongoClient(process.env.MONGO_URI);
+  
   try {
-    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DATABASE_URL;
+    await client.connect();
+    const db = client.db();
     
-    if (!mongoUri) {
-      throw new Error('MongoDB URI not found in environment variables');
-    }
-
-    console.log('📡 Connecting to MongoDB...');
-    await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB\n');
-  } catch (error) {
-    console.error('❌ MongoDB connection error:', error.message);
-    process.exit(1);
-  }
-};
-
-const LocationSchema = new mongoose.Schema({}, { strict: false });
-const MachineSchema = new mongoose.Schema({}, { strict: false });
-
-const Location = mongoose.model('GamingLocation', LocationSchema, 'gaminglocations');
-const Machine = mongoose.model('Machine', MachineSchema, 'machines');
-
-const cleanupTestData = async () => {
-  try {
-    await connectDB();
+    console.log('\n=== CLEANUP TEST DATA ===\n');
     
-    // Find test locations (names starting with "Test-")
-    const testLocations = await Location.find({ name: /^Test-/ }).lean();
-    console.log(`🔍 Found ${testLocations.length} test locations`);
+    // Step 1: Get DevLabTuna's machines
+    console.log('Step 1: Finding DevLabTuna machines...');
+    const devLabMachines = await db.collection('machines').find({
+      gamingLocation: DEVLABTUNA_LOCATION_ID
+    }).toArray();
     
-    if (testLocations.length === 0) {
-      console.log('✅ No test data found to clean up');
-      return;
-    }
+    const devLabMachineIds = devLabMachines.map(m => m._id);
+    console.log(`Found ${devLabMachines.length} machines at DevLabTuna:`);
+    devLabMachines.forEach(m => {
+      console.log(`  - ${m.serialNumber} (${m._id})`);
+    });
     
-    // Get location IDs
-    const locationIds = testLocations.map(l => l._id.toString());
+    // Step 2: Get licensee IDs to keep
+    console.log('\nStep 2: Finding licensees to keep...');
+    const keepLicensees = await db.collection('licencees').find({
+      name: { $in: KEEP_LICENSEES }
+    }).toArray();
     
-    // Find machines in test locations
-    const testMachines = await Machine.find({ 
-      gamingLocation: { $in: locationIds } 
-    }).lean();
+    const keepLicenseeIds = keepLicensees.map(l => l._id);
+    console.log(`Keeping ${keepLicensees.length} licensees:`);
+    keepLicensees.forEach(l => {
+      console.log(`  - ${l.name} (${l._id})`);
+    });
     
-    console.log(`🔍 Found ${testMachines.length} test machines`);
+    // Step 3: Delete all meters NOT belonging to DevLabTuna's machines
+    console.log('\nStep 3: Deleting meters not belonging to DevLabTuna machines...');
+    const metersDeleteResult = await db.collection('meters').deleteMany({
+      machine: { $nin: devLabMachineIds }
+    });
+    console.log(`✅ Deleted ${metersDeleteResult.deletedCount} meters`);
     
-    if (!isDryRun) {
-      console.log('\n⚠️  DELETING TEST DATA...');
-      
-      // Delete machines first
-      const machineResult = await Machine.deleteMany({ 
-        gamingLocation: { $in: locationIds } 
+    // Step 4: Delete all machines NOT at DevLabTuna
+    console.log('\nStep 4: Deleting machines not at DevLabTuna...');
+    const machinesDeleteResult = await db.collection('machines').deleteMany({
+      gamingLocation: { $ne: DEVLABTUNA_LOCATION_ID }
+    });
+    console.log(`✅ Deleted ${machinesDeleteResult.deletedCount} machines`);
+    
+    // Step 5: Delete all locations EXCEPT DevLabTuna
+    console.log('\nStep 5: Deleting locations except DevLabTuna...');
+    const locationsDeleteResult = await db.collection('gamingLocations').deleteMany({
+      _id: { $ne: DEVLABTUNA_LOCATION_ID }
+    });
+    console.log(`✅ Deleted ${locationsDeleteResult.deletedCount} locations`);
+    
+    // Step 6: Delete all licensees EXCEPT TTG, Cabana, Barbados
+    console.log('\nStep 6: Deleting licensees except TTG, Cabana, Barbados...');
+    const licenseesDeleteResult = await db.collection('licencees').deleteMany({
+      _id: { $nin: keepLicenseeIds }
+    });
+    console.log(`✅ Deleted ${licenseesDeleteResult.deletedCount} licensees`);
+    
+    // Step 7: Verify final state
+    console.log('\n=== FINAL STATE ===');
+    const finalCounts = {
+      licensees: await db.collection('licencees').countDocuments(),
+      locations: await db.collection('gamingLocations').countDocuments(),
+      machines: await db.collection('machines').countDocuments(),
+      meters: await db.collection('meters').countDocuments(),
+    };
+    
+    console.log(`Licensees: ${finalCounts.licensees} (TTG, Cabana, Barbados)`);
+    console.log(`Locations: ${finalCounts.locations} (DevLabTuna only)`);
+    console.log(`Machines: ${finalCounts.machines} (DevLabTuna's 5 machines)`);
+    console.log(`Meters: ${finalCounts.meters} (Only for DevLabTuna's machines)`);
+    
+    // Show DevLabTuna's machines with their meter counts
+    console.log('\n=== DEVLABTUNA MACHINES & METERS ===');
+    for (const machine of devLabMachines) {
+      const meterCount = await db.collection('meters').countDocuments({
+        machine: machine._id
       });
-      console.log(`   ✅ Deleted ${machineResult.deletedCount} machines`);
-      
-      // Delete locations
-      const locationResult = await Location.deleteMany({ name: /^Test-/ });
-      console.log(`   ✅ Deleted ${locationResult.deletedCount} locations`);
-      
-      console.log('\n✅ Cleanup complete!');
-    } else {
-      console.log('\n🔍 DRY RUN - Would delete:');
-      console.log(`   - ${testMachines.length} machines`);
-      console.log(`   - ${testLocations.length} locations`);
-      console.log('\n💡 Run without --dry-run flag to actually delete data');
+      console.log(`${machine.serialNumber}: ${meterCount} meters`);
     }
     
-    // Show sample of what would be deleted
-    console.log('\n📋 Sample test locations:');
-    testLocations.slice(0, 10).forEach(l => {
-      console.log(`   - ${l.name} (Licensee: ${l.rel?.licencee || 'Unknown'})`);
-    });
+    console.log('\n✅ Cleanup complete!');
+    console.log('DevLabTuna location ID:', DEVLABTUNA_LOCATION_ID);
+    console.log('Refresh your browser to see the changes.');
     
   } catch (error) {
-    console.error('\n❌ Error:', error);
-    throw error;
+    console.error('Error during cleanup:', error);
   } finally {
-    await mongoose.disconnect();
-    console.log('\n📡 Disconnected from MongoDB\n');
+    await client.close();
   }
-};
-
-if (require.main === module) {
-  cleanupTestData()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error('Script failed:', error);
-      process.exit(1);
-    });
 }
 
-module.exports = { cleanupTestData };
-
+cleanupTestData().catch(console.error);

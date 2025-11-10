@@ -13,6 +13,7 @@ import {
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD, getCountryCurrency } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { getUserFromServer } from '../lib/helpers/users';
 
 export async function GET(req: NextRequest) {
   try {
@@ -159,9 +160,14 @@ export async function GET(req: NextRequest) {
       (a, b) => (b.moneyIn || 0) - (a.moneyIn || 0)
     );
 
-    // Apply currency conversion if "All Licensee" is selected
+    // Get current user's role to determine if currency conversion should apply
+    const currentUser = await getUserFromServer();
+    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    const isAdminOrDev = currentUserRoles.includes('admin') || currentUserRoles.includes('developer');
+    
+    // Apply currency conversion ONLY for Admin/Developer viewing "All Licensees"
     let convertedRows = sortedRows;
-    if (shouldApplyCurrencyConversion(licencee)) {
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       // Get currency mappings
       const licenseesData = await db
         .collection('licencees')

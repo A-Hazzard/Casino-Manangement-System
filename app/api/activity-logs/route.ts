@@ -1,8 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../lib/middleware/db';
-import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
-import { getIPInfo, formatIPForDisplay } from '@/lib/utils/ipDetection';
+import { ActivityLog } from '@/app/api/lib/models/activityLog';
+import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipDetection';
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromServer } from '../lib/helpers/users';
+import { connectDB } from '../lib/middleware/db';
+import { GamingLocations } from '../lib/models/gaminglocations';
+import { Machine } from '../lib/models/machines';
+import User from '../lib/models/user';
 
 import { generateMongoId } from '@/lib/utils/id';
 
@@ -99,6 +103,62 @@ export async function GET(request: NextRequest) {
     // Build sort object
     const sort: Record<string, 1 | -1> = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Apply manager-specific filtering
+    const currentUser = await getUserFromServer();
+    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    const currentUserLicensees =
+      (currentUser?.rel as { licencee?: string[] })?.licencee || [];
+
+    const isAdmin =
+      currentUserRoles.includes('admin') ||
+      currentUserRoles.includes('developer');
+    const isManager = currentUserRoles.includes('manager');
+
+    // If manager (not admin), filter activity logs to only their licensees' resources
+    if (isManager && !isAdmin && currentUserLicensees.length > 0) {
+      // Get all resource IDs that belong to manager's licensees
+      const [locations, machines, users] = await Promise.all([
+        GamingLocations.find({ 'rel.licencee': { $in: currentUserLicensees } })
+          .select('_id')
+          .lean(),
+        Machine.find({}).select('_id gamingLocation').lean(), // Get all machines, will filter by location
+        User.find({ 'rel.licencee': { $in: currentUserLicensees } })
+          .select('_id')
+          .lean(),
+      ]);
+
+      const locationIds = locations.map(l => String(l._id));
+
+      // Filter machines to only those in manager's locations
+      const machineLocationIds = new Set(locationIds);
+      const managerMachines = machines.filter(m =>
+        machineLocationIds.has(String(m.gamingLocation))
+      );
+      const machineIds = managerMachines.map(m => String(m._id));
+
+      const userIds = users.map(u => String(u._id));
+
+      // Activity log must be related to one of manager's resources
+      filter.$or = [
+        // Activities on locations
+        { resource: 'location', resourceId: { $in: locationIds } },
+        // Activities on machines
+        { resource: 'machine', resourceId: { $in: machineIds } },
+        { resource: 'cabinet', resourceId: { $in: machineIds } },
+        // Activities on users
+        { resource: 'user', resourceId: { $in: userIds } },
+        // Activities by users in manager's licensees
+        { userId: { $in: userIds } },
+      ];
+
+      console.warn('[ACTIVITY LOGS] Manager filter applied:', {
+        managerLicensees: currentUserLicensees,
+        locationCount: locationIds.length,
+        machineCount: machineIds.length,
+        userCount: userIds.length,
+      });
+    }
 
     console.warn(
       'Activity logs query filter:',

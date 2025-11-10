@@ -91,7 +91,7 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
     ],
     reports: ['developer'], // ✅ Restricted to developer only
     sessions: ['developer'], // ✅ Restricted to developer only
-    administration: ['developer', 'admin'],
+    administration: ['developer', 'admin', 'manager'],
   };
 
   const requiredRoles = pagePermissions[page] || [];
@@ -111,9 +111,9 @@ export const hasTabAccess = (
   tab: string
 ): boolean => {
   const tabPermissions: Record<string, string[]> = {
-    'administration-users': ['developer', 'admin'],
+    'administration-users': ['developer', 'admin', 'manager'],
     'administration-licensees': ['developer', 'admin'],
-    'administration-activity-logs': ['developer', 'admin'],
+    'administration-activity-logs': ['developer', 'admin', 'manager'],
     'collection-reports-monthly': [
       'developer',
       'admin',

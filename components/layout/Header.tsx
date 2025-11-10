@@ -162,6 +162,7 @@ export default function Header({
                 <CurrencyFilter
                   className="hidden md:flex"
                   disabled={disabled}
+                  userRoles={userRoles}
                   onCurrencyChange={newCurrency => {
                     // Trigger data refresh when currency changes
                     if (pathname === '/' && activeMetricsFilter) {
@@ -379,6 +380,7 @@ export default function Header({
                       <CurrencyFilter
                         className="w-full"
                         disabled={disabled}
+                        userRoles={userRoles}
                         onCurrencyChange={newCurrency => {
                           // Trigger data refresh when currency changes
                           if (pathname === '/' && activeMetricsFilter) {

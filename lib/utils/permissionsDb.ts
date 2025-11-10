@@ -1,5 +1,5 @@
-import { UserRole, PageName, TabName } from './permissions';
-import { fetchUserWithCache, CACHE_KEYS } from './userCache';
+import { PageName, TabName, UserRole } from './permissions';
+import { CACHE_KEYS, fetchUserWithCache } from './userCache';
 
 /**
  * Database-based permission utilities
@@ -84,8 +84,8 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'location admin',
       'technician',
     ],
-    members: ['developer'], // ✅ Restricted to developer only
-    'member-details': ['developer'], // ✅ Restricted to developer only
+    members: ['developer'],
+    'member-details': ['developer'],
     'collection-report': [
       'developer',
       'admin',
@@ -95,8 +95,8 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'collector meters',
     ],
     reports: ['developer'], // ✅ Restricted to developer only
-    sessions: ['developer'], // ✅ Restricted to developer only
-    administration: ['developer', 'admin'],
+    sessions: ['developer'],
+    administration: ['developer', 'admin', 'manager'],
   };
 
   const allowedRoles = pagePermissions[page] || [];
@@ -121,9 +121,9 @@ export async function hasTabAccessDb(
   // Tab permissions mapping
   const tabPermissions: Record<string, Record<string, UserRole[]>> = {
     administration: {
-      users: ['developer', 'admin'],
-      licensees: ['developer'],
-      'activity-logs': ['developer'],
+      users: ['developer', 'admin', 'manager'],
+      licensees: ['developer', 'admin'],
+      'activity-logs': ['developer', 'admin', 'manager'],
     },
     'collection-reports': {
       collection: [

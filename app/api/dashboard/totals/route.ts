@@ -78,8 +78,12 @@ export async function GET(req: NextRequest) {
 
     let totals: { moneyIn: number; moneyOut: number; gross: number };
 
-    // Check if we need to apply currency conversion (All Licensee mode)
-    if (shouldApplyCurrencyConversion(licencee)) {
+    // Currency conversion ONLY for Admin/Developer viewing "All Licensees"
+    // Managers and other users ALWAYS see native currency
+    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
+    
+    // Check if we need to apply currency conversion (All Licensee mode + Admin/Dev role)
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
 
       // Get all licensee IDs (including null for locations without a licensee)
       let allLicenseeIds = await db
