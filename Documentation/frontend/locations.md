@@ -62,12 +62,17 @@ The Locations page provides comprehensive casino location management, including 
 - **Search and Filtering:**
   - Search locations by name or address.
   - Filter by licensee (role-dependent):
-    - **Developer/Admin**: Can filter by any licensee or view all
-    - **Manager**: Can filter by assigned licensees only
+    - **Developer/Admin**: Can filter by any licensee or view "All Licensees"
+    - **Manager**: Can filter by assigned licensees only (no "All Licensees" option)
     - **Location Admin**: No dropdown (automatically filtered to assigned locations)
   - Filter by date range for financial metrics.
   - Filter by SMIB status (SMIB/No SMIB/Local Server).
   - Sort by various performance metrics.
+- **Currency Conversion (Admin/Developer only):**
+  - **Currency Selector Visibility**: Only visible for Admin/Developer when "All Licensees" selected
+  - **Conversion Logic**: Converts from each licensee's native currency to selected display currency
+  - **Supported Currencies**: USD, TTD, GYD, BBD
+  - **Manager View**: Always shows native currency (no conversion, no selector)
 - **Responsive Design:**
   - Desktop table view with detailed metrics.
   - Mobile card view with touch-friendly controls.

@@ -1,3 +1,4 @@
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -32,18 +33,107 @@ export async function GET(req: NextRequest) {
     const sortBy = searchParams.get('sortBy');
     const sortOrder = searchParams.get('sortOrder');
 
+    // SECURITY: Get user's accessible locations to prevent data leakage
+    const user = await getUserFromServer();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userRoles = (user.roles as string[]) || [];
+    const userAccessibleLicensees =
+      ((user.rel as Record<string, unknown>)?.licencee as string[]) || [];
+    const userLocationPermissions =
+      ((user.resourcePermissions as Record<string, Record<string, unknown>>)?.[
+        'gaming-locations'
+      ]?.resources as string[]) || [];
+    const isAdmin =
+      userRoles.includes('admin') || userRoles.includes('developer');
+
+    // Support both licensee spellings
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licencee');
+
+    // Get allowed locations for this user
+    const allowedLocationIds = await getUserLocationFilter(
+      isAdmin ? 'all' : userAccessibleLicensees,
+      licensee || undefined,
+      userLocationPermissions,
+      userRoles
+    );
+
+    console.warn('[COLLECTIONS API] User:', user.username);
+    console.warn('[COLLECTIONS API] Allowed locations:', allowedLocationIds);
+
     const filter: Record<string, unknown> = {};
     if (locationReportId) filter.locationReportId = locationReportId;
-    if (location) filter.location = location;
+
+    // CRITICAL: Filter by location parameter AND user's accessible locations
+    if (location) {
+      // Check if user has access to this specific location
+      if (allowedLocationIds === 'all') {
+        filter.location = location;
+      } else if (allowedLocationIds.includes(location)) {
+        filter.location = location;
+      } else {
+        // User requested a location they don't have access to
+        console.warn(
+          '[COLLECTIONS API] User does not have access to location:',
+          location
+        );
+        return NextResponse.json([]); // Return empty array
+      }
+    } else {
+      // No specific location requested - filter by all accessible locations
+      if (allowedLocationIds !== 'all') {
+        if (allowedLocationIds.length === 0) {
+          console.warn('[COLLECTIONS API] User has no accessible locations');
+          return NextResponse.json([]);
+        }
+        filter.location = { $in: allowedLocationIds };
+      }
+    }
+
     if (collector) filter.collector = collector;
     if (isCompleted !== null && isCompleted !== undefined)
       filter.isCompleted = isCompleted === 'true';
     if (machineId) filter.machineId = machineId;
 
     // If incompleteOnly is true, only return incomplete collections with empty locationReportId
+    // SECURITY: Incomplete collections are location-specific based on user's assigned locations
     if (incompleteOnly === 'true') {
       filter.isCompleted = false;
       filter.locationReportId = '';
+
+      // CRITICAL: Filter by location NAME (not collector)
+      // Collection.location field stores the gaming location NAME, not ID
+      // We need to get the names of user's accessible locations
+      if (allowedLocationIds !== 'all') {
+        // Get location names from location IDs
+        const GamingLocations = (await import('../lib/models/gaminglocations'))
+          .GamingLocations;
+        const locations = (await GamingLocations.find({
+          _id: { $in: allowedLocationIds },
+        })
+          .select('name')
+          .lean()) as unknown as Array<{ name: string; _id: string }>;
+
+        const locationNames = locations.map(loc => loc.name);
+
+        console.warn(
+          '[COLLECTIONS API] User accessible location names:',
+          locationNames
+        );
+
+        if (locationNames.length > 0) {
+          filter.location = { $in: locationNames }; // ✅ Filter by location names
+        } else {
+          // User has no accessible locations
+          filter.location = 'IMPOSSIBLE_LOCATION_NAME'; // Force empty result
+        }
+      }
+      // If allowedLocationIds === 'all', don't add location filter (admin/developer sees all)
+
+      console.warn('[COLLECTIONS API] Incomplete collections filter:', filter);
     }
 
     // Support querying for collections before a specific timestamp (for historical prevIn/prevOut)

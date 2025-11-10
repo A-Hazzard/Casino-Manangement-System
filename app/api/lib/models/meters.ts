@@ -56,4 +56,4 @@ MetersSchema.index({ locationSession: 1, readAt: 1 }); // Added index for new fi
  * Mongoose model for meter readings, including references to machines and locations, and all meter fields.
  * Exported as 'Meters' for use in API routes and data access layers.
  */
-export const Meters = models.Meters || model('Meters', MetersSchema);
+export const Meters = models['meters'] || model('meters', MetersSchema);

@@ -26,6 +26,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 ## Recent Updates (October 29th, 2025)
 
 ### Filter Improvements
+
 - **Mobile Filter Layout**: All filters are now horizontally scrollable on mobile devices, improving UX on small screens
 - **Online/Offline Status Filter**: Fixed status filter logic to correctly filter cabinets by online/offline status (previously showed "No data available")
 - **Desktop Filter Layout**: Maintained clean desktop layout without horizontal scrolling
@@ -64,6 +65,15 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - Responsive desktop and mobile layouts.
 - **Sidebar Navigation:**
   - Persistent sidebar for navigation to other modules.
+- **Licensee Filtering & Currency Conversion:**
+  - **Licensee Dropdown**: Filter machines by licensee (role-dependent)
+    - **Developer/Admin**: Can view "All Licensees" or specific licensee
+    - **Manager**: Only sees assigned licensees
+  - **Currency Selector** (Admin/Developer only):
+    - Visible ONLY when "All Licensees" is selected
+    - Converts financial data from native currencies to selected display currency
+    - Hidden when viewing specific licensee (shows native currency)
+    - Manager users NEVER see currency selector (always native currency)
 
 ## Technical Architecture
 

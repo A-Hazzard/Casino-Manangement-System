@@ -2056,8 +2056,8 @@ function CollectionReportPageContent() {
         </div>
       </div>
 
-      {/* Warning Banner for SAS Time Issues */}
-      {(hasSasTimeIssues || hasCollectionHistoryIssues) && (
+      {/* Warning Banner for SAS Time Issues - Developer Only */}
+      {user?.roles?.includes('developer') && (hasSasTimeIssues || hasCollectionHistoryIssues) && (
         <div className="mx-2 mb-6 lg:mx-6">
           <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
             <div className="flex items-start">

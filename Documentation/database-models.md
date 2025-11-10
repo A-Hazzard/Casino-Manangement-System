@@ -90,24 +90,98 @@ Machine {
 
 **Purpose**: Provides detailed financial metrics for reports and analytics.
 
-**Key Fields Used in UI**:
+**Critical Fields for API Queries**:
+
+⚠️ **IMPORTANT**: Meters MUST have these fields for aggregation APIs to work:
 
 ```typescript
 Meter {
   _id: string;
   machine: string;                // Links to Machine
   location: string;               // Links to GamingLocation
-  readAt: Date;                  // Date filtering (NOT createdAt)
 
-  // Movement Data (Primary UI Source)
+  // ⚠️ CRITICAL: Use readAt for date filtering (NOT timestamp or createdAt)
+  readAt: Date;                   // Date filtering field used by ALL aggregation APIs
+  timestamp: Date;                // Original meter timestamp (fallback)
+
+  // ⚠️ CRITICAL: movement field is REQUIRED for aggregation APIs
   movement: {
     drop: number;                 // Money In - primary financial metric
     totalCancelledCredits: number; // Money Out - primary financial metric
     coinIn: number;               // Handle - betting activity
     jackpot: number;              // Jackpot payouts
     gamesPlayed: number;          // Game activity
+    gamesWon: number;             // Games won count
+    currentCredits: number;       // Current credits in machine
+    totalWonCredits: number;      // Total credits won
+    totalHandPaidCancelledCredits: number; // Hand-paid credits
   };
+
+  // Top-level fields (duplicated for backward compatibility)
+  drop: number;
+  coinIn: number;
+  coinOut: number;
+  totalCancelledCredits: number;
+  jackpot: number;
+  gamesPlayed: number;
+  gamesWon: number;
+  currentCredits: number;
+  totalWonCredits: number;
+  totalHandPaidCancelledCredits: number;
+
+  // SAS Meters (embedded SAS data)
+  sasMeters: {
+    drop: number;
+    coinIn: number;
+    coinOut: number;
+    totalCancelledCredits: number;
+    jackpot: number;
+    gamesPlayed: number;
+    // ... other SAS fields
+  };
+
+  // Bill Validator Meters
+  billMeters: {
+    dollar1: number;
+    dollar2: number;
+    dollar5: number;
+    // ... other denominations
+    dollarTotal: number;
+  };
+
+  createdAt: Date;
+  updatedAt: Date;
 }
+```
+
+**API Query Pattern**:
+
+```typescript
+// ✅ CORRECT - How aggregation APIs query meters
+db.collection('meters').aggregate([
+  {
+    $match: {
+      machine: { $in: machineIds },
+      readAt: { $gte: startDate, $lte: endDate }, // Use readAt, not timestamp
+    },
+  },
+  {
+    $group: {
+      _id: '$machine',
+      moneyIn: { $sum: '$movement.drop' }, // Use movement field
+      moneyOut: { $sum: '$movement.totalCancelledCredits' },
+    },
+  },
+]);
+
+// ❌ INCORRECT - Will return $0 if missing movement field
+db.collection('meters').aggregate([
+  {
+    $group: {
+      moneyIn: { $sum: '$sasMeters.drop' }, // Wrong - aggregation uses movement
+    },
+  },
+]);
 ```
 
 ### 3. GamingLocation Model (Location Management)

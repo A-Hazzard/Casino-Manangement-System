@@ -46,39 +46,66 @@ export function setupAxiosInterceptors() {
           console.warn('🔒 Session invalidated or authentication failed');
           
           if (typeof window !== 'undefined') {
-            // Determine the appropriate message
+            // Determine the appropriate message based on context
             const currentPath = window.location.pathname;
-            const message = errorMessage.includes('session') || errorMessage.includes('permission')
-              ? 'Your permissions have changed. Please login again.'
-              : 'Your session has expired. Please login again.';
+            const requestUrl = error.config?.url || '';
+            
+            // Check if this is from a manual logout
+            const isLogout = requestUrl.includes('/api/auth/logout');
+            
+            let message: string;
+            let toastType: 'error' | 'success' = 'error';
+            
+            if (isLogout) {
+              // Manual logout - show success message
+              message = 'Logged out successfully';
+              toastType = 'success';
+            } else if (errorMessage.includes('session') || errorMessage.includes('permission')) {
+              // Session version mismatch (permissions changed)
+              message = 'Your permissions have changed. Please login again.';
+            } else {
+              // Regular session expiration
+              message = 'Your session has expired. Please login again.';
+            }
             
             // Show toast notification
-            toast.error(message, {
-              duration: 5000,
-              description: 'Redirecting to login page...',
-            });
+            if (toastType === 'success') {
+              toast.success(message, {
+                duration: 3000,
+                description: 'Redirecting to login page...',
+              });
+            } else {
+              toast.error(message, {
+                duration: 5000,
+                description: 'Redirecting to login page...',
+              });
+            }
             
             // Clear local storage
             localStorage.removeItem('user-auth-store');
             
-            // Try to clear tokens via API
-            axios
-              .post('/api/auth/clear-all-tokens')
-              .then(() => {
-                console.warn('✅ Session cleared');
-              })
-              .catch(clearError => {
-                console.warn('⚠️ Failed to clear tokens:', clearError);
-              })
-              .finally(() => {
-                // Redirect after a short delay to allow toast to be visible
-                setTimeout(() => {
-                  // Only redirect if not already on login page
-                  if (currentPath !== '/authentication' && currentPath !== '/login') {
-                    window.location.href = `/authentication?message=${encodeURIComponent(message)}`;
-                  }
-                }, 1500); // 1.5 second delay to show toast
-              });
+            // Try to clear tokens via API (skip if already logging out)
+            const clearTokensPromise = isLogout
+              ? Promise.resolve()
+              : axios
+                  .post('/api/auth/clear-all-tokens')
+                  .then(() => {
+                    console.warn('✅ Session cleared');
+                  })
+                  .catch(clearError => {
+                    console.warn('⚠️ Failed to clear tokens:', clearError);
+                  });
+            
+            clearTokensPromise.finally(() => {
+              // Redirect after a short delay to allow toast to be visible
+              const redirectDelay = isLogout ? 1000 : 1500;
+              setTimeout(() => {
+                // Only redirect if not already on login page
+                if (currentPath !== '/authentication' && currentPath !== '/login') {
+                  window.location.href = `/authentication?message=${encodeURIComponent(message)}`;
+                }
+              }, redirectDelay);
+            });
           }
         }
       }

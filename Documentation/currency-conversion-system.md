@@ -128,11 +128,37 @@ export function getCountryCurrency(countryName: string): CurrencyCode
 
 ## Implementation
 
+### Role-Based Currency Conversion Rules
+
+⚠️ **CRITICAL**: Currency conversion ONLY applies for **Admin/Developer** roles when viewing **"All Licensees"**.
+
+**Conversion Rules by Role:**
+
+| User Role | Licensee Filter | Currency Conversion | Currency Selector Visible |
+|-----------|----------------|---------------------|---------------------------|
+| Admin/Developer | "All Licensees" | ✅ YES (to selected display currency) | ✅ YES |
+| Admin/Developer | Specific Licensee (e.g., "Barbados") | ❌ NO (shows native currency) | ❌ NO |
+| Manager | Any (assigned licensee only) | ❌ NO (always native currency) | ❌ NO |
+| Other Roles | N/A | ❌ NO | ❌ NO |
+
+**Implementation:**
+
+```typescript
+// Check if currency conversion should apply
+const shouldConvert = isAdminOrDev && licensee === 'all';
+
+if (shouldConvert) {
+  // Apply conversion: Native → USD → Display Currency
+} else {
+  // Return native currency values without conversion
+}
+```
+
 ### Conversion Flow
 
-```
-Example: DevLabTuna (Trinidad, no licensee) with TTD $20
+**Example: Admin viewing "All Licensees" with DevLabTuna (Trinidad, TTD $20)**
 
+```
 Step 1: Determine Native Currency
 ├─ Check licensee: NULL
 ├─ Check country: "Trinidad and Tobago"
@@ -148,18 +174,38 @@ Step 3: Convert to Display Currency
 └─ BBD selected: $2.96 * 2.0 = BBD $5.93 ✓
 ```
 
+**Example: Manager viewing Barbados licensee (BBD $2,310)**
+
+```
+Step 1: Check Role & Filter
+├─ Role: Manager
+├─ Filter: Barbados (assigned licensee)
+└─ NO CONVERSION - Show native currency
+
+Step 2: Display Value
+└─ Display: $2,310 BBD (or just $2,310)
+```
+
 ### API Pattern
 
 All endpoints with "All Licensee" support follow this pattern:
 
 ```typescript
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+
 export async function GET(req: NextRequest) {
   const licensee = searchParams.get('licensee');
   const displayCurrency = (searchParams.get('currency') as CurrencyCode) || 'USD';
 
+  // Get user to check role
+  const user = await getUserFromServer();
+  const userRoles = (user?.roles as string[]) || [];
+  const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
+
   // ... fetch data ...
 
-  if (shouldApplyCurrencyConversion(licensee)) {
+  // CRITICAL: Only convert for Admin/Developer when viewing "All Licensees"
+  if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
     // Get licensee and country mappings
     const licenseesData = await db.collection('licencees').find(...).toArray();
     const countriesData = await db.collection('countries').find({}).toArray();

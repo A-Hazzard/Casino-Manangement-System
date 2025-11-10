@@ -161,6 +161,22 @@ function CollectionReportContent() {
       });
   }, []);
 
+  // Initialize selectedLicencee from user's assigned licensees if not set
+  useEffect(() => {
+    if (user && (!selectedLicencee || selectedLicencee === '')) {
+      const userLicensees = user.rel?.licencee || [];
+      
+      // If user has exactly 1 licensee, auto-select it
+      if (userLicensees.length === 1) {
+        console.log('[Collection Report] Auto-selecting user\'s only licensee:', userLicensees[0]);
+        setSelectedLicencee(userLicensees[0]);
+      } else if (userLicensees.length > 1) {
+        // User has multiple licensees but none selected - they need to choose
+        console.log('[Collection Report] User has multiple licensees, waiting for selection');
+      }
+    }
+  }, [user, selectedLicencee, setSelectedLicencee]);
+
   // Read initial view from URL and sync on change
   const { pushToUrl } = useCollectionNavigation(COLLECTION_TABS_CONFIG);
 

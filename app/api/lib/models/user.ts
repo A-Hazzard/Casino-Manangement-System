@@ -6,8 +6,8 @@ const UserSchema = new Schema(
     isEnabled: { type: Boolean, default: true },
     roles: [{ type: String }],
     permissions: [{ type: String }],
-    username: { type: String, required: true },
-    emailAddress: { type: String, required: true, unique: true },
+    username: { type: String, required: true, unique: true, index: true },
+    emailAddress: { type: String, required: true, unique: true, index: true },
     rel: {
       licencee: [{ type: String }],
     },

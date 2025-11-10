@@ -221,6 +221,9 @@ machineSchema.index({ deletedAt: 1 });
 machineSchema.index({ lastActivity: 1 });
 machineSchema.index({ isSasMachine: 1 });
 machineSchema.index({ serialNumber: 1 });
+machineSchema.index({ machineId: 1 });
+machineSchema.index({ relayId: 1 });
+machineSchema.index({ 'custom.name': 1 });
 machineSchema.index({ lastSasMeterAt: -1 });
 
 export const Machine = models['machines'] ?? model('machines', machineSchema);

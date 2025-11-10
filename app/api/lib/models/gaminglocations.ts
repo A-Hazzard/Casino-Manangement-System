@@ -6,7 +6,12 @@ const GamingLocationsSchema = new Schema(
       type: String,
       required: true,
     },
-    name: String,
+    name: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
     country: String,
     address: {
       street: String,

@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** November 6th, 2025
+**Last Updated:** November 10, 2025
 
 ## 📚 Essential Documentation References
 
@@ -11,16 +11,18 @@ Before working on any part of the Collection Report system or making database ch
 ### Collection Report System Documentation
 
 - **[Backend Collection Report Guide](../Documentation/backend/collection-report.md)** - Complete backend implementation, API endpoints, data flow diagrams, critical timing rules, and isEditing flag system
-- **[Frontend Collection Report Guide](../Documentation/frontend/collection-report.md)** - UI components, user flows, financial calculations, and component architecture
+- **[Frontend Collection Report Guide](../Documentation/frontend/collection-report.md)** - UI components, user flows, financial calculations, incomplete collections security model
+- **[Collections API](../Documentation/backend/collections-api.md)** - Collections CRUD operations, security filtering, incomplete collections logic
 - **[Collection Report Details Backend](../Documentation/backend/collection-report-details.md)** - Report details page implementation, issue detection, and fix operations
 - **[Collection Report Details Frontend](../Documentation/frontend/collection-report-details.md)** - Machine metrics, location metrics, SAS comparisons, and issue detection UI
 - **[isEditing Flag System Guide](./isediting-system.md)** - High-level conceptual guide to the isEditing flag system and unsaved changes protection
 
 ### Database & Type System Documentation
 
-- **[Database Models & Relationships](../Documentation/database-models.md)** - Core entity hierarchy, financial data flow, and database relationships
+- **[Database Models & Relationships](../Documentation/database-models.md)** - Core entity hierarchy, financial data flow, meter structure requirements, and database relationships
 - **[TypeScript Type Safety Rules](../Documentation/typescript-type-safety-rules.md)** - Type organization structure, type safety rules, and validation workflows
-- **[Financial Metrics Guide](../Documentation/financial-metrics-guide.md)** - All financial calculations, metrics definitions, and data sources
+- **[Financial Metrics Guide](../Documentation/financial-metrics-guide.md)** - All financial calculations, metrics definitions, data sources, and meter field mappings
+- **[Currency Conversion System](../Documentation/currency-conversion-system.md)** - Role-based currency conversion, exchange rates, and multi-currency support
 - **[Engineering Guidelines](../Documentation/ENGINEERING_GUIDELINES.md)** - Folder structure, code standards, security, and timezone handling
 
 ### Critical Guidelines
@@ -47,6 +49,14 @@ Before working on any part of the Collection Report system or making database ch
 2. Verify data sources and field mappings
 3. Use Movement Delta Method for all calculations
 4. Test against MongoDB scripts for accuracy
+
+⚠️ **Before Creating Meter Data (Scripts/Migrations):**
+
+1. **ALWAYS include `movement` field** - Required for all aggregation APIs
+2. **ALWAYS include `readAt` field** - Used for date filtering (NOT timestamp)
+3. Include top-level financial fields (drop, coinIn, etc.) for backward compatibility
+4. Include `sasMeters` and `billMeters` for complete meter structure
+5. See `database-models.md` for complete meter field requirements
 
 ## System Overview
 

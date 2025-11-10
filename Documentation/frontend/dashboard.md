@@ -71,13 +71,40 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 
 - **Multi-licensee Support**: Dropdown to switch between different licensees
 - **Role-Based Filtering**:
-  - **Developer/Admin**: Can view all licensees or filter by specific licensee
-  - **Manager**: Dropdown shows ONLY assigned licensees (if 2+)
+  - **Developer/Admin**: Can view "All Licensees" or filter by specific licensee
+  - **Manager**: Dropdown shows ONLY assigned licensees (if 2+), cannot view "All Licensees"
   - **Collector/Location Admin/Technician**: Cannot access Dashboard
 - **Data Filtering**: All dashboard data (totals, charts, top performing, map) filtered based on selected licensee
-- **Global Overview**: "All Licensees" option for admins or managers viewing all assigned licensees
+- **Global Overview**: "All Licensees" option available ONLY for Developer/Admin roles
 - **Context Switching**: Seamless switching between licensee contexts with state persistence
 - **No Licensee Assigned**: Non-admin users without licensees see informational message
+
+### Currency Conversion & Display
+
+⚠️ **IMPORTANT**: Currency conversion follows strict role-based rules:
+
+**Currency Selector Visibility:**
+- **Admin/Developer + "All Licensees"**: ✅ Currency selector VISIBLE
+- **Admin/Developer + Specific Licensee**: ❌ Currency selector HIDDEN (shows native currency)
+- **Manager**: ❌ Currency selector ALWAYS HIDDEN (always native currency)
+- **Other Roles**: ❌ Currency selector ALWAYS HIDDEN
+
+**Currency Conversion Logic:**
+- **Admin/Developer viewing "All Licensees"**: 
+  - Data converted from each licensee's native currency → USD → Selected display currency
+  - Example: Barbados (BBD $2,310) + TTG (TTD $140) → USD $1,182.66
+- **Admin/Developer viewing Specific Licensee**:
+  - Data shown in licensee's native currency (no conversion)
+  - Example: Viewing "Barbados" → $2,310 BBD
+- **Manager viewing any licensee**:
+  - Data ALWAYS shown in native currency (no conversion)
+  - Example: Manager assigned to Barbados → $2,310 BBD
+
+**Supported Currencies:**
+- USD - US Dollar (base currency, rate: 1.0)
+- TTD - Trinidad & Tobago Dollar (rate: 6.75)
+- GYD - Guyanese Dollar (rate: 207.98)  
+- BBD - Barbados Dollar (rate: 2.0)
 
 ### Responsive Layout
 

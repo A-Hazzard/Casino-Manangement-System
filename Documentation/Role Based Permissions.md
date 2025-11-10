@@ -1,7 +1,7 @@
 # Role-Based Access Control - High Level Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 3, 2025
+**Last Updated:** November 10, 2025
 
 ## System Overview
 
@@ -50,10 +50,11 @@ The system uses seven distinct roles arranged in priority order:
 
 ### **Locations Page**
 
-- **Allowed**: Developer, Admin, Manager, Location Admin
-- **Restricted**: Technician, Collector, Collector Meters
+- **Allowed**: Developer, Admin, Manager, Location Admin, Collector, Collector Meters
+- **Restricted**: Technician
 - **Direct Link Access**: Technicians can access location details via direct links
-- **Rationale**: Location management is administrative, but technicians need access to specific locations
+- **Rationale**: Collectors need to view their assigned locations; location management is administrative
+- **Note**: November 10, 2025 - Added Collector and Collector Meters to allowed roles
 
 ### **Members Page**
 
@@ -76,17 +77,19 @@ The system uses seven distinct roles arranged in priority order:
 
 ### **Administration Page**
 
-- **Allowed**: Developer, Admin only
-- **Rationale**: System administration requires highest security clearance
+- **Allowed**: Developer, Admin, Manager
+- **Rationale**: System administration requires high security clearance
+- **Note**: November 10, 2025 - Added Manager role with licensee-scoped filtering
 
 ## Tab-Level Access Control
 
 ### **Administration Page Tabs**
 
-- **Users Tab**: Developer, Admin
+- **Users Tab**: Developer, Admin, Manager (with licensee-scoped filtering)
 - **Licensees Tab**: Developer only
-- **Activity Logs Tab**: Developer only
+- **Activity Logs Tab**: Developer, Manager (with licensee-scoped filtering)
 - **Rationale**: Different administrative functions require different clearance levels
+- **Note**: November 10, 2025 - Managers can view/edit users and activity logs for their assigned licensees only
 
 ### **Collection Reports Page Tabs**
 

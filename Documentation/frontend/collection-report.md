@@ -1,8 +1,8 @@
 # Collection Report System - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 9th, 2025  
-**Version:** 2.3.0
+**Last Updated:** November 10, 2025  
+**Version:** 2.4.0
 
 ## Overview
 
@@ -98,6 +98,13 @@ The Collection Report System manages casino slot machine money collection operat
 - **Note**: `collectionMetersHistory` is NOT created yet
 - Machine can be edited or deleted from list before report finalization
 
+**Security Note (November 10, 2025):**
+
+- Incomplete collections are filtered by user's assigned locations
+- When modal reopens, only collections for accessible locations are loaded
+- Collections are location-scoped, not user-scoped (enables team collaboration)
+- See "Incomplete Collections Security Model" below for details
+
 **4. Financial Data Entry (First Machine Only)**
 
 - User enters shared financial data:
@@ -118,12 +125,14 @@ The Collection Report System manages casino slot machine money collection operat
 Both desktop and mobile modals now follow this atomic operation order to prevent orphaned collections:
 
 **Step 1: Create Parent Report FIRST**
+
 - Validates all data using `validateCollectionReportPayload`
 - Generates `locationReportId` using `uuidv4()`
 - Calls `/api/collectionReport POST` with complete payload
 - **If this fails, collections remain untouched (no side effects)**
 
 **Step 2: Update Collections ONLY IF Report Created Successfully**
+
 - Updates all collections with `locationReportId` via `/api/collections PATCH`
 - Marks collections as completed (`isCompleted: true`)
 - **If this fails, report still exists and can be fixed via `/update-history`**
@@ -131,6 +140,7 @@ Both desktop and mobile modals now follow this atomic operation order to prevent
 **Why This Order Matters:**
 
 Before (BROKEN - caused 32 orphaned collections):
+
 ```
 1. Update collections → locationReportId + isCompleted: true ✅
 2. Create parent report → ❌ FAILS
@@ -138,6 +148,7 @@ Result: Collections orphaned with reportId but no parent report!
 ```
 
 After (FIXED):
+
 ```
 1. Create parent report → ✅ SUCCESS
 2. Update collections → locationReportId + isCompleted: true ✅
@@ -145,10 +156,12 @@ Result: Atomic operation! If report fails, collections untouched.
 ```
 
 Desktop (`NewCollectionModal.tsx` lines 1868-1961):
+
 - Creates CollectionReport first
 - Only on success, calls `updateCollectionsWithReportId()`
 
 Mobile (`MobileCollectionModal.tsx` lines 1050-1074):
+
 - Creates CollectionReport first
 - Only on success, updates collections via PATCH
 - Non-throwing on collection update failure (report already exists)
@@ -584,6 +597,7 @@ Result:
 ### Most Recent Report Per Location Rule (November 7th, 2025)
 
 **Requirement:**
+
 - Edit and delete buttons ONLY appear on the **most recent collection report** for each location
 - Example: If there are 3 locations with 5 reports each, only **3 edit icons** appear total (1 per location)
 
@@ -601,16 +615,16 @@ const canUserEdit = useMemo(() => {
 // Step 2: Find most recent report per location
 const editableReportIds = useMemo(() => {
   if (!canUserEdit) return new Set<string>();
-  
+
   const reportsByLocation = new Map<string, CollectionReportRow>();
-  
+
   filteredReports.forEach(report => {
     const existing = reportsByLocation.get(report.location);
     if (!existing || new Date(report.time) > new Date(existing.time)) {
       reportsByLocation.set(report.location, report);
     }
   });
-  
+
   return new Set(
     Array.from(reportsByLocation.values()).map(r => r.locationReportId)
   );
@@ -620,6 +634,7 @@ const editableReportIds = useMemo(() => {
 **Conditional Rendering:**
 
 Table (`CollectionReportTable.tsx` line 257):
+
 ```typescript
 {canEditDelete && editableReportIds?.has(row.locationReportId) && (
   <div className="flex gap-1">
@@ -634,6 +649,7 @@ Table (`CollectionReportTable.tsx` line 257):
 ```
 
 Cards (`CollectionReportCards.tsx` line 189):
+
 ```typescript
 {canEditDelete && editableReportIds?.has(row.locationReportId) && (
   // Edit/Delete buttons
@@ -641,6 +657,7 @@ Cards (`CollectionReportCards.tsx` line 189):
 ```
 
 **Authorized Roles:**
+
 - ✅ Collector
 - ✅ Location Collector
 - ✅ Manager
@@ -648,11 +665,13 @@ Cards (`CollectionReportCards.tsx` line 189):
 - ✅ Developer
 
 **Behavior:**
+
 - Unauthorized users: See **0 edit icons** (regardless of report count)
 - Authorized users: See **1 edit icon per location** (only on most recent report)
 - Older reports: **No edit/delete buttons** (prevents editing historical data)
 
 **Why This Restriction:**
+
 - Prevents accidental modification of historical reports
 - Maintains data integrity and audit trail
 - Users should only edit the current/latest collection report
@@ -691,6 +710,70 @@ Cards (`CollectionReportCards.tsx` line 189):
 - **Location Permission Validation**: Server validates access to each location before returning reports
 - **Session Invalidation**: Auto-logout when permissions change
 - **Input Validation**: Comprehensive validation for all form inputs
+
+#### Incomplete Collections Security Model (November 10, 2025)
+
+When a user opens the collection modal, incomplete collections (collections not yet submitted as a report) are loaded from the database. These collections are **location-scoped**, not user-scoped.
+
+**Security Filter Logic:**
+
+```typescript
+// 1. Get user's accessible location IDs
+const locationIds = user.resourcePermissions['gaming-locations'].resources;
+// Example: ['691166b455fe4b9b7ae3e702']
+
+// 2. Convert IDs to location names
+const locations = await GamingLocations.find({ _id: { $in: locationIds } });
+const locationNames = locations.map(l => l.name);
+// Example: ['Test-Permission-Location']
+
+// 3. Filter collections by location names
+const collections = await Collections.find({
+  isCompleted: false,
+  locationReportId: '',
+  location: { $in: locationNames }, // Collections.location stores NAME, not ID
+});
+```
+
+**Why Location-Based (Not User-Based)?**
+
+1. **Team Collaboration**: Multiple collectors may work on the same location
+2. **Data Consistency**: `collector` field stores display names which are inconsistent
+3. **Permission Model**: Access is granted by location, not by user identity
+4. **Workflow**: One collector may start, another may finish the report
+
+**Security Guarantees:**
+
+- ✅ Users only see incomplete collections for locations they have access to
+- ✅ Collectors assigned to Location A cannot see Location B's incomplete collections
+- ✅ Admin/Developer see all incomplete collections (for troubleshooting)
+- ✅ Manager see incomplete collections for all locations in their assigned licensees
+- ✅ Location permissions from `resourcePermissions` are strictly enforced
+
+**Example:**
+
+```
+User: testuser (Collector, TTG)
+  resourcePermissions: ['691166b455fe4b9b7ae3e702']
+  → Location: 'Test-Permission-Location'
+
+Modal Query: GET /api/collections?incompleteOnly=true
+  → Returns: Collections where location = 'Test-Permission-Location'
+  → Does NOT return: Collections for any other location
+```
+
+**Store Validation:**
+The modal also validates the Zustand store on open:
+
+```typescript
+// If locked location is not in user's accessible locations, clear the store
+if (lockedLocationId && !locations.some(loc => loc._id === lockedLocationId)) {
+  useCollectionModalStore.getState().resetState();
+}
+```
+
+This prevents stale data from persisting when users switch accounts or permissions change.
+
 - **Audit Trail**: All create/edit/delete operations logged
 - **Secure Authentication**: JWT tokens with role and permission validation
 

@@ -886,6 +886,24 @@ export default function NewCollectionModal({
     [locations, getLocationIdFromMachine]
   );
 
+  // SECURITY: Validate locked location on modal open
+  useEffect(() => {
+    if (show && lockedLocationId) {
+      // Check if locked location is in user's accessible locations
+      const isLocationAccessible = locations.some(loc => String(loc._id) === lockedLocationId);
+      
+      if (!isLocationAccessible) {
+        console.warn(
+          '🔒 SECURITY: Locked location not accessible to current user. Clearing store.',
+          'Locked:', lockedLocationId,
+          'Accessible:', locations.map(l => l._id)
+        );
+        // Clear the store - user doesn't have access to the locked location
+        useCollectionModalStore.getState().resetState();
+      }
+    }
+  }, [show, lockedLocationId, locations]);
+
   // Fetch existing collections when modal opens (server-side driven, no local state dependency)
   useEffect(() => {
     if (show && locations.length > 0) {

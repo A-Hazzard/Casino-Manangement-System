@@ -1,6 +1,7 @@
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { calculateCollectionReportTotals } from '@/app/api/lib/helpers/collectionReportCalculations';
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReportService';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -22,22 +23,54 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     if (searchParams.get('locationsWithMachines')) {
-      console.warn('Fetching locations with machines...');
-      const startTime = Date.now();
+      try {
+        console.warn('Fetching locations with machines...');
+        const startTime = Date.now();
 
-      const licencee = searchParams.get('licencee');
-      const matchCriteria: Record<string, unknown> = {
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      };
+        // Support both spellings for backwards compatibility
+        const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+        
+        // Get current user and their permissions
+        const user = await getUserFromServer();
+        if (!user) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        const userRoles = (user.roles as string[]) || [];
+        const userAccessibleLicensees = ((user.rel as Record<string, unknown>)?.licencee as string[]) || [];
+        const userLocationPermissions = ((user.resourcePermissions as Record<string, Record<string, unknown>>)?.[
+          'gaming-locations'
+        ]?.resources as string[]) || [];
+        const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
+        
+        // Get user's accessible locations based on role and permissions
+        const allowedLocationIds = await getUserLocationFilter(
+          isAdmin ? 'all' : userAccessibleLicensees,
+          licensee || undefined,
+          userLocationPermissions,
+          userRoles
+        );
+        
+        console.warn(`[LOCATIONS WITH MACHINES] Licensee: ${licensee || 'All'}`);
+        console.warn(`[LOCATIONS WITH MACHINES] Allowed locations:`, allowedLocationIds);
+        
+        // If user has no access, return empty array
+        if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
+          console.warn('[LOCATIONS WITH MACHINES] User has no accessible locations');
+          return NextResponse.json({ locations: [] });
+        }
 
-      if (licencee && licencee !== 'all') {
-        matchCriteria['rel.licencee'] = licencee;
-      }
+        const matchCriteria: Record<string, unknown> = {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+        };
 
-      console.warn(`[LOCATIONS WITH MACHINES] Licensee: ${licencee || 'All'}`);
+        // Apply location filter based on user permissions
+        if (allowedLocationIds !== 'all') {
+          matchCriteria['_id'] = { $in: allowedLocationIds };
+        }
 
       const locationsWithMachines = await GamingLocations.aggregate([
         {
@@ -111,10 +144,17 @@ export async function GET(req: NextRequest) {
         },
       ]);
 
-      console.warn(
-        `Locations with machines fetched in ${Date.now() - startTime}ms`
-      );
-      return NextResponse.json({ locations: locationsWithMachines });
+        console.warn(
+          `Locations with machines fetched in ${Date.now() - startTime}ms`
+        );
+        return NextResponse.json({ locations: locationsWithMachines });
+      } catch (error) {
+        console.error('[LOCATIONS WITH MACHINES] Error:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch locations with machines', details: error instanceof Error ? error.message : String(error) },
+          { status: 500 }
+        );
+      }
     }
 
     const timePeriod =
