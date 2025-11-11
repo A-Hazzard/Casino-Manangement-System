@@ -1,0 +1,19 @@
+{
+  "reportId": "6892c7f4-924f-49de-8af9-3f1a915f68ca",
+  "timestamp": "2025-11-11T05:49:14.497Z",
+  "summary": {
+    "collectionsProcessed": 8,
+    "totalIssuesFixed": 0,
+    "issueBreakdown": {
+      "sasTimesFixed": 0,
+      "movementCalculationsFixed": 0,
+      "prevMetersFixed": 0,
+      "machineCollectionMetersFixed": 0,
+      "historyEntriesFixed": 0,
+      "machineHistoryFixed": 0
+    },
+    "totalErrors": 0,
+    "timeTakenSeconds": "4.30"
+  },
+  "errors": []
+}

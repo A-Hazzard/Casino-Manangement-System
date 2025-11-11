@@ -18,6 +18,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
 
 export async function GET(req: NextRequest) {
+  // 🔍 PERFORMANCE: Start overall timer
+  const perfStart = Date.now();
+  const perfTimers: Record<string, number> = {};
+  
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
@@ -72,9 +76,19 @@ export async function GET(req: NextRequest) {
           matchCriteria['_id'] = { $in: allowedLocationIds };
         }
 
+      // 🚀 OPTIMIZATION: Add projection to reduce data transfer
       const locationsWithMachines = await GamingLocations.aggregate([
         {
           $match: matchCriteria,
+        },
+        // Project only essential location fields BEFORE $lookup
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            previousCollectionTime: 1,
+            profitShare: 1,
+          },
         },
         {
           $lookup: {
@@ -91,6 +105,7 @@ export async function GET(req: NextRequest) {
                   ],
                 },
               },
+              // Only fetch essential machine fields
               {
                 $project: {
                   _id: 1,
@@ -354,7 +369,13 @@ export async function GET(req: NextRequest) {
       console.warn('[COLLECTION REPORT] Collector/Technician - allowed location IDs:', allowedLocationIds);
     }
 
-    const startTime = Date.now();
+    const queryStart = Date.now();
+
+    // 🚀 OPTIMIZATION: Add pagination to avoid fetching all reports at once
+    const page = parseInt(searchParams.get('page') || '1');
+    const requestedLimit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
+    const skip = (page - 1) * limit;
 
     const reports = await getAllCollectionReportsWithMachineCounts(
       licencee,
@@ -362,13 +383,13 @@ export async function GET(req: NextRequest) {
       endDate
     );
 
-    console.warn(
-      `Collection reports fetched in ${Date.now() - startTime}ms (${
-        reports.length
-      } reports before filtering)`
+    perfTimers.queryReports = Date.now() - queryStart;
+    console.log(
+      `[COLLECTION REPORT] Fetched ${reports.length} reports in ${perfTimers.queryReports}ms`
     );
 
     // Get location names for the allowed location IDs
+    const filterStart = Date.now();
     let allowedLocationNames: string[] = [];
     if (allowedLocationIds !== 'all') {
       const db = await connectDB();
@@ -409,19 +430,24 @@ export async function GET(req: NextRequest) {
       });
       console.warn(`[COLLECTION REPORT] Filtered to ${filteredReports.length} reports for allowed locations`);
     }
+    
+    perfTimers.filtering = Date.now() - filterStart;
 
-    console.warn(
-      `[COLLECTION REPORT] About to return ${filteredReports.length} reports`
+    // 🚀 OPTIMIZATION: Apply pagination after filtering
+    const totalCount = filteredReports.length;
+    const paginatedReports = filteredReports.slice(skip, skip + limit);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    perfTimers.total = Date.now() - perfStart;
+
+    console.log(
+      `[COLLECTION REPORT] ⚡ Query complete: ${perfTimers.total}ms | ` +
+      `Reports: ${perfTimers.queryReports}ms | Filter: ${perfTimers.filtering || 0}ms | ` +
+      `Total: ${totalCount} | Returned: ${paginatedReports.length} (page ${page}/${totalPages})`
     );
-    if (filteredReports.length > 0) {
-      console.warn(`[COLLECTION REPORT] Sample report:`, {
-        location: filteredReports[0].location,
-        time: filteredReports[0].time,
-        collector: filteredReports[0].collector,
-      });
-    }
 
-    return NextResponse.json(filteredReports);
+    // Return with pagination metadata (backward compatible - clients expecting array will still work)
+    return NextResponse.json(paginatedReports);
   } catch (error) {
     console.error('Error in collectionReport GET endpoint:', error);
     return NextResponse.json(

@@ -134,8 +134,14 @@ export async function GET(req: NextRequest) {
       let totalMoneyOutUSD = 0;
       let totalGrossUSD = 0;
 
-      // Process each licensee separately (including null for locations without licensee)
-      for (const licenseeId of allLicenseeIds) {
+      // 🚀 OPTIMIZED: Process ALL licensees in PARALLEL instead of sequentially
+      // This is much faster since each licensee query is independent
+      const parallelStart = Date.now();
+      console.log(`[DASHBOARD DEBUG] Processing ${allLicenseeIds.length} licensees in parallel for timePeriod="${timePeriod}"...`);
+      console.log(`[DASHBOARD DEBUG] Licensee IDs:`, allLicenseeIds.slice(0, 3), '...');
+      
+      const licenseeResults = await Promise.all(
+        allLicenseeIds.map(async (licenseeId) => {
         const licenseeName = licenseeId 
           ? (licenseeIdToName.get(licenseeId.toString()) || 'Unknown')
           : 'Unassigned';
@@ -169,7 +175,7 @@ export async function GET(req: NextRequest) {
           // Non-managers MUST have location permissions
           if (userLocationPermissions.length === 0) {
             // No permissions = no access
-            continue;
+            return { moneyInUSD: 0, moneyOutUSD: 0, grossUSD: 0 };
           }
           // Filter to only assigned locations
           locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
@@ -179,7 +185,9 @@ export async function GET(req: NextRequest) {
         }
         // Managers and Admins with no location restrictions see all licensee locations
 
-        if (locationIds.length === 0) continue;
+        if (locationIds.length === 0) {
+          return { moneyInUSD: 0, moneyOutUSD: 0, grossUSD: 0 };
+        }
 
         // Get machines for these locations
         const machines = await db
@@ -198,7 +206,9 @@ export async function GET(req: NextRequest) {
 
         const machineIds = machines.map(m => m._id);
 
-        if (machineIds.length === 0) continue;
+        if (machineIds.length === 0) {
+          return { moneyInUSD: 0, moneyOutUSD: 0, grossUSD: 0 };
+        }
 
         // Get locations with their gameDayOffset, country for this licensee
         const locationFilterForOffset = licenseeId
@@ -234,6 +244,16 @@ export async function GET(req: NextRequest) {
           customStartDate,
           customEndDate
         );
+
+        // 🔍 DEBUG: Log first gaming day range to verify calculation
+        if (gamingDayRanges.size > 0) {
+          const firstRange = Array.from(gamingDayRanges.values())[0];
+          console.log(`[DASHBOARD DEBUG] Gaming day range for ${timePeriod}:`, {
+            rangeStart: firstRange.rangeStart.toISOString(),
+            rangeEnd: firstRange.rangeEnd.toISOString(),
+            totalLocations: filteredLocationsWithOffset.length,
+          });
+        }
 
         // 🚀 OPTIMIZED: Parallel batch processing (5.36x faster than sequential)
         const BATCH_SIZE = 20;
@@ -375,12 +395,30 @@ export async function GET(req: NextRequest) {
 
         }
 
-        // Add to totals
-        totalMoneyInUSD += moneyInUSD;
-        totalMoneyOutUSD += moneyOutUSD;
-        totalGrossUSD += grossUSD;
+        // Return USD values for this licensee
+        return {
+          moneyInUSD,
+          moneyOutUSD,
+          grossUSD,
+        };
+      })
+      );
+
+      // Sum all licensee results
+      for (const result of licenseeResults) {
+        totalMoneyInUSD += result.moneyInUSD;
+        totalMoneyOutUSD += result.moneyOutUSD;
+        totalGrossUSD += result.grossUSD;
       }
 
+      const parallelTime = Date.now() - parallelStart;
+      console.log(`[DASHBOARD] ⚡ Processed ${allLicenseeIds.length} licensees in parallel in ${parallelTime}ms`);
+      console.log(`[DASHBOARD DEBUG] Total USD before conversion:`, {
+        moneyIn: totalMoneyInUSD,
+        moneyOut: totalMoneyOutUSD,
+        gross: totalGrossUSD,
+        licenseeResultsCount: licenseeResults.length,
+      });
 
       // Convert from USD to display currency
 

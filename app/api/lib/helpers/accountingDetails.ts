@@ -361,14 +361,50 @@ export async function getCollectionReportById(
     gross: sasGrossTotal,
   };
 
+  // 🚀 OPTIMIZATION: Batch fetch ALL meter data in ONE query instead of N queries
+  const { Meters } = await import('@/app/api/lib/models/meters');
+  
+  // Collect all machine IDs and their SAS time ranges
+  const meterQueries = collections
+    .filter(c => c.sasMeters?.sasStartTime && c.sasMeters?.sasEndTime && c.machineId)
+    .map(c => ({
+      machineId: c.machineId,
+      startTime: new Date(c.sasMeters!.sasStartTime!),
+      endTime: new Date(c.sasMeters!.sasEndTime!),
+    }));
+
+  // Build a single aggregation to get all meter data grouped by machine
+  const allMeterData = meterQueries.length > 0 ? await Meters.aggregate([
+    {
+      $match: {
+        $or: meterQueries.map(q => ({
+          machine: q.machineId,
+          readAt: { $gte: q.startTime, $lte: q.endTime },
+        })),
+      },
+    },
+    {
+      $group: {
+        _id: '$machine',
+        totalDrop: { $sum: '$movement.drop' },
+        totalCancelled: { $sum: '$movement.totalCancelledCredits' },
+        meterCount: { $sum: 1 },
+      },
+    },
+  ]) : [];
+
+  // Create lookup map for O(1) access
+  const meterDataMap = new Map(
+    allMeterData.map(m => [m._id, { drop: m.totalDrop, cancelled: m.totalCancelled, count: m.meterCount }])
+  );
+
   return {
     reportId: report.locationReportId,
     locationName: report.locationName,
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toISOString()
       : '-',
-    machineMetrics: await Promise.all(
-      collections.map(async (collection, idx: number) => {
+    machineMetrics: collections.map((collection, idx: number) => {
         // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
         // Use a helper function to check for valid non-empty strings
         const isValidString = (
@@ -393,50 +429,12 @@ export async function getCollectionReportById(
           (collection.metersOut || 0) - (collection.prevOut || 0);
         const meterGross = collection.movement?.gross || 0;
 
-        // Calculate SAS gross by querying meters directly for the SAS time period
+        // 🚀 OPTIMIZED: Use pre-fetched meter data from batch query (no individual queries!)
         let sasGross = 0;
-        if (
-          collection.sasMeters?.sasStartTime &&
-          collection.sasMeters?.sasEndTime
-        ) {
-          const { Meters } = await import('@/app/api/lib/models/meters');
-
-          const meters = await Meters.find({
-            machine: collection.machineId,
-            readAt: {
-              $gte: new Date(collection.sasMeters.sasStartTime),
-              $lte: new Date(collection.sasMeters.sasEndTime),
-            },
-          })
-            .sort({ readAt: 1 })
-            .lean();
-
-          if (meters.length > 0) {
-            // Sum all movement fields (daily deltas) within the SAS time period
-            // This is the correct approach when machines only have movement data, not cumulative data
-            const totalDrop = meters.reduce(
-              (sum, meter) => sum + (meter.movement?.drop || 0),
-              0
-            );
-            const totalCancelled = meters.reduce(
-              (sum, meter) =>
-                sum + (meter.movement?.totalCancelledCredits || 0),
-              0
-            );
-            sasGross = totalDrop - totalCancelled;
-
-            console.warn(
-              `🔍 Collection Report Details SAS Gross calculation for machine ${collection.machineId}:`
-            );
-            console.warn(
-              `  Time period: ${collection.sasMeters.sasStartTime} to ${collection.sasMeters.sasEndTime}`
-            );
-            console.warn(`  Meters found: ${meters.length}`);
-            console.warn(`  Total drop (sum of movement.drop): ${totalDrop}`);
-            console.warn(
-              `  Total cancelled (sum of movement.totalCancelledCredits): ${totalCancelled}`
-            );
-            console.warn(`  SAS Gross: ${sasGross}`);
+        if (collection.machineId && collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime) {
+          const meterData = meterDataMap.get(collection.machineId);
+          if (meterData) {
+            sasGross = meterData.drop - meterData.cancelled;
           }
         }
         // Check if SAS data exists - if not, show "No SAS Data"
@@ -447,16 +445,6 @@ export async function getCollectionReportById(
           collection.sasMeters.gross === null
             ? 'No SAS Data'
             : meterGross - sasGross;
-
-        // Debug logging for SAS times
-        console.warn('🔍 SAS Times Debug:', {
-          machineId: machineDisplayName,
-          sasMeters: collection.sasMeters,
-          sasStartTime: collection.sasMeters?.sasStartTime,
-          sasEndTime: collection.sasMeters?.sasEndTime,
-          timestamp: collection.timestamp,
-          createdAt: collection.createdAt,
-        });
 
         return {
           id: String(idx + 1),
@@ -476,8 +464,7 @@ export async function getCollectionReportById(
           hasIssue: false,
           ramClear: collection.ramClear || false,
         };
-      })
-    ),
+      }),
     locationMetrics,
     sasMetrics,
   };

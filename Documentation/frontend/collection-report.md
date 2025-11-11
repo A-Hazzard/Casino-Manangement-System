@@ -1,8 +1,8 @@
 # Collection Report System - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 10, 2025  
-**Version:** 2.4.0
+**Last Updated:** November 11, 2025  
+**Version:** 2.5.0
 
 ## Overview
 
@@ -15,6 +15,7 @@ The Collection Report System manages casino slot machine money collection operat
 - Role-based access control
 - Automated issue detection and fixing
 - Responsive design for desktop and mobile
+- **Smart Advanced SAS Option** (NEW - November 11th, 2025) - Only shows for first machine collections
 
 ### Main Components
 
@@ -776,6 +777,63 @@ This prevents stale data from persisting when users switch accounts or permissio
 
 - **Audit Trail**: All create/edit/delete operations logged
 - **Secure Authentication**: JWT tokens with role and permission validation
+
+## Advanced SAS Option - Smart Visibility (November 11th, 2025)
+
+### Overview
+The "Advanced: Custom previous SAS start" option in collection forms now intelligently shows/hides based on whether the machine has existing collections.
+
+### Feature Details
+
+**Purpose:** Prevent users from accidentally setting custom SAS times on machines that already have established collection history.
+
+**Visibility Logic:**
+- ✅ **Shows** when machine has **zero** existing collections (first collection ever)
+- ❌ **Hidden** when machine has **one or more** existing collections
+
+**Implementation:**
+
+**API Endpoint:**
+```typescript
+GET /api/collections/check-first-collection?machineId={machineId}
+
+Response:
+{
+  isFirstCollection: boolean,
+  machineId: string
+}
+```
+
+**Frontend Logic:**
+```typescript
+// Check when machine is selected
+useEffect(() => {
+  if (selectedMachineId) {
+    axios.get(`/api/collections/check-first-collection?machineId=${selectedMachineId}`)
+      .then(response => {
+        setIsFirstCollection(response.data.isFirstCollection);
+      });
+  }
+}, [selectedMachineId]);
+
+// Conditionally render Advanced option
+{isFirstCollection && (
+  <button onClick={() => setShowAdvancedSas(p => !p)}>
+    Advanced: Custom previous SAS start
+  </button>
+)}
+```
+
+**Files Modified:**
+- `components/collectionReport/NewCollectionModal.tsx`
+- `components/collectionReport/EditCollectionModal.tsx`
+- `app/api/collections/check-first-collection/route.ts` (NEW)
+
+**Benefits:**
+- Prevents data corruption from incorrect custom SAS times
+- Reduces user confusion
+- Only advanced users working with brand new machines need this option
+- Cleaner, simpler UI for 99% of use cases
 
 ### User Experience
 

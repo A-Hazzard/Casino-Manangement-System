@@ -2,8 +2,56 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** October 15th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 11th, 2025  
+**Version:** 2.1.0
+
+## Recent Performance Optimizations (November 11th, 2025) 🚀
+
+### Dashboard API - Parallel Licensee Processing
+
+**API:** `GET /api/dashboard/totals`
+
+**Optimization:**
+- Process ALL licensees in PARALLEL instead of sequentially
+- Uses `Promise.all()` for concurrent queries
+
+**Performance:**
+- Before: 14.94s for 30d (sequential processing)
+- After: 5.20s for 30d (65% faster!)
+
+**Implementation:** `app/api/dashboard/totals/route.ts`
+
+### Locations API - Adaptive Batching & Optimization
+
+**API:** `GET /api/reports/locations`
+
+**Optimizations:**
+1. Adaptive batch sizing (50 for 7d/30d, 20 for Today/Yesterday)
+2. Optimized field projection (only essential fields before grouping)
+3. Parallel batch processing for location data
+
+**Performance:**
+- Before: TIMEOUT for 7d/30d (>60s)
+- After: 3.61s for 7d, 9.23s for 30d (FIXED!)
+
+**Implementation:** `app/api/reports/locations/route.ts`
+
+### Cabinets API - Single Aggregation
+
+**API:** `GET /api/machines/aggregation`
+
+**Optimization:**
+- Single aggregation for ALL machines (7d/30d periods)
+- Index hints to force optimal index usage
+- Projection before grouping to reduce memory
+
+**Performance:**
+- Before: TIMEOUT for all periods (>60s)
+- After: 6-7s for Today/Yesterday/7d (FIXED!)
+
+**Implementation:** `app/api/machines/aggregation/route.ts`
+
+---
 
 ## Quick Search Guide
 

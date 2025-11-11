@@ -137,31 +137,51 @@ export function getGamingDayRangeForPeriod(
 
   switch (timePeriod) {
     case 'Today':
-      return getGamingDayRange(today, gameDayStartHour, timezoneOffset);
+      // 🔧 FIX: If current time is before gaming day start hour, use YESTERDAY
+      // Example: If it's 2 AM and gaming day starts at 8 AM, we're still in yesterday's gaming day
+      const currentHour = nowLocal.getUTCHours();
+      const todayOrYesterday = currentHour < gameDayStartHour 
+        ? new Date(today.getTime() - 24 * 60 * 60 * 1000) // Use yesterday
+        : today; // Use today
+      return getGamingDayRange(todayOrYesterday, gameDayStartHour, timezoneOffset);
 
     case 'Yesterday':
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      return getGamingDayRange(yesterday, gameDayStartHour, timezoneOffset);
+      // 🔧 FIX: Yesterday's gaming day should be relative to current gaming day
+      // If it's 2 AM and we're in yesterday's gaming day, "Yesterday" = day before yesterday
+      const currentHour2 = nowLocal.getUTCHours();
+      const yesterdayBase = currentHour2 < gameDayStartHour 
+        ? new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+        : new Date(today.getTime() - 24 * 60 * 60 * 1000); // 1 day ago
+      return getGamingDayRange(yesterdayBase, gameDayStartHour, timezoneOffset);
 
     case 'last7days':
     case '7d':
-      const sevenDaysAgo = new Date(today);
+      // 🔧 FIX: Base calculation on current gaming day
+      const currentHour7d = nowLocal.getUTCHours();
+      const today7d = currentHour7d < gameDayStartHour 
+        ? new Date(today.getTime() - 24 * 60 * 60 * 1000) 
+        : today;
+      const sevenDaysAgo = new Date(today7d);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // -6 because today is day 1
       return getGamingDayRangeMultiDay(
         sevenDaysAgo,
-        today,
+        today7d,
         gameDayStartHour,
         timezoneOffset
       );
 
     case 'last30days':
     case '30d':
-      const thirtyDaysAgo = new Date(today);
+      // 🔧 FIX: Base calculation on current gaming day
+      const currentHour30d = nowLocal.getUTCHours();
+      const today30d = currentHour30d < gameDayStartHour 
+        ? new Date(today.getTime() - 24 * 60 * 60 * 1000) 
+        : today;
+      const thirtyDaysAgo = new Date(today30d);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 because today is day 1
       return getGamingDayRangeMultiDay(
         thirtyDaysAgo,
-        today,
+        today30d,
         gameDayStartHour,
         timezoneOffset
       );

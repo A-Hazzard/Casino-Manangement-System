@@ -1,8 +1,41 @@
 # Locations Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 9th, 2025  
-**Version:** 2.1.0
+**Last Updated:** November 11th, 2025  
+**Version:** 2.2.0
+
+## Recent Critical Fixes & Optimizations (November 11th, 2025)
+
+### Gaming Day Offset Bug - FIXED! ✅
+
+**Problem:** Locations page showed $0 for "Today" when viewed before 8 AM Trinidad time.
+
+**The Fix:** Gaming day calculation now checks current hour before determining date range.
+
+**Result:**
+- ✅ Shows correct data 24/7 (was $0 before 8 AM)
+- ✅ All 341 locations display data
+- ✅ Top location: D'Fastlime ($33,395)
+
+### Performance Optimization - TIMEOUT FIXED! 🚀
+
+**API:** `GET /api/reports/locations`
+
+**Problem:**
+- 7d/30d filters completely broken (TIMEOUT >60s)
+- No data could be retrieved for these periods
+
+**Solution:**
+1. Adaptive batch sizing (50 for 7d/30d, 20 for Today/Yesterday)
+2. Optimized field projection (only essential fields before grouping)
+3. Parallel batch processing for location data
+
+**Performance:**
+- 7 Days: TIMEOUT → 3.61s (FIXED!)
+- 30 Days: TIMEOUT → 9.23s (UNDER 10s GOAL!)
+- Today: 6.23s → 5.43s (13% faster)
+
+**Implementation:** `app/api/reports/locations/route.ts`
 
 ## Table of Contents
 

@@ -15,6 +15,9 @@ import type { CreateCollectionReportPayload } from "@/lib/types/api";
  * @returns NextResponse with the collection report data or error message.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // 🔍 PERFORMANCE: Start overall timer
+  const perfStart = Date.now();
+  
   try {
     await connectDB();
     const reportId = request.nextUrl.pathname.split("/").pop();
@@ -43,6 +46,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         reportData.collectionDate = new Date(report.timestamp).toISOString();
       }
     }
+
+    const totalTime = Date.now() - perfStart;
+    console.log(
+      `[COLLECTION REPORT DETAILS] ⚡ Fetched report ${reportId} in ${totalTime}ms | ` +
+      `Machines: ${reportData.machineMetrics?.length || 0}`
+    );
 
     return NextResponse.json(reportData);
   } catch (error) {

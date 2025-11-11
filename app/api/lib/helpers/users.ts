@@ -65,13 +65,15 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
     process.env.NODE_ENV === 'development' &&
     process.env.SKIP_AUTH === 'true'
   ) {
+    // 🔧 FIX: Dev user must have 'all' access to see all licensees/locations
+    // Empty array means NO access! Developer role alone isn't enough.
     return {
       _id: 'dev-user-id',
       emailAddress: 'dev@example.com',
       username: 'developer',
       roles: ['developer', 'admin'],
-      rel: { licencee: [] },
-      resourcePermissions: { 'gaming-locations': { resources: [] } },
+      rel: { licencee: 'all' }, // Give access to ALL licensees
+      resourcePermissions: { 'gaming-locations': { resources: [] } }, // Empty = all locations for developer role
       sessionVersion: 1,
     } as JWTPayload;
   }

@@ -20,10 +20,49 @@
 The Cabinets page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, SMIB configuration with live MQTT updates, and operational controls. This page serves as the central hub for managing all gaming cabinets across casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 9th, 2025  
-**Version:** 2.2.0
+**Last Updated:** November 11th, 2025  
+**Version:** 2.3.0
 
-## Recent Updates (October 29th, 2025)
+## Recent Critical Fixes & Optimizations (November 11th, 2025)
+
+### Gaming Day Offset Bug - FIXED! ✅
+
+**Problem:** Cabinets page showed $0 for "Today" when viewed before 8 AM Trinidad time.
+
+**The Fix:** Gaming day calculation now checks current hour before determining date range.
+
+**Result:**
+
+- ✅ Shows correct data 24/7 (was $0 before 8 AM)
+- ✅ All 2,077 machines display data
+- ✅ Top machine: GMID4 ($3,919 gross)
+
+### Performance Optimization - TIMEOUT FIXED! 🚀
+
+**API:** `GET /api/machines/aggregation`
+
+**Problem:**
+
+- ALL filters completely broken (TIMEOUT >60s)
+- No data could be retrieved for any time period
+
+**Solution:**
+
+1. Single aggregation for ALL machines (7d/30d periods)
+2. Parallel batch processing for Today/Yesterday
+3. Index hints to force optimal index usage
+4. Field projection before grouping
+
+**Performance:**
+
+- Today: TIMEOUT → 6.70s (FIXED!)
+- Yesterday: 59.5s → 6.16s (90% faster!)
+- 7 Days: TIMEOUT → 6.89s (FIXED!)
+- 30 Days: TIMEOUT → 20.37s (FIXED, but slow)
+
+**Implementation:** `app/api/machines/aggregation/route.ts`
+
+### Recent Updates (October 29th, 2025)
 
 ### Filter Improvements
 

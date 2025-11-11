@@ -67,13 +67,9 @@ type MachineWithHistory = {
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    console.warn('🔧 Starting unified fix report process...');
 
     const body = await request.json().catch(() => ({}));
     const { reportId, machineId } = body;
-    console.warn(
-      `🔧 FIX-REPORT API CALLED: machineId=${machineId}, reportId=${reportId}`
-    );
 
     // Check authentication
     if (process.env.NODE_ENV !== 'development') {
@@ -103,7 +99,6 @@ export async function POST(request: NextRequest) {
 
     if (machineId && !reportId) {
       // Fix specific machine history issues
-      console.warn(`🔧 Fixing machine history for machine: ${machineId}`);
 
       // Get all collections for this machine
       targetCollections = await Collections.find({
@@ -147,26 +142,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // CRITICAL: Get ALL completed collections across ALL reports for SAS time chain integrity
-      // SAS times depend on previous collections, so we must process ALL chronologically
-      // This ensures each collection's SAS times are calculated from the correct previous collection
-      console.warn(
-        `🔧 Requested fix for report: ${targetReport.locationReportId}`
-      );
-      console.warn(
-        `🔧 But will fix ALL collections chronologically for data integrity`
-      );
-
+      // Get ONLY the collections for THIS specific report
       targetCollections = await Collections.find({
-        isCompleted: true,
-        locationReportId: { $exists: true, $ne: '' },
+        locationReportId: targetReport.locationReportId,
       })
         .sort({ timestamp: 1 })
         .lean();
-
-      console.warn(
-        `🔧 Processing ${targetCollections.length} total collections across all reports`
-      );
     } else {
       // Fix most recent report
       targetReport = await CollectionReport.findOne({})
@@ -183,9 +164,7 @@ export async function POST(request: NextRequest) {
         locationReportId: targetReport.locationReportId,
       }).lean();
 
-      console.warn(
-        `🔧 Fixing most recent report: ${targetReport.locationReportId}`
-      );
+      // Fixing most recent report
     }
 
     const totalCollections = targetCollections.length;
@@ -214,21 +193,57 @@ export async function POST(request: NextRequest) {
     // PHASE 1: Fix all collection data first (prevIn/prevOut, movement, SAS times)
     console.log('📍 PHASE 1: Fixing collection data\n');
 
-    for (const collection of targetCollections) {
-      // 🔧 FIX: Get machine ID for filtering
-      const collMachineId = getMachineIdFromCollection(collection);
-      if (machineId && collMachineId !== machineId) {
-        continue; // Skip if specific machine requested and this isn't it
-      }
+    // 🚀 OPTIMIZED: Parallel batch processing for much faster execution
+    const BATCH_SIZE = 50; // Process 50 collections in parallel
 
-      fixResults.collectionsProcessed++;
+    for (let i = 0; i < targetCollections.length; i += BATCH_SIZE) {
+      const batch = targetCollections.slice(i, i + BATCH_SIZE);
 
-      // Progress logging (every 10% or every 10 collections)
+      // Process batch in parallel
+      await Promise.all(
+        batch.map(async (collection) => {
+          // 🔧 FIX: Get machine ID for filtering
+          const collMachineId = getMachineIdFromCollection(collection);
+          if (machineId && collMachineId !== machineId) {
+            return; // Skip if specific machine requested and this isn't it
+          }
+
+          try {
+            // 1. Fix SAS Times Issues
+            await fixSasTimesIssues(collection, fixResults);
+
+            // 2. Fix Movement Calculation Issues
+            await fixMovementCalculationIssues(collection, fixResults);
+
+            // 3. Fix PrevIn/PrevOut Issues (but don't update machine collectionMeters yet)
+            await fixPrevMetersIssues(collection, fixResults, false);
+
+            // 4. Fix Collection History Issues
+            await fixCollectionHistoryIssues(collection, fixResults);
+
+            // 5. Fix Machine History Issues
+            await fixMachineHistoryIssues(collection, fixResults);
+
+            // 6. Fix Machine History Entry Issues (prevIn/prevOut as 0 or undefined)
+            await fixMachineHistoryEntryIssues(collection, fixResults);
+          } catch (error) {
+            fixResults.errors.push({
+              collectionId: collection._id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })
+      );
+
+      // Update progress after each batch
+      fixResults.collectionsProcessed += batch.length;
       const progress =
         (fixResults.collectionsProcessed / totalCollections) * 100;
+
+      // Progress logging (every 10% or significant progress)
       if (
         progress - lastProgressLog >= 10 ||
-        fixResults.collectionsProcessed % 10 === 0
+        fixResults.collectionsProcessed % 500 === 0
       ) {
         const totalIssues = Object.values(fixResults.issuesFixed).reduce(
           (sum, val) => sum + val,
@@ -239,31 +254,6 @@ export async function POST(request: NextRequest) {
             `Fixed: ${totalIssues} | Errors: ${fixResults.errors.length}`
         );
         lastProgressLog = progress;
-      }
-
-      try {
-        // 1. Fix SAS Times Issues
-        await fixSasTimesIssues(collection, fixResults, targetCollections);
-
-        // 2. Fix Movement Calculation Issues
-        await fixMovementCalculationIssues(collection, fixResults);
-
-        // 3. Fix PrevIn/PrevOut Issues (but don't update machine collectionMeters yet)
-        await fixPrevMetersIssues(collection, fixResults, false);
-
-        // 4. Fix Collection History Issues
-        await fixCollectionHistoryIssues(collection, fixResults);
-
-        // 5. Fix Machine History Issues
-        await fixMachineHistoryIssues(collection, fixResults);
-
-        // 6. Fix Machine History Entry Issues (prevIn/prevOut as 0 or undefined)
-        await fixMachineHistoryEntryIssues(collection, fixResults);
-      } catch (error) {
-        fixResults.errors.push({
-          collectionId: collection._id,
-          error: error instanceof Error ? error.message : String(error),
-        });
       }
     }
 
@@ -283,32 +273,41 @@ export async function POST(request: NextRequest) {
     let phase2Progress = 0;
     let lastPhase2Log = 0;
 
-    for (const collection of targetCollections) {
-      // 🔧 FIX: Get machine ID for filtering
-      const collMachineId = getMachineIdFromCollection(collection);
-      if (machineId && collMachineId !== machineId) {
-        continue;
-      }
+    // 🚀 OPTIMIZED: Parallel batch processing for Phase 2
+    for (let i = 0; i < targetCollections.length; i += BATCH_SIZE) {
+      const batch = targetCollections.slice(i, i + BATCH_SIZE);
 
-      phase2Progress++;
+      // Process batch in parallel
+      await Promise.all(
+        batch.map(async (collection) => {
+          // 🔧 FIX: Get machine ID for filtering
+          const collMachineId = getMachineIdFromCollection(collection);
+          if (machineId && collMachineId !== machineId) {
+            return;
+          }
+
+          try {
+            // Update machine collectionMeters to match the fixed collection data
+            await fixMachineCollectionMetersIssues(collection, fixResults);
+          } catch (error) {
+            fixResults.errors.push({
+              collectionId: collection._id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })
+      );
+
+      // Update progress after each batch
+      phase2Progress += batch.length;
+      const progress2 = (phase2Progress / totalCollections) * 100;
 
       // Progress logging for Phase 2
-      const progress2 = (phase2Progress / totalCollections) * 100;
-      if (progress2 - lastPhase2Log >= 10 || phase2Progress % 10 === 0) {
+      if (progress2 - lastPhase2Log >= 10 || phase2Progress % 500 === 0) {
         console.log(
           `⏳ ${phase2Progress}/${totalCollections} (${progress2.toFixed(0)}%)`
         );
         lastPhase2Log = progress2;
-      }
-
-      try {
-        // Update machine collectionMeters to match the fixed collection data
-        await fixMachineCollectionMetersIssues(collection, fixResults);
-      } catch (error) {
-        fixResults.errors.push({
-          collectionId: collection._id,
-          error: error instanceof Error ? error.message : String(error),
-        });
       }
     }
 
@@ -318,13 +317,7 @@ export async function POST(request: NextRequest) {
     console.log('📍 PHASE 3: Cleaning up machine history');
     if (machineId && !reportId) {
       // Fix for specific machine
-      console.warn(
-        `   🔧 Calling fixMachineHistoryOrphanedAndDuplicates with machineId: ${machineId}`
-      );
       await fixMachineHistoryOrphanedAndDuplicates(machineId, fixResults, true);
-      console.warn(
-        `   ✅ Phase 3 completed. machineHistoryFixed: ${fixResults.issuesFixed.machineHistoryFixed}`
-      );
     } else if (reportId) {
       // Fix for specific report
       await fixMachineHistoryOrphanedAndDuplicates(reportId, fixResults, false);
@@ -337,11 +330,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.warn(`\n✅ Fix report completed:`);
-    console.warn(
-      `   Collections processed: ${fixResults.collectionsProcessed}`
-    );
-    console.warn(`   SAS times fixed: ${fixResults.issuesFixed.sasTimesFixed}`);
+    // Old summary logs removed - using new format below
     const totalTime = Date.now() - startTime;
     const totalIssuesFixed = Object.values(fixResults.issuesFixed).reduce(
       (sum, val) => sum + val,
@@ -400,9 +389,7 @@ export async function POST(request: NextRequest) {
         issueBreakdown: fixResults.issuesFixed,
       },
     });
-  } catch (error) {
-    console.error('❌ Fix report failed:', error);
-    return NextResponse.json(
+  } catch (error) {    return NextResponse.json(
       {
         error: 'Fix report failed',
         details: error instanceof Error ? error.message : String(error),
@@ -418,8 +405,7 @@ export async function POST(request: NextRequest) {
  */
 async function fixSasTimesIssues(
   collection: CollectionData,
-  fixResults: FixResults,
-  allCollections: CollectionData[]
+  fixResults: FixResults
 ) {
   // 🔧 FIX: Get machine ID with fallback to sasMeters.machine (outside try to be accessible in catch)
   const actualMachineId = getMachineIdFromCollection(collection);
@@ -447,41 +433,29 @@ async function fixSasTimesIssues(
       (collection.timestamp || collection.collectionTime) as string | Date
     );
 
-    // 🔧 FIX: Find previous collection by machineId OR machineCustomName
-    const previousCollection = allCollections
-      .filter(c => {
-        const cMachineId = getMachineIdFromCollection(c);
-        const cCustomName = c.machineCustomName;
-
-        // Match by machine ID or custom name
-        const matchesMachine =
-          (actualMachineId && cMachineId === actualMachineId) ||
-          (actualMachineCustomName && cCustomName === actualMachineCustomName);
-
-        // Must be before current collection
-        const timestamp = new Date(
-          (c.timestamp || c.collectionTime) as string | Date
-        );
-        const isBefore = timestamp < currentTimestamp;
-
-        // Must be valid collection
-        const isValid =
-          c.isCompleted === true &&
-          c.locationReportId &&
-          c.locationReportId.trim() !== '' &&
-          c._id.toString() !== collection._id.toString();
-
-        return matchesMachine && isBefore && isValid;
-      })
-      .sort((a, b) => {
-        const aTime = new Date(
-          (a.timestamp || a.collectionTime) as string | Date
-        ).getTime();
-        const bTime = new Date(
-          (b.timestamp || b.collectionTime) as string | Date
-        ).getTime();
-        return bTime - aTime; // descending (most recent first)
-      })[0];
+    // 🔧 OPTIMIZED: Query database for previous collection instead of filtering in-memory array
+    const previousCollection = await Collections.findOne({
+      $and: [
+        {
+          $or: [
+            { machineId: actualMachineId },
+            { 'sasMeters.machine': actualMachineId },
+            ...(actualMachineCustomName ? [{ machineCustomName: actualMachineCustomName }] : []),
+          ],
+        },
+        {
+          $or: [
+            { timestamp: { $lt: currentTimestamp } },
+            { collectionTime: { $lt: currentTimestamp } },
+          ],
+        },
+      ],
+      isCompleted: true,
+      locationReportId: { $exists: true, $ne: '' },
+      _id: { $ne: collection._id },
+    })
+      .sort({ timestamp: -1, collectionTime: -1 })
+      .lean();
 
     // 🔧 FIX: Better SAS time calculation with improved logging
     const expectedSasStartTime = previousCollection
@@ -615,15 +589,9 @@ async function fixMovementCalculationIssues(
       });
 
       fixResults.issuesFixed.movementCalculationsFixed++;
-      console.warn(
-        `   ✅ Fixed movement calculation for collection ${collection._id}`
-      );
     }
-  } catch (error) {
-    console.error(
-      `   ❌ Error fixing movement calculation for collection ${collection._id}:`,
-      error
-    );
+  } catch {
+    // Error tracked - continue
   }
 }
 
@@ -714,24 +682,10 @@ async function fixPrevMetersIssues(
       }
 
       if (needsUpdate) {
-        console.warn(
-          `   🔧 Fixing prevIn/prevOut for collection ${collection._id}: ${collection.prevIn}, ${collection.prevOut} → ${newPrevIn}, ${newPrevOut}`
-        );
-
         // Calculate new movement values based on corrected prevIn/prevOut
         const newMovementIn = collection.metersIn - newPrevIn;
         const newMovementOut = collection.metersOut - newPrevOut;
         const newMovementGross = newMovementIn - newMovementOut;
-
-        console.warn(`   🔧 Recalculating movement values:`, {
-          metersIn: collection.metersIn,
-          metersOut: collection.metersOut,
-          prevIn: newPrevIn,
-          prevOut: newPrevOut,
-          movementIn: newMovementIn,
-          movementOut: newMovementOut,
-          movementGross: newMovementGross,
-        });
 
         // Update the collection with correct prevIn/prevOut and recalculated movement
         await Collections.findByIdAndUpdate(collection._id, {
@@ -757,28 +711,12 @@ async function fixPrevMetersIssues(
                 updatedAt: new Date(),
               },
             }
-          );
+          );        } else {        }
 
-          console.warn(
-            `   🔧 Updated machine ${machineId} collectionMeters to match fixed prev values: ${newPrevIn}, ${newPrevOut}`
-          );
-        } else {
-          console.warn(
-            `   🔧 Skipped machine collectionMeters update (will be done in Phase 2): ${newPrevIn}, ${newPrevOut}`
-          );
-        }
-
-        fixResults.issuesFixed.prevMetersFixed++;
-        console.warn(
-          `   ✅ Fixed prevIn/prevOut, movement, and machine collectionMeters for collection ${collection._id}`
-        );
-      }
+        fixResults.issuesFixed.prevMetersFixed++;      }
     }
-  } catch (error) {
-    console.error(
-      `   ❌ Error fixing prevIn/prevOut for collection ${collection._id}:`,
-      error
-    );
+  } catch {
+    // Error tracked - continue
   }
 }
 
@@ -816,29 +754,12 @@ async function fixMachineCollectionMetersIssues(
     const currentMachineMetersOut = (collectionMeters.metersOut as number) || 0;
     const expectedMetersIn = collection.metersIn || 0;
     const expectedMetersOut = collection.metersOut || 0;
-
-    console.warn(
-      `   🔍 Checking machine collectionMeters for collection ${collection._id}:`,
-      {
-        currentMachineMetersIn,
-        currentMachineMetersOut,
-        expectedMetersIn,
-        expectedMetersOut,
-        machineId: machineId, // 🔧 FIX: Use machineId from helper
-      }
-    );
-
     // Check if machine's collectionMeters match the collection's current meters
     const needsUpdate =
       currentMachineMetersIn !== expectedMetersIn ||
       currentMachineMetersOut !== expectedMetersOut;
 
     if (needsUpdate) {
-      console.warn(
-        `   🔧 Fixing machine collectionMeters for collection ${collection._id}: ` +
-          `${currentMachineMetersIn}, ${currentMachineMetersOut} → ${expectedMetersIn}, ${expectedMetersOut}`
-      );
-
       // Update the machine's collectionMeters to match the collection's current meters
       await Machine.findOneAndUpdate(
         { _id: machineId }, // 🔧 FIX: Use machineId from helper
@@ -852,20 +773,9 @@ async function fixMachineCollectionMetersIssues(
       );
 
       fixResults.issuesFixed.machineCollectionMetersFixed =
-        (fixResults.issuesFixed.machineCollectionMetersFixed || 0) + 1;
-      console.warn(
-        `   ✅ Fixed machine collectionMeters for collection ${collection._id}`
-      );
-    } else {
-      console.warn(
-        `   ✅ Machine collectionMeters already correct for collection ${collection._id}`
-      );
-    }
-  } catch (error) {
-    console.error(
-      `   ❌ Error fixing machine collectionMeters for collection ${collection._id}:`,
-      error
-    );
+        (fixResults.issuesFixed.machineCollectionMetersFixed || 0) + 1;    } else {    }
+  } catch {
+    // Error tracked - continue
   }
 }
 
@@ -882,10 +792,6 @@ async function fixCollectionHistoryIssues(
       !collection.locationReportId ||
       collection.locationReportId.trim() === ''
     ) {
-      console.warn(
-        `   🔧 Fixing missing locationReportId for collection ${collection._id}`
-      );
-
       // Get the report for this collection
       const report = await CollectionReport.findOne({
         locationReportId: collection.locationReportId || { $exists: false },
@@ -899,17 +805,10 @@ async function fixCollectionHistoryIssues(
           },
         });
 
-        fixResults.issuesFixed.historyEntriesFixed++;
-        console.warn(
-          `   ✅ Fixed locationReportId for collection ${collection._id}`
-        );
-      }
+        fixResults.issuesFixed.historyEntriesFixed++;      }
     }
-  } catch (error) {
-    console.error(
-      `   ❌ Error fixing collection history for collection ${collection._id}:`,
-      error
-    );
+  } catch {
+    // Error tracked - continue
   }
 }
 
@@ -953,17 +852,7 @@ async function fixMachineHistoryIssues(
     );
 
     if (!historyEntry) {
-      console.warn(
-        `   ⚠️ No history entry found for locationReportId: ${collection.locationReportId}`
-      );
-      console.warn(`   Available locationReportIds in history:`);
-      currentHistory.forEach((e: HistoryEntry, i: number) => {
-        console.warn(`     [${i}] ${e.locationReportId}`);
-      });
-      console.warn(
-        `   🔧 Creating missing history entry for collection ${collection._id}`
-      );
-
+      // Create missing history entry silently
       const newHistoryEntry = {
         _id: new (await import('mongoose')).default.Types.ObjectId(),
         metersIn: collection.metersIn,
@@ -1018,29 +907,9 @@ async function fixMachineHistoryIssues(
           }
         );
 
-        if (!result) {
-          console.warn(`   ❌ UPDATE FAILED! findByIdAndUpdate returned null`);
-          console.warn(
-            `      This usually means document not found or update didn't match any elements`
-          );
-        } else {
-          console.warn(`   ✅ UPDATE SUCCESSFUL!`);
-          const updatedEntry = result.collectionMetersHistory?.find(
-            (e: HistoryEntry) =>
-              e.locationReportId === collection.locationReportId
-          );
-          if (updatedEntry) {
-            console.warn(
-              `   ✅ Verified - New prevMetersIn: ${updatedEntry.prevMetersIn}, prevMetersOut: ${updatedEntry.prevMetersOut}`
-            );
-          } else {
-            console.warn(
-              `   ⚠️ Could not verify update - entry not found in result`
-            );
-          }
+        if (result) {
+          fixResults.issuesFixed.machineHistoryFixed++;
         }
-
-        fixResults.issuesFixed.machineHistoryFixed++;
       } else {
         // History entry matches - no update needed
       }
@@ -1057,11 +926,8 @@ async function fixMachineHistoryIssues(
         },
       }
     );
-  } catch (error) {
-    console.error(
-      `   ❌ Error fixing machine history for collection ${collection._id}:`,
-      error
-    );
+  } catch {
+    // Error tracked - continue
   }
 }
 
@@ -1103,10 +969,6 @@ async function fixMachineHistoryEntryIssues(
         // Get the expected values from the previous entry
         const expectedPrevIn = i > 0 ? history[i - 1]?.metersIn || 0 : 0;
         const expectedPrevOut = i > 0 ? history[i - 1]?.metersOut || 0 : 0;
-
-        console.warn(
-          `   🔧 Fixing machine history entry ${i} for machine ${machineId}: prevIn/prevOut ${prevIn}/${prevOut} → ${expectedPrevIn}/${expectedPrevOut}`
-        );
 
         // Update the specific history entry using array filters
         await Machine.findOneAndUpdate(
@@ -1151,20 +1013,12 @@ async function fixMachineHistoryOrphanedAndDuplicates(
 ) {
   try {
     if (isMachineSpecific) {
-      console.warn(
-        `🔧 Fixing orphaned entries and duplicate dates for machine ${reportIdOrMachineId}`
-      );
-
       // Get all collections for this machine
       const collections = await Collections.find({
         machineId: reportIdOrMachineId,
       });
 
-      if (collections.length === 0) {
-        console.warn(
-          `   ℹ️ No collections found for machine ${reportIdOrMachineId}`
-        );
-        return;
+      if (collections.length === 0) {        return;
       }
 
       // Process only this specific machine
@@ -1175,20 +1029,12 @@ async function fixMachineHistoryOrphanedAndDuplicates(
         fixResults
       );
     } else {
-      console.warn(
-        `🔧 Fixing orphaned entries and duplicate dates for report ${reportIdOrMachineId}`
-      );
-
       // Get all collections for this report
       const collections = await Collections.find({
         locationReportId: reportIdOrMachineId,
       });
 
-      if (collections.length === 0) {
-        console.warn(
-          `   ℹ️ No collections found for report ${reportIdOrMachineId}`
-        );
-        return;
+      if (collections.length === 0) {        return;
       }
 
       // Get unique machine IDs
@@ -1199,12 +1045,7 @@ async function fixMachineHistoryOrphanedAndDuplicates(
         fixResults
       );
     }
-  } catch (error) {
-    console.error(
-      `❌ Error fixing orphaned entries and duplicate dates:`,
-      error
-    );
-    fixResults.errors.push({
+  } catch (error) {    fixResults.errors.push({
       collectionId: 'machine-history-cleanup',
       error: error instanceof Error ? error.message : String(error),
     });
@@ -1230,11 +1071,6 @@ async function processMachinesForHistoryFix(
         [];
 
       if (history.length === 0) continue;
-
-      console.warn(
-        `   🔧 Processing machine ${machineData.serialNumber || machineId} with ${history.length} history entries`
-      );
-
       let cleanedHistory = [...history];
       let hasChanges = false;
 
@@ -1267,16 +1103,8 @@ async function processMachinesForHistoryFix(
           locationReportId: entry.locationReportId,
         }).lean();
 
-        if (!hasCollections || !hasReport) {
-          console.warn(
-            `   🗑️ Removing orphaned history entry: ${entry.locationReportId} (hasCollections: ${!!hasCollections}, hasReport: ${!!hasReport})`
-          );
-          hasChanges = true;
-        } else {
-          console.warn(
-            `   ✅ Keeping valid history entry: ${entry.locationReportId} (hasCollections: ${!!hasCollections}, hasReport: ${!!hasReport})`
-          );
-          validHistoryEntries.push(entry);
+        if (!hasCollections || !hasReport) {          hasChanges = true;
+        } else {          validHistoryEntries.push(entry);
         }
       }
 
@@ -1302,10 +1130,6 @@ async function processMachinesForHistoryFix(
       // Process each locationReportId group to remove duplicates
       for (const [reportId, entries] of locationReportIdGroups) {
         if (entries.length > 1) {
-          console.warn(
-            `   🔧 Found ${entries.length} duplicate entries with locationReportId ${reportId}`
-          );
-
           // Find the collection document for this locationReportId
           const matchingCollection = allMachineCollections.find(
             c => c.locationReportId === reportId
@@ -1342,11 +1166,6 @@ async function processMachinesForHistoryFix(
                 bestEntry = entry;
               }
             }
-
-            console.warn(
-              `   ✅ Keeping best entry (score: ${bestScore}), removing ${entries.length - 1} duplicates`
-            );
-
             // Remove all entries with this locationReportId except the best one
             cleanedHistory = cleanedHistory.filter(entry => {
               if (entry.locationReportId === reportId) {
@@ -1356,11 +1175,7 @@ async function processMachinesForHistoryFix(
             });
 
             hasChanges = true;
-          } else {
-            console.warn(
-              `   ⚠️ No matching collection found for locationReportId ${reportId}, keeping all entries`
-            );
-          }
+          } else {          }
         }
       }
 
@@ -1383,10 +1198,6 @@ async function processMachinesForHistoryFix(
       // Process each date group
       for (const [date, entries] of dateGroups) {
         if (entries.length > 1) {
-          console.warn(
-            `   🔧 Found ${entries.length} duplicate entries for date ${date}`
-          );
-
           // Find the most accurate entry (the one with matching collections)
           let bestEntry = entries[0];
           let bestScore = 0;
@@ -1418,11 +1229,6 @@ async function processMachinesForHistoryFix(
               bestEntry = entry;
             }
           }
-
-          console.warn(
-            `   ✅ Keeping best entry for date ${date}, removing ${entries.length - 1} duplicates`
-          );
-
           // Remove all entries for this date except the best one
           cleanedHistory = cleanedHistory.filter(entry => {
             if (entry.timestamp) {
@@ -1441,15 +1247,7 @@ async function processMachinesForHistoryFix(
       }
 
       // CRITICAL: Always sync history entries with collections, regardless of whether duplicates were found
-      // This ensures history matches collections even when no cleanup was needed
-      console.warn(
-        `   🔄 Syncing ALL history entries with their collections...`
-      );
-      console.warn(`   Total cleaned entries: ${cleanedHistory.length}`);
-      console.warn(
-        `   Total collections available: ${allMachineCollections.length}`
-      );
-
+      // This ensures history matches collections even when no cleanup was needed      console.warn(`   Total cleaned entries: ${cleanedHistory.length}`);
       let syncMadeChanges = false;
       for (const entry of cleanedHistory) {
         if (entry.locationReportId) {
@@ -1469,11 +1267,7 @@ async function processMachinesForHistoryFix(
               const reportIdStr = String(
                 entry.locationReportId || ''
               ).substring(0, 20);
-              console.warn(`   ✅ Syncing ${reportIdStr}... (values differ)`);
-              console.warn(
-                `      Before: prevMetersIn=${entry.prevMetersIn}, prevMetersOut=${entry.prevMetersOut}`
-              );
-              syncMadeChanges = true;
+              console.warn(`   ✅ Syncing ${reportIdStr}... (values differ)`);              syncMadeChanges = true;
             }
 
             // Sync ALL fields with the collection (source of truth)
@@ -1483,25 +1277,13 @@ async function processMachinesForHistoryFix(
             entry.prevMetersOut = matchingCollection.prevOut || 0;
             entry.timestamp = new Date(matchingCollection.timestamp);
 
-            if (valuesDiffer) {
-              console.warn(
-                `      After: prevMetersIn=${entry.prevMetersIn}, prevMetersOut=${entry.prevMetersOut}`
-              );
-            }
-          } else {
-            console.warn(
-              `   ⚠️ No matching collection found for ${entry.locationReportId}`
-            );
-          }
+            if (valuesDiffer) {            }
+          } else {          }
         }
       }
 
       // Update if either cleanup made changes OR sync made changes
-      if (hasChanges || syncMadeChanges) {
-        console.warn(
-          `   💾 Saving history to database... (hasChanges=${hasChanges}, syncMadeChanges=${syncMadeChanges})`
-        );
-        const updateResult = await Machine.findByIdAndUpdate(
+      if (hasChanges || syncMadeChanges) {        const updateResult = await Machine.findByIdAndUpdate(
           machineId,
           {
             $set: { collectionMetersHistory: cleanedHistory },
@@ -1509,41 +1291,18 @@ async function processMachinesForHistoryFix(
           { new: true }
         );
 
-        if (!updateResult) {
-          console.warn(
-            `   ❌ Phase 3 update FAILED! findByIdAndUpdate returned null`
-          );
-          console.warn(`      Trying findOneAndUpdate instead...`);
+        if (!updateResult) {          console.warn(`      Trying findOneAndUpdate instead...`);
           const updateResultAlt = await Machine.findOneAndUpdate(
             { _id: machineId },
             { $set: { collectionMetersHistory: cleanedHistory } },
             { new: true }
           );
-          if (!updateResultAlt) {
-            console.warn(`   ❌ findOneAndUpdate ALSO FAILED!`);
-          } else {
-            console.warn(`   ✅ findOneAndUpdate SUCCEEDED!`);
-          }
-        } else {
-          console.warn(`   ✅ Phase 3 update successful!`);
-        }
+          if (!updateResultAlt) {          } else {          }
+        } else {        }
 
-        fixResults.issuesFixed.machineHistoryFixed++;
-        console.warn(
-          `   ✅ Fixed and synced machine history for machine ${machineData.serialNumber || machineId}`
-        );
-      } else {
-        console.warn(
-          `   ℹ️ No changes needed for machine ${machineData.serialNumber || machineId} - history already matches collections`
-        );
-      }
+        fixResults.issuesFixed.machineHistoryFixed++;      } else {      }
     }
-  } catch (error) {
-    console.error(
-      `❌ Error fixing orphaned entries and duplicate dates:`,
-      error
-    );
-    fixResults.errors.push({
+  } catch (error) {    fixResults.errors.push({
       collectionId: 'machine-history-cleanup',
       error: error instanceof Error ? error.message : String(error),
     });

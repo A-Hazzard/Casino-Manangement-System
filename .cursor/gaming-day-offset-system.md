@@ -1,8 +1,43 @@
 # Gaming Day Offset System
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 3, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 11, 2025  
+**Version:** 2.1.0
+
+---
+
+## 🚨 CRITICAL FIX - November 11, 2025
+
+### Dashboard Showing $0 Before Gaming Day Start - FIXED! ✅
+
+**Problem:**  
+At 12:46 AM Trinidad (before 8 AM start), Dashboard/Chart/Locations/Cabinets all showed $0 for "Today".
+
+**Root Cause:**  
+System was calculating FUTURE date ranges when current time was before gaming day start:
+
+- ❌ **WRONG:** Nov 11, 8 AM → Nov 12, 8 AM (future! no data yet!)
+- ✅ **CORRECT:** Nov 10, 8 AM → Nov 11, 8 AM (current gaming day with data!)
+
+**The Fix:**
+
+```typescript
+// Check if current hour is before gaming day start
+const currentHour = nowLocal.getUTCHours();
+const todayBase =
+  currentHour < gameDayStartHour
+    ? yesterday // Still in yesterday's gaming day!
+    : today; // In today's gaming day
+```
+
+**Implementation:** `lib/utils/gamingDayRange.ts` - `getGamingDayRangeForPeriod()`
+
+**Impact:**
+
+- ✅ Dashboard shows correct data 24/7 (was $0 before 8 AM)
+- ✅ Chart shows hourly data for "Today" (was empty)
+- ✅ Locations/Cabinets show data (was $0)
+- ✅ All time periods (Today, Yesterday, 7d, 30d) now calculate correctly
 
 ---
 
@@ -148,7 +183,31 @@ const gameDayOffset = location?.gameDayOffset ?? 8;
 const gameDayOffset = location?.gameDayOffset || 8;
 ```
 
-### Rule 3: Custom Dates Use Gaming Day Offset
+### Rule 3: Current Time Determines Current Gaming Day
+
+**CRITICAL:** When calculating "Today", check if current time is before gaming day start hour!
+
+```typescript
+// ✅ CORRECT - Accounts for current time
+const currentHour = nowLocal.getUTCHours();
+const todayBase =
+  currentHour < gameDayStartHour
+    ? new Date(today.getTime() - 24 * 60 * 60 * 1000) // Use yesterday
+    : today; // Use today
+
+// ❌ WRONG - Always uses calendar day
+const todayBase = today; // Breaks before 8 AM!
+```
+
+**Example:**
+
+- Current time: 2 AM Trinidad (before 8 AM start)
+- "Today" gaming day: **YESTERDAY 8 AM → TODAY 8 AM** ✅
+- NOT: TODAY 8 AM → TOMORROW 8 AM ❌
+
+**Why:** The gaming day hasn't "rolled over" yet! It rolls over at 8 AM, not midnight.
+
+### Rule 4: Custom Dates Use Gaming Day Offset
 
 Custom dates are NOT midnight-to-midnight. They use gaming day boundaries.
 
@@ -157,7 +216,7 @@ Custom dates are NOT midnight-to-midnight. They use gaming day boundaries.
 // Backend queries: Oct 31, 8 AM to Nov 1, 8 AM ✅
 ```
 
-### Rule 4: Send Only Date Part from Frontend
+### Rule 5: Send Only Date Part from Frontend
 
 Frontend helpers must extract only `YYYY-MM-DD` format:
 

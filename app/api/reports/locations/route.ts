@@ -205,16 +205,174 @@ export async function GET(req: NextRequest) {
     // 🔍 PERFORMANCE: Process locations - OPTIMIZED WITH PARALLEL BATCHING
     const processingStart = Date.now();
     const locationResults = [];
+
+    // Note: Single aggregation approach was attempted but caused timeouts for 7d/30d
+    // due to fetching 1.5M+ meter records at once. Parallel batching is faster.
+    const useSingleAggregation = false; // Disabled for now
+
+    console.log(`[LOCATIONS API] Processing ${locations.length} locations in parallel batches`);
     
-    // Process locations in parallel batches for better performance
-    const BATCH_SIZE = 20; // Process 20 locations at a time
-    
-    for (let i = 0; i < locations.length; i += BATCH_SIZE) {
-      const batch = locations.slice(i, i + BATCH_SIZE);
+    if (useSingleAggregation) {
+      // 🚀 SUPER OPTIMIZED: Single aggregation for ALL locations (much faster for 30d/7d)
+      // Get global date range (earliest start, latest end)
+      let globalStart = new Date();
+      let globalEnd = new Date(0);
+      gamingDayRanges.forEach(range => {
+        if (range.rangeStart < globalStart) globalStart = range.rangeStart;
+        if (range.rangeEnd > globalEnd) globalEnd = range.rangeEnd;
+      });
+
+      // Get all location IDs
+      const allLocationIds = locations.map(loc => loc._id.toString());
+
+      // Single aggregation for all machines across all locations
+      const allMachinesData = await db.collection('machines')
+        .find({
+          gamingLocation: { $in: allLocationIds },
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+        })
+        .toArray();
+
+      // Create machine-to-location map
+      const machineToLocation = new Map();
+      const locationToMachines = new Map();
+      allMachinesData.forEach(machine => {
+        const machineId = machine._id.toString();
+        const locationId = machine.gamingLocation;
+        machineToLocation.set(machineId, locationId);
+        if (!locationToMachines.has(locationId)) {
+          locationToMachines.set(locationId, []);
+        }
+        locationToMachines.get(locationId).push(machine);
+      });
+
+      // Get ALL machine IDs and create a machine-to-location map for grouping
+      const allMachineIds = allMachinesData.map(m => m._id.toString());
+
+      // Fetch meters WITHOUT $lookup (much faster!)
+      const allMeters = await db.collection('meters').aggregate([
+        {
+          $match: {
+            machine: { $in: allMachineIds },
+            readAt: {
+              $gte: globalStart,
+              $lte: globalEnd,
+            },
+          },
+        },
+        {
+          $project: {
+            machine: 1,
+            drop: '$movement.drop',
+            totalCancelledCredits: '$movement.totalCancelledCredits',
+          },
+        },
+      ]).toArray();
+
+      // Group meters by location using the machine-to-location map (in-memory, very fast!)
+      const locationMetricsMap = new Map();
+      allMeters.forEach(meter => {
+        const machineId = meter.machine;
+        const locationId = machineToLocation.get(machineId);
+        if (!locationId) return;
+
+        if (!locationMetricsMap.has(locationId)) {
+          locationMetricsMap.set(locationId, { moneyIn: 0, moneyOut: 0, meterCount: 0 });
+        }
+        const locMetrics = locationMetricsMap.get(locationId);
+        locMetrics.moneyIn += meter.drop || 0;
+        locMetrics.moneyOut += meter.totalCancelledCredits || 0;
+        locMetrics.meterCount += 1;
+      });
+
+      // Convert map to array format for consistency
+      const metricsAggregation = Array.from(locationMetricsMap.entries()).map(([locationId, metrics]) => ({
+        _id: locationId,
+        ...metrics,
+      }));
+
+      // Create metrics map
+      const metricsMap = new Map();
+      metricsAggregation.forEach(metrics => {
+        metricsMap.set(metrics._id, metrics);
+      });
+
+      // Build location results
+      for (const location of locations) {
+        const locationId = location._id.toString();
+        const machines = locationToMachines.get(locationId) || [];
+        const metrics = metricsMap.get(locationId) || { moneyIn: 0, moneyOut: 0, meterCount: 0 };
+
+        const locationMetrics = {
+          moneyIn: metrics.moneyIn || 0,
+          moneyOut: metrics.moneyOut || 0,
+          meterCount: metrics.meterCount || 0,
+        };
+
+        const gross = locationMetrics.moneyIn - locationMetrics.moneyOut;
+
+        // Calculate machine status metrics
+        const totalMachines = machines.length;
+        const onlineMachines = machines.filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (m: any) => m.lastActivity && new Date(m.lastActivity) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+        ).length;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sasMachines = machines.filter((m: any) => m.isSasMachine).length;
+        const nonSasMachines = totalMachines - sasMachines;
+
+        // Skip locations with no data if showAllLocations is false
+        if (
+          !showAllLocations &&
+          totalMachines === 0 &&
+          locationMetrics.moneyIn === 0 &&
+          locationMetrics.moneyOut === 0
+        ) {
+          continue;
+        }
+
+        locationResults.push({
+          _id: locationId,
+          location: locationId,
+          locationName: location.name,
+          isLocalServer: location.isLocalServer || false,
+          moneyIn: locationMetrics.moneyIn,
+          moneyOut: locationMetrics.moneyOut,
+          gross: gross,
+          totalMachines: totalMachines,
+          onlineMachines: onlineMachines,
+          sasMachines: sasMachines,
+          nonSasMachines: nonSasMachines,
+          hasSasMachines: sasMachines > 0,
+          hasNonSasMachines: nonSasMachines > 0,
+          rel: location.rel,
+          country: location.country,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          machines: machines.map((m: any) => ({
+            _id: m._id.toString(),
+            assetNumber: m.assetNumber,
+            serialNumber: m.serialNumber,
+            isSasMachine: m.isSasMachine,
+            lastActivity: m.lastActivity,
+          })),
+        });
+      }
+    } else {
+      // 🚀 OPTIMIZED: Adaptive batch size based on time period
+      // Longer periods (7d/30d) need LARGER batches to reduce overhead
+      const BATCH_SIZE = (timePeriod === '7d' || timePeriod === '30d') ? 50 : 20;
       
-      // Process batch in parallel
-      const batchResults = await Promise.all(
-        batch.map(async (location) => {
+      console.log(`[LOCATIONS API] Using batch size: ${BATCH_SIZE} for ${timePeriod}`);
+      
+      for (let i = 0; i < locations.length; i += BATCH_SIZE) {
+        const batch = locations.slice(i, i + BATCH_SIZE);
+        
+        // Process batch in parallel
+        const batchResults = await Promise.all(
+          batch.map(async (location) => {
       const locationId = location._id.toString();
       const gamingDayRange = gamingDayRanges.get(locationId);
 
@@ -224,54 +382,59 @@ export async function GET(req: NextRequest) {
       }
 
       try {
-        // 🚀 OPTIMIZATION: Fetch machines and meters in parallel
-        const [machines, metrics] = await Promise.all([
-          // Query 1: Get machines for this location
-          db.collection('machines').find({
+        // 🚀 SUPER OPTIMIZED: Fetch machines ONCE, then aggregate meters
+        // Get machines with only essential fields (reduces data transfer)
+        const machines = await db.collection('machines').find(
+          {
             gamingLocation: locationId,
             $or: [
               { deletedAt: null },
               { deletedAt: { $lt: new Date('2020-01-01') } },
             ],
-          }).toArray(),
-          
-          // Query 2: Get meter aggregations (run in parallel with machines query)
-          (async () => {
-            // First get machine IDs efficiently
-            const machineIds = await db.collection('machines')
-              .find(
-                { gamingLocation: locationId },
-                { projection: { _id: 1 } }
-              )
-              .toArray()
-              .then(docs => docs.map(d => d._id.toString()));
-            
-            if (machineIds.length === 0) {
-              return [{ moneyIn: 0, moneyOut: 0, meterCount: 0 }];
-            }
-            
-            // Then aggregate meters for those machines
-            return db.collection('meters').aggregate([
-              {
-                $match: {
-                  machine: { $in: machineIds },
-                  readAt: {
-                    $gte: gamingDayRange.rangeStart,
-                    $lte: gamingDayRange.rangeEnd,
-                  },
+          },
+          {
+            projection: {
+              _id: 1,
+              assetNumber: 1,
+              serialNumber: 1,
+              isSasMachine: 1,
+              lastActivity: 1,
+            },
+          }
+        ).toArray();
+
+        let metrics;
+        if (machines.length === 0) {
+          metrics = [{ moneyIn: 0, moneyOut: 0, meterCount: 0 }];
+        } else {
+          // Aggregate meters with optimized projection (only fetch what we need)
+          const machineIds = machines.map(m => m._id.toString());
+          metrics = await db.collection('meters').aggregate([
+            {
+              $match: {
+                machine: { $in: machineIds },
+                readAt: {
+                  $gte: gamingDayRange.rangeStart,
+                  $lte: gamingDayRange.rangeEnd,
                 },
               },
-              {
-                $group: {
-                  _id: null,
-                  moneyIn: { $sum: '$movement.drop' },
-                  moneyOut: { $sum: '$movement.totalCancelledCredits' },
-                  meterCount: { $sum: 1 },
-                },
+            },
+            {
+              $project: {
+                drop: '$movement.drop',
+                totalCancelledCredits: '$movement.totalCancelledCredits',
               },
-            ]).toArray();
-          })(),
-        ]);
+            },
+            {
+              $group: {
+                _id: null,
+                moneyIn: { $sum: '$drop' },
+                moneyOut: { $sum: '$totalCancelledCredits' },
+                meterCount: { $sum: 1 },
+              },
+            },
+          ]).toArray();
+        }
 
         const locationMetrics = metrics[0] || { moneyIn: 0, moneyOut: 0, meterCount: 0 };
         const gross = locationMetrics.moneyIn - locationMetrics.moneyOut;
@@ -332,6 +495,7 @@ export async function GET(req: NextRequest) {
       // Filter out null results and add to main results
       const validResults = batchResults.filter(r => r !== null);
       locationResults.push(...validResults);
+      }
     }
     
     perfTimers.processing = Date.now() - processingStart;

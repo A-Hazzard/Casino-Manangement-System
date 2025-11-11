@@ -1,0 +1,128 @@
+[
+  {
+    "success": true,
+    "duration": 4100,
+    "description": "Dashboard - Today",
+    "endpoint": "/api/dashboard/totals?timePeriod=Today&currency=USD",
+    "dataSize": 91
+  },
+  {
+    "success": true,
+    "duration": 3619,
+    "description": "Dashboard - Yesterday",
+    "endpoint": "/api/dashboard/totals?timePeriod=Yesterday&currency=USD",
+    "dataSize": 90
+  },
+  {
+    "success": true,
+    "duration": 3776,
+    "description": "Dashboard - 7 Days",
+    "endpoint": "/api/dashboard/totals?timePeriod=7d&currency=USD",
+    "dataSize": 94
+  },
+  {
+    "success": true,
+    "duration": 5200,
+    "description": "Dashboard - 30 Days",
+    "endpoint": "/api/dashboard/totals?timePeriod=30d&currency=USD",
+    "dataSize": 96
+  },
+  {
+    "success": true,
+    "duration": 453,
+    "description": "Chart - Today",
+    "endpoint": "/api/metrics/meters?timePeriod=Today",
+    "dataSize": 33800
+  },
+  {
+    "success": true,
+    "duration": 1144,
+    "description": "Chart - Yesterday",
+    "endpoint": "/api/metrics/meters?timePeriod=Yesterday",
+    "dataSize": 117411
+  },
+  {
+    "success": true,
+    "duration": 3226,
+    "description": "Chart - 7 Days",
+    "endpoint": "/api/metrics/meters?timePeriod=7d",
+    "dataSize": 1063
+  },
+  {
+    "success": true,
+    "duration": 14173,
+    "description": "Chart - 30 Days",
+    "endpoint": "/api/metrics/meters?timePeriod=30d",
+    "dataSize": 4463
+  },
+  {
+    "success": true,
+    "duration": 5430,
+    "description": "Locations - Today",
+    "endpoint": "/api/reports/locations?timePeriod=Today",
+    "dataSize": 26042
+  },
+  {
+    "success": true,
+    "duration": 4235,
+    "description": "Locations - Yesterday",
+    "endpoint": "/api/reports/locations?timePeriod=Yesterday",
+    "dataSize": 22383
+  },
+  {
+    "success": true,
+    "duration": 3609,
+    "description": "Locations - 7 Days",
+    "endpoint": "/api/reports/locations?timePeriod=7d",
+    "dataSize": 23258
+  },
+  {
+    "success": true,
+    "duration": 9235,
+    "description": "Locations - 30 Days",
+    "endpoint": "/api/reports/locations?timePeriod=30d",
+    "dataSize": 21078
+  },
+  {
+    "success": true,
+    "duration": 179,
+    "description": "Locations - Today + TTG",
+    "endpoint": "/api/reports/locations?timePeriod=Today&licensee=TTG",
+    "dataSize": 380
+  },
+  {
+    "success": true,
+    "duration": 179,
+    "description": "Locations - 7d + TTG",
+    "endpoint": "/api/reports/locations?timePeriod=7d&licensee=TTG",
+    "dataSize": 380
+  },
+  {
+    "success": true,
+    "duration": 6704,
+    "description": "Cabinets - Today",
+    "endpoint": "/api/machines/aggregation?timePeriod=Today",
+    "dataSize": 1380154
+  },
+  {
+    "success": true,
+    "duration": 6159,
+    "description": "Cabinets - Yesterday",
+    "endpoint": "/api/machines/aggregation?timePeriod=Yesterday",
+    "dataSize": 1386530
+  },
+  {
+    "success": true,
+    "duration": 6889,
+    "description": "Cabinets - 7 Days",
+    "endpoint": "/api/machines/aggregation?timePeriod=7d",
+    "dataSize": 1123549
+  },
+  {
+    "success": true,
+    "duration": 20372,
+    "description": "Cabinets - 30 Days",
+    "endpoint": "/api/machines/aggregation?timePeriod=30d",
+    "dataSize": 1128858
+  }
+]

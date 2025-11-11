@@ -210,15 +210,21 @@ export async function getMetricsForLocations(
   }
 
   // 🚀 OPTIMIZED: Direct aggregation without expensive lookups
+  // For 30d/7d periods, use daily aggregation (respecting gaming day offset)
+  // For Today/Yesterday, use hourly aggregation
   const aggregationPipeline: PipelineStage[] = [
     // Stage 1: Filter meters by date and machines
     { $match: filter },
     
     // Stage 2: Add day and time fields
+    // NOTE: Gaming day offset is already handled in the filter.readAt range
+    // For daily grouping, we extract the date from readAt
     {
       $addFields: {
-        day: { $dateToString: { date: '$readAt', format: '%Y-%m-%d' } },
-        time: { $dateToString: { date: '$readAt', format: '%H:%M' } },
+        day: { $dateToString: { date: '$readAt', format: '%Y-%m-%d', timezone: 'UTC' } },
+        time: shouldUseHourlyAggregation 
+          ? { $dateToString: { date: '$readAt', format: '%H:%M', timezone: 'UTC' } }
+          : '00:00', // For daily aggregation, use placeholder time
       },
     },
   ];
@@ -266,11 +272,16 @@ export async function getMetricsForLocations(
   // Stage 5: Sort
   aggregationPipeline.push({ $sort: { day: 1, time: 1 } });
 
+  // 🚀 OPTIMIZATION: Use index hint for better performance on large datasets
+  // The compound index (machine + readAt) is optimal for our queries
+  const hint = machineIds ? { machine: 1, readAt: 1 } : { readAt: 1 };
+
   return db
     .collection('meters')
     .aggregate(aggregationPipeline, {
       allowDiskUse: true,
-      maxTimeMS: 60000, // 60 second timeout
+      maxTimeMS: 90000, // Increased to 90 seconds for 30d queries
+      hint, // Force MongoDB to use the optimal index
     })
     .toArray();
 }

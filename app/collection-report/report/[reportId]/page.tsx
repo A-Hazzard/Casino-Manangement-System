@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { SyncButton } from '@/components/ui/RefreshButton';
+// import { SyncButton } from '@/components/ui/RefreshButton'; // Commented out - Sync Meters feature disabled
 import {
   Table,
   TableBody,
@@ -32,7 +32,7 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
-import { AnimatePresence, motion } from 'framer-motion';
+// import { AnimatePresence, motion } from 'framer-motion'; // Commented out - Floating refresh button disabled
 import {
   ArrowLeft,
   ChevronDown,
@@ -93,7 +93,7 @@ import {
 } from '@/lib/helpers/collectionReportDetailPage';
 import {
   checkSasTimeIssues,
-  syncMetersForReport,
+  // syncMetersForReport, // Commented out - Sync Meters disabled
 } from '@/lib/helpers/collectionReportDetailPageData';
 import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
 import { formatCurrency } from '@/lib/utils/currency';
@@ -141,9 +141,9 @@ function CollectionReportPageContent() {
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
   const ITEMS_PER_PAGE = 10;
   const [machinePage, setMachinePage] = useState(1);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
-  const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
+  const [refreshing, _setRefreshing] = useState(false); // setRefreshing unused - Sync Meters disabled
+  const [_showFloatingRefresh, _setShowFloatingRefresh] = useState(false); // Unused - Floating refresh disabled
+  // const [showSyncConfirmation, setShowSyncConfirmation] = useState(false); // Sync Meters disabled
   const [showFixReportConfirmation, setShowFixReportConfirmation] =
     useState(false);
   const [isFixingReport, setIsFixingReport] = useState(false);
@@ -555,7 +555,7 @@ function CollectionReportPageContent() {
     const handleScroll = () => {
       const scrollTop =
         window.pageYOffset || document.documentElement.scrollTop;
-      setShowFloatingRefresh(scrollTop > 200);
+      _setShowFloatingRefresh(scrollTop > 200);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -581,43 +581,38 @@ function CollectionReportPageContent() {
     router.push(newUrl, { scroll: false });
   };
 
-  const handleSyncClick = () => {
-    setShowSyncConfirmation(true);
-  };
-
-  const handleSyncConfirm = async () => {
-    setShowSyncConfirmation(false);
-    setRefreshing(true);
-    setError(null);
-    try {
-      // First sync the meters
-      await syncMetersForReport(reportId);
-
-      // Then refresh the data
-      const data = await fetchCollectionReportById(reportId);
-      if (data === null) {
-        setError('Report not found. Please use a valid report ID.');
-        setReportData(null);
-      } else if (!validateCollectionReportData(data)) {
-        setError('Invalid report data received from server.');
-        setReportData(null);
-      } else {
-        setReportData(data);
-        // Check for SAS time issues after sync
-        checkForSasTimeIssues(reportId);
-      }
-      const collectionsData =
-        await fetchCollectionsByLocationReportId(reportId);
-      setCollections(collectionsData);
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error syncing meters:', error);
-      }
-      setError('Failed to sync meter data.');
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  // Sync Meters functionality - COMMENTED OUT
+  // const handleSyncClick = () => {
+  //   setShowSyncConfirmation(true);
+  // };
+  // const handleSyncConfirm = async () => {
+  //   setShowSyncConfirmation(false);
+  //   setRefreshing(true);
+  //   setError(null);
+  //   try {
+  //     await syncMetersForReport(reportId);
+  //     const data = await fetchCollectionReportById(reportId);
+  //     if (data === null) {
+  //       setError('Report not found. Please use a valid report ID.');
+  //       setReportData(null);
+  //     } else if (!validateCollectionReportData(data)) {
+  //       setError('Invalid report data received from server.');
+  //       setReportData(null);
+  //     } else {
+  //       setReportData(data);
+  //       checkForSasTimeIssues(reportId);
+  //     }
+  //     const collectionsData = await fetchCollectionsByLocationReportId(reportId);
+  //     setCollections(collectionsData);
+  //   } catch (error) {
+  //     if (process.env.NODE_ENV === 'development') {
+  //       console.error('Error syncing meters:', error);
+  //     }
+  //     setError('Failed to sync meter data.');
+  //   } finally {
+  //     setRefreshing(false);
+  //   }
+  // };
 
   const handleFixReportClick = () => {
     setShowFixReportConfirmation(true);
@@ -1011,7 +1006,7 @@ function CollectionReportPageContent() {
               <TableHeader>
                 <TableRow className="bg-button hover:bg-button">
                   <TableHead
-                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    className="cursor-pointer select-none text-left font-semibold text-white hover:bg-button/80"
                     onClick={() => handleSort('machineId')}
                   >
                     <div className="flex items-center gap-1">
@@ -1025,7 +1020,7 @@ function CollectionReportPageContent() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    className="cursor-pointer select-none text-left font-semibold text-white hover:bg-button/80"
                     onClick={() => handleSort('dropCancelled')}
                   >
                     <div className="flex items-center gap-1">
@@ -1039,7 +1034,7 @@ function CollectionReportPageContent() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    className="cursor-pointer select-none text-left font-semibold text-white hover:bg-button/80"
                     onClick={() => handleSort('metersGross')}
                   >
                     <div className="flex items-center gap-1">
@@ -1053,7 +1048,7 @@ function CollectionReportPageContent() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    className="cursor-pointer select-none text-left font-semibold text-white hover:bg-button/80"
                     onClick={() => handleSort('sasGross')}
                   >
                     <div className="flex items-center gap-1">
@@ -1067,7 +1062,7 @@ function CollectionReportPageContent() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
+                    className="cursor-pointer select-none text-left font-semibold text-white hover:bg-button/80"
                     onClick={() => handleSort('variation')}
                   >
                     <div className="flex items-center gap-1">
@@ -1080,7 +1075,7 @@ function CollectionReportPageContent() {
                         ))}
                     </div>
                   </TableHead>
-                  <TableHead className="font-semibold text-white">
+                  <TableHead className="text-left font-semibold text-white">
                     SAS TIMES
                   </TableHead>
                 </TableRow>
@@ -1096,7 +1091,7 @@ function CollectionReportPageContent() {
                         : ''
                     }`}
                   >
-                    <TableCell className="font-medium">
+                    <TableCell className="text-left font-medium">
                       <div className="flex items-center gap-2">
                         <span
                           className="cursor-pointer rounded bg-lighterBlueHighlight px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-lighterBlueHighlight/80"
@@ -1144,20 +1139,20 @@ function CollectionReportPageContent() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{metric.dropCancelled || '0 / 0'}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-left">{metric.dropCancelled || '0 / 0'}</TableCell>
+                    <TableCell className="text-left">
                       {metric.metersGross?.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       }) || '0.00'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-left">
                       {metric.sasGross?.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       }) || '0.00'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-left">
                       {metric.variation !== undefined &&
                       metric.variation !== null
                         ? metric.variation.toLocaleString(undefined, {
@@ -1166,7 +1161,7 @@ function CollectionReportPageContent() {
                           })
                         : '-'}
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-left text-xs">
                       {(() => {
                         // Handle missing SAS times gracefully
                         if (!metric.sasStartTime && !metric.sasEndTime) {
@@ -1985,13 +1980,15 @@ function CollectionReportPageContent() {
             <h1 className="text-2xl font-bold">Collection Report Details</h1>
           </div>
           <div className="flex items-center gap-2">
-            <SyncButton
+            {/* Sync Meters Button - Commented Out */}
+            {/* <SyncButton
               onClick={handleSyncClick}
               isSyncing={refreshing}
               label="Sync Meters"
               disabled={loading || refreshing || isFixingReport}
-            />
-            {(hasSasTimeIssues || hasCollectionHistoryIssues) && (
+            /> */}
+            {/* Fix Report Button - Developer Only */}
+            {user?.roles?.includes('developer') && (hasSasTimeIssues || hasCollectionHistoryIssues) && (
               <Button
                 onClick={handleFixReportClick}
                 disabled={loading || refreshing || isFixingReport}
@@ -2042,14 +2039,16 @@ function CollectionReportPageContent() {
               );
             })()}
             <div className="mt-4 space-y-2 lg:hidden">
-              <SyncButton
+              {/* Sync Meters Button (Mobile) - Commented Out */}
+              {/* <SyncButton
                 onClick={handleSyncClick}
                 isSyncing={refreshing}
                 label="Sync Meters"
                 disabled={loading || refreshing || isFixingReport}
                 className="w-full justify-center"
-              />
-              {(hasSasTimeIssues || hasCollectionHistoryIssues) && (
+              /> */}
+              {/* Fix Report Button (Mobile) - Developer Only */}
+              {user?.roles?.includes('developer') && (hasSasTimeIssues || hasCollectionHistoryIssues) && (
                 <Button
                   onClick={handleFixReportClick}
                   disabled={loading || refreshing || isFixingReport}
@@ -2253,7 +2252,8 @@ function CollectionReportPageContent() {
       </div>
 
       {/* Floating Refresh Button Section: Animated refresh button for scroll */}
-      <AnimatePresence>
+      {/* Floating Sync Button - Commented Out */}
+      {/* <AnimatePresence>
         {showFloatingRefresh && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -2275,10 +2275,10 @@ function CollectionReportPageContent() {
             </motion.button>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
 
-      {/* Sync Meters Confirmation Modal */}
-      <Dialog
+      {/* Sync Meters Confirmation Modal - Commented Out */}
+      {/* <Dialog
         open={showSyncConfirmation}
         onOpenChange={setShowSyncConfirmation}
       >
@@ -2317,7 +2317,7 @@ function CollectionReportPageContent() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
 
       {/* Fix Report Confirmation Modal */}
       <Dialog

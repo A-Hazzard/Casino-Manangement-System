@@ -139,146 +139,310 @@ export async function GET(req: NextRequest) {
       customEndDateForGamingDay
     );
 
-    // Get all machines for these locations
-    const allMachines = [];
+    // 🚀 OPTIMIZED: For 30d periods, use single aggregation across all machines
+    // For shorter periods, use parallel batch processing per location
+    const allMachines: any[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const useSingleAggregation = timePeriod === '30d' || timePeriod === '7d';
 
-    for (const location of locations) {
-      const locationIdStr = (
-        location._id as { toString: () => string }
-      ).toString();
-      const gameDayRange = gamingDayRanges.get(locationIdStr);
+    console.log(`[MACHINES AGGREGATION] Processing ${locations.length} locations${useSingleAggregation ? ' with single aggregation' : ' in batches'}`);
+    const startTime = Date.now();
 
-      if (!gameDayRange) continue;
-
-      // Get machines for this location (without any metrics - we'll add those next)
-      // Use locationIdStr (string) instead of location._id (ObjectId) to match the gamingLocation field
-      const locationMachines = await Machine.find({
-        gamingLocation: locationIdStr,
+    if (useSingleAggregation) {
+      // 🚀 SUPER OPTIMIZED: Single aggregation for ALL machines (much faster for 30d)
+      // Get all machines for all locations
+      const allLocationIds = locations.map(loc => (loc._id as { toString: () => string }).toString());
+      const allLocationMachines = await Machine.find({
+        gamingLocation: { $in: allLocationIds },
         $or: [
           { deletedAt: null },
           { deletedAt: { $lt: new Date('2020-01-01') } },
         ],
       }).lean();
 
-      // PERFORMANCE OPTIMIZATION: Batch fetch all metrics for machines in this location
-      // Instead of N+1 queries, use a single aggregation pipeline for all machines
-      const machineIds = locationMachines.map(machine =>
-        (machine._id as { toString: () => string }).toString()
+      if (allLocationMachines.length > 0) {
+        // Create machine-to-location map
+        const machineToLocation = new Map();
+        allLocationMachines.forEach(machine => {
+          const machineId = (machine._id as { toString: () => string }).toString();
+          machineToLocation.set(machineId, machine.gamingLocation);
+        });
+
+        // Get ALL machine IDs
+        const allMachineIds = allLocationMachines.map(machine =>
+          (machine._id as { toString: () => string }).toString()
+        );
+
+        // Single aggregation for ALL machines across ALL locations
+        // Group by location to get gaming day ranges
+        const locationRanges = new Map();
+        locations.forEach(loc => {
+          const locationId = (loc._id as { toString: () => string }).toString();
+          const gameDayRange = gamingDayRanges.get(locationId);
+          if (gameDayRange) {
+            locationRanges.set(locationId, gameDayRange);
+          }
+        });
+
+        // Since gaming day ranges might differ per location, we need to aggregate per machine
+        // But we can do it in ONE query by using $facet or by finding the overall min/max range
+        // For simplicity, let's use the earliest start and latest end across all locations
+        let globalStart = new Date();
+        let globalEnd = new Date(0);
+        locationRanges.forEach(range => {
+          if (range.rangeStart < globalStart) globalStart = range.rangeStart;
+          if (range.rangeEnd > globalEnd) globalEnd = range.rangeEnd;
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const singlePipeline: any[] = [
+          {
+            $match: {
+              machine: { $in: allMachineIds },
+              readAt: {
+                $gte: globalStart,
+                $lte: globalEnd,
+              },
+            },
+          },
+          // 🚀 OPTIMIZATION: Project only needed fields BEFORE grouping (reduces memory usage)
+          {
+            $project: {
+              machine: 1,
+              drop: '$movement.drop',
+              totalCancelledCredits: '$movement.totalCancelledCredits',
+              jackpot: '$movement.jackpot',
+              coinIn: 1,
+              coinOut: 1,
+              gamesPlayed: 1,
+              gamesWon: 1,
+              handPaidCancelledCredits: 1,
+            },
+          },
+          {
+            $group: {
+              _id: '$machine',
+              moneyIn: { $sum: '$drop' },
+              moneyOut: { $sum: '$totalCancelledCredits' },
+              jackpot: { $sum: '$jackpot' },
+              coinIn: { $last: '$coinIn' },
+              coinOut: { $last: '$coinOut' },
+              gamesPlayed: { $last: '$gamesPlayed' },
+              gamesWon: { $last: '$gamesWon' },
+              handPaidCancelledCredits: { $last: '$handPaidCancelledCredits' },
+              meterCount: { $sum: 1 },
+            },
+          },
+        ];
+
+        // 🚀 OPTIMIZATION: Execute aggregation with performance options
+        const allMetrics = await Meters.aggregate(singlePipeline, {
+          allowDiskUse: true,
+          maxTimeMS: 90000,
+        });
+
+        // Create metrics map
+        const metricsMap = new Map();
+        allMetrics.forEach(metrics => {
+          metricsMap.set(metrics._id, metrics);
+        });
+
+        // Build machine objects
+        allLocationMachines.forEach(machine => {
+          const machineId = (machine._id as { toString: () => string }).toString();
+          const locationId = machineToLocation.get(machineId);
+          const location = locations.find(loc => 
+            (loc._id as { toString: () => string }).toString() === locationId
+          );
+
+          if (!location) return;
+
+          const metrics = metricsMap.get(machineId) || {
+            moneyIn: 0,
+            moneyOut: 0,
+            jackpot: 0,
+            coinIn: 0,
+            coinOut: 0,
+            gamesPlayed: 0,
+            gamesWon: 0,
+            handPaidCancelledCredits: 0,
+            meterCount: 0,
+          };
+
+          const moneyIn = metrics.moneyIn || 0;
+          const moneyOut = metrics.moneyOut || 0;
+          const jackpot = metrics.jackpot || 0;
+          const gross = moneyIn - moneyOut;
+
+          allMachines.push({
+            _id: machineId,
+            locationId: locationId,
+            locationName: (location.name as string) || '(No Location)',
+            assetNumber: machine.serialNumber || '',
+            serialNumber: machine.serialNumber || '',
+            denomination: machine.denomination || '',
+            manufacturer: machine.manufacturer || '',
+            model: machine.model || '',
+            status: machine.status || 'unknown',
+            isSasMachine: machine.isSasMachine || false,
+            lastActivity: machine.lastActivity || null,
+            moneyIn,
+            moneyOut,
+            gross,
+            jackpot: jackpot || 0,
+            coinIn: metrics.coinIn || 0,
+            coinOut: metrics.coinOut || 0,
+            gamesPlayed: metrics.gamesPlayed || 0,
+            gamesWon: metrics.gamesWon || 0,
+            handPaidCancelledCredits: metrics.handPaidCancelledCredits || 0,
+            meterCount: metrics.meterCount || 0,
+            rel: location.rel,
+            country: location.country,
+          });
+        });
+      }
+    } else {
+      // Original parallel batch processing for Today/Yesterday (still fast)
+      const BATCH_SIZE = 20;
+      for (let i = 0; i < locations.length; i += BATCH_SIZE) {
+        const batch = locations.slice(i, i + BATCH_SIZE);
+
+      // Process batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (location) => {
+          const locationIdStr = (
+            location._id as { toString: () => string }
+          ).toString();
+          const gameDayRange = gamingDayRanges.get(locationIdStr);
+
+          if (!gameDayRange) return [];
+
+          // Get machines for this location
+          const locationMachines = await Machine.find({
+            gamingLocation: locationIdStr,
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          }).lean();
+
+          if (locationMachines.length === 0) return [];
+
+          // Fetch all metrics for machines in this location (single aggregation)
+          const machineIds = locationMachines.map(machine =>
+            (machine._id as { toString: () => string }).toString()
+          );
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const batchPipeline: any[] = [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const batchMatchStage: any = {
+            machine: { $in: machineIds },
+          };
+
+          if (timePeriod !== 'All Time') {
+            batchMatchStage.readAt = {
+              $gte: gameDayRange.rangeStart,
+              $lte: gameDayRange.rangeEnd,
+            };
+          }
+
+          batchPipeline.push({ $match: batchMatchStage });
+          batchPipeline.push({
+            $group: {
+              _id: '$machine',
+              moneyIn: { $sum: '$movement.drop' },
+              moneyOut: { $sum: '$movement.totalCancelledCredits' },
+              jackpot: { $sum: '$movement.jackpot' },
+              coinIn: { $last: '$coinIn' },
+              coinOut: { $last: '$coinOut' },
+              gamesPlayed: { $last: '$gamesPlayed' },
+              gamesWon: { $last: '$gamesWon' },
+              handPaidCancelledCredits: { $last: '$handPaidCancelledCredits' },
+              meterCount: { $sum: 1 },
+            },
+          });
+
+          const batchMetricsAggregation = await Meters.aggregate(batchPipeline);
+
+          // Create metrics map for fast lookup
+          const metricsMap = new Map();
+          batchMetricsAggregation.forEach(metrics => {
+            metricsMap.set(metrics._id, metrics);
+          });
+
+          // Build machine objects with metrics
+          return locationMachines.map(machine => {
+            const machineId = (
+              machine._id as { toString: () => string }
+            ).toString();
+
+            const metrics = metricsMap.get(machineId) || {
+              moneyIn: 0,
+              moneyOut: 0,
+              jackpot: 0,
+              coinIn: 0,
+              coinOut: 0,
+              gamesPlayed: 0,
+              gamesWon: 0,
+              handPaidCancelledCredits: 0,
+              meterCount: 0,
+            };
+
+            const moneyIn = metrics.moneyIn || 0;
+            const moneyOut = metrics.moneyOut || 0;
+            const jackpot = metrics.jackpot || 0;
+            const coinIn = metrics.coinIn || 0;
+            const coinOut = metrics.coinOut || 0;
+            const gamesPlayed = metrics.gamesPlayed || 0;
+            const gamesWon = metrics.gamesWon || 0;
+            const gross = moneyIn - moneyOut;
+
+            return {
+              _id: machineId,
+              locationId: locationIdStr,
+              locationName: (location.name as string) || '(No Location)',
+              assetNumber: machine.serialNumber || '',
+              serialNumber: machine.serialNumber || '',
+              smbId: machine.relayId || '',
+              relayId: machine.relayId || '',
+              installedGame: machine.game || '',
+              game: machine.game || '',
+              manufacturer:
+                machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
+              status: machine.assetStatus || '',
+              assetStatus: machine.assetStatus || '',
+              cabinetType: machine.cabinetType || '',
+              accountingDenomination:
+                machine.gameConfig?.accountingDenomination || '1',
+              collectionMultiplier: '1',
+              isCronosMachine: false,
+              lastOnline: machine.lastActivity,
+              lastActivity: machine.lastActivity,
+              createdAt: machine.createdAt,
+              timePeriod: timePeriod,
+              moneyIn,
+              moneyOut,
+              cancelledCredits: moneyOut,
+              jackpot,
+              gross,
+              coinIn,
+              coinOut,
+              gamesPlayed,
+              gamesWon,
+            };
+          });
+        })
       );
 
-      if (machineIds.length === 0) continue;
-
-      // Build a single aggregation pipeline for all machines in this location
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const batchPipeline: any[] = [];
-
-      // Match stage with machine IDs and date filtering
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const batchMatchStage: any = {
-        machine: { $in: machineIds },
-      };
-
-      // For "All Time", don't apply date filtering
-      if (timePeriod !== 'All Time') {
-        batchMatchStage.readAt = {
-          $gte: gameDayRange.rangeStart,
-          $lte: gameDayRange.rangeEnd,
-        };
-      }
-
-      batchPipeline.push({ $match: batchMatchStage });
-
-      // Group by machine to calculate metrics for each machine
-      batchPipeline.push({
-        $group: {
-          _id: '$machine',
-          moneyIn: { $sum: '$movement.drop' },
-          moneyOut: { $sum: '$movement.totalCancelledCredits' },
-          jackpot: { $sum: '$movement.jackpot' },
-          coinIn: { $last: '$coinIn' },
-          coinOut: { $last: '$coinOut' },
-          gamesPlayed: { $last: '$gamesPlayed' },
-          gamesWon: { $last: '$gamesWon' },
-          handPaidCancelledCredits: { $last: '$handPaidCancelledCredits' },
-          meterCount: { $sum: 1 },
-        },
+      // Flatten batch results and add to allMachines
+      batchResults.forEach(machines => {
+        allMachines.push(...machines);
       });
-
-      const batchMetricsAggregation = await Meters.aggregate(batchPipeline);
-
-      // Create a map for O(1) lookup of metrics by machine ID
-      const metricsMap = new Map();
-      batchMetricsAggregation.forEach(metrics => {
-        metricsMap.set(metrics._id, metrics);
-      });
-
-      // Build machine objects with their metrics
-      for (const machine of locationMachines) {
-        const machineId = (
-          machine._id as { toString: () => string }
-        ).toString();
-
-        const metrics = metricsMap.get(machineId) || {
-          moneyIn: 0,
-          moneyOut: 0,
-          jackpot: 0,
-          coinIn: 0,
-          coinOut: 0,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          handPaidCancelledCredits: 0,
-          meterCount: 0,
-        };
-
-        const moneyIn = metrics.moneyIn || 0;
-        const moneyOut = metrics.moneyOut || 0;
-        const jackpot = metrics.jackpot || 0;
-        const coinIn = metrics.coinIn || 0;
-        const coinOut = metrics.coinOut || 0;
-        const gamesPlayed = metrics.gamesPlayed || 0;
-        const gamesWon = metrics.gamesWon || 0;
-
-        const gross = moneyIn - moneyOut;
-
-        // Build machine object with calculated metrics
-        const machineData = {
-          _id: machineId,
-          locationId: locationIdStr,
-          locationName: (location.name as string) || '(No Location)',
-          assetNumber: machine.serialNumber || '',
-          serialNumber: machine.serialNumber || '',
-          smbId: machine.relayId || '',
-          relayId: machine.relayId || '',
-          installedGame: machine.game || '',
-          game: machine.game || '',
-          manufacturer:
-            machine.manufacturer || machine.manuf || 'Unknown Manufacturer',
-          status: machine.assetStatus || '',
-          assetStatus: machine.assetStatus || '',
-          cabinetType: machine.cabinetType || '',
-          accountingDenomination:
-            machine.gameConfig?.accountingDenomination || '1',
-          collectionMultiplier: '1',
-          isCronosMachine: false,
-          lastOnline: machine.lastActivity,
-          lastActivity: machine.lastActivity,
-          createdAt: machine.createdAt,
-          timePeriod: timePeriod,
-          // Financial metrics from Meters collection (same as individual API)
-          moneyIn,
-          moneyOut,
-          cancelledCredits: moneyOut,
-          jackpot,
-          gross,
-          coinIn,
-          coinOut,
-          gamesPlayed,
-          gamesWon,
-        };
-
-        allMachines.push(machineData);
       }
     }
+
+    const queryTime = Date.now() - startTime;
+    console.log(`[MACHINES AGGREGATION] ⚡ Processed ${locations.length} locations in ${queryTime}ms (${(queryTime / 1000).toFixed(2)}s)`);
 
     // Apply search filter if provided (search by serial number, relay ID, smib ID, or machine _id)
     let filteredMachines = allMachines;
