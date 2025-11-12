@@ -1,4 +1,7 @@
 import { UserDocument } from '@/shared/types/auth';
+export const ALLOWED_GENDERS = ['male', 'female', 'other'] as const;
+export type AllowedGender = (typeof ALLOWED_GENDERS)[number];
+
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 
 /**
@@ -7,10 +10,19 @@ import type { CreateCollectionReportPayload } from '@/lib/types/api';
  * @param emailAddress - The email address to validate.
  * @returns True if valid, false otherwise.
  */
+const EMAIL_REGEX = /\S+@\S+\.\S+/;
+
 export function validateEmail(
   emailAddress: UserDocument['emailAddress']
 ): boolean {
-  return /\S+@\S+\.\S+/.test(emailAddress);
+  return EMAIL_REGEX.test(emailAddress);
+}
+
+/**
+ * Checks if a string looks like an email address.
+ */
+export function containsEmailPattern(value: string): boolean {
+  return EMAIL_REGEX.test(value.trim());
 }
 
 /**
@@ -139,6 +151,22 @@ export function validateProfileField(value: string): boolean {
 }
 
 /**
+ * Validates username rules:
+ *  - Must pass profile field validation (no disallowed characters/phone patterns)
+ *  - Must not resemble an email address
+ */
+export function validateUsername(value: string): boolean {
+  if (!value) return false;
+  if (!validateProfileField(value)) {
+    return false;
+  }
+  if (containsEmailPattern(value)) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Validates if a string contains only letters and spaces (for names).
  * Also checks for phone number patterns.
  *
@@ -154,6 +182,28 @@ export function validateNameField(value: string): boolean {
     /^[\+]?[1-9][\d]{0,15}$|^[\+]?[(]?[\d\s\-\(\)]{7,}$|^[\+]?[1-9][\d\s\-\(\)]{6,}$/;
 
   return allowedPattern.test(value) && !phonePattern.test(value.trim());
+}
+
+export function validateGender(value: string | null | undefined): value is AllowedGender {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return (ALLOWED_GENDERS as readonly string[]).includes(normalized);
+}
+
+export function validateOptionalGender(value: string | null | undefined): boolean {
+  if (!value) return true;
+  return validateGender(value);
+}
+
+export function validateAlphabeticField(value: string | null | undefined): boolean {
+  if (!value) return true;
+  return validateNameField(value);
+}
+
+export function isValidDateInput(value: string | Date | null | undefined): boolean {
+  if (!value) return true;
+  const date = value instanceof Date ? value : new Date(value);
+  return !Number.isNaN(date.getTime());
 }
 
 /**
@@ -176,6 +226,28 @@ export function containsPhonePattern(value: string): boolean {
 
   const trimmedValue = value.trim();
   return phonePatterns.some(pattern => pattern.test(trimmedValue));
+}
+
+/**
+ * Validates phone numbers for required profile fields.
+ * Allows digits, spaces, hyphens, parentheses, and leading plus.
+ */
+export function validatePhoneNumber(value: string | undefined | null): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (trimmed.length < 7) return false;
+  const phoneRegex = /^[\+]?[0-9\s\-().]{7,20}$/;
+  if (!phoneRegex.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Normalizes phone numbers by stripping spaces and common delimiters.
+ */
+export function normalizePhoneNumber(value: string): string {
+  return value.replace(/[\s\-().]/g, '');
 }
 
 /**

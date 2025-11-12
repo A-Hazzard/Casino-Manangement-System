@@ -13,6 +13,12 @@ import { NextRequest } from 'next/server';
 import { connectDB } from '../middleware/db';
 import UserModel from '../models/user';
 import { comparePassword, hashPassword } from '../utils/validation';
+import {
+  isValidDateInput,
+  validateAlphabeticField,
+  validateNameField,
+  validateOptionalGender,
+} from '@/lib/utils/validation';
 import { logActivity } from './activityLogger';
 
 /**
@@ -262,6 +268,7 @@ export async function createUser(
     username,
     emailAddress,
     password: hashedPassword,
+    passwordUpdatedAt: new Date(),
     roles,
     profile,
     isEnabled,
@@ -334,6 +341,119 @@ export async function updateUser(
     throw new Error('User not found');
   }
 
+  // Normalize legacy profile payloads to the latest schema shape
+  if (
+    updateFields.profile &&
+    typeof updateFields.profile === 'object' &&
+    updateFields.profile !== null
+  ) {
+    const profileUpdate = {
+      ...(updateFields.profile as Record<string, unknown>),
+    };
+
+    const sanitizeNameField = (
+      key: string,
+      label: string
+    ): void => {
+      const value = profileUpdate[key];
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed && !validateNameField(trimmed)) {
+          throw new Error(
+            `${label} may only contain letters and spaces and cannot resemble a phone number.`
+          );
+        }
+        profileUpdate[key] = trimmed;
+      }
+    };
+
+    sanitizeNameField('firstName', 'First name');
+    sanitizeNameField('lastName', 'Last name');
+    sanitizeNameField('middleName', 'Middle name');
+    sanitizeNameField('otherName', 'Other name');
+
+    if (typeof profileUpdate.gender === 'string') {
+      const genderValue = profileUpdate.gender.trim().toLowerCase();
+      if (genderValue && !validateOptionalGender(genderValue)) {
+        throw new Error('Select a valid gender option.');
+      }
+      profileUpdate.gender = genderValue;
+    }
+
+    const contact =
+      typeof profileUpdate.contact === 'object' && profileUpdate.contact !== null
+        ? (profileUpdate.contact as Record<string, unknown>)
+        : undefined;
+
+    if (profileUpdate.phoneNumber == null) {
+      const contactPhone =
+        (typeof profileUpdate.phone === 'string'
+          ? profileUpdate.phone
+          : undefined) ||
+        (typeof (profileUpdate as Record<string, unknown>).phoneNumber ===
+        'string'
+          ? (profileUpdate as Record<string, unknown>).phoneNumber
+          : undefined) ||
+        (contact?.phone as string | undefined) ||
+        (contact?.mobile as string | undefined);
+
+      if (typeof contactPhone === 'string') {
+        profileUpdate.phoneNumber = contactPhone;
+      }
+    }
+
+    delete profileUpdate.contact;
+    delete (profileUpdate as Record<string, unknown>).phone;
+
+    if (
+      profileUpdate.identification &&
+      typeof profileUpdate.identification === 'object'
+    ) {
+      const identificationUpdate = {
+        ...(profileUpdate.identification as Record<string, unknown>),
+      };
+
+      if (typeof identificationUpdate.idType === 'string') {
+        const trimmed = identificationUpdate.idType.trim();
+        if (trimmed && !validateAlphabeticField(trimmed)) {
+          throw new Error(
+            'Identification type may only contain letters and spaces.'
+          );
+        }
+        identificationUpdate.idType = trimmed;
+      }
+
+      const dobValue = identificationUpdate.dateOfBirth;
+      if (!dobValue) {
+        throw new Error('Date of birth is required.');
+      }
+      const parsedDate =
+        dobValue instanceof Date ? dobValue : new Date(dobValue as string);
+      if (!isValidDateInput(parsedDate)) {
+        throw new Error('Date of birth must be a valid date.');
+      }
+      if (parsedDate > new Date()) {
+        throw new Error('Date of birth cannot be in the future.');
+      }
+      identificationUpdate.dateOfBirth = parsedDate;
+
+      profileUpdate.identification = identificationUpdate;
+    }
+
+    updateFields.profile = profileUpdate;
+  }
+
+  if (
+    typeof updateFields['profile.contact.phone'] === 'string' &&
+    !updateFields['profile.phoneNumber']
+  ) {
+    updateFields['profile.phoneNumber'] = updateFields['profile.contact.phone'];
+  }
+
+  if (updateFields['profile.contact']) {
+    delete updateFields['profile.contact'];
+  }
+
   // Validate and hash password if provided
   if (updateFields.password) {
     // Check if password is an object with current and new properties (password change)
@@ -372,6 +492,7 @@ export async function updateUser(
 
       // Hash the new password before saving
       updateFields.password = await hashPassword(passwordObj.new);
+      updateFields.passwordUpdatedAt = new Date();
     } else if (typeof updateFields.password === 'string') {
       // Legacy support: if password is a string, validate and hash it
       const { validatePasswordStrength } = await import(
@@ -389,6 +510,7 @@ export async function updateUser(
       }
       // Hash the password before saving
       updateFields.password = await hashPassword(updateFields.password);
+      updateFields.passwordUpdatedAt = new Date();
     } else {
       // Invalid password format
       throw new Error(
@@ -554,76 +676,158 @@ function calculateUserChanges(
   const changes: Array<{ field: string; oldValue: string; newValue: string }> =
     [];
 
+  const extractProfileUpdate = () => {
+    if (
+      updateFields.profile &&
+      typeof updateFields.profile === 'object' &&
+      updateFields.profile !== null
+    ) {
+      return updateFields.profile as Record<string, unknown>;
+    }
+
+    const profileKeys = Object.keys(updateFields).filter(key =>
+      key.startsWith('profile.')
+    );
+    if (profileKeys.length === 0) {
+      return null;
+    }
+
+    const extracted: Record<string, unknown> = {};
+    profileKeys.forEach(key => {
+      const path = key.replace(/^profile\./, '');
+      const segments = path.split('.');
+      let current: Record<string, unknown> = extracted;
+      segments.forEach((segment, index) => {
+        if (index === segments.length - 1) {
+          current[segment] = updateFields[key];
+          return;
+        }
+
+        if (
+          !current[segment] ||
+          typeof current[segment] !== 'object' ||
+          current[segment] === null
+        ) {
+          current[segment] = {};
+        }
+        current = current[segment] as Record<string, unknown>;
+      });
+    });
+
+    return extracted;
+  };
+
+  const profileUpdate = extractProfileUpdate();
+
+  const getUpdatedValue = (fieldPath: string) => {
+    if (fieldPath in updateFields) {
+      return updateFields[fieldPath];
+    }
+    const dottedKey = `profile.${fieldPath}`;
+    if (dottedKey in updateFields) {
+      return updateFields[dottedKey];
+    }
+
+    if (!profileUpdate) {
+      return undefined;
+    }
+
+    const segments = fieldPath.split('.');
+    let current: unknown = profileUpdate;
+    for (const segment of segments) {
+      if (
+        !current ||
+        typeof current !== 'object' ||
+        !(segment in (current as Record<string, unknown>))
+      ) {
+        return undefined;
+      }
+      current = (current as Record<string, unknown>)[segment];
+    }
+    return current;
+  };
+
   const fieldChecks = [
     {
       field: 'firstName',
       original: originalUser.profile?.firstName,
-      updated: updateFields.firstName,
+      updated: getUpdatedValue('firstName'),
     },
     {
       field: 'lastName',
       original: originalUser.profile?.lastName,
-      updated: updateFields.lastName,
+      updated: getUpdatedValue('lastName'),
     },
     {
       field: 'middleName',
       original: originalUser.profile?.middleName,
-      updated: updateFields.middleName,
+      updated: getUpdatedValue('middleName'),
     },
     {
       field: 'otherName',
       original: originalUser.profile?.otherName,
-      updated: updateFields.otherName,
+      updated: getUpdatedValue('otherName'),
     },
     {
       field: 'gender',
       original: originalUser.profile?.gender,
-      updated: updateFields.gender,
+      updated: getUpdatedValue('gender'),
+    },
+    {
+      field: 'phoneNumber',
+      original: (originalUser.profile as { phoneNumber?: string } | undefined)
+        ?.phoneNumber,
+      updated: getUpdatedValue('phoneNumber'),
     },
     {
       field: 'address.street',
       original: originalUser.profile?.address?.street,
-      updated: updateFields.street,
+      updated: getUpdatedValue('address.street'),
     },
     {
       field: 'address.town',
       original: originalUser.profile?.address?.town,
-      updated: updateFields.town,
+      updated: getUpdatedValue('address.town'),
     },
     {
       field: 'address.region',
       original: originalUser.profile?.address?.region,
-      updated: updateFields.region,
+      updated: getUpdatedValue('address.region'),
     },
     {
       field: 'address.country',
       original: originalUser.profile?.address?.country,
-      updated: updateFields.country,
+      updated: getUpdatedValue('address.country'),
     },
     {
       field: 'address.postalCode',
       original: originalUser.profile?.address?.postalCode,
-      updated: updateFields.postalCode,
+      updated: getUpdatedValue('address.postalCode'),
     },
     {
       field: 'identification.dateOfBirth',
       original: originalUser.profile?.identification?.dateOfBirth,
-      updated: updateFields.dateOfBirth,
+      updated: getUpdatedValue('identification.dateOfBirth'),
     },
     {
       field: 'identification.idType',
       original: originalUser.profile?.identification?.idType,
-      updated: updateFields.idType,
+      updated: getUpdatedValue('identification.idType'),
     },
     {
       field: 'identification.idNumber',
       original: originalUser.profile?.identification?.idNumber,
-      updated: updateFields.idNumber,
+      updated: getUpdatedValue('identification.idNumber'),
     },
     {
       field: 'identification.notes',
       original: originalUser.profile?.identification?.notes,
-      updated: updateFields.notes,
+      updated: getUpdatedValue('identification.notes'),
+    },
+    {
+      field: 'notes',
+      original: (originalUser.profile as { notes?: string } | undefined)?.notes,
+      updated: getUpdatedValue('notes'),
     },
   ];
 

@@ -19,6 +19,9 @@ type CurrentUserResponse = {
     resourcePermissions?: UserAuthPayload['resourcePermissions'];
     createdAt: string;
     updatedAt: string;
+    requiresProfileUpdate?: boolean;
+    invalidProfileFields?: UserAuthPayload['invalidProfileFields'];
+  invalidProfileReasons?: UserAuthPayload['invalidProfileReasons'];
   };
 };
 
@@ -69,6 +72,9 @@ export function useCurrentUserQuery() {
         rel: dbUser.rel, // ✅ Include rel field
         isEnabled: dbUser.isEnabled,
         resourcePermissions: dbUser.resourcePermissions,
+        requiresProfileUpdate: dbUser.requiresProfileUpdate,
+        invalidProfileFields: dbUser.invalidProfileFields,
+        invalidProfileReasons: dbUser.invalidProfileReasons,
       };
 
       // Only update store if data has changed

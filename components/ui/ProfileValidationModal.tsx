@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import MultiSelectDropdown, {
+  type MultiSelectOption,
+} from '@/components/ui/common/MultiSelectDropdown';
 import {
   Dialog,
   DialogContent,
@@ -12,33 +12,67 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  validateProfileField,
-  validateNameField,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
+import { useUserStore } from '@/lib/store/userStore';
+import type {
+  ProfileValidationFormData,
+  ProfileValidationModalData,
+} from '@/lib/types/profileValidation';
+import { cn } from '@/lib/utils';
+import {
+  containsEmailPattern,
   containsPhonePattern,
+  normalizePhoneNumber,
+  validateEmail,
+  validateNameField,
+  validateOptionalGender,
+  validatePasswordStrength,
+  validatePhoneNumber,
+  validateProfileField,
+  isValidDateInput,
 } from '@/lib/utils/validation';
+import type {
+  InvalidProfileFields,
+  ProfileValidationReasons,
+} from '@/shared/types/auth';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 type ProfileValidationModalProps = {
   open: boolean;
   onClose: () => void;
-  onUpdate: (data: {
-    username: string;
-    firstName: string;
-    lastName: string;
-  }) => Promise<void>;
+  onUpdate: (data: ProfileValidationFormData) => Promise<{
+    success: boolean;
+    invalidFields?: InvalidProfileFields;
+    fieldErrors?: Record<string, string>;
+    message?: string;
+    invalidProfileReasons?: ProfileValidationReasons;
+  }>;
   loading?: boolean;
-  invalidFields: {
-    username?: boolean;
-    firstName?: boolean;
-    lastName?: boolean;
-  };
-  currentData: {
-    username: string;
-    firstName: string;
-    lastName: string;
-  };
+  invalidFields: InvalidProfileFields;
+  currentData: ProfileValidationModalData;
+  enforceUpdate?: boolean;
+  reasons?: ProfileValidationReasons;
 };
+
+const INPUT_CLASS =
+  'border focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-primary';
+
+const GENDER_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Select gender' },
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function ProfileValidationModal({
   open,
@@ -47,119 +81,561 @@ export default function ProfileValidationModal({
   loading = false,
   invalidFields,
   currentData,
+  enforceUpdate = false,
+  reasons = {},
 }: ProfileValidationModalProps) {
-  const [formData, setFormData] = useState({
+  const { user: authUser } = useUserStore();
+  const normalizedRoles =
+    authUser?.roles?.map(role => role.toLowerCase()) || [];
+  const canManageAssignments =
+    normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+
+  const [formData, setFormData] = useState<ProfileValidationFormData>({
     username: currentData.username,
     firstName: currentData.firstName,
     lastName: currentData.lastName,
+    otherName: currentData.otherName,
+    gender: currentData.gender,
+    emailAddress: currentData.emailAddress,
+    phone: currentData.phone,
+    dateOfBirth: currentData.dateOfBirth,
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    licenseeIds: (currentData.licenseeIds || []).map(id => String(id)),
+    locationIds: (currentData.locationIds || []).map(id => String(id)),
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [licenseeOptions, setLicenseeOptions] = useState<MultiSelectOption[]>(
+    []
+  );
+  const [locationOptions, setLocationOptions] = useState<
+    Array<MultiSelectOption & { licenseeId?: string | null }>
+  >([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        username: currentData.username,
+        firstName: currentData.firstName,
+        lastName: currentData.lastName,
+        otherName: currentData.otherName,
+        gender: currentData.gender,
+        emailAddress: currentData.emailAddress,
+        phone: currentData.phone,
+        dateOfBirth: currentData.dateOfBirth,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+        licenseeIds: (currentData.licenseeIds || []).map(id => String(id)),
+        locationIds: (currentData.locationIds || []).map(id => String(id)),
+      });
+      setErrors({});
+      setServerError(null);
+      setIsFormValid(false);
+    }
+  }, [open, currentData]);
+
+  useEffect(() => {
+    if (!open || !canManageAssignments) {
+      return;
+    }
+
+    let cancelled = false;
+    const loadAssignments = async () => {
+      setIsLoadingAssignments(true);
+      try {
+        const [licenseesData, locationsResponse] = await Promise.all([
+          fetchLicensees(),
+          fetch('/api/locations?showAll=true&minimal=1', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ]);
+
+        if (cancelled) return;
+
+        const licenseeOpts = (licenseesData || [])
+          .map(licensee => {
+            const id =
+              (licensee as Record<string, unknown>)._id ||
+              (licensee as Record<string, unknown>).id;
+            const label =
+              (licensee as Record<string, unknown>).name ||
+              (licensee as Record<string, unknown>).description ||
+              'Unnamed Licensee';
+            if (!id) return null;
+            return { id: String(id), label: String(label) };
+          })
+          .filter(Boolean) as MultiSelectOption[];
+
+        const existingLicenseeIds = new Set(licenseeOpts.map(opt => opt.id));
+        (currentData.licenseeIds || []).forEach(id => {
+          if (id && !existingLicenseeIds.has(id)) {
+            licenseeOpts.push({
+              id,
+              label: `Licensee ${id}`,
+            });
+          }
+        });
+
+        setLicenseeOptions(licenseeOpts);
+        const licenseeNameMap = new Map(
+          licenseeOpts.map(option => [option.id, option.label])
+        );
+
+        let locationList: Array<Record<string, unknown>> = [];
+        if (locationsResponse.ok) {
+          const locJson = await locationsResponse.json();
+          locationList = Array.isArray(locJson.locations)
+            ? (locJson.locations as Array<Record<string, unknown>>)
+            : [];
+        }
+
+        if (cancelled) return;
+
+        const locationOpts = locationList
+          .map(loc => {
+            const record = loc as Record<string, unknown>;
+            const id =
+              record._id?.toString?.() ||
+              record.id?.toString?.() ||
+              record.locationId?.toString?.() ||
+              '';
+            if (!id) return null;
+            const locationName =
+              (record.name as string) ||
+              (record.locationName as string) ||
+              'Unknown Location';
+
+            const explicitLicenseeId =
+              record.licenseeId?.toString?.() || record.licensee?.toString?.();
+            const relLicenceeRaw = (
+              record.rel as { licencee?: unknown } | undefined
+            )?.licencee;
+            let licenseeId: string | undefined;
+            if (explicitLicenseeId) {
+              licenseeId = String(explicitLicenseeId);
+            } else if (
+              Array.isArray(relLicenceeRaw) &&
+              relLicenceeRaw.length > 0
+            ) {
+              licenseeId = String(relLicenceeRaw[0]);
+            } else if (relLicenceeRaw != null) {
+              licenseeId = String(relLicenceeRaw);
+            }
+            const licenseeLabel = licenseeId
+              ? licenseeNameMap.get(licenseeId)
+              : undefined;
+
+            return {
+              id,
+              label: licenseeLabel
+                ? `${locationName} (${licenseeLabel})`
+                : locationName,
+              licenseeId: licenseeId ?? null,
+            };
+          })
+          .filter(Boolean) as Array<
+          MultiSelectOption & { licenseeId?: string | null }
+        >;
+
+        const existingLocationIds = new Set(locationOpts.map(opt => opt.id));
+        (currentData.locationIds || []).forEach(id => {
+          if (id && !existingLocationIds.has(id)) {
+            locationOpts.push({
+              id,
+              label: `Location ${id}`,
+              licenseeId: null,
+            });
+          }
+        });
+
+        setLocationOptions(locationOpts);
+      } catch (error) {
+        console.error(
+          '[ProfileValidationModal] Failed to load assignments:',
+          error
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoadingAssignments(false);
+        }
+      }
+    };
+
+    loadAssignments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    canManageAssignments,
+    currentData.licenseeIds,
+    currentData.locationIds,
+  ]);
+
+  const locationOptionMap = useMemo(() => {
+    const map = new Map<
+      string,
+      MultiSelectOption & { licenseeId?: string | null }
+    >();
+    locationOptions.forEach(option => {
+      map.set(option.id, option);
+    });
+    return map;
+  }, [locationOptions]);
+
+  const hasLicenseeSelection = useMemo(() => {
+    if (!canManageAssignments) {
+      return true;
+    }
+    return formData.licenseeIds.length > 0;
+  }, [canManageAssignments, formData.licenseeIds]);
+
+  const filteredLocationOptions = useMemo(() => {
+    if (!canManageAssignments) {
+      return locationOptions;
+    }
+
+    if (formData.licenseeIds.length === 0) {
+      return [];
+    }
+
+    return locationOptions.filter(option => {
+      if (!option.licenseeId) {
+        return false;
+      }
+      return formData.licenseeIds.includes(option.licenseeId);
+    });
+  }, [canManageAssignments, formData.licenseeIds, locationOptions]);
+
+  const locationDropdownOptions = useMemo(() => {
+    return filteredLocationOptions.map(option => ({
+      id: option.id,
+      label: option.label,
+    }));
+  }, [filteredLocationOptions]);
+
+  useEffect(() => {
+    if (!canManageAssignments) return;
+    setFormData(prev => {
+      if (prev.licenseeIds.length === 0) {
+        if (prev.locationIds.length === 0) {
+          return prev;
+        }
+        return { ...prev, locationIds: [] };
+      }
+      const filteredLocationIds = prev.locationIds.filter(id => {
+        const option = locationOptionMap.get(id);
+        if (!option || !option.licenseeId) {
+          return false;
+        }
+        return prev.licenseeIds.includes(option.licenseeId);
+      });
+      if (filteredLocationIds.length === prev.locationIds.length) {
+        return prev;
+      }
+      return { ...prev, locationIds: filteredLocationIds };
+    });
+  }, [canManageAssignments, formData.licenseeIds, locationOptionMap]);
+
+  const passwordRequired = Boolean(invalidFields?.password);
+
+  const passwordFeedback = useMemo(() => {
+    if (!formData.newPassword) {
+      return null;
+    }
+    const validation = validatePasswordStrength(formData.newPassword);
+    return {
+      isValid: validation.isValid,
+      requirements: validation.requirements,
+      feedback: validation.feedback,
+    };
+  }, [formData.newPassword]);
+
+  const runClientValidation = (): Record<string, string> => {
+    const newErrors: Record<string, string> = {};
+    const username = formData.username.trim();
+    const firstName = formData.firstName.trim();
+    const lastName = formData.lastName.trim();
+    const otherName = formData.otherName.trim();
+    const genderValue = formData.gender.trim().toLowerCase();
+    const emailAddress = formData.emailAddress.trim();
+    const phone = formData.phone.trim();
+    const dateOfBirth = formData.dateOfBirth.trim();
+    const usernameChanged =
+      username.toLowerCase() !== currentData.username.toLowerCase();
+    const emailChanged =
+      emailAddress.toLowerCase() !== currentData.emailAddress.toLowerCase();
+
+    if (invalidFields.username || usernameChanged) {
+      if (!username) {
+        newErrors.username = 'Username is required.';
+      } else if (containsPhonePattern(username)) {
+        newErrors.username = 'Username cannot look like a phone number.';
+      } else if (containsEmailPattern(username)) {
+        newErrors.username = 'Username cannot look like an email address.';
+      } else if (!validateProfileField(username)) {
+        newErrors.username =
+          'Only letters, numbers, spaces, hyphens, and apostrophes are allowed.';
+      } else if (
+        emailAddress &&
+        username.toLowerCase() === emailAddress.toLowerCase()
+      ) {
+        newErrors.username =
+          'Username must be different from your email address.';
+      }
+    }
+
+    if (invalidFields.firstName) {
+      if (!firstName) {
+        newErrors.firstName = 'First name is required.';
+      } else if (!validateNameField(firstName)) {
+        newErrors.firstName =
+          'First name may only contain letters and spaces and cannot look like a phone number.';
+      }
+    }
+
+    if (invalidFields.lastName) {
+      if (!lastName) {
+        newErrors.lastName = 'Last name is required.';
+      } else if (!validateNameField(lastName)) {
+        newErrors.lastName =
+          'Last name may only contain letters and spaces and cannot look like a phone number.';
+      }
+    }
+
+    if (invalidFields.otherName || otherName !== currentData.otherName.trim()) {
+      if (otherName && !validateNameField(otherName)) {
+        newErrors.otherName =
+          'Other name may only contain letters and spaces and cannot look like a phone number.';
+      }
+    }
+
+    const currentGender = currentData.gender.trim().toLowerCase();
+    if (invalidFields.gender || genderValue !== currentGender) {
+      if (genderValue && !validateOptionalGender(genderValue)) {
+        newErrors.gender = 'Select a valid gender option.';
+      }
+    }
+
+    const currentDob = currentData.dateOfBirth.trim();
+    if (invalidFields.dateOfBirth || dateOfBirth !== currentDob) {
+      if (!dateOfBirth) {
+        newErrors.dateOfBirth = 'Date of birth is required.';
+      } else if (!isValidDateInput(dateOfBirth)) {
+        newErrors.dateOfBirth = 'Provide a valid date of birth.';
+      } else {
+        const parsedDob = new Date(dateOfBirth);
+        const today = new Date();
+        if (parsedDob > today) {
+          newErrors.dateOfBirth = 'Date of birth cannot be in the future.';
+        }
+      }
+    }
+
+    if (invalidFields.emailAddress || emailChanged) {
+      if (!emailAddress) {
+        newErrors.emailAddress = 'Email address is required.';
+      } else if (!validateEmail(emailAddress)) {
+        newErrors.emailAddress = 'Provide a valid email address.';
+      } else if (
+        username &&
+        emailAddress.toLowerCase() === username.toLowerCase()
+      ) {
+        newErrors.emailAddress =
+          'Email address must differ from your username.';
+      } else if (containsPhonePattern(emailAddress)) {
+        newErrors.emailAddress =
+          'Email address cannot resemble a phone number.';
+      }
+    }
+
+    if (invalidFields.phone) {
+      if (!phone) {
+        newErrors.phone = 'Phone number is required.';
+      } else if (!validatePhoneNumber(phone)) {
+        newErrors.phone =
+          'Provide a valid phone number (digits, spaces, parentheses, hyphen, optional leading +).';
+      } else if (
+        username &&
+        normalizePhoneNumber(username) === normalizePhoneNumber(phone)
+      ) {
+        newErrors.phone = 'Phone number cannot match your username.';
+      } else if (containsEmailPattern(phone)) {
+        newErrors.phone = 'Phone number cannot contain email-like patterns.';
+      }
+    }
+
+    if (canManageAssignments) {
+      if (formData.licenseeIds.length === 0) {
+        newErrors.licenseeIds = 'Select at least one licensee.';
+      }
+      if (formData.locationIds.length === 0) {
+        newErrors.locationIds = 'Select at least one location.';
+      }
+    }
+
+    if (passwordRequired) {
+      if (!formData.currentPassword) {
+        newErrors.currentPassword = 'Current password is required.';
+      }
+      if (!formData.newPassword) {
+        newErrors.newPassword = 'New password is required.';
+      } else {
+        const validation = validatePasswordStrength(formData.newPassword);
+        if (!validation.isValid) {
+          newErrors.newPassword = validation.feedback.join(', ');
+        }
+      }
+      if (!formData.confirmPassword) {
+        newErrors.confirmPassword = 'Confirm your new password.';
+      } else if (formData.newPassword !== formData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match.';
+      }
+    }
+
+    return newErrors;
+  };
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      const newErrors = runClientValidation();
+      setErrors(newErrors);
+      setIsFormValid(Object.keys(newErrors).length === 0);
+    }, 300);
+
+    return () => clearTimeout(handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    formData.username,
+    formData.firstName,
+    formData.lastName,
+    formData.otherName,
+    formData.gender,
+    formData.emailAddress,
+    formData.phone,
+    formData.dateOfBirth,
+    formData.currentPassword,
+    formData.newPassword,
+    formData.confirmPassword,
+    formData.licenseeIds,
+    formData.locationIds,
+    passwordRequired,
+    invalidFields,
+    canManageAssignments,
+    currentData.username,
+    currentData.otherName,
+    currentData.gender,
+    currentData.emailAddress,
+    currentData.dateOfBirth,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+    setServerError(null);
 
-    // Validation
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.username) {
-      newErrors.username = 'Username is required';
-    } else if (!validateProfileField(formData.username)) {
-      if (containsPhonePattern(formData.username)) {
-        newErrors.username =
-          'Username cannot be a phone number. Please use a proper username.';
-      } else {
-        newErrors.username =
-          'Username contains invalid characters. Only letters, numbers, spaces, hyphens, and apostrophes are allowed.';
-      }
-    }
-
-    if (!formData.firstName) {
-      newErrors.firstName = 'First name is required';
-    } else if (!validateNameField(formData.firstName)) {
-      if (containsPhonePattern(formData.firstName)) {
-        newErrors.firstName =
-          'First name cannot be a phone number. Please use your actual first name.';
-      } else {
-        newErrors.firstName =
-          'First name contains invalid characters. Only letters and spaces are allowed.';
-      }
-    }
-
-    if (!formData.lastName) {
-      newErrors.lastName = 'Last name is required';
-    } else if (!validateNameField(formData.lastName)) {
-      if (containsPhonePattern(formData.lastName)) {
-        newErrors.lastName =
-          'Last name cannot be a phone number. Please use your actual last name.';
-      } else {
-        newErrors.lastName =
-          'Last name contains invalid characters. Only letters and spaces are allowed.';
-      }
-    }
+    const newErrors = runClientValidation();
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setIsFormValid(false);
       return;
     }
 
-    try {
-      await onUpdate(formData);
-      onClose();
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Profile update error:', error);
-      }
-    }
-  };
+    const submissionData: ProfileValidationFormData = {
+      ...formData,
+      username: formData.username.trim(),
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      otherName: formData.otherName.trim(),
+      gender: formData.gender.trim().toLowerCase(),
+      emailAddress: formData.emailAddress.trim(),
+      phone: formData.phone.trim(),
+      dateOfBirth: formData.dateOfBirth.trim(),
+    };
 
-  const handleClose = () => {
-    setFormData({
-      username: currentData.username,
-      firstName: currentData.firstName,
-      lastName: currentData.lastName,
-    });
-    setErrors({});
+    const result = await onUpdate(submissionData);
+
+    if (!result.success) {
+      if (result.fieldErrors) {
+        setErrors(result.fieldErrors);
+      }
+      if (result.message) {
+        setServerError(result.message);
+      }
+      return;
+    }
+
     onClose();
   };
 
-  const getFieldError = (field: string) => {
-    if (errors[field]) return errors[field];
-    if (invalidFields[field as keyof typeof invalidFields]) {
-      const fieldValue = formData[field as keyof typeof formData];
-      if (containsPhonePattern(fieldValue)) {
-        switch (field) {
-          case 'username':
-            return 'Username cannot be a phone number. Please use a proper username.';
-          case 'firstName':
-            return 'First name cannot be a phone number. Please use your actual first name.';
-          case 'lastName':
-            return 'Last name cannot be a phone number. Please use your actual last name.';
-          default:
-            return 'This field cannot be a phone number.';
-        }
-      }
-      return `This field contains special characters that are not allowed.`;
+  const handleCloseRequest = (nextOpen: boolean) => {
+    if (!nextOpen && enforceUpdate) {
+      return;
     }
-    return '';
+    if (!nextOpen) {
+      onClose();
+    }
+  };
+
+  const renderFieldError = (field: string) => {
+    if (errors[field]) {
+      return <p className="text-sm text-red-500">{errors[field]}</p>;
+    }
+    return null;
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleCloseRequest}>
+      <DialogContent
+        className="sm:max-w-lg [&>button]:hidden"
+        onEscapeKeyDown={event => {
+          if (enforceUpdate) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
             Profile Validation Required
           </DialogTitle>
           <DialogDescription>
-            Your profile contains special characters or phone number patterns
-            that are not allowed. Please update the following fields:
+            We detected profile details that must be updated before you can
+            continue using the application. As part of our latest security
+            compliance release, all users must confirm their profile meets the
+            updated standards before accessing the new interface.
           </DialogDescription>
+          {Object.keys(reasons || {}).length > 0 && (
+            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+              {Object.entries(reasons)
+                .filter(
+                  ([key]) => invalidFields[key as keyof InvalidProfileFields]
+                )
+                .map(([field, reason]) =>
+                  reason ? (
+                    <p key={field}>
+                      {field.charAt(0).toUpperCase() + field.slice(1)}: {reason}
+                    </p>
+                  ) : null
+                )}
+            </div>
+          )}
+          {serverError && (
+            <p className="mt-2 text-sm text-red-500" role="alert">
+              {serverError}
+            </p>
+          )}
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username Field */}
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
           {invalidFields.username && (
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
@@ -169,18 +645,20 @@ export default function ProfileValidationModal({
                 onChange={e =>
                   setFormData(prev => ({ ...prev, username: e.target.value }))
                 }
-                className={getFieldError('username') ? 'border-red-500' : ''}
-                placeholder="Enter username"
+                className={cn(INPUT_CLASS, errors.username && 'border-red-500')}
+                placeholder="Choose a username"
+                autoComplete="username"
+                disabled={loading}
               />
-              {getFieldError('username') && (
-                <p className="text-sm text-red-500">
-                  {getFieldError('username')}
+              {reasons.username && (
+                <p className="text-xs text-muted-foreground">
+                  Why this is required: {reasons.username}
                 </p>
               )}
+              {renderFieldError('username')}
             </div>
           )}
 
-          {/* First Name Field */}
           {invalidFields.firstName && (
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
@@ -193,18 +671,23 @@ export default function ProfileValidationModal({
                     firstName: e.target.value,
                   }))
                 }
-                className={getFieldError('firstName') ? 'border-red-500' : ''}
+                className={cn(
+                  INPUT_CLASS,
+                  errors.firstName && 'border-red-500'
+                )}
                 placeholder="Enter first name"
+                autoComplete="given-name"
+                disabled={loading}
               />
-              {getFieldError('firstName') && (
-                <p className="text-sm text-red-500">
-                  {getFieldError('firstName')}
+              {reasons.firstName && (
+                <p className="text-xs text-muted-foreground">
+                  Why this is required: {reasons.firstName}
                 </p>
               )}
+              {renderFieldError('firstName')}
             </div>
           )}
 
-          {/* Last Name Field */}
           {invalidFields.lastName && (
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
@@ -212,25 +695,371 @@ export default function ProfileValidationModal({
                 id="lastName"
                 value={formData.lastName}
                 onChange={e =>
-                  setFormData(prev => ({ ...prev, lastName: e.target.value }))
+                  setFormData(prev => ({
+                    ...prev,
+                    lastName: e.target.value,
+                  }))
                 }
-                className={getFieldError('lastName') ? 'border-red-500' : ''}
+                className={cn(INPUT_CLASS, errors.lastName && 'border-red-500')}
                 placeholder="Enter last name"
+                autoComplete="family-name"
+                disabled={loading}
               />
-              {getFieldError('lastName') && (
-                <p className="text-sm text-red-500">
-                  {getFieldError('lastName')}
+              {reasons.lastName && (
+                <p className="text-xs text-muted-foreground">
+                  Why this is required: {reasons.lastName}
                 </p>
               )}
+              {renderFieldError('lastName')}
             </div>
           )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Profile'}
+          {invalidFields.otherName && (
+            <div className="space-y-2">
+              <Label htmlFor="otherName">Other Name</Label>
+              <Input
+                id="otherName"
+                value={formData.otherName}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    otherName: e.target.value,
+                  }))
+                }
+                className={cn(
+                  INPUT_CLASS,
+                  errors.otherName && 'border-red-500'
+                )}
+                placeholder="Enter other name"
+                autoComplete="off"
+                disabled={loading}
+              />
+              {reasons.otherName && (
+                <p className="text-xs text-muted-foreground">
+                  Why this is required: {reasons.otherName}
+                </p>
+              )}
+              {renderFieldError('otherName')}
+            </div>
+          )}
+
+          {invalidFields.gender && (
+            <div className="space-y-2">
+              <Label htmlFor="gender">Gender</Label>
+              <Select
+                value={formData.gender}
+                onValueChange={value =>
+                  setFormData(prev => ({
+                    ...prev,
+                    gender: value,
+                  }))
+                }
+                disabled={loading}
+              >
+                <SelectTrigger
+                  className={cn(INPUT_CLASS, errors.gender && 'border-red-500')}
+                >
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GENDER_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {reasons.gender && (
+                <p className="text-xs text-muted-foreground">
+                  Why this is required: {reasons.gender}
+                </p>
+              )}
+              {renderFieldError('gender')}
+            </div>
+          )}
+
+          {invalidFields.dateOfBirth && (
+            <div className="space-y-2">
+              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+              <Input
+                id="dateOfBirth"
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    dateOfBirth: e.target.value,
+                  }))
+                }
+                className={cn(
+                  INPUT_CLASS,
+                  errors.dateOfBirth && 'border-red-500'
+                )}
+                disabled={loading}
+                max={new Date().toISOString().split('T')[0]}
+              />
+              {reasons.dateOfBirth && (
+                <p className="text-xs text-muted-foreground">
+                  Why this is required: {reasons.dateOfBirth}
+                </p>
+              )}
+              {renderFieldError('dateOfBirth')}
+            </div>
+          )}
+
+          {invalidFields.emailAddress && (
+            <div className="space-y-2">
+              <Label htmlFor="emailAddress">Email Address</Label>
+              <Input
+                id="emailAddress"
+                type="email"
+                value={formData.emailAddress}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    emailAddress: e.target.value,
+                  }))
+                }
+                className={cn(
+                  INPUT_CLASS,
+                  errors.emailAddress && 'border-red-500'
+                )}
+                placeholder="name@example.com"
+                autoComplete="email"
+                disabled={loading}
+              />
+              {reasons.emailAddress && (
+                <p className="text-xs text-muted-foreground">
+                  Why this is required: {reasons.emailAddress}
+                </p>
+              )}
+              {renderFieldError('emailAddress')}
+            </div>
+          )}
+
+          {canManageAssignments && (
+            <div className="space-y-4 rounded-md border border-border p-3">
+              <div className="space-y-2">
+                <Label>Assigned Licensees</Label>
+                <MultiSelectDropdown
+                  options={licenseeOptions}
+                  selectedIds={formData.licenseeIds}
+                  onChange={ids =>
+                    setFormData(prev => ({ ...prev, licenseeIds: ids }))
+                  }
+                  placeholder={
+                    isLoadingAssignments
+                      ? 'Loading licensees...'
+                      : 'Select licensees'
+                  }
+                  label="licensees"
+                  disabled={loading || isLoadingAssignments}
+                />
+                {renderFieldError('licenseeIds')}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Allowed Locations</Label>
+                {!hasLicenseeSelection && (
+                  <p className="text-xs text-muted-foreground">
+                    Select at least one licensee to assign locations.
+                  </p>
+                )}
+                <MultiSelectDropdown
+                  options={locationDropdownOptions}
+                  selectedIds={formData.locationIds}
+                  onChange={ids =>
+                    setFormData(prev => ({ ...prev, locationIds: ids }))
+                  }
+                  placeholder={
+                    isLoadingAssignments
+                      ? 'Loading locations...'
+                      : hasLicenseeSelection
+                        ? 'Select locations'
+                        : 'Select a licensee first'
+                  }
+                  label="locations"
+                  disabled={
+                    loading || isLoadingAssignments || !hasLicenseeSelection
+                  }
+                  showSelectAll={hasLicenseeSelection}
+                />
+                {renderFieldError('locationIds')}
+              </div>
+            </div>
+          )}
+
+          {invalidFields.phone && (
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={e =>
+                  setFormData(prev => ({ ...prev, phone: e.target.value }))
+                }
+                className={cn(INPUT_CLASS, errors.phone && 'border-red-500')}
+                placeholder="+1 (800) 555-1234"
+                autoComplete="tel"
+                disabled={loading}
+              />
+              {reasons.phone && (
+                <p className="text-xs text-muted-foreground">
+                  Why this is required: {reasons.phone}
+                </p>
+              )}
+              {renderFieldError('phone')}
+            </div>
+          )}
+
+          {passwordRequired && (
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <div>
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={formData.currentPassword}
+                  onChange={e =>
+                    setFormData(prev => ({
+                      ...prev,
+                      currentPassword: e.target.value,
+                    }))
+                  }
+                  className={cn(
+                    INPUT_CLASS,
+                    errors.currentPassword && 'border-red-500'
+                  )}
+                  autoComplete="current-password"
+                  disabled={loading}
+                />
+                {reasons.password && (
+                  <p className="text-xs text-muted-foreground">
+                    Why this is required: {reasons.password}
+                  </p>
+                )}
+                {renderFieldError('currentPassword')}
+              </div>
+
+              <div>
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={formData.newPassword}
+                  onChange={e =>
+                    setFormData(prev => ({
+                      ...prev,
+                      newPassword: e.target.value,
+                    }))
+                  }
+                  className={cn(
+                    INPUT_CLASS,
+                    errors.newPassword && 'border-red-500'
+                  )}
+                  autoComplete="new-password"
+                  disabled={loading}
+                />
+                {renderFieldError('newPassword')}
+                {passwordFeedback && (
+                  <ul className="mt-2 list-inside list-disc text-xs text-muted-foreground">
+                    <li
+                      className={
+                        passwordFeedback.requirements.length
+                          ? 'text-green-600'
+                          : ''
+                      }
+                    >
+                      At least 8 characters
+                    </li>
+                    <li
+                      className={
+                        passwordFeedback.requirements.uppercase
+                          ? 'text-green-600'
+                          : ''
+                      }
+                    >
+                      Contains an uppercase letter
+                    </li>
+                    <li
+                      className={
+                        passwordFeedback.requirements.lowercase
+                          ? 'text-green-600'
+                          : ''
+                      }
+                    >
+                      Contains a lowercase letter
+                    </li>
+                    <li
+                      className={
+                        passwordFeedback.requirements.number
+                          ? 'text-green-600'
+                          : ''
+                      }
+                    >
+                      Includes a number
+                    </li>
+                    <li
+                      className={
+                        passwordFeedback.requirements.special
+                          ? 'text-green-600'
+                          : ''
+                      }
+                    >
+                      Includes a special character (@$!%*?&)
+                    </li>
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={e =>
+                    setFormData(prev => ({
+                      ...prev,
+                      confirmPassword: e.target.value,
+                    }))
+                  }
+                  className={cn(
+                    INPUT_CLASS,
+                    errors.confirmPassword && 'border-red-500'
+                  )}
+                  autoComplete="new-password"
+                  disabled={loading}
+                />
+                {renderFieldError('confirmPassword')}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="pt-2">
+            {!enforceUpdate && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onClose()}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="submit"
+              disabled={loading || !isFormValid}
+              className="min-w-[140px]"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating…
+                </>
+              ) : (
+                'Update Profile'
+              )}
             </Button>
           </DialogFooter>
         </form>

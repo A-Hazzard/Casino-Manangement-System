@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { getUserById, getUserIdFromServer } from '@/app/api/lib/helpers/users';
+import {
+  getInvalidProfileFields,
+  hasInvalidProfileFields,
+} from '@/app/api/lib/helpers/profileValidation';
 
 /**
  * GET /api/auth/current-user
@@ -25,7 +29,8 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Return the current user data from database
+    const { invalidFields, reasons } = getInvalidProfileFields(user as never);
+    const requiresProfileUpdate = hasInvalidProfileFields(invalidFields);
 
     return NextResponse.json({
       success: true,
@@ -40,6 +45,9 @@ export async function GET(_request: NextRequest) {
         resourcePermissions: user.resourcePermissions || {},
         createdAt: user.createdAt || new Date(),
         updatedAt: user.updatedAt || new Date(),
+        requiresProfileUpdate,
+        invalidProfileFields: invalidFields,
+        invalidProfileReasons: reasons,
       },
     });
   } catch (error) {

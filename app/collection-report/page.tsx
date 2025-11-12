@@ -681,9 +681,13 @@ function CollectionReportContent() {
 
   // Check if user has permission to edit reports
   // Only collectors, location collectors, managers, admins, and developers can edit
+  const isDeveloper = useMemo(() => {
+    return user?.roles?.includes('developer') ?? false;
+  }, [user?.roles]);
+
   const canUserEdit = useMemo(() => {
     if (!user || !user.roles) return false;
-    return hasManagerAccess(user.roles); // hasManagerAccess includes: collector, locationCollector, manager, admin, evoAdmin
+    return hasManagerAccess(user.roles);
   }, [user]);
 
   // Determine which reports can be edited (only most recent per location)
@@ -691,6 +695,10 @@ function CollectionReportContent() {
     // If user doesn't have permission, return empty set
     if (!canUserEdit) {
       return new Set<string>();
+    }
+
+    if (isDeveloper) {
+      return new Set(filteredReports.map(report => report.locationReportId));
     }
 
     const reportsByLocation = new Map<string, CollectionReportRow>();
@@ -714,7 +722,7 @@ function CollectionReportContent() {
     return new Set(
       Array.from(reportsByLocation.values()).map(r => r.locationReportId)
     );
-  }, [filteredReports, canUserEdit]);
+  }, [filteredReports, canUserEdit, isDeveloper]);
 
   const fetchMonthlyData = useCallback(() => {
     if (!monthlyDateRange.from || !monthlyDateRange.to) return;

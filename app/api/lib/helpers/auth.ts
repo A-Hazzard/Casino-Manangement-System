@@ -9,6 +9,10 @@ import { sendEmail } from '../../lib/utils/email';
 import UserModel from '../models/user';
 import { comparePassword } from '../utils/validation';
 import { logActivity } from './activityLogger';
+import {
+  getInvalidProfileFields,
+  hasInvalidProfileFields,
+} from './profileValidation';
 import { getUserByEmail, getUserByUsername } from './users';
 
 /**
@@ -100,18 +104,26 @@ export async function authenticateUser(
       { new: true }
     );
 
-    // Check for invalid profile fields (special characters)
-    const { validateProfileField, validateNameField } = await import(
-      '@/lib/utils/validation'
-    );
-    const invalidFields = {
-      username: !validateProfileField(user.username || ''),
-      firstName: !validateNameField(user.profile?.firstName || ''),
-      lastName: !validateNameField(user.profile?.lastName || ''),
-    };
+    const {
+      invalidFields,
+      reasons: invalidReasons,
+      passwordConfirmedStrong,
+    } = getInvalidProfileFields(user as never, { rawPassword: password });
 
-    const hasInvalidFields = Object.values(invalidFields).some(Boolean);
-    if (hasInvalidFields) {
+    if (!user.toObject().passwordUpdatedAt && passwordConfirmedStrong) {
+      await UserModel.updateOne(
+        { _id: user._id },
+        { $set: { passwordUpdatedAt: new Date() } }
+      );
+    }
+
+    if (passwordConfirmedStrong) {
+      delete invalidFields.password;
+      delete invalidReasons.password;
+    }
+
+    const profileInvalid = hasInvalidProfileFields(invalidFields);
+    if (profileInvalid) {
       // Return success but with a flag to prompt profile update
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const userObject = (user as any).toJSON();
@@ -159,7 +171,8 @@ export async function authenticateUser(
         lockedUntil: undefined,
         failedLoginAttempts: 0,
         requiresProfileUpdate: true, // Flag to indicate invalid profile fields
-        invalidProfileFields: invalidFields,
+      invalidProfileFields: invalidFields,
+      invalidProfileReasons: invalidReasons,
       } as UserAuthPayload;
 
       // Log successful login
@@ -185,6 +198,7 @@ export async function authenticateUser(
         expiresAt,
         requiresProfileUpdate: true,
         invalidProfileFields: invalidFields,
+        invalidProfileReasons: invalidReasons,
       };
     }
 
@@ -235,6 +249,9 @@ export async function authenticateUser(
       isLocked: false,
       lockedUntil: undefined,
       failedLoginAttempts: 0,
+      requiresProfileUpdate: false,
+      invalidProfileFields: undefined,
+      invalidProfileReasons: undefined,
     } as UserAuthPayload;
 
     // Log successful login
@@ -258,6 +275,9 @@ export async function authenticateUser(
       refreshToken,
       user: userPayload,
       expiresAt,
+      requiresProfileUpdate: false,
+      invalidProfileFields: undefined,
+      invalidProfileReasons: undefined,
     };
   } catch (error) {
     console.error('Authentication error:', error);

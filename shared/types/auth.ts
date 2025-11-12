@@ -1,5 +1,29 @@
 import { Document } from 'mongoose';
 
+export type InvalidProfileFields = {
+  username?: boolean;
+  firstName?: boolean;
+  lastName?: boolean;
+  otherName?: boolean;
+  gender?: boolean;
+  emailAddress?: boolean;
+  phone?: boolean;
+  dateOfBirth?: boolean;
+  password?: boolean;
+};
+
+export type ProfileValidationReasons = {
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  otherName?: string;
+  gender?: string;
+  emailAddress?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  password?: string;
+};
+
 export type UserDocument = Document & {
   _id: string;
   emailAddress: string;
@@ -20,7 +44,7 @@ export type UserDocument = Document & {
       postalCode?: string;
     };
     identification?: {
-      dateOfBirth?: string;
+      dateOfBirth?: Date | string;
       idType?: string;
       idNumber?: string;
       notes?: string;
@@ -50,6 +74,20 @@ export type UserAuthPayload = {
   profile?: {
     firstName?: string;
     lastName?: string;
+    otherName?: string;
+    gender?: string;
+    identification?: {
+      dateOfBirth?: string;
+      idType?: string;
+      idNumber?: string;
+      notes?: string;
+    };
+    phoneNumber?: string;
+    contact?: {
+      phone?: string;
+      mobile?: string;
+      email?: string;
+    };
   };
   // Enhanced security fields
   lastLoginAt?: Date;
@@ -60,11 +98,8 @@ export type UserAuthPayload = {
   // Validation flags
   requiresPasswordUpdate?: boolean;
   requiresProfileUpdate?: boolean;
-  invalidProfileFields?: {
-    username?: boolean;
-    firstName?: boolean;
-    lastName?: boolean;
-  };
+  invalidProfileFields?: InvalidProfileFields;
+  invalidProfileReasons?: ProfileValidationReasons;
 };
 
 export type LoginRequestBody = {
@@ -82,11 +117,8 @@ export type AuthResult = {
   expiresAt?: string;
   requiresPasswordUpdate?: boolean;
   requiresProfileUpdate?: boolean;
-  invalidProfileFields?: {
-    username?: boolean;
-    firstName?: boolean;
-    lastName?: boolean;
-  };
+  invalidProfileFields?: InvalidProfileFields;
+  invalidProfileReasons?: ProfileValidationReasons;
 };
 
 export type JwtPayload = {

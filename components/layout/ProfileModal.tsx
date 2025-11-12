@@ -13,6 +13,10 @@ import {
 import {
   validatePasswordStrength,
   getPasswordStrengthLabel,
+  validateNameField,
+  validateOptionalGender,
+  validateAlphabeticField,
+  isValidDateInput,
 } from '@/lib/utils/validation';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import type { Licensee } from '@/lib/types/licensee';
@@ -410,15 +414,123 @@ export default function ProfileModal({
   const handleSave = async () => {
     if (!userData) return;
 
+    const sanitizedProfile: Partial<User['profile']> = {
+      ...formData,
+      address: { ...(formData?.address || {}) },
+      identification: { ...(formData?.identification || {}) },
+    };
+
+    const ensureValidName = (
+      value: unknown,
+      label: string,
+      options: { required?: boolean } = {}
+    ): string => {
+      if (typeof value !== 'string') {
+        if (options.required) {
+          throw new Error(`${label} is required.`);
+        }
+        return '';
+      }
+
+      const trimmed = value.trim();
+      if (options.required && trimmed.length === 0) {
+        throw new Error(`${label} is required.`);
+      }
+      if (trimmed && !validateNameField(trimmed)) {
+        throw new Error(
+          `${label} may only contain letters and spaces and cannot resemble a phone number.`
+        );
+      }
+      return trimmed;
+    };
+
+    try {
+      if (sanitizedProfile.firstName !== undefined) {
+        sanitizedProfile.firstName = ensureValidName(
+          sanitizedProfile.firstName,
+          'First name'
+        );
+      }
+      if (sanitizedProfile.lastName !== undefined) {
+        sanitizedProfile.lastName = ensureValidName(
+          sanitizedProfile.lastName,
+          'Last name'
+        );
+      }
+      if (sanitizedProfile.middleName !== undefined) {
+        sanitizedProfile.middleName = ensureValidName(
+          sanitizedProfile.middleName,
+          'Middle name'
+        );
+      }
+      if (sanitizedProfile.otherName !== undefined) {
+        sanitizedProfile.otherName = ensureValidName(
+          sanitizedProfile.otherName,
+          'Other name'
+        );
+      }
+
+      if (
+        sanitizedProfile.gender !== undefined &&
+        typeof sanitizedProfile.gender === 'string'
+      ) {
+        const normalizedGender = sanitizedProfile.gender.trim().toLowerCase();
+        if (normalizedGender && !validateOptionalGender(normalizedGender)) {
+          throw new Error('Select a valid gender option.');
+        }
+        sanitizedProfile.gender = normalizedGender;
+      }
+
+      if (
+        sanitizedProfile.identification &&
+        typeof sanitizedProfile.identification === 'object'
+      ) {
+        const identification = sanitizedProfile.identification;
+        if (typeof identification.idType === 'string') {
+          const trimmed = identification.idType.trim();
+          if (trimmed && !validateAlphabeticField(trimmed)) {
+            throw new Error(
+              'Identification type may only contain letters and spaces.'
+            );
+          }
+          identification.idType = trimmed;
+        }
+
+        const dobValue = identification.dateOfBirth;
+        if (!dobValue) {
+          throw new Error('Date of birth is required.');
+        }
+        if (!isValidDateInput(dobValue)) {
+          throw new Error('Date of birth must be a valid date.');
+        }
+        const dob =
+          typeof dobValue === 'string' ? new Date(dobValue) : dobValue;
+        if (Number.isNaN(dob.getTime())) {
+          throw new Error('Date of birth must be a valid date.');
+        }
+        if (dob > new Date()) {
+          throw new Error('Date of birth cannot be in the future.');
+        }
+        identification.dateOfBirth = dob.toISOString();
+      }
+    } catch (validationError) {
+      const message =
+        validationError instanceof Error
+          ? validationError.message
+          : 'Invalid profile data. Please review the entered values.';
+      toast.error(message);
+      return;
+    }
+
     const payload: {
       _id: string;
-      profile: typeof formData;
+      profile: Partial<User['profile']>;
       password?: { current: string; new: string };
       profilePicture?: string | null;
       roles?: string[];
     } = {
       _id: userData._id,
-      profile: formData,
+      profile: sanitizedProfile,
       profilePicture: profilePicture ?? null,
     };
 
@@ -471,7 +583,7 @@ export default function ProfileModal({
     };
 
     const formDataComparison = {
-      profile: formData,
+      profile: sanitizedProfile,
       profilePicture: profilePicture ?? null,
       roles: selectedRoles,
     };

@@ -8,11 +8,25 @@ import { LoginPageSkeleton } from '@/components/ui/skeletons/LoginSkeletons';
 import { loginUser } from '@/lib/helpers/clientAuth';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useUserStore } from '@/lib/store/userStore';
+import { useAuthSessionStore } from '@/lib/store/authSessionStore';
 import { checkForDatabaseMismatch } from '@/lib/utils/databaseMismatch';
 import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
+import type {
+  InvalidProfileFields,
+  ProfileValidationReasons,
+} from '@/shared/types/auth';
+import type { ProfileValidationModalData } from '@/lib/types/profileValidation';
+
+type ProfileUpdateResult = {
+  success: boolean;
+  invalidFields?: InvalidProfileFields;
+  fieldErrors?: Record<string, string>;
+  message?: string;
+  invalidProfileReasons?: ProfileValidationReasons;
+};
 
 // Import images as variables for better performance
 import EOSLogo from '/public/EOS_Logo.png';
@@ -22,6 +36,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { setUser, clearUser } = useUserStore();
+  const { setLastLoginPassword, clearLastLoginPassword } =
+    useAuthSessionStore();
   const [isMounted, setIsMounted] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -41,20 +57,24 @@ export default function LoginPage() {
   const [showPasswordUpdateModal, setShowPasswordUpdateModal] = useState(false);
   const [showProfileValidationModal, setShowProfileValidationModal] =
     useState(false);
-  const [invalidProfileFields, setInvalidProfileFields] = useState<{
-    username?: boolean;
-    firstName?: boolean;
-    lastName?: boolean;
-  }>({});
-  const [currentUserData, setCurrentUserData] = useState<{
-    username: string;
-    firstName: string;
-    lastName: string;
-  }>({
+  const [invalidProfileFields, setInvalidProfileFields] =
+    useState<InvalidProfileFields>({});
+  const [profileValidationReasons, setProfileValidationReasons] =
+    useState<ProfileValidationReasons>({});
+  const [currentUserData, setCurrentUserData] =
+    useState<ProfileValidationModalData>({
     username: '',
     firstName: '',
     lastName: '',
+      otherName: '',
+      gender: '',
+    emailAddress: '',
+    phone: '',
+      dateOfBirth: '',
+    licenseeIds: [],
+    locationIds: [],
   });
+  const [profileUpdating, setProfileUpdating] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -89,6 +109,9 @@ export default function LoginPage() {
 
   // Redirect if user is already logged in
   useEffect(() => {
+    if (showProfileValidationModal) {
+      return;
+    }
     // Skip this auto-redirect if we're in the middle of a manual login process
     if (redirecting) {
       console.warn(
@@ -139,7 +162,15 @@ export default function LoginPage() {
         router.replace(redirectPath);
       }, 100);
     }
-  }, [user, loading, redirecting, authLoading, hasRedirected, router]);
+  }, [
+    user,
+    loading,
+    redirecting,
+    authLoading,
+    hasRedirected,
+    router,
+    showProfileValidationModal,
+  ]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); // Prevent form submission and page refresh
@@ -158,6 +189,7 @@ export default function LoginPage() {
     if (!valid) return;
 
     setLoading(true);
+    clearLastLoginPassword();
 
     // Clear any existing auth state before attempting login
     // This ensures we start fresh if there was a database change
@@ -192,22 +224,10 @@ export default function LoginPage() {
       });
 
       if (response.success) {
+        setLastLoginPassword(password);
         // Check if password update is required
         if (response.requiresPasswordUpdate) {
           setShowPasswordUpdateModal(true);
-          setLoading(false);
-          return;
-        }
-
-        // Check if profile update is required
-        if (response.requiresProfileUpdate && response.invalidProfileFields) {
-          setInvalidProfileFields(response.invalidProfileFields);
-          setCurrentUserData({
-            username: response.user?.username || '',
-            firstName: response.user?.profile?.firstName || '',
-            lastName: response.user?.profile?.lastName || '',
-          });
-          setShowProfileValidationModal(true);
           setLoading(false);
           return;
         }
@@ -299,6 +319,52 @@ export default function LoginPage() {
           email: storeUser.emailAddress,
         });
 
+        const requiresProfileUpdate =
+          response.requiresProfileUpdate ||
+          response.user?.requiresProfileUpdate;
+
+        if (requiresProfileUpdate) {
+          setInvalidProfileFields(response.invalidProfileFields || {});
+          setProfileValidationReasons(response.invalidProfileReasons || {});
+          setCurrentUserData({
+            username: response.user?.username || '',
+            firstName: response.user?.profile?.firstName || '',
+            lastName: response.user?.profile?.lastName || '',
+            otherName: response.user?.profile?.otherName || '',
+            gender:
+              (response.user?.profile?.gender &&
+                String(response.user.profile.gender).toLowerCase()) ||
+              '',
+            emailAddress: response.user?.emailAddress || '',
+            phone:
+              response.user?.profile?.phoneNumber ||
+              response.user?.profile?.contact?.phone ||
+              response.user?.profile?.contact?.mobile ||
+              '',
+            dateOfBirth:
+              response.user?.profile?.identification?.dateOfBirth
+                ? new Date(
+                    response.user.profile.identification.dateOfBirth as
+                      | string
+                      | number
+                      | Date
+                  )
+                    .toISOString()
+                    .split('T')[0]
+                : '',
+            licenseeIds: Array.isArray(response.user?.rel?.licencee)
+              ? (response.user?.rel?.licencee as string[]).map(id => String(id))
+              : [],
+            locationIds:
+              response.user?.resourcePermissions?.['gaming-locations']
+                ?.resources?.map((id: unknown) => String(id)) || [],
+          });
+          setShowProfileValidationModal(true);
+          setRedirecting(false);
+          setLoading(false);
+          return;
+        }
+
         // Only show success message after everything is verified
         setMessage('Login successful. Redirecting...');
         setMessageType('success');
@@ -365,27 +431,118 @@ export default function LoginPage() {
     }, 1000); // Small delay to show success message
   };
 
-  const handleProfileUpdate = async (data: {
-    username: string;
-    firstName: string;
-    lastName: string;
-  }) => {
-    // TODO: Implement profile update API call
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Profile update requested:', data);
+  const handleProfileUpdate = async (
+    data: ProfileValidationModalData & {
+      currentPassword?: string;
+      newPassword?: string;
+      confirmPassword?: string;
     }
-    setShowProfileValidationModal(false);
-    setMessage('Profile updated successfully. Redirecting...');
-    setMessageType('success');
-    setRedirecting(true);
-    const redirectPath = getDefaultRedirectPathFromRoles(user?.roles || []);
+  ): Promise<ProfileUpdateResult> => {
+    setProfileUpdating(true);
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-    console.warn('👤 Profile updated, redirecting to:', redirectPath);
+      const result = await response.json();
 
-    // Use router.push for redirects
-    setTimeout(() => {
-      router.push(redirectPath);
-    }, 1000); // Small delay to show success message
+      if (!response.ok || !result.success) {
+        setInvalidProfileFields(result.invalidProfileFields || {});
+        setProfileValidationReasons(result.invalidProfileReasons || {});
+        return {
+          success: false,
+          invalidFields: result.invalidProfileFields,
+          fieldErrors: result.errors,
+          message: result.message,
+          invalidProfileReasons: result.invalidProfileReasons,
+        };
+      }
+
+      if (result.user) {
+        setUser(result.user);
+      }
+
+      setInvalidProfileFields(result.invalidProfileFields || {});
+      setProfileValidationReasons(result.invalidProfileReasons || {});
+
+      if (result.requiresProfileUpdate) {
+        return {
+          success: false,
+          invalidFields: result.invalidProfileFields,
+          message: 'Please resolve the remaining profile requirements.',
+          invalidProfileReasons: result.invalidProfileReasons,
+        };
+      }
+
+      setShowProfileValidationModal(false);
+      setMessage('Profile updated successfully. Redirecting...');
+      setMessageType('success');
+      setRedirecting(true);
+      setHasRedirected(true);
+
+      setCurrentUserData({
+        username: result.user?.username || data.username,
+        firstName: result.user?.profile?.firstName || data.firstName || '',
+        lastName: result.user?.profile?.lastName || data.lastName || '',
+        otherName: result.user?.profile?.otherName || data.otherName || '',
+        gender:
+          (result.user?.profile?.gender &&
+            String(result.user.profile.gender).toLowerCase()) ||
+          data.gender ||
+          '',
+        emailAddress: result.user?.emailAddress || data.emailAddress || '',
+        phone:
+          result.user?.profile?.phoneNumber ||
+          result.user?.profile?.contact?.phone ||
+          result.user?.profile?.contact?.mobile ||
+          data.phone ||
+          '',
+        dateOfBirth:
+          (result.user?.profile?.identification?.dateOfBirth
+            ? new Date(
+                result.user.profile.identification.dateOfBirth as
+                  | string
+                  | number
+                  | Date
+              )
+                .toISOString()
+                .split('T')[0]
+            : data.dateOfBirth) || '',
+        licenseeIds: Array.isArray(result.user?.rel?.licencee)
+          ? (result.user?.rel?.licencee as string[]).map(id => String(id))
+          : data.licenseeIds,
+        locationIds: Array.isArray(
+          result.user?.resourcePermissions?.['gaming-locations']?.resources
+        )
+          ? (
+              result.user?.resourcePermissions?.['gaming-locations']
+                ?.resources as string[]
+            ).map(id => String(id))
+          : data.locationIds,
+      });
+
+      const redirectPath = getDefaultRedirectPathFromRoles(
+        (result.user?.roles as string[]) || user?.roles || []
+      );
+
+      setTimeout(() => {
+        router.push(redirectPath);
+      }, 500);
+
+      return { success: true, invalidProfileReasons: result.invalidProfileReasons };
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      return {
+        success: false,
+        message: 'Failed to update profile. Please try again.',
+      };
+    } finally {
+      setProfileUpdating(false);
+    }
   };
 
   if (!isMounted || authLoading) {
@@ -463,9 +620,11 @@ export default function LoginPage() {
         open={showProfileValidationModal}
         onClose={() => setShowProfileValidationModal(false)}
         onUpdate={handleProfileUpdate}
-        loading={loading}
+        loading={profileUpdating}
         invalidFields={invalidProfileFields}
         currentData={currentUserData}
+        reasons={profileValidationReasons}
+        enforceUpdate
       />
     </>
   );

@@ -74,16 +74,32 @@ export async function GET(request: Request) {
     }
 
     // Fetch locations. If minimal is requested, project minimal fields only.
-    const projection = minimal ? { _id: 1, name: 1, geoCoords: 1 } : undefined;
+    const projection = minimal
+      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1 }
+      : undefined;
     const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
       .lean();
 
     // Add licenseeId field for each location (for frontend filtering)
-    const locationsWithLicenseeId = locations.map(loc => ({
-      ...loc,
-      licenseeId: loc.rel?.licencee || null,
-    }));
+    const locationsWithLicenseeId = locations.map(loc => {
+      const licenceeRaw = loc.rel?.licencee;
+      let licenseeId: string | null = null;
+
+      if (Array.isArray(licenceeRaw)) {
+        licenseeId =
+          licenceeRaw.length > 0 && licenceeRaw[0]
+            ? String(licenceeRaw[0])
+            : null;
+      } else if (licenceeRaw) {
+        licenseeId = String(licenceeRaw);
+      }
+
+      return {
+        ...loc,
+        licenseeId,
+      };
+    });
 
     apiLogger.logSuccess(
       context,

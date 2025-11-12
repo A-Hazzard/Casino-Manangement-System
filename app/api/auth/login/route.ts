@@ -84,6 +84,10 @@ export async function POST(request: NextRequest) {
       {
         user: result.user,
         expiresAt: result.expiresAt,
+        requiresPasswordUpdate: result.requiresPasswordUpdate ?? false,
+        requiresProfileUpdate: result.requiresProfileUpdate ?? false,
+        invalidProfileFields: result.invalidProfileFields,
+        invalidProfileReasons: result.invalidProfileReasons,
       },
       'Login successful'
     );

@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import GlobalErrorBoundary from '@/components/layout/GlobalErrorBoundary';
 import GlobalSidebarWrapper from '@/components/layout/GlobalSidebarWrapper';
+import ProfileValidationGate from '@/components/providers/ProfileValidationGate';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 // Removed AuthProvider and AuthGuard to prevent conflicts with ProtectedRoute
@@ -75,6 +76,7 @@ export default function RootLayout({
           <CurrencyProvider>
             <SidebarProvider>
               <GlobalSidebarWrapper />
+              <ProfileValidationGate />
               <SidebarInset>{children}</SidebarInset>
             </SidebarProvider>
             <Toaster position="top-right" />

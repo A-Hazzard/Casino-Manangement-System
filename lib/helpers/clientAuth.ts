@@ -1,4 +1,5 @@
 import type { AuthResult } from '@/shared/types/auth';
+import { useAuthSessionStore } from '@/lib/store/authSessionStore';
 
 export async function loginUser(credentials: {
   identifier: string;
@@ -36,6 +37,7 @@ export async function loginUser(credentials: {
       requiresPasswordUpdate: data.data?.requiresPasswordUpdate,
       requiresProfileUpdate: data.data?.requiresProfileUpdate,
       invalidProfileFields: data.data?.invalidProfileFields,
+      invalidProfileReasons: data.data?.invalidProfileReasons,
     };
   } catch (error) {
     console.error('Login error:', error);
@@ -60,6 +62,7 @@ export async function logoutUser(): Promise<AuthResult> {
       localStorage.removeItem('user-auth-store');
       sessionStorage.clear();
     }
+    useAuthSessionStore.getState().clearLastLoginPassword();
 
     if (!response.ok) {
       return { success: false, message: 'Logout failed' };
@@ -72,6 +75,7 @@ export async function logoutUser(): Promise<AuthResult> {
       localStorage.removeItem('user-auth-store');
       sessionStorage.clear();
     }
+    useAuthSessionStore.getState().clearLastLoginPassword();
     return { success: true, message: 'Logged out locally' };
   }
 }
