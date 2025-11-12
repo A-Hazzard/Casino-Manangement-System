@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** November 10, 2025
+**Last Updated:** November 11, 2025
 
 ## 📚 Essential Documentation References
 
@@ -825,21 +825,24 @@ Native Currency (TTD $20)
 
 - **Mandatory Profile Validation**: All users must pass profile validation before accessing the application
 - **Global Enforcement**: `ProfileValidationGate` component in root layout (`app/layout.tsx`) monitors validation status
-- **Required Fields**: username, firstName, lastName, emailAddress, phone, dateOfBirth, gender, otherName
+- **Required Fields**: username, firstName, lastName, emailAddress, phone, dateOfBirth, password (if `passwordUpdatedAt` is null)
+- **Optional Fields** (validated if provided): otherName, gender
 - **Validation Rules**:
-  - **Names** (firstName, lastName, otherName): Letters and spaces only, no numbers or special characters
-  - **Email**: Valid email format, cannot match username
-  - **Phone**: Valid phone number format (stored in `profile.phoneNumber`, legacy `profile.contact` deprecated)
-  - **Date of Birth**: Valid date in `profile.identification.dateOfBirth` (Date type), cannot be in future
-  - **Gender**: Must be one of: male, female, other (stored lowercase)
-  - **ID Type**: Letters and spaces only, no numbers or special characters
-  - **Password**: Strong password requirements (8+ chars, uppercase, lowercase, number, special char)
-- **Enforced Modal**: `ProfileValidationModal` cannot be closed until all invalid fields are corrected
+  - **Username**: Required, cannot match email, cannot look like phone/email, letters/numbers/spaces/hyphens/apostrophes only
+  - **Names** (firstName, lastName): Required, letters and spaces only, no numbers or special characters, cannot look like phone numbers
+  - **Other Name** (optional): If provided, must follow same rules as firstName/lastName
+  - **Email**: Required, valid email format, cannot match username
+  - **Phone**: Required, valid phone number format (stored in `profile.phoneNumber`, legacy `profile.contact` deprecated), cannot match username
+  - **Date of Birth**: Required, valid date in `profile.identification.dateOfBirth` (Date type), cannot be in future
+  - **Gender** (optional): If provided, must be one of: male, female, other (stored lowercase)
+  - **Password**: Required if `passwordUpdatedAt` is null, strong password requirements (8+ chars, uppercase, lowercase, number, special char)
+- **Dynamic Field Display**: Modal only shows fields that failed validation (e.g., if username is valid, username field is hidden)
+- **Enforced Modal**: `ProfileValidationModal` cannot be closed until all invalid fields are corrected (close button hidden)
 - **Client-Side Validation**: Real-time validation with 300ms debouncing, form disabled until all checks pass
 - **Role-based Fields**: Admin/developer roles can also update licensee and location assignments during validation
 - **Session Management**: Profile updates increment `sessionVersion` to force re-authentication
-- **Password Storage**: Plaintext password temporarily stored in `authSessionStore` (ephemeral, cleared after validation)
-- **Database Schema**: User model includes `passwordUpdatedAt` field, `profile.phoneNumber` (replaces deprecated `profile.contact`)
+- **Password Storage**: Plaintext password temporarily stored in `authSessionStore` (ephemeral, cleared after validation) for re-evaluating password strength
+- **Database Schema**: User model includes `passwordUpdatedAt` field, `profile.phoneNumber` (replaces deprecated `profile.contact`), `profile.identification.dateOfBirth` (Date type)
 - **API Endpoint**: `PUT /api/profile` handles profile updates with comprehensive validation
 
 ### Type System Consolidation - In Progress
@@ -969,8 +972,9 @@ Native Currency (TTD $20)
 - **Security Monitoring**: ✅ Activity logging and account locking
 - **Licensee Filtering**: ✅ Multi-tenant data isolation working
 - **Profile Validation Gate**: ✅ Mandatory profile validation enforced globally (November 2025)
-- **Profile Schema**: ✅ Updated to `profile.phoneNumber`, `profile.identification.dateOfBirth` (Date type)
+- **Profile Schema**: ✅ Updated to `profile.phoneNumber`, `profile.identification.dateOfBirth` (Date type), `profile.middleName`, `profile.otherName`, `profile.gender`
 - **Validation Rules**: ✅ Comprehensive validation for all profile fields with detailed error messages
+- **Dynamic UI**: ✅ Modal only displays fields that require validation, improving user experience
 
 ### SMIB Management System Status ✅
 
@@ -1056,7 +1060,7 @@ Native Currency (TTD $20)
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** November 7th, 2025 - UI Improvements & Documentation Enhancements
+**Last Major Update:** November 11th, 2025 - Documentation Audit & Profile Validation Updates
 
 **November 7th, 2025 Major Work:**
 
