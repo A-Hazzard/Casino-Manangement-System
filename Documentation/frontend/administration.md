@@ -18,8 +18,8 @@
 The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, and activity logging.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 9th, 2025  
-**Version:** 2.1.0
+**Last Updated:** November 12th, 2025  
+**Version:** 2.2.0
 
 ### File Information
 
@@ -35,11 +35,12 @@ The Administration page provides comprehensive user and licensee management for 
   - Assign roles and permissions with granular control
   - **Licensee Assignment:** Multi-select dropdown to assign users to one or more licensees
   - **Location Permissions:** Resource-based permissions for location-specific access
-  - User profile management with detailed personal information
+  - User profile management with compliance-enforced personal information (legal names, gender, phone number, date of birth)
   - **Profile Picture Management:** Upload, crop (circular format), and remove profile pictures
   - **Session Management:** Display login count, last login, and session version
   - Password reset and account status management
   - **Session Invalidation:** Auto-increment `sessionVersion` when changing permissions (forces re-login)
+  - **Security Compliance Gate:** Mirrors the post-login profile validation modal; only fields that fail validation are shown for admins, including licensee/location assignments for developer/admin roles
   - Activity logs for user actions and system events
 - **Licensee Management:**
   - View, search, add, edit, and delete licensees
@@ -92,11 +93,10 @@ The Administration page provides comprehensive user and licensee management for 
   - `components/administration/LicenseeCard.tsx` - Mobile licensee card view
   - `components/administration/LicenseeSearchBar.tsx` - Licensee search controls
 - **Modal Components:**
-  - `components/administration/RolesPermissionsModal.tsx` - User roles and permissions
+  - `components/administration/UserModal.tsx` - Main user edit modal with profile details, roles, permissions, and profile picture management
   - `components/administration/DeleteUserModal.tsx` - User deletion confirmation
-  - `components/administration/UserDetailsModal.tsx` - User profile details with profile picture management
   - `components/administration/AddUserDetailsModal.tsx` - Add user step 1 (details with profile picture upload)
-  - `components/administration/AddUserRolesModal.tsx` - Add user step 2 (roles with enhanced location selection)
+  - `components/administration/AddUserRolesModal.tsx` - Add user step 2 (roles with enhanced location selection) - Note: May be integrated into AddUserDetailsModal
   - `components/administration/AddLicenseeModal.tsx` - Add licensee form
   - `components/administration/EditLicenseeModal.tsx` - Edit licensee form
   - `components/administration/DeleteLicenseeModal.tsx` - Licensee deletion confirmation
@@ -142,10 +142,12 @@ The Administration page provides comprehensive user and licensee management for 
   - **Logging:** Comprehensive API logging with duration and context
 - **POST `/api/users`** - Creates new user
   - Body: `{ username, email, password, roles, profile, isEnabled, resourcePermissions, profilePicture }`
+  - **Profile Requirements:** `profile.firstName`, `profile.lastName`, `profile.phoneNumber`, and `profile.identification.dateOfBirth` must pass the same validation rules enforced by the profile validation gate
   - Returns: `{ success: true, user: User }`
   - **Logging:** Success/failure logging with user creation details
 - **PUT `/api/users`** - Updates existing user
   - Body: `{ _id, ...updateFields }`
+  - **Compliance Enforcement:** The API re-validates username, name fields, gender, phone number, date of birth, and (for admin/developer edits) licensee/location assignments; failing fields trigger detailed error messages surfaced in the admin modal
   - Returns: `{ success: true, user: User }`
   - **Logging:** Change tracking with before/after values
 - **DELETE `/api/users`** - Deletes user

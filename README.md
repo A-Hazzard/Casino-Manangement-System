@@ -32,6 +32,7 @@
 - 🔐 **Secure Authentication** ([docs](Documentation/frontend/login.md))
   - Role-based access control (RBAC)
   - JWT token-based authentication
+  - Mandatory post-login profile validation enforcing legal name, phone number, and date-of-birth compliance before accessing the UI
 - 📊 **Comprehensive Reports Module** ([docs](Documentation/frontend/reports.md))
   - Dashboard, Locations, Machines, and Meters tabs with comprehensive financial calculations
   - Gaming day offset integration for accurate reporting

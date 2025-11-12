@@ -2,6 +2,17 @@
 
 All notable changes to the documentation will be documented in this file.
 
+## [2.3.1] - November 12, 2025
+
+### Changed
+- **Administration Documentation Refresh**
+  - Updated `frontend/administration.md` to describe compliance-enforced profile editing, DOB validation, and dynamic licensee/location assignments.
+  - Revised `backend/administration-api.md` data model examples to match the latest user schema (`phoneNumber`, `identification.dateOfBirth`, `sessionVersion`, password tracking).
+- **Security Context Updates**
+  - Refreshed `.cursor/security-compliance-guidelines.md` with explicit DOB and gender validation requirements.
+- **Root README**
+  - Added note about the mandatory post-login profile validation gate.
+
 ---
 
 ## [2.3.0] - November 11, 2025

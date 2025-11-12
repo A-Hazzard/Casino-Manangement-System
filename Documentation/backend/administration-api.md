@@ -39,19 +39,35 @@ User {
   password: string;               // Hashed password (never stored in plain text)
   roles: string[];                // User roles (admin, user, viewer)
   profile: {
-    firstName: string;            // User's first name
-    lastName: string;             // User's last name
-    phone?: string;               // Optional phone number
-    department?: string;          // Optional department
-    licensee?: string;            // Optional licensee assignment
+    firstName?: string;           // Required: validated to be alphabetic
+    lastName?: string;            // Required: validated to be alphabetic
+    middleName?: string;          // Optional alphabetic value
+    otherName?: string;           // Optional alphabetic value
+    gender?: 'male' | 'female' | 'other'; // Optional, validated when provided
+    address?: {
+      street?: string;
+      town?: string;
+      region?: string;
+      country?: string;
+      postalCode?: string;
+    };
+    identification?: {
+      dateOfBirth?: Date;         // Required; ISO date stored in UTC
+      idType?: string;            // Optional alphabetic value
+      idNumber?: string;
+      notes?: string;
+    };
+    phoneNumber?: string;         // Required; normalized phone number
+    notes?: string;
   };
   isEnabled: boolean;             // Whether user account is active
   profilePicture?: string;        // Base64 encoded image or URL
-  resourcePermissions: {
-    locations: string[];          // Permissions for locations (read, write, admin)
-    machines: string[];           // Permissions for machines (read, write, admin)
-    reports: string[];            // Permissions for reports (read, write, export)
-  };
+  resourcePermissions: Map<
+    string,
+    { entity: string; resources: string[] }
+  >;                              // Licensee/location scoped permissions
+  passwordUpdatedAt?: Date | null;// Tracks when the password last met compliance
+  sessionVersion: number;         // Incremented to force re-authentication
   createdAt: Date;                // Account creation timestamp
   updatedAt: Date;                // Last modification timestamp
 }
@@ -59,9 +75,12 @@ User {
 
 3. **Validation Process**:
    - Validates email format and uniqueness
-   - Validates username uniqueness
+   - Validates username uniqueness and ensures it is not email/phone formatted
+   - Validates name fields (letters/spaces only) and optional gender enumeration
+   - Validates phone number formatting and normalizes value
+   - Validates date of birth (required, not in the future)
    - Validates password strength requirements
-   - Validates role assignments
+   - Validates role assignments and licensee/location intersections
    - Validates permission structure
 
 ### What Happens When You Update a User
@@ -71,6 +90,7 @@ User {
    - Modifies `resourcePermissions` for different resource types
    - Updates `profilePicture` if provided
    - Sets `isEnabled` status
+   - Increments `sessionVersion` whenever roles, licensee assignments, or location permissions change
 
 2. **Permission Management**:
    - **locations**: Controls access to location management
@@ -928,19 +948,35 @@ type User = {
   password: string; // Hashed
   roles: string[];
   profile: {
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    department?: string;
-    licensee?: string;
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    otherName?: string;
+    gender?: 'male' | 'female' | 'other';
+    phoneNumber?: string;
+    address?: {
+      street?: string;
+      town?: string;
+      region?: string;
+      country?: string;
+      postalCode?: string;
+    };
+    identification?: {
+      dateOfBirth?: Date;
+      idType?: string;
+      idNumber?: string;
+      notes?: string;
+    };
+    notes?: string;
   };
   isEnabled: boolean;
   profilePicture?: string; // Base64 or URL
-  resourcePermissions: {
-    locations: string[];
-    machines: string[];
-    reports: string[];
-  };
+  resourcePermissions: Map<
+    string,
+    { entity: string; resources: string[] }
+  >;
+  passwordUpdatedAt?: Date | null;
+  sessionVersion: number;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -14,7 +14,8 @@
 ## 2. Profile & Identity Integrity
 - Do not bypass the profile validation lock unless replacing it with stronger enforcement.
 - Keep `lastLoginPassword` handling ephemeral; no logging or persistence.
-- Require real-time validation of usernames, emails, phone numbers, and password strength in alignment with `lib/utils/validation.ts`.
+- Require real-time validation of usernames, legal names, gender selection, phone numbers, and password strength in alignment with `lib/utils/validation.ts`.
+- Treat `profile.identification.dateOfBirth` as mandatory; reject future-dated or malformed values and document UI messaging.
 - Document user-facing messaging for security changes; keep professional tone referencing compliance requirements.
 
 ## 3. Authorization & Access Control

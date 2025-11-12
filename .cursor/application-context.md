@@ -821,6 +821,27 @@ Native Currency (TTD $20)
 - **Activity Logging**: Comprehensive audit trail for all authentication events
 - **Account Security**: Failed login attempt tracking, account locking, and security monitoring
 
+### Profile Validation Gate System ⭐ **SECURITY COMPLIANCE** (November 2025)
+
+- **Mandatory Profile Validation**: All users must pass profile validation before accessing the application
+- **Global Enforcement**: `ProfileValidationGate` component in root layout (`app/layout.tsx`) monitors validation status
+- **Required Fields**: username, firstName, lastName, emailAddress, phone, dateOfBirth, gender, otherName
+- **Validation Rules**:
+  - **Names** (firstName, lastName, otherName): Letters and spaces only, no numbers or special characters
+  - **Email**: Valid email format, cannot match username
+  - **Phone**: Valid phone number format (stored in `profile.phoneNumber`, legacy `profile.contact` deprecated)
+  - **Date of Birth**: Valid date in `profile.identification.dateOfBirth` (Date type), cannot be in future
+  - **Gender**: Must be one of: male, female, other (stored lowercase)
+  - **ID Type**: Letters and spaces only, no numbers or special characters
+  - **Password**: Strong password requirements (8+ chars, uppercase, lowercase, number, special char)
+- **Enforced Modal**: `ProfileValidationModal` cannot be closed until all invalid fields are corrected
+- **Client-Side Validation**: Real-time validation with 300ms debouncing, form disabled until all checks pass
+- **Role-based Fields**: Admin/developer roles can also update licensee and location assignments during validation
+- **Session Management**: Profile updates increment `sessionVersion` to force re-authentication
+- **Password Storage**: Plaintext password temporarily stored in `authSessionStore` (ephemeral, cleared after validation)
+- **Database Schema**: User model includes `passwordUpdatedAt` field, `profile.phoneNumber` (replaces deprecated `profile.contact`)
+- **API Endpoint**: `PUT /api/profile` handles profile updates with comprehensive validation
+
 ### Type System Consolidation - In Progress
 
 - **Centralized Types**: All authentication types consolidated in `shared/types/auth.ts`
@@ -947,6 +968,9 @@ Native Currency (TTD $20)
 - **Session Management**: ✅ Automatic logout and token refresh
 - **Security Monitoring**: ✅ Activity logging and account locking
 - **Licensee Filtering**: ✅ Multi-tenant data isolation working
+- **Profile Validation Gate**: ✅ Mandatory profile validation enforced globally (November 2025)
+- **Profile Schema**: ✅ Updated to `profile.phoneNumber`, `profile.identification.dateOfBirth` (Date type)
+- **Validation Rules**: ✅ Comprehensive validation for all profile fields with detailed error messages
 
 ### SMIB Management System Status ✅
 

@@ -18,8 +18,8 @@
 The Login page provides secure authentication for users accessing the casino management system. This page serves as the entry point for all authenticated users and implements robust security measures.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 11th, 2025  
+**Version:** 2.1.0
 
 ### File Information
 
@@ -31,14 +31,29 @@ The Login page provides secure authentication for users accessing the casino man
 ## Main Features
 
 - **Login Form:**
-  - Email and password input fields.
+  - Email/username identifier and password input fields.
   - Show/hide password toggle.
-  - Validation for email and password.
+  - "Remember Me" checkbox for persistent identifier storage.
+  - Validation for identifier and password.
   - Error and success messages.
 - **Authentication:**
   - Calls backend API to authenticate users.
   - Displays loading and redirecting states.
   - Handles authentication errors and feedback.
+  - Database environment mismatch detection and handling.
+- **Profile Validation Gate:**
+  - **Mandatory Profile Validation:** After successful login, users with invalid profile data are required to update their profile before accessing the application.
+  - **ProfileValidationGate Component:** Global provider in root layout that monitors user profile validation status.
+  - **ProfileValidationModal:** Displays when profile fields (username, firstName, lastName, emailAddress, phone, dateOfBirth, gender, otherName) fail validation.
+  - **Enforced Updates:** Modal cannot be closed until all invalid fields are corrected.
+  - **Real-time Validation:** Client-side validation with debouncing (300ms) for immediate feedback.
+  - **Role-based Fields:** Admin/developer roles can also update licensee and location assignments.
+- **Password Update Flow:**
+  - **PasswordUpdateModal:** Displays when password strength requirements are not met.
+  - **Password Strength Validation:** Validates password meets security requirements before allowing access.
+- **Role-based Redirects:**
+  - Automatically redirects users to appropriate dashboard based on their roles.
+  - Prevents redirect loops and handles edge cases.
 - **Branding:**
   - Displays company logo and casino imagery.
 - **Responsive Layout:**
@@ -50,42 +65,66 @@ The Login page provides secure authentication for users accessing the casino man
 
 - **Main Page:** `app/(auth)/login/page.tsx` - Entry point with client-side rendering
 - **Login Form:** `components/auth/LoginForm.tsx` - Reusable form component with validation
+- **Profile Validation:**
+  - `components/providers/ProfileValidationGate.tsx` - Global profile validation gate (in root layout)
+  - `components/ui/ProfileValidationModal.tsx` - Mandatory profile update modal
+- **Password Management:**
+  - `components/ui/PasswordUpdateModal.tsx` - Password strength update modal
 - **UI Components:**
   - `components/ui/input.tsx` - Input field component
   - `components/ui/label.tsx` - Label component
   - `components/ui/button.tsx` - Button component
+  - `components/ui/skeletons/LoginSkeletons.tsx` - Loading skeleton component
 - **Visual Effects:** `components/ui/LiquidGradient.tsx` - Background gradient animation
 
 ### State Management
 
 - **Local State:** React `useState` hooks for form data and UI state
 - **User Store:** `lib/store/userStore.ts` - Zustand store for user authentication state
+- **Auth Session Store:** `lib/store/authSessionStore.ts` - Temporary storage for login password (ephemeral, cleared after validation)
 - **Key State Properties:**
-  - `email`, `password` - Form input values
+  - `identifier`, `password` - Form input values (identifier accepts email or username)
+  - `rememberMe` - Remember identifier checkbox state
   - `showPassword` - Password visibility toggle
   - `errors` - Validation error messages
   - `loading`, `redirecting` - Loading states
   - `message`, `messageType` - Success/error feedback
+  - `showPasswordUpdateModal` - Password update modal visibility
+  - `showProfileValidationModal` - Profile validation modal visibility
+  - `invalidProfileFields` - Fields that failed validation
+  - `profileValidationReasons` - Detailed reasons for validation failures
+  - `currentUserData` - Current user profile data for validation modal
+  - `profileUpdating` - Profile update operation loading state
+  - `hasRedirected` - Prevents redirect loops
 
 ### Data Flow
 
-1. **Form Input:** User enters email and password
-2. **Client Validation:** Validates email format and password length
-3. **API Call:** Sends credentials to `/api/auth/login`
-4. **Authentication:** Backend validates credentials and issues JWT token
-5. **State Update:** Updates user store with authenticated user data
-6. **Redirect:** Navigates to dashboard on success
+1. **Form Input:** User enters identifier (email or username) and password
+2. **Client Validation:** Validates identifier format and password presence
+3. **Database Mismatch Check:** Verifies database environment hasn't changed
+4. **API Call:** Sends credentials to `/api/auth/login`
+5. **Authentication:** Backend validates credentials and issues JWT token
+6. **Password Storage:** Temporarily stores plaintext password in `authSessionStore` for profile validation
+7. **Profile Validation Check:** Backend returns `invalidProfileFields` and `invalidProfileReasons` if profile data is invalid
+8. **Conditional Modals:**
+   - If `requiresPasswordUpdate`: Shows `PasswordUpdateModal`
+   - If `requiresProfileUpdate`: Shows `ProfileValidationModal` (enforced, cannot close)
+9. **State Update:** Updates user store with authenticated user data
+10. **Token Verification:** Verifies JWT cookie was set correctly via `/api/test-current-user`
+11. **Role-based Redirect:** Navigates to appropriate dashboard based on user roles
+12. **ProfileValidationGate:** Global gate in root layout continues monitoring profile validation status
 
 ### API Integration
 
 #### Backend Endpoint
 
 - **Login API:** `/api/auth/login` - POST endpoint for user authentication
-  - **Request Body:** `{ emailAddress: string, password: string }`
+  - **Request Body:** `{ identifier: string, password: string }` (identifier can be email or username)
   - **Response:**
-    - Success: `{ success: true, user: UserData, token: string }`
+    - Success: `{ success: true, data: { user: UserData, token: string, refreshToken: string, expiresAt: string, requiresPasswordUpdate?: boolean, requiresProfileUpdate?: boolean, invalidProfileFields?: InvalidProfileFields, invalidProfileReasons?: ProfileValidationReasons } }`
     - Error: `{ success: false, message: string }`
-  - **Cookies:** Sets HTTP-only `token` cookie for session management
+  - **Cookies:** Sets HTTP-only `token` and `refreshToken` cookies for session management
+  - **Profile Validation:** Returns validation flags if profile data is invalid or missing required fields
 
 #### Authentication Process
 
@@ -116,40 +155,57 @@ The Login page provides secure authentication for users accessing the casino man
 
 #### Utility Functions
 
-- **Auth Helper:** `lib/helpers/auth.ts` - Frontend authentication utilities
-  - `loginUser()` - Handles login API call and user state update
+- **Auth Helper:** `lib/helpers/clientAuth.ts` - Frontend authentication utilities
+  - `loginUser()` - Handles login API call and user state update, returns profile validation flags
   - `logoutUser()` - Handles logout and session cleanup
   - `sendForgotPasswordEmail()` - Password reset functionality
 - **Validation Utils:** `lib/utils/validation.ts` - Client-side validation
   - `validateEmail()` - Email format validation
-  - `validatePassword()` - Password strength validation
+  - `validatePasswordStrength()` - Password strength validation with detailed feedback
+- **Database Utils:** `lib/utils/databaseMismatch.ts` - Database environment checking
+  - `checkForDatabaseMismatch()` - Detects if database connection string has changed
+- **Redirect Utils:** `lib/utils/roleBasedRedirect.ts` - Role-based navigation
+  - `getDefaultRedirectPathFromRoles()` - Returns appropriate dashboard path based on user roles
 
 ### Component Hierarchy
 
 ```
+RootLayout (app/layout.tsx)
+└── ProfileValidationGate (components/providers/ProfileValidationGate.tsx)
+    └── ProfileValidationModal (components/ui/ProfileValidationModal.tsx)
+
 LoginPage (app/(auth)/login/page.tsx)
 ├── LiquidGradient (components/ui/LiquidGradient.tsx)
-└── LoginForm (components/auth/LoginForm.tsx)
-    ├── Input (components/ui/input.tsx)
-    ├── Label (components/ui/label.tsx)
-    ├── Button (components/ui/button.tsx)
-    └── Eye/EyeOff Icons (lucide-react)
+├── LoginForm (components/auth/LoginForm.tsx)
+│   ├── Input (components/ui/input.tsx)
+│   ├── Label (components/ui/label.tsx)
+│   ├── Button (components/ui/button.tsx)
+│   └── Eye/EyeOff Icons (lucide-react)
+├── PasswordUpdateModal (components/ui/PasswordUpdateModal.tsx)
+└── ProfileValidationModal (components/ui/ProfileValidationModal.tsx)
 ```
 
 ### Business Logic
 
-- **Email Validation:** Regex pattern for email format validation
-- **Password Requirements:** Minimum 6 characters
-- **Session Management:** JWT tokens stored in HTTP-only cookies
-- **Security:** CSRF protection, secure cookie settings
+- **Identifier Validation:** Accepts email or username for login
+- **Password Requirements:** Strong password requirements (8+ chars, uppercase, lowercase, number, special char)
+- **Session Management:** JWT tokens stored in HTTP-only cookies with 48-hour expiration
+- **Profile Validation:** Mandatory validation of username, firstName, lastName, emailAddress, phone, dateOfBirth, gender, otherName
+- **Password Storage:** Plaintext password temporarily stored in `authSessionStore` for profile validation, cleared after use
+- **Database Environment Check:** Verifies database connection hasn't changed on page load
+- **Role-based Navigation:** Redirects users to appropriate dashboard based on roles
+- **Security:** CSRF protection, secure cookie settings, token verification
 - **Error Handling:** Graceful degradation with user-friendly messages
 
 ### Security Features
 
 - **Input Validation:** Both client and server-side validation
-- **Password Security:** Bcrypt hashing on backend
-- **Token Management:** HTTP-only cookies with secure flags
+- **Password Security:** Bcrypt hashing on backend, strong password requirements
+- **Token Management:** HTTP-only cookies with secure flags, refresh token support
 - **Session Expiry:** 48-hour token expiration
+- **Profile Validation Enforcement:** Users cannot access application until profile meets security compliance requirements
+- **Password Storage:** Ephemeral storage in memory only, never persisted or logged
+- **Database Environment Verification:** Prevents session hijacking from database changes
 - **Error Sanitization:** Generic error messages to prevent information leakage
 
 ### Error Handling

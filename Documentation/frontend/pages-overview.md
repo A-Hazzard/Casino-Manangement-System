@@ -57,8 +57,15 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **File:** `app/(auth)/login/page.tsx`
 - **URL:** `/login`
 - **Documentation:** `login.md`
-- **Status:** Authentication page with secure login form
-- **Features:** Email/password authentication, validation, error handling, responsive design
+- **Status:** Authentication page with secure login form and mandatory profile validation
+- **Features:** 
+  - Email/username identifier and password authentication
+  - Profile validation gate (global in root layout)
+  - Password update modal for weak passwords
+  - Profile validation modal for invalid profile data (enforced, cannot close)
+  - Database environment mismatch detection
+  - Role-based redirects after successful login
+  - "Remember Me" functionality for persistent identifier storage
 
 ### ✅ Administration
 
@@ -262,13 +269,40 @@ Currently no pages have been removed from the system. All major modules are acti
 /collection-reports            → Redirect to /collection-report
 ```
 
+## Authentication Requirements
+
+### Profile Validation Gate
+
+All authenticated users must pass profile validation before accessing the application:
+
+- **Global Enforcement:** `ProfileValidationGate` component in root layout (`app/layout.tsx`) monitors user profile validation status
+- **Mandatory Fields:** username, firstName, lastName, emailAddress, phone, dateOfBirth, gender, otherName
+- **Validation Rules:** 
+  - Names: Letters and spaces only, no numbers or special characters
+  - Email: Valid email format, cannot match username
+  - Phone: Valid phone number format
+  - Date of Birth: Valid date, cannot be in future
+  - Gender: Must be one of: male, female, other
+  - Password: Strong password requirements (8+ chars, uppercase, lowercase, number, special char)
+- **Enforced Modal:** `ProfileValidationModal` cannot be closed until all invalid fields are corrected
+- **Role-based Fields:** Admin/developer roles can also update licensee and location assignments during validation
+- **Session Management:** Profile updates increment `sessionVersion` to force re-authentication
+
+### Authentication Flow
+
+1. User logs in via `/login` page
+2. Backend validates credentials and returns profile validation flags
+3. If profile invalid, `ProfileValidationModal` displays (enforced)
+4. User must update all invalid fields before accessing application
+5. `ProfileValidationGate` continues monitoring validation status globally
+
 ## Technical Architecture Overview
 
 ### State Management
 
-- **Zustand Stores:** Dashboard store for shared state, cabinet actions store for modals
+- **Zustand Stores:** Dashboard store for shared state, cabinet actions store for modals, user store for authentication, auth session store for temporary password storage
 - **React Hooks:** Local state management for page-specific functionality
-- **Context Providers:** Authentication and theme context
+- **Context Providers:** Authentication, theme, currency, and query providers
 
 ### API Integration
 
