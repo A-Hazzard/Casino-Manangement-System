@@ -56,6 +56,9 @@ export default function EditMovementRequestModal({
   // Load initial data
   useEffect(() => {
     if (isEditModalOpen && selectedMovementRequest) {
+      console.log('🔍 [EDIT MODAL] selectedMovementRequest:', selectedMovementRequest);
+      console.log('🔍 [EDIT MODAL] locationFrom:', selectedMovementRequest.locationFrom);
+      console.log('🔍 [EDIT MODAL] locationTo:', selectedMovementRequest.locationTo);
       setFormData(selectedMovementRequest);
 
       // Parse cabinetIn string back to cabinet objects
@@ -80,6 +83,8 @@ export default function EditMovementRequestModal({
     const fetchLocations = async () => {
       try {
         const locationsData = await fetchAllGamingLocations();
+        console.log('🔍 [EDIT MODAL] Loaded locations:', locationsData.length);
+        console.log('🔍 [EDIT MODAL] First 5 locations:', locationsData.slice(0, 5).map(l => ({ id: l.id, name: l.name })));
         setLocations(locationsData);
       } catch (error) {
         console.error('Failed to fetch locations:', error);
@@ -299,7 +304,14 @@ export default function EditMovementRequestModal({
                 <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
                   <SelectValue placeholder="Select source location" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
+                  {/* Show the original location if it doesn't exist anymore */}
+                  {formData.locationFrom && 
+                   !locations.find(l => l.name === formData.locationFrom || l.id === formData.locationFrom) && (
+                    <SelectItem value={formData.locationFrom} className="text-red-500">
+                      {formData.locationFrom} (Deleted/Renamed)
+                    </SelectItem>
+                  )}
                   {locations.map(loc => (
                     <SelectItem key={loc.id} value={loc.name}>
                       {loc.name}
@@ -332,7 +344,14 @@ export default function EditMovementRequestModal({
                 <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
                   <SelectValue placeholder="Location Is It Going To" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
+                  {/* Show the original location if it doesn't exist anymore */}
+                  {formData.locationTo && 
+                   !locations.find(l => l.name === formData.locationTo || l.id === formData.locationTo) && (
+                    <SelectItem value={formData.locationTo} className="text-red-500">
+                      {formData.locationTo} (Deleted/Renamed)
+                    </SelectItem>
+                  )}
                   {locations
                     .filter(loc => loc.name !== formData.locationFrom)
                     .map(loc => (

@@ -68,6 +68,7 @@ function CabinetsPageContent() {
   const {
     isNewMovementRequestModalOpen,
     isUploadSmibDataModalOpen,
+    openNewMovementRequestModal,
     closeNewMovementRequestModal,
     closeUploadSmibDataModal,
   } = useCabinetModals();
@@ -146,6 +147,7 @@ function CabinetsPageContent() {
 
   const handleMovementRequestSubmit = () => {
     loadCabinets();
+    setMovementRefreshTrigger(prev => prev + 1); // 🔧 FIX: Trigger movement requests refresh
     closeNewMovementRequestModal();
   };
 
@@ -253,7 +255,7 @@ function CabinetsPageContent() {
                 activeSection={activeSection}
                 selectedLocation={selectedLocation}
                 locations={locations}
-                onMovementRequestClick={() => {}}
+                onMovementRequestClick={openNewMovementRequestModal}
                 onCabinetCreated={loadCabinets}
                 onCabinetUpdated={loadCabinets}
                 onCabinetDeleted={loadCabinets}
@@ -291,7 +293,7 @@ function CabinetsPageContent() {
                 activeSection={activeSection}
                 selectedLocation={selectedLocation}
                 locations={locations}
-                onMovementRequestClick={() => {}}
+                onMovementRequestClick={openNewMovementRequestModal}
                 onCabinetCreated={loadCabinets}
                 onCabinetUpdated={loadCabinets}
                 onCabinetDeleted={loadCabinets}

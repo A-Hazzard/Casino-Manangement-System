@@ -42,6 +42,44 @@ export async function fetchLicensees(): Promise<Licensee[]> {
 }
 
 /**
+ * Fetches a single licensee by ID (or name) via API call.
+ */
+export async function fetchLicenseeById(
+  licenseeId: string
+): Promise<Licensee | null> {
+  if (!licenseeId) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`/api/licensees?licensee=${licenseeId}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        '[fetchLicenseeById] API error:',
+        response.status,
+        errorText
+      );
+      return null;
+    }
+
+    const data = await response.json();
+    const licensees = (data?.licensees || []) as Licensee[];
+    return licensees.length > 0 ? licensees[0] : null;
+  } catch (error) {
+    console.error('[fetchLicenseeById] Failed to fetch licensee:', error);
+    return null;
+  }
+}
+
+/**
  * Creates a new licensee via API call
  */
 export async function createLicensee(data: {

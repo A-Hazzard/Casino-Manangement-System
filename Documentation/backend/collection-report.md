@@ -356,21 +356,15 @@ The backend handles collection report creation, SAS metrics calculation, machine
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ 1. CHECK FOR DUPLICATES                                         │
-│    - Query CollectionReport for same location + gaming day     │
-│    - Return 409 Conflict if exists                             │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ 2. VALIDATE PAYLOAD                                             │
+│ 1. VALIDATE PAYLOAD                                             │
 │    - Check all required fields                                 │
 │    - Sanitize string inputs                                    │
+│    NOTE: Duplicate check removed - multiple reports per day OK │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ 3. CALCULATE TOTALS                                             │
+│ 2. CALCULATE TOTALS                                             │
 │    calculateCollectionReportTotals(locationReportId)           │
 │    - Sum all movement data from collections                    │
 │    - Sum all SAS data from collections                         │
@@ -379,7 +373,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ 4. CREATE COLLECTION REPORT DOCUMENT                            │
+│ 3. CREATE COLLECTION REPORT DOCUMENT                            │
 │    CollectionReport.create({                                   │
 │      locationReportId, locationName, collectorName,            │
 │      totalDrop, totalCancelled, totalGross, totalSasGross,     │

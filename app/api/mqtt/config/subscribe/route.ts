@@ -9,12 +9,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const relayId = searchParams.get('relayId');
 
-  console.log(
-    `🔍 [API] SSE Subscribe request received for relayId: ${relayId}`
-  );
-
   if (!relayId) {
-    console.log(`❌ [API] Missing relayId in SSE request`);
     return new Response(
       JSON.stringify({ error: 'relayId query parameter is required' }),
       {
@@ -53,19 +48,8 @@ export async function GET(request: NextRequest) {
       const handleConfigMessage = (message: Record<string, unknown>) => {
         // Don't process if controller is already closed
         if (isClosed) {
-          console.log(
-            `⚠️ [API] SSE controller closed, skipping message for ${relayId}`
-          );
           return;
         }
-
-        console.log(
-          `🔍 [API] SSE received MQTT message for relayId: ${relayId}`
-        );
-        console.log(
-          `🔍 [API] SSE message payload:`,
-          JSON.stringify(message, null, 2)
-        );
 
         const sseMessage = {
           type: 'config_update',
@@ -75,22 +59,12 @@ export async function GET(request: NextRequest) {
           timestamp: new Date().toISOString(),
         };
 
-        console.log(
-          `📡 [API] SSE sending message to client:`,
-          JSON.stringify(sseMessage, null, 2)
-        );
         controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
       };
 
       // Subscribe to config updates for this relayId
-      console.log(`🔗 [SSE] Subscribing to config for relayId: ${relayId}`);
       mqttService
         .subscribeToConfig(relayId, handleConfigMessage)
-        .then(() => {
-          console.log(
-            `✅ [SSE] Successfully subscribed to config for relayId: ${relayId}`
-          );
-        })
         .catch(error => {
           console.error('❌ [SSE] Failed to subscribe to config:', error);
           const errorMessage = {

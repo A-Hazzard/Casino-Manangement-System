@@ -1,7 +1,7 @@
 # Evolution CMS - Documentation Index
 
-**Last Updated:** November 10, 2025  
-**Version:** 2.2.0
+**Last Updated:** November 11, 2025  
+**Version:** 2.3.0
 
 ---
 
@@ -9,9 +9,18 @@
 
 ### 🎯 Core System Documentation
 
+#### Recent Updates & Changelogs
+
+- **[November 2025 Updates](./NOVEMBER_2025_UPDATES.md)** ⭐ **NEW** (Nov 11, 2025)
+  - Login rate limiting removed
+  - Collection report date restriction removed
+  - User management UI overhaul (multi-select dropdowns)
+  - Licensee-location filtering enforcement
+  - Complete changelog of recent changes
+
 #### Access Control & Security
 
-- **[Licensee & Location Filtering System](./licensee-location-filtering.md)** ⭐ **NEW**
+- **[Licensee & Location Filtering System](./licensee-location-filtering.md)**
   - Comprehensive guide to multi-licensee access control
   - Role-based filtering logic
   - Implementation patterns for frontend and backend
@@ -21,6 +30,7 @@
   - Original role system documentation
   - Permission definitions
   - Authorization patterns
+  - ⚠️ **Note:** Login rate limiting removed Nov 11, 2025 (see NOVEMBER_2025_UPDATES.md)
 
 #### Database & Models
 

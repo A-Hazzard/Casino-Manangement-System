@@ -79,11 +79,17 @@ export async function GET(request: Request) {
       .sort({ name: 1 })
       .lean();
 
+    // Add licenseeId field for each location (for frontend filtering)
+    const locationsWithLicenseeId = locations.map(loc => ({
+      ...loc,
+      licenseeId: loc.rel?.licencee || null,
+    }));
+
     apiLogger.logSuccess(
       context,
       `Successfully fetched ${locations.length} locations (minimal: ${minimal}, showAll: ${showAll})`
     );
-    return NextResponse.json({ locations }, { status: 200 });
+    return NextResponse.json({ locations: locationsWithLicenseeId }, { status: 200 });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';

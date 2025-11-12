@@ -100,10 +100,10 @@ The service uses environment variables for MQTT broker configuration:
 
 ```typescript
 type MQTTConfig = {
-  mqttURI: string;        // MQTT broker URI with credentials
-  mqttPubTopic: string;   // Topic prefix for publishing (sas/relay/)
-  mqttCfgTopic: string;   // Topic for config responses (smib/config)
-  mqttGliTopic: string;   // Topic prefix for server data (sas/gli/server/)
+  mqttURI: string; // MQTT broker URI with credentials
+  mqttPubTopic: string; // Topic prefix for publishing (sas/relay/)
+  mqttCfgTopic: string; // Topic for config responses (smib/config)
+  mqttGliTopic: string; // Topic prefix for server data (sas/gli/server/)
 };
 ```
 
@@ -112,7 +112,7 @@ type MQTTConfig = {
 - `MQTT_URI`: MQTT broker connection string (default: `mqtt://localhost:1883`)
 - `MQTT_PUB_TOPIC`: Publish topic prefix (default: `sas/relay/`)
 - `MQTT_CFG_TOPIC`: Configuration response topic (default: `smib/config`)
-- `MQTT_GLI_TOPIC`: GLI server topic prefix (default: `sas/gli/server/`)
+- `MQTT_SUB_TOPIC`: GLI server topic prefix (default: `sas/gli/server/`)
 
 **Current Configuration:**
 
@@ -120,7 +120,7 @@ type MQTTConfig = {
 MQTT_URI=mqtt://rabbit.sbox.site
 MQTT_PUB_TOPIC=sas/relay/
 MQTT_CFG_TOPIC=smib/config
-MQTT_GLI_TOPIC=sas/gli/server/
+MQTT_SUB_TOPIC=sas/gli/server/
 ```
 
 #### Connection Settings
@@ -193,7 +193,7 @@ const sseMessage = {
   type: 'config_update',
   relayId: message.rly,
   component: message.comp,
-  data: message
+  data: message,
 };
 controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
 
@@ -448,7 +448,9 @@ Publishes configuration updates to SMIB device via MQTT.
   "success": true,
   "message": "Config update published for mqtt to relayId: e831cdfa8384",
   "relayId": "e831cdfa8384",
-  "config": { /* sent config */ },
+  "config": {
+    /* sent config */
+  },
   "timestamp": "2025-10-26T10:30:00.000Z"
 }
 ```
@@ -553,23 +555,23 @@ saveConfiguration(cabinetId: string, machineControl?: string): Promise<boolean>
 ```typescript
 const {
   // Configuration State
-  formData,              // Current form values
-  originalData,          // Original data for reset
-  mqttConfigData,        // MQTT config from database
-  
+  formData, // Current form values
+  originalData, // Original data for reset
+  mqttConfigData, // MQTT config from database
+
   // UI State
-  smibConfigExpanded,    // Config panel expanded/collapsed
-  isEditMode,            // Edit mode active
-  isLoadingMqttConfig,   // Loading state
-  
+  smibConfigExpanded, // Config panel expanded/collapsed
+  isEditMode, // Edit mode active
+  isLoadingMqttConfig, // Loading state
+
   // Connection State
-  isConnectedToMqtt,     // SSE connection status
+  isConnectedToMqtt, // SSE connection status
   hasReceivedRealSmibData, // Received actual SMIB data
-  hasConfigBeenFetched,  // Initial config fetch complete
-  
+  hasConfigBeenFetched, // Initial config fetch complete
+
   // Display State
-  communicationMode,     // Human-readable comm mode
-  firmwareVersion,       // Current firmware version
+  communicationMode, // Human-readable comm mode
+  firmwareVersion, // Current firmware version
 } = useSmibConfiguration();
 ```
 
@@ -846,6 +848,7 @@ The system includes comprehensive logging:
 ### Scenario: Updating WiFi Configuration
 
 #### 1. User Action
+
 ```typescript
 // In Cabinet Details page
 // User changes WiFi SSID from "Old_WiFi" to "New_WiFi"
@@ -853,6 +856,7 @@ The system includes comprehensive logging:
 ```
 
 #### 2. Frontend Processing
+
 ```typescript
 // In useSmibConfiguration hook
 const updateNetworkConfig = async (relayId, networkData) => {
@@ -862,14 +866,15 @@ const updateNetworkConfig = async (relayId, networkData) => {
     netMode: 0,
     netStaSSID: 'New_WiFi',
     netStaPwd: 'password123',
-    netStaChan: 1
+    netStaChan: 1,
   };
-  
+
   await publishConfigUpdate(relayId, config);
 };
 ```
 
 #### 3. API Processing
+
 ```typescript
 // POST /api/mqtt/config/publish
 const { relayId, config } = await request.json();
@@ -877,6 +882,7 @@ await mqttService.publishConfig(relayId, config);
 ```
 
 #### 4. MQTT Publishing
+
 ```typescript
 // mqttService.publishConfig()
 const topic = 'sas/relay/e831cdfa8384';
@@ -886,13 +892,14 @@ const payload = JSON.stringify({
   netMode: 0,
   netStaSSID: 'New_WiFi',
   netStaPwd: 'password123',
-  netStaChan: 1
+  netStaChan: 1,
 });
 
 this.client.publish(topic, payload);
 ```
 
 #### 5. SMIB Reception
+
 ```
 SMIB device subscribed to sas/relay/e831cdfa8384
 Receives message and applies WiFi configuration
@@ -900,6 +907,7 @@ Reconnects to "New_WiFi" network
 ```
 
 #### 6. SMIB Confirmation (Optional)
+
 ```typescript
 // SMIB publishes confirmation to smib/config
 {
@@ -914,16 +922,17 @@ Reconnects to "New_WiFi" network
 ```
 
 #### 7. Frontend Update
+
 ```typescript
 // SSE message received
-eventSource.onmessage = (event) => {
+eventSource.onmessage = event => {
   const message = JSON.parse(event.data);
   // Updates form with confirmed values
   setFormData(prev => ({
     ...prev,
     networkSSID: message.data.netStaSSID,
     networkPassword: message.data.netStaPwd,
-    networkChannel: message.data.netStaChan.toString()
+    networkChannel: message.data.netStaChan.toString(),
   }));
 };
 ```

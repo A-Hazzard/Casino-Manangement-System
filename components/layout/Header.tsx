@@ -15,7 +15,13 @@ import { ExitIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PanelLeft } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { getLicenseeCurrency, getCountryCurrency } from '@/lib/helpers/rates';
+import {
+  fetchLicensees,
+  fetchLicenseeById,
+} from '@/lib/helpers/clientLicensees';
+import type { CurrencyCode } from '@/shared/types/currency';
 
 export default function Header({
   selectedLicencee,
@@ -59,6 +65,103 @@ export default function Header({
   // Hide if: user has 0 or 1 licensee
   const shouldShowLicenseeSelect = isAdmin || userLicensees.length > 1;
 
+  const [licenseeCurrencyMap, setLicenseeCurrencyMap] = useState<
+    Record<string, CurrencyCode>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadLicensees = async () => {
+      try {
+        const licensees = await fetchLicensees();
+        if (cancelled) return;
+
+        const map: Record<string, CurrencyCode> = {};
+        licensees.forEach(licensee => {
+          let currency = getLicenseeCurrency(licensee.name);
+          if (
+            currency === 'USD' &&
+            (licensee.countryName || typeof licensee.country === 'string')
+          ) {
+            const fallback = licensee.countryName
+              ? getCountryCurrency(licensee.countryName)
+              : getCountryCurrency(licensee.country);
+            currency = fallback || currency;
+          }
+
+          map[String(licensee._id)] = currency;
+          map[licensee.name] = currency;
+        });
+
+        setLicenseeCurrencyMap(map);
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to load licensee currencies:', error);
+        }
+      }
+    };
+
+    loadLicensees();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const resolveLicenseeCurrency = useCallback(
+    async (licenseeId: string): Promise<CurrencyCode> => {
+      if (!licenseeId || licenseeId === 'all' || licenseeId === '') {
+        return 'USD';
+      }
+
+      const cached =
+        licenseeCurrencyMap[licenseeId] ||
+        licenseeCurrencyMap[licenseeId.trim()] ||
+        licenseeCurrencyMap[
+          Object.keys(licenseeCurrencyMap).find(
+            key => key.toLowerCase() === licenseeId.toLowerCase()
+          ) || ''
+        ];
+
+      if (cached) {
+        return cached;
+      }
+
+      try {
+        const licensee = await fetchLicenseeById(licenseeId);
+        if (licensee?.name) {
+          let currency = getLicenseeCurrency(licensee.name);
+          if (
+            currency === 'USD' &&
+            (licensee.countryName || typeof licensee.country === 'string')
+          ) {
+            const fallback = licensee.countryName
+              ? getCountryCurrency(licensee.countryName)
+              : getCountryCurrency(licensee.country);
+            currency = fallback || currency;
+          }
+
+          setLicenseeCurrencyMap(prev => ({
+            ...prev,
+            [licenseeId]: currency,
+            [licensee.name]: currency,
+          }));
+          return currency;
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error(
+            'Failed to resolve currency for licensee:',
+            licenseeId,
+            error
+          );
+        }
+      }
+
+      return getLicenseeCurrency(licenseeId);
+    },
+    [licenseeCurrencyMap]
+  );
+
   // Wrapper function to handle licensee changes
   const handleLicenseeChange = async (newLicensee: string) => {
     if (setSelectedLicencee) {
@@ -71,6 +174,9 @@ export default function Header({
     if (isAllLicensee) {
       // Reset to USD when "All Licensee" is selected
       setDisplayCurrency('USD');
+    } else {
+      const mappedCurrency = await resolveLicenseeCurrency(newLicensee);
+      setDisplayCurrency(mappedCurrency);
     }
 
     // If we're on the dashboard and have an active filter, refresh data
@@ -116,6 +222,31 @@ export default function Header({
   // Check if the current path is related to sessions
   const isSessionsPath =
     pathname === '/sessions' || pathname.startsWith('/sessions/');
+
+  useEffect(() => {
+    let cancelled = false;
+    const syncCurrency = async () => {
+      const isAll =
+        !selectedLicencee ||
+        selectedLicencee === 'all' ||
+        selectedLicencee === '';
+      if (isAll) {
+        setDisplayCurrency('USD');
+        return;
+      }
+
+      const currency = await resolveLicenseeCurrency(selectedLicencee);
+      if (!cancelled) {
+        setDisplayCurrency(currency);
+      }
+    };
+
+    syncCurrency();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLicencee, setDisplayCurrency, resolveLicenseeCurrency]);
 
   // Check if the current path is the specific location details page
   const isSpecificLocationPath =

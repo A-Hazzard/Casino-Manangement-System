@@ -302,7 +302,8 @@ export default function RolesPermissionsModal({
                           key={loc._id}
                           type="button"
                           className="w-full px-4 py-2 text-left text-gray-900 hover:bg-blue-100"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevent blur from firing
                             handleLocationSelect(loc._id);
                             setLocationSearch('');
                             setLocationDropdownOpen(false);

@@ -3,42 +3,24 @@
 import { cn } from '@/lib/utils';
 import type { SmibDevice } from '@/shared/types/entities';
 import { Check, ChevronDown, Search } from 'lucide-react';
-import { differenceInMinutes } from 'date-fns';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 type SmibStatus = 'online' | 'offline';
 
-const ONLINE_THRESHOLD_MINUTES = 3;
-
-const resolveLastSeenDate = (value: SmibDevice['lastSeen']): Date | null => {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value;
-  }
-
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
+/**
+ * Get SMIB online/offline status
+ * CRITICAL: Uses ONLY the online field from the API response
+ * The API determines status based on MQTT broker activity (lastActivity < 3 minutes)
+ * This ensures consistency with actual broker connection status
+ */
 const getSmibStatus = (smib: SmibDevice): SmibStatus => {
+  // Use the online status directly from API
   if (typeof smib.online === 'boolean') {
     return smib.online ? 'online' : 'offline';
   }
-
-  const lastSeenDate = resolveLastSeenDate(smib.lastSeen);
-  if (!lastSeenDate) {
-    return 'offline';
-  }
-
-  const minutesSinceLastSeen = differenceInMinutes(new Date(), lastSeenDate);
-  if (Number.isNaN(minutesSinceLastSeen)) {
-    return 'offline';
-  }
-
-  return minutesSinceLastSeen <= ONLINE_THRESHOLD_MINUTES ? 'online' : 'offline';
+  
+  // If online status not provided by API, default to offline
+  return 'offline';
 };
 
 const getStatusDotClass = (status: SmibStatus): string => {

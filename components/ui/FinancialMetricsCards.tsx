@@ -1,8 +1,12 @@
 'use client';
 
 import { DashboardFinancialMetricsSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
+import { fetchLicenseeById } from '@/lib/helpers/clientLicensees';
+import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { formatNumber } from '@/lib/utils/metrics';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { useEffect, useState } from 'react';
 
 type FinancialMetricsCardsProps = {
   totals: {
@@ -13,50 +17,163 @@ type FinancialMetricsCardsProps = {
   loading?: boolean;
   title?: string;
   className?: string;
-  disableCurrencyConversion?: boolean; // For specific location/cabinet pages
+  disableCurrencyConversion?: boolean;
 };
+
+const licenseeCurrencyCache: Record<string, CurrencyCode> = {};
 
 export default function FinancialMetricsCards({
   totals,
   loading = false,
   title = 'Financial Metrics',
   className = '',
-  disableCurrencyConversion = false,
+  disableCurrencyConversion: _disableCurrencyConversion = false,
 }: FinancialMetricsCardsProps) {
-  const { formatAmount, shouldShowCurrency, displayCurrency } =
-    useCurrencyFormat();
+  const { selectedLicencee } = useDashBoardStore();
+  const { displayCurrency } = useCurrencyFormat();
+  const [resolvedCurrencyCode, setResolvedCurrencyCode] =
+    useState<CurrencyCode>(displayCurrency);
 
-  // On specific location/cabinet pages, don't apply currency conversion
-  const shouldApplyCurrency =
-    !disableCurrencyConversion && shouldShowCurrency();
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveCurrency = async () => {
+      const isAll =
+        !selectedLicencee ||
+        selectedLicencee === 'all' ||
+        selectedLicencee === '';
+
+      if (isAll) {
+        if (!cancelled) {
+          setResolvedCurrencyCode(displayCurrency);
+        }
+        return;
+      }
+
+      const cacheKey = selectedLicencee.trim();
+      const cachedValue =
+        licenseeCurrencyCache[cacheKey] ||
+        licenseeCurrencyCache[cacheKey.toLowerCase()] ||
+        licenseeCurrencyCache[
+          Object.keys(licenseeCurrencyCache).find(
+            key => key.toLowerCase() === cacheKey.toLowerCase()
+          ) || ''
+        ];
+
+      if (cachedValue) {
+        if (!cancelled) {
+          setResolvedCurrencyCode(cachedValue);
+        }
+        return;
+      }
+
+      try {
+        const licensee = await fetchLicenseeById(cacheKey);
+        let currency = getLicenseeCurrency(licensee?.name || cacheKey);
+
+        if (
+          currency === 'USD' &&
+          licensee &&
+          (licensee.countryName || typeof licensee.country === 'string')
+        ) {
+          const fallback = licensee.countryName
+            ? getCountryCurrency(licensee.countryName)
+            : getCountryCurrency(
+                typeof licensee.country === 'string' ? licensee.country : ''
+              );
+          if (fallback) {
+            currency = fallback;
+          }
+        }
+
+        if (!currency) {
+          currency = 'USD';
+        }
+
+        licenseeCurrencyCache[cacheKey] = currency;
+        if (licensee?.name) {
+          licenseeCurrencyCache[licensee.name] = currency;
+        }
+
+        if (!cancelled) {
+          setResolvedCurrencyCode(currency);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error(
+            '[FinancialMetricsCards] Failed to resolve licensee currency:',
+            selectedLicencee,
+            error
+          );
+        }
+        if (!cancelled) {
+          setResolvedCurrencyCode('USD');
+        }
+      }
+    };
+
+    resolveCurrency();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLicencee, displayCurrency]);
+
+  const currencyCode = resolvedCurrencyCode || displayCurrency || 'USD';
+
   if (loading) {
     return <DashboardFinancialMetricsSkeleton />;
   }
 
-  // Helper function to format numbers with proper scaling
-  const formatNumberWithScaling = (
+  const formatNumberOnly = (value: number): string => {
+    if (Number.isNaN(value)) {
+      return '--';
+    }
+
+    const hasDecimals = value % 1 !== 0;
+    const decimalPart = Math.abs(value % 1);
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+      maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    }).format(value);
+  };
+
+  const formatCurrencyAmount = (value: number): string => {
+    if (Number.isNaN(value)) {
+      return '--';
+    }
+
+    return `${currencyCode} ${formatNumberOnly(value)}`;
+  };
+
+  const formatCurrencyWithScaling = (
     value: number
   ): { display: string; size: string } => {
     const absValue = Math.abs(value);
+    const sign = value < 0 ? '-' : '';
 
-    if (absValue >= 1000000) {
-      const millions = value / 1000000;
+    if (absValue >= 1_000_000) {
+      const millions = absValue / 1_000_000;
       return {
-        display: `${millions.toFixed(1)}M`,
+        display: `${sign}${currencyCode} ${millions.toFixed(1)}M`,
         size: 'text-xl sm:text-2xl md:text-3xl lg:text-4xl',
       };
-    } else if (absValue >= 1000) {
-      const thousands = value / 1000;
+    }
+
+    if (absValue >= 1_000) {
+      const thousands = absValue / 1_000;
       return {
-        display: `${thousands.toFixed(1)}K`,
-        size: 'text-lg sm:text-xl md:text-2xl lg:text-3xl',
-      };
-    } else {
-      return {
-        display: formatNumber(value),
+        display: `${sign}${currencyCode} ${thousands.toFixed(1)}K`,
         size: 'text-lg sm:text-xl md:text-2xl lg:text-3xl',
       };
     }
+
+    return {
+      display: `${sign}${currencyCode} ${formatNumberOnly(absValue)}`,
+      size: 'text-lg sm:text-xl md:text-2xl lg:text-3xl',
+    };
   };
 
   return (
@@ -65,12 +182,9 @@ export default function FinancialMetricsCards({
         <h2 className="text-lg font-semibold text-gray-700">{title}</h2>
       )}
 
-      {/* Mobile: New design */}
       <div className="block md:hidden">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-          {/* Money In Card */}
           <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
-            {/* Background accent */}
             <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-purple-500 to-purple-600"></div>
 
             <div className="p-4 sm:p-6">
@@ -83,33 +197,23 @@ export default function FinancialMetricsCards({
 
               <div className="space-y-2">
                 <div
-                  className={`font-bold text-gray-900 ${formatNumberWithScaling(totals?.moneyIn || 0).size}`}
+                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.moneyIn || 0).size}`}
                 >
                   {totals
-                    ? (() => {
-                        const formatted = formatNumberWithScaling(
-                          totals.moneyIn
-                        );
-                        return shouldApplyCurrency
-                          ? formatAmount(totals.moneyIn, displayCurrency)
-                          : formatted.display;
-                      })()
+                    ? formatCurrencyWithScaling(totals.moneyIn).display
                     : '--'}
                 </div>
 
-                {/* Full number tooltip on hover for large numbers */}
                 {totals && Math.abs(totals.moneyIn) >= 1000 && (
                   <div className="font-mono text-xs text-gray-500">
-                    {formatNumber(totals.moneyIn)}
+                    {formatCurrencyAmount(totals.moneyIn)}
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Money Out Card */}
           <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
-            {/* Background accent */}
             <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
 
             <div className="p-4 sm:p-6">
@@ -122,33 +226,22 @@ export default function FinancialMetricsCards({
 
               <div className="space-y-2">
                 <div
-                  className={`font-bold text-gray-900 ${formatNumberWithScaling(totals?.moneyOut || 0).size}`}
+                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.moneyOut || 0).size}`}
                 >
                   {totals
-                    ? (() => {
-                        const formatted = formatNumberWithScaling(
-                          totals.moneyOut
-                        );
-                        return shouldApplyCurrency
-                          ? formatAmount(totals.moneyOut, displayCurrency)
-                          : formatted.display;
-                      })()
+                    ? formatCurrencyWithScaling(totals.moneyOut).display
                     : '--'}
                 </div>
-
-                {/* Full number tooltip on hover for large numbers */}
                 {totals && Math.abs(totals.moneyOut) >= 1000 && (
                   <div className="font-mono text-xs text-gray-500">
-                    {formatNumber(totals.moneyOut)}
+                    {formatCurrencyAmount(totals.moneyOut)}
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Gross Card */}
           <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
-            {/* Background accent */}
             <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-orange-600"></div>
 
             <div className="p-4 sm:p-6">
@@ -161,22 +254,15 @@ export default function FinancialMetricsCards({
 
               <div className="space-y-2">
                 <div
-                  className={`font-bold text-gray-900 ${formatNumberWithScaling(totals?.gross || 0).size}`}
+                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.gross || 0).size}`}
                 >
                   {totals
-                    ? (() => {
-                        const formatted = formatNumberWithScaling(totals.gross);
-                        return shouldApplyCurrency
-                          ? formatAmount(totals.gross, displayCurrency)
-                          : formatted.display;
-                      })()
+                    ? formatCurrencyWithScaling(totals.gross).display
                     : '--'}
                 </div>
-
-                {/* Full number tooltip on hover for large numbers */}
                 {totals && Math.abs(totals.gross) >= 1000 && (
                   <div className="font-mono text-xs text-gray-500">
-                    {formatNumber(totals.gross)}
+                    {formatCurrencyAmount(totals.gross)}
                   </div>
                 )}
               </div>
@@ -185,10 +271,8 @@ export default function FinancialMetricsCards({
         </div>
       </div>
 
-      {/* Desktop: Original centered design */}
       <div className="hidden md:block">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {/* Money In Card */}
           <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
             <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
               Money In
@@ -196,16 +280,11 @@ export default function FinancialMetricsCards({
             <div className="my-2 h-[4px] w-full rounded-full bg-buttonActive"></div>
             <div className="flex flex-1 items-center justify-center">
               <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
-                {totals
-                  ? shouldApplyCurrency
-                    ? formatAmount(totals.moneyIn, displayCurrency)
-                    : formatNumber(totals.moneyIn)
-                  : '--'}
+                {totals ? formatCurrencyAmount(totals.moneyIn) : '--'}
               </p>
             </div>
           </div>
 
-          {/* Money Out Card */}
           <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
             <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
               Money Out
@@ -213,16 +292,11 @@ export default function FinancialMetricsCards({
             <div className="my-2 h-[4px] w-full rounded-full bg-lighterBlueHighlight"></div>
             <div className="flex flex-1 items-center justify-center">
               <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
-                {totals
-                  ? shouldApplyCurrency
-                    ? formatAmount(totals.moneyOut, displayCurrency)
-                    : formatNumber(totals.moneyOut)
-                  : '--'}
+                {totals ? formatCurrencyAmount(totals.moneyOut) : '--'}
               </p>
             </div>
           </div>
 
-          {/* Gross Card */}
           <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6 md:col-span-2 lg:col-span-2 xl:col-span-1">
             <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
               Gross
@@ -230,11 +304,7 @@ export default function FinancialMetricsCards({
             <div className="my-2 h-[4px] w-full rounded-full bg-orangeHighlight"></div>
             <div className="flex flex-1 items-center justify-center">
               <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
-                {totals
-                  ? shouldApplyCurrency
-                    ? formatAmount(totals.gross, displayCurrency)
-                    : formatNumber(totals.gross)
-                  : '--'}
+                {totals ? formatCurrencyAmount(totals.gross) : '--'}
               </p>
             </div>
           </div>

@@ -319,7 +319,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                 <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
                   <SelectValue placeholder="Select movement type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   <SelectItem value="Machine">Machine</SelectItem>
                   <SelectItem value="SMIB">SMIB</SelectItem>
                 </SelectContent>
@@ -344,7 +344,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                 <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
                   <SelectValue placeholder="Select source location" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   {locations.map(loc => (
                     <SelectItem key={loc.id} value={loc.id}>
                       {loc.name}
@@ -373,7 +373,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                 <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
                   <SelectValue placeholder="Location Is It Going To" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   {locations
                     .filter(loc => loc.id !== fromLocation)
                     .map(loc => (
@@ -419,7 +419,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                 <SelectTrigger className="w-full border-gray-300 focus:border-buttonActive focus:ring-buttonActive">
                   <SelectValue placeholder="Select user" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   {users
                     .filter(user => user.email && user.email.trim() !== '')
                     .map(user => (
@@ -578,7 +578,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                   <SelectTrigger className="w-full border-blue-300 focus:border-buttonActive focus:ring-buttonActive">
                     <SelectValue placeholder="Cabinet Is Coming To" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[9999]">
                     <SelectItem value="placeholder">
                       Select destination cabinet
                     </SelectItem>

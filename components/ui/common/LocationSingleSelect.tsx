@@ -6,13 +6,24 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Check, ChevronDown, Search } from 'lucide-react';
 
+type LocationSingleSelectOption = {
+  id: string;
+  name: string;
+  sasEnabled?: boolean;
+};
+
 type LocationSingleSelectProps = {
-  locations: { id: string; name: string; sasEnabled?: boolean }[];
+  locations: LocationSingleSelectOption[];
   selectedLocation: string;
   onSelectionChange: (locationId: string) => void;
   placeholder?: string;
   className?: string;
   includeAllOption?: boolean;
+  allOptionLabel?: string;
+  showSasBadge?: boolean;
+  dropdownLabel?: string;
+  searchPlaceholder?: string;
+  emptyMessage?: string;
 };
 
 export default function LocationSingleSelect({
@@ -22,6 +33,11 @@ export default function LocationSingleSelect({
   placeholder = 'Select location...',
   className,
   includeAllOption = true,
+  allOptionLabel = 'All Locations',
+  showSasBadge = true,
+  dropdownLabel = 'Select Location',
+  searchPlaceholder = 'Search locations...',
+  emptyMessage = 'No locations found',
 }: LocationSingleSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,7 +65,15 @@ export default function LocationSingleSelect({
 
   // Prepare options with "All Locations" if enabled
   const options = includeAllOption
-    ? [{ id: 'all', name: 'All Locations', sasEnabled: true }, ...locations]
+    ? [
+        {
+          id: 'all',
+          name: allOptionLabel,
+          // Avoid showing SAS badge for the "all" option
+          sasEnabled: showSasBadge ? true : undefined,
+        },
+        ...locations,
+      ]
     : locations;
 
   // Filter options based on search term
@@ -82,7 +106,7 @@ export default function LocationSingleSelect({
           <div className="border-b border-gray-100 p-2">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">
-                Select Location
+                {dropdownLabel}
               </span>
             </div>
             {/* Search input */}
@@ -90,7 +114,7 @@ export default function LocationSingleSelect({
               <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
               <Input
                 type="text"
-                placeholder="Search locations..."
+                placeholder={searchPlaceholder}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="h-8 pl-8 text-sm"
@@ -123,7 +147,9 @@ export default function LocationSingleSelect({
                       <div className="truncate text-sm font-medium text-gray-900">
                         {option.name}
                       </div>
-                      {option.id !== 'all' && (
+                      {typeof option.sasEnabled === 'boolean' &&
+                        option.id !== 'all' &&
+                        showSasBadge && (
                         <div className="flex items-center gap-2">
                           <Badge
                             variant={
@@ -149,7 +175,7 @@ export default function LocationSingleSelect({
           {/* No results message */}
           {filteredOptions.length === 0 && (
             <div className="p-3 text-center text-sm text-gray-500">
-              No locations found
+              {emptyMessage}
             </div>
           )}
         </div>

@@ -23,6 +23,24 @@ All notable changes to the documentation will be documented in this file.
   - Meters API: Fixed 7d and 30d timeouts
   - Documented in `backend/collection-report-details.md`
 
+- **Multi-Select Dropdown Component** ⭐ **NEW**
+  - `components/ui/common/MultiSelectDropdown.tsx`
+  - Checkbox-based multi-selection with search
+  - "Select All" functionality
+  - Badge display for selected items
+  - Used in User Administration modal
+
+- **Licensee-Location Filtering Enforcement** ⭐ **NEW**
+  - Users can only assign locations belonging to selected licensees
+  - Automatic cleanup of invalid location assignments
+  - Smart warning messages when no licensees selected
+  - API returns `licenseeId` for frontend filtering
+
+- **November 2025 Updates Summary Document** ⭐ **NEW**
+  - Comprehensive changelog: `Documentation/NOVEMBER_2025_UPDATES.md`
+  - Documents all major changes from November 11, 2025
+  - Migration notes and key takeaways
+
 ### Changed
 - **Fix Report API Behavior** - Now only processes collections in requested report
   - **Before:** Processed all 41,217 collections (~11.5 hours)
@@ -42,6 +60,31 @@ All notable changes to the documentation will be documented in this file.
   - **Removed:** Floating refresh button on scroll
   - **Removed:** Sync Meters confirmation modal
   - Updated in `frontend/collection-report-details.md`
+
+- **User Administration Modal** - Complete UI overhaul
+  - **Replaced:** Old input+dropdown with modern multi-select dropdowns
+  - **Added:** Real-time search in licensee/location selection
+  - **Added:** Select All/Deselect All functionality
+  - **Added:** Badge display for selected items
+  - **Improved:** Licensee-location relationship validation
+  - **Fixed:** Race condition bugs in assignment dropdowns
+
+### Removed
+- **Login Rate Limiting** ⚠️ **SECURITY CHANGE**
+  - **Removed:** IP-based rate limiting (5 attempts/15min)
+  - **Removed:** Account lockout after failed attempts (30-minute lock)
+  - **Removed:** `failedLoginAttempts` tracking logic
+  - **Removed:** `isLocked` and `lockedUntil` enforcement
+  - **Note:** Unlimited login attempts now allowed
+  - **Database fields deprecated but not deleted**
+  - Documented in `NOVEMBER_2025_UPDATES.md`
+
+- **Collection Report Date Restriction** ✅ **BUSINESS REQUIREMENT**
+  - **Removed:** Duplicate prevention for same location/date
+  - **Removed:** 409 Conflict error for existing reports
+  - **Allows:** Unlimited collection reports per location per day
+  - **Use Cases:** Mid-day collections, end-of-day collections, corrections
+  - Updated in `user-safety-safeguards.md` and `backend/collection-report.md`
 
 ### Updated
 - `Documentation/backend/collection-report-details.md`

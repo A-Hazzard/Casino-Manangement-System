@@ -687,7 +687,7 @@ console.log('📡 [MQTT] Received from:', topic, message.toString());
 MQTT_URI=mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883
 MQTT_PUB_TOPIC=sas/relay/
 MQTT_CFG_TOPIC=smib/config
-MQTT_GLI_TOPIC=sas/gli/server/
+MQTT_SUB_TOPIC=sas/gli/server/
 ```
 
 ### Production Deployment

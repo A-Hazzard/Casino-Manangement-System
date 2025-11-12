@@ -279,12 +279,18 @@ export async function GET(req: NextRequest) {
             locationName: (location.name as string) || '(No Location)',
             assetNumber: machine.serialNumber || '',
             serialNumber: machine.serialNumber || '',
+            game: machine.game || '',
+            installedGame: machine.game || '',
             denomination: machine.denomination || '',
             manufacturer: machine.manufacturer || '',
             model: machine.model || '',
             status: machine.status || 'unknown',
             isSasMachine: machine.isSasMachine || false,
             lastActivity: machine.lastActivity || null,
+            // Calculate online status: machine is online if lastActivity is within last 3 minutes
+            online: machine.lastActivity 
+              ? new Date(machine.lastActivity) > new Date(Date.now() - 3 * 60 * 1000)
+              : false,
             moneyIn,
             moneyOut,
             gross,
@@ -418,6 +424,10 @@ export async function GET(req: NextRequest) {
               isCronosMachine: false,
               lastOnline: machine.lastActivity,
               lastActivity: machine.lastActivity,
+              // Calculate online status: machine is online if lastActivity is within last 3 minutes
+              online: machine.lastActivity 
+                ? new Date(machine.lastActivity) > new Date(Date.now() - 3 * 60 * 1000)
+                : false,
               createdAt: machine.createdAt,
               timePeriod: timePeriod,
               moneyIn,

@@ -537,7 +537,7 @@ eventSource.onmessage = event => {
 MQTT_URI=mqtt://rabbit.sbox.site
 MQTT_PUB_TOPIC=sas/relay/
 MQTT_CFG_TOPIC=smib/config
-MQTT_GLI_TOPIC=sas/gli/server/
+MQTT_SUB_TOPIC=sas/gli/server/
 ```
 
 ### MQTT Service Configuration

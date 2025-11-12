@@ -4,6 +4,7 @@
  */
 
 import { CustomSelect } from '@/components/ui/custom-select';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { Input } from '@/components/ui/input';
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import type { CabinetSearchFiltersProps } from '@/lib/types/cabinetDetails';
@@ -48,23 +49,16 @@ export const CabinetSearchFilters = ({
     { value: 'lastOnline-asc', label: 'Last Online (Oldest First)' },
   ];
 
-  // Location options configuration
-  const locationOptions = [
-    { value: 'all', label: 'All Locations' },
-    ...locations.map(location => ({
-      value: location._id,
-      label: location.name,
-    })),
-  ];
+  const locationSelectItems = locations.map(location => ({
+    id: String(location._id),
+    name: location.name,
+    // Leave sasEnabled undefined to avoid badge display
+  }));
 
-  // Game type options configuration
-  const gameTypeOptions = [
-    { value: 'all', label: 'All Game Types' },
-    ...gameTypes.map(gameType => ({
-      value: gameType,
-      label: gameType,
-    })),
-  ];
+  const gameTypeSelectItems = gameTypes.map(gameType => ({
+    id: gameType,
+    name: gameType,
+  }));
 
   // Handle sort change
   const handleSortChange = (value: string) => {
@@ -92,7 +86,6 @@ export const CabinetSearchFilters = ({
     <>
       {/* Mobile: Horizontal scrollable filters */}
       <div className="mt-4 md:hidden">
-        {/* Search Input - Full width */}
         <div className="relative mb-3 w-full">
           <Input
             type="text"
@@ -104,33 +97,37 @@ export const CabinetSearchFilters = ({
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         </div>
 
-        {/* Filters - Horizontal scrollable */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
           <div className="flex gap-2 min-w-max">
-            <div className="w-36 flex-shrink-0 relative">
-            <CustomSelect
-              value={selectedLocation}
-              onValueChange={handleLocationChange}
-              options={locationOptions}
-              placeholder="All Locations"
-              className="w-full"
-              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-              searchable={true}
-              emptyMessage="No locations found"
-            />
-          </div>
-            <div className="w-36 flex-shrink-0 relative">
-            <CustomSelect
-              value={selectedGameType}
-              onValueChange={handleGameTypeChange}
-              options={gameTypeOptions}
-              placeholder="All Games"
-              className="w-full"
-              triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-              searchable={true}
-              emptyMessage="No game types found"
-            />
-          </div>
+            <div className="w-40 flex-shrink-0">
+              <LocationSingleSelect
+                locations={locationSelectItems}
+                selectedLocation={selectedLocation}
+                onSelectionChange={handleLocationChange}
+                placeholder="All Locations"
+                includeAllOption={true}
+                dropdownLabel="Select Location"
+                searchPlaceholder="Search locations..."
+                emptyMessage="No locations found"
+                showSasBadge={false}
+                className="w-full"
+              />
+            </div>
+            <div className="w-40 flex-shrink-0">
+              <LocationSingleSelect
+                locations={gameTypeSelectItems}
+                selectedLocation={selectedGameType}
+                onSelectionChange={handleGameTypeChange}
+                placeholder="All Game Types"
+                includeAllOption={true}
+                allOptionLabel="All Game Types"
+                dropdownLabel="Select Game Type"
+                searchPlaceholder="Search game types..."
+                emptyMessage="No game types found"
+                showSasBadge={false}
+                className="w-full"
+              />
+            </div>
             <div className="w-32 flex-shrink-0 relative">
             <CustomSelect
               value={selectedStatus}
@@ -177,42 +174,54 @@ export const CabinetSearchFilters = ({
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
 
-        {/* Location Filter */}
-        <select
-          value={selectedLocation}
-          onChange={event => handleLocationChange(event.target.value)}
-          className="h-9 w-auto min-w-[180px] max-w-[200px] truncate rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-        >
-          {locationOptions.map(option => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="w-auto min-w-[220px] max-w-[240px]">
+          <LocationSingleSelect
+            locations={locationSelectItems}
+            selectedLocation={selectedLocation}
+            onSelectionChange={handleLocationChange}
+            placeholder="All Locations"
+            includeAllOption={true}
+            dropdownLabel="Select Location"
+            searchPlaceholder="Search locations..."
+            emptyMessage="No locations found"
+            showSasBadge={false}
+            className="w-full"
+          />
+        </div>
 
-        {/* Game Type Filter */}
-        <select
-          value={selectedGameType}
-          onChange={event => handleGameTypeChange(event.target.value)}
-          className="h-9 w-auto min-w-[180px] max-w-[200px] truncate rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-        >
-          {gameTypeOptions.map(option => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="w-auto min-w-[220px] max-w-[240px]">
+          <LocationSingleSelect
+            locations={gameTypeSelectItems}
+            selectedLocation={selectedGameType}
+            onSelectionChange={handleGameTypeChange}
+            placeholder="All Game Types"
+            includeAllOption={true}
+            allOptionLabel="All Game Types"
+            dropdownLabel="Select Game Type"
+            searchPlaceholder="Search game types..."
+            emptyMessage="No game types found"
+            showSasBadge={false}
+            className="w-full"
+          />
+        </div>
 
-        {/* Status Filter */}
-        <select
-          value={selectedStatus}
-          onChange={event => onStatusChange(event.target.value)}
-          className="h-9 w-auto min-w-[140px] max-w-[150px] truncate rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-        >
-          <option value="All">All Machines</option>
-          <option value="Online">Online</option>
-          <option value="Offline">Offline</option>
-        </select>
+        {/* Status Filter with Search */}
+        <div className="w-auto min-w-[140px] max-w-[150px]">
+          <CustomSelect
+            value={selectedStatus}
+            onValueChange={onStatusChange}
+            options={[
+              { value: 'All', label: 'All Machines' },
+              { value: 'Online', label: 'Online' },
+              { value: 'Offline', label: 'Offline' },
+            ]}
+            placeholder="All Status"
+            className="w-full"
+            triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+            searchable={true}
+            emptyMessage="No status options found"
+          />
+        </div>
       </div>
     </>
   );

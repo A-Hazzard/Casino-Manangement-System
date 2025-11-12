@@ -72,6 +72,8 @@ export async function DELETE(
         await logActivity({
           action: 'DELETE',
           details: `Deleted movement request for cabinet ${movementRequestToDelete.cabinetIn} from ${movementRequestToDelete.locationFrom} to ${movementRequestToDelete.locationTo}`,
+          userId: currentUser._id as string, // 🔧 FIX: Pass as direct param
+          username: (currentUser.emailAddress || currentUser.username || 'unknown') as string, // 🔧 FIX: Pass as direct param
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
@@ -153,7 +155,40 @@ export async function PATCH(
       { new: true }
     );
 
-    // Activity logging is handled by the frontend to ensure user context is available
+    // 🔧 FIX: Add activity logging for UPDATE
+    const currentUser = await getUserFromServer();
+    if (currentUser && (currentUser.emailAddress || currentUser.username)) {
+      try {
+        // Calculate changes between original and updated
+        const updateChanges = Object.keys(body)
+          .filter(key => String(originalMovementRequest[key as keyof typeof originalMovementRequest]) !== String(body[key as keyof typeof body]))
+          .map(key => ({
+            field: key,
+            oldValue: originalMovementRequest[key as keyof typeof originalMovementRequest],
+            newValue: body[key as keyof typeof body],
+          }));
+
+        await logActivity({
+          action: 'UPDATE',
+          details: `Updated movement request for cabinet ${body.cabinetIn || originalMovementRequest.cabinetIn}`,
+          userId: currentUser._id as string,
+          username: (currentUser.emailAddress || currentUser.username || 'unknown') as string,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'movement_request',
+            resourceId: id,
+            resourceName: `Cabinet ${body.cabinetIn || originalMovementRequest.cabinetIn}`,
+            changes: updateChanges,
+          },
+        });
+      } catch (logError) {
+        console.error('Failed to log activity:', logError);
+      }
+    }
 
     // Debug logging for troubleshooting
     console.warn('[MOVEMENT REQUESTS API] Update successful:', {

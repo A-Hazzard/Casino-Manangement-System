@@ -23,11 +23,13 @@ export async function GET(request: NextRequest) {
     const locations = await GamingLocations.find(query, {
       _id: 1,
       name: 1,
+      'rel.licencee': 1,
     }).lean();
 
     const formattedLocations = locations.map(loc => ({
       _id: loc._id,
       name: loc.name,
+      licenseeId: loc.rel?.licencee || null,
     }));
 
     return NextResponse.json({

@@ -8,6 +8,7 @@ import type {
   ExchangeRates,
   LicenseeCurrencyMapping,
 } from '@/shared/types/currency';
+import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 
 // Fixed exchange rates (USD as base currency)
 const FIXED_RATES: ExchangeRates = {
@@ -37,7 +38,16 @@ const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
  * Get the currency for a specific licensee
  */
 export function getLicenseeCurrency(licensee: string): CurrencyCode {
-  return LICENSEE_CURRENCY[licensee as keyof LicenseeCurrencyMapping] || 'USD';
+  if (!licensee) {
+    return 'USD';
+  }
+
+  const normalized =
+    getLicenseeName(licensee) || (licensee as keyof LicenseeCurrencyMapping);
+
+  return (
+    LICENSEE_CURRENCY[normalized as keyof LicenseeCurrencyMapping] || 'USD'
+  );
 }
 
 /**

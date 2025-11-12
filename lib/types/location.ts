@@ -29,6 +29,7 @@ export type UpdateLocationData = {
 export type LocationSelectItem = {
   _id: string;
   name: string;
+  licenseeId?: string | null;
 };
 
 export type LocationTableItem = {

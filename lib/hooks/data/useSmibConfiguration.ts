@@ -624,6 +624,40 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
 
     currentRelayIdRef.current = relayId;
 
+    // 🔧 FIX: Fetch initial online status from MQTT broker when connecting
+    // This prevents the bug where dropdown shows "Online" but detail shows "Offline"
+    (async () => {
+      try {
+        console.log(`🔍 [SMIB FIX] Fetching initial status for relay ${relayId}`);
+        const response = await fetch('/api/mqtt/discover-smibs');
+        const data = await response.json();
+        
+        if (data.smibs && Array.isArray(data.smibs)) {
+          const smib = data.smibs.find(
+            (s: { relayId: string; online?: boolean }) => s.relayId === relayId
+          );
+          if (smib) {
+            const brokerStatus = Boolean(smib.online);
+            console.log(`✅ [SMIB FIX] Broker reports ${relayId} as ${brokerStatus ? 'ONLINE' : 'OFFLINE'}`);
+            
+            // Set initial connection status based on broker status
+            // This will be updated later by config responses and heartbeat monitoring
+            setIsConnectedToMqtt(brokerStatus);
+            
+            // Update heartbeat ref so monitoring doesn't immediately mark it offline
+            if (brokerStatus) {
+              lastHeartbeatRef.current = Date.now();
+            }
+          } else {
+            console.warn(`⚠️ [SMIB FIX] SMIB ${relayId} not found in broker list`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ [SMIB FIX] Error fetching initial status:', error);
+        // Don't change status on error - let config responses handle it
+      }
+    })();
+
     const sseUrl = `/api/mqtt/config/subscribe?relayId=${relayId}`;
     console.warn(`🔗 [HOOK] Creating EventSource with URL: ${sseUrl}`);
 

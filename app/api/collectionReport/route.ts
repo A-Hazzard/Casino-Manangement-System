@@ -509,36 +509,9 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // Check for duplicate reports on the same gaming day
-    const reportDate = new Date(body.timestamp);
-    const existingReport = await CollectionReport.findOne({
-      locationName: body.locationName,
-      $expr: {
-        $eq: [
-          { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
-          { $dateToString: { format: '%Y-%m-%d', date: reportDate } },
-        ],
-      },
-    });
-
-    if (existingReport) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'A collection report already exists for this location on this gaming day',
-          details: `Report ${existingReport.locationReportId} was created on ${
-            existingReport.timestamp.toISOString().split('T')[0]
-          }. To create a new report for this date, please delete the existing report first.`,
-          existingReportId: existingReport.locationReportId,
-          existingReportDate: existingReport.timestamp
-            .toISOString()
-            .split('T')[0],
-          actionRequired: 'DELETE_EXISTING_REPORT',
-        },
-        { status: 409 } // Conflict status code
-      );
-    }
+    // NOTE: Date restriction removed - Multiple collection reports per day are now allowed
+    // This allows for mid-day collections, end-of-day collections, or corrections
+    // Each report gets a unique locationReportId to maintain data integrity
     // Calculate totals on backend
     const calculated = await calculateCollectionReportTotals(body);
     // Convert timestamp fields

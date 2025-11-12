@@ -2,15 +2,14 @@ import {
   generateAccessToken,
   generateRefreshToken,
   getCurrentDbConnectionString,
-  loginRateLimiter,
 } from '@/lib/utils/auth';
 import type { AuthResult } from '@/shared/types';
 import { UserAuthPayload } from '@/shared/types';
 import { sendEmail } from '../../lib/utils/email';
+import UserModel from '../models/user';
 import { comparePassword } from '../utils/validation';
 import { logActivity } from './activityLogger';
 import { getUserByEmail, getUserByUsername } from './users';
-import UserModel from '../models/user';
 
 /**
  * Validates user credentials and generates JWT tokens on success.
@@ -31,28 +30,6 @@ export async function authenticateUser(
   rememberMe: boolean = false
 ): Promise<AuthResult> {
   try {
-    // Rate limiting check
-    if (!loginRateLimiter.isAllowed(ipAddress)) {
-      const resetTime = loginRateLimiter.getResetTime(ipAddress);
-      const remainingTime = resetTime
-        ? Math.ceil((resetTime - Date.now()) / 1000 / 60)
-        : 15;
-
-      await logActivity({
-        action: 'login_blocked',
-        details: `Rate limit exceeded for ${identifier} from ${ipAddress}`,
-        ipAddress,
-        userAgent,
-        userId: 'unknown',
-        username: 'unknown',
-      });
-
-      return {
-        success: false,
-        message: `Too many login attempts. Please try again in ${remainingTime} minutes.`,
-      };
-    }
-
     // Input validation
     if (!identifier || !password) {
       return {
@@ -94,67 +71,9 @@ export async function authenticateUser(
       };
     }
 
-    // Check if user is locked
-    if (
-      user.isLocked &&
-      user.lockedUntil &&
-      new Date(user.lockedUntil) > new Date()
-    ) {
-      await logActivity({
-        action: 'login_blocked',
-        details: `Locked user attempted login: ${identifier}`,
-        ipAddress,
-        userAgent,
-        userId: user._id,
-        username: user.username,
-      });
-      return {
-        success: false,
-        message: 'Account is temporarily locked. Please try again later.',
-      };
-    }
-
-    // Verify password first
+    // Verify password
     const isMatch = await comparePassword(password, user.password || '');
     if (!isMatch) {
-      // Increment failed login attempts
-      const failedAttempts = (user.failedLoginAttempts || 0) + 1;
-
-      // Lock account after 5 failed attempts for 30 minutes
-      if (failedAttempts >= 5) {
-        const lockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-        await UserModel.findOneAndUpdate(
-          { _id: user._id },
-          {
-            $set: {
-              failedLoginAttempts: failedAttempts,
-              isLocked: true,
-              lockedUntil: lockedUntil,
-            },
-          }
-        );
-
-        await logActivity({
-          action: 'account_locked',
-          details: `Account locked due to ${failedAttempts} failed login attempts: ${identifier}`,
-          ipAddress,
-          userAgent,
-          userId: user._id,
-          username: user.username,
-        });
-
-        return {
-          success: false,
-          message:
-            'Account locked due to multiple failed login attempts. Please try again in 30 minutes.',
-        };
-      } else {
-        await UserModel.findOneAndUpdate(
-          { _id: user._id },
-          { $set: { failedLoginAttempts: failedAttempts } }
-        );
-      }
-
       await logActivity({
         action: 'login_failed',
         details: `Invalid password for: ${identifier}`,
@@ -167,14 +86,11 @@ export async function authenticateUser(
       return { success: false, message: 'Invalid email/username or password.' };
     }
 
-    // Reset failed login attempts and unlock account on successful login
+    // Update last login on successful login
     await UserModel.findOneAndUpdate(
       { _id: user._id },
       {
         $set: {
-          failedLoginAttempts: 0,
-          isLocked: false,
-          lockedUntil: null,
           lastLoginAt: new Date(),
         },
         $inc: {
@@ -183,9 +99,6 @@ export async function authenticateUser(
       },
       { new: true }
     );
-
-    // Clear rate limiting for successful login
-    loginRateLimiter.clearAttempts(ipAddress);
 
     // Check for invalid profile fields (special characters)
     const { validateProfileField, validateNameField } = await import(

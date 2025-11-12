@@ -10,14 +10,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { relayId, component } = body;
 
-    console.log(`🔍 [API] MQTT Config Request received:`, {
-      relayId,
-      component,
-      body: JSON.stringify(body, null, 2),
-    });
-
     if (!relayId) {
-      console.log(`❌ [API] Missing relayId in request`);
       return NextResponse.json(
         { success: false, error: 'relayId is required' },
         { status: 400 }
@@ -25,24 +18,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (!component) {
-      console.log(`❌ [API] Missing component in request`);
       return NextResponse.json(
         { success: false, error: 'component is required' },
         { status: 400 }
       );
     }
 
-    console.log(
-      `📡 [API] Requesting config for ${component} from relayId: ${relayId}`
-    );
-
     // Request config from SMIB via MQTT
     // Note: The callback will be handled by the SSE endpoint
     await mqttService.requestConfig(relayId, component);
-
-    console.log(
-      `✅ [API] Config request sent successfully for ${component} to relayId: ${relayId}`
-    );
 
     return NextResponse.json({
       success: true,

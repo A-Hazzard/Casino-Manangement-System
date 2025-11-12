@@ -111,6 +111,8 @@ export async function POST(req: NextRequest) {
         await logActivity({
           action: 'CREATE',
           details: `Created movement request for cabinet ${data.cabinetIn} from ${data.locationFrom} to ${data.locationTo}`,
+          userId: currentUser._id as string, // 🔧 FIX: Pass as direct param
+          username: (currentUser.emailAddress || currentUser.username || 'unknown') as string, // 🔧 FIX: Pass as direct param
           ipAddress: getClientIP(req) || undefined,
           userAgent: req.headers.get('user-agent') || undefined,
           metadata: {

@@ -3,7 +3,7 @@
  * Extracts complex data fetching logic from the Locations page
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useDebounce } from '@/lib/utils/hooks';
 import {
   fetchAggregatedLocationsData,
@@ -40,6 +40,7 @@ export function useLocationData({
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const lastFetchRef = useRef<number>(0);
 
   // Get display currency from store
   const { displayCurrency } = useDashBoardStore();
@@ -102,6 +103,7 @@ export function useLocationData({
       setLocationData([]);
       setError(err instanceof Error ? err.message : 'Failed to load locations');
     } finally {
+      lastFetchRef.current = Date.now();
       setLoading(false);
     }
   }, [
@@ -122,6 +124,10 @@ export function useLocationData({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
+        const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+        if (timeSinceLastFetch < 0 || timeSinceLastFetch < 60000) {
+          return;
+        }
         setTimeout(() => {
           fetchData();
         }, 100);

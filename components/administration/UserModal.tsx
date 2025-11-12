@@ -3,6 +3,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import CircleCropModal from '@/components/ui/image/CircleCropModal';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import MultiSelectDropdown from '@/components/ui/common/MultiSelectDropdown';
+import type { MultiSelectOption } from '@/components/ui/common/MultiSelectDropdown';
 import { fetchCountries } from '@/lib/helpers/countries';
 import type { Country } from '@/lib/types/country';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
@@ -101,15 +103,11 @@ export default function UserModal({
   const [roles, setRoles] = useState<string[]>([]);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
-  const [locationSearch, setLocationSearch] = useState('');
-  const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
 
   // Licensees state
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [selectedLicenseeIds, setSelectedLicenseeIds] = useState<string[]>([]);
-  const [licenseeSearch, setLicenseeSearch] = useState('');
-  const [licenseeDropdownOpen, setLicenseeDropdownOpen] = useState(false);
   const [allLicenseesSelected, setAllLicenseesSelected] = useState(false);
 
   // Countries state
@@ -179,9 +177,10 @@ export default function UserModal({
         const data = await response.json();
         const locationsList = data.locations || [];
         
-        const formattedLocs = locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string }) => ({
+        const formattedLocs = locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string; licenseeId?: string | null }) => ({
           _id: (loc._id?.toString() || loc.id?.toString() || ''),
           name: (loc.name || loc.locationName || 'Unknown Location'),
+          licenseeId: loc.licenseeId || null,
         }));
         
         setLocations(formattedLocs);
@@ -344,62 +343,53 @@ export default function UserModal({
     );
   };
 
-  const handleLocationSelect = (id: string) => {
-    if (!selectedLocationIds.includes(id)) {
-      const newSelectedIds = [...selectedLocationIds, id];
-      setSelectedLocationIds(newSelectedIds);
-
-      // Check if all locations are now selected
-      if (newSelectedIds.length === locations.length) {
-        setAllLocationsSelected(true);
-      }
-    }
-  };
-
-  const handleLocationRemove = (id: string) => {
-    const newSelectedIds = selectedLocationIds.filter(locId => locId !== id);
-    setSelectedLocationIds(newSelectedIds);
-    setAllLocationsSelected(false);
-  };
+  // Filter locations based on selected licensees
+  const availableLocations = allLicenseesSelected
+    ? locations
+    : selectedLicenseeIds.length > 0
+    ? locations.filter(loc => 
+        loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
+      )
+    : [];
 
   const handleAllLocationsChange = (checked: boolean) => {
     setAllLocationsSelected(checked);
     if (checked) {
-      setSelectedLocationIds(locations.map(loc => loc._id));
+      setSelectedLocationIds(availableLocations.map(loc => loc._id));
     } else {
       setSelectedLocationIds([]);
     }
   };
 
-  const filteredLocations = locations.filter(loc =>
-    loc.name.toLowerCase().includes(locationSearch.toLowerCase())
-  );
+  // Convert to MultiSelect format
+  const licenseeOptions: MultiSelectOption[] = licensees.map(lic => ({
+    id: String(lic._id),
+    label: lic.name,
+  }));
+
+  const locationOptions: MultiSelectOption[] = availableLocations.map(loc => ({
+    id: loc._id,
+    label: loc.name,
+  }));
 
   // Licensee selection handlers
-  const handleLicenseeSelect = (id: string) => {
-    console.log('[UserModal] handleLicenseeSelect called with ID:', id);
-    console.log('[UserModal] Current selectedLicenseeIds:', selectedLicenseeIds);
-    
-    if (!selectedLicenseeIds.includes(id)) {
-      const newSelectedIds = [...selectedLicenseeIds, id];
-      console.log('[UserModal] Adding licensee, new array:', newSelectedIds);
-      setSelectedLicenseeIds(newSelectedIds);
-
-      // Check if all licensees are now selected
-      if (newSelectedIds.length === licensees.length) {
-        setAllLicenseesSelected(true);
-      }
-    } else {
-      console.log('[UserModal] Licensee already selected, not adding');
-    }
-  };
-
-  const handleLicenseeRemove = (id: string) => {
-    console.log('[UserModal] handleLicenseeRemove called with ID:', id);
-    const newSelectedIds = selectedLicenseeIds.filter(licId => licId !== id);
-    console.log('[UserModal] Removing licensee, new array:', newSelectedIds);
+  const handleLicenseeChange = (newSelectedIds: string[]) => {
+    console.log('[UserModal] handleLicenseeChange called with IDs:', newSelectedIds);
     setSelectedLicenseeIds(newSelectedIds);
-    setAllLicenseesSelected(false);
+    
+    // Update "All Licensees" checkbox state
+    setAllLicenseesSelected(newSelectedIds.length === licensees.length && licensees.length > 0);
+
+    // Remove selected locations that don't belong to the newly selected licensees
+    const validLocationIds = selectedLocationIds.filter(locId => {
+      const location = locations.find(l => l._id === locId);
+      return location && location.licenseeId && newSelectedIds.includes(location.licenseeId);
+    });
+    
+    if (validLocationIds.length !== selectedLocationIds.length) {
+      setSelectedLocationIds(validLocationIds);
+      toast.info('Some locations were removed because they don\'t belong to the selected licensees');
+    }
   };
 
   const handleAllLicenseesChange = (checked: boolean) => {
@@ -408,12 +398,13 @@ export default function UserModal({
       setSelectedLicenseeIds(licensees.map(lic => String(lic._id)));
     } else {
       setSelectedLicenseeIds([]);
+      // Clear locations when no licensees are selected
+      if (selectedLocationIds.length > 0) {
+        setSelectedLocationIds([]);
+        toast.info('All locations cleared since no licensees are selected');
+      }
     }
   };
-
-  const filteredLicensees = licensees.filter(lic =>
-    lic.name.toLowerCase().includes(licenseeSearch.toLowerCase())
-  );
 
   const handleSave = async () => {
     if (password && password !== confirmPassword) {
@@ -1260,108 +1251,37 @@ export default function UserModal({
                       </h4>
 
                       {isEditMode ? (
-                        <>
+                        <div className="space-y-3">
                           {/* All Licensees Checkbox */}
-                          <div className="mb-3">
-                            <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
-                              <Checkbox
-                                checked={allLicenseesSelected}
-                                onCheckedChange={checked =>
-                                  handleAllLicenseesChange(checked === true)
-                                }
-                                className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
-                              />
-                              All Licensees
-                            </label>
-                          </div>
-
-                          <div className="relative mb-2">
-                            <Input
-                              value={licenseeSearch}
-                              onChange={e => {
-                                setLicenseeSearch(e.target.value);
-                                setLicenseeDropdownOpen(true);
-                              }}
-                              onFocus={() => setLicenseeDropdownOpen(true)}
-                              onBlur={() =>
-                                setTimeout(
-                                  () => setLicenseeDropdownOpen(false),
-                                  150
-                                )
+                          <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
+                            <Checkbox
+                              checked={allLicenseesSelected}
+                              onCheckedChange={checked =>
+                                handleAllLicenseesChange(checked === true)
                               }
-                              placeholder={
-                                allLicenseesSelected
-                                  ? 'All licensees are selected'
-                                  : 'Select Licensee..'
-                              }
-                              className="w-full rounded-md pr-10"
-                              autoComplete="off"
-                              disabled={allLicenseesSelected}
+                              className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                             />
-                            {/* Dropdown of filtered licensees, or all if no search */}
-                            {!allLicenseesSelected &&
-                              licenseeDropdownOpen &&
-                              (filteredLicensees.length > 0 ||
-                                licenseeSearch === '') && (
-                                <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                  {(licenseeSearch
-                                    ? filteredLicensees
-                                    : licensees
-                                  ).map(lic => (
-                                    <button
-                                      key={lic._id}
-                                      type="button"
-                                      className="w-full px-4 py-2 text-left text-gray-900 hover:bg-blue-100"
-                                      onClick={() => {
-                                        handleLicenseeSelect(String(lic._id));
-                                        setLicenseeSearch('');
-                                        setLicenseeDropdownOpen(false);
-                                      }}
-                                    >
-                                      {lic.name}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {allLicenseesSelected ? (
-                              <span className="flex items-center rounded-full bg-green-500 px-4 py-2 text-sm font-medium text-white">
-                                All Licensees Selected ({licensees.length}{' '}
-                                licensees)
-                                <button
-                                  className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
-                                  onClick={() =>
-                                    handleAllLicenseesChange(false)
-                                  }
-                                  type="button"
-                                  title="Remove all licensees"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </span>
-                            ) : (
-                              selectedLicenseeIds.map(id => {
-                                const lic = licensees.find(l => String(l._id) === String(id));
-                                return lic ? (
-                                  <span
-                                    key={id}
-                                    className="flex items-center rounded-full bg-purple-400 px-3 py-1 text-sm text-white"
-                                  >
-                                    {lic.name}
-                                    <button
-                                      className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
-                                      onClick={() => handleLicenseeRemove(id)}
-                                      type="button"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </button>
-                                  </span>
-                                ) : null;
-                              })
-                            )}
-                          </div>
-                        </>
+                            All Licensees
+                          </label>
+
+                          {!allLicenseesSelected && (
+                            <MultiSelectDropdown
+                              options={licenseeOptions}
+                              selectedIds={selectedLicenseeIds}
+                              onChange={handleLicenseeChange}
+                              placeholder="Select licensees..."
+                              searchPlaceholder="Search licensees..."
+                              label="licensees"
+                              showSelectAll={true}
+                            />
+                          )}
+
+                          {allLicenseesSelected && (
+                            <div className="rounded-md bg-green-50 border border-green-200 p-3 text-center text-sm font-medium text-green-800">
+                              All {licensees.length} licensees are selected
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div className="text-center">
                           <div className="text-gray-700">
@@ -1388,9 +1308,16 @@ export default function UserModal({
                       </h4>
 
                       {isEditMode ? (
-                        <>
-                          {/* All Locations Checkbox */}
-                          <div className="mb-3">
+                        <div className="space-y-3">
+                          {/* Warning if no licensees selected */}
+                          {!allLicenseesSelected && selectedLicenseeIds.length === 0 && (
+                            <div className="rounded-md bg-yellow-50 border border-yellow-200 p-3 text-center text-sm font-medium text-yellow-800">
+                              ⚠️ Please select at least one licensee first to assign locations
+                            </div>
+                          )}
+
+                          {/* All Locations Checkbox - only show if licensees are selected */}
+                          {(allLicenseesSelected || selectedLicenseeIds.length > 0) && (
                             <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                               <Checkbox
                                 checked={allLocationsSelected}
@@ -1399,97 +1326,34 @@ export default function UserModal({
                                 }
                                 className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                               />
-                              All Locations
+                              All Locations {allLicenseesSelected ? '' : `for selected licensee${selectedLicenseeIds.length > 1 ? 's' : ''}`}
                             </label>
-                          </div>
+                          )}
 
-                          <div className="relative mb-2">
-                            <Input
-                              value={locationSearch}
-                              onChange={e => {
-                                setLocationSearch(e.target.value);
-                                setLocationDropdownOpen(true);
-                              }}
-                              onFocus={() => setLocationDropdownOpen(true)}
-                              onBlur={() =>
-                                setTimeout(
-                                  () => setLocationDropdownOpen(false),
-                                  150
-                                )
-                              }
+                          {/* Multi-select dropdown */}
+                          {!allLocationsSelected && (allLicenseesSelected || selectedLicenseeIds.length > 0) && (
+                            <MultiSelectDropdown
+                              options={locationOptions}
+                              selectedIds={selectedLocationIds}
+                              onChange={setSelectedLocationIds}
                               placeholder={
-                                allLocationsSelected
-                                  ? 'All locations are selected'
-                                  : 'Select Location..'
+                                availableLocations.length === 0
+                                  ? "No locations available for selected licensees"
+                                  : "Select locations..."
                               }
-                              className="w-full rounded-md pr-10"
-                              autoComplete="off"
-                              disabled={allLocationsSelected}
+                              searchPlaceholder="Search locations..."
+                              label="locations"
+                              showSelectAll={true}
+                              disabled={availableLocations.length === 0}
                             />
-                            {/* Dropdown of filtered locations, or all if no search */}
-                            {!allLocationsSelected &&
-                              locationDropdownOpen &&
-                              (filteredLocations.length > 0 ||
-                                locationSearch === '') && (
-                                <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                  {(locationSearch
-                                    ? filteredLocations
-                                    : locations
-                                  ).map(loc => (
-                                    <button
-                                      key={loc._id}
-                                      type="button"
-                                      className="w-full px-4 py-2 text-left text-gray-900 hover:bg-blue-100"
-                                      onClick={() => {
-                                        handleLocationSelect(loc._id);
-                                        setLocationSearch('');
-                                        setLocationDropdownOpen(false);
-                                      }}
-                                    >
-                                      {loc.name}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {allLocationsSelected ? (
-                              <span className="flex items-center rounded-full bg-green-500 px-4 py-2 text-sm font-medium text-white">
-                                All Locations Selected ({locations.length}{' '}
-                                locations)
-                                <button
-                                  className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
-                                  onClick={() =>
-                                    handleAllLocationsChange(false)
-                                  }
-                                  type="button"
-                                  title="Remove all locations"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </span>
-                            ) : (
-                              selectedLocationIds.map(id => {
-                                const loc = locations.find(l => l._id === id);
-                                return loc ? (
-                                  <span
-                                    key={id}
-                                    className="flex items-center rounded-full bg-blue-400 px-3 py-1 text-sm text-white"
-                                  >
-                                    {loc.name}
-                                    <button
-                                      className="ml-2 flex items-center justify-center text-white hover:text-gray-200"
-                                      onClick={() => handleLocationRemove(id)}
-                                      type="button"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </button>
-                                  </span>
-                                ) : null;
-                              })
-                            )}
-                          </div>
-                        </>
+                          )}
+
+                          {allLocationsSelected && (
+                            <div className="rounded-md bg-green-50 border border-green-200 p-3 text-center text-sm font-medium text-green-800">
+                              All {availableLocations.length} available locations are selected
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div className="text-center">
                           <div className="text-gray-700">
