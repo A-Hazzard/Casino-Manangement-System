@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee');
+    // Support both 'licensee' and 'licencee'
+    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
 
     // Make licensee optional - if not provided or "all", we'll get stats for all machines
     const effectiveLicensee =
@@ -21,33 +24,43 @@ export async function GET(request: NextRequest) {
       ],
     };
 
-    // If licensee is specified, we need to filter machines by their location's licensee
-    if (effectiveLicensee) {
-      // First, get all location IDs for this licensee
-      const db = await connectDB();
-      if (!db) {
-        return NextResponse.json(
-          { error: 'DB connection failed' },
-          { status: 500 }
-        );
+    // Derive allowed locations based on user, roles, and optional selected licensee
+    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const userLocationPermissions =
+      (
+        userPayload?.resourcePermissions as {
+          'gaming-locations'?: { resources?: string[] };
+        }
+      )?.['gaming-locations']?.resources || [];
+
+    const allowedLocationIds = await getUserLocationFilter(
+      userAccessibleLicensees,
+      effectiveLicensee ?? undefined,
+      userLocationPermissions,
+      userRoles
+    );
+
+    if (allowedLocationIds !== 'all') {
+      // If user has no allowed locations, return zero stats early
+      if (!Array.isArray(allowedLocationIds) || allowedLocationIds.length === 0) {
+        const zeroStats = {
+          totalDrop: 0,
+          totalCancelledCredits: 0,
+          totalGross: 0,
+          totalMachines: 0,
+          onlineMachines: 0,
+          sasMachines: 0,
+        };
+        return NextResponse.json({
+          stats: zeroStats,
+          totalMachines: 0,
+          onlineMachines: 0,
+          offlineMachines: 0,
+        });
       }
-
-      const locationIds = await db
-        .collection('gaminglocations')
-        .find(
-          {
-            'rel.licencee': effectiveLicensee,
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2020-01-01') } },
-            ],
-          },
-          { projection: { _id: 1 } }
-        )
-        .toArray();
-
-      const locationIdStrings = locationIds.map(loc => loc._id.toString());
-      machineMatchStage.gamingLocation = { $in: locationIdStrings };
+      machineMatchStage.gamingLocation = { $in: allowedLocationIds };
     }
 
     // Use a simpler approach - count machines directly

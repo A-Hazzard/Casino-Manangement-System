@@ -170,6 +170,14 @@ export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
     // Filter out changes where both values are empty strings
     if (oldValue === '' && newValue === '') return false;
 
+    if (
+      (oldValue === undefined || oldValue === null) &&
+      typeof newValue === 'string' &&
+      newValue.trim() === ''
+    ) {
+      return false;
+    }
+
     // Filter out changes where both values are null/undefined
     if (
       (oldValue === null || oldValue === undefined) &&

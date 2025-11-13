@@ -2,7 +2,7 @@
 
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import type { Licensee } from '@/lib/types/licensee';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type LicenceeSelectProps = {
   selected: string;
@@ -20,15 +20,32 @@ export default function LicenceeSelect({
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const lastLicenseeKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const normalizedUserLicenseeIds = userLicenseeIds
+      ? [...userLicenseeIds].map(String)
+      : undefined;
+    const licenseeIdsKey = normalizedUserLicenseeIds
+      ? normalizedUserLicenseeIds.slice().sort().join('|')
+      : 'ALL';
+
+    if (lastLicenseeKeyRef.current === licenseeIdsKey) {
+      return;
+    }
+
+    lastLicenseeKeyRef.current = licenseeIdsKey;
+
     const loadLicensees = async () => {
       setLoading(true);
       try {
         const allLicensees = await fetchLicensees();
         
         // Filter licensees if userLicenseeIds is provided (non-admin users)
-        const filteredLicensees = userLicenseeIds
-          ? allLicensees.filter(lic => userLicenseeIds.includes(String(lic._id)))
+        const filteredLicensees = normalizedUserLicenseeIds
+          ? allLicensees.filter(lic =>
+              normalizedUserLicenseeIds.includes(String(lic._id))
+            )
           : allLicensees;
         
         setLicensees(filteredLicensees);
@@ -39,7 +56,7 @@ export default function LicenceeSelect({
       }
     };
 
-    loadLicensees();
+    void loadLicensees();
   }, [userLicenseeIds]);
 
   return (

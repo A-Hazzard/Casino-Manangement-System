@@ -3,6 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
 import { getMetricsForLocations } from '@/app/api/lib/helpers/meters/aggregations';
 import type { ParamsType } from '@shared/types';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import {
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+} from '@/lib/helpers/rates';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { getUserAccessibleLicenseesFromToken } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { ObjectId } from 'mongodb';
 
 /**
  * Retrieves **meter trend data** for gaming locations based on a specified **time period** or a **Custom date range**.
@@ -47,7 +57,12 @@ export async function GET(req: NextRequest) {
 
     let { startDate, endDate } = params;
     const timePeriod = params.timePeriod;
-    const licencee = params.licencee;
+    const rawLicencee =
+      params.licencee || params.licensee || params.licenceeId || '';
+    const licencee =
+      rawLicencee && rawLicencee !== 'all' ? String(rawLicencee) : '';
+    const displayCurrency =
+      (params.currency as CurrencyCode | undefined) || 'USD';
 
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
@@ -55,6 +70,25 @@ export async function GET(req: NextRequest) {
         { error: 'timePeriod parameter is required' },
         { status: 400 }
       );
+    }
+
+    // Determine user access and roles for conversion rules
+    const accessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const isAdminOrDev =
+      userRoles.includes('admin') || userRoles.includes('developer');
+    const shouldConvert =
+      isAdminOrDev && shouldApplyCurrencyConversion(licencee || 'all');
+
+    // Validate specific licensee access if provided
+    if (licencee && accessibleLicensees !== 'all') {
+      if (!accessibleLicensees.includes(licencee)) {
+        return NextResponse.json(
+          { error: 'Unauthorized: You do not have access to this licensee' },
+          { status: 403 }
+        );
+      }
     }
 
     // Ensure type safety for timePeriod and licencee
@@ -102,31 +136,12 @@ export async function GET(req: NextRequest) {
       db,
       dateFilter,
       false,
-      apiParams.licencee, // pass the licencee value (if provided)
-      apiParams.timePeriod // pass the time period to determine aggregation type
+      licencee || undefined,
+      apiParams.timePeriod
     );
 
-    // If no metrics found, return a default entry with 0 values
-    // This ensures the dashboard always gets data to calculate totals
     if (metrics.length === 0) {
-      const defaultMetrics = [
-        {
-          day:
-            startDate !== 'All Time'
-              ? new Date(startDate).toISOString().split('T')[0]
-              : new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
-          time: '00:00',
-          drop: 0,
-          totalCancelledCredits: 0,
-          gross: 0,
-          gamesPlayed: 0,
-          jackpot: 0,
-          location: '',
-          machine: '',
-          geoCoords: null,
-        },
-      ];
-      return NextResponse.json(defaultMetrics);
+      return NextResponse.json([]);
     }
 
     if (apiParams.licencee) {
@@ -141,9 +156,189 @@ export async function GET(req: NextRequest) {
       // console.log("Metrics successfully retrieved");
     }
 
-    // console.log(`Successfully retrieved metrics for: ${apiParams.timePeriod}`);
+    // Aggregate by day/time, applying currency conversion when necessary
+    type AggregatedMetric = {
+      day: string;
+      time: string;
+      drop: number;
+      totalCancelledCredits: number;
+      gross: number;
+      gamesPlayed: number;
+      jackpot: number;
+    };
 
-    return NextResponse.json(metrics);
+    const aggregatedMap = new Map<string, AggregatedMetric>();
+
+    // Preload licensee and country metadata when conversion is needed
+    const licenseeIdToName = new Map<string, string>();
+    const countryIdToName = new Map<string, string>();
+
+    if (shouldConvert) {
+      const licenceeIds = Array.from(
+        new Set(
+          metrics
+            .map(metric => metric.licencee)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+      if (licenceeIds.length > 0) {
+        const licenseeDocs = await db
+          .collection('licencees')
+          .find(
+            {
+              _id: {
+                $in: licenceeIds.map(id => {
+                  try {
+                    return new ObjectId(id);
+                  } catch {
+                    return null;
+                  }
+                }).filter((id): id is ObjectId => id !== null),
+              },
+            },
+            { projection: { name: 1 } }
+          )
+          .toArray();
+        licenseeDocs.forEach(doc => {
+          licenseeIdToName.set(doc._id.toString(), doc.name);
+        });
+      }
+
+      const countryIds = Array.from(
+        new Set(
+          metrics
+            .map(metric => metric.country)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+      if (countryIds.length > 0) {
+        const countryDocs = await db
+          .collection('countries')
+          .find(
+            {
+              _id: {
+                $in: countryIds.map(id => {
+                  try {
+                    return new ObjectId(id);
+                  } catch {
+                    return null;
+                  }
+                }).filter((id): id is ObjectId => id !== null),
+              },
+            },
+            { projection: { name: 1 } }
+          )
+          .toArray();
+        countryDocs.forEach(doc => {
+          countryIdToName.set(doc._id.toString(), doc.name);
+        });
+      }
+    }
+
+    const accumulator = (
+      key: string,
+      day: string,
+      time: string,
+      dropValue: number,
+      cancelledValue: number,
+      grossValue: number,
+      gamesPlayedValue: number,
+      jackpotValue: number
+    ) => {
+      const existing = aggregatedMap.get(key);
+      if (existing) {
+        existing.drop += dropValue;
+        existing.totalCancelledCredits += cancelledValue;
+        existing.gross += grossValue;
+        existing.gamesPlayed += gamesPlayedValue;
+        existing.jackpot += jackpotValue;
+      } else {
+        aggregatedMap.set(key, {
+          day,
+          time,
+          drop: dropValue,
+          totalCancelledCredits: cancelledValue,
+          gross: grossValue,
+          gamesPlayed: gamesPlayedValue,
+          jackpot: jackpotValue,
+        });
+      }
+    };
+
+    for (const metric of metrics) {
+      const day = metric.day;
+      const time = metric.time ?? '00:00';
+      const key = `${day}__${time}`;
+      const gamesPlayedValue = Number(metric.gamesPlayed ?? 0);
+
+      if (shouldConvert) {
+        let nativeCurrency = 'USD';
+        if (metric.licencee) {
+          nativeCurrency =
+            licenseeIdToName.get(metric.licencee) || metric.licencee || 'USD';
+        } else if (metric.country) {
+          const countryName = countryIdToName.get(metric.country);
+          nativeCurrency = countryName
+            ? getCountryCurrency(countryName) || 'USD'
+            : 'USD';
+        }
+
+        const dropUSD = convertToUSD(Number(metric.drop) || 0, nativeCurrency);
+        const cancelledUSD = convertToUSD(
+          Number(metric.totalCancelledCredits) || 0,
+          nativeCurrency
+        );
+        const grossUSD = convertToUSD(
+          Number(metric.gross) || 0,
+          nativeCurrency
+        );
+        const jackpotUSD = convertToUSD(
+          Number(metric.jackpot) || 0,
+          nativeCurrency
+        );
+
+        const convertedDrop = convertFromUSD(dropUSD, displayCurrency);
+        const convertedCancelled = convertFromUSD(
+          cancelledUSD,
+          displayCurrency
+        );
+        const convertedGross = convertFromUSD(grossUSD, displayCurrency);
+        const convertedJackpot = convertFromUSD(jackpotUSD, displayCurrency);
+
+        accumulator(
+          key,
+          day,
+          time,
+          convertedDrop,
+          convertedCancelled,
+          convertedGross,
+          gamesPlayedValue,
+          convertedJackpot
+        );
+      } else {
+        accumulator(
+          key,
+          day,
+          time,
+          Number(metric.drop) || 0,
+          Number(metric.totalCancelledCredits) || 0,
+          Number(metric.gross) || 0,
+          gamesPlayedValue,
+          Number(metric.jackpot) || 0
+        );
+      }
+    }
+
+    const aggregatedMetrics = Array.from(aggregatedMap.values()).sort(
+      (a, b) => {
+        if (a.day === b.day) {
+          return a.time.localeCompare(b.time);
+        }
+        return a.day.localeCompare(b.day);
+      }
+    );
+
+    return NextResponse.json(aggregatedMetrics);
   } catch (error) {
     console.error('Error in metrics API:', error);
 

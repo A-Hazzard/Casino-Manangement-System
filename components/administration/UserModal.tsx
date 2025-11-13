@@ -11,6 +11,7 @@ import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import type { ResourcePermissions, User } from '@/lib/types/administration';
 import type { LocationSelectItem } from '@/lib/types/location';
 import type { Licensee } from '@/lib/types/licensee';
+import { useUserStore } from '@/lib/store/userStore';
 import {
   detectChanges,
   filterMeaningfulChanges,
@@ -25,7 +26,7 @@ import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import { Edit3, Loader2, Save, Trash2, X, XCircle } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const ROLE_OPTIONS = [
@@ -37,6 +38,17 @@ const ROLE_OPTIONS = [
   { label: 'Collector', value: 'collector' },
   { label: 'Collector Meters', value: 'collector meters' },
 ];
+
+const arraysEqual = (a: string[], b: string[]) => {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+  return true;
+};
 
 export type UserModalProps = {
   open: boolean;
@@ -56,6 +68,13 @@ export default function UserModal({
   user,
   onSave,
 }: UserModalProps) {
+  const currentUser = useUserStore(state => state.user);
+  const canEditAccountFields = Boolean(
+    currentUser?.roles?.some(role =>
+      ['admin', 'developer', 'manager'].includes(role)
+    )
+  );
+
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,6 +104,11 @@ export default function UserModal({
     profilePicture: '',
   });
 
+  const [accountData, setAccountData] = useState({
+    username: '',
+    email: '',
+  });
+
   // Form state for roles and permissions
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -109,10 +133,117 @@ export default function UserModal({
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [selectedLicenseeIds, setSelectedLicenseeIds] = useState<string[]>([]);
   const [allLicenseesSelected, setAllLicenseesSelected] = useState(false);
+  const licenseesRef = useRef<Licensee[]>([]);
+  const locationsRef = useRef<LocationSelectItem[]>([]);
+  const rawLicenseeIdsRef = useRef<string[]>([]);
 
   // Countries state
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
+
+  useEffect(() => {
+    licenseesRef.current = licensees;
+  }, [licensees]);
+
+  useEffect(() => {
+    locationsRef.current = locations;
+  }, [locations]);
+
+  const hydrateFormFromUser = useCallback(
+    (targetUser: User) => {
+      setFormData({
+        firstName: targetUser.profile?.firstName || '',
+        lastName: targetUser.profile?.lastName || '',
+        middleName: targetUser.profile?.middleName || '',
+        otherName: targetUser.profile?.otherName || '',
+        gender: targetUser.profile?.gender || '',
+        street: targetUser.profile?.address?.street || '',
+        town: targetUser.profile?.address?.town || '',
+        region: targetUser.profile?.address?.region || '',
+        country: targetUser.profile?.address?.country || '',
+        postalCode: targetUser.profile?.address?.postalCode || '',
+        dateOfBirth: targetUser.profile?.identification?.dateOfBirth || '',
+        idType: targetUser.profile?.identification?.idType || '',
+        idNumber: targetUser.profile?.identification?.idNumber || '',
+        notes: targetUser.profile?.identification?.notes || '',
+        profilePicture: targetUser.profilePicture || '',
+      });
+
+      setAccountData({
+        username: targetUser.username || '',
+        email: targetUser.email || targetUser.emailAddress || '',
+      });
+
+      setRoles(targetUser.roles || []);
+
+      const userLocationIds =
+        targetUser.resourcePermissions?.['gaming-locations']?.resources?.map(id =>
+          String(id)
+        ) || [];
+      setSelectedLocationIds(userLocationIds);
+
+      const rawLicenseeIds =
+        targetUser.rel?.licencee?.map(id => String(id)) || [];
+      rawLicenseeIdsRef.current = rawLicenseeIds;
+
+      const currentLocations = locationsRef.current;
+      if (currentLocations.length > 0) {
+        setAllLocationsSelected(
+          userLocationIds.length > 0 &&
+            userLocationIds.length === currentLocations.length
+        );
+      } else {
+        setAllLocationsSelected(false);
+      }
+
+      const currentLicensees = licenseesRef.current;
+      if (currentLicensees.length > 0) {
+        const normalizedLicenseeIds = rawLicenseeIds.map(value => {
+          const idMatch = currentLicensees.find(
+            lic => String(lic._id) === String(value)
+          );
+          if (idMatch) {
+            return String(idMatch._id);
+          }
+          const nameMatch = currentLicensees.find(
+            lic =>
+              lic.name &&
+              lic.name.toLowerCase() === String(value).toLowerCase()
+          );
+          return nameMatch ? String(nameMatch._id) : String(value);
+        });
+
+        setSelectedLicenseeIds(prev =>
+          arraysEqual(prev, normalizedLicenseeIds) ? prev : normalizedLicenseeIds
+        );
+
+        const shouldSelectAll =
+          normalizedLicenseeIds.length > 0 &&
+          normalizedLicenseeIds.length === currentLicensees.length;
+        setAllLicenseesSelected(shouldSelectAll);
+
+        if (normalizedLicenseeIds.length > 0) {
+          setSelectedLocationIds(prev =>
+            prev.filter(locId => {
+              const location = locationsRef.current.find(
+                loc => loc._id === locId
+              );
+              if (!location || !location.licenseeId) {
+                return shouldSelectAll;
+              }
+              return normalizedLicenseeIds.includes(location.licenseeId);
+            })
+          );
+        }
+      } else {
+        setSelectedLicenseeIds(prev =>
+          arraysEqual(prev, rawLicenseeIds) ? prev : rawLicenseeIds
+        );
+        setAllLicenseesSelected(false);
+      }
+    },
+    []
+  );
 
   // Initialize form data when user changes
   useEffect(() => {
@@ -123,46 +254,29 @@ export default function UserModal({
         relLicencee: user.rel?.licencee,
         relLicenceeType: typeof user.rel?.licencee,
         relLicenceeIsArray: Array.isArray(user.rel?.licencee),
-        locationPermissions: user.resourcePermissions?.['gaming-locations']?.resources,
+        locationPermissions:
+          user.resourcePermissions?.['gaming-locations']?.resources,
       });
-      
+
       setIsLoading(false);
-      setFormData({
-        firstName: user.profile?.firstName || '',
-        lastName: user.profile?.lastName || '',
-        middleName: user.profile?.middleName || '',
-        otherName: user.profile?.otherName || '',
-        gender: user.profile?.gender || '',
-        street: user.profile?.address?.street || '',
-        town: user.profile?.address?.town || '',
-        region: user.profile?.address?.region || '',
-        country: user.profile?.address?.country || '',
-        postalCode: user.profile?.address?.postalCode || '',
-        dateOfBirth: user.profile?.identification?.dateOfBirth || '',
-        idType: user.profile?.identification?.idType || '',
-        idNumber: user.profile?.identification?.idNumber || '',
-        notes: user.profile?.identification?.notes || '',
-        profilePicture: user.profilePicture || '',
-      });
-      setRoles(user.roles || []);
-      setSelectedLocationIds(
-        user.resourcePermissions?.['gaming-locations']?.resources || []
-      );
-      
-      const initialLicenseeIds = user.rel?.licencee || [];
-      console.log('[UserModal] Setting initial licensee IDs:', initialLicenseeIds);
-      setSelectedLicenseeIds(initialLicenseeIds);
+      hydrateFormFromUser(user);
     } else if (open) {
       setIsLoading(true);
     }
-  }, [user, open]);
+  }, [
+    user,
+    open,
+    hydrateFormFromUser,
+    locations.length,
+    licensees.length,
+  ]);
 
   // Load locations
   useEffect(() => {
     const loadLocations = async () => {
       try {
         // Fetch all locations with showAll parameter for admin access
-        const response = await fetch('/api/locations?showAll=true', {
+        const response = await fetch('/api/locations?showAll=true&forceAll=true', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -177,17 +291,26 @@ export default function UserModal({
         const data = await response.json();
         const locationsList = data.locations || [];
         
-        const formattedLocs = locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string; licenseeId?: string | null }) => ({
-          _id: (loc._id?.toString() || loc.id?.toString() || ''),
-          name: (loc.name || loc.locationName || 'Unknown Location'),
-          licenseeId: loc.licenseeId || null,
-        }));
+        const formattedLocs = locationsList.map(
+          (loc: {
+            _id?: string;
+            id?: string;
+            name?: string;
+            locationName?: string;
+            licenseeId?: string | null;
+          }) => ({
+            _id: loc._id?.toString() || loc.id?.toString() || '',
+            name: loc.name || loc.locationName || 'Unknown Location',
+            licenseeId: loc.licenseeId ? String(loc.licenseeId) : null,
+          })
+        );
         
         setLocations(formattedLocs);
 
         // Check if all locations are selected
-        const userLocationIds =
-          user?.resourcePermissions?.['gaming-locations']?.resources || [];
+        const userLocationIds = (
+          user?.resourcePermissions?.['gaming-locations']?.resources || []
+        ).map(id => String(id));
         if (userLocationIds.length > 0 && formattedLocs.length > 0) {
           setAllLocationsSelected(
             userLocationIds.length === formattedLocs.length
@@ -201,20 +324,89 @@ export default function UserModal({
     loadLocations();
   }, [user]);
 
-  // Load licensees
+  // Load licensees when the modal is open and normalise assignments
   useEffect(() => {
-    fetchLicensees().then(lics => {
-      setLicensees(lics);
+    if (!open) {
+      return;
+    }
 
-      // Check if all licensees are selected
-      const userLicenseeIds = user?.rel?.licencee || [];
-      if (userLicenseeIds.length > 0 && lics.length > 0) {
-        setAllLicenseesSelected(
-          userLicenseeIds.length === lics.length
+    let cancelled = false;
+
+    const loadLicensees = async () => {
+      try {
+        const lics = await fetchLicensees();
+        if (cancelled) return;
+
+        setLicensees(lics);
+
+        if (lics.length === 0) {
+          setAllLicenseesSelected(false);
+          return;
+        }
+
+        if (rawLicenseeIdsRef.current.length === 0) {
+          setSelectedLicenseeIds(prev => (prev.length === 0 ? prev : []));
+          setAllLicenseesSelected(false);
+          return;
+        }
+
+        const normalizedLicenseeIds = rawLicenseeIdsRef.current.map(value => {
+          const idMatch = lics.find(
+            lic => String(lic._id) === String(value)
+          );
+          if (idMatch) {
+            return String(idMatch._id);
+          }
+          const nameMatch = lics.find(
+            lic =>
+              lic.name &&
+              lic.name.toLowerCase() === String(value).toLowerCase()
+          );
+          return nameMatch ? String(nameMatch._id) : String(value);
+        });
+
+        setSelectedLicenseeIds(prev =>
+          arraysEqual(prev, normalizedLicenseeIds) ? prev : normalizedLicenseeIds
         );
+
+        const shouldSelectAll =
+          normalizedLicenseeIds.length > 0 &&
+          normalizedLicenseeIds.length === lics.length;
+        setAllLicenseesSelected(shouldSelectAll);
+
+        if (normalizedLicenseeIds.length > 0) {
+          setSelectedLocationIds(prev => {
+            if (prev.length === 0) {
+              return prev;
+            }
+
+            const currentLocations = locationsRef.current;
+            if (currentLocations.length === 0) {
+              return prev;
+            }
+
+            const filtered = prev.filter(locId => {
+              const location = currentLocations.find(loc => loc._id === locId);
+              if (!location || !location.licenseeId) {
+                return shouldSelectAll;
+              }
+              return normalizedLicenseeIds.includes(location.licenseeId);
+            });
+
+            return arraysEqual(filtered, prev) ? prev : filtered;
+          });
+        }
+      } catch (error) {
+        console.error('Error loading licensees:', error);
       }
-    });
-  }, [user]);
+    };
+
+    void loadLicensees();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   // Load countries
   useEffect(() => {
@@ -310,6 +502,16 @@ export default function UserModal({
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleAccountInputChange = (
+    field: 'username' | 'email',
+    value: string
+  ) => {
+    setAccountData(prev => ({
       ...prev,
       [field]: value,
     }));
@@ -418,9 +620,25 @@ export default function UserModal({
       return;
     }
 
+    const updatedUsername = canEditAccountFields
+      ? accountData.username.trim()
+      : user.username;
+    const baseEmail = (user.email || user.emailAddress || '').trim();
+    const updatedEmail = canEditAccountFields
+      ? accountData.email.trim()
+      : baseEmail;
+
+    if (!updatedUsername) {
+      toast.error('Username is required');
+      return;
+    }
+
     // Structure the data properly to match the User type
     const updatedUser = {
       ...user,
+      username: updatedUsername,
+      email: updatedEmail,
+      emailAddress: updatedEmail,
       profile: {
         ...user?.profile,
         firstName: formData.firstName,
@@ -472,7 +690,7 @@ export default function UserModal({
     }
 
     // Validate email if it exists in the user object
-    if (user.email && !/\S+@\S+\.\S+/.test(user.email)) {
+    if (updatedEmail && !/\S+@\S+\.\S+/.test(updatedEmail)) {
       toast.error('Please enter a valid email address');
       return;
     }
@@ -493,6 +711,30 @@ export default function UserModal({
     // Detect actual changes between old and new user data
     const changes = detectChanges(user, updatedUser);
     const meaningfulChanges = filterMeaningfulChanges(changes);
+
+    const ensureChangeLogged = (
+      fieldPath: string,
+      oldValue: unknown,
+      newValue: unknown
+    ) => {
+      if (oldValue === newValue) return;
+      if (!meaningfulChanges.some(change => change.path === fieldPath)) {
+        meaningfulChanges.push({
+          field: fieldPath.split('.').pop() || fieldPath,
+          oldValue,
+          newValue,
+          path: fieldPath,
+        });
+      }
+    };
+
+    ensureChangeLogged('username', user.username, updatedUsername);
+    ensureChangeLogged('email', user.email || null, updatedEmail);
+    ensureChangeLogged(
+      'emailAddress',
+      user.emailAddress || user.email || null,
+      updatedEmail
+    );
 
     // Check for location and licensee changes separately (array comparison)
     const oldLocationIds = user?.resourcePermissions?.['gaming-locations']?.resources || [];
@@ -547,6 +789,10 @@ export default function UserModal({
     setIsLoading(true);
     try {
       await onSave(updatedUser);
+      setAccountData({
+        username: updatedUsername,
+        email: updatedEmail,
+      });
       setIsEditMode(false);
       setPassword('');
       setConfirmPassword('');
@@ -556,33 +802,21 @@ export default function UserModal({
   };
 
   const handleCancelEdit = () => {
-    // Reset form data to original user data
     if (user) {
-      setFormData({
-        firstName: user.profile?.firstName || '',
-        lastName: user.profile?.lastName || '',
-        middleName: user.profile?.middleName || '',
-        otherName: user.profile?.otherName || '',
-        gender: user.profile?.gender || '',
-        street: user.profile?.address?.street || '',
-        town: user.profile?.address?.town || '',
-        region: user.profile?.address?.region || '',
-        country: user.profile?.address?.country || '',
-        postalCode: user.profile?.address?.postalCode || '',
-        dateOfBirth: user.profile?.identification?.dateOfBirth || '',
-        idType: user.profile?.identification?.idType || '',
-        idNumber: user.profile?.identification?.idNumber || '',
-        notes: user.profile?.identification?.notes || '',
-        profilePicture: user.profilePicture || '',
-      });
-      setRoles(user.roles || []);
-      setSelectedLocationIds(
-        user.resourcePermissions?.['gaming-locations']?.resources || []
-      );
+      hydrateFormFromUser(user);
     }
     setIsEditMode(false);
     setPassword('');
     setConfirmPassword('');
+  };
+
+  const handleEnterEdit = () => {
+    if (user) {
+      hydrateFormFromUser(user);
+    }
+    setPassword('');
+    setConfirmPassword('');
+    setIsEditMode(true);
   };
 
   if (!open || !user) return null;
@@ -608,7 +842,7 @@ export default function UserModal({
             <div className="flex items-center gap-2">
               {!isEditMode && (
                 <Button
-                  onClick={() => setIsEditMode(true)}
+                  onClick={handleEnterEdit}
                   className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                 >
                   <Edit3 className="h-4 w-4" />
@@ -676,11 +910,20 @@ export default function UserModal({
                     </label>
                     {isLoading ? (
                       <Skeleton className="h-12 w-full" />
-                    ) : (
-                      <div className="w-full text-center text-gray-700 lg:text-left">
-                        {user?.username || 'Not specified'}
-                      </div>
-                    )}
+                  ) : isEditMode && canEditAccountFields ? (
+                    <Input
+                      value={accountData.username}
+                      onChange={e =>
+                        handleAccountInputChange('username', e.target.value)
+                      }
+                      placeholder="Enter username"
+                      className="w-full"
+                    />
+                  ) : (
+                    <div className="w-full text-center text-gray-700 lg:text-left">
+                      {accountData.username || 'Not specified'}
+                    </div>
+                  )}
                   </div>
                   <div className="w-full">
                     <label className="mb-1 block text-sm font-semibold text-gray-900">
@@ -688,11 +931,21 @@ export default function UserModal({
                     </label>
                     {isLoading ? (
                       <Skeleton className="h-12 w-full" />
-                    ) : (
-                      <div className="w-full text-center text-gray-700 lg:text-left">
-                        {user?.email || 'Not specified'}
-                      </div>
-                    )}
+                  ) : isEditMode && canEditAccountFields ? (
+                    <Input
+                      type="email"
+                      value={accountData.email}
+                      onChange={e =>
+                        handleAccountInputChange('email', e.target.value)
+                      }
+                      placeholder="Enter email address"
+                      className="w-full"
+                    />
+                  ) : (
+                    <div className="w-full text-center text-gray-700 lg:text-left">
+                      {accountData.email || 'Not specified'}
+                    </div>
+                  )}
                   </div>
                 </div>
                 <input

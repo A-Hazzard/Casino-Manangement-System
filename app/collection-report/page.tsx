@@ -35,8 +35,8 @@ import PageLayout from '@/components/layout/PageLayout';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { hasManagerAccess } from '@/lib/utils/permissions';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { hasManagerAccess } from '@/lib/utils/permissions';
 
 // GSAP will be loaded dynamically in useEffect
 
@@ -97,6 +97,7 @@ import type { CollectorSchedule } from '@/lib/types/components';
 // Icons
 import CollectionNavigation from '@/components/collectionReport/CollectionNavigation';
 import { Button } from '@/components/ui/button';
+import MaintenanceBanner from '@/components/ui/MaintenanceBanner';
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants/collection';
 import { IMAGES } from '@/lib/constants/images';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
@@ -165,14 +166,19 @@ function CollectionReportContent() {
   useEffect(() => {
     if (user && (!selectedLicencee || selectedLicencee === '')) {
       const userLicensees = user.rel?.licencee || [];
-      
+
       // If user has exactly 1 licensee, auto-select it
       if (userLicensees.length === 1) {
-        console.log('[Collection Report] Auto-selecting user\'s only licensee:', userLicensees[0]);
+        console.log(
+          "[Collection Report] Auto-selecting user's only licensee:",
+          userLicensees[0]
+        );
         setSelectedLicencee(userLicensees[0]);
       } else if (userLicensees.length > 1) {
         // User has multiple licensees but none selected - they need to choose
-        console.log('[Collection Report] User has multiple licensees, waiting for selection');
+        console.log(
+          '[Collection Report] User has multiple licensees, waiting for selection'
+        );
       }
     }
   }, [user, selectedLicencee, setSelectedLicencee]);
@@ -1088,8 +1094,9 @@ function CollectionReportContent() {
           setSelectedLicencee,
         }}
         pageTitle="Collection Reports"
-        hideOptions={false}
+        hideOptions
         hideLicenceeFilter={false}
+        hideCurrencyFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         showToaster={true}
       >
@@ -1106,9 +1113,11 @@ function CollectionReportContent() {
           setSelectedLicencee,
           disabled: false,
         }}
-        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
-        showToaster={false}
+        hideCurrencyFilter
+        mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
+        showToaster={true}
       >
+        <MaintenanceBanner />
         {/* Header Section: Title, refresh icon, and create button */}
         <div className="mt-4 flex w-full max-w-full items-center justify-between">
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800 sm:text-2xl md:text-3xl">
@@ -1142,8 +1151,8 @@ function CollectionReportContent() {
               <>
                 {/* Desktop: Full button */}
                 <div className="hidden md:block">
-                  {loading ? (
-                    <div className="h-10 w-36" />
+                  {refreshing || loading ? (
+                    <div className="flex h-10 w-36 animate-pulse items-center justify-center rounded-md bg-gray-200" />
                   ) : (
                     <Button
                       onClick={() => {

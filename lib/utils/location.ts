@@ -116,9 +116,9 @@ export const getDefaultMapCenterSync = (): [number, number] => {
  * Licensee to country mapping
  */
 const LICENSEE_COUNTRY_MAP: Record<string, string> = {
-  TTG: 'TT', // TTG -> Trinidad and Tobago
-  Cabana: 'GY', // Cabana -> Guyana
-  Barbados: 'BB', // Barbados -> Barbados
+  ttg: 'TT', // TTG -> Trinidad and Tobago
+  cabana: 'GY', // Cabana -> Guyana
+  barbados: 'BB', // Barbados -> Barbados
   all: 'TT', // All Licensees -> Trinidad (default)
   '': 'TT', // Empty/undefined -> Trinidad (default)
 };
@@ -129,7 +129,8 @@ const LICENSEE_COUNTRY_MAP: Record<string, string> = {
 export const getMapCenterByLicensee = (
   selectedLicencee?: string
 ): [number, number] => {
-  const countryCode = LICENSEE_COUNTRY_MAP[selectedLicencee || ''] || 'TT';
+  const key = (selectedLicencee || '').toLowerCase();
+  const countryCode = LICENSEE_COUNTRY_MAP[key] || 'TT';
   const center = REGION_CENTERS[countryCode] || REGION_CENTERS.DEFAULT;
   return center;
 };

@@ -178,10 +178,9 @@ export async function GET(req: NextRequest) {
             return { moneyInUSD: 0, moneyOutUSD: 0, grossUSD: 0 };
           }
           // Filter to only assigned locations
-          locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
-        } else if (!isAdmin && isManager && userLocationPermissions.length > 0) {
-          // Admins with specific location restrictions (rare case)
-          locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
+          locationIds = locationIds.filter(id =>
+            userLocationPermissions.includes(id)
+          );
         }
         // Managers and Admins with no location restrictions see all licensee locations
 
@@ -230,8 +229,12 @@ export async function GET(req: NextRequest) {
           .toArray();
         
         // Apply location permissions if user has restrictions
-        const filteredLocationsWithOffset = userLocationPermissions.length > 0
-          ? locationsWithOffset.filter(loc => userLocationPermissions.includes(loc._id.toString()))
+        const shouldApplyExplicitLocationFilter =
+          !isAdmin && !isManager && userLocationPermissions.length > 0;
+        const filteredLocationsWithOffset = shouldApplyExplicitLocationFilter
+          ? locationsWithOffset.filter(loc =>
+              userLocationPermissions.includes(loc._id.toString())
+            )
           : locationsWithOffset;
 
         // Calculate gaming day ranges for each location
@@ -499,11 +502,7 @@ export async function GET(req: NextRequest) {
           }
           // Filter to only assigned locations
           locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
-        } else if (!isAdmin && isManager && userLocationPermissions.length > 0) {
-          // Admins with specific location restrictions (rare case)
-          locationIds = locationIds.filter(id => userLocationPermissions.includes(id));
         }
-        // Managers and Admins with no location restrictions see all licensee locations
 
         if (locationIds.length === 0) {
           // No locations accessible, return 0 values

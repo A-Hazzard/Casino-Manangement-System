@@ -4,6 +4,7 @@ import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../../lib/helpers/users';
+import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 
 type LocationAggregationResult = {
   _id: string;
@@ -39,7 +40,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Build location matching - show ALL locations for the licensee
+    // Get user's accessible licensees, roles, and location permissions from JWT token
+    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    
+    // Get user's roles and location permissions
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const userLocationPermissions = 
+      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
+
+    // Apply location filtering based on licensee + location permissions
+    const allowedLocationIds = await getUserLocationFilter(
+      userAccessibleLicensees,
+      licencee || undefined,
+      userLocationPermissions,
+      userRoles
+    );
+
+    // Build location matching - apply user location permissions
     const locationMatch: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
@@ -52,6 +70,15 @@ export async function GET(request: NextRequest) {
     }
     if (licencee) {
       locationMatch['rel.licencee'] = licencee;
+    }
+
+    // Apply user location permissions filter
+    if (allowedLocationIds !== 'all') {
+      if (allowedLocationIds.length === 0) {
+        // No accessible locations - return empty array
+        return NextResponse.json([]);
+      }
+      locationMatch._id = { $in: allowedLocationIds };
     }
 
     // Get all locations that match the criteria with financial data

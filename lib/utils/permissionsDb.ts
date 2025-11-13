@@ -1,3 +1,4 @@
+import { useUserStore } from '@/lib/store/userStore';
 import { PageName, TabName, UserRole } from './permissions';
 import { CACHE_KEYS, fetchUserWithCache } from './userCache';
 
@@ -9,10 +10,32 @@ import { CACHE_KEYS, fetchUserWithCache } from './userCache';
 /**
  * Fetches current user data from database for permission checks
  */
-async function getCurrentUserFromDb(): Promise<{
+type MinimalUserPayload = {
   roles: UserRole[];
   enabled: boolean;
-} | null> {
+};
+
+function getUserFromStore(): MinimalUserPayload | null {
+  try {
+    const { user } = useUserStore.getState();
+    if (!user) return null;
+
+    return {
+      roles: (user.roles || []) as UserRole[],
+      enabled: user.isEnabled !== false,
+    };
+  } catch (error) {
+    console.error('Failed to read user store:', error);
+    return null;
+  }
+}
+
+async function getCurrentUserFromDb(): Promise<MinimalUserPayload | null> {
+  const storeUser = getUserFromStore();
+  if (storeUser && storeUser.roles.length > 0) {
+    return storeUser;
+  }
+
   try {
     const data = await fetchUserWithCache(
       CACHE_KEYS.CURRENT_USER,

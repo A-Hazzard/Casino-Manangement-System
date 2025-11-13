@@ -117,6 +117,9 @@ function CabinetsPageContent() {
   const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
   const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
 
+  const showLocationFilter =
+    new Set(locations.map(location => String(location._id ?? ''))).size > 1;
+
   // Note: Modal handlers are now managed by useCabinetModals hook
 
   // Note: Upload modal handler is now managed by useCabinetModals hook
@@ -263,6 +266,7 @@ function CabinetsPageContent() {
             selectedLocation={selectedLocation}
             locations={locations}
             onLocationChange={handleLocationChange}
+            showLocationFilter={showLocationFilter}
             selectedGameType={selectedGameType}
             gameTypes={gameTypes}
             onGameTypeChange={handleGameTypeChange}

@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** November 11, 2025
+**Last Updated:** November 13, 2025
 
 ## 📚 Essential Documentation References
 
@@ -757,7 +757,7 @@ Please click "Update Machine" to save changes or cancel the edit.
 **Backend Collection Report Documentation:**
 
 - Added comprehensive flow diagrams (Creation, Editing, Deletion)
-- Documented Desktop vs Mobile implementation differences
+- Documented that `POST /api/admin/repair-sas-times` is intentionally configured as a forced-dynamic Node.js route so maintenance executions always hit live MongoDB data (no static caching, no edge runtime).
 - Added "Key Takeaways" section with critical timing rules
 - Added Desktop vs Mobile comparison table
 - Added "Common Pitfalls to Avoid" section

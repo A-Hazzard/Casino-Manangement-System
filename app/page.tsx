@@ -31,6 +31,7 @@ import {
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import MaintenanceBanner from '@/components/ui/MaintenanceBanner';
 
 /**
  * Dashboard Page Component
@@ -111,6 +112,10 @@ function DashboardContent() {
   // Initialize selected licensee on component mount - removed to prevent infinite loop
   // The selectedLicencee is already initialized in the store
 
+  const isAdminUser = Boolean(
+    user?.roles?.some(role => role === 'admin' || role === 'developer')
+  );
+
   // Fetch metrics and locations data when filters change
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -118,7 +123,10 @@ function DashboardContent() {
 
       // Wrap API calls with error handling
       await stableHandleApiCallWithRetry(
-        () => loadGamingLocations(setGamingLocations, selectedLicencee),
+        () =>
+          loadGamingLocations(setGamingLocations, selectedLicencee, {
+            forceAll: isAdminUser || selectedLicencee === 'all',
+          }),
         'Dashboard Locations'
       );
 
@@ -148,6 +156,7 @@ function DashboardContent() {
     selectedLicencee,
     customDateRange,
     displayCurrency, // ✅ ADDED: Re-fetch when currency changes
+    isAdminUser,
     stableHandleApiCallWithRetry,
   ]);
 
@@ -244,6 +253,7 @@ function DashboardContent() {
       mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
       showToaster={true}
     >
+      <MaintenanceBanner />
       {/* Mobile Layout Section: Responsive layout for small screens */}
       <div className="block md:hidden">
         <MobileLayout

@@ -1,6 +1,12 @@
 import type { ResourcePermissions } from '@/lib/types/administration';
 import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  isValidDateInput,
+  validateAlphabeticField,
+  validateNameField,
+  validateOptionalGender,
+} from '@/lib/utils/validation';
 import type {
   CurrentUser,
   OriginalUserType,
@@ -13,12 +19,6 @@ import { NextRequest } from 'next/server';
 import { connectDB } from '../middleware/db';
 import UserModel from '../models/user';
 import { comparePassword, hashPassword } from '../utils/validation';
-import {
-  isValidDateInput,
-  validateAlphabeticField,
-  validateNameField,
-  validateOptionalGender,
-} from '@/lib/utils/validation';
 import { logActivity } from './activityLogger';
 
 /**
@@ -66,24 +66,6 @@ function validateDatabaseContext(
  * Server-side function to get user from JWT token in cookies or Authorization header
  */
 export async function getUserFromServer(): Promise<JWTPayload | null> {
-  // 🔧 DEVELOPMENT MODE: Skip authentication for easier testing
-  if (
-    process.env.NODE_ENV === 'development' &&
-    process.env.SKIP_AUTH === 'true'
-  ) {
-    // 🔧 FIX: Dev user must have 'all' access to see all licensees/locations
-    // Empty array means NO access! Developer role alone isn't enough.
-    return {
-      _id: 'dev-user-id',
-      emailAddress: 'dev@example.com',
-      username: 'developer',
-      roles: ['developer', 'admin'],
-      rel: { licencee: 'all' }, // Give access to ALL licensees
-      resourcePermissions: { 'gaming-locations': { resources: [] } }, // Empty = all locations for developer role
-      sessionVersion: 1,
-    } as JWTPayload;
-  }
-
   // Try to get token from cookies first
   const cookieStore = await cookies();
   let token = cookieStore.get('token')?.value;
@@ -351,10 +333,7 @@ export async function updateUser(
       ...(updateFields.profile as Record<string, unknown>),
     };
 
-    const sanitizeNameField = (
-      key: string,
-      label: string
-    ): void => {
+    const sanitizeNameField = (key: string, label: string): void => {
       const value = profileUpdate[key];
       if (typeof value === 'string') {
         const trimmed = value.trim();
@@ -381,7 +360,8 @@ export async function updateUser(
     }
 
     const contact =
-      typeof profileUpdate.contact === 'object' && profileUpdate.contact !== null
+      typeof profileUpdate.contact === 'object' &&
+      profileUpdate.contact !== null
         ? (profileUpdate.contact as Record<string, unknown>)
         : undefined;
 

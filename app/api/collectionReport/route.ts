@@ -16,6 +16,7 @@ import { getClientIP } from '@/lib/utils/ipAddress';
 import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
+import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 
 export async function GET(req: NextRequest) {
   // 🔍 PERFORMANCE: Start overall timer
@@ -32,7 +33,12 @@ export async function GET(req: NextRequest) {
         const startTime = Date.now();
 
         // Support both spellings for backwards compatibility
-        const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+        const rawLicenseeParam =
+          searchParams.get('licensee') || searchParams.get('licencee') || undefined;
+        const normalizedLicensee =
+          rawLicenseeParam && rawLicenseeParam !== 'all'
+            ? getLicenseeObjectId(rawLicenseeParam) || rawLicenseeParam
+            : rawLicenseeParam;
         
         // Get current user and their permissions
         const user = await getUserFromServer();
@@ -50,12 +56,16 @@ export async function GET(req: NextRequest) {
         // Get user's accessible locations based on role and permissions
         const allowedLocationIds = await getUserLocationFilter(
           isAdmin ? 'all' : userAccessibleLicensees,
-          licensee || undefined,
+          normalizedLicensee || undefined,
           userLocationPermissions,
           userRoles
         );
         
-        console.warn(`[LOCATIONS WITH MACHINES] Licensee: ${licensee || 'All'}`);
+        console.warn(
+          `[LOCATIONS WITH MACHINES] Licensee: ${
+            normalizedLicensee || 'All'
+          } (original: ${rawLicenseeParam || 'All'})`
+        );
         console.warn(`[LOCATIONS WITH MACHINES] Allowed locations:`, allowedLocationIds);
         
         // If user has no access, return empty array
@@ -177,7 +187,12 @@ export async function GET(req: NextRequest) {
     const startDateStr = searchParams.get('startDate');
     const endDateStr = searchParams.get('endDate');
     const locationName = searchParams.get('locationName') || undefined;
-    const licencee = searchParams.get('licencee') || undefined;
+    const rawLicenceeParam =
+      searchParams.get('licensee') || searchParams.get('licencee') || undefined;
+    const licencee =
+      rawLicenceeParam && rawLicenceeParam !== 'all'
+        ? getLicenseeObjectId(rawLicenceeParam) || rawLicenceeParam
+        : rawLicenceeParam;
 
     if (startDateStr && endDateStr && !timePeriod) {
       const startDate = new Date(startDateStr);
@@ -312,7 +327,11 @@ export async function GET(req: NextRequest) {
     console.warn(`[COLLECTION REPORT] Time Period: ${timePeriod || 'Custom'}`);
     console.warn(`[COLLECTION REPORT] Start Date: ${startDate?.toISOString() || 'None'}`);
     console.warn(`[COLLECTION REPORT] End Date: ${endDate?.toISOString() || 'None'}`);
-    console.warn(`[COLLECTION REPORT] Licensee param: ${licencee || 'All'}`);
+    console.warn(
+      `[COLLECTION REPORT] Licensee param: ${licencee || 'All'} (original: ${
+        rawLicenceeParam || 'All'
+      })`
+    );
 
     // Check if user is admin or manager
     const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
@@ -321,14 +340,10 @@ export async function GET(req: NextRequest) {
     // Determine which location IDs the user can access
     let allowedLocationIds: string[] | 'all';
     
-    if (isAdmin && userLocationPermissions.length === 0) {
-      // Admin with no location restrictions
+    if (isAdmin) {
+      // Admins and developers can always access all locations regardless of assignments
       allowedLocationIds = 'all';
-      console.warn('[COLLECTION REPORT] Admin with no restrictions - no location filter');
-    } else if (isAdmin && userLocationPermissions.length > 0) {
-      // Admin with location restrictions
-      allowedLocationIds = userLocationPermissions;
-      console.warn('[COLLECTION REPORT] Admin with location restrictions:', allowedLocationIds);
+      console.warn('[COLLECTION REPORT] Admin/Developer override - granting access to all locations');
     } else if (isManager) {
       // Manager - get ALL locations for their assigned licensees
       console.warn('[COLLECTION REPORT] Manager - fetching all locations for licensees:', userLicensees);

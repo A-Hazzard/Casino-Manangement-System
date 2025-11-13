@@ -17,6 +17,7 @@ interface CurrencyFilterProps {
   disabled?: boolean;
   onCurrencyChange?: (currency: CurrencyCode) => void;
   userRoles?: string[];
+  hasMultipleLicensees?: boolean;
 }
 
 const CURRENCY_OPTIONS: CurrencyCode[] = ['USD', 'TTD', 'GYD', 'BBD'];
@@ -26,6 +27,7 @@ export function CurrencyFilter({
   disabled = false,
   onCurrencyChange,
   userRoles = [],
+  hasMultipleLicensees = false,
 }: CurrencyFilterProps) {
   const { displayCurrency, setDisplayCurrency, isAllLicensee } = useCurrency();
   const { setDisplayCurrency: setDashboardCurrency } = useDashBoardStore();
@@ -38,11 +40,13 @@ export function CurrencyFilter({
     onCurrencyChange?.(newCurrency);
   };
 
-  // Only show currency selector for Admin/Developer when "All Licensees" is selected
-  // Managers and other users always see their native currency (no conversion)
-  const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
-  
-  if (!isAdminOrDev || !isAllLicensee) {
+  // Only show currency selector when "All Licensees" is selected and the user
+  // is either an admin/developer or a non-admin with multiple licensees.
+  const isAdminOrDev =
+    userRoles.includes('admin') || userRoles.includes('developer');
+  const canShowSelector = isAllLicensee && (isAdminOrDev || hasMultipleLicensees);
+
+  if (!canShowSelector) {
     return null;
   }
 

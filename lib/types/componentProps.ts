@@ -129,6 +129,7 @@ export type HeaderProps = {
   hideLicenceeFilter?: boolean;
   containerPaddingMobile?: string;
   disabled?: boolean;
+  hideCurrencyFilter?: boolean;
 };
 
 // Next.js page parameter types for dynamic routes

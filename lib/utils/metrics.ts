@@ -50,7 +50,8 @@ export async function switchFilter(
   endDate?: Date,
   licencee?: string,
   setActiveFilters?: (filters: ActiveFilters) => void,
-  setShowDatePicker?: (state: boolean) => void
+  setShowDatePicker?: (state: boolean) => void,
+  displayCurrency?: string
 ): Promise<void> {
   try {
     // If setActiveFilters is provided, update the filter state
@@ -74,7 +75,8 @@ export async function switchFilter(
       filter,
       startDate,
       endDate,
-      licencee
+      licencee,
+      displayCurrency
     );
 
     if (data.length > 0) {

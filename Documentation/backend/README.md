@@ -18,8 +18,8 @@
 This directory contains comprehensive documentation for all backend API routes in the Evolution One CMS system. The documentation is organized by functionality and provides detailed information about endpoints, request/response formats, and usage patterns.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 4th, 2025  
-**Version:** 2.2.0
+**Last Updated:** November 13th, 2025  
+**Version:** 2.2.1
 
 ## Documentation Structure
 
@@ -198,6 +198,7 @@ const response = await axios.post(
 
 - `GET /api/collection-report` - Collection reports
 - `GET /api/collection-report/[reportId]` - Specific report details
+- `POST /api/admin/repair-sas-times` - Maintenance utility that recalculates SAS windows directly against the database; configured as a forced-dynamic Node.js route (no static caching).
 - `GET /api/collectionReport` - Collection report data
 - `GET /api/collections` - Collection management
 

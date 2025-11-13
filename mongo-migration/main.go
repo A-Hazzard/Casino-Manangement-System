@@ -75,8 +75,10 @@ func main() {
 		"meters",
 		"members",
 		"movementrequests",
+		"relaymessages",
 		"schedulers",
 		"users",
+		"workerstates",
 	}
 
 	var wg sync.WaitGroup
@@ -178,13 +180,19 @@ func migrateCollection(ctx context.Context, srcDB, dstDB *mongo.Database, collNa
 }
 
 func migrateMeters(ctx context.Context, srcDB, dstDB *mongo.Database) {
-	fmt.Println("⏳ Starting migration of meters collection (last 7 days only)...")
+	fmt.Println("⏳ Starting migration of meters collection (from Nov 11, 2025 9:28 PM UTC onward)...")
 
 	srcColl := srcDB.Collection("meters")
 	dstColl := dstDB.Collection("meters")
 
-	sevenDaysAgo := time.Now().AddDate(0, 0, -7)
-	filter := bson.M{"createdAt": bson.M{"$gte": sevenDaysAgo}}
+	startTime := time.Date(2025, time.November, 11, 21, 28, 0, 0, time.UTC)
+	now := time.Now().UTC()
+	filter := bson.M{
+		"createdAt": bson.M{
+			"$gte": startTime,
+			"$lte": now,
+		},
+	}
 
 	cursor, err := srcColl.Find(ctx, filter)
 	if err != nil {
@@ -217,5 +225,5 @@ func migrateMeters(ctx context.Context, srcDB, dstDB *mongo.Database) {
 		log.Printf("❌ Cursor error during meters migration: %v\n", err)
 	}
 
-	fmt.Printf("✅ Completed migration of %d meters documents from last 7 days\n", count)
+	fmt.Printf("✅ Completed migration of %d meters documents from specified date range\n", count)
 }

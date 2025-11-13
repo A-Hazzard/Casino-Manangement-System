@@ -10,12 +10,14 @@ type PageLayoutProps = {
   pageTitle?: string;
   hideOptions?: boolean;
   hideLicenceeFilter?: boolean;
+  hideCurrencyFilter?: boolean;
   showHeader?: boolean;
   headerProps?: {
     selectedLicencee?: string;
     setSelectedLicencee?: (licensee: string) => void;
     disabled?: boolean;
     containerPaddingMobile?: string;
+    hideCurrencyFilter?: boolean;
   };
   mainClassName?: string;
   showToaster?: boolean;
@@ -33,6 +35,7 @@ export default function PageLayout({
   pageTitle = '',
   hideOptions = false,
   hideLicenceeFilter = false,
+  hideCurrencyFilter = false,
   showHeader = true,
   headerProps,
   mainClassName = 'flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 space-y-6 mt-4',
@@ -49,6 +52,8 @@ export default function PageLayout({
     headerProps?.setSelectedLicencee ?? setSelectedLicencee;
   const headerDisabled = headerProps?.disabled ?? false;
   const headerContainerPaddingMobile = headerProps?.containerPaddingMobile;
+  const headerHideCurrencyFilter =
+    headerProps?.hideCurrencyFilter ?? hideCurrencyFilter;
 
   return (
     <>
@@ -66,6 +71,7 @@ export default function PageLayout({
               hideLicenceeFilter={hideLicenceeFilter}
               disabled={headerDisabled}
               containerPaddingMobile={headerContainerPaddingMobile}
+              hideCurrencyFilter={headerHideCurrencyFilter}
             />
           )}
           {children}

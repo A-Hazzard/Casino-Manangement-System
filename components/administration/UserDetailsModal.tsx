@@ -214,7 +214,7 @@ export default function UserDetailsModal({
                       <input
                         type="email"
                         className="w-full rounded-md border border-border bg-white p-3 text-center lg:text-left"
-                        value={user?.email || ''}
+                        value={user?.email || user?.emailAddress || ''}
                         disabled
                         placeholder="Email Address"
                       />

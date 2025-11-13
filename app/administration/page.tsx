@@ -57,6 +57,7 @@ import { RefreshCw, PlusCircle } from 'lucide-react';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import axios from 'axios';
+import MaintenanceBanner from '@/components/ui/MaintenanceBanner';
 
 function AdministrationPageContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
@@ -232,6 +233,21 @@ function AdministrationPageContent() {
   // Track tab transition loading state
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
 
+  useEffect(() => {
+    if (!mounted) return;
+
+    setCurrentPage(0);
+    setLoadedSections(prev => {
+      if (!prev.has('users')) {
+        return prev;
+      }
+
+      const updated = new Set(prev);
+      updated.delete('users');
+      return updated;
+    });
+  }, [selectedLicencee, mounted]);
+
   // Load users only when users tab is active and not already loaded
   useEffect(() => {
     if (activeSection === 'users' && !loadedSections.has('users')) {
@@ -342,9 +358,18 @@ function AdministrationPageContent() {
     }
 
     // Build comparison objects with ONLY editable fields
+    const normalizedOriginalEmail = (
+      selectedUser.email || selectedUser.emailAddress || ''
+    ).trim();
+    const normalizedUpdatedEmail = (
+      updated.email || updated.emailAddress || ''
+    ).trim();
+
     const originalData = {
       username: selectedUser.username,
-      email: selectedUser.email,
+      email: normalizedOriginalEmail,
+      emailAddress:
+        (selectedUser.emailAddress || selectedUser.email || '').trim(),
       profile: selectedUser.profile,
       roles: selectedUser.roles,
       resourcePermissions: selectedUser.resourcePermissions,
@@ -354,7 +379,8 @@ function AdministrationPageContent() {
 
     const formDataComparison = {
       username: updated.username,
-      email: updated.email,
+      email: normalizedUpdatedEmail,
+      emailAddress: normalizedUpdatedEmail,
       profile: updated.profile,
       roles: updated.roles,
       resourcePermissions: updated.resourcePermissions,
@@ -403,25 +429,43 @@ function AdministrationPageContent() {
 
     // Build update payload with only changed fields + required _id
     const updatePayload: Record<string, unknown> = { _id: selectedUser._id };
-    meaningfulChanges.forEach(change => {
-      const fieldPath = change.path; // Use full path for nested fields
-      
-      // Handle nested fields
-      if (fieldPath.includes('.')) {
-        const [parent, child] = fieldPath.split('.');
-        
-        // Special handling for objects that must be sent whole
-        if (parent === 'profile' || parent === 'resourcePermissions' || parent === 'rel') {
-          updatePayload[parent] = updated[parent as keyof typeof updated];
-        } else {
-          if (!updatePayload[parent]) {
-            updatePayload[parent] = {};
-          }
-          (updatePayload[parent] as Record<string, unknown>)[child] = change.newValue;
-        }
-      } else {
-        updatePayload[fieldPath] = updated[fieldPath as keyof typeof updated];
+
+    const setNestedValue = (
+      target: Record<string, unknown>,
+      path: string,
+      value: unknown
+    ) => {
+      if (value === undefined) {
+        return;
       }
+
+      const segments = path.split('.');
+      let cursor: Record<string, unknown> = target;
+
+      segments.forEach((segment, index) => {
+        const isLeaf = index === segments.length - 1;
+
+        if (isLeaf) {
+          cursor[segment] = value;
+          return;
+        }
+
+        const existing = cursor[segment];
+        if (
+          !existing ||
+          typeof existing !== 'object' ||
+          existing === null ||
+          Array.isArray(existing)
+        ) {
+          cursor[segment] = {};
+        }
+
+        cursor = cursor[segment] as Record<string, unknown>;
+      });
+    };
+
+    meaningfulChanges.forEach(change => {
+      setNestedValue(updatePayload, change.path, change.newValue);
     });
 
     // If permission-related fields changed, increment sessionVersion to invalidate existing JWT
@@ -1297,7 +1341,9 @@ function AdministrationPageContent() {
     <PageLayout
       mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"
       showToaster={false}
+      hideCurrencyFilter
     >
+      <MaintenanceBanner />
       {/* Header Section: Admin icon, title, refresh icon, and action buttons */}
       <div className="flex items-center justify-between mt-4 md:mt-6 w-full max-w-full">
         <div className="flex items-center gap-2 flex-1 min-w-0">

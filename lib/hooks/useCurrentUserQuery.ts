@@ -1,8 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/lib/store/userStore';
+import {
+  CACHE_KEYS,
+  fetchUserWithCache,
+  userCache,
+} from '@/lib/utils/userCache';
+import type { UserAuthPayload } from '@/shared/types/auth';
+import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useEffect } from 'react';
-import type { UserAuthPayload } from '@/shared/types/auth';
 
 type CurrentUserResponse = {
   success: boolean;
@@ -21,7 +26,7 @@ type CurrentUserResponse = {
     updatedAt: string;
     requiresProfileUpdate?: boolean;
     invalidProfileFields?: UserAuthPayload['invalidProfileFields'];
-  invalidProfileReasons?: UserAuthPayload['invalidProfileReasons'];
+    invalidProfileReasons?: UserAuthPayload['invalidProfileReasons'];
   };
 };
 
@@ -29,10 +34,25 @@ type CurrentUserResponse = {
  * Fetches current user data from API
  */
 const fetchCurrentUser = async (): Promise<CurrentUserResponse> => {
-  const response = await axios.get<CurrentUserResponse>('/api/auth/current-user', {
-    withCredentials: true,
-  });
-  return response.data;
+  const data = await fetchUserWithCache<CurrentUserResponse | null>(
+    CACHE_KEYS.CURRENT_USER,
+    async () => {
+      const response = await axios.get<CurrentUserResponse>(
+        '/api/auth/current-user',
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    },
+    5 * 60 * 1000
+  );
+
+  if (!data) {
+    throw new Error('Failed to load current user');
+  }
+
+  return data;
 };
 
 /**
@@ -43,12 +63,7 @@ const fetchCurrentUser = async (): Promise<CurrentUserResponse> => {
 export function useCurrentUserQuery() {
   const { user: storeUser, setUser, clearUser } = useUserStore();
 
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['current-user'],
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -78,15 +93,22 @@ export function useCurrentUserQuery() {
       };
 
       // Only update store if data has changed
-      const hasChanged = JSON.stringify(storeUser) !== JSON.stringify(userPayload);
-      
+      const hasChanged =
+        JSON.stringify(storeUser) !== JSON.stringify(userPayload);
+
       if (hasChanged) {
         setUser(userPayload);
-        
+
         if (process.env.NODE_ENV === 'development') {
           console.log('✅ User store updated with rel.licencee:', dbUser.rel);
         }
       }
+
+      userCache.set(
+        CACHE_KEYS.CURRENT_USER,
+        data,
+        5 * 60 * 1000 // keep TTL aligned with query staleTime
+      );
     }
   }, [data, setUser, storeUser]);
 
@@ -108,6 +130,3 @@ export function useCurrentUserQuery() {
     hasData: !!data?.success,
   };
 }
-
-
-

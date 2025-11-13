@@ -68,7 +68,6 @@ const INPUT_CLASS =
   'border focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:ring-primary';
 
 const GENDER_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Select gender' },
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
@@ -595,7 +594,7 @@ export default function ProfileValidationModal({
   return (
     <Dialog open={open} onOpenChange={handleCloseRequest}>
       <DialogContent
-        className="sm:max-w-lg [&>button]:hidden"
+        className="sm:max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto [&>button]:hidden"
         onEscapeKeyDown={event => {
           if (enforceUpdate) {
             event.preventDefault();
@@ -614,18 +613,55 @@ export default function ProfileValidationModal({
             updated standards before accessing the new interface.
           </DialogDescription>
           {Object.keys(reasons || {}).length > 0 && (
-            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-              {Object.entries(reasons)
-                .filter(
-                  ([key]) => invalidFields[key as keyof InvalidProfileFields]
-                )
-                .map(([field, reason]) =>
-                  reason ? (
-                    <p key={field}>
-                      {field.charAt(0).toUpperCase() + field.slice(1)}: {reason}
-                    </p>
-                  ) : null
-                )}
+            <div className="mt-2 space-y-1 rounded-md bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-semibold text-amber-900">
+                Issues you need to fix:
+              </p>
+              <ul className="space-y-2">
+                {Object.entries(reasons)
+                  .filter(
+                    ([key]) => invalidFields[key as keyof InvalidProfileFields]
+                  )
+                  .map(([field, reason]) => {
+                    if (!reason) return null;
+                    const currentValue =
+                      currentData[field as keyof ProfileValidationModalData];
+                    const isMissing =
+                      typeof currentValue === 'string' &&
+                      currentValue.trim() === '';
+                    return (
+                      <li
+                        key={field}
+                        className="rounded-md border border-amber-200 bg-white/70 p-2 shadow-sm"
+                      >
+                        <p className="font-medium capitalize text-amber-900">
+                          {field.replace(/([A-Z])/g, ' $1')}:
+                        </p>
+                        <p className="text-amber-800">
+                          {reason}
+                          {isMissing ? (
+                            <>
+                              {' '}
+                              <span className="font-semibold text-amber-900">
+                                (you haven’t provided this yet)
+                              </span>
+                            </>
+                          ) : (
+                            typeof currentValue === 'string' &&
+                            currentValue.trim() !== '' && (
+                              <>
+                                {' '}
+                                <span className="font-semibold text-amber-900">
+                                  (current: “{currentValue}”)
+                                </span>
+                              </>
+                            )
+                          )}
+                        </p>
+                      </li>
+                    );
+                  })}
+              </ul>
             </div>
           )}
           {serverError && (
@@ -633,6 +669,11 @@ export default function ProfileValidationModal({
               {serverError}
             </p>
           )}
+          <p className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
+            Once you press <span className="font-semibold">Update Profile</span>{' '}
+            the system may sign you out to refresh your session. This only takes
+            a moment—just log back in with your updated details.
+          </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">

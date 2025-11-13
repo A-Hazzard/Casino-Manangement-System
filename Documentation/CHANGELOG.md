@@ -2,6 +2,17 @@
 
 All notable changes to the documentation will be documented in this file.
 
+## [2.3.2] - November 13, 2025
+
+### Changed
+- **Admin Repair Utilities**
+  - Documented the `POST /api/admin/repair-sas-times` maintenance endpoint as a dynamic Node.js route that always runs against live data.
+  - Updated backend README to flag the route as non-cacheable and reference the forced dynamic configuration.
+- **Application Context**
+  - Clarified that repair tooling intentionally opts out of static optimization to guarantee direct database access.
+
+---
+
 ## [2.3.1] - November 12, 2025
 
 ### Changed

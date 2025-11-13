@@ -31,6 +31,7 @@ export default function Header({
   hideLicenceeFilter,
   containerPaddingMobile,
   disabled = false,
+  hideCurrencyFilter = false,
 }: HeaderProps) {
   const pathname = usePathname();
   const params = useParams();
@@ -64,6 +65,13 @@ export default function Header({
   // Show if: admin OR user has multiple licensees
   // Hide if: user has 0 or 1 licensee
   const shouldShowLicenseeSelect = isAdmin || userLicensees.length > 1;
+  const hasMultipleLicensees = Array.isArray(userLicensees) && userLicensees.length > 1;
+  const selectedLicenceeValue = selectedLicencee ?? '';
+  const isAllLicenseeSelected =
+    selectedLicenceeValue === '' || selectedLicenceeValue === 'all';
+  const shouldRenderCurrencyFilter =
+    !hideCurrencyFilter &&
+    (isAdmin || (hasMultipleLicensees && isAllLicenseeSelected));
 
   const [licenseeCurrencyMap, setLicenseeCurrencyMap] = useState<
     Record<string, CurrencyCode>
@@ -289,28 +297,30 @@ export default function Header({
                     disabled={disabled}
                   />
                 </div>
-                {/* Currency selector - only show on desktop when "All Licensee" is selected */}
-                <CurrencyFilter
-                  className="hidden md:flex"
-                  disabled={disabled}
-                  userRoles={userRoles}
-                  onCurrencyChange={newCurrency => {
-                    // Trigger data refresh when currency changes
-                    if (pathname === '/' && activeMetricsFilter) {
-                      setLoadingChartData(true);
-                      fetchMetricsData(
-                        activeMetricsFilter,
-                        customDateRange,
-                        selectedLicencee,
-                        setTotals,
-                        setChartData,
-                        setActiveFilters,
-                        setShowDatePicker,
-                        newCurrency
-                      ).finally(() => setLoadingChartData(false));
-                    }
-                  }}
-                />
+                {shouldRenderCurrencyFilter && (
+                  <CurrencyFilter
+                    className="hidden md:flex"
+                    disabled={disabled}
+                    userRoles={userRoles}
+                    hasMultipleLicensees={hasMultipleLicensees}
+                    onCurrencyChange={newCurrency => {
+                      // Trigger data refresh when currency changes
+                      if (pathname === '/' && activeMetricsFilter) {
+                        setLoadingChartData(true);
+                        fetchMetricsData(
+                          activeMetricsFilter,
+                          customDateRange,
+                          selectedLicencee,
+                          setTotals,
+                          setChartData,
+                          setActiveFilters,
+                          setShowDatePicker,
+                          newCurrency
+                        ).finally(() => setLoadingChartData(false));
+                      }
+                    }}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -507,29 +517,32 @@ export default function Header({
                     )}
 
                     {/* Mobile Currency Selector - only show when "All Licensee" is selected */}
-                    <div className="mt-6 border-t border-gray-200 p-4">
-                      <CurrencyFilter
-                        className="w-full"
-                        disabled={disabled}
-                        userRoles={userRoles}
-                        onCurrencyChange={newCurrency => {
-                          // Trigger data refresh when currency changes
-                          if (pathname === '/' && activeMetricsFilter) {
-                            setLoadingChartData(true);
-                            fetchMetricsData(
-                              activeMetricsFilter,
-                              customDateRange,
-                              selectedLicencee,
-                              setTotals,
-                              setChartData,
-                              setActiveFilters,
-                              setShowDatePicker,
-                              newCurrency
-                            ).finally(() => setLoadingChartData(false));
-                          }
-                        }}
-                      />
-                    </div>
+                    {shouldRenderCurrencyFilter && (
+                      <div className="mt-6 border-t border-gray-200 p-4">
+                        <CurrencyFilter
+                          className="w-full"
+                          disabled={disabled}
+                          userRoles={userRoles}
+                          hasMultipleLicensees={hasMultipleLicensees}
+                          onCurrencyChange={newCurrency => {
+                            // Trigger data refresh when currency changes
+                            if (pathname === '/' && activeMetricsFilter) {
+                              setLoadingChartData(true);
+                              fetchMetricsData(
+                                activeMetricsFilter,
+                                customDateRange,
+                                selectedLicencee,
+                                setTotals,
+                                setChartData,
+                                setActiveFilters,
+                                setShowDatePicker,
+                                newCurrency
+                              ).finally(() => setLoadingChartData(false));
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Logout Button Section: User logout functionality */}

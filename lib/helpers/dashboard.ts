@@ -1,19 +1,19 @@
 import {
+  ActiveFilters,
+  ActiveTab,
   dashboardData,
   DashboardTotals,
   locations,
-  ActiveFilters,
   TopPerformingData,
-  ActiveTab,
 } from '@/lib/types';
 
-import { switchFilter } from '@/lib/utils/metrics';
-import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
 import getAllGamingLocations from '@/lib/helpers/locations';
-import { TimePeriod } from '@/shared/types/common';
-import axios from 'axios';
+import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
 import { classifyError } from '@/lib/utils/errorHandling';
 import { showErrorNotification } from '@/lib/utils/errorNotifications';
+import { switchFilter } from '@/lib/utils/metrics';
+import { TimePeriod } from '@/shared/types/common';
+import axios from 'axios';
 
 /**
  * Calculates pie chart label position data for rendering
@@ -26,7 +26,10 @@ import { showErrorNotification } from '@/lib/utils/errorNotifications';
  */
 export const loadGamingLocations = async (
   setGamingLocations: (locations: locations) => void,
-  selectedLicencee?: string
+  selectedLicencee?: string,
+  options?: {
+    forceAll?: boolean;
+  }
 ) => {
   try {
     // Lightweight locations fetch (minimal projection, no heavy lookups)
@@ -35,11 +38,17 @@ export const loadGamingLocations = async (
     if (selectedLicencee && selectedLicencee !== 'all') {
       params.append('licencee', selectedLicencee);
     }
+    if (options?.forceAll) {
+      params.append('forceAll', 'true');
+      params.append('showAll', 'true');
+    }
 
     const response = await axios.get(`/api/locations?${params.toString()}`);
     const { locations: locationsData } = response.data;
 
     setGamingLocations(locationsData);
+
+    return locationsData;
   } catch (error) {
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Gaming Locations');
@@ -50,13 +59,19 @@ export const loadGamingLocations = async (
 
     // Fallback to original method
     try {
-      const locationsData = await getAllGamingLocations(selectedLicencee);
+      const fallbackLicencee =
+        options?.forceAll && (!selectedLicencee || selectedLicencee === 'all')
+          ? undefined
+          : selectedLicencee;
+      const locationsData = await getAllGamingLocations(fallbackLicencee);
       setGamingLocations(locationsData);
+      return locationsData;
     } catch (fallbackError) {
       const fallbackApiError = classifyError(fallbackError);
       showErrorNotification(fallbackApiError, 'Gaming Locations Fallback');
     }
   }
+  return [];
 };
 
 /**
@@ -163,7 +178,8 @@ export const fetchMetricsData = async (
       activeMetricsFilter === 'Custom' ? customDateRange.endDate : undefined,
       selectedLicencee,
       setActiveFilters,
-      setShowDatePicker
+      setShowDatePicker,
+      displayCurrency
     );
   } else {
     await switchFilter(
@@ -174,7 +190,8 @@ export const fetchMetricsData = async (
       activeMetricsFilter === 'Custom' ? customDateRange.endDate : undefined,
       undefined,
       setActiveFilters,
-      setShowDatePicker
+      setShowDatePicker,
+      displayCurrency
     );
   }
 };
@@ -197,7 +214,11 @@ export const fetchTopPerformingDataHelper = async (
 
   try {
     setLoadingTopPerforming(true);
-    const data = await fetchTopPerformingData(activeTab, activePieChartFilter, selectedLicencee);
+    const data = await fetchTopPerformingData(
+      activeTab,
+      activePieChartFilter,
+      selectedLicencee
+    );
     setTopPerformingData(data);
   } catch (error) {
     const apiError = classifyError(error);
@@ -254,7 +275,7 @@ export const handleDashboardRefresh = async (
         setShowDatePicker,
         displayCurrency
       ),
-      fetchTopPerformingData(activeTab, activePieChartFilter),
+      fetchTopPerformingData(activeTab, activePieChartFilter, selectedLicencee),
       axios.get(`/api/locations?${locationsParams.toString()}`),
     ]);
     setTopPerformingData(topPerformingDataResult);

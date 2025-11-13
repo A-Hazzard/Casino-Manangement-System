@@ -215,62 +215,126 @@ export async function getMetricsForLocations(
   const aggregationPipeline: PipelineStage[] = [
     // Stage 1: Filter meters by date and machines
     { $match: filter },
-    
-    // Stage 2: Add day and time fields
-    // NOTE: Gaming day offset is already handled in the filter.readAt range
-    // For daily grouping, we extract the date from readAt
+    // Stage 2: Add formatted day/time fields (UTC to ensure consistency)
     {
       $addFields: {
-        day: { $dateToString: { date: '$readAt', format: '%Y-%m-%d', timezone: 'UTC' } },
-        time: shouldUseHourlyAggregation 
-          ? { $dateToString: { date: '$readAt', format: '%H:%M', timezone: 'UTC' } }
-          : '00:00', // For daily aggregation, use placeholder time
+        day: {
+          $dateToString: {
+            date: '$readAt',
+            format: '%Y-%m-%d',
+            timezone: 'UTC',
+          },
+        },
+        time: shouldUseHourlyAggregation
+          ? {
+              $dateToString: {
+                date: '$readAt',
+                format: '%H:%M',
+                timezone: 'UTC',
+              },
+            }
+          : '00:00',
       },
     },
+    // Stage 3: Group by day/time/location to preserve currency context
+    {
+      $group: {
+        _id: {
+          day: '$day',
+          time: '$time',
+          location: '$location',
+        },
+        totalDrop: { $sum: '$movement.drop' },
+        totalCancelledCredits: { $sum: '$movement.totalCancelledCredits' },
+        totalJackpot: { $sum: '$movement.jackpot' },
+        totalGamesPlayed: { $sum: '$movement.gamesPlayed' },
+      },
+    },
+    // Stage 4: Join location details to get licencee/country metadata
+    {
+      $lookup: {
+        from: 'gaminglocations',
+        localField: '_id.location',
+        foreignField: '_id',
+        as: 'locationDetails',
+      },
+    },
+    {
+      $unwind: {
+        path: '$locationDetails',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    // Stage 5: Project final fields
+    {
+      $project: {
+        _id: 0,
+        day: '$_id.day',
+        time: '$_id.time',
+        location: {
+          $cond: [
+            {
+              $and: [
+                { $ne: ['$_id.location', null] },
+                { $ne: ['$_id.location', undefined] },
+              ],
+            },
+            { $toString: '$_id.location' },
+            null,
+          ],
+        },
+        drop: '$totalDrop',
+        totalCancelledCredits: '$totalCancelledCredits',
+        gross: {
+          $subtract: [
+            { $subtract: [{ $ifNull: ['$totalDrop', 0] }, { $ifNull: ['$totalJackpot', 0] }] },
+            { $ifNull: ['$totalCancelledCredits', 0] },
+          ],
+        },
+        gamesPlayed: { $ifNull: ['$totalGamesPlayed', 0] },
+        jackpot: { $ifNull: ['$totalJackpot', 0] },
+        licencee: {
+          $let: {
+            vars: {
+              licenceeValue: {
+                $cond: [
+                  { $isArray: ['$locationDetails.rel.licencee'] },
+                  { $arrayElemAt: ['$locationDetails.rel.licencee', 0] },
+                  '$locationDetails.rel.licencee',
+                ],
+              },
+            },
+            in: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$$licenceeValue', null] },
+                    { $ne: ['$$licenceeValue', undefined] },
+                  ],
+                },
+                { $toString: '$$licenceeValue' },
+                null,
+              ],
+            },
+          },
+        },
+        country: {
+          $cond: [
+            {
+              $and: [
+                { $ne: ['$locationDetails.country', null] },
+                { $ne: ['$locationDetails.country', undefined] },
+              ],
+            },
+            { $toString: '$locationDetails.country' },
+            null,
+          ],
+        },
+      },
+    },
+    // Stage 6: Sort chronologically
+    { $sort: { day: 1, time: 1 } },
   ];
-
-  // Stage 3: Group by day (and time if hourly)
-  if (shouldUseHourlyAggregation) {
-    aggregationPipeline.push({
-      $group: {
-        _id: { day: '$day', time: '$time' },
-        totalDrop: { $sum: '$movement.drop' },
-        totalCancelledCredits: { $sum: '$movement.totalCancelledCredits' },
-        totalJackpot: { $sum: '$movement.jackpot' },
-      },
-    });
-  } else {
-    aggregationPipeline.push({
-      $group: {
-        _id: { day: '$day' },
-        totalDrop: { $sum: '$movement.drop' },
-        totalCancelledCredits: { $sum: '$movement.totalCancelledCredits' },
-        totalJackpot: { $sum: '$movement.jackpot' },
-      },
-    });
-  }
-
-  // Stage 4: Project final fields
-  aggregationPipeline.push({
-    $project: {
-      _id: 0,
-      day: '$_id.day',
-      time: shouldUseHourlyAggregation ? '$_id.time' : '00:00',
-      drop: '$totalDrop',
-      totalCancelledCredits: '$totalCancelledCredits',
-      gross: {
-        $subtract: [
-          { $subtract: [{ $ifNull: ['$totalDrop', 0] }, { $ifNull: ['$totalJackpot', 0] }] },
-          { $ifNull: ['$totalCancelledCredits', 0] },
-        ],
-      },
-      gamesPlayed: { $literal: 0 }, // Not calculated in this optimized version
-      jackpot: '$totalJackpot',
-    },
-  });
-
-  // Stage 5: Sort
-  aggregationPipeline.push({ $sort: { day: 1, time: 1 } });
 
   // 🚀 OPTIMIZATION: Use index hint for better performance on large datasets
   // The compound index (machine + readAt) is optimal for our queries

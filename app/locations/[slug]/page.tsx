@@ -28,6 +28,7 @@ import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import gsap from "gsap";
 import { fetchAllGamingLocations } from "@/lib/helpers/locations";
 import { ActionButtonSkeleton } from "@/components/ui/skeletons/ButtonSkeletons";
+import LocationSingleSelect from "@/components/ui/common/LocationSingleSelect";
 import {
   animateSortDirection,
   animateColumnSort,
@@ -44,7 +45,6 @@ import NotFoundError from "@/components/ui/errors/NotFoundError";
 
 import Link from "next/link";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { ChevronDown } from "lucide-react";
 import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import MachineStatusWidget from "@/components/ui/MachineStatusWidget";
 import Image from "next/image";
@@ -78,6 +78,9 @@ export default function LocationPage() {
   } = useDashBoardStore();
   
   const user = useUserStore(state => state.user);
+  const isAdminUser = Boolean(
+    user?.roles?.some(role => role === 'admin' || role === 'developer')
+  );
 
   // State for tracking date filter initialization
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
@@ -105,13 +108,9 @@ export default function LocationPage() {
   const [currentPage, setCurrentPage] = useState(0);
 
   const tableRef = useRef<HTMLDivElement>(null);
-  const locationDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>(
-    []
-  );
-  const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
 
   // Add back error state
   const [error, setError] = useState<string | null>(null);
@@ -192,7 +191,7 @@ export default function LocationPage() {
 
         // Fetch locations for the selected licensee
         const formattedLocations = await fetchAllGamingLocations(
-          selectedLicencee
+          isAdminUser ? 'all' : selectedLicencee
         );
         setLocations(formattedLocations);
 
@@ -210,7 +209,7 @@ export default function LocationPage() {
         const foundLocation = currentLocation || currentLocationAlt;
 
         // Check if current location exists in new licensee's locations
-        let shouldBypassLicenseeFilter = false;
+        let shouldBypassLicenseeFilter = isAdminUser;
 
         if (!foundLocation) {
           // Location doesn't exist for this licensee, try to find it in all locations
@@ -234,7 +233,7 @@ export default function LocationPage() {
               locationInAllLocations.name
             );
             setLocationName(locationInAllLocations.name);
-            setSelectedLocation(locationInAllLocations.name);
+            setSelectedLocationId(locationInAllLocations.id);
 
             // Set a flag to indicate we should bypass licensee filtering for API calls
             shouldBypassLicenseeFilter = true;
@@ -243,7 +242,7 @@ export default function LocationPage() {
             );
           } else {
             // Location truly doesn't exist
-            setSelectedLocation("");
+            setSelectedLocationId("");
             setLocationName("");
             setAllCabinets([]);
             setError("Location not found");
@@ -253,7 +252,7 @@ export default function LocationPage() {
           }
         } else if (formattedLocations.length === 0) {
           // No locations for this licensee, clear selection
-          setSelectedLocation("");
+          setSelectedLocationId("");
           setLocationName("");
           setAllCabinets([]);
           setError("No locations found for the selected licensee.");
@@ -267,10 +266,10 @@ export default function LocationPage() {
             foundLocation.name
           );
           setLocationName(foundLocation.name);
-          setSelectedLocation(foundLocation.name);
+          setSelectedLocationId(foundLocation.id);
         } else if (shouldBypassLicenseeFilter) {
           // Location was found in all locations but belongs to different licensee
-          // selectedLocation and locationName were already set above
+          // selectedLocationId and locationName were already set above
           console.warn(
             "Using location from all locations due to licensee mismatch"
           );
@@ -279,7 +278,7 @@ export default function LocationPage() {
           const fallbackName = `Unknown Location (${locationId})`;
           console.warn("Using fallback location name:", fallbackName);
           setLocationName(fallbackName);
-          setSelectedLocation(fallbackName);
+          setSelectedLocationId(locationId);
         }
 
         // Fetch cabinets data for the location
@@ -338,6 +337,7 @@ export default function LocationPage() {
     customDateRange,
     dateFilterInitialized,
     router,
+    isAdminUser,
   ]);
 
   // Effect to re-run filtering and sorting when dependencies change
@@ -483,12 +483,23 @@ export default function LocationPage() {
 
   // Handle location change without navigation - just update the selected location
   const handleLocationChangeInPlace = (newLocationId: string) => {
-    // Navigate to the new location URL
+    if (newLocationId === "all") {
+      setSelectedLocationId("all");
+      router.push("/locations");
+      return;
+    }
+
+    setSelectedLocationId(newLocationId);
     router.push(`/locations/${newLocationId}`);
-    setIsLocationDropdownOpen(false);
   };
 
   const { openCabinetModal } = useNewCabinetStore();
+
+  const locationSelectOptions = useMemo(
+    () => locations.map(loc => ({ id: loc.id, name: loc.name })),
+    [locations]
+  );
+  const showLocationSelect = locationSelectOptions.length > 1;
 
   // Show "No Licensee Assigned" message for non-admin users without licensees
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
@@ -722,49 +733,18 @@ export default function LocationPage() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           </div>
 
-          {/* Locations Dropdown */}
-          <div className="relative flex-shrink-0" ref={locationDropdownRef}>
-            <Button
-              variant="outline"
-              className={`flex items-center justify-between gap-2 bg-white text-gray-700 border-gray-300 hover:bg-gray-100 ${
-                loading || cabinetsLoading || refreshing
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
-              disabled={loading || cabinetsLoading || refreshing}
-              onClick={() =>
-                !(loading || cabinetsLoading || refreshing) &&
-                setIsLocationDropdownOpen(!isLocationDropdownOpen)
-              }
-            >
-              <span className="truncate">
-                {selectedLocation || locationName || "Select Location"}
-              </span>
-              <ChevronDown
-                size={16}
-                className={`transition-transform ${
-                  isLocationDropdownOpen ? "rotate-180" : ""
-                }`}
+          {showLocationSelect && (
+            <div className="w-auto min-w-[220px] max-w-[260px]">
+              <LocationSingleSelect
+                locations={locationSelectOptions}
+                selectedLocation={selectedLocationId || locationId}
+                onSelectionChange={handleLocationChangeInPlace}
+                includeAllOption={true}
+                allOptionLabel="All Locations"
+                showSasBadge={false}
               />
-            </Button>
-            {isLocationDropdownOpen && (
-              <div className="absolute z-50 mt-1 w-full min-w-[200px] bg-white rounded-md shadow-lg border border-gray-200 right-0">
-                <div className="max-h-60 overflow-y-auto">
-                  {locations.map((loc) => (
-                    <button
-                      key={loc.id}
-                      className={`block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
-                        locationId === loc.id ? "bg-gray-100 font-medium" : ""
-                      }`}
-                      onClick={() => handleLocationChangeInPlace(loc.id)}
-                    >
-                      {loc.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Game Type Filter */}
           <CustomSelect
@@ -840,6 +820,19 @@ export default function LocationPage() {
           {/* Filters - Horizontal scrollable */}
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             <div className="flex gap-2 min-w-max">
+              {showLocationSelect && (
+                <div className="w-40 flex-shrink-0">
+                  <LocationSingleSelect
+                    locations={locationSelectOptions}
+                    selectedLocation={selectedLocationId || locationId}
+                    onSelectionChange={handleLocationChangeInPlace}
+                    includeAllOption={true}
+                    allOptionLabel="All Locations"
+                    showSasBadge={false}
+                    className="w-full"
+                  />
+                </div>
+              )}
               <div className="w-36 flex-shrink-0 relative">
                 <CustomSelect
                   value={selectedGameType}

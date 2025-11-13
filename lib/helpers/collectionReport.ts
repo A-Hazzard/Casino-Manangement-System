@@ -13,6 +13,7 @@ import type {
   CollectionReportData,
 } from "@/lib/types/api";
 import type { CollectionDocument } from "@/lib/types/collections";
+import { getLicenseeObjectId } from "@/lib/utils/licenseeMapping";
 
 /**
  * Fetches all collection reports from the database, filtered by licencee if provided.
@@ -514,7 +515,10 @@ export async function getLocationsWithMachines(licensee?: string) {
     const params = new URLSearchParams();
     params.append("locationsWithMachines", "1");
     if (licensee && licensee !== "all") {
-      params.append("licencee", licensee);
+      const licenseeObjectId = getLicenseeObjectId(licensee);
+      if (licenseeObjectId && licenseeObjectId !== "all") {
+        params.append("licencee", licenseeObjectId);
+      }
     }
 
     const { data } = await axios.get(
@@ -654,7 +658,10 @@ export async function fetchCollectionReportsByLicencee(
     const params: Record<string, string> = {};
 
     if (licencee && licencee.toLowerCase() !== "all") {
-      params.licencee = licencee;
+      const licenseeObjectId = getLicenseeObjectId(licencee);
+      if (licenseeObjectId && licenseeObjectId !== "all") {
+        params.licencee = licenseeObjectId;
+      }
     }
 
     // If timePeriod is provided and not Custom, use timePeriod

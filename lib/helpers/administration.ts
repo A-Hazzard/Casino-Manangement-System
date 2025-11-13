@@ -50,7 +50,9 @@ export const filterAndSortUsers = (
     processedUsers = processedUsers.filter(user =>
       searchMode === 'username'
         ? user.username.toLowerCase().includes(lowerSearchValue)
-        : user.email.toLowerCase().includes(lowerSearchValue)
+        : (user.email || user.emailAddress || '')
+            .toLowerCase()
+            .includes(lowerSearchValue)
     );
   }
   if (sortConfig !== null && sortConfig.key) {

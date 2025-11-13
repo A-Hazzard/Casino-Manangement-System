@@ -1,18 +1,18 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
-import gsap from 'gsap';
-import axios from 'axios';
-import { EnterFullScreenIcon, ExitFullScreenIcon } from '@radix-ui/react-icons';
-import 'leaflet/dist/leaflet.css';
-import { MapPreviewProps } from '@/lib/types/componentProps';
-import { Location } from '@/lib/types';
-import MapSkeleton from '@/components/ui/MapSkeleton';
-import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, DollarSign, TrendingUp, Search } from 'lucide-react';
+import MapSkeleton from '@/components/ui/MapSkeleton';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { Location } from '@/lib/types';
+import { MapPreviewProps } from '@/lib/types/componentProps';
+import { EnterFullScreenIcon, ExitFullScreenIcon } from '@radix-ui/react-icons';
+import axios from 'axios';
+import gsap from 'gsap';
+import 'leaflet/dist/leaflet.css';
+import { DollarSign, MapPin, Search, TrendingUp } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { getMapCenterByLicensee } from '@/lib/utils/location';
@@ -243,11 +243,119 @@ export default function MapPreview(props: MapPreviewProps) {
     });
   }, []);
 
-  // Get default center based on selected licensee
+  const normalizedSelected = (selectedLicencee || '').toLowerCase();
+
+  const getLocationCenter = (location: Location): [number, number] | null => {
+    if (!location?.geoCoords || !location.geoCoords.latitude) {
+      return null;
+    }
+    const longitude = getValidLongitude(location.geoCoords);
+    if (longitude === undefined) {
+      return null;
+    }
+    return [location.geoCoords.latitude, longitude];
+  };
+
+  const matchesLicencee = (
+    location: Location,
+    licenceeKey: string
+  ): boolean => {
+    if (!licenceeKey) return false;
+
+    const metadata = location as Location & {
+      licenseeId?: string | null;
+      rel?: { licencee?: string | string[] | null };
+    };
+
+    const licenseeCandidates: string[] = [];
+
+    if (metadata.licenseeId) {
+      licenseeCandidates.push(String(metadata.licenseeId).toLowerCase());
+    }
+
+    const relLicencee = metadata.rel?.licencee;
+    if (Array.isArray(relLicencee)) {
+      relLicencee.forEach(value => {
+        if (value) {
+          licenseeCandidates.push(String(value).toLowerCase());
+        }
+      });
+    } else if (relLicencee) {
+      licenseeCandidates.push(String(relLicencee).toLowerCase());
+    }
+
+    if (metadata.name) {
+      licenseeCandidates.push(String(metadata.name).toLowerCase());
+    }
+
+    return licenseeCandidates.includes(licenceeKey);
+  };
+
+  const validLocations = useMemo(() => {
+    return (
+      props.gamingLocations?.filter(location => {
+        if (!location.geoCoords) {
+          return false;
+        }
+
+        const validLongitude = getValidLongitude(location.geoCoords);
+        const hasValidCoords =
+          location.geoCoords.latitude !== 0 &&
+          validLongitude !== undefined &&
+          validLongitude !== 0;
+
+        return hasValidCoords;
+      }) || []
+    );
+  }, [props.gamingLocations]);
+
+  const filteredLocations = useMemo(() => {
+    if (!normalizedSelected || normalizedSelected === 'all') {
+      return validLocations;
+    }
+    return validLocations.filter(location =>
+      matchesLicencee(location, normalizedSelected)
+    );
+  }, [normalizedSelected, validLocations]);
+
+  const locationsWithoutCoords = useMemo(() => {
+    return (
+      props.gamingLocations?.filter(location => {
+        if (!location.geoCoords) return true;
+
+        const validLongitude = getValidLongitude(location.geoCoords);
+        return (
+          location.geoCoords.latitude === 0 ||
+          validLongitude === undefined ||
+          validLongitude === 0
+        );
+      }) || []
+    );
+  }, [props.gamingLocations]);
+
+  const centersEqual = (a: [number, number], b: [number, number]): boolean =>
+    a[0] === b[0] && a[1] === b[1];
+
+  // Update map center when licensee or locations change
   useEffect(() => {
-    const defaultCenter = getMapCenterByLicensee(selectedLicencee);
-    setUserDefaultCenter(defaultCenter);
-  }, [selectedLicencee]);
+    const fallbackCenter = getMapCenterByLicensee(selectedLicencee);
+    let nextCenter: [number, number] | null = null;
+
+    if (normalizedSelected && normalizedSelected !== 'all') {
+      if (filteredLocations.length > 0) {
+        nextCenter = getLocationCenter(filteredLocations[0]) || null;
+      }
+    } else if (validLocations.length > 0) {
+      nextCenter = getLocationCenter(validLocations[0]) || null;
+    }
+
+    const target = nextCenter ?? fallbackCenter;
+    const resolved: [number, number] = [target[0], target[1]];
+
+    setUserDefaultCenter(prev =>
+      centersEqual(prev, resolved) ? prev : resolved
+    );
+  }, [selectedLicencee, normalizedSelected, filteredLocations, validLocations]);
 
   // Handle external props vs internal fetch
   useEffect(() => {
@@ -346,35 +454,6 @@ export default function MapPreview(props: MapPreviewProps) {
       });
     }
   };
-
-  // Filter valid locations with coordinates
-  const validLocations =
-    props.gamingLocations?.filter(location => {
-      if (!location.geoCoords) {
-        return false;
-      }
-
-      const validLongitude = getValidLongitude(location.geoCoords);
-      const hasValidCoords =
-        location.geoCoords.latitude !== 0 &&
-        validLongitude !== undefined &&
-        validLongitude !== 0;
-
-      return hasValidCoords;
-    }) || [];
-
-  // Get locations without coordinates for user notification
-  const locationsWithoutCoords =
-    props.gamingLocations?.filter(location => {
-      if (!location.geoCoords) return true;
-
-      const validLongitude = getValidLongitude(location.geoCoords);
-      return (
-        location.geoCoords.latitude === 0 ||
-        validLongitude === undefined ||
-        validLongitude === 0
-      );
-    }) || [];
 
   // Search functionality
   const handleSearch = (query: string) => {
@@ -531,7 +610,7 @@ export default function MapPreview(props: MapPreviewProps) {
           />
 
           {/* Render valid markers */}
-          {validLocations.map(location => {
+          {filteredLocations.map(location => {
             const locationName =
               location.name || location.locationName || 'Unknown Location';
             return renderMarker(
@@ -669,7 +748,7 @@ export default function MapPreview(props: MapPreviewProps) {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   />
-                  {validLocations.map(location => {
+                  {filteredLocations.map(location => {
                     const locationName =
                       location.name ||
                       location.locationName ||

@@ -84,6 +84,15 @@ export default function EditLocationModal({
 
   const [useMap, setUseMap] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
+
+  const isDeveloper = Array.isArray(user?.roles)
+    ? user?.roles.includes('developer')
+    : false;
+  useEffect(() => {
+    if (!isDeveloper && useMap) {
+      setUseMap(false);
+    }
+  }, [isDeveloper, useMap]);
   
   // Store original form data exactly as loaded from API for accurate comparison
   const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(null);
@@ -750,7 +759,7 @@ export default function EditLocationModal({
       />
 
       {/* Responsive Modal */}
-      <div className="fixed inset-0 flex items-center justify-center p-2 md:p-4">
+      <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}
           className="max-h-[95vh] w-full max-w-xl overflow-hidden rounded-md bg-container shadow-lg md:max-h-[90vh] lg:max-w-4xl"
@@ -1081,25 +1090,26 @@ export default function EditLocationModal({
                     </Label>
                   </div>
 
-                  {/* Map Toggle */}
-                  <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                    <Checkbox
-                      id="useMap"
-                      checked={useMap}
-                      onCheckedChange={checked => {
-                        setUseMap(checked === true);
-                        // In edit mode, don't auto-get current location
-                        // User can manually pick from the map or enter coordinates
-                      }}
-                      className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
-                    />
-                    <Label
-                      htmlFor="useMap"
-                      className="flex-1 text-sm font-medium"
-                    >
-                      Use Map to Select Location
-                    </Label>
-                  </div>
+                  {isDeveloper && (
+                    <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                      <Checkbox
+                        id="useMap"
+                        checked={useMap}
+                        onCheckedChange={checked => {
+                          setUseMap(checked === true);
+                          // In edit mode, don't auto-get current location
+                          // User can manually pick from the map or enter coordinates
+                        }}
+                        className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                      />
+                      <Label
+                        htmlFor="useMap"
+                        className="flex-1 text-sm font-medium"
+                      >
+                        Use Map to Select Location
+                      </Label>
+                    </div>
+                  )}
                 </div>
 
                 {/* GEO Coordinates - Mobile: Stacked, Desktop: Side by side */}

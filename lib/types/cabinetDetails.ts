@@ -89,6 +89,7 @@ export type CabinetSearchFiltersProps = {
   selectedLocation: string;
   locations: { _id: string; name: string }[];
   onLocationChange: (locationId: string) => void;
+  showLocationFilter: boolean;
 
   // Game type filter state
   selectedGameType: string;

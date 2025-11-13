@@ -1,8 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { calculateSasMetrics } from '@/lib/helpers/collectionCreation';
+import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const runtime = 'nodejs';
 
 type RepairMode = 'dry-run' | 'commit';
 

@@ -28,6 +28,9 @@ export async function GET(request: Request) {
     const licencee = searchParams.get('licensee') || searchParams.get('licencee');
     const minimal = searchParams.get('minimal') === '1';
     const showAll = searchParams.get('showAll') === 'true';
+    const forceAll =
+      searchParams.get('forceAll') === 'true' ||
+      searchParams.get('forceAll') === '1';
 
     // Get user's accessible licensees, roles, and location permissions from JWT token
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
@@ -48,8 +51,14 @@ export async function GET(request: Request) {
 
     let queryFilter: Record<string, unknown>;
 
+    const isAdminOrDeveloper =
+      userRoles.includes('admin') || userRoles.includes('developer');
+
     // Apply location filtering based on licensee + location permissions
-    if (showAll && userAccessibleLicensees === 'all' && userLocationPermissions.length === 0) {
+    if (
+      (showAll && userAccessibleLicensees === 'all' && userLocationPermissions.length === 0) ||
+      (forceAll && isAdminOrDeveloper)
+    ) {
       // Admin with no restrictions requesting all locations - no filter needed
       queryFilter = deletionFilter;
     } else {

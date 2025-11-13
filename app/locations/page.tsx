@@ -52,6 +52,7 @@ import { animateTableRows, animateCards } from "@/lib/utils/ui";
 import { getLicenseeName } from "@/lib/utils/licenseeMapping";
 import { useUserStore } from "@/lib/store/userStore";
 import { shouldShowNoLicenseeMessage } from "@/lib/utils/licenseeAccess";
+import MaintenanceBanner from "@/components/ui/MaintenanceBanner";
 
 function LocationsPageContent() {
   const { handleApiCallWithRetry: _handleApiCallWithRetry } =
@@ -180,6 +181,7 @@ function LocationsPageContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
+        <MaintenanceBanner />
         {/* Header Section: Title, refresh button, and new location button */}
         <div className="flex items-center justify-between mt-4 w-full max-w-full">
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -524,9 +526,9 @@ function LocationsPageContent() {
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4" ref={cardsRef}>
                     {!isLoading ? (
-                      currentItems.map((location) => (
+                      currentItems.map((location, index) => (
                         <LocationCard
-                          key={location._id}
+                          key={`${location._id}-${index}`}
                           location={location}
                           onLocationClick={handleLocationClick}
                           onEdit={() => openEditModal(location)}

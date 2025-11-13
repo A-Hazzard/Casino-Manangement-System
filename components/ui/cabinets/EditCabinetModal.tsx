@@ -46,6 +46,7 @@ export const EditCabinetModal = ({
   const [userModifiedFields, setUserModifiedFields] = useState<Set<string>>(
     new Set()
   );
+  const userModifiedFieldsRef = useRef<Set<string>>(new Set());
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
   >([]);
@@ -272,6 +273,10 @@ export const EditCabinetModal = ({
   });
 
   useEffect(() => {
+    userModifiedFieldsRef.current = userModifiedFields;
+  }, [userModifiedFields]);
+
+  useEffect(() => {
     // Initial form data setup from selected cabinet
     if (selectedCabinet) {
       // console.log("Selected cabinet gameType:", selectedCabinet.gameType);
@@ -340,16 +345,16 @@ export const EditCabinetModal = ({
                 // console.log("API gameType:", cabinetDetails.gameType);
                 // console.log("Current form gameType:", prevData.gameType);
 
-                const newData = {
+          const newData = {
                   ...prevData,
                   installedGame:
                     cabinetDetails.installedGame || prevData.installedGame,
                   // Only update gameType if user hasn't modified it
-                  gameType: userModifiedFields.has('gameType')
+            gameType: userModifiedFieldsRef.current.has('gameType')
                     ? prevData.gameType
                     : cabinetDetails.gameType || prevData.gameType,
                   // Only update manufacturer if user hasn't modified it
-                  manufacturer: userModifiedFields.has('manufacturer')
+            manufacturer: userModifiedFieldsRef.current.has('manufacturer')
                     ? prevData.manufacturer
                     : cabinetDetails.manufacturer || prevData.manufacturer,
                   accountingDenomination: String(
@@ -391,7 +396,6 @@ export const EditCabinetModal = ({
     fetchManufacturersData,
     activeMetricsFilter,
     customDateRange,
-    userModifiedFields,
   ]);
 
   useEffect(() => {
@@ -660,7 +664,7 @@ export const EditCabinetModal = ({
       />
 
       {/* Desktop Modal */}
-      <div className="fixed inset-0 flex items-start md:items-center justify-center p-0 md:p-4">
+      <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}
           className="flex flex-col h-full w-full md:max-h-[98vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"

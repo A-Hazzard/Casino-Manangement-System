@@ -76,6 +76,9 @@ class UserCache {
 // Create a singleton instance
 export const userCache = new UserCache();
 
+// Track in-flight requests so concurrent callers share the same promise
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
 /**
  * Cache keys for different types of user data
  */
@@ -100,14 +103,37 @@ export async function fetchUserWithCache<T>(
     return cached as T;
   }
 
+  if (inFlightRequests.has(key)) {
+    console.warn(`Waiting for in-flight request for ${key}`);
+    try {
+      const data = (await inFlightRequests.get(key)) as T;
+      return data ?? null;
+    } catch (error) {
+      console.error(`In-flight request for ${key} failed:`, error);
+      return null;
+    }
+  }
+
   // Fetch from API
   console.warn(`Cache miss for ${key}, fetching from API`);
+  const fetchPromise = (async () => {
+    try {
+      const data = await fetchFn();
+      userCache.set(key, data, ttl);
+      return data;
+    } catch (error) {
+      console.error(`Failed to fetch ${key}:`, error);
+      throw error;
+    } finally {
+      inFlightRequests.delete(key);
+    }
+  })();
+
+  inFlightRequests.set(key, fetchPromise);
+
   try {
-    const data = await fetchFn();
-    userCache.set(key, data, ttl);
-    return data;
-  } catch (error) {
-    console.error(`Failed to fetch ${key}:`, error);
+    return (await fetchPromise) as T;
+  } catch {
     return null;
   }
 }

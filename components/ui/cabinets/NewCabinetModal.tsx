@@ -423,7 +423,7 @@ export const NewCabinetModal = ({
         className="absolute inset-0 bg-black/50 opacity-0"
         onClick={handleClose}
       />
-      <div className="fixed inset-0 flex items-start md:items-center justify-center p-0 md:p-4">
+      <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}
           className="flex flex-col h-full w-full md:max-h-[90vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"

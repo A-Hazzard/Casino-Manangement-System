@@ -16,6 +16,7 @@ export const CabinetSearchFilters = ({
   selectedLocation,
   locations,
   onLocationChange,
+  showLocationFilter,
   selectedGameType,
   gameTypes,
   onGameTypeChange,
@@ -99,20 +100,22 @@ export const CabinetSearchFilters = ({
 
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
           <div className="flex gap-2 min-w-max">
-            <div className="w-40 flex-shrink-0">
-              <LocationSingleSelect
-                locations={locationSelectItems}
-                selectedLocation={selectedLocation}
-                onSelectionChange={handleLocationChange}
-                placeholder="All Locations"
-                includeAllOption={true}
-                dropdownLabel="Select Location"
-                searchPlaceholder="Search locations..."
-                emptyMessage="No locations found"
-                showSasBadge={false}
-                className="w-full"
-              />
-            </div>
+            {showLocationFilter && (
+              <div className="w-40 flex-shrink-0">
+                <LocationSingleSelect
+                  locations={locationSelectItems}
+                  selectedLocation={selectedLocation}
+                  onSelectionChange={handleLocationChange}
+                  placeholder="All Locations"
+                  includeAllOption={true}
+                  dropdownLabel="Select Location"
+                  searchPlaceholder="Search locations..."
+                  emptyMessage="No locations found"
+                  showSasBadge={false}
+                  className="w-full"
+                />
+              </div>
+            )}
             <div className="w-40 flex-shrink-0">
               <LocationSingleSelect
                 locations={gameTypeSelectItems}
@@ -174,20 +177,22 @@ export const CabinetSearchFilters = ({
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
 
-        <div className="w-auto min-w-[220px] max-w-[240px]">
-          <LocationSingleSelect
-            locations={locationSelectItems}
-            selectedLocation={selectedLocation}
-            onSelectionChange={handleLocationChange}
-            placeholder="All Locations"
-            includeAllOption={true}
-            dropdownLabel="Select Location"
-            searchPlaceholder="Search locations..."
-            emptyMessage="No locations found"
-            showSasBadge={false}
-            className="w-full"
-          />
-        </div>
+        {showLocationFilter && (
+          <div className="w-auto min-w-[220px] max-w-[240px]">
+            <LocationSingleSelect
+              locations={locationSelectItems}
+              selectedLocation={selectedLocation}
+              onSelectionChange={handleLocationChange}
+              placeholder="All Locations"
+              includeAllOption={true}
+              dropdownLabel="Select Location"
+              searchPlaceholder="Search locations..."
+              emptyMessage="No locations found"
+              showSasBadge={false}
+              className="w-full"
+            />
+          </div>
+        )}
 
         <div className="w-auto min-w-[220px] max-w-[240px]">
           <LocationSingleSelect

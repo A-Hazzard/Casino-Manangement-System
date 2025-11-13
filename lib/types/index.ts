@@ -64,6 +64,10 @@ export type Location = {
   };
   totalMachines?: number;
   onlineMachines?: number;
+  licenseeId?: string | null;
+  rel?: {
+    licencee?: string | string[] | null;
+  };
 };
 
 export type locations = Array<Location>;

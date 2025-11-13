@@ -51,6 +51,7 @@ import { shouldShowNoLicenseeMessage } from "@/lib/utils/licenseeAccess";
 import { CABINET_TABS_CONFIG } from "@/lib/constants/cabinets";
 import { IMAGES } from "@/lib/constants/images";
 // Removed unused Cabinet type import
+import MaintenanceBanner from "@/components/ui/MaintenanceBanner";
 
 function CabinetsPageContent() {
   const {
@@ -105,6 +106,9 @@ function CabinetsPageContent() {
     selectedStatus,
     displayCurrency,
   });
+
+  const showLocationFilter =
+    new Set(locations.map(location => String(location._id ?? ''))).size > 1;
 
   const {
     sortOrder,
@@ -222,6 +226,7 @@ function CabinetsPageContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
+        <MaintenanceBanner />
         {/* Mobile-friendly header layout */}
         <div className="mt-4 w-full max-w-full">
           {/* Mobile Layout - All on same line */}
@@ -344,6 +349,7 @@ function CabinetsPageContent() {
           selectedLocation={selectedLocation}
           locations={locations}
           onLocationChange={handleLocationChange}
+          showLocationFilter={showLocationFilter}
           selectedGameType={selectedGameType}
           gameTypes={gameTypes}
           onGameTypeChange={handleGameTypeChange}

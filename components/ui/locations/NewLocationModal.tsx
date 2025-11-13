@@ -30,7 +30,7 @@ export default function NewLocationModal({
   onClose,
   onCreated,
 }: NewLocationModalProps) {
-  const { user: _user } = useUserStore();
+  const { user } = useUserStore();
 
   // Remove the store dependency since we'll call API directly
 
@@ -72,6 +72,16 @@ export default function NewLocationModal({
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
+
+  const isDeveloper = Array.isArray(user?.roles)
+    ? user.roles.includes('developer')
+    : false;
+
+  useEffect(() => {
+    if (!isDeveloper && useMap) {
+      setUseMap(false);
+    }
+  }, [isDeveloper, useMap]);
 
   // Generate time options for day start time dropdown (hourly intervals only)
   const generateTimeOptions = () => {
@@ -543,23 +553,24 @@ export default function NewLocationModal({
               </Label>
             </div>
 
-            {/* Map Toggle */}
-            <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-              <Checkbox
-                id="useMap"
-                checked={useMap}
-                onCheckedChange={checked => {
-                  setUseMap(checked === true);
-                  if (checked === true) {
-                    getCurrentLocation();
-                  }
-                }}
-                className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
-              />
-              <Label htmlFor="useMap" className="flex-1 text-sm font-medium">
-                Use Map to Select Location
-              </Label>
-            </div>
+            {isDeveloper && (
+              <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                <Checkbox
+                  id="useMap"
+                  checked={useMap}
+                  onCheckedChange={checked => {
+                    setUseMap(checked === true);
+                    if (checked === true) {
+                      getCurrentLocation();
+                    }
+                  }}
+                  className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                />
+                <Label htmlFor="useMap" className="flex-1 text-sm font-medium">
+                  Use Map to Select Location
+                </Label>
+              </div>
+            )}
           </div>
 
           {/* GEO Coordinates - Mobile: Stacked, Desktop: Side by side */}

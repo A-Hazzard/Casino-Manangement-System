@@ -110,8 +110,8 @@ export default function UserTable({
                 </div>
               </TableCell>
               <TableCell className="text-left text-gray-600">
-                {user.email ? (
-                  user.email
+                {user.email || user.emailAddress ? (
+                  user.email || user.emailAddress
                 ) : (
                   <span className="italic text-red-500">No email provided</span>
                 )}

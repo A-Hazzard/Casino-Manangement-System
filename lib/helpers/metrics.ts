@@ -35,7 +35,8 @@ export async function getMetrics(
   timePeriod: TimePeriod,
   startDate?: Date | string,
   endDate?: Date | string,
-  licencee?: string
+  licencee?: string,
+  displayCurrency?: string
 ): Promise<dashboardData[]> {
   try {
     let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
@@ -50,6 +51,9 @@ export async function getMetrics(
     }
     if (licencee && licencee !== 'all') {
       url += `&licencee=${licencee}`;
+    }
+    if (displayCurrency) {
+      url += `&currency=${displayCurrency}`;
     }
 
     const { data } = await axios.get<

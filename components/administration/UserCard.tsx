@@ -61,8 +61,8 @@ export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
         </div>
         <div className="mb-1 text-sm text-gray-700">
           <span className="font-semibold">Email:</span>{' '}
-          {user.email ? (
-            user.email
+          {user.email || user.emailAddress ? (
+            user.email || user.emailAddress
           ) : (
             <span className="italic text-red-500">No email provided</span>
           )}
