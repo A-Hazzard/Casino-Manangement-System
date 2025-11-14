@@ -20,13 +20,17 @@ import {
 } from '@/lib/utils/validation';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import type { Licensee } from '@/lib/types/licensee';
+import MultiSelectDropdown, {
+  type MultiSelectOption,
+} from '@/components/ui/common/MultiSelectDropdown';
 import cameraIcon from '@/public/cameraIcon.svg';
 import defaultAvatar from '@/public/defaultAvatar.svg';
+import { Checkbox } from '@/components/ui/checkbox';
 import * as Dialog from '@radix-ui/react-dialog';
 import axios from 'axios';
 import { Pencil, X } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 async function fetchUserData(userId: string): Promise<User | null> {
@@ -70,9 +74,18 @@ export default function ProfileModal({
   const [licenseesLoading, setLicenseesLoading] = useState(false);
 
   // Locations state
-  const [locations, setLocations] = useState<{ _id: string; name: string }[]>([]);
+  const [locations, setLocations] = useState<
+    Array<{ _id: string; name: string; licenseeId?: string }>
+  >([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [missingLocationNames, setMissingLocationNames] = useState<Record<string, string>>({});
+
+  // Licensee/Location assignment state
+  const [selectedLicenseeIds, setSelectedLicenseeIds] = useState<string[]>([]);
+  const [allLicenseesSelected, setAllLicenseesSelected] = useState(false);
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  const [allLocationsSelected, setAllLocationsSelected] = useState(false);
+  const assignmentsInitializedRef = useRef(false);
 
   // Password strength state
   const [passwordStrength, setPasswordStrength] = useState<{
@@ -98,6 +111,12 @@ export default function ProfileModal({
       special: false,
     },
   });
+
+  const normalizedAuthRoles =
+    authUser?.roles?.map(role => role.toLowerCase()) || [];
+  const isPrivilegedEditor = normalizedAuthRoles.some(role =>
+    ['admin', 'developer'].includes(role)
+  );
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
@@ -273,8 +292,35 @@ export default function ProfileModal({
     const loadLocations = async () => {
       setLocationsLoading(true);
       try {
+        type RawLocationResponse = {
+          _id?: unknown;
+          name?: unknown;
+          rel?: { licencee?: unknown };
+          licenceeId?: unknown;
+        };
+
         const response = await axios.get('/api/locations?minimal=1');
-        const locationsData = response.data?.locations || [];
+        const rawLocations: RawLocationResponse[] = response.data?.locations || [];
+        const locationsData = rawLocations.map(location => {
+          const relLicencee = location.rel?.licencee;
+          let derivedLicenseeId: string | undefined;
+          if (Array.isArray(relLicencee)) {
+            derivedLicenseeId =
+              relLicencee.length > 0 && relLicencee[0] != null
+                ? String(relLicencee[0])
+                : undefined;
+          } else if (relLicencee != null) {
+            derivedLicenseeId = String(relLicencee);
+          } else if (location.licenceeId != null) {
+            derivedLicenseeId = String(location.licenceeId);
+          }
+
+          return {
+            _id: String(location._id ?? ''),
+            name: String(location.name ?? 'Unknown'),
+            licenseeId: derivedLicenseeId,
+          };
+        });
         console.log('[ProfileModal] Fetched locations:', locationsData.length);
         setLocations(locationsData);
       } catch (error) {
@@ -332,6 +378,160 @@ export default function ProfileModal({
       fetchMissingLocations();
     }
   }, [open, userData, locations]);
+
+  // Reset assignment initialization when closing modal
+  useEffect(() => {
+    if (!open) {
+      assignmentsInitializedRef.current = false;
+    }
+  }, [open]);
+
+  // Initialize licensee/location selections when data available
+  useEffect(() => {
+    if (
+      !open ||
+      !userData ||
+      licenseesLoading ||
+      locationsLoading ||
+      assignmentsInitializedRef.current
+    ) {
+      return;
+    }
+
+    const normalize = (value: unknown) => String(value);
+
+    const userLicensees = (userData.rel?.licencee || []).map(normalize);
+    const isPrivileged = userData.roles?.some(role =>
+      ['admin', 'developer'].includes(role.toLowerCase())
+    );
+
+    if (userLicensees.length > 0) {
+      setSelectedLicenseeIds(userLicensees);
+      if (licensees.length > 0 && userLicensees.length === licensees.length) {
+        setAllLicenseesSelected(true);
+      } else {
+        setAllLicenseesSelected(false);
+      }
+    } else if (isPrivileged && licensees.length > 0) {
+      setAllLicenseesSelected(true);
+      setSelectedLicenseeIds(licensees.map(lic => String(lic._id)));
+    } else {
+      setAllLicenseesSelected(false);
+      setSelectedLicenseeIds([]);
+    }
+
+    const userLocations =
+      userData.resourcePermissions?.['gaming-locations']?.resources?.map(normalize) || [];
+    if (userLocations.length > 0) {
+      setSelectedLocationIds(userLocations);
+      setAllLocationsSelected(false);
+    } else if (isPrivileged && locations.length > 0) {
+      setAllLocationsSelected(true);
+      setSelectedLocationIds(locations.map(loc => loc._id));
+    } else {
+      setAllLocationsSelected(false);
+      setSelectedLocationIds([]);
+    }
+
+    assignmentsInitializedRef.current = true;
+  }, [
+    open,
+    userData,
+    licensees,
+    locations,
+    licenseesLoading,
+    locationsLoading,
+  ]);
+
+  const licenseeOptions: MultiSelectOption[] = useMemo(
+    () =>
+      licensees.map(licensee => ({
+        id: String(licensee._id),
+        label: licensee.name,
+      })),
+    [licensees]
+  );
+
+  const availableLocations = useMemo(() => {
+    if (allLicenseesSelected) {
+      return locations;
+    }
+    if (selectedLicenseeIds.length === 0) {
+      return [];
+    }
+    return locations.filter(location =>
+      location.licenseeId ? selectedLicenseeIds.includes(location.licenseeId) : true
+    );
+  }, [allLicenseesSelected, locations, selectedLicenseeIds]);
+
+  const locationOptions: MultiSelectOption[] = useMemo(
+    () =>
+      availableLocations.map(location => ({
+        id: location._id,
+        label: location.name,
+      })),
+    [availableLocations]
+  );
+
+  const handleLicenseeSelectionChange = (newIds: string[]) => {
+    setSelectedLicenseeIds(newIds);
+    if (licensees.length > 0) {
+      setAllLicenseesSelected(newIds.length === licensees.length);
+    } else {
+      setAllLicenseesSelected(false);
+    }
+
+    setSelectedLocationIds(prev =>
+      prev.filter(locationId => {
+        const location = locations.find(loc => loc._id === locationId);
+        if (!location?.licenseeId) {
+          return true;
+        }
+        return newIds.includes(location.licenseeId);
+      })
+    );
+  };
+
+  const handleAllLicenseesToggle = (checked: boolean) => {
+    setAllLicenseesSelected(checked);
+    if (checked) {
+      setSelectedLicenseeIds(licensees.map(licensee => String(licensee._id)));
+    } else {
+      setSelectedLicenseeIds([]);
+      setSelectedLocationIds([]);
+      setAllLocationsSelected(false);
+    }
+  };
+
+  const handleLocationSelectionChange = (newIds: string[]) => {
+    setSelectedLocationIds(newIds);
+    if (availableLocations.length > 0) {
+      setAllLocationsSelected(newIds.length === availableLocations.length);
+    } else {
+      setAllLocationsSelected(false);
+    }
+  };
+
+  const handleAllLocationsToggle = (checked: boolean) => {
+    setAllLocationsSelected(checked);
+    if (checked) {
+      setSelectedLocationIds(availableLocations.map(location => location._id));
+    } else {
+      setSelectedLocationIds([]);
+    }
+  };
+
+  // Keep location selections in sync when "All locations" is enabled
+  useEffect(() => {
+    if (!allLocationsSelected) return;
+    const allIds = availableLocations.map(location => location._id);
+    const hasDifference =
+      allIds.length !== selectedLocationIds.length ||
+      !allIds.every(id => selectedLocationIds.includes(id));
+    if (hasDifference) {
+      setSelectedLocationIds(allIds);
+    }
+  }, [allLocationsSelected, availableLocations, selectedLocationIds]);
 
   // Update password strength when new password changes
   useEffect(() => {
@@ -528,6 +728,8 @@ export default function ProfileModal({
       password?: { current: string; new: string };
       profilePicture?: string | null;
       roles?: string[];
+      rel?: { licencee: string[] };
+      resourcePermissions?: User['resourcePermissions'];
     } = {
       _id: userData._id,
       profile: sanitizedProfile,
@@ -575,17 +777,49 @@ export default function ProfileModal({
       };
     }
 
+    const normalizedSelectedLicensees = selectedLicenseeIds.map(id => String(id));
+    const normalizedSelectedLocations = selectedLocationIds.map(id => String(id));
+    const canEditAssignments =
+      authUser?.roles?.some(role =>
+        ['admin', 'developer'].includes(role.toLowerCase())
+      ) ?? false;
+
+    if (canEditAssignments) {
+      payload.rel = {
+        licencee: normalizedSelectedLicensees,
+      };
+      payload.resourcePermissions = {
+        ...(userData.resourcePermissions || {}),
+        'gaming-locations': {
+          entity: 'gaming-locations',
+          resources: normalizedSelectedLocations,
+        },
+      };
+    }
+
     // Build comparison objects with ONLY editable fields
     const originalData = {
       profile: userData.profile,
       profilePicture: userData.profilePicture,
       roles: userData.roles,
+      rel: userData.rel || {},
+      resourcePermissions: userData.resourcePermissions || {},
     };
 
     const formDataComparison = {
       profile: sanitizedProfile,
       profilePicture: profilePicture ?? null,
       roles: selectedRoles,
+      rel: {
+        licencee: normalizedSelectedLicensees,
+      },
+      resourcePermissions: {
+        ...(userData.resourcePermissions || {}),
+        'gaming-locations': {
+          entity: 'gaming-locations',
+          resources: normalizedSelectedLocations,
+        },
+      },
     };
     
     let changes: ReturnType<typeof detectChanges> = [];
@@ -606,6 +840,40 @@ export default function ProfileModal({
       passwordData.newPassword && passwordData.confirmPassword
     );
     
+    const originalLicenseeIds =
+      (userData.rel?.licencee || []).map(value => String(value)) || [];
+    const licenseeIdsChanged =
+      originalLicenseeIds.length !== normalizedSelectedLicensees.length ||
+      !originalLicenseeIds.every(id => normalizedSelectedLicensees.includes(id)) ||
+      !normalizedSelectedLicensees.every(id => originalLicenseeIds.includes(id));
+
+    const originalLocationIds =
+      userData.resourcePermissions?.['gaming-locations']?.resources?.map(value =>
+        String(value)
+      ) || [];
+    const locationIdsChanged =
+      originalLocationIds.length !== normalizedSelectedLocations.length ||
+      !originalLocationIds.every(id => normalizedSelectedLocations.includes(id)) ||
+      !normalizedSelectedLocations.every(id => originalLocationIds.includes(id));
+
+    if (licenseeIdsChanged) {
+      meaningfulChanges.push({
+        field: 'Assigned Licensees',
+        oldValue: originalLicenseeIds,
+        newValue: normalizedSelectedLicensees,
+        path: 'rel.licencee',
+      });
+    }
+
+    if (locationIdsChanged) {
+      meaningfulChanges.push({
+        field: 'Assigned Locations',
+        oldValue: originalLocationIds,
+        newValue: normalizedSelectedLocations,
+        path: 'resourcePermissions',
+      });
+    }
+
     if (meaningfulChanges.length === 0 && !hasPasswordChange) {
       toast.info('No changes detected');
       return;
@@ -1139,45 +1407,54 @@ export default function ProfileModal({
                           <div className="p-2">
                             <Skeleton className="h-5 w-32" />
                           </div>
+                        ) : isEditMode && isPrivilegedEditor ? (
+                          <div className="space-y-3 rounded-md border border-border bg-white p-3">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                              <Checkbox
+                                checked={allLicenseesSelected}
+                                onCheckedChange={checked =>
+                                  handleAllLicenseesToggle(checked === true)
+                                }
+                                disabled={licensees.length === 0}
+                              />
+                              All Licensees
+                            </label>
+                            {licensees.length === 0 && (
+                              <p className="text-sm text-gray-500">
+                                No licensees available. Please add licensees first.
+                              </p>
+                            )}
+                            {!allLicenseesSelected && licensees.length > 0 && (
+                              <MultiSelectDropdown
+                                options={licenseeOptions}
+                                selectedIds={selectedLicenseeIds}
+                                onChange={handleLicenseeSelectionChange}
+                                placeholder="Select licensees..."
+                                searchPlaceholder="Search licensees..."
+                                label="licensees"
+                                showSelectAll
+                              />
+                            )}
+                            {allLicenseesSelected && licensees.length > 0 && (
+                              <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                                All {licensees.length} licensees selected
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <p className="p-2">
                             {userData?.rel?.licencee && userData.rel.licencee.length > 0
-                              ? (() => {
-                                  console.log('[ProfileModal] User licensee IDs:', userData.rel.licencee);
-                                  console.log('[ProfileModal] Loaded licensees:', licensees.length);
-                                  console.log('[ProfileModal] Licensees loading:', licenseesLoading);
-                                  
-                                  if (licensees.length === 0 && !licenseesLoading) {
-                                    return 'Error loading licensees';
-                                  }
-                                  
-                                  return userData.rel.licencee
-                                    .map(licenseeId => {
-                                      console.log('[ProfileModal] Processing licensee ID:', licenseeId, 'Type:', typeof licenseeId);
-                                      
-                                      // Find licensee by ID with exact string matching
-                                      const licensee = licensees.find(l => {
-                                        const licId = String(l._id);
-                                        const userId = String(licenseeId);
-                                        const match = licId === userId;
-                                        console.log('[ProfileModal] Comparing:', { licId, userId, match });
-                                        return match;
-                                      });
-                                      
-                                      if (!licensee) {
-                                        console.error('[ProfileModal] ❌ Licensee not found for ID:', licenseeId);
-                                        console.error('[ProfileModal] Available IDs:', licensees.map(l => String(l._id)));
-                                      } else {
-                                        console.log('[ProfileModal] ✅ Found licensee:', licensee.name);
-                                      }
-                                      
-                                      return licensee?.name || `Unknown (${licenseeId})`;
-                                    })
-                                    .join(', ');
-                                })()
-                              : authUser?.roles?.includes('admin') || authUser?.roles?.includes('developer')
-                              ? 'All Licensees (Admin)'
-                              : 'None'}
+                              ? userData.rel.licencee
+                                  .map(licenseeId => {
+                                    const match = licensees.find(
+                                      licensee => String(licensee._id) === String(licenseeId)
+                                    );
+                                    return match?.name || `Unknown (${licenseeId})`;
+                                  })
+                                  .join(', ')
+                              : isPrivilegedEditor
+                                ? 'All Licensees (Admin)'
+                                : 'None'}
                           </p>
                         )}
                       </div>
@@ -1191,56 +1468,102 @@ export default function ProfileModal({
                           <div className="p-2">
                             <Skeleton className="h-5 w-32" />
                           </div>
+                        ) : isEditMode && isPrivilegedEditor ? (
+                          <div className="space-y-3 rounded-md border border-border bg-white p-3">
+                            {allLicenseesSelected || selectedLicenseeIds.length > 0 ? (
+                              <>
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                  <Checkbox
+                                    checked={allLocationsSelected}
+                                    onCheckedChange={checked =>
+                                      handleAllLocationsToggle(checked === true)
+                                    }
+                                    disabled={availableLocations.length === 0}
+                                  />
+                                  All Locations{' '}
+                                  {allLicenseesSelected
+                                    ? ''
+                                    : `for selected licencee${selectedLicenseeIds.length > 1 ? 's' : ''}`}
+                                </label>
+                                {!allLocationsSelected && (
+                                  <MultiSelectDropdown
+                                    options={locationOptions}
+                                    selectedIds={selectedLocationIds}
+                                    onChange={handleLocationSelectionChange}
+                                    placeholder={
+                                      availableLocations.length === 0
+                                        ? 'No locations available for selected licensees'
+                                        : 'Select locations...'
+                                    }
+                                    searchPlaceholder="Search locations..."
+                                    label="locations"
+                                    showSelectAll
+                                    disabled={availableLocations.length === 0}
+                                  />
+                                )}
+                                {allLocationsSelected && availableLocations.length > 0 && (
+                                  <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                                    All {availableLocations.length} available locations selected
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                                Select at least one licensee to assign locations.
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <div className="p-2">
                             {(() => {
-                              const locationPermissions = userData?.resourcePermissions?.['gaming-locations']?.resources || [];
-                              
-                              // Managers don't need location assignments
-                              const isManager = userData?.roles?.includes('manager');
-                              const isAdmin = userData?.roles?.includes('admin') || userData?.roles?.includes('developer');
-                              
-                              if (isAdmin && locationPermissions.length === 0) {
+                              const locationPermissions =
+                                userData?.resourcePermissions?.['gaming-locations']?.resources || [];
+
+                              const userRolesLower =
+                                userData?.roles?.map(role => role.toLowerCase()) || [];
+                              const isManager = userRolesLower.includes('manager');
+                              const isAdminOrDev =
+                                userRolesLower.includes('admin') ||
+                                userRolesLower.includes('developer');
+
+                              if (isAdminOrDev && locationPermissions.length === 0) {
                                 return 'All Locations (Admin)';
                               }
-                              
+
                               if (isManager && locationPermissions.length === 0) {
                                 return 'All Locations for assigned licensees (Manager)';
                               }
-                              
+
                               if (locationPermissions.length === 0) {
                                 return 'No locations assigned';
                               }
-                              
-                              // Check if we're still fetching missing location names
+
                               const hasMissingLocations = locationPermissions.some(locationId => {
-                                const location = locations.find(l => String(l._id) === String(locationId));
+                                const location = locations.find(
+                                  loc => String(loc._id) === String(locationId)
+                                );
                                 return !location && !missingLocationNames[locationId];
                               });
-                              
+
                               if (hasMissingLocations) {
-                                return <Skeleton className="h-5 w-48 inline-block" />;
+                                return <Skeleton className="inline-block h-5 w-48" />;
                               }
-                              
-                              // Map location IDs to names
+
                               const locationNames = locationPermissions
                                 .map(locationId => {
-                                  // First check in the main locations list
-                                  const location = locations.find(l => String(l._id) === String(locationId));
+                                  const location = locations.find(
+                                    loc => String(loc._id) === String(locationId)
+                                  );
                                   if (location) {
                                     return location.name;
                                   }
-                                  
-                                  // Check if we've fetched this missing location's name
                                   if (missingLocationNames[locationId]) {
                                     return missingLocationNames[locationId];
                                   }
-                                  
-                                  // Shouldn't reach here due to hasMissingLocations check above
                                   return `Unknown (${locationId})`;
                                 })
                                 .join(', ');
-                              
+
                               return locationNames || 'No locations found';
                             })()}
                           </div>

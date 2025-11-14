@@ -7,18 +7,18 @@ import ProfileValidationModal from '@/components/ui/ProfileValidationModal';
 import { LoginPageSkeleton } from '@/components/ui/skeletons/LoginSkeletons';
 import { loginUser } from '@/lib/helpers/clientAuth';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useUserStore } from '@/lib/store/userStore';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
+import { useUserStore } from '@/lib/store/userStore';
+import type { ProfileValidationModalData } from '@/lib/types/profileValidation';
 import { checkForDatabaseMismatch } from '@/lib/utils/databaseMismatch';
 import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
 import type {
   InvalidProfileFields,
   ProfileValidationReasons,
 } from '@/shared/types/auth';
-import type { ProfileValidationModalData } from '@/lib/types/profileValidation';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 
 type ProfileUpdateResult = {
   success: boolean;
@@ -63,17 +63,17 @@ export default function LoginPage() {
     useState<ProfileValidationReasons>({});
   const [currentUserData, setCurrentUserData] =
     useState<ProfileValidationModalData>({
-    username: '',
-    firstName: '',
-    lastName: '',
+      username: '',
+      firstName: '',
+      lastName: '',
       otherName: '',
       gender: '',
-    emailAddress: '',
-    phone: '',
+      emailAddress: '',
+      phone: '',
       dateOfBirth: '',
-    licenseeIds: [],
-    locationIds: [],
-  });
+      licenseeIds: [],
+      locationIds: [],
+    });
   const [profileUpdating, setProfileUpdating] = useState(false);
 
   useEffect(() => {
@@ -253,7 +253,9 @@ export default function LoginPage() {
           const originalError = console.error;
           console.error = () => {}; // Temporarily disable console.error
 
-          const testResponse = await fetch('/api/test-current-user');
+          const testResponse = await fetch('/api/test-current-user', {
+            credentials: 'include',
+          });
           const testData = await testResponse.json();
 
           // Restore console.error
@@ -341,23 +343,23 @@ export default function LoginPage() {
               response.user?.profile?.contact?.phone ||
               response.user?.profile?.contact?.mobile ||
               '',
-            dateOfBirth:
-              response.user?.profile?.identification?.dateOfBirth
-                ? new Date(
-                    response.user.profile.identification.dateOfBirth as
-                      | string
-                      | number
-                      | Date
-                  )
-                    .toISOString()
-                    .split('T')[0]
-                : '',
+            dateOfBirth: response.user?.profile?.identification?.dateOfBirth
+              ? new Date(
+                  response.user.profile.identification.dateOfBirth as
+                    | string
+                    | number
+                    | Date
+                )
+                  .toISOString()
+                  .split('T')[0]
+              : '',
             licenseeIds: Array.isArray(response.user?.rel?.licencee)
               ? (response.user?.rel?.licencee as string[]).map(id => String(id))
               : [],
             locationIds:
-              response.user?.resourcePermissions?.['gaming-locations']
-                ?.resources?.map((id: unknown) => String(id)) || [],
+              response.user?.resourcePermissions?.[
+                'gaming-locations'
+              ]?.resources?.map((id: unknown) => String(id)) || [],
           });
           setShowProfileValidationModal(true);
           setRedirecting(false);
@@ -533,7 +535,10 @@ export default function LoginPage() {
         router.push(redirectPath);
       }, 500);
 
-      return { success: true, invalidProfileReasons: result.invalidProfileReasons };
+      return {
+        success: true,
+        invalidProfileReasons: result.invalidProfileReasons,
+      };
     } catch (error) {
       console.error('Profile update failed:', error);
       return {

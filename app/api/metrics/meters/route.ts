@@ -1,7 +1,6 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
-import { getMetricsForLocations } from '@/app/api/lib/helpers/meters/aggregations';
+import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { ParamsType } from '@shared/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
@@ -10,7 +9,10 @@ import {
   getCountryCurrency,
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { getUserAccessibleLicenseesFromToken } from '@/app/api/lib/helpers/licenseeFilter';
+import {
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
+} from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { ObjectId } from 'mongodb';
 
@@ -55,7 +57,7 @@ export async function GET(req: NextRequest) {
     }
     const params = Object.fromEntries(req.nextUrl.searchParams.entries());
 
-    let { startDate, endDate } = params;
+    const { startDate, endDate } = params;
     const timePeriod = params.timePeriod;
     const rawLicencee =
       params.licencee || params.licensee || params.licenceeId || '';
@@ -96,56 +98,294 @@ export async function GET(req: NextRequest) {
       timePeriod: timePeriod as ParamsType['timePeriod'],
       licencee: licencee || '',
     };
-    if (startDate && endDate) {
-      // For custom date ranges, the frontend sends dates that already represent Trinidad time
-      // We need to convert them to UTC for database queries by adding 4 hours
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+    let customStartDate: Date | undefined;
+    let customEndDate: Date | undefined;
 
-      // Convert Trinidad time to UTC by adding 4 hours
-      startDate = new Date(start.getTime() + 4 * 60 * 60 * 1000).toISOString();
-      endDate = new Date(end.getTime() + 4 * 60 * 60 * 1000).toISOString();
-    } else {
-      const dates = getDatesForTimePeriod(apiParams.timePeriod);
-      startDate = dates.startDate?.toISOString() || 'All Time';
-      endDate = dates.endDate?.toISOString() || 'All Time';
+    if (timePeriod === 'Custom') {
+      if (!startDate || !endDate) {
+        return NextResponse.json(
+          { error: 'Custom startDate and endDate are required' },
+          { status: 400 }
+        );
+      }
+      customStartDate = new Date(startDate);
+      customEndDate = new Date(endDate);
+      if (Number.isNaN(customStartDate.getTime()) || Number.isNaN(customEndDate.getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid custom date range.' },
+          { status: 400 }
+        );
+      }
     }
 
-    if (!startDate || !endDate) {
-      console.error('Invalid date range provided.');
-      return NextResponse.json(
-        { error: 'Invalid date range.' },
-        { status: 400 }
+    // Determine accessible locations
+    const locationsCollection = db.collection('gaminglocations');
+    const locationQuery: Record<string, unknown> = {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
+      ],
+    };
+
+    if (licencee) {
+      locationQuery['rel.licencee'] = licencee;
+    }
+
+    let locations = await locationsCollection
+      .find(locationQuery, {
+        projection: {
+          _id: 1,
+          gameDayOffset: 1,
+          country: 1,
+          geoCoords: 1,
+          rel: 1,
+        },
+      })
+      .toArray();
+
+    const userLocationPermissions =
+      (userPayload?.resourcePermissions as {
+        'gaming-locations'?: { resources?: string[] };
+      })?.['gaming-locations']?.resources || [];
+
+    const isManager = userRoles.includes('manager');
+    const isAdmin =
+      accessibleLicensees === 'all' ||
+      userRoles.includes('admin') ||
+      userRoles.includes('developer');
+
+    if (licencee) {
+      if (!isAdmin && !isManager) {
+        if (userLocationPermissions.length === 0) {
+          return NextResponse.json([]);
+        }
+        const permissionSet = new Set(
+          userLocationPermissions.map(id => id.toString())
+        );
+        locations = locations.filter(location =>
+          permissionSet.has(location._id.toString())
+        );
+      }
+    } else {
+      const allowedLocationIds = await getUserLocationFilter(
+        accessibleLicensees,
+        undefined,
+        userLocationPermissions,
+        userRoles
       );
+
+      if (allowedLocationIds === 'all') {
+        // no filtering
+      } else if (allowedLocationIds.length === 0) {
+        return NextResponse.json([]);
+      } else {
+        const allowedSet = new Set(
+          allowedLocationIds.map(id => id.toString())
+        );
+        locations = locations.filter(location =>
+          allowedSet.has(location._id.toString())
+        );
+      }
     }
 
-    // console.log(`Fetching meters for ${apiParams.timePeriod}...`);
-
-    // Handle "All Time" case - pass undefined dates for "All Time" periods
-    let dateFilter: { startDate: Date | undefined; endDate: Date | undefined };
-    if (startDate !== 'All Time' && endDate !== 'All Time') {
-      dateFilter = {
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-      };
-    } else {
-      dateFilter = { startDate: undefined, endDate: undefined };
+    if (locations.length === 0) {
+      return NextResponse.json([]);
     }
 
-    const metrics = await getMetricsForLocations(
-      db,
-      dateFilter,
-      false,
-      licencee || undefined,
-      apiParams.timePeriod
+    const locationRangeInput = locations.map(location => ({
+      _id: location._id.toString(),
+      gameDayOffset: location.gameDayOffset ?? 8,
+    }));
+
+    const gamingDayRanges = getGamingDayRangesForLocations(
+      locationRangeInput,
+      timePeriod,
+      customStartDate,
+      customEndDate
     );
 
-    if (metrics.length === 0) {
+    const shouldUseHourlyAggregation =
+      timePeriod === 'Today' ||
+      timePeriod === 'Yesterday' ||
+      (timePeriod === 'Custom' &&
+        customStartDate &&
+        customEndDate &&
+        Math.ceil(
+          (customEndDate.getTime() - customStartDate.getTime()) /
+            (1000 * 60 * 60 * 24)
+        ) <= 1);
+
+    const locationIds = locations.map(location => location._id.toString());
+    const machineDocs = await db
+      .collection('machines')
+      .find(
+        {
+          gamingLocation: { $in: locationIds },
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+        },
+        { projection: { _id: 1, gamingLocation: 1 } }
+      )
+      .toArray();
+
+    const machinesByLocation = new Map<string, string[]>();
+    for (const machine of machineDocs) {
+      const locId =
+        typeof machine.gamingLocation === 'string'
+          ? machine.gamingLocation
+          : machine.gamingLocation?.toString();
+      if (!locId) continue;
+      if (!machinesByLocation.has(locId)) {
+        machinesByLocation.set(locId, []);
+      }
+      machinesByLocation.get(locId)!.push(machine._id.toString());
+    }
+
+    const metricsPerLocation: Array<{
+      day: string;
+      time: string;
+      drop: number;
+      totalCancelledCredits: number;
+      gross: number;
+      gamesPlayed: number;
+      jackpot: number;
+      licencee?: string | null;
+      country?: string | null;
+      location?: string;
+      geoCoords?: Record<string, unknown> | null;
+    }> = [];
+
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < locations.length; i += BATCH_SIZE) {
+      const batch = locations.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async location => {
+          const locationId = location._id.toString();
+          const machineIds = machinesByLocation.get(locationId);
+          if (!machineIds || machineIds.length === 0) {
+            return [];
+          }
+
+          const range = gamingDayRanges.get(locationId);
+          if (!range) {
+            return [];
+          }
+
+          const pipeline = [
+            {
+              $match: {
+                machine: { $in: machineIds },
+                readAt: {
+                  $gte: range.rangeStart,
+                  $lte: range.rangeEnd,
+                },
+              },
+            },
+            {
+              $addFields: {
+                day: {
+                  $dateToString: {
+                    date: '$readAt',
+                    format: '%Y-%m-%d',
+                    timezone: 'UTC',
+                  },
+                },
+                time: shouldUseHourlyAggregation
+                  ? {
+                      $dateToString: {
+                        date: '$readAt',
+                        format: '%H:%M',
+                        timezone: 'UTC',
+                      },
+                    }
+                  : '00:00',
+              },
+            },
+            {
+              $group: {
+                _id: {
+                  day: '$day',
+                  time: '$time',
+                },
+                totalDrop: { $sum: '$movement.drop' },
+                totalCancelledCredits: {
+                  $sum: '$movement.totalCancelledCredits',
+                },
+                totalJackpot: { $sum: '$movement.jackpot' },
+                totalGamesPlayed: { $sum: '$movement.gamesPlayed' },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                day: '$_id.day',
+                time: '$_id.time',
+                drop: { $ifNull: ['$totalDrop', 0] },
+                totalCancelledCredits: {
+                  $ifNull: ['$totalCancelledCredits', 0],
+                },
+                gross: {
+                  $subtract: [
+                    {
+                      $subtract: [
+                        { $ifNull: ['$totalDrop', 0] },
+                        { $ifNull: ['$totalJackpot', 0] },
+                      ],
+                    },
+                    { $ifNull: ['$totalCancelledCredits', 0] },
+                  ],
+                },
+                gamesPlayed: { $ifNull: ['$totalGamesPlayed', 0] },
+                jackpot: { $ifNull: ['$totalJackpot', 0] },
+              },
+            },
+            { $sort: { day: 1, time: 1 } },
+          ];
+
+          type PipelineMetric = {
+            day: string;
+            time: string;
+            drop: number;
+            totalCancelledCredits: number;
+            gross: number;
+            gamesPlayed: number;
+            jackpot: number;
+          };
+
+          const results = await db
+            .collection('meters')
+            .aggregate<PipelineMetric>(pipeline, {
+              allowDiskUse: true,
+              hint: { machine: 1, readAt: 1 },
+            })
+            .toArray();
+
+          return results.map(metric => ({
+            ...metric,
+            licencee:
+              typeof location.rel?.licencee === 'string'
+                ? location.rel.licencee
+                : Array.isArray(location.rel?.licencee)
+                  ? location.rel?.licencee?.[0]?.toString() ?? null
+                  : null,
+            country: location.country ? location.country.toString() : null,
+            location: locationId,
+            geoCoords: location.geoCoords ?? null,
+          }));
+        })
+      );
+
+      metricsPerLocation.push(...batchResults.flat());
+    }
+
+    if (metricsPerLocation.length === 0) {
       return NextResponse.json([]);
     }
 
     if (apiParams.licencee) {
-      if (metrics.length > 0) {
+      if (metricsPerLocation.length > 0) {
         // console.log("Metrics successfully retrieved for licencee");
       } else {
         console.error(
@@ -176,7 +416,7 @@ export async function GET(req: NextRequest) {
     if (shouldConvert) {
       const licenceeIds = Array.from(
         new Set(
-          metrics
+          metricsPerLocation
             .map(metric => metric.licencee)
             .filter((id): id is string => Boolean(id))
         )
@@ -206,7 +446,7 @@ export async function GET(req: NextRequest) {
 
       const countryIds = Array.from(
         new Set(
-          metrics
+          metricsPerLocation
             .map(metric => metric.country)
             .filter((id): id is string => Boolean(id))
         )
@@ -265,7 +505,7 @@ export async function GET(req: NextRequest) {
       }
     };
 
-    for (const metric of metrics) {
+    for (const metric of metricsPerLocation) {
       const day = metric.day;
       const time = metric.time ?? '00:00';
       const key = `${day}__${time}`;
@@ -406,6 +646,10 @@ export async function GET(req: NextRequest) {
         message: 'An unexpected error occurred while processing your request.',
         type: 'INTERNAL_ERROR',
         retryable: false,
+        details:
+          process.env.NODE_ENV === 'development' && error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : undefined,
       },
       { status: 500 }
     );

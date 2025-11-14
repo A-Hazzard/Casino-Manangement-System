@@ -7,6 +7,7 @@ import {
   updateLicensee as updateLicenseeHelper,
   deleteLicensee as deleteLicenseeHelper,
 } from '@/app/api/lib/helpers/licensees';
+import { getUserAccessibleLicenseesFromToken } from '@/app/api/lib/helpers/licenseeFilter';
 import { apiLogger } from '@/app/api/lib/utils/logger';
 
 export async function GET(request: NextRequest) {
@@ -18,9 +19,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const licenseeFilter = searchParams.get('licensee');
 
+    // Determine user's accessible licensees
+    const userLicenseeAccess = await getUserAccessibleLicenseesFromToken();
+
     // Get all licensees from database
     const licensees = await getAllLicensees();
     let formattedLicensees = await formatLicenseesForResponse(licensees);
+
+    // Enforce access control for non-admin users
+    if (userLicenseeAccess !== 'all') {
+      const allowedIds = new Set(
+        userLicenseeAccess.map(value => value.toString())
+      );
+      formattedLicensees = formattedLicensees.filter(licensee => {
+        const licenseeId = (licensee as Record<string, unknown>)._id;
+        if (!licenseeId) {
+          return false;
+        }
+        return allowedIds.has(String(licenseeId));
+      });
+    }
 
     console.log('[API /api/licensees] Total licensees in DB:', formattedLicensees.length);
     console.log('[API /api/licensees] Licensee IDs:', formattedLicensees.map(l => (l as Record<string, unknown>)._id));

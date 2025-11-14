@@ -1,5 +1,5 @@
-import type { AuthResult } from '@/shared/types/auth';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
+import type { AuthResult } from '@/shared/types/auth';
 
 export async function loginUser(credentials: {
   identifier: string;
@@ -11,6 +11,7 @@ export async function loginUser(credentials: {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify(credentials),
     });
 
@@ -55,6 +56,7 @@ export async function logoutUser(): Promise<AuthResult> {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
     });
 
     // Clear client-side storage regardless of API response

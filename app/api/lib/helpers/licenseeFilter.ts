@@ -1,5 +1,6 @@
 import { GamingLocations } from '../models/gaminglocations';
 import { Licencee } from '../models/licencee';
+import UserModel from '../models/user';
 import { getUserFromServer } from './users';
 
 /**
@@ -17,16 +18,68 @@ export async function getUserAccessibleLicenseesFromToken(): Promise<
       return [];
     }
 
-    const roles = (userPayload.roles as string[]) || [];
+    const normalizeRoles = (roles: unknown): string[] =>
+      Array.isArray(roles)
+        ? roles
+            .filter((role): role is string => typeof role === 'string')
+            .map(role => role?.toLowerCase?.() ?? role)
+        : [];
+
+    let roles = normalizeRoles(userPayload.roles);
+    let userLicensees =
+      ((userPayload.rel as { licencee?: string[] } | undefined)?.licencee ||
+        []).map(value => String(value));
+
+    const needsRoleHydration = roles.length === 0;
+    const needsLicenseeHydration = userLicensees.length === 0;
+
+    if ((needsRoleHydration || needsLicenseeHydration) && userPayload._id) {
+      try {
+        const dbUser = (await UserModel.findOne(
+          { _id: userPayload._id as string },
+          { roles: 1, rel: 1 }
+        )
+          .lean()
+          .exec()) as
+          | {
+              roles?: unknown;
+              rel?: { licencee?: unknown };
+            }
+          | null;
+
+        if (dbUser) {
+          if (needsRoleHydration) {
+            roles = normalizeRoles(dbUser.roles);
+            if (roles.length === 0) {
+              console.warn(
+                '[getUserAccessibleLicenseesFromToken] User has no roles stored in DB - treating as non-admin'
+              );
+            }
+          }
+
+          if (needsLicenseeHydration) {
+            const rawLicencees = dbUser.rel?.licencee;
+            const normalizedRelLicencees = Array.isArray(rawLicencees)
+              ? rawLicencees
+              : rawLicencees != null
+                ? [rawLicencees]
+                : [];
+            userLicensees = normalizedRelLicencees.map(value => String(value));
+          }
+        }
+      } catch (error) {
+        console.error(
+          '[getUserAccessibleLicenseesFromToken] Failed to hydrate user details from DB:',
+          error
+        );
+      }
+    }
+
     const isAdmin = roles.includes('admin') || roles.includes('developer');
 
     if (isAdmin) {
       return 'all';
     }
-
-    // Get licensees from user's rel object
-    const rel = userPayload.rel as { licencee?: string[] } | undefined;
-    const userLicensees = (rel?.licencee || []).map(value => String(value));
 
     if (userLicensees.length === 0) {
       return [];
@@ -205,11 +258,14 @@ export async function getUserLocationFilter(
   userRoles: string[] = []
 ): Promise<string[] | 'all'> {
   // Check if user is admin or manager
+  const normalizedRoles = userRoles.map(role =>
+    role?.toLowerCase?.() ?? role
+  );
   const isAdmin =
     userAccessibleLicensees === 'all' ||
-    userRoles.includes('admin') ||
-    userRoles.includes('developer');
-  const isManager = userRoles.includes('manager');
+    normalizedRoles.includes('admin') ||
+    normalizedRoles.includes('developer');
+  const isManager = normalizedRoles.includes('manager');
 
   console.log('[getUserLocationFilter] User roles:', userRoles);
   console.log('[getUserLocationFilter] Is Admin:', isAdmin);

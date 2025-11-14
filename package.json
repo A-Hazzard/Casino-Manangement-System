@@ -34,7 +34,8 @@
     "test-meters:generate": "node scripts/generate-test-meters.js",
     "test-meters:generate:dry": "node scripts/generate-test-meters.js --dry-run",
     "test:comprehensive-suite": "node scripts/comprehensive-test-suite.js",
-    "test:verify-aggregation": "node scripts/verify-aggregation-accuracy.js"
+    "test:verify-aggregation": "node scripts/verify-aggregation-accuracy.js",
+    "sandbox:seed": "ts-node --transpile-only --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/seed-sandbox-fixtures.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -153,6 +154,7 @@
     "prettier-plugin-tailwindcss": "^0.6.8",
     "recharts": "^2.15.4",
     "tailwindcss": "^3.4.17",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },
   "pnpm": {

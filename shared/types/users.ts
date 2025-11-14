@@ -17,6 +17,9 @@ export type UserDocument = {
   isEnabled: boolean;
   roles: string[];
   profilePicture?: string | null;
+  sessionVersion?: number;
+  loginCount?: number;
+  lastLoginAt?: Date | string | null;
 };
 
 export type UserDocumentWithPassword = UserDocument & {
@@ -45,6 +48,9 @@ export type UserDocumentWithPassword = UserDocument & {
         resources: string[];
       };
     };
+    sessionVersion?: number;
+    loginCount?: number;
+    lastLoginAt?: Date | string | null;
     [key: string]: unknown;
   };
   updateOne: (update: Record<string, unknown>) => Promise<unknown>;

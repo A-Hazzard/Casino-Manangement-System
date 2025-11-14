@@ -101,27 +101,77 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       return null;
     }
 
-    // Validate session version (permission changes invalidate the session)
-    const jwtPayload = payload as JWTPayload;
-    if (jwtPayload.sessionVersion !== undefined && jwtPayload._id) {
+    const jwtPayload = payload as JWTPayload & {
+      roles?: string[];
+      rel?: { licencee?: string[] };
+      resourcePermissions?: Record<string, unknown>;
+      permissions?: string[];
+    };
+
+    let dbUser:
+      | {
+          sessionVersion?: number;
+          roles?: string[];
+          rel?: { licencee?: string[] };
+          resourcePermissions?: Record<string, unknown>;
+          permissions?: string[];
+        }
+      | null = null;
+
+    if (jwtPayload._id) {
       try {
         await connectDB();
         const UserModel = (await import('../models/user')).default;
-        const user = (await UserModel.findOne({ _id: jwtPayload._id })
-          .select('sessionVersion')
-          .lean()) as { sessionVersion?: number } | null;
+        dbUser = (await UserModel.findOne({ _id: jwtPayload._id })
+          .select('sessionVersion roles rel resourcePermissions permissions')
+          .lean()) as {
+          sessionVersion?: number;
+          roles?: string[];
+          rel?: { licencee?: string[] };
+          resourcePermissions?: Record<string, unknown>;
+          permissions?: string[];
+        } | null;
 
-        if (user && user.sessionVersion !== undefined) {
-          if (user.sessionVersion !== jwtPayload.sessionVersion) {
-            console.warn(
-              `[SESSION INVALIDATION] User ${jwtPayload._id} session version mismatch. DB: ${user.sessionVersion}, JWT: ${jwtPayload.sessionVersion}`
-            );
-            return null; // Session invalidated - user needs to re-login
-          }
+        if (
+          jwtPayload.sessionVersion !== undefined &&
+          dbUser?.sessionVersion !== undefined &&
+          dbUser.sessionVersion !== jwtPayload.sessionVersion
+        ) {
+          console.warn(
+            `[SESSION INVALIDATION] User ${jwtPayload._id} session version mismatch. DB: ${dbUser.sessionVersion}, JWT: ${jwtPayload.sessionVersion}`
+          );
+          return null;
         }
       } catch (error) {
-        console.error('Session version validation failed:', error);
-        // Continue even if validation fails - don't block legitimate requests
+        console.error(
+          'Session version validation / user hydration failed:',
+          error
+        );
+      }
+    }
+
+    if (
+      !jwtPayload.sessionVersion &&
+      dbUser?.sessionVersion !== undefined
+    ) {
+      jwtPayload.sessionVersion = dbUser.sessionVersion;
+    }
+
+    if (dbUser) {
+      if (!jwtPayload.roles && Array.isArray(dbUser.roles)) {
+        jwtPayload.roles = dbUser.roles;
+      }
+
+      if (!jwtPayload.rel && dbUser.rel) {
+        jwtPayload.rel = dbUser.rel;
+      }
+
+      if (!jwtPayload.resourcePermissions && dbUser.resourcePermissions) {
+        jwtPayload.resourcePermissions = dbUser.resourcePermissions;
+      }
+
+      if (!jwtPayload.permissions && dbUser.permissions) {
+        jwtPayload.permissions = dbUser.permissions;
       }
     }
 

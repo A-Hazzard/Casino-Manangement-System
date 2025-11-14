@@ -17,6 +17,9 @@ export type UserDocument = {
   isEnabled: boolean;
   roles: string[];
   profilePicture?: string | null;
+  sessionVersion?: number;
+  loginCount?: number;
+  lastLoginAt?: Date | string | null;
 };
 
 export type UserDocumentWithPassword = UserDocument & {
@@ -28,6 +31,7 @@ export type UserDocumentWithPassword = UserDocument & {
       resources: string[];
     };
   };
+  sessionVersion?: number;
   toObject: (_options?: Record<string, unknown>) => {
     _id: string;
     emailAddress: string;
@@ -40,6 +44,9 @@ export type UserDocumentWithPassword = UserDocument & {
         resources: string[];
       };
     };
+    sessionVersion?: number;
+    loginCount?: number;
+    lastLoginAt?: Date | string | null;
     [key: string]: unknown;
   };
 };

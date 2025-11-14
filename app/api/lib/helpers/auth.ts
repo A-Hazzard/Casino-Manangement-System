@@ -90,19 +90,25 @@ export async function authenticateUser(
       return { success: false, message: 'Invalid email/username or password.' };
     }
 
-    // Update last login on successful login
+    // Update session + login metadata on successful login
+    const now = new Date();
+    const nextSessionVersion = (Number(user.sessionVersion) || 0) + 1;
     await UserModel.findOneAndUpdate(
       { _id: user._id },
       {
         $set: {
-          lastLoginAt: new Date(),
+          lastLoginAt: now,
+          sessionVersion: nextSessionVersion,
         },
         $inc: {
           loginCount: 1,
         },
-      },
-      { new: true }
+      }
     );
+    // Keep local in-sync values for token payload
+    user.sessionVersion = nextSessionVersion;
+    user.lastLoginAt = now;
+    user.loginCount = (Number(user.loginCount) || 0) + 1;
 
     const {
       invalidFields,
@@ -140,8 +146,6 @@ export async function authenticateUser(
         username: String(userObject.username || ''),
         isEnabled: userObject.isEnabled,
         roles: userObject.roles || [],
-        rel: userObject.rel || undefined,
-        resourcePermissions: resourcePermissionsPlain as never,
         sessionId: sessionId,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         dbContext: {
@@ -171,8 +175,8 @@ export async function authenticateUser(
         lockedUntil: undefined,
         failedLoginAttempts: 0,
         requiresProfileUpdate: true, // Flag to indicate invalid profile fields
-      invalidProfileFields: invalidFields,
-      invalidProfileReasons: invalidReasons,
+        invalidProfileFields: invalidFields,
+        invalidProfileReasons: invalidReasons,
       } as UserAuthPayload;
 
       // Log successful login
@@ -219,8 +223,6 @@ export async function authenticateUser(
       username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
-      rel: userObject.rel || undefined,
-      resourcePermissions: resourcePermissionsPlain as never,
       sessionId: sessionId,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       dbContext: {
@@ -342,18 +344,12 @@ export async function refreshAccessToken(
 
     const sessionId = userObject._id.toString();
 
-    // resourcePermissions should already be a plain object after toJSON()
-    const resourcePermissionsPlain =
-      userObject.resourcePermissions || undefined;
-
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
       username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
-      rel: userObject.rel || undefined,
-      resourcePermissions: resourcePermissionsPlain as never,
       sessionId: sessionId,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       dbContext: {

@@ -56,10 +56,14 @@ export default function Header({
 
   // Get user roles for permission checking
   const userRoles = user?.roles || [];
+  const normalizedRoles = userRoles.map(role =>
+    typeof role === 'string' ? role.toLowerCase() : role
+  );
 
   // Get user's licensee assignments
   const userLicensees = user?.rel?.licencee || [];
-  const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
+  const isAdmin =
+    normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
   
   // Determine if licensee select should be shown
   // Show if: admin OR user has multiple licensees
