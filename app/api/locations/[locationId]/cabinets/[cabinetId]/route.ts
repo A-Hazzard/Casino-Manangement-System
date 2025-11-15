@@ -164,6 +164,39 @@ export async function PUT(
     if (data.location !== undefined && data.location !== '') {
       updateFields.gamingLocation = data.location;
     }
+    if (data.collectionMeters !== undefined) {
+      const metersUpdate: Record<string, number> = {};
+      if (
+        data.collectionMeters.metersIn !== undefined &&
+        data.collectionMeters.metersIn !== ''
+      ) {
+        metersUpdate.metersIn = Number(data.collectionMeters.metersIn) || 0;
+      }
+      if (
+        data.collectionMeters.metersOut !== undefined &&
+        data.collectionMeters.metersOut !== ''
+      ) {
+        metersUpdate.metersOut = Number(data.collectionMeters.metersOut) || 0;
+      }
+      if (Object.keys(metersUpdate).length > 0) {
+        updateFields.collectionMeters = metersUpdate;
+      }
+    }
+    if (data.collectionTime !== undefined && data.collectionTime !== '') {
+      const collectionTime = new Date(data.collectionTime);
+      updateFields.collectionTime = collectionTime;
+      if (originalCabinet.collectionTime) {
+        updateFields.previousCollectionTime = originalCabinet.collectionTime;
+      }
+    }
+    if (
+      data.collectorDenomination !== undefined &&
+      data.collectorDenomination !== ''
+    ) {
+      updateFields.collectorDenomination = Number(
+        data.collectorDenomination
+      );
+    }
 
     // Update the machine with only the fields that were provided
     // console.log("Update fields being sent to DB:", updateFields);

@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../../lib/middleware/db";
-import { Collections } from "@/app/api/lib/models/collections";
-import { Machine } from "@/app/api/lib/models/machines";
-import { CollectionReport } from "@/app/api/lib/models/collectionReport";
-import { calculateMovement } from "@/lib/utils/movementCalculation";
-import type { PreviousCollectionMeters } from "@/lib/types/collections";
+import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionRecalculation';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { Collections } from '@/app/api/lib/models/collections';
+import { Machine } from '@/app/api/lib/models/machines';
+import type { PreviousCollectionMeters } from '@/lib/types/collections';
+import { calculateMovement } from '@/lib/utils/movementCalculation';
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '../../lib/middleware/db';
 
 export async function PATCH(
   request: NextRequest,
@@ -13,18 +14,30 @@ export async function PATCH(
   try {
     const { id: collectionId } = await params;
     const updateData = await request.json();
+    const shouldCascade =
+      updateData.metersIn !== undefined ||
+      updateData.metersOut !== undefined ||
+      updateData.prevIn !== undefined ||
+      updateData.prevOut !== undefined ||
+      updateData.timestamp !== undefined ||
+      updateData.collectionTime !== undefined ||
+      updateData.ramClear !== undefined ||
+      updateData.ramClearMetersIn !== undefined ||
+      updateData.ramClearMetersOut !== undefined ||
+      updateData.ramClearCoinIn !== undefined ||
+      updateData.ramClearCoinOut !== undefined;
 
     // Debug: Log what data we're receiving
-    console.warn("🔍 API RECEIVED UPDATE DATA:", {
+    console.warn('🔍 API RECEIVED UPDATE DATA:', {
       collectionId,
       updateDataKeys: Object.keys(updateData),
-      hasIdInUpdateData: "_id" in updateData,
+      hasIdInUpdateData: '_id' in updateData,
       updateData: updateData,
     });
 
     if (!collectionId) {
       return NextResponse.json(
-        { success: false, error: "Collection ID is required" },
+        { success: false, error: 'Collection ID is required' },
         { status: 400 }
       );
     }
@@ -33,8 +46,8 @@ export async function PATCH(
 
     // Safety check: Remove _id field if present (it's immutable)
     const { _id, ...safeUpdateData } = updateData as Record<string, unknown>;
-    if ("_id" in updateData) {
-      console.warn("⚠️ API: Removed _id field from update data");
+    if ('_id' in updateData) {
+      console.warn('⚠️ API: Removed _id field from update data');
     }
 
     // Find and update the collection
@@ -49,7 +62,7 @@ export async function PATCH(
 
     if (!updatedCollection) {
       return NextResponse.json(
-        { success: false, error: "Collection not found" },
+        { success: false, error: 'Collection not found' },
         { status: 404 }
       );
     }
@@ -77,7 +90,7 @@ export async function PATCH(
               : updatedCollection.prevOut || 0,
         };
 
-        console.warn("🔍 Using previous meters for movement calculation:", {
+        console.warn('🔍 Using previous meters for movement calculation:', {
           previousMeters,
           fromUpdateData: {
             prevIn: updateData.prevIn,
@@ -136,7 +149,7 @@ export async function PATCH(
             machine:
               updatedCollection.sasMeters.machine ||
               updatedCollection.machineName ||
-              "",
+              '',
             jackpot: Number(
               (updatedCollection.sasMeters.jackpot || 0).toFixed(2)
             ),
@@ -147,7 +160,7 @@ export async function PATCH(
           if (updateData.timestamp !== undefined) {
             try {
               console.warn(
-                "🔄 Timestamp changed, recalculating SAS time range for collection:",
+                '🔄 Timestamp changed, recalculating SAS time range for collection:',
                 {
                   collectionId,
                   oldTimestamp: updatedCollection.timestamp,
@@ -157,7 +170,7 @@ export async function PATCH(
               );
 
               const { getSasTimePeriod, calculateSasMetrics } = await import(
-                "@/lib/helpers/collectionCreation"
+                '@/lib/helpers/collectionCreation'
               );
 
               // Get new SAS time range based on new collection timestamp
@@ -175,7 +188,7 @@ export async function PATCH(
               );
 
               console.warn(
-                "🔄 SAS metrics recalculated for timestamp change:",
+                '🔄 SAS metrics recalculated for timestamp change:',
                 {
                   collectionId,
                   newSasStartTime: sasStartTime.toISOString(),
@@ -196,7 +209,7 @@ export async function PATCH(
               };
             } catch (sasError) {
               console.error(
-                " Error recalculating SAS metrics for timestamp change:",
+                ' Error recalculating SAS metrics for timestamp change:',
                 sasError
               );
               // Fallback to original SAS times if recalculation fails
@@ -227,7 +240,7 @@ export async function PATCH(
           { new: true, runValidators: true }
         );
 
-        console.warn("🔄 Recalculated all fields for updated collection:", {
+        console.warn('🔄 Recalculated all fields for updated collection:', {
           collectionId,
           previousMeters,
           currentMeters: {
@@ -243,12 +256,21 @@ export async function PATCH(
 
         // CRITICAL: Mark parent CollectionReport as isEditing: true when meters are updated
         // This must happen BEFORE returning, otherwise it will be skipped
-        if (finalUpdatedCollection && (updateData.metersIn !== undefined || updateData.metersOut !== undefined)) {
-          const reportIdToUpdate = finalUpdatedCollection.locationReportId || updateData.locationReportId;
-          if (reportIdToUpdate && reportIdToUpdate.trim() !== "") {
+        if (
+          finalUpdatedCollection &&
+          (updateData.metersIn !== undefined ||
+            updateData.metersOut !== undefined)
+        ) {
+          const reportIdToUpdate =
+            finalUpdatedCollection.locationReportId ||
+            updateData.locationReportId;
+          if (reportIdToUpdate && reportIdToUpdate.trim() !== '') {
             try {
-              console.warn("🔄 Attempting to mark report as editing:", reportIdToUpdate);
-              
+              console.warn(
+                '🔄 Attempting to mark report as editing:',
+                reportIdToUpdate
+              );
+
               const updateResult = await CollectionReport.findOneAndUpdate(
                 { locationReportId: reportIdToUpdate },
                 {
@@ -271,13 +293,15 @@ export async function PATCH(
               }
             } catch (reportUpdateError) {
               console.error(
-                "Failed to mark report as editing:",
+                'Failed to mark report as editing:',
                 reportUpdateError
               );
               // Don't fail the collection update if report update fails
             }
           } else {
-            console.warn("⚠️ Collection has no locationReportId - this is expected for new collections that haven't been finalized yet");
+            console.warn(
+              "⚠️ Collection has no locationReportId - this is expected for new collections that haven't been finalized yet"
+            );
           }
         }
 
@@ -287,7 +311,7 @@ export async function PATCH(
         });
       } catch (recalculationError) {
         console.error(
-          "Error recalculating collection fields:",
+          'Error recalculating collection fields:',
           recalculationError
         );
         // Continue with the response even if recalculation fails
@@ -378,7 +402,7 @@ export async function PATCH(
                 prevMetersIn = previousCollection.metersIn || 0;
                 prevMetersOut = previousCollection.metersOut || 0;
                 console.warn(
-                  "🔍 Calculated prevMeters from previous collection:",
+                  '🔍 Calculated prevMeters from previous collection:',
                   {
                     prevMetersIn,
                     prevMetersOut,
@@ -389,7 +413,7 @@ export async function PATCH(
                 prevMetersIn = 0;
                 prevMetersOut = 0;
                 console.warn(
-                  "⚠️ No previous collection found, using 0 for prevMeters"
+                  '⚠️ No previous collection found, using 0 for prevMeters'
                 );
               }
             }
@@ -397,13 +421,13 @@ export async function PATCH(
             // Update existing history entry
             const updateData: Record<string, unknown> = {
               updatedAt: new Date(),
-              "collectionMetersHistory.$[elem].metersIn":
+              'collectionMetersHistory.$[elem].metersIn':
                 updatedCollection.metersIn || 0,
-              "collectionMetersHistory.$[elem].metersOut":
+              'collectionMetersHistory.$[elem].metersOut':
                 updatedCollection.metersOut || 0,
-              "collectionMetersHistory.$[elem].timestamp": new Date(),
-              "collectionMetersHistory.$[elem].prevMetersIn": prevMetersIn,
-              "collectionMetersHistory.$[elem].prevMetersOut": prevMetersOut,
+              'collectionMetersHistory.$[elem].timestamp': new Date(),
+              'collectionMetersHistory.$[elem].prevMetersIn': prevMetersIn,
+              'collectionMetersHistory.$[elem].prevMetersOut': prevMetersOut,
             };
 
             // CRITICAL: NEVER update machine collectionMeters when editing collections
@@ -416,14 +440,14 @@ export async function PATCH(
               {
                 arrayFilters: [
                   {
-                    "elem.locationReportId": updatedCollection.locationReportId,
+                    'elem.locationReportId': updatedCollection.locationReportId,
                   },
                 ],
                 new: true,
               }
             );
 
-            console.warn("Updated existing collectionMetersHistory entry:", {
+            console.warn('Updated existing collectionMetersHistory entry:', {
               machineId: updatedCollection.machineId,
               locationReportId: updatedCollection.locationReportId,
               newMetersIn: updatedCollection.metersIn,
@@ -462,11 +486,14 @@ export async function PATCH(
               {
                 $set: {
                   updatedAt: new Date(),
-                  "collectionMetersHistory.$[elem].metersIn": updatedCollection.metersIn || 0,
-                  "collectionMetersHistory.$[elem].metersOut": updatedCollection.metersOut || 0,
-                  "collectionMetersHistory.$[elem].prevMetersIn": prevMetersIn,
-                  "collectionMetersHistory.$[elem].prevMetersOut": prevMetersOut,
-                  "collectionMetersHistory.$[elem].timestamp": 
+                  'collectionMetersHistory.$[elem].metersIn':
+                    updatedCollection.metersIn || 0,
+                  'collectionMetersHistory.$[elem].metersOut':
+                    updatedCollection.metersOut || 0,
+                  'collectionMetersHistory.$[elem].prevMetersIn': prevMetersIn,
+                  'collectionMetersHistory.$[elem].prevMetersOut':
+                    prevMetersOut,
+                  'collectionMetersHistory.$[elem].timestamp':
                     updatedCollection.collectionTime ||
                     updatedCollection.timestamp ||
                     new Date(),
@@ -475,7 +502,8 @@ export async function PATCH(
               {
                 arrayFilters: [
                   {
-                    "elem.locationReportId": updatedCollection.locationReportId || "",
+                    'elem.locationReportId':
+                      updatedCollection.locationReportId || '',
                   },
                 ],
                 new: true,
@@ -483,7 +511,7 @@ export async function PATCH(
             );
 
             if (updateResult) {
-              console.warn("Updated existing collectionMetersHistory entry:", {
+              console.warn('Updated existing collectionMetersHistory entry:', {
                 machineId: updatedCollection.machineId,
                 locationReportId: updatedCollection.locationReportId,
                 newMetersIn: updatedCollection.metersIn,
@@ -493,20 +521,23 @@ export async function PATCH(
                 isMostRecent,
               });
             } else {
-              console.warn("No existing history entry found to update for collection:", updatedCollection._id);
+              console.warn(
+                'No existing history entry found to update for collection:',
+                updatedCollection._id
+              );
             }
           }
         }
       } catch (machineUpdateError) {
         console.error(
-          "Failed to update machine collection meters:",
+          'Failed to update machine collection meters:',
           machineUpdateError
         );
         // Don't fail the collection update if machine update fails
       }
     }
 
-    console.warn("Collection updated successfully:", {
+    console.warn('Collection updated successfully:', {
       collectionId,
       updatedFields: Object.keys(updateData),
       newMetersIn: updatedCollection.metersIn,
@@ -515,7 +546,7 @@ export async function PATCH(
 
     // CRITICAL: Mark parent CollectionReport as isEditing: true when meters are updated
     // This indicates the report has unsaved changes that need to be finalized
-    console.warn("🔍 Checking if should mark report as editing:", {
+    console.warn('🔍 Checking if should mark report as editing:', {
       collectionId: updatedCollection._id,
       locationReportId: updatedCollection.locationReportId,
       locationReportIdType: typeof updatedCollection.locationReportId,
@@ -528,12 +559,21 @@ export async function PATCH(
     });
 
     // Check if meters were updated
-    if (updateData.metersIn !== undefined || updateData.metersOut !== undefined) {
+    if (
+      updateData.metersIn !== undefined ||
+      updateData.metersOut !== undefined
+    ) {
       // If collection has a locationReportId, mark that report as editing
-      if (updatedCollection.locationReportId && updatedCollection.locationReportId.trim() !== "") {
+      if (
+        updatedCollection.locationReportId &&
+        updatedCollection.locationReportId.trim() !== ''
+      ) {
         try {
-          console.warn("🔄 Attempting to mark report as editing:", updatedCollection.locationReportId);
-          
+          console.warn(
+            '🔄 Attempting to mark report as editing:',
+            updatedCollection.locationReportId
+          );
+
           // CRITICAL: Use findOneAndUpdate since we're querying by locationReportId field, not _id
           // The locationReportId in the collection points to the CollectionReport's locationReportId field
           const updateResult = await CollectionReport.findOneAndUpdate(
@@ -557,36 +597,50 @@ export async function PATCH(
             );
           }
         } catch (reportUpdateError) {
-          console.error(
-            "Failed to mark report as editing:",
-            reportUpdateError
-          );
+          console.error('Failed to mark report as editing:', reportUpdateError);
           // Don't fail the collection update if report update fails
         }
       } else {
-        console.warn("⚠️ Collection has no locationReportId - this is expected for new collections that haven't been finalized yet");
+        console.warn(
+          "⚠️ Collection has no locationReportId - this is expected for new collections that haven't been finalized yet"
+        );
         // For collections without locationReportId, we can't mark a report as editing
         // because the report doesn't exist yet. This is handled by the frontend dirty tracking.
       }
     } else {
-      console.warn("❌ Not marking report as editing - no meter changes detected");
+      console.warn(
+        '❌ Not marking report as editing - no meter changes detected'
+      );
     }
 
     // Get the final updated collection (with movement if recalculated)
-    const finalCollection = await Collections.findById(collectionId).lean();
+    let finalCollection = await Collections.findById(collectionId).lean();
+    if (shouldCascade && updatedCollection.machineId) {
+      try {
+        await recalculateMachineCollections(
+          String(updatedCollection.machineId)
+        );
+        finalCollection = await Collections.findById(collectionId).lean();
+      } catch (recalcError) {
+        console.error(
+          'Failed to recalculate machine collections:',
+          recalcError
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Collection updated successfully",
+      message: 'Collection updated successfully',
       data: finalCollection,
     });
   } catch (error) {
-    console.error("Error updating collection:", error);
+    console.error('Error updating collection:', error);
     return NextResponse.json(
       {
         success: false,
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

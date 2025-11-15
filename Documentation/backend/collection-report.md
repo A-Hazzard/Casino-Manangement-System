@@ -1233,6 +1233,8 @@ This enables the Collection Report Details page to automatically detect and fix 
 
 **Updated:** November 6th, 2025 - Enhanced history sync logic
 
+**Authentication:** Any authenticated user session. Role-based gating is handled at the UI level (e.g., Fix Report button only renders for developers), but the API intentionally stays open so manager/collector flows (Cabinet “Fix History”, automatic auto-fix, etc.) can trigger repairs silently.
+
 **Parameters**:
 
 - `reportId`: Fix specific report

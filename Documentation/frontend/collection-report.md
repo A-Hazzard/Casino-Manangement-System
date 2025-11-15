@@ -274,6 +274,21 @@ Previously, EditCollectionModal sent pre-calculated values (`prevIn`, `prevOut`,
 - **Balance Information**: Previous balance, balance corrections
 - **Collection Details**: Collection time, collector information
 
+### Automatic Edit Resume Flow (November 15th, 2025)
+
+Unfinished edits now reopen automatically, even if the user refreshes the page or switches devices:
+
+1. **Resume Query Param**
+   - The Collection Report Details page detects `isEditing: true` and redirects to `/collection-report?resume=<reportId>`.
+   - The main page reads the `resume` param, shows a toast ("Resuming unfinished edit…"), and immediately opens the Edit Collection Modal (desktop or mobile).
+   - The param is removed via `router.replace` after the modal opens so future refreshes do not re-trigger.
+
+2. **Background Safety Net**
+   - On mount the collection page still calls `/api/collection-reports?isEditing=true&limit=1&sortBy=updatedAt&sortOrder=desc`.
+   - If any incomplete report exists and no `resume` param handled it, the page auto-opens the latest report and sets `hasUnsavedEdits` so the modal cannot be closed until the user finalizes or discards the changes.
+
+Result: every `isEditing` report rehydrates seamlessly, and users are forced back into recovery mode until they click **Update Report** or discard their pending changes.
+
 ## Financial Calculations
 
 ### Auto-calculated Fields
@@ -781,6 +796,7 @@ This prevents stale data from persisting when users switch accounts or permissio
 ## Advanced SAS Option - Smart Visibility (November 11th, 2025)
 
 ### Overview
+
 The "Advanced: Custom previous SAS start" option in collection forms now intelligently shows/hides based on whether the machine has existing collections.
 
 ### Feature Details
@@ -788,12 +804,14 @@ The "Advanced: Custom previous SAS start" option in collection forms now intelli
 **Purpose:** Prevent users from accidentally setting custom SAS times on machines that already have established collection history.
 
 **Visibility Logic:**
+
 - ✅ **Shows** when machine has **zero** existing collections (first collection ever)
 - ❌ **Hidden** when machine has **one or more** existing collections
 
 **Implementation:**
 
 **API Endpoint:**
+
 ```typescript
 GET /api/collections/check-first-collection?machineId={machineId}
 
@@ -805,6 +823,7 @@ Response:
 ```
 
 **Frontend Logic:**
+
 ```typescript
 // Check when machine is selected
 useEffect(() => {
@@ -825,11 +844,13 @@ useEffect(() => {
 ```
 
 **Files Modified:**
+
 - `components/collectionReport/NewCollectionModal.tsx`
 - `components/collectionReport/EditCollectionModal.tsx`
 - `app/api/collections/check-first-collection/route.ts` (NEW)
 
 **Benefits:**
+
 - Prevents data corruption from incorrect custom SAS times
 - Reduces user confusion
 - Only advanced users working with brand new machines need this option

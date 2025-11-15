@@ -63,6 +63,16 @@ type ActiveTab = 'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare';
 
 **Note:** Sync Meters functionality has been disabled. The "Sync Meters" button no longer appears on desktop or mobile views, and the floating refresh button has been hidden.
 
+### Automatic Resume Redirect (November 15th, 2025)
+
+If the report being viewed still has `isEditing: true`, the details page now:
+
+1. Shows a toast informing the user that an unfinished edit is being resumed.
+2. Redirects to `/collection-report?resume=<reportId>` so the main collection page can reopen the edit modal automatically.
+3. Prevents the user from reviewing stale data until the incomplete edit is finalized.
+
+This guarantees that opening a report on another device or refreshing the details page always routes the user back into the edit workflow instead of leaving the report stuck in an unfinished state.
+
 ## Machine Metrics Tab
 
 ### Purpose

@@ -547,12 +547,15 @@ export async function POST(req: NextRequest) {
     if (body.machines && Array.isArray(body.machines)) {
       for (const m of body.machines) {
         if (m.machineId) {
+          const normalizedMetersIn = Number(m.metersIn) || 0;
+          const normalizedMetersOut = Number(m.metersOut) || 0;
+
           // Update existing collection documents with the locationReportId
           await Collections.updateMany(
             {
               machineId: m.machineId,
-              metersIn: Number(m.metersIn) || 0,
-              metersOut: Number(m.metersOut) || 0,
+              metersIn: normalizedMetersIn,
+              metersOut: normalizedMetersOut,
               $or: [
                 { locationReportId: '' },
                 { locationReportId: { $exists: false } },
@@ -591,31 +594,95 @@ export async function POST(req: NextRequest) {
                 | undefined;
             const currentMachineCollectionTime =
               currentMachineData.collectionTime as Date | undefined;
+            const normalizedMetersIn = Number(m.metersIn) || 0;
+            const normalizedMetersOut = Number(m.metersOut) || 0;
+            const collectionTimestamp = new Date(
+              m.collectionTime || body.timestamp
+            );
+
+            // Fetch the collection document we just marked as completed
+            const collectionDocument = await Collections.findOne({
+              machineId: m.machineId,
+              locationReportId: body.locationReportId,
+              metersIn: normalizedMetersIn,
+              metersOut: normalizedMetersOut,
+            }).sort({ timestamp: -1 });
+
+            // Determine true previous meters from the latest completed collection
+            const previousCompletedCollection = await Collections.findOne({
+              machineId: m.machineId,
+              isCompleted: true,
+              locationReportId: { $exists: true, $ne: '' },
+              ...(collectionDocument?._id
+                ? { _id: { $ne: collectionDocument._id } }
+                : {}),
+              $or: [
+                { collectionTime: { $lt: collectionTimestamp } },
+                { timestamp: { $lt: collectionTimestamp } },
+              ],
+            })
+              .sort({ collectionTime: -1, timestamp: -1 })
+              .lean();
+
+            const baselinePrevIn =
+              previousCompletedCollection?.metersIn ??
+              currentCollectionMeters?.metersIn ??
+              0;
+            const baselinePrevOut =
+              previousCompletedCollection?.metersOut ??
+              currentCollectionMeters?.metersOut ??
+              0;
+
+            if (collectionDocument?._id) {
+              await Collections.updateOne(
+                { _id: collectionDocument._id },
+                {
+                  $set: {
+                    prevIn: baselinePrevIn,
+                    prevOut: baselinePrevOut,
+                  },
+                }
+              ).catch(err => {
+                console.error(
+                  `Failed to update prevIn/prevOut for collection ${collectionDocument._id}:`,
+                  err
+                );
+              });
+            }
 
             // CRITICAL: Update any existing history entries that don't have locationReportId set
             // This ensures proper tracking of collections created before the report
             // We match by meter values to find the correct history entry
+            // Always update machine collectionMeters + timestamps
+            await Machine.findByIdAndUpdate(m.machineId, {
+              $set: {
+                'collectionMeters.metersIn': normalizedMetersIn,
+                'collectionMeters.metersOut': normalizedMetersOut,
+                collectionTime: collectionTimestamp,
+                previousCollectionTime: currentMachineCollectionTime || undefined,
+                updatedAt: new Date(),
+              },
+            }).catch(err => {
+              console.error(
+                `Failed to update collectionMeters for machine ${m.machineId}:`,
+                err
+              );
+            });
+
+            // Backfill locationReportId for any pre-existing history entries that match these meters
             await Machine.findByIdAndUpdate(
               m.machineId,
               {
                 $set: {
                   'collectionMetersHistory.$[elem].locationReportId':
                     body.locationReportId,
-                  'collectionMeters.metersIn': Number(m.metersIn) || 0,
-                  'collectionMeters.metersOut': Number(m.metersOut) || 0,
-                  previousCollectionTime: currentCollectionMeters?.metersIn
-                    ? currentMachineCollectionTime ||
-                      new Date(Date.now() - 24 * 60 * 60 * 1000)
-                    : undefined,
-                  collectionTime: new Date(m.collectionTime || body.timestamp),
-                  updatedAt: new Date(),
                 },
               },
               {
                 arrayFilters: [
                   {
-                    'elem.metersIn': Number(m.metersIn) || 0,
-                    'elem.metersOut': Number(m.metersOut) || 0,
+                    'elem.metersIn': normalizedMetersIn,
+                    'elem.metersOut': normalizedMetersOut,
                     $or: [
                       { 'elem.locationReportId': '' },
                       { 'elem.locationReportId': { $exists: false } },
@@ -626,21 +693,20 @@ export async function POST(req: NextRequest) {
               }
             ).catch(err => {
               console.error(
-                `Failed to update collectionMeters and history for machine ${m.machineId}:`,
+                `Failed to update history entry identifiers for machine ${m.machineId}:`,
                 err
               );
-              return null;
             });
 
             // CRITICAL: Create collection history entries when the report is finalized
             // This is the correct time to create history entries - not when machines are added to the list
             const historyEntry = {
               _id: new mongoose.Types.ObjectId(),
-              metersIn: Number(m.metersIn) || 0,
-              metersOut: Number(m.metersOut) || 0,
-              prevMetersIn: currentCollectionMeters?.metersIn || 0,
-              prevMetersOut: currentCollectionMeters?.metersOut || 0,
-              timestamp: new Date(m.collectionTime || body.timestamp),
+              metersIn: normalizedMetersIn,
+              metersOut: normalizedMetersOut,
+              prevMetersIn: baselinePrevIn,
+              prevMetersOut: baselinePrevOut,
+              timestamp: collectionTimestamp,
               locationReportId: body.locationReportId,
             };
 
@@ -727,6 +793,11 @@ export async function POST(req: NextRequest) {
           },
         ];
 
+        const userId = currentUser._id as string | undefined;
+        const username =
+          (currentUser.emailAddress as string | undefined) ||
+          (currentUser.username as string | undefined);
+
         await logActivity({
           action: 'CREATE',
           details: `Created collection report for ${body.locationName} by ${
@@ -736,6 +807,8 @@ export async function POST(req: NextRequest) {
           } collected)`,
           ipAddress: getClientIP(req) || undefined,
           userAgent: req.headers.get('user-agent') || undefined,
+          userId,
+          username,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,

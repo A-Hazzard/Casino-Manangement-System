@@ -62,6 +62,11 @@ if (isEditing) {
 - Prompts user before navigating away
 - Saves `isEditing` state in Zustand store
 
+**Automatic Resume Flow (November 15th, 2025):**
+- `app/collection-report/page.tsx` now auto-opens the edit modal when `?resume=<reportId>` is present or when the API reports an unfinished edit.
+- `app/collection-report/report/[reportId]/page.tsx` redirects to `/collection-report?resume=...` whenever it detects an incomplete report, ensuring cross-device recovery.
+- Users always return to the unfinished edit with a toast notification and cannot close the modal until changes are finalized or discarded.
+
 **User Experience:**
 - ✅ Clear warning dialog
 - ✅ Option to stay and continue editing

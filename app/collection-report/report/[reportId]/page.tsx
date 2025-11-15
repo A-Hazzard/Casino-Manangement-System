@@ -154,6 +154,7 @@ function CollectionReportPageContent() {
     string[]
   >([]);
   const [sasTimeIssues, setSasTimeIssues] = useState<CollectionIssue[]>([]);
+  const hasRedirectedRef = useRef(false);
   const [showCollectionIssueModal, setShowCollectionIssueModal] =
     useState(false);
   const [selectedIssue, setSelectedIssue] = useState<CollectionIssue | null>(
@@ -446,6 +447,18 @@ function CollectionReportPageContent() {
     // It's called once on initial load above (line 416), which is sufficient
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportId]);
+
+  // Redirect users to the main collection page to resume unfinished edits
+  useEffect(() => {
+    if (reportData?.isEditing && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      toast.info('Resuming unfinished edit...', {
+        duration: 3000,
+        position: 'top-right',
+      });
+      router.push(`/collection-report?resume=${reportId}`);
+    }
+  }, [reportData?.isEditing, reportId, router]);
 
   // AUTO-FIX: Automatically fix collection history issues when detected
   // PRINCIPLE: Collections are always right, history might be wrong

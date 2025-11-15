@@ -8,6 +8,7 @@ import { logActivity } from "@/app/api/lib/helpers/activityLogger";
 import { getUserFromServer } from "../../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
+import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionRecalculation';
 
 /**
  * API route handler for fetching a collection report by reportId.
@@ -116,45 +117,40 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // If timestamp changed, update all related collections and machines
+    let affectedMachineIds: string[] = [];
+    try {
+      affectedMachineIds = await Collections.distinct('machineId', {
+        locationReportId: reportId,
+        machineId: { $exists: true, $ne: null },
+      });
+    } catch (distinctError) {
+      console.error(
+        'Failed to fetch machine IDs for cascade update:',
+        distinctError
+      );
+    }
+
     if (isTimestampChanged) {
       try {
         const newTimestamp = new Date(body.timestamp!);
 
-        // Update all collections for this report
         const collections = await Collections.find({
           locationReportId: reportId,
         });
 
         for (const collection of collections) {
-          // Update collection timestamp
           await Collections.findByIdAndUpdate(collection._id, {
+            collectionTime: newTimestamp,
             timestamp: newTimestamp,
             updatedAt: new Date(),
           });
-
-          // Update machine collection times
-          if (collection.machineId) {
-            const machine = await Machine.findById(collection.machineId);
-            if (machine) {
-              // Update collectionTime to new timestamp
-              await Machine.findByIdAndUpdate(collection.machineId, {
-                collectionTime: newTimestamp,
-                previousCollectionTime: machine.collectionTime, // Move current to previous
-                updatedAt: new Date(),
-              });
-            }
-          }
         }
 
-        // Update gaming location's previousCollectionTime if this is the latest report
         if (updatedReport.location) {
-          // Find the most recent report for this location
           const latestReport = await CollectionReport.findOne({
             location: updatedReport.location,
           }).sort({ timestamp: -1 });
 
-          // If this is the latest report, update the gaming location
           if (latestReport && latestReport._id.toString() === reportId) {
             const GamingLocations = (
               await import("@/app/api/lib/models/gaminglocations")
@@ -165,17 +161,43 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             });
           }
         }
-
-        console.warn(
-          `Updated timestamp for report ${reportId} and ${collections.length} collections`
-        );
       } catch (error) {
         console.error(
           "Error updating related data after timestamp change:",
           error
         );
-        // Don't fail the request, just log the error
       }
+    }
+
+    for (const machineId of affectedMachineIds) {
+      try {
+        await recalculateMachineCollections(
+          typeof machineId === 'string' ? machineId : String(machineId)
+        );
+      } catch (cascadeError) {
+        console.error(
+          `Failed to cascade recalculation for machine ${machineId}:`,
+          cascadeError
+        );
+      }
+    }
+
+    try {
+      const machineIds = await Collections.distinct('machineId', {
+        locationReportId: reportId,
+        machineId: { $exists: true, $ne: null },
+      });
+
+      for (const machineId of machineIds) {
+        await recalculateMachineCollections(
+          typeof machineId === 'string' ? machineId : String(machineId)
+        );
+      }
+    } catch (recalcError) {
+      console.error(
+        'Failed to recalculate machine collections after report update:',
+        recalcError
+      );
     }
 
     // Log activity

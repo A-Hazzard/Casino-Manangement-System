@@ -35,7 +35,8 @@
     "test-meters:generate:dry": "node scripts/generate-test-meters.js --dry-run",
     "test:comprehensive-suite": "node scripts/comprehensive-test-suite.js",
     "test:verify-aggregation": "node scripts/verify-aggregation-accuracy.js",
-    "sandbox:seed": "ts-node --transpile-only --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/seed-sandbox-fixtures.ts"
+    "sandbox:seed": "ts-node --transpile-only --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/seed-sandbox-fixtures.ts",
+    "seed:collection-reports": "node scripts/seed-collection-reports.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

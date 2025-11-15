@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Suspense,
   useCallback,
@@ -139,6 +139,7 @@ function CollectionReportPageContent() {
 
 function CollectionReportContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { handleError } = useAsyncError();
   const {
     selectedLicencee,
@@ -310,9 +311,52 @@ function CollectionReportContent() {
     return () => window.removeEventListener('resize', handleModalResize);
   }, [handleModalResize]);
 
+  const autoResumeHandledRef = useRef(false);
+
+  // Handle explicit resume requests via query parameter (?resume=<reportId>)
+  useEffect(() => {
+    const resumeReportId = searchParams?.get('resume');
+
+    if (resumeReportId) {
+      autoResumeHandledRef.current = true;
+      setEditingReportId(resumeReportId);
+
+      toast.info('Resuming unfinished edit...', {
+        duration: 3000,
+        position: 'top-right',
+      });
+
+      if (isMobileSize()) {
+        setShowMobileEditCollectionModal(true);
+      } else {
+        setShowDesktopEditCollectionModal(true);
+      }
+
+      // Remove the resume param from the URL to prevent re-triggering
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('resume');
+        const newQuery = params.toString();
+        const newPath = newQuery
+          ? `${window.location.pathname}?${newQuery}`
+          : window.location.pathname;
+        router.replace(newPath);
+      }
+    }
+  }, [
+    searchParams,
+    router,
+    setShowDesktopEditCollectionModal,
+    setShowMobileEditCollectionModal,
+  ]);
+
   // CRITICAL: Auto-reopen edit modal for reports with isEditing: true
   // This allows users to resume unfinished edits even after page refresh
   useEffect(() => {
+    if (autoResumeHandledRef.current) {
+      return;
+    }
+
     const checkForUnfinishedEdits = async () => {
       try {
         // Query for most recent report with isEditing: true
@@ -353,7 +397,6 @@ function CollectionReportContent() {
       }
     };
 
-    // Run check on mount
     checkForUnfinishedEdits();
   }, []); // Empty dependency array - run once on mount
 

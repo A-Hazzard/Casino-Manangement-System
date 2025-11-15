@@ -28,6 +28,34 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import axios from 'axios';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
+
+const normalizeStatusValue = (value?: string): 'functional' | 'non_functional' => {
+  if (!value) return 'functional';
+  const normalized = value.toLowerCase().replace(/\s+/g, '_');
+  return normalized === 'non_functional' ? 'non_functional' : 'functional';
+};
+
+const normalizeGameTypeValue = (value?: string): string => {
+  if (!value) return 'Slot';
+  const trimmed = value.trim();
+  const normalized = trimmed.toLowerCase();
+  const knownTypes: Record<string, string> = {
+    slot: 'Slot',
+    slots: 'Slot',
+    'video poker': 'Video Poker',
+    videopoker: 'Video Poker',
+    'table game': 'Table Game',
+    tablegame: 'Table Game',
+    roulette: 'Roulette',
+    blackjack: 'Blackjack',
+    poker: 'Poker',
+    baccarat: 'Baccarat',
+    other: 'Other',
+  };
+  return knownTypes[normalized] || trimmed;
+};
 
 export const EditCabinetModal = ({
   onCabinetUpdated,
@@ -258,7 +286,21 @@ export const EditCabinetModal = ({
     }
   }, []);
 
-  const [formData, setFormData] = useState<CabinetFormData>({
+  type CollectionSettingsForm = {
+    multiplier?: string;
+    lastCollectionTime?: string;
+    lastMetersIn?: string;
+    lastMetersOut?: string;
+  };
+
+  const [collectionTime, setCollectionTime] = useState<Date>(new Date());
+
+  type ExtendedCabinetFormData = CabinetFormData & {
+    cabinetType?: string;
+    collectionSettings?: CollectionSettingsForm;
+  };
+
+  const [formData, setFormData] = useState<ExtendedCabinetFormData>({
     _id: '',
     assetNumber: '',
     installedGame: '',
@@ -270,6 +312,13 @@ export const EditCabinetModal = ({
     status: 'functional',
     isCronosMachine: false,
     manufacturer: '',
+    cabinetType: 'Standing',
+    collectionSettings: {
+      multiplier: '1',
+      lastCollectionTime: '',
+      lastMetersIn: '',
+      lastMetersOut: '',
+    },
   });
 
   useEffect(() => {
@@ -280,22 +329,40 @@ export const EditCabinetModal = ({
     // Initial form data setup from selected cabinet
     if (selectedCabinet) {
       // console.log("Selected cabinet gameType:", selectedCabinet.gameType);
-      const initialFormData = {
+      const initialCollectionTime = selectedCabinet.collectionTime
+        ? new Date(selectedCabinet.collectionTime)
+        : new Date();
+      setCollectionTime(initialCollectionTime);
+
+      const initialFormData: ExtendedCabinetFormData = {
         _id: selectedCabinet._id,
         assetNumber: selectedCabinet.assetNumber || '',
         installedGame: selectedCabinet.installedGame || '',
-        gameType: selectedCabinet.gameType || 'Slot',
+        gameType: normalizeGameTypeValue(selectedCabinet.gameType),
         accountingDenomination: String(
           selectedCabinet.accountingDenomination || '1'
         ),
         collectionMultiplier: selectedCabinet.collectionMultiplier || '1',
         locationId: selectedCabinet.locationId || '',
         smbId: selectedCabinet.smbId || '',
-        status: selectedCabinet.status || 'functional',
+        status: normalizeStatusValue(
+          selectedCabinet.assetStatus || selectedCabinet.status
+        ),
         isCronosMachine: selectedCabinet.isCronosMachine || false,
         manufacturer: selectedCabinet.manufacturer || '',
         custom: selectedCabinet.custom || { name: '' },
         createdAt: selectedCabinet.createdAt,
+        cabinetType: selectedCabinet.cabinetType || 'Standing',
+        collectionSettings: {
+          multiplier: selectedCabinet.collectionMultiplier || '1',
+          lastCollectionTime: initialCollectionTime.toISOString(),
+          lastMetersIn: selectedCabinet.collectionMeters
+            ? String(selectedCabinet.collectionMeters.metersIn ?? '')
+            : '',
+          lastMetersOut: selectedCabinet.collectionMeters
+            ? String(selectedCabinet.collectionMeters.metersOut ?? '')
+            : '',
+        },
       };
       // console.log("Initial form data gameType:", initialFormData.gameType);
       setFormData(initialFormData);
@@ -345,14 +412,16 @@ export const EditCabinetModal = ({
                 // console.log("API gameType:", cabinetDetails.gameType);
                 // console.log("Current form gameType:", prevData.gameType);
 
-          const newData = {
+                const newData = {
                   ...prevData,
                   installedGame:
                     cabinetDetails.installedGame || prevData.installedGame,
                   // Only update gameType if user hasn't modified it
-            gameType: userModifiedFieldsRef.current.has('gameType')
+                  gameType: userModifiedFieldsRef.current.has('gameType')
                     ? prevData.gameType
-                    : cabinetDetails.gameType || prevData.gameType,
+                    : normalizeGameTypeValue(
+                        cabinetDetails.gameType || prevData.gameType
+                      ),
                   // Only update manufacturer if user hasn't modified it
             manufacturer: userModifiedFieldsRef.current.has('manufacturer')
                     ? prevData.manufacturer
@@ -364,10 +433,35 @@ export const EditCabinetModal = ({
                   collectionMultiplier:
                     cabinetDetails.collectionMultiplier ||
                     prevData.collectionMultiplier,
-                  status: cabinetDetails.status || prevData.status,
+                  status: normalizeStatusValue(
+                    cabinetDetails.status || prevData.status
+                  ),
                   isCronosMachine:
                     cabinetDetails.isCronosMachine || prevData.isCronosMachine,
                   createdAt: cabinetDetails.createdAt || prevData.createdAt,
+                  cabinetType:
+                    cabinetDetails.cabinetType || prevData.cabinetType,
+                  collectionSettings: {
+                    multiplier:
+                      cabinetDetails.collectionMultiplier ||
+                      prevData.collectionSettings?.multiplier ||
+                      '1',
+                    lastCollectionTime:
+                      (cabinetDetails.collectionTime
+                        ? new Date(cabinetDetails.collectionTime).toISOString()
+                        : prevData.collectionSettings?.lastCollectionTime) ||
+                      initialCollectionTime.toISOString(),
+                    lastMetersIn:
+                      cabinetDetails.collectionMeters &&
+                      cabinetDetails.collectionMeters.metersIn !== undefined
+                        ? String(cabinetDetails.collectionMeters.metersIn)
+                        : prevData.collectionSettings?.lastMetersIn || '',
+                    lastMetersOut:
+                      cabinetDetails.collectionMeters &&
+                      cabinetDetails.collectionMeters.metersOut !== undefined
+                        ? String(cabinetDetails.collectionMeters.metersOut)
+                        : prevData.collectionSettings?.lastMetersOut || '',
+                  },
                 };
                 // console.log(
                 //   "Updated form data with gameType:",
@@ -377,6 +471,9 @@ export const EditCabinetModal = ({
                 // );
                 return newData;
               });
+              if (cabinetDetails.collectionTime) {
+                setCollectionTime(new Date(cabinetDetails.collectionTime));
+              }
             }
           })
           .catch(error => {
@@ -508,15 +605,19 @@ export const EditCabinetModal = ({
         );
         errors.push('accountingDenominationNaN');
       }
-      if (
-        !formData.collectionMultiplier ||
-        String(formData.collectionMultiplier).trim().length === 0
-      ) {
+      const multiplierValue =
+        formData.collectionSettings?.multiplier ||
+        formData.collectionMultiplier ||
+        '';
+
+      if (!multiplierValue || multiplierValue.trim().length === 0) {
         setCollectionMultiplierError('Collection multiplier is required');
         errors.push('collectionMultiplier');
-      } else if (isNaN(Number(formData.collectionMultiplier))) {
+      } else if (isNaN(Number(multiplierValue))) {
         setCollectionMultiplierError('Collection multiplier must be a number');
         errors.push('collectionMultiplierNaN');
+      } else {
+        formData.collectionMultiplier = multiplierValue;
       }
       if (!formData.locationId || formData.locationId.trim().length === 0) {
         setLocationError('Location is required');
@@ -544,10 +645,22 @@ export const EditCabinetModal = ({
         collectionMultiplier: selectedCabinet.collectionMultiplier,
         locationId: selectedCabinet.locationId,
         smbId: selectedCabinet.smbId,
-        status: selectedCabinet.status,
+        status: normalizeStatusValue(selectedCabinet.status),
         isCronosMachine: selectedCabinet.isCronosMachine,
         manufacturer: selectedCabinet.manufacturer,
         custom: selectedCabinet.custom,
+        cabinetType: selectedCabinet.cabinetType,
+        collectionSettings: {
+          lastCollectionTime: selectedCabinet.collectionTime
+            ? new Date(selectedCabinet.collectionTime).toISOString()
+            : '',
+          lastMetersIn: selectedCabinet.collectionMeters
+            ? String(selectedCabinet.collectionMeters.metersIn ?? '')
+            : '',
+          lastMetersOut: selectedCabinet.collectionMeters
+            ? String(selectedCabinet.collectionMeters.metersOut ?? '')
+            : '',
+        },
       };
 
       const formDataComparison = {
@@ -562,6 +675,13 @@ export const EditCabinetModal = ({
         isCronosMachine: formData.isCronosMachine,
         manufacturer: formData.manufacturer,
         custom: formData.custom,
+        cabinetType: formData.cabinetType,
+        collectionSettings: {
+          lastCollectionTime:
+            formData.collectionSettings?.lastCollectionTime || '',
+          lastMetersIn: formData.collectionSettings?.lastMetersIn || '',
+          lastMetersOut: formData.collectionSettings?.lastMetersOut || '',
+        },
       };
 
       // Detect changes by comparing ONLY editable fields
@@ -577,6 +697,9 @@ export const EditCabinetModal = ({
 
       // Build update payload with only changed fields + required _id
       const updatePayload: Record<string, unknown> = { _id: formData._id };
+      let pendingCollectionSettings: Partial<CollectionSettingsForm> | null =
+        null;
+
       meaningfulChanges.forEach(change => {
         const fieldPath = change.path; // Use full path for nested fields
         
@@ -587,6 +710,13 @@ export const EditCabinetModal = ({
           // Special handling for objects that must be sent whole
           if (parent === 'custom') {
             updatePayload.custom = formData.custom;
+          } else if (parent === 'collectionSettings') {
+            if (!pendingCollectionSettings) {
+              pendingCollectionSettings = {};
+            }
+            const key = child as keyof CollectionSettingsForm;
+            (pendingCollectionSettings as Partial<CollectionSettingsForm>)[key] =
+              formData.collectionSettings?.[key];
           } else {
             if (!updatePayload[parent]) {
               updatePayload[parent] = {};
@@ -597,6 +727,33 @@ export const EditCabinetModal = ({
           updatePayload[fieldPath] = formData[fieldPath as keyof typeof formData];
         }
       });
+
+      if (pendingCollectionSettings) {
+        const {
+          lastCollectionTime,
+          lastMetersIn,
+          lastMetersOut,
+        } = pendingCollectionSettings;
+
+        if (lastCollectionTime) {
+          updatePayload.collectionTime = lastCollectionTime;
+        }
+
+        const metersInVal = lastMetersIn;
+        const metersOutVal = lastMetersOut;
+        const collectionMetersPayload: Record<string, number> = {};
+
+        if (metersInVal !== undefined && metersInVal !== '') {
+          collectionMetersPayload.metersIn = Number(metersInVal) || 0;
+        }
+        if (metersOutVal !== undefined && metersOutVal !== '') {
+          collectionMetersPayload.metersOut = Number(metersOutVal) || 0;
+        }
+
+        if (Object.keys(collectionMetersPayload).length > 0) {
+          updatePayload.collectionMeters = collectionMetersPayload;
+        }
+      }
 
       // Pass only the changed fields to reduce unnecessary updates and logging
       // Convert customDateRange to DateRange format expected by updateCabinet
@@ -667,7 +824,7 @@ export const EditCabinetModal = ({
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}
-          className="flex flex-col h-full w-full md:max-h-[98vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"
+          className="flex flex-col w-full max-h-[95vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"
           style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
           <div className="flex items-center border-b border-border p-3 sm:p-4 flex-shrink-0">
@@ -687,7 +844,7 @@ export const EditCabinetModal = ({
 
           {/* Form Content */}
           <div className="flex-1 overflow-y-auto px-4 pb-6 sm:px-8 sm:pb-8">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="space-y-6">
                 {/* Creation Date Display */}
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -713,6 +870,10 @@ export const EditCabinetModal = ({
                   </div>
                 </div>
 
+                <div className="space-y-4">
+                  <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">
+                    Basic Information
+                  </h3>
                 {/* Serial Number & Installed Game */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
@@ -851,60 +1012,97 @@ export const EditCabinetModal = ({
                   )}
                 </div>
 
-                {/* Accounting Denomination & Collection Multiplier */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Accounting Denomination
+                      Cabinet Type
                     </label>
-                    {cabinetDataLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <>
-                        <Input
-                          id="accountingDenomination"
-                          name="accountingDenomination"
-                          value={formData.accountingDenomination}
-                          onChange={handleChange}
-                          placeholder="Enter denomination"
-                          className={`border-border bg-container ${
-                            accountingDenominationError ? 'border-red-500' : ''
-                          }`}
-                        />
-                        {accountingDenominationError && (
-                          <p className="mt-1 text-xs text-red-500">
-                            {accountingDenominationError}
-                          </p>
-                        )}
-                      </>
-                    )}
+                    <Select
+                      value={formData.cabinetType as string}
+                      onValueChange={value =>
+                        setFormData(prev => ({
+                          ...prev,
+                          cabinetType: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="border-border bg-container">
+                        <SelectValue placeholder="Select Cabinet Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Standing">Standing</SelectItem>
+                        <SelectItem value="Slant Top">Slant Top</SelectItem>
+                        <SelectItem value="Bar Top">Bar Top</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isCronosMachine"
+                      checked={Boolean(formData.isCronosMachine)}
+                      onCheckedChange={checked =>
+                        setFormData(prev => ({
+                          ...prev,
+                          isCronosMachine: Boolean(checked),
+                        }))
+                      }
+                    />
+                    <label
+                      htmlFor="isCronosMachine"
+                      className="text-sm font-medium text-grayHighlight"
+                    >
+                      Cronos Machine
+                    </label>
+                  </div>
+                </div>
+
+                {formData.isCronosMachine && (
                   <div>
                     <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Collection Report Multiplier
+                      Accounting Denomination (Cronos Only)
                     </label>
-                    {cabinetDataLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <>
-                        <Input
-                          id="collectionMultiplier"
-                          name="collectionMultiplier"
-                          value={formData.collectionMultiplier}
-                          onChange={handleChange}
-                          placeholder="Enter multiplier value"
-                          className={`border-border bg-container ${
-                            collectionMultiplierError ? 'border-red-500' : ''
-                          }`}
-                        />
-                        {collectionMultiplierError && (
-                          <p className="mt-1 text-xs text-red-500">
-                            {collectionMultiplierError}
-                          </p>
-                        )}
-                      </>
-                    )}
+                    <Input
+                      id="accountingDenominationCronos"
+                      name="accountingDenomination"
+                      value={formData.accountingDenomination}
+                      onChange={handleChange}
+                      placeholder="Enter denomination"
+                      className="border-border bg-container"
+                    />
                   </div>
+                )}
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">
+                    Location & Configuration
+                  </h3>
+                {/* Accounting Denomination */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                    Accounting Denomination
+                  </label>
+                  {cabinetDataLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <>
+                      <Input
+                        id="accountingDenomination"
+                        name="accountingDenomination"
+                        value={formData.accountingDenomination}
+                        onChange={handleChange}
+                        placeholder="Enter denomination"
+                        className={`border-border bg-container ${
+                          accountingDenominationError ? 'border-red-500' : ''
+                        }`}
+                      />
+                      {accountingDenominationError && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {accountingDenominationError}
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {/* Location & SMIB Board */}
@@ -982,36 +1180,23 @@ export const EditCabinetModal = ({
                   <label className="mb-2 block text-sm font-medium text-grayHighlight">
                     Status
                   </label>
-                  {cabinetDataLoading ? (
-                    <div className="flex space-x-4">
-                      <Skeleton className="h-6 w-20" />
-                      <Skeleton className="h-6 w-24" />
-                      <Skeleton className="h-6 w-16" />
-                    </div>
-                  ) : (
-                    <div className="flex space-x-4">
-                      {[
-                        { value: 'functional', label: 'Functional' },
-                        { value: 'non_functional', label: 'Non Functional' },
-                      ].map(({ value, label }) => (
-                        <label key={value} className="inline-flex items-center">
-                          <input
-                            type="radio"
-                            name="status"
-                            checked={formData.status === value}
-                            onChange={() =>
-                              setFormData(prev => ({
-                                ...prev,
-                                status: value,
-                              }))
-                            }
-                            className="h-4 w-4 border-border text-button focus:ring-button"
-                          />
-                          <span className="ml-2">{label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                  <Select
+                    value={formData.status as string}
+                    onValueChange={value =>
+                      setFormData(prev => ({ ...prev, status: value }))
+                    }
+                  >
+                    <SelectTrigger className="border-border bg-container">
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="functional">Functional</SelectItem>
+                      <SelectItem value="non_functional">
+                        Non Functional
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 </div>
 
                 {/* Custom Name Field - Only show if no valid serial number */}
@@ -1046,6 +1231,103 @@ export const EditCabinetModal = ({
                     </p>
                   </div>
                 )}
+                <div className="mt-4 space-y-4 border-t border-border pt-4">
+                  <h3 className="text-sm font-medium text-buttonActive">
+                    Collection Settings
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Collection Report Multiplier
+                      </label>
+                      <>
+                        <Input
+                          value={formData.collectionSettings?.multiplier || ''}
+                          onChange={e => {
+                            setCollectionMultiplierError('');
+
+                            setFormData(prev => ({
+                              ...prev,
+                              collectionMultiplier: e.target.value,
+                              collectionSettings: {
+                                ...prev.collectionSettings,
+                                multiplier: e.target.value,
+                              },
+                            }));
+                          }}
+                          placeholder="Enter multiplier"
+                          className={`border-border bg-container ${
+                            collectionMultiplierError ? 'border-red-500' : ''
+                          }`}
+                        />
+                        {collectionMultiplierError && (
+                          <p className="mt-1 text-xs text-red-500">
+                            {collectionMultiplierError}
+                          </p>
+                        )}
+                      </>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Last Collection Time
+                      </label>
+                      <PCDateTimePicker
+                        date={collectionTime}
+                        setDate={date => {
+                          if (!date) return;
+                          setCollectionTime(date);
+                          setFormData(prev => ({
+                            ...prev,
+                            collectionSettings: {
+                              ...prev.collectionSettings,
+                              lastCollectionTime: date.toISOString(),
+                            },
+                          }));
+                        }}
+                        disabled={loading}
+                        placeholder="Select collection time"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Last Meters In
+                      </label>
+                      <Input
+                        value={formData.collectionSettings?.lastMetersIn || ''}
+                        onChange={e =>
+                          setFormData(prev => ({
+                            ...prev,
+                            collectionSettings: {
+                              ...prev.collectionSettings,
+                              lastMetersIn: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder="Enter last meters in"
+                        className="border-border bg-container"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Last Meters Out
+                      </label>
+                      <Input
+                        value={formData.collectionSettings?.lastMetersOut || ''}
+                        onChange={e =>
+                          setFormData(prev => ({
+                            ...prev,
+                            collectionSettings: {
+                              ...prev.collectionSettings,
+                              lastMetersOut: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder="Enter last meters out"
+                        className="border-border bg-container"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

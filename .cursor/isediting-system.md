@@ -256,6 +256,22 @@ Phase 5: VERIFICATION
   Result: Report ready for financial use
 ```
 
+## Automatic Recovery Workflow (November 15th, 2025)
+
+The frontend now guarantees that incomplete reports are resumed automatically:
+
+1. **Resume Links**
+   - When the Collection Report Details page (`/collection-report/report/[reportId]`) detects `isEditing: true`, it immediately redirects to `/collection-report?resume=<reportId>`.
+   - The main collection page reads the `resume` query param, shows a toast ("Resuming unfinished edit…"), and opens the edit modal (desktop or mobile) for that report.
+   - After the modal opens the query param is removed so refreshing the page does not reopen endlessly.
+
+2. **Background Safety Net**
+   - On mount the collection page still queries `/api/collection-reports?isEditing=true&limit=1&sortBy=updatedAt&sortOrder=desc`.
+   - If any unfinished report exists and no `resume` param handled it, the page auto-opens the latest one and flags `hasUnsavedEdits` so the modal cannot be closed accidentally.
+   - A simple ref guard (`autoResumeHandledRef`) ensures the resume param and background check never double-open the modal.
+
+This two-step system means refreshing the page, switching devices, or deep-linking from the details view always reopens the unfinished edit, keeping the user in recovery mode until they finalize or discard the changes.
+
 ---
 
 ## Key Insights for AI/Developers
@@ -371,35 +387,25 @@ Question 3: Is user confused about report state?
 
 ### Current Limitations
 
-1. **No automatic modal opening:** Users must manually open Edit Modal to complete incomplete reports
-2. **No time-based warnings:** System doesn't alert on reports stuck in editing state
-3. **No multi-user coordination:** No locking mechanism for concurrent editors
-4. **No detailed edit history:** Can't see what changed during edit session
+1. **No time-based warnings:** System doesn't alert on reports stuck in editing state
+2. **No multi-user coordination:** No locking mechanism for concurrent editors
+3. **No detailed edit history:** Can't see what changed during edit session
 
 ### Potential Enhancements
 
-1. **Auto-open incomplete reports:**
-   ```typescript
-   // On reports page load
-   const incompleteReports = reports.filter(r => r.isEditing);
-   if (incompleteReports.length === 1) {
-     autoOpenEditModal(incompleteReports[0].reportId);
-   }
-   ```
-
-2. **Dashboard alerts:**
+1. **Dashboard alerts:**
    ```typescript
    // Show warning banner
    "You have 3 incomplete collection reports that need attention"
    ```
 
-3. **Optimistic locking:**
+2. **Optimistic locking:**
    ```typescript
    // Add version field
    { isEditing: true, editingUser: "user123", editingStartTime: Date }
    ```
 
-4. **Edit session tracking:**
+3. **Edit session tracking:**
    ```typescript
    // Log all changes
    editHistory: [{

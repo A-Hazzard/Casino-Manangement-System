@@ -210,24 +210,24 @@ func main() {
 	useGoroutines := askUseGoroutines()
 
 	if useGoroutines {
-		var wg sync.WaitGroup
-		for _, collName := range collections {
-			wg.Add(1)
-			go func(name string) {
-				defer wg.Done()
-				migrateCollection(ctx, srcDB, dstDB, name)
-			}(collName)
-		}
+	var wg sync.WaitGroup
+	for _, collName := range collections {
+		wg.Add(1)
+		go func(name string) {
+			defer wg.Done()
+			migrateCollection(ctx, srcDB, dstDB, name)
+		}(collName)
+	}
 
 		if containsCollection(collections, "meters") {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				migrateMeters(ctx, srcDB, dstDB)
-			}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		migrateMeters(ctx, srcDB, dstDB)
+	}()
 		}
 
-		wg.Wait()
+	wg.Wait()
 	} else {
 		for _, collName := range collections {
 			migrateCollection(ctx, srcDB, dstDB, collName)

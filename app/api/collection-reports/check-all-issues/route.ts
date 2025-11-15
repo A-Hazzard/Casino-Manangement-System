@@ -381,31 +381,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Check for duplicate reports on the same day
-      const duplicateReports = await CollectionReport.find({
-        location: report.location,
-        $and: [
-          {
-            $or: [
-              {
-                $and: [
-                  { gamingDayStart: { $lte: new Date(report.timestamp) } },
-                  { gamingDayEnd: { $gte: new Date(report.timestamp) } },
-                ],
-              },
-            ],
-          },
-          {
-            $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-          },
-          { _id: { $ne: report._id } },
-        ],
-      }).lean();
-
-      if (duplicateReports.length > 0) {
-        reportIssues[report._id.toString()].issueCount++;
-        reportIssues[report._id.toString()].hasIssues = true;
-      }
+      // Duplicate reports on same day are allowed; no longer treated as issues
     }
 
     // No more global machine history scans - only check specific reports or machines
