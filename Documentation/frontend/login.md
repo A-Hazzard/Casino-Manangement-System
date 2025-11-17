@@ -18,8 +18,8 @@
 The Login page provides secure authentication for users accessing the casino management system. This page serves as the entry point for all authenticated users and implements robust security measures.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 11th, 2025  
-**Version:** 2.1.0
+**Last Updated:** December 2025  
+**Version:** 2.2.0
 
 ### File Information
 
@@ -31,16 +31,19 @@ The Login page provides secure authentication for users accessing the casino man
 ## Main Features
 
 - **Login Form:**
-  - Email/username identifier and password input fields.
+  - Email/username identifier and password input fields (identifier accepts email or username).
   - Show/hide password toggle.
   - "Remember Me" checkbox for persistent identifier storage.
   - Validation for identifier and password.
-  - Error and success messages.
+  - Error and success messages (including "Logout Successful" message from URL parameter).
+  - **Email as Username Support:** Users can log in with email address even if it's set as their username (prompted to change via ProfileValidationModal).
 - **Authentication:**
-  - Calls backend API to authenticate users.
+  - Calls backend API to authenticate users (supports email or username as identifier).
   - Displays loading and redirecting states.
   - Handles authentication errors and feedback.
   - Database environment mismatch detection and handling.
+  - **Hard Delete Detection:** Users automatically logged out if account is hard-deleted from database.
+  - **URL Parameter Handling:** Parses `logout=success`, `error`, and `message` parameters to display appropriate messages.
 - **Profile Validation Gate:**
   - **Mandatory Profile Validation:** After successful login, users with invalid profile data are required to update their profile before accessing the application.
   - **ProfileValidationGate Component:** Global provider in root layout that monitors user profile validation status.
@@ -102,17 +105,19 @@ The Login page provides secure authentication for users accessing the casino man
 1. **Form Input:** User enters identifier (email or username) and password
 2. **Client Validation:** Validates identifier format and password presence
 3. **Database Mismatch Check:** Verifies database environment hasn't changed
-4. **API Call:** Sends credentials to `/api/auth/login`
-5. **Authentication:** Backend validates credentials and issues JWT token
-6. **Password Storage:** Temporarily stores plaintext password in `authSessionStore` for profile validation
-7. **Profile Validation Check:** Backend returns `invalidProfileFields` and `invalidProfileReasons` if profile data is invalid
-8. **Conditional Modals:**
-   - If `requiresPasswordUpdate`: Shows `PasswordUpdateModal`
-   - If `requiresProfileUpdate`: Shows `ProfileValidationModal` (enforced, cannot close)
-9. **State Update:** Updates user store with authenticated user data
-10. **Token Verification:** Verifies JWT cookie was set correctly via `/api/test-current-user`
-11. **Role-based Redirect:** Navigates to appropriate dashboard based on user roles
-12. **ProfileValidationGate:** Global gate in root layout continues monitoring profile validation status
+4. **URL Parameter Check:** Parses URL parameters (`logout=success`, `error`, `message`) and displays appropriate messages
+5. **API Call:** Sends credentials to `/api/auth/login`
+6. **Authentication:** Backend validates credentials (checks both email and username if identifier looks like email) and issues JWT token
+7. **User Status Check:** Backend verifies user exists, is not deleted, and account is enabled
+8. **Password Storage:** Temporarily stores plaintext password in `authSessionStore` for profile validation
+9. **Profile Validation Check:** Backend returns `invalidProfileFields` and `invalidProfileReasons` if profile data is invalid
+10. **Conditional Modals:**
+    - If `requiresPasswordUpdate`: Shows `PasswordUpdateModal`
+    - If `requiresProfileUpdate`: Shows `ProfileValidationModal` (enforced, cannot close)
+11. **State Update:** Updates user store with authenticated user data
+12. **Token Verification:** Verifies JWT cookie was set correctly via `/api/test-current-user`
+13. **Role-based Redirect:** Navigates to appropriate dashboard based on user roles
+14. **ProfileValidationGate:** Global gate in root layout continues monitoring profile validation status
 
 ### API Integration
 
@@ -122,16 +127,19 @@ The Login page provides secure authentication for users accessing the casino man
   - **Request Body:** `{ identifier: string, password: string }` (identifier can be email or username)
   - **Response:**
     - Success: `{ success: true, data: { user: UserData, token: string, refreshToken: string, expiresAt: string, requiresPasswordUpdate?: boolean, requiresProfileUpdate?: boolean, invalidProfileFields?: InvalidProfileFields, invalidProfileReasons?: ProfileValidationReasons } }`
-    - Error: `{ success: false, message: string }`
+    - Error: `{ success: false, message: string }` (specific messages for `user_not_found`, `user_deleted`, `account_disabled`)
   - **Cookies:** Sets HTTP-only `token` and `refreshToken` cookies for session management
   - **Profile Validation:** Returns validation flags if profile data is invalid or missing required fields
+  - **User Status Validation:** Checks for hard-deleted users, soft-deleted users, and disabled accounts
+  - **Last Login Update:** Updates `lastLoginAt` timestamp on successful login
 
 #### Authentication Process
 
 - **Backend Helper:** `app/api/lib/helpers/auth.ts` - Core authentication logic
-  - `authenticateUser()` - Validates credentials against database
+  - `authenticateUser()` - Validates credentials against database (checks both email and username if identifier looks like email)
   - JWT token generation using `jose` library
   - Password hashing with bcrypt
+  - User status validation (existence, soft-delete, disabled status)
 - **Validation:** `app/api/lib/utils/validation.ts` - Server-side validation
   - Email format validation
   - Password strength requirements
@@ -187,12 +195,14 @@ LoginPage (app/(auth)/login/page.tsx)
 
 ### Business Logic
 
-- **Identifier Validation:** Accepts email or username for login
+- **Identifier Validation:** Accepts email or username for login (backend checks both fields if identifier looks like email)
 - **Password Requirements:** Strong password requirements (8+ chars, uppercase, lowercase, number, special char)
 - **Session Management:** JWT tokens stored in HTTP-only cookies with 48-hour expiration
 - **Profile Validation:** Mandatory validation of username, firstName, lastName, emailAddress, phone, dateOfBirth, gender, otherName
 - **Password Storage:** Plaintext password temporarily stored in `authSessionStore` for profile validation, cleared after use
 - **Database Environment Check:** Verifies database connection hasn't changed on page load
+- **URL Parameter Handling:** Parses and displays messages from URL parameters (`logout=success`, `error`, `message`)
+- **Hard Delete Detection:** Users automatically logged out if account is hard-deleted from database
 - **Role-based Navigation:** Redirects users to appropriate dashboard based on roles
 - **Security:** CSRF protection, secure cookie settings, token verification
 - **Error Handling:** Graceful degradation with user-friendly messages
@@ -207,6 +217,7 @@ LoginPage (app/(auth)/login/page.tsx)
 - **Password Storage:** Ephemeral storage in memory only, never persisted or logged
 - **Database Environment Verification:** Prevents session hijacking from database changes
 - **Error Sanitization:** Generic error messages to prevent information leakage
+- **Specific Error Messages:** Displays specific messages for `user_not_found`, `user_deleted`, and `account_disabled` scenarios
 
 ### Error Handling
 

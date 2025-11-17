@@ -31,13 +31,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Basic input validation
-    const isEmail = /\S+@\S+\.\S+/.test(identifier);
+    // Allow email-like patterns (even if used as username) and regular usernames
+    const looksLikeEmail = /\S+@\S+\.\S+/.test(identifier);
     const isUsername =
-      !isEmail &&
       typeof identifier === 'string' &&
       identifier.trim().length >= 3;
 
-    if (!(isEmail || isUsername)) {
+    // Accept if it looks like an email OR is a valid username length
+    // (Users with email as username should be able to login - they'll be prompted to change it)
+    if (!(looksLikeEmail || isUsername)) {
       return createBadRequestResponse('Invalid identifier format.');
     }
 

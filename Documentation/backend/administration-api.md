@@ -1,7 +1,7 @@
 # Administration & Users API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025
+**Last Updated:** December 2025
 
 ## Quick Search Guide
 
@@ -60,7 +60,7 @@ User {
     phoneNumber?: string;         // Required; normalized phone number
     notes?: string;
   };
-  isEnabled: boolean;             // Whether user account is active
+  isEnabled: boolean;             // Whether user account is active (can be toggled by admins/managers)
   profilePicture?: string;        // Base64 encoded image or URL
   resourcePermissions: Map<
     string,
@@ -97,6 +97,8 @@ User {
    - **machines**: Controls access to machine operations
    - **reports**: Controls access to reporting features
    - Each permission can be: "read", "write", "export", "admin"
+   - **Manager Restrictions**: Managers cannot change licensee assignments but can modify location permissions
+   - **Account Status**: `isEnabled` can be toggled by admins and managers (managers can only toggle for users in their licensee)
 
 3. **Database Updates**:
    - Updates existing `User` document
@@ -522,9 +524,29 @@ Creates a new system user.
 ```json
 {
   "success": false,
-  "message": "Username or email already exists"
+  "message": "Username already exists"
 }
 ```
+
+OR
+
+```json
+{
+  "success": false,
+  "message": "Email already exists"
+}
+```
+
+OR
+
+```json
+{
+  "success": false,
+  "message": "Username and email already exist"
+}
+```
+
+**Note:** Error messages are now specific - the system identifies whether username, email, or both already exist.
 
 **Logging:** Success/failure logging with user creation details and validation errors
 
@@ -1053,10 +1075,15 @@ All endpoints return consistent error responses:
 ### Common Error Scenarios
 
 - **Validation Errors**: Invalid input data format
-- **Duplicate Data**: Username or email already exists
+- **Duplicate Data**: Specific error messages for username/email conflicts:
+  - "Username already exists" (409)
+  - "Email already exists" (409)
+  - "Username and email already exist" (409)
 - **Permission Denied**: Insufficient user permissions
+- **Manager Restrictions**: Managers cannot change licensee assignments (403)
 - **Not Found**: User or licensee doesn't exist
 - **Authentication Required**: Invalid or missing JWT token
+- **Empty Email**: "Email address cannot be empty" (when email is required but not provided)
 
 ## Performance Considerations
 

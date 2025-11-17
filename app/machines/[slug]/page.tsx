@@ -23,7 +23,7 @@ import gsap from 'gsap';
 import RefreshButton from '@/components/ui/RefreshButton';
 import { RefreshCw } from 'lucide-react';
 import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
-import { NotFoundError, NetworkError } from '@/components/ui/errors';
+import { NotFoundError, NetworkError, UnauthorizedError } from '@/components/ui/errors';
 
 import {
   Tooltip,
@@ -346,26 +346,34 @@ function CabinetDetailPageContent() {
         </div>
 
         {/* Error Component */}
-        {errorType === 'not-found' ? (
+        {errorType === 'unauthorized' ? (
+          <UnauthorizedError
+            title="Access Denied"
+            message="You are not authorized to view details for this machine."
+            resourceType="machine"
+            onGoBack={handleBackToCabinets}
+            customBackText="Back to Cabinets"
+          />
+        ) : errorType === 'not-found' ? (
           <NotFoundError
-            title="Cabinet Not Found"
-            message={`The cabinet "${slug}" could not be found. It may have been deleted or moved.`}
-            resourceType="cabinet"
+            title="Machine Not Found"
+            message={`The machine "${slug}" could not be found. It may have been deleted or moved.`}
+            resourceType="machine"
             onRetry={fetchCabinetDetailsData}
             onGoBack={handleBackToCabinets}
           />
         ) : errorType === 'network' ? (
           <NetworkError
             title="Connection Error"
-            message="Unable to load cabinet details. Please check your connection and try again."
+            message="Unable to load machine details. Please check your connection and try again."
             onRetry={fetchCabinetDetailsData}
             isRetrying={refreshing}
             errorDetails={error}
           />
         ) : (
           <NetworkError
-            title="Error Loading Cabinet"
-            message="An unexpected error occurred while loading the cabinet details."
+            title="Error Loading Machine"
+            message="An unexpected error occurred while loading the machine details."
             onRetry={fetchCabinetDetailsData}
             isRetrying={refreshing}
             errorDetails={error}

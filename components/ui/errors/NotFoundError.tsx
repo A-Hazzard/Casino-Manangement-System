@@ -115,7 +115,7 @@ export default function NotFoundError({
   };
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center p-6">
+    <div className="fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-white p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

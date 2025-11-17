@@ -471,11 +471,19 @@ export default function ProfileValidationModal({
       }
     }
 
+    // Only validate licensees and locations if user can manage assignments
+    // AND they don't already have them assigned (check currentData)
     if (canManageAssignments) {
-      if (formData.licenseeIds.length === 0) {
+      const hasExistingLicensees = (currentData.licenseeIds || []).length > 0;
+      const hasExistingLocations = (currentData.locationIds || []).length > 0;
+      
+      // Only require licensees if they don't have any and formData is empty
+      if (formData.licenseeIds.length === 0 && !hasExistingLicensees) {
         newErrors.licenseeIds = 'Select at least one licensee.';
       }
-      if (formData.locationIds.length === 0) {
+      
+      // Only require locations if they don't have any and formData is empty
+      if (formData.locationIds.length === 0 && !hasExistingLocations) {
         newErrors.locationIds = 'Select at least one location.';
       }
     }
@@ -558,6 +566,9 @@ export default function ProfileValidationModal({
       emailAddress: formData.emailAddress.trim(),
       phone: formData.phone.trim(),
       dateOfBirth: formData.dateOfBirth.trim(),
+      // Explicitly include licenseeIds and locationIds to ensure they're sent
+      licenseeIds: formData.licenseeIds || [],
+      locationIds: formData.locationIds || [],
     };
 
     const result = await onUpdate(submissionData);

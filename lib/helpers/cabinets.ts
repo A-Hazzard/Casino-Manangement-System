@@ -163,6 +163,15 @@ export const fetchCabinetById = async (
     throw new Error('Failed to fetch cabinet details');
   } catch (error) {
     console.error(`Error fetching cabinet with ID ${cabinetId}:`, error);
+    
+    // Check if it's a 403 Unauthorized error
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      const unauthorizedError = new Error('Unauthorized: You do not have access to this cabinet') as Error & { status: number; isUnauthorized: boolean };
+      unauthorizedError.status = 403;
+      unauthorizedError.isUnauthorized = true;
+      throw unauthorizedError;
+    }
+    
     throw error;
   }
 };
@@ -492,7 +501,16 @@ export async function fetchCabinetsForLocation(
     return data;
   } catch (error) {
     console.error(' Error in fetchCabinetsForLocation:', error);
-    // Always return an empty array instead of throwing
+    
+    // Check if it's a 403 Unauthorized error
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      const unauthorizedError = new Error('Unauthorized: You do not have access to this location') as Error & { status: number; isUnauthorized: boolean };
+      unauthorizedError.status = 403;
+      unauthorizedError.isUnauthorized = true;
+      throw unauthorizedError;
+    }
+    
+    // Always return an empty array for other errors instead of throwing
     return [];
   }
 }

@@ -42,10 +42,22 @@ export async function authenticateUser(
       };
     }
 
-    // Find user by email or username first
-    const user = /\S+@\S+\.\S+/.test(identifier)
-      ? await getUserByEmail(identifier)
-      : await getUserByUsername(identifier);
+    // Find user by email or username
+    // If identifier looks like an email, try both email and username lookup
+    // (in case user has their email as their username - they should still be able to login)
+    const looksLikeEmail = /\S+@\S+\.\S+/.test(identifier);
+    let user = null;
+    
+    if (looksLikeEmail) {
+      // Try email first, then username (in case username is an email)
+      user = await getUserByEmail(identifier);
+      if (!user) {
+        user = await getUserByUsername(identifier);
+      }
+    } else {
+      // If it doesn't look like an email, only try username lookup
+      user = await getUserByUsername(identifier);
+    }
 
     if (!user) {
       await logActivity({

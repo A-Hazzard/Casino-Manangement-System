@@ -652,6 +652,59 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
 
 ## Recent System Updates (November 2025)
 
+### Unauthorized Access Error Handling System ✅ (December 2025)
+
+**Last Updated:** December 2025
+
+- **UnauthorizedError Component**: Dedicated error component for displaying user-friendly "Access Denied" messages when users attempt to access resources they don't have permission for
+- **Location-Based Access Control**: Comprehensive security checks across all location-based endpoints:
+  - Cabinet details pages (`/api/locations/[locationId]/cabinets/[cabinetId]`)
+  - Machine details pages (`/api/machines/[machineId]`)
+  - Location details pages (`/api/locations/[locationId]`)
+  - Collection report pages (`/api/collection-report/[reportId]`)
+  - Machine listing by location (`/api/machines?locationId=...`)
+- **Security Implementation**: `checkUserLocationAccess()` helper function centralizes location access verification logic
+- **User Experience**: Context-aware error messages with guidance to contact manager or customer support
+- **Error Detection**: Frontend helpers detect 403 errors and re-throw with `isUnauthorized` flag for proper UI handling
+- **Pages Protected**: Cabinet details, machine details, location details, and collection report detail pages all show proper unauthorized messages instead of generic errors
+- **Files**: `components/ui/errors/UnauthorizedError.tsx`, `app/api/lib/helpers/licenseeFilter.ts`, `lib/helpers/cabinets.ts`, `lib/helpers/collectionReport.ts`
+
+### User Management Enhancements ✅ (December 2025)
+
+**Last Updated:** December 2025
+
+- **Account Status Toggle**: `isEnabled` checkbox in UserModal allows admins and managers to enable/disable user accounts
+  - Managers can only toggle status for users in their licensee
+  - Visual badge displays account status in view mode
+- **Email Preservation Fix**: Fixed issue where email field would appear empty when editing other user fields
+  - Email value now properly preserved from original user data when not explicitly changed
+  - Prevents false "Email address cannot be empty" errors
+- **Specific Error Messages**: Username and email conflict errors now show specific messages:
+  - "Username already exists" (instead of generic "Username or email already exists")
+  - "Email already exists" (instead of generic "Username or email already exists")
+  - "Username and email already exist" (when both conflict)
+- **Last Login Tracking**: `lastLoginAt` field automatically updated on successful login
+- **Session Management**: Proper session version incrementing when licensee/location permissions change
+- **Files**: `components/administration/UserModal.tsx`, `app/api/lib/helpers/users.ts`, `app/api/users/route.ts`
+
+### Authentication System Enhancements ✅ (December 2025)
+
+**Last Updated:** December 2025
+
+- **Email as Username Support**: Users can now log in with email address even if it's set as their username
+  - Backend `authenticateUser()` checks both email and username fields
+  - Frontend validation allows email-like patterns for username-based login
+  - Users with email as username are prompted via ProfileValidationModal to change it
+- **Hard Delete Detection**: Users are automatically logged out if their account is hard deleted from database
+  - `getUserFromServer()` checks for user existence, soft-delete status, and disabled status
+  - Middleware validates user status and forces logout with appropriate error messages
+  - Login page displays specific messages for `user_not_found` and `user_deleted` scenarios
+- **Logout Success Message**: Logout now properly redirects to login page with "Logout Successful" message instead of "Session Expired"
+  - Logout button redirects to `/login?logout=success`
+  - Login page parses URL parameters and displays appropriate success/error messages
+- **Session Version Management**: Profile updates that change critical fields (username, email, name, password) increment `sessionVersion` to force re-authentication
+- **Files**: `app/api/lib/helpers/auth.ts`, `app/api/auth/login/route.ts`, `app/api/lib/helpers/users.ts`, `middleware.ts`, `app/(auth)/login/page.tsx`, `components/layout/AppSidebar.tsx`
+
 ### Collection Report System - Major Refactoring ✅
 
 **Last Updated:** November 3rd, 2025
@@ -975,6 +1028,10 @@ Native Currency (TTD $20)
 - **Profile Schema**: ✅ Updated to `profile.phoneNumber`, `profile.identification.dateOfBirth` (Date type), `profile.middleName`, `profile.otherName`, `profile.gender`
 - **Validation Rules**: ✅ Comprehensive validation for all profile fields with detailed error messages
 - **Dynamic UI**: ✅ Modal only displays fields that require validation, improving user experience
+- **Email as Username Support**: ✅ Users can log in with email even if set as username (December 2025)
+- **Hard Delete Detection**: ✅ Automatic logout when user account is hard-deleted (December 2025)
+- **Unauthorized Error Handling**: ✅ Dedicated error component for location-based access control (December 2025)
+- **User Status Validation**: ✅ Checks for hard-deleted, soft-deleted, and disabled accounts (December 2025)
 
 ### SMIB Management System Status ✅
 
@@ -1060,7 +1117,7 @@ Native Currency (TTD $20)
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** November 11th, 2025 - Documentation Audit & Profile Validation Updates
+**Last Major Update:** December 2025 - Unauthorized Error Handling, User Management Enhancements, Authentication Improvements
 
 **November 7th, 2025 Major Work:**
 

@@ -185,11 +185,17 @@ export async function PUT(request: NextRequest) {
       userRoles.includes('admin') || userRoles.includes('developer');
 
     if (canManageAssignments) {
-      if (requestedLicenseeIds !== undefined && requestedLicenseeIds.length === 0) {
-        errors.licenseeIds = 'Select at least one licensee.';
+      // Only validate if the fields are explicitly provided (not undefined)
+      // This allows users to update other fields without changing licensees/locations
+      if (requestedLicenseeIds !== undefined) {
+        if (requestedLicenseeIds.length === 0) {
+          errors.licenseeIds = 'Select at least one licensee.';
+        }
       }
-      if (requestedLocationIds !== undefined && requestedLocationIds.length === 0) {
-        errors.locationIds = 'Select at least one location.';
+      if (requestedLocationIds !== undefined) {
+        if (requestedLocationIds.length === 0) {
+          errors.locationIds = 'Select at least one location.';
+        }
       }
     }
 
@@ -326,6 +332,7 @@ export async function PUT(request: NextRequest) {
       incrementSession = true;
     }
 
+    // Update licensees if user can manage assignments and licenseeIds are provided
     if (canManageAssignments && requestedLicenseeIds !== undefined) {
       updateSet['rel.licencee'] = requestedLicenseeIds;
       const sortedExistingLicensees = sortIds(existingLicensees);
@@ -335,6 +342,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Update locations if user can manage assignments and locationIds are provided
     if (canManageAssignments && requestedLocationIds !== undefined) {
       updateSet['resourcePermissions.gaming-locations.entity'] =
         'gaming-locations';

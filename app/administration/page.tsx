@@ -561,15 +561,31 @@ function AdministrationPageContent() {
     } catch (error) {
       console.error('Failed to update user:', error);
       
-      // Extract detailed error message
+      // Extract detailed error message from axios error
       let errorMessage = 'Failed to update user';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        const err = error as { response?: { data?: { message?: string } } };
-        if (err.response?.data?.message) {
-          errorMessage = err.response.data.message;
+      
+      // Handle axios errors (from updateUser helper)
+      if (error && typeof error === 'object') {
+        const axiosError = error as {
+          response?: {
+            data?: { message?: string; error?: string };
+            status?: number;
+          };
+          message?: string;
+        };
+        
+        // Prioritize server error message from response.data
+        if (axiosError.response?.data) {
+          errorMessage =
+            axiosError.response.data.message ||
+            axiosError.response.data.error ||
+            errorMessage;
+        } else if (axiosError.message) {
+          // Only use axios message if we don't have response data
+          errorMessage = axiosError.message;
         }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
       
       toast.error(errorMessage);

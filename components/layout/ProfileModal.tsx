@@ -1466,11 +1466,11 @@ export default function ProfileModal({
                             ) : userData?.rel?.licencee && userData.rel.licencee.length > 0
                               ? (() => {
                                   const licenseeNames = userData.rel.licencee
-                                    .map(licenseeId => {
+                                  .map(licenseeId => {
                                       const normalizedId = String(licenseeId);
-                                      const match = licensees.find(
+                                    const match = licensees.find(
                                         licensee => String(licensee._id) === normalizedId
-                                      );
+                                    );
                                       return match?.name || null;
                                     })
                                     .filter((name): name is string => name !== null);

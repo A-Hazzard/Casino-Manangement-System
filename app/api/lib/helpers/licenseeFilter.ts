@@ -388,3 +388,50 @@ export async function getUserLocationFilter(
   console.warn('  User needs specific location assignments to see any data');
   return [];
 }
+
+/**
+ * Checks if a user has access to a specific location ID
+ * @param locationId - The location ID to check access for
+ * @returns Promise resolving to true if user has access, false otherwise
+ */
+export async function checkUserLocationAccess(
+  locationId: string
+): Promise<boolean> {
+  try {
+    const user = await getUserFromServer();
+    if (!user) {
+      return false;
+    }
+
+    const userRoles = (user.roles as string[]) || [];
+    const userAccessibleLicensees =
+      ((user.rel as Record<string, unknown>)?.licencee as string[]) || [];
+    const userLocationPermissions =
+      ((user.resourcePermissions as Record<string, Record<string, unknown>>)?.[
+        'gaming-locations'
+      ]?.resources as string[]) || [];
+
+    const isAdmin =
+      userRoles.includes('admin') || userRoles.includes('developer');
+
+    // Get user's accessible locations
+    const allowedLocationIds = await getUserLocationFilter(
+      isAdmin ? 'all' : userAccessibleLicensees,
+      undefined, // No specific licensee filter for direct location access check
+      userLocationPermissions,
+      userRoles
+    );
+
+    // Check if location is in allowed list
+    if (allowedLocationIds === 'all') {
+      return true; // Admin with no restrictions
+    }
+
+    // Normalize locationId to string for comparison
+    const normalizedLocationId = String(locationId);
+    return allowedLocationIds.includes(normalizedLocationId);
+  } catch (error) {
+    console.error('Error checking location access:', error);
+    return false;
+  }
+}

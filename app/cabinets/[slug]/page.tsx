@@ -27,7 +27,7 @@ import { AnimatePresence, motion, Variants } from 'framer-motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 // GSAP import removed - animations were causing performance issues
 import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
-import { NetworkError, NotFoundError } from '@/components/ui/errors';
+import { NetworkError, NotFoundError, UnauthorizedError } from '@/components/ui/errors';
 import RefreshButton from '@/components/ui/RefreshButton';
 import { format } from 'date-fns';
 import { Check, Pencil, RefreshCw } from 'lucide-react';
@@ -528,7 +528,15 @@ function CabinetDetailPageContent() {
         </div>
 
         {/* Error Component */}
-        {errorType === 'not-found' ? (
+        {errorType === 'unauthorized' ? (
+          <UnauthorizedError
+            title="Access Denied"
+            message="You are not authorized to view details for this cabinet."
+            resourceType="cabinet"
+            onGoBack={handleBackToCabinets}
+            customBackText="Back to Cabinets"
+          />
+        ) : errorType === 'not-found' ? (
           <NotFoundError
             title="Cabinet Not Found"
             message={`The cabinet "${slug}" could not be found. It may have been deleted or moved.`}

@@ -21,7 +21,7 @@ import { generateMongoId } from '@/lib/utils/id';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '../lib/helpers/users';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '../lib/helpers/licenseeFilter';
+import { checkUserLocationAccess } from '../lib/helpers/licenseeFilter';
 
 // Validation helpers mirroring frontend rules
 function validateSerialNumber(value: unknown): string | null {
@@ -82,22 +82,9 @@ export async function GET(request: NextRequest) {
 
     // If locationId is provided, fetch all machines for that location
     if (locationId && !id) {
-      // Validate user has access to this location (licensee + location permissions)
-      const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-      const userPayload = await getUserFromServer();
-      const userRoles = (userPayload?.roles as string[]) || [];
-      const userLocationPermissions = 
-        (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
-      
-      const allowedLocationIds = await getUserLocationFilter(
-        userAccessibleLicensees,
-        undefined, // No licensee filter for this specific check
-        userLocationPermissions,
-        userRoles
-      );
-      
-      // Check if user can access this specific location
-      if (allowedLocationIds !== 'all' && !allowedLocationIds.includes(locationId)) {
+      // Check if user has access to this location (includes both licensee and location permissions)
+      const hasAccess = await checkUserLocationAccess(locationId);
+      if (!hasAccess) {
         return NextResponse.json(
           { success: false, error: 'Unauthorized: You do not have access to this location' },
           { status: 403 }

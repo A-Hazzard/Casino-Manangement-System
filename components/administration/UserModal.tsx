@@ -1,17 +1,17 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import type { MultiSelectOption } from '@/components/ui/common/MultiSelectDropdown';
+import MultiSelectDropdown from '@/components/ui/common/MultiSelectDropdown';
 import CircleCropModal from '@/components/ui/image/CircleCropModal';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import MultiSelectDropdown from '@/components/ui/common/MultiSelectDropdown';
-import type { MultiSelectOption } from '@/components/ui/common/MultiSelectDropdown';
-import { fetchCountries } from '@/lib/helpers/countries';
-import type { Country } from '@/lib/types/country';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
-import type { ResourcePermissions, User } from '@/lib/types/administration';
-import type { LocationSelectItem } from '@/lib/types/location';
-import type { Licensee } from '@/lib/types/licensee';
+import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
+import type { ResourcePermissions, User } from '@/lib/types/administration';
+import type { Country } from '@/lib/types/country';
+import type { Licensee } from '@/lib/types/licensee';
+import type { LocationSelectItem } from '@/lib/types/location';
 import {
   detectChanges,
   filterMeaningfulChanges,
@@ -25,10 +25,10 @@ import cameraIcon from '@/public/cameraIcon.svg';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import { Edit3, Info, Loader2, Save, Trash2, X, XCircle } from 'lucide-react';
-import RolePermissionsDialog from './RolePermissionsDialog';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import RolePermissionsDialog from './RolePermissionsDialog';
 
 const ROLE_OPTIONS = [
   { label: 'Developer', value: 'developer' },
@@ -72,7 +72,8 @@ export default function UserModal({
   const currentUserRoles = (currentUser?.roles || []) as string[];
   const isDeveloper = currentUserRoles.includes('developer');
   const isAdmin = currentUserRoles.includes('admin') && !isDeveloper;
-  const isManager = currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+  const isManager =
+    currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
   const canEditAccountFields = Boolean(
     currentUser?.roles?.some(role =>
       ['admin', 'developer', 'manager'].includes(role)
@@ -98,7 +99,10 @@ export default function UserModal({
     return [];
   }, [isDeveloper, isAdmin, isManager]);
   const currentUserLicenseeIds = useMemo(
-    () => ((currentUser?.rel as { licencee?: string[] })?.licencee || []).map(id => String(id)),
+    () =>
+      ((currentUser?.rel as { licencee?: string[] })?.licencee || []).map(id =>
+        String(id)
+      ),
     [currentUser?.rel]
   );
 
@@ -150,6 +154,7 @@ export default function UserModal({
     },
   });
   const [roles, setRoles] = useState<string[]>([]);
+  const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
@@ -179,99 +184,96 @@ export default function UserModal({
     locationsRef.current = locations;
   }, [locations]);
 
-  const hydrateFormFromUser = useCallback(
-    (targetUser: User) => {
-      setFormData({
-        firstName: targetUser.profile?.firstName || '',
-        lastName: targetUser.profile?.lastName || '',
-        gender: targetUser.profile?.gender || '',
-        street: targetUser.profile?.address?.street || '',
-        town: targetUser.profile?.address?.town || '',
-        region: targetUser.profile?.address?.region || '',
-        country: targetUser.profile?.address?.country || '',
-        postalCode: targetUser.profile?.address?.postalCode || '',
-        dateOfBirth: targetUser.profile?.identification?.dateOfBirth || '',
-        idType: targetUser.profile?.identification?.idType || '',
-        idNumber: targetUser.profile?.identification?.idNumber || '',
-        notes: targetUser.profile?.identification?.notes || '',
-        profilePicture: targetUser.profilePicture || '',
-      });
+  const hydrateFormFromUser = useCallback((targetUser: User) => {
+    setFormData({
+      firstName: targetUser.profile?.firstName || '',
+      lastName: targetUser.profile?.lastName || '',
+      gender: targetUser.profile?.gender || '',
+      street: targetUser.profile?.address?.street || '',
+      town: targetUser.profile?.address?.town || '',
+      region: targetUser.profile?.address?.region || '',
+      country: targetUser.profile?.address?.country || '',
+      postalCode: targetUser.profile?.address?.postalCode || '',
+      dateOfBirth: targetUser.profile?.identification?.dateOfBirth || '',
+      idType: targetUser.profile?.identification?.idType || '',
+      idNumber: targetUser.profile?.identification?.idNumber || '',
+      notes: targetUser.profile?.identification?.notes || '',
+      profilePicture: targetUser.profilePicture || '',
+    });
 
-      setAccountData({
-        username: targetUser.username || '',
-        email: targetUser.email || targetUser.emailAddress || '',
-      });
+    setAccountData({
+      username: targetUser.username || '',
+      email: targetUser.email || targetUser.emailAddress || '',
+    });
 
-      setRoles(targetUser.roles || []);
+    setRoles(targetUser.roles || []);
+    setIsEnabled(targetUser.enabled !== undefined ? targetUser.enabled : true);
 
-      const userLocationIds =
-        targetUser.resourcePermissions?.['gaming-locations']?.resources?.map(id =>
-          String(id)
-        ) || [];
-      setSelectedLocationIds(userLocationIds);
+    const userLocationIds =
+      targetUser.resourcePermissions?.['gaming-locations']?.resources?.map(id =>
+        String(id)
+      ) || [];
+    setSelectedLocationIds(userLocationIds);
 
-      const rawLicenseeIds =
-        targetUser.rel?.licencee?.map(id => String(id)) || [];
-      rawLicenseeIdsRef.current = rawLicenseeIds;
+    const rawLicenseeIds =
+      targetUser.rel?.licencee?.map(id => String(id)) || [];
+    rawLicenseeIdsRef.current = rawLicenseeIds;
 
-      const currentLocations = locationsRef.current;
-      if (currentLocations.length > 0) {
-        setAllLocationsSelected(
-          userLocationIds.length > 0 &&
-            userLocationIds.length === currentLocations.length
+    const currentLocations = locationsRef.current;
+    if (currentLocations.length > 0) {
+      setAllLocationsSelected(
+        userLocationIds.length > 0 &&
+          userLocationIds.length === currentLocations.length
+      );
+    } else {
+      setAllLocationsSelected(false);
+    }
+
+    const currentLicensees = licenseesRef.current;
+    if (currentLicensees.length > 0) {
+      const normalizedLicenseeIds = rawLicenseeIds.map(value => {
+        const idMatch = currentLicensees.find(
+          lic => String(lic._id) === String(value)
         );
-      } else {
-        setAllLocationsSelected(false);
-      }
-
-      const currentLicensees = licenseesRef.current;
-      if (currentLicensees.length > 0) {
-        const normalizedLicenseeIds = rawLicenseeIds.map(value => {
-          const idMatch = currentLicensees.find(
-            lic => String(lic._id) === String(value)
-          );
-          if (idMatch) {
-            return String(idMatch._id);
-          }
-          const nameMatch = currentLicensees.find(
-            lic =>
-              lic.name &&
-              lic.name.toLowerCase() === String(value).toLowerCase()
-          );
-          return nameMatch ? String(nameMatch._id) : String(value);
-        });
-
-        setSelectedLicenseeIds(prev =>
-          arraysEqual(prev, normalizedLicenseeIds) ? prev : normalizedLicenseeIds
-        );
-
-        const shouldSelectAll =
-          normalizedLicenseeIds.length > 0 &&
-          normalizedLicenseeIds.length === currentLicensees.length;
-        setAllLicenseesSelected(shouldSelectAll);
-
-        if (normalizedLicenseeIds.length > 0) {
-          setSelectedLocationIds(prev =>
-            prev.filter(locId => {
-              const location = locationsRef.current.find(
-                loc => loc._id === locId
-              );
-              if (!location || !location.licenseeId) {
-                return shouldSelectAll;
-              }
-              return normalizedLicenseeIds.includes(location.licenseeId);
-            })
-          );
+        if (idMatch) {
+          return String(idMatch._id);
         }
-      } else {
-        setSelectedLicenseeIds(prev =>
-          arraysEqual(prev, rawLicenseeIds) ? prev : rawLicenseeIds
+        const nameMatch = currentLicensees.find(
+          lic =>
+            lic.name && lic.name.toLowerCase() === String(value).toLowerCase()
         );
-        setAllLicenseesSelected(false);
+        return nameMatch ? String(nameMatch._id) : String(value);
+      });
+
+      setSelectedLicenseeIds(prev =>
+        arraysEqual(prev, normalizedLicenseeIds) ? prev : normalizedLicenseeIds
+      );
+
+      const shouldSelectAll =
+        normalizedLicenseeIds.length > 0 &&
+        normalizedLicenseeIds.length === currentLicensees.length;
+      setAllLicenseesSelected(shouldSelectAll);
+
+      if (normalizedLicenseeIds.length > 0) {
+        setSelectedLocationIds(prev =>
+          prev.filter(locId => {
+            const location = locationsRef.current.find(
+              loc => loc._id === locId
+            );
+            if (!location || !location.licenseeId) {
+              return shouldSelectAll;
+            }
+            return normalizedLicenseeIds.includes(location.licenseeId);
+          })
+        );
       }
-    },
-    []
-  );
+    } else {
+      setSelectedLicenseeIds(prev =>
+        arraysEqual(prev, rawLicenseeIds) ? prev : rawLicenseeIds
+      );
+      setAllLicenseesSelected(false);
+    }
+  }, []);
 
   // Initialize form data when user changes
   useEffect(() => {
@@ -291,34 +293,31 @@ export default function UserModal({
     } else if (open) {
       setIsLoading(true);
     }
-  }, [
-    user,
-    open,
-    hydrateFormFromUser,
-    locations.length,
-    licensees.length,
-  ]);
+  }, [user, open, hydrateFormFromUser, locations.length, licensees.length]);
 
   // Load locations
   useEffect(() => {
     const loadLocations = async () => {
       try {
         // Fetch all locations with showAll parameter for admin access
-        const response = await fetch('/api/locations?showAll=true&forceAll=true', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
+        const response = await fetch(
+          '/api/locations?showAll=true&forceAll=true',
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
         if (!response.ok) {
           console.error('Failed to fetch locations');
           return;
         }
-        
+
         const data = await response.json();
         const locationsList = data.locations || [];
-        
+
         const formattedLocs = locationsList.map(
           (loc: {
             _id?: string;
@@ -332,7 +331,7 @@ export default function UserModal({
             licenseeId: loc.licenseeId ? String(loc.licenseeId) : null,
           })
         );
-        
+
         setLocations(formattedLocs);
 
         // Check if all locations are selected
@@ -348,7 +347,7 @@ export default function UserModal({
         console.error('Error loading locations:', error);
       }
     };
-    
+
     loadLocations();
   }, [user]);
 
@@ -367,7 +366,9 @@ export default function UserModal({
 
         // Filter licensees for managers - only show their assigned licensees
         if (isManager && currentUserLicenseeIds.length > 0) {
-          lics = lics.filter(lic => currentUserLicenseeIds.includes(String(lic._id)));
+          lics = lics.filter(lic =>
+            currentUserLicenseeIds.includes(String(lic._id))
+          );
         }
 
         setLicensees(lics);
@@ -384,22 +385,21 @@ export default function UserModal({
         }
 
         const normalizedLicenseeIds = rawLicenseeIdsRef.current.map(value => {
-          const idMatch = lics.find(
-            lic => String(lic._id) === String(value)
-          );
+          const idMatch = lics.find(lic => String(lic._id) === String(value));
           if (idMatch) {
             return String(idMatch._id);
           }
           const nameMatch = lics.find(
             lic =>
-              lic.name &&
-              lic.name.toLowerCase() === String(value).toLowerCase()
+              lic.name && lic.name.toLowerCase() === String(value).toLowerCase()
           );
           return nameMatch ? String(nameMatch._id) : String(value);
         });
 
         setSelectedLicenseeIds(prev =>
-          arraysEqual(prev, normalizedLicenseeIds) ? prev : normalizedLicenseeIds
+          arraysEqual(prev, normalizedLicenseeIds)
+            ? prev
+            : normalizedLicenseeIds
         );
 
         const shouldSelectAll =
@@ -583,10 +583,10 @@ export default function UserModal({
   const availableLocations = allLicenseesSelected
     ? locations
     : selectedLicenseeIds.length > 0
-    ? locations.filter(loc => 
-        loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
-      )
-    : [];
+      ? locations.filter(
+          loc => loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
+        )
+      : [];
 
   const handleAllLocationsChange = (checked: boolean) => {
     setAllLocationsSelected(checked);
@@ -610,21 +610,32 @@ export default function UserModal({
 
   // Licensee selection handlers
   const handleLicenseeChange = (newSelectedIds: string[]) => {
-    console.log('[UserModal] handleLicenseeChange called with IDs:', newSelectedIds);
+    console.log(
+      '[UserModal] handleLicenseeChange called with IDs:',
+      newSelectedIds
+    );
     setSelectedLicenseeIds(newSelectedIds);
-    
+
     // Update "All Licensees" checkbox state
-    setAllLicenseesSelected(newSelectedIds.length === licensees.length && licensees.length > 0);
+    setAllLicenseesSelected(
+      newSelectedIds.length === licensees.length && licensees.length > 0
+    );
 
     // Remove selected locations that don't belong to the newly selected licensees
     const validLocationIds = selectedLocationIds.filter(locId => {
       const location = locations.find(l => l._id === locId);
-      return location && location.licenseeId && newSelectedIds.includes(location.licenseeId);
+      return (
+        location &&
+        location.licenseeId &&
+        newSelectedIds.includes(location.licenseeId)
+      );
     });
-    
+
     if (validLocationIds.length !== selectedLocationIds.length) {
       setSelectedLocationIds(validLocationIds);
-      toast.info('Some locations were removed because they don\'t belong to the selected licensees');
+      toast.info(
+        "Some locations were removed because they don't belong to the selected licensees"
+      );
     }
   };
 
@@ -657,10 +668,31 @@ export default function UserModal({
     const updatedUsername = canEditAccountFields
       ? accountData.username.trim()
       : user.username;
+
+    // Always get the base email from the user object as the source of truth
     const baseEmail = (user.email || user.emailAddress || '').trim();
-    const updatedEmail = canEditAccountFields
-      ? accountData.email.trim()
-      : baseEmail;
+
+    // For email: if we can edit and accountData.email has a non-empty value, use it
+    // Otherwise, always fall back to baseEmail to preserve existing email
+    // This ensures email is never lost when editing other fields
+    const accountEmailTrimmed = accountData.email?.trim() || '';
+    const updatedEmail =
+      canEditAccountFields && accountEmailTrimmed
+        ? accountEmailTrimmed
+        : baseEmail;
+
+    // Debug logging
+    console.log('[UserModal] Email Debug:', {
+      'user.email': user.email,
+      'user.emailAddress': user.emailAddress,
+      'accountData.email': accountData.email,
+      accountEmailTrimmed: accountEmailTrimmed,
+      baseEmail: baseEmail,
+      updatedEmail: updatedEmail,
+      canEditAccountFields: canEditAccountFields,
+      'updatedEmail length': updatedEmail.length,
+      'updatedEmail isEmpty': !updatedEmail || updatedEmail.length === 0,
+    });
 
     if (!updatedUsername) {
       toast.error('Username is required');
@@ -668,13 +700,26 @@ export default function UserModal({
     }
 
     // Validate email is required when editing from admin page
+    // updatedEmail should always have a value (either from accountData or baseEmail)
     if (canEditAccountFields && !updatedEmail) {
+      console.error(
+        '[UserModal] Email validation failed: updatedEmail is empty',
+        {
+          baseEmail,
+          accountDataEmail: accountData.email,
+          userEmail: user.email,
+          userEmailAddress: user.emailAddress,
+        }
+      );
       toast.error('Email address is required');
       return;
     }
 
     // Helper to check if a field value has changed
-    const hasChanged = (newValue: string, existingValue: string | undefined | null): boolean => {
+    const hasChanged = (
+      newValue: string,
+      existingValue: string | undefined | null
+    ): boolean => {
       const newTrimmed = newValue.trim();
       const existingTrimmed = existingValue?.toString().trim() || '';
       return newTrimmed !== existingTrimmed;
@@ -683,7 +728,7 @@ export default function UserModal({
     // Build profile update - only include fields that have actually changed
     const profileUpdate: Record<string, unknown> = {};
     const existingProfile = user?.profile || {};
-    
+
     // Check and include profile fields only if they've changed
     if (hasChanged(formData.firstName, existingProfile.firstName)) {
       profileUpdate.firstName = formData.firstName.trim() || undefined;
@@ -698,7 +743,7 @@ export default function UserModal({
     // Build address update - only include fields that have changed
     const addressUpdate: Record<string, unknown> = {};
     const existingAddress = existingProfile.address || {};
-    
+
     if (hasChanged(formData.street, existingAddress.street)) {
       addressUpdate.street = formData.street.trim() || undefined;
     }
@@ -714,7 +759,7 @@ export default function UserModal({
     if (hasChanged(formData.postalCode, existingAddress.postalCode)) {
       addressUpdate.postalCode = formData.postalCode.trim() || undefined;
     }
-    
+
     // Only include address if it has at least one changed field
     if (Object.keys(addressUpdate).length > 0) {
       profileUpdate.address = {
@@ -726,17 +771,20 @@ export default function UserModal({
     // Build identification update - only include fields that have changed
     const identificationUpdate: Record<string, unknown> = {};
     const existingIdentification = existingProfile.identification || {};
-    
+
     // Handle dateOfBirth specially - compare as dates
-    const existingDob = existingIdentification.dateOfBirth 
-      ? (typeof existingIdentification.dateOfBirth === 'string' 
-          ? existingIdentification.dateOfBirth 
-          : new Date(existingIdentification.dateOfBirth as Date).toISOString().split('T')[0])
+    const existingDob = existingIdentification.dateOfBirth
+      ? typeof existingIdentification.dateOfBirth === 'string'
+        ? existingIdentification.dateOfBirth
+        : new Date(existingIdentification.dateOfBirth as Date)
+            .toISOString()
+            .split('T')[0]
       : '';
     if (formData.dateOfBirth.trim() !== existingDob) {
-      identificationUpdate.dateOfBirth = formData.dateOfBirth.trim() || undefined;
+      identificationUpdate.dateOfBirth =
+        formData.dateOfBirth.trim() || undefined;
     }
-    
+
     if (hasChanged(formData.idType, existingIdentification.idType)) {
       identificationUpdate.idType = formData.idType.trim() || undefined;
     }
@@ -746,7 +794,7 @@ export default function UserModal({
     if (hasChanged(formData.notes, existingIdentification.notes)) {
       identificationUpdate.notes = formData.notes.trim() || undefined;
     }
-    
+
     // Only include identification if it has at least one changed field
     if (Object.keys(identificationUpdate).length > 0) {
       profileUpdate.identification = {
@@ -756,27 +804,33 @@ export default function UserModal({
     }
 
     // Check for location and licensee changes BEFORE building update object
-    const oldLocationIds = (user?.resourcePermissions?.['gaming-locations']?.resources || []).map(id => String(id));
+    const oldLocationIds = (
+      user?.resourcePermissions?.['gaming-locations']?.resources || []
+    ).map(id => String(id));
     const newLocationIds = selectedLocationIds.map(id => String(id));
-    
+
     // Sort for comparison
     const oldLocationIdsSorted = [...oldLocationIds].sort();
     const newLocationIdsSorted = [...newLocationIds].sort();
-    
-    const locationIdsChanged = 
+
+    const locationIdsChanged =
       oldLocationIdsSorted.length !== newLocationIdsSorted.length ||
-      !oldLocationIdsSorted.every((id, idx) => id === newLocationIdsSorted[idx]);
+      !oldLocationIdsSorted.every(
+        (id, idx) => id === newLocationIdsSorted[idx]
+      );
 
     const oldLicenseeIds = (user?.rel?.licencee || []).map(id => String(id));
     const newLicenseeIds = selectedLicenseeIds.map(id => String(id));
-    
+
     // Sort for comparison
     const oldLicenseeIdsSorted = [...oldLicenseeIds].sort();
     const newLicenseeIdsSorted = [...newLicenseeIds].sort();
-    
-    const licenseeIdsChanged = 
+
+    const licenseeIdsChanged =
       oldLicenseeIdsSorted.length !== newLicenseeIdsSorted.length ||
-      !oldLicenseeIdsSorted.every((id, idx) => id === newLicenseeIdsSorted[idx]);
+      !oldLicenseeIdsSorted.every(
+        (id, idx) => id === newLicenseeIdsSorted[idx]
+      );
 
     // Prevent managers from changing licensee assignments
     if (isManager && licenseeIdsChanged) {
@@ -785,14 +839,33 @@ export default function UserModal({
     }
 
     // Check for changes before building update object
+    // Normalize email values for comparison (trim and handle empty strings)
+    const originalEmail = (user.email || user.emailAddress || '')
+      .trim()
+      .toLowerCase();
+    const newEmail = updatedEmail.trim().toLowerCase();
     const usernameChanged = user.username !== updatedUsername;
-    const emailChanged = (user.email || user.emailAddress || '') !== updatedEmail;
-    const rolesChanged = JSON.stringify((user.roles || []).sort()) !== JSON.stringify(roles.sort());
-    
+    const emailChanged = originalEmail !== newEmail;
+    const rolesChanged =
+      JSON.stringify((user.roles || []).sort()) !==
+      JSON.stringify(roles.sort());
+
+    // Debug logging for change detection
+    console.log('[UserModal] Change Detection Debug:', {
+      originalEmail: originalEmail,
+      newEmail: newEmail,
+      emailChanged: emailChanged,
+      usernameChanged: usernameChanged,
+      'updatedEmail (raw)': updatedEmail,
+      'updatedEmail isEmpty': !updatedEmail || updatedEmail.length === 0,
+    });
+
     // Structure the data properly to match the User type - only include changed fields
+    // Note: Backend uses 'isEnabled' but User type uses 'enabled', so we need to allow both
     const updatedUser: Partial<User> & {
       password?: string;
       resourcePermissions: ResourcePermissions;
+      isEnabled?: boolean; // Backend field name
     } = {
       _id: user._id,
       // Initialize with existing resourcePermissions or default
@@ -808,21 +881,36 @@ export default function UserModal({
     if (usernameChanged) {
       updatedUser.username = updatedUsername;
     }
-    if (emailChanged) {
-      updatedUser.email = updatedEmail;
-      updatedUser.emailAddress = updatedEmail;
+    // Always include email if we can edit account fields (to ensure it's preserved)
+    // Only include it in the update if it changed OR if we're editing from admin page
+    if (canEditAccountFields) {
+      if (emailChanged) {
+        // Email is being changed - validate and include it
+        if (updatedEmail && updatedEmail.trim()) {
+          updatedUser.email = updatedEmail.trim();
+          updatedUser.emailAddress = updatedEmail.trim();
+        } else {
+          toast.error('Email address cannot be empty');
+          return;
+        }
+      } else if (updatedEmail && updatedEmail.trim()) {
+        // Email hasn't changed but we should preserve it when editing from admin page
+        // This ensures email is always present in the update payload
+        updatedUser.email = updatedEmail.trim();
+        updatedUser.emailAddress = updatedEmail.trim();
+      }
     }
     if (rolesChanged) {
       updatedUser.roles = roles;
     }
-    
+
     // Only include licensee if it changed (and user can edit it)
     if (licenseeIdsChanged && !isManager) {
       updatedUser.rel = {
         licencee: selectedLicenseeIds,
       };
     }
-    
+
     // Update resourcePermissions if locations changed
     if (locationIdsChanged) {
       updatedUser.resourcePermissions = {
@@ -850,6 +938,12 @@ export default function UserModal({
     // Only include password if it's being changed
     if (password) {
       updatedUser.password = password;
+    }
+
+    // Include isEnabled if it changed (only for developers, admins, or managers)
+    // Note: User type uses 'enabled' but backend uses 'isEnabled', so we send 'isEnabled'
+    if ((isDeveloper || isAdmin || isManager) && user.enabled !== isEnabled) {
+      updatedUser.isEnabled = isEnabled;
     }
 
     // Note: profile is optional - we only include it if there are fields to update
@@ -909,7 +1003,9 @@ export default function UserModal({
     // Detect actual changes between old and new user data (excluding system fields)
     const changes = detectChanges(cleanUser, updatedUser);
     const meaningfulChanges = filterMeaningfulChanges(changes).filter(
-      change => !systemFields.has(change.field) && !systemFields.has(change.path.split('.')[0])
+      change =>
+        !systemFields.has(change.field) &&
+        !systemFields.has(change.path.split('.')[0])
     );
 
     const ensureChangeLogged = (
@@ -944,13 +1040,9 @@ export default function UserModal({
         newLocationIds
       );
     }
-    
+
     if (licenseeIdsChanged && !isManager) {
-      ensureChangeLogged(
-        'rel.licencee',
-        oldLicenseeIds,
-        newLicenseeIds
-      );
+      ensureChangeLogged('rel.licencee', oldLicenseeIds, newLicenseeIds);
     }
 
     // Log for debugging
@@ -964,7 +1056,11 @@ export default function UserModal({
     console.log('  Meaningful changes:', meaningfulChanges.length);
 
     // Only proceed if there are actual changes
-    if (meaningfulChanges.length === 0 && !locationIdsChanged && !licenseeIdsChanged) {
+    if (
+      meaningfulChanges.length === 0 &&
+      !locationIdsChanged &&
+      !licenseeIdsChanged
+    ) {
       console.error('[UserModal] ❌ No changes detected - blocking save');
       console.error('  This might be a bug if you just made changes!');
       toast.info('No changes detected');
@@ -976,10 +1072,13 @@ export default function UserModal({
       console.warn('✅ Changes detected - proceeding with save');
       console.warn('Detected changes:', meaningfulChanges);
       console.warn('Changes summary:', getChangesSummary(meaningfulChanges));
-      console.warn('Location IDs changed:', locationIdsChanged, { oldLocationIds, newLocationIds });
-      console.warn('Licensee IDs changed:', licenseeIdsChanged, { 
-        old: oldLicenseeIdsSorted, 
-        new: newLicenseeIdsSorted 
+      console.warn('Location IDs changed:', locationIdsChanged, {
+        oldLocationIds,
+        newLocationIds,
+      });
+      console.warn('Licensee IDs changed:', licenseeIdsChanged, {
+        old: oldLicenseeIdsSorted,
+        new: newLicenseeIdsSorted,
       });
     }
 
@@ -1107,21 +1206,21 @@ export default function UserModal({
                     </label>
                     {isLoading ? (
                       <Skeleton className="h-12 w-full" />
-                  ) : isEditMode && canEditAccountFields ? (
-                    <Input
-                      value={accountData.username}
-                      onChange={e =>
-                        handleAccountInputChange('username', e.target.value)
-                      }
-                      placeholder="Enter username"
-                      className="w-full"
-                      required
-                    />
-                  ) : (
-                    <div className="w-full text-center text-gray-700 lg:text-left">
-                      {accountData.username || 'Not specified'}
-                    </div>
-                  )}
+                    ) : isEditMode && canEditAccountFields ? (
+                      <Input
+                        value={accountData.username}
+                        onChange={e =>
+                          handleAccountInputChange('username', e.target.value)
+                        }
+                        placeholder="Enter username"
+                        className="w-full"
+                        required
+                      />
+                    ) : (
+                      <div className="w-full text-center text-gray-700 lg:text-left">
+                        {accountData.username || 'Not specified'}
+                      </div>
+                    )}
                   </div>
                   <div className="w-full">
                     <label className="mb-1 block text-sm font-semibold text-gray-900">
@@ -1129,23 +1228,42 @@ export default function UserModal({
                     </label>
                     {isLoading ? (
                       <Skeleton className="h-12 w-full" />
-                  ) : isEditMode && canEditAccountFields ? (
-                    <Input
-                      type="email"
-                      value={accountData.email}
-                      onChange={e =>
-                        handleAccountInputChange('email', e.target.value)
-                      }
-                      placeholder="Enter email address"
-                      className="w-full"
-                      required
-                    />
-                  ) : (
-                    <div className="w-full text-center text-gray-700 lg:text-left">
-                      {accountData.email || 'Not specified'}
+                    ) : isEditMode && canEditAccountFields ? (
+                      <Input
+                        type="email"
+                        value={accountData.email}
+                        onChange={e =>
+                          handleAccountInputChange('email', e.target.value)
+                        }
+                        placeholder="Enter email address"
+                        className="w-full"
+                        required
+                      />
+                    ) : (
+                      <div className="w-full text-center text-gray-700 lg:text-left">
+                        {accountData.email || 'Not specified'}
+                      </div>
+                    )}
+                  </div>
+                  {/* Account Status - Show in view mode for admins/developers/managers */}
+                  {!isEditMode && (isDeveloper || isAdmin || isManager) && (
+                    <div className="w-full">
+                      <label className="mb-1 block text-sm font-semibold text-gray-900">
+                        Account Status:
+                      </label>
+                      <div className="w-full text-center text-gray-700 lg:text-left">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+                            isEnabled
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {isEnabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
                     </div>
                   )}
-                  </div>
                 </div>
                 <input
                   type="file"
@@ -1614,6 +1732,38 @@ export default function UserModal({
                       </div>
                     )}
 
+                    {/* Account Status Section - Only show in edit mode */}
+                    {isEditMode && (isDeveloper || isAdmin || isManager) && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-base font-medium">
+                            Account Status
+                          </label>
+                          <div className="mt-2 flex items-center gap-2">
+                            <Checkbox
+                              id="isEnabled"
+                              checked={isEnabled}
+                              onCheckedChange={checked =>
+                                setIsEnabled(checked === true)
+                              }
+                              className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
+                            />
+                            <label
+                              htmlFor="isEnabled"
+                              className="cursor-pointer text-sm font-medium text-gray-900"
+                            >
+                              Account Enabled
+                            </label>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {isEnabled
+                              ? 'User can log in and access the system'
+                              : 'User account is disabled and cannot log in'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Roles Section */}
                     <div>
                       <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
@@ -1626,12 +1776,15 @@ export default function UserModal({
                               key={role.value}
                               className="flex items-center gap-2"
                             >
-                              <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900 flex-1">
+                              <label className="flex flex-1 cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                                 <Checkbox
                                   id={role.value}
                                   checked={roles.includes(role.value)}
                                   onCheckedChange={checked =>
-                                    handleRoleChange(role.value, checked === true)
+                                    handleRoleChange(
+                                      role.value,
+                                      checked === true
+                                    )
                                   }
                                   className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                                 />
@@ -1639,7 +1792,7 @@ export default function UserModal({
                               </label>
                               <button
                                 type="button"
-                                onClick={(e) => {
+                                onClick={e => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   setRolePermissionsDialog({
@@ -1659,7 +1812,7 @@ export default function UserModal({
                       ) : (
                         <div className="flex flex-wrap items-center justify-center gap-2">
                           {roles && roles.length > 0 ? (
-                            roles.map((roleValue) => {
+                            roles.map(roleValue => {
                               const roleOption = ROLE_OPTIONS.find(
                                 r => r.value === roleValue
                               );
@@ -1690,201 +1843,235 @@ export default function UserModal({
                               );
                             })
                           ) : (
-                            <div className="text-gray-700">No roles assigned</div>
+                            <div className="text-gray-700">
+                              No roles assigned
+                            </div>
                           )}
                         </div>
                       )}
                     </div>
 
                     {/* Licensees and Locations Container */}
-                    <div className="flex flex-col md:flex-row md:gap-6 mb-6">
-                    {/* Licensees Section */}
-                      <div className="flex-1 mb-6 md:mb-0">
-                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
-                        Assigned Licensees
-                      </h4>
+                    <div className="mb-6 flex flex-col md:flex-row md:gap-6">
+                      {/* Licensees Section */}
+                      <div className="mb-6 flex-1 md:mb-0">
+                        <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
+                          Assigned Licensees
+                        </h4>
 
-                      {/* For managers, always show as read-only */}
-                      {!canEditLicensees ? (
-                        <div className="text-center">
-                          <div className="text-gray-700">
-                            {allLicenseesSelected
-                              ? `All Licensees (${licensees.length} licensees)`
-                              : selectedLicenseeIds.length > 0
-                                ? selectedLicenseeIds
-                                    .map(
-                                      id =>
-                                        licensees.find(l => String(l._id) === String(id))?.name
-                                    )
-                                    .filter(Boolean)
-                                    .join(', ')
-                                : 'No licensees assigned'}
-                          </div>
-                          {isManager && (
-                            <p className="mt-2 text-xs text-gray-500 italic">
-                              Licensee assignments cannot be changed by managers
-                            </p>
-                          )}
-                        </div>
-                      ) : isEditMode ? (
-                        <div className="space-y-3">
-                          {/* All Licensees Checkbox */}
-                          <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
-                            <Checkbox
-                              checked={allLicenseesSelected}
-                              onCheckedChange={checked =>
-                                handleAllLicenseesChange(checked === true)
-                              }
-                              className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
-                            />
-                            All Licensees
-                          </label>
-
-                          {!allLicenseesSelected && (
-                            <MultiSelectDropdown
-                              options={licenseeOptions}
-                              selectedIds={selectedLicenseeIds}
-                              onChange={handleLicenseeChange}
-                              placeholder="Select licensees..."
-                              searchPlaceholder="Search licensees..."
-                              label="licensees"
-                              showSelectAll={true}
-                            />
-                          )}
-
-                          {allLicenseesSelected && (
-                            <div className="rounded-md bg-green-50 border border-green-200 p-3 text-center text-sm font-medium text-green-800">
-                              All {licensees.length} licensees are selected
+                        {/* For managers, always show as read-only */}
+                        {!canEditLicensees ? (
+                          <div className="text-center">
+                            <div className="text-gray-700">
+                              {allLicenseesSelected
+                                ? `All Licensees (${licensees.length} licensees)`
+                                : selectedLicenseeIds.length > 0
+                                  ? selectedLicenseeIds
+                                      .map(
+                                        id =>
+                                          licensees.find(
+                                            l => String(l._id) === String(id)
+                                          )?.name
+                                      )
+                                      .filter(Boolean)
+                                      .join(', ')
+                                  : 'No licensees assigned'}
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <div className="text-gray-700">
-                            {allLicenseesSelected
-                              ? `All Licensees (${licensees.length} licensees)`
-                              : selectedLicenseeIds.length > 0
-                                ? selectedLicenseeIds
-                                    .map(
-                                      id =>
-                                        licensees.find(l => String(l._id) === String(id))?.name
-                                    )
-                                    .filter(Boolean)
-                                    .join(', ')
-                                : 'No licensees assigned'}
+                            {isManager && (
+                              <p className="mt-2 text-xs italic text-gray-500">
+                                Licensee assignments cannot be changed by
+                                managers
+                              </p>
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Locations Section */}
-                      <div className="flex-1">
-                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
-                        Allowed Locations
-                      </h4>
-
-                      {isEditMode ? (
-                        <div className="space-y-3">
-                          {/* Warning if no licensees selected */}
-                          {!allLicenseesSelected && selectedLicenseeIds.length === 0 && (
-                            <div className="rounded-md bg-yellow-50 border border-yellow-200 p-3 text-center text-sm font-medium text-yellow-800">
-                              ⚠️ Please select at least one licensee first to assign locations
-                            </div>
-                          )}
-
-                          {/* All Locations Checkbox - only show if licensees are selected */}
-                          {(allLicenseesSelected || selectedLicenseeIds.length > 0) && (
+                        ) : isEditMode ? (
+                          <div className="space-y-3">
+                            {/* All Licensees Checkbox */}
                             <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                               <Checkbox
-                                checked={allLocationsSelected}
+                                checked={allLicenseesSelected}
                                 onCheckedChange={checked =>
-                                  handleAllLocationsChange(checked === true)
+                                  handleAllLicenseesChange(checked === true)
                                 }
                                 className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                               />
-                              All Locations {allLicenseesSelected ? '' : `for selected licensee${selectedLicenseeIds.length > 1 ? 's' : ''}`}
+                              All Licensees
                             </label>
-                          )}
 
-                          {/* Multi-select dropdown */}
-                          {!allLocationsSelected && (allLicenseesSelected || selectedLicenseeIds.length > 0) && (
-                            <MultiSelectDropdown
-                              options={locationOptions}
-                              selectedIds={selectedLocationIds}
-                              onChange={setSelectedLocationIds}
-                              placeholder={
-                                availableLocations.length === 0
-                                  ? "No locations available for selected licensees"
-                                  : "Select locations..."
-                              }
-                              searchPlaceholder="Search locations..."
-                              label="locations"
-                              showSelectAll={true}
-                              disabled={availableLocations.length === 0}
-                            />
-                          )}
+                            {!allLicenseesSelected && (
+                              <MultiSelectDropdown
+                                options={licenseeOptions}
+                                selectedIds={selectedLicenseeIds}
+                                onChange={handleLicenseeChange}
+                                placeholder="Select licensees..."
+                                searchPlaceholder="Search licensees..."
+                                label="licensees"
+                                showSelectAll={true}
+                              />
+                            )}
 
-                          {allLocationsSelected && (
-                            <div className="rounded-md bg-green-50 border border-green-200 p-3 text-center text-sm font-medium text-green-800">
-                              All {availableLocations.length} available locations are selected
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-full">
-                          {allLocationsSelected ? (
-                            <div className="text-center text-gray-700">
-                              All Locations ({locations.length} locations)
+                            {allLicenseesSelected && (
+                              <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center text-sm font-medium text-green-800">
+                                All {licensees.length} licensees are selected
+                              </div>
+                            )}
                           </div>
-                          ) : selectedLocationIds.length > 0 ? (
-                            <div className="overflow-x-auto">
-                              <table className="w-full border-collapse border border-gray-300">
-                                <thead>
-                                  <tr className="bg-gray-100">
-                                    <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
-                                      Location
-                                    </th>
-                                    <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
-                                      Licensee
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {selectedLocationIds
-                                    .map(id => {
-                                      const location = locations.find(l => l._id === id);
-                                      if (!location) return null;
-                                      
-                                      const licensee = location.licenseeId
-                                        ? licensees.find(l => String(l._id) === String(location.licenseeId))
-                                        : null;
-                                      
-                                      return {
-                                        locationName: location.name || 'Unknown',
-                                        licenseeName: licensee?.name || 'Unknown',
-                                      };
-                                    })
-                                    .filter((item): item is { locationName: string; licenseeName: string } => item !== null)
-                                    .map((item, index) => (
-                                      <tr key={index} className="hover:bg-gray-50">
-                                        <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                                          {item.locationName}
-                                        </td>
-                                        <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                                          {item.licenseeName}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                </tbody>
-                              </table>
+                        ) : (
+                          <div className="text-center">
+                            <div className="text-gray-700">
+                              {allLicenseesSelected
+                                ? `All Licensees (${licensees.length} licensees)`
+                                : selectedLicenseeIds.length > 0
+                                  ? selectedLicenseeIds
+                                      .map(
+                                        id =>
+                                          licensees.find(
+                                            l => String(l._id) === String(id)
+                                          )?.name
+                                      )
+                                      .filter(Boolean)
+                                      .join(', ')
+                                  : 'No licensees assigned'}
                             </div>
-                          ) : (
-                            <div className="text-center text-gray-700">
-                              No locations assigned
-                        </div>
-                      )}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Locations Section */}
+                      <div className="flex-1">
+                        <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
+                          Allowed Locations
+                        </h4>
+
+                        {isEditMode ? (
+                          <div className="space-y-3">
+                            {/* Warning if no licensees selected */}
+                            {!allLicenseesSelected &&
+                              selectedLicenseeIds.length === 0 && (
+                                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-center text-sm font-medium text-yellow-800">
+                                  ⚠️ Please select at least one licensee first
+                                  to assign locations
+                                </div>
+                              )}
+
+                            {/* All Locations Checkbox - only show if licensees are selected */}
+                            {(allLicenseesSelected ||
+                              selectedLicenseeIds.length > 0) && (
+                              <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
+                                <Checkbox
+                                  checked={allLocationsSelected}
+                                  onCheckedChange={checked =>
+                                    handleAllLocationsChange(checked === true)
+                                  }
+                                  className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
+                                />
+                                All Locations{' '}
+                                {allLicenseesSelected
+                                  ? ''
+                                  : `for selected licensee${selectedLicenseeIds.length > 1 ? 's' : ''}`}
+                              </label>
+                            )}
+
+                            {/* Multi-select dropdown */}
+                            {!allLocationsSelected &&
+                              (allLicenseesSelected ||
+                                selectedLicenseeIds.length > 0) && (
+                                <MultiSelectDropdown
+                                  options={locationOptions}
+                                  selectedIds={selectedLocationIds}
+                                  onChange={setSelectedLocationIds}
+                                  placeholder={
+                                    availableLocations.length === 0
+                                      ? 'No locations available for selected licensees'
+                                      : 'Select locations...'
+                                  }
+                                  searchPlaceholder="Search locations..."
+                                  label="locations"
+                                  showSelectAll={true}
+                                  disabled={availableLocations.length === 0}
+                                />
+                              )}
+
+                            {allLocationsSelected && (
+                              <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center text-sm font-medium text-green-800">
+                                All {availableLocations.length} available
+                                locations are selected
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-full">
+                            {allLocationsSelected ? (
+                              <div className="text-center text-gray-700">
+                                All Locations ({locations.length} locations)
+                              </div>
+                            ) : selectedLocationIds.length > 0 ? (
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse border border-gray-300">
+                                  <thead>
+                                    <tr className="bg-gray-100">
+                                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
+                                        Location
+                                      </th>
+                                      <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
+                                        Licensee
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {selectedLocationIds
+                                      .map(id => {
+                                        const location = locations.find(
+                                          l => l._id === id
+                                        );
+                                        if (!location) return null;
+
+                                        const licensee = location.licenseeId
+                                          ? licensees.find(
+                                              l =>
+                                                String(l._id) ===
+                                                String(location.licenseeId)
+                                            )
+                                          : null;
+
+                                        return {
+                                          locationName:
+                                            location.name || 'Unknown',
+                                          licenseeName:
+                                            licensee?.name || 'Unknown',
+                                        };
+                                      })
+                                      .filter(
+                                        (
+                                          item
+                                        ): item is {
+                                          locationName: string;
+                                          licenseeName: string;
+                                        } => item !== null
+                                      )
+                                      .map((item, index) => (
+                                        <tr
+                                          key={index}
+                                          className="hover:bg-gray-50"
+                                        >
+                                          <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                                            {item.locationName}
+                                          </td>
+                                          <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                                            {item.licenseeName}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="text-center text-gray-700">
+                                No locations assigned
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

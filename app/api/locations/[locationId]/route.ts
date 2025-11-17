@@ -5,7 +5,7 @@ import { TransformedCabinet } from '@/lib/types/mongo';
 import { TimePeriod } from '../../lib/types';
 import mongoose from 'mongoose';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import { getUserAccessibleLicenseesFromToken } from '../../lib/helpers/licenseeFilter';
+import { checkUserLocationAccess } from '../../lib/helpers/licenseeFilter';
 
 // Helper function to safely convert an ID to ObjectId if possible
 function safeObjectId(id: string): string | mongoose.Types.ObjectId {
@@ -34,6 +34,16 @@ export async function GET(request: NextRequest) {
     if (!hasQueryParams) {
       // Return basic location details for edit modal
       await connectDB();
+      
+      // Check if user has access to this location
+      const hasAccess = await checkUserLocationAccess(locationId);
+      if (!hasAccess) {
+        return NextResponse.json(
+          { success: false, message: 'Unauthorized: You do not have access to this location' },
+          { status: 403 }
+        );
+      }
+
       const location = await GamingLocations.findById(locationId);
 
       if (!location) {
@@ -41,18 +51,6 @@ export async function GET(request: NextRequest) {
           { success: false, message: 'Location not found' },
           { status: 404 }
         );
-      }
-      
-      // Validate user has access to this location's licensee
-      const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-      if (userAccessibleLicensees !== 'all') {
-        const locationLicensee = location.rel?.licencee;
-        if (locationLicensee && !userAccessibleLicensees.includes(locationLicensee)) {
-          return NextResponse.json(
-            { success: false, message: 'Unauthorized: You do not have access to this location' },
-            { status: 403 }
-          );
-        }
       }
 
       return NextResponse.json({
@@ -99,10 +97,19 @@ export async function GET(request: NextRequest) {
       timePeriodForGamingDay = timePeriod;
     }
 
+    // Check if user has access to this location
+    const hasAccess = await checkUserLocationAccess(locationId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Unauthorized: You do not have access to this location' },
+        { status: 403 }
+      );
+    }
+
     // Convert locationId to ObjectId for proper matching
     const locationIdObj = safeObjectId(locationId);
 
-    // First verify the location exists and check licensee access
+    // First verify the location exists
     const locationCheck = await GamingLocations.findOne({
       _id: { $in: [locationId, locationIdObj] },
     });
@@ -114,7 +121,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // CRITICAL SECURITY CHECK: Verify the location belongs to the selected licensee
+    // CRITICAL SECURITY CHECK: Verify the location belongs to the selected licensee (if provided)
     if (licencee && locationCheck.rel?.licencee !== licencee) {
       console.error(
         `Access denied: Location ${locationId} does not belong to licensee ${licencee}`

@@ -42,6 +42,7 @@ import type { ExtendedCabinetDetail } from "@/lib/types/pages";
 import { EditCabinetModal } from "@/components/ui/cabinets/EditCabinetModal";
 import { DeleteCabinetModal } from "@/components/ui/cabinets/DeleteCabinetModal";
 import NotFoundError from "@/components/ui/errors/NotFoundError";
+import UnauthorizedError from "@/components/ui/errors/UnauthorizedError";
 
 import Link from "next/link";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
@@ -51,6 +52,8 @@ import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
 import { useUserStore } from "@/lib/store/userStore";
 import { shouldShowNoLicenseeMessage } from "@/lib/utils/licenseeAccess";
+import axios from "axios";
+import { getAuthHeaders } from "@/lib/utils/auth";
 
 type CabinetSortOption =
   | "assetNumber"
@@ -189,6 +192,48 @@ export default function LocationPage() {
           return;
         }
 
+        // First, try to fetch location details to check access
+        try {
+          const locationResponse = await axios.get(`/api/locations/${locationId}`, {
+            headers: getAuthHeaders(),
+          });
+          
+          // Location exists and user has access
+          const locationData = locationResponse.data?.location || locationResponse.data;
+          if (locationData) {
+            setLocationName(locationData.name || 'Location');
+            setSelectedLocationId(locationId);
+          }
+        } catch (locationError) {
+          // Check if it's a 403 Unauthorized error
+          const errorWithStatus = locationError as Error & { 
+            status?: number; 
+            isUnauthorized?: boolean; 
+            response?: { status?: number } 
+          };
+          
+          if (
+            errorWithStatus?.response?.status === 403 ||
+            errorWithStatus?.status === 403 ||
+            errorWithStatus?.isUnauthorized ||
+            (locationError instanceof Error && locationError.message?.includes('Unauthorized')) ||
+            (locationError instanceof Error && locationError.message?.includes('do not have access'))
+          ) {
+            // Location exists but user doesn't have access
+            setError("UNAUTHORIZED");
+            setLoading(false);
+            setCabinetsLoading(false);
+            return;
+          } else if (errorWithStatus?.response?.status === 404) {
+            // Location doesn't exist
+            setError("Location not found");
+            setLoading(false);
+            setCabinetsLoading(false);
+            return;
+          }
+          // For other errors, continue to try fetching locations list
+        }
+
         // Fetch locations for the selected licensee
         const formattedLocations = await fetchAllGamingLocations(
           isAdminUser ? 'all' : selectedLicencee
@@ -208,77 +253,30 @@ export default function LocationPage() {
         // Use the first match found
         const foundLocation = currentLocation || currentLocationAlt;
 
-        // Check if current location exists in new licensee's locations
-        let shouldBypassLicenseeFilter = isAdminUser;
-
-        if (!foundLocation) {
-          // Location doesn't exist for this licensee, try to find it in all locations
-          console.warn(
-            `Location ${locationId} not found for licensee ${selectedLicencee}, trying all locations...`
-          );
-
-          // Try fetching all locations to find this specific location
-          const allLocations = await fetchAllGamingLocations("all");
-          const locationInAllLocations = allLocations.find(
-            (loc) => loc.id === locationId || loc.id.toString() === locationId
-          );
-
-          if (locationInAllLocations) {
-            // Location exists but belongs to a different licensee
-            console.warn(
-              `Location found in all locations, but belongs to different licensee than ${selectedLicencee}`
-            );
-            console.warn(
-              "Setting location from all locations:",
-              locationInAllLocations.name
-            );
-            setLocationName(locationInAllLocations.name);
-            setSelectedLocationId(locationInAllLocations.id);
-
-            // Set a flag to indicate we should bypass licensee filtering for API calls
-            shouldBypassLicenseeFilter = true;
-            setError(
-              "Location belongs to different licensee - showing limited data"
-            );
-          } else {
-            // Location truly doesn't exist
-            setSelectedLocationId("");
-            setLocationName("");
-            setAllCabinets([]);
-            setError("Location not found");
-            setLoading(false);
-            setCabinetsLoading(false);
-            return;
-          }
+        if (!foundLocation && formattedLocations.length > 0) {
+          // Location doesn't exist for this licensee
+          setSelectedLocationId("");
+          setLocationName("");
+          setAllCabinets([]);
+          setError("Location not found");
+          setLoading(false);
+          setCabinetsLoading(false);
+          return;
         } else if (formattedLocations.length === 0) {
           // No locations for this licensee, clear selection
           setSelectedLocationId("");
           setLocationName("");
           setAllCabinets([]);
           setError("No locations found for the selected licensee.");
+          setLoading(false);
+          setCabinetsLoading(false);
           return;
         }
 
-        // Use the found location data instead of making another API call
+        // Use the found location data
         if (foundLocation) {
-          console.warn(
-            "Setting location from found location:",
-            foundLocation.name
-          );
           setLocationName(foundLocation.name);
           setSelectedLocationId(foundLocation.id);
-        } else if (shouldBypassLicenseeFilter) {
-          // Location was found in all locations but belongs to different licensee
-          // selectedLocationId and locationName were already set above
-          console.warn(
-            "Using location from all locations due to licensee mismatch"
-          );
-        } else {
-          // Fallback if location truly not found - use a more descriptive name
-          const fallbackName = `Unknown Location (${locationId})`;
-          console.warn("Using fallback location name:", fallbackName);
-          setLocationName(fallbackName);
-          setSelectedLocationId(locationId);
         }
 
         // Fetch cabinets data for the location
@@ -290,14 +288,9 @@ export default function LocationPage() {
             return;
           }
 
-          // Check if we should bypass licensee filtering (location belongs to different licensee)
-          const licenseeForCabinets = shouldBypassLicenseeFilter
-            ? undefined
-            : selectedLicencee;
-
           const cabinetsData = await fetchCabinetsForLocation(
             locationId, // Always use the URL slug for cabinet fetching
-            licenseeForCabinets, // Use undefined if location belongs to different licensee
+            selectedLicencee,
             activeMetricsFilter, // Pass the selected filter directly
             undefined, // Don't pass searchTerm (4th parameter)
 
@@ -306,22 +299,28 @@ export default function LocationPage() {
               : undefined // Only pass customDateRange when filter is "Custom"
           );
           setAllCabinets(cabinetsData);
-
-          // Clear error only if we successfully fetched data or if it's a licensee mismatch
-          if (shouldBypassLicenseeFilter) {
-            setError(
-              "Location belongs to different licensee - showing limited data"
-            );
-          } else {
-            setError(null);
-          }
+          setError(null);
         } catch (error) {
           // Error handling for cabinet data fetch
           if (process.env.NODE_ENV === "development") {
             console.error("Error fetching cabinets:", error);
           }
-          setAllCabinets([]);
-          setError("Failed to fetch cabinets data.");
+          
+          // Check if it's a 403 Unauthorized error
+          const errorWithStatus = error as Error & { status?: number; isUnauthorized?: boolean; response?: { status?: number } };
+          if (
+            errorWithStatus?.status === 403 ||
+            errorWithStatus?.isUnauthorized ||
+            errorWithStatus?.response?.status === 403 ||
+            (error instanceof Error && error.message?.includes('Unauthorized')) ||
+            (error instanceof Error && error.message?.includes('do not have access'))
+          ) {
+            setError("UNAUTHORIZED");
+            setAllCabinets([]);
+          } else {
+            setAllCabinets([]);
+            setError("Failed to fetch cabinets data.");
+          }
         }
       } finally {
         setLoading(false);
@@ -907,9 +906,31 @@ export default function LocationPage() {
             </div>
 
 
-        {/* Content Section: Main cabinet data display with responsive layouts */}
-        <div className="flex-1 w-full">
-          {loading || cabinetsLoading ? (
+        {/* Error Display - Cover entire page if error */}
+        {error === "UNAUTHORIZED" || error === "Location not found" ? (
+          error === "UNAUTHORIZED" ? (
+            <UnauthorizedError
+              title="Access Denied"
+              message="You are not authorized to view details for this location."
+              resourceType="location"
+              customBackText="Back to Locations"
+              customBackHref="/locations"
+            />
+          ) : (
+            <NotFoundError
+              title="Location Not Found"
+              message={`No location found for this ID (${locationId}) for your licence.`}
+              resourceType="location"
+              showRetry={false}
+              customBackText="Back to Locations"
+              customBackHref="/locations"
+            />
+          )
+        ) : (
+          <>
+            {/* Content Section: Main cabinet data display with responsive layouts */}
+            <div className="flex-1 w-full">
+              {loading || cabinetsLoading ? (
             <>
               {/* Use CabinetTableSkeleton for lg+ only */}
               <div className="hidden lg:block">
@@ -1005,20 +1026,9 @@ export default function LocationPage() {
               )}
             </>
           )}
-        </div>
-
-        {error === "Location not found" ? (
-          <NotFoundError
-            title="Location Not Found"
-            message={`The location with ID "${locationId}" could not be found for the selected licensee.`}
-            resourceType="location"
-            showRetry={false}
-            customBackText="Back to Locations"
-            customBackHref="/locations"
-          />
-        ) : error ? (
-          <div className="mt-10 text-center text-red-500">{error}</div>
-        ) : null}
+            </div>
+          </>
+        )}
 
         <NewCabinetModal
           currentLocationName={locationName}

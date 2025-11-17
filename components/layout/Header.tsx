@@ -64,12 +64,18 @@ export default function Header({
   const userLicensees = user?.rel?.licencee || [];
   const isAdmin =
     normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+  const isManager = normalizedRoles.includes('manager');
+  const hasMultipleLicensees = Array.isArray(userLicensees) && userLicensees.length > 1;
+  const hasSingleLicensee = Array.isArray(userLicensees) && userLicensees.length === 1;
   
   // Determine if licensee select should be shown
-  // Show if: admin OR user has multiple licensees
-  // Hide if: user has 0 or 1 licensee
-  const shouldShowLicenseeSelect = isAdmin || userLicensees.length > 1;
-  const hasMultipleLicensees = Array.isArray(userLicensees) && userLicensees.length > 1;
+  // Show if: admin OR user has multiple licensees OR (manager with multiple licensees)
+  // Hide if: user has 0 or 1 licensee (and not admin/dev)
+  const shouldShowLicenseeSelect = isAdmin || hasMultipleLicensees || (isManager && hasMultipleLicensees);
+  
+  // Determine if we should show licensee name next to "Evolution CMS"
+  // Show if: user has exactly one licensee AND not admin/dev AND (not manager OR manager with single licensee)
+  const shouldShowLicenseeName = hasSingleLicensee && !isAdmin && (!isManager || hasSingleLicensee);
   const selectedLicenceeValue = selectedLicencee ?? '';
   const isAllLicenseeSelected =
     selectedLicenceeValue === '' || selectedLicenceeValue === 'all';
@@ -80,6 +86,7 @@ export default function Header({
   const [licenseeCurrencyMap, setLicenseeCurrencyMap] = useState<
     Record<string, CurrencyCode>
   >({});
+  const [singleLicenseeName, setSingleLicenseeName] = useState<string>('');
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +125,37 @@ export default function Header({
       cancelled = true;
     };
   }, []);
+
+  // Load single licensee name if applicable
+  useEffect(() => {
+    let cancelled = false;
+    const loadSingleLicenseeName = async () => {
+      if (!shouldShowLicenseeName || !hasSingleLicensee || userLicensees.length === 0) {
+        setSingleLicenseeName('');
+        return;
+      }
+
+      try {
+        const licenseeId = userLicensees[0];
+        const licensee = await fetchLicenseeById(licenseeId);
+        if (!cancelled && licensee?.name) {
+          setSingleLicenseeName(licensee.name);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to load single licensee name:', error);
+        }
+        if (!cancelled) {
+          setSingleLicenseeName('');
+        }
+      }
+    };
+
+    loadSingleLicenseeName();
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldShowLicenseeName, hasSingleLicensee, userLicensees]);
 
   const resolveLicenseeCurrency = useCallback(
     async (licenseeId: string): Promise<CurrencyCode> => {
@@ -285,9 +323,16 @@ export default function Header({
               >
                 <PanelLeft className="h-6 w-6" suppressHydrationWarning />
               </SidebarTrigger>
-              <h1 className="shrink-0 text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl whitespace-nowrap">
-                Evolution CMS
-              </h1>
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="shrink-0 text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl whitespace-nowrap">
+                  Evolution CMS
+                </h1>
+                {shouldShowLicenseeName && singleLicenseeName && (
+                  <span className="inline-flex items-center rounded-full bg-buttonActive/10 px-3 py-1 text-xs font-medium text-buttonActive ring-1 ring-inset ring-buttonActive/20 sm:text-sm">
+                    {singleLicenseeName}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Right side: Filters */}

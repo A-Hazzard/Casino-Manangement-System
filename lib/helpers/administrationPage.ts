@@ -225,14 +225,39 @@ export const userManagement = {
       await refreshUsers();
       toast.success('User created successfully');
     } catch (err) {
-      const error = err as Error & {
-        response?: { data?: { message?: string } };
-      };
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Failed to create user'
-      );
+      // Handle axios errors - axios wraps errors in AxiosError
+      let errorMessage = 'Failed to create user';
+      
+      // Log the full error for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.error('User creation error:', err);
+      }
+      
+      if (err && typeof err === 'object') {
+        // Check if it's an axios error with response data
+        const axiosError = err as {
+          response?: {
+            data?: { message?: string; error?: string };
+            status?: number;
+          };
+          message?: string;
+        };
+        
+        // Prioritize server error message from response.data
+        if (axiosError.response?.data) {
+          errorMessage =
+            axiosError.response.data.message ||
+            axiosError.response.data.error ||
+            errorMessage;
+        } else if (axiosError.message) {
+          // Only use axios message if we don't have response data
+          errorMessage = axiosError.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      toast.error(errorMessage);
     }
   },
 };

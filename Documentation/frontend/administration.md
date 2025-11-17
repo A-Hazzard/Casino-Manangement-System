@@ -18,8 +18,8 @@
 The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, and activity logging.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 12th, 2025  
-**Version:** 2.2.0
+**Last Updated:** December 2025  
+**Version:** 2.3.0
 
 ### File Information
 
@@ -37,9 +37,11 @@ The Administration page provides comprehensive user and licensee management for 
   - **Location Permissions:** Resource-based permissions for location-specific access
   - User profile management with compliance-enforced personal information (legal names, gender, phone number, date of birth)
   - **Profile Picture Management:** Upload, crop (circular format), and remove profile pictures
-  - **Session Management:** Display login count, last login, and session version
+  - **Session Management:** Display login count, last login (`lastLoginAt`), and session version
   - Password reset and account status management
+  - **Account Status Toggle:** `isEnabled` checkbox to enable/disable user accounts (admins can toggle any user, managers can only toggle users in their licensee)
   - **Session Invalidation:** Auto-increment `sessionVersion` when changing permissions (forces re-login)
+  - **Email Preservation:** Email field properly preserved when editing other user fields (prevents false "Email address cannot be empty" errors)
   - **Security Compliance Gate:** Mirrors the post-login profile validation modal; only fields that fail validation are shown for admins, including licensee/location assignments for developer/admin roles
   - Activity logs for user actions and system events
 - **Licensee Management:**
@@ -318,10 +320,12 @@ AdministrationPage (app/administration/page.tsx)
 
 - **API Failures:** Graceful degradation with user-friendly error messages
 - **Validation Errors:** Real-time feedback for form validation
+- **Specific Error Messages:** Username and email conflict errors show specific messages ("Username already exists", "Email already exists", or "Username and email already exist")
 - **Network Issues:** Retry logic and fallback error states
 - **Loading States:** Skeleton loaders and loading indicators
 - **Toast Notifications:** User feedback for all operations
 - **Image Upload Errors:** Validation and error handling for profile pictures
+- **Email Preservation:** Email value preserved from original user data when not explicitly changed, preventing false validation errors
 
 ### Performance Optimizations
 

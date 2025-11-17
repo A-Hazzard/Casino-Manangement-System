@@ -75,6 +75,7 @@ const formatSasTime = (dateString: string) => {
 
 import PageLayout from '@/components/layout/PageLayout';
 import NotFoundError from '@/components/ui/errors/NotFoundError';
+import UnauthorizedError from '@/components/ui/errors/UnauthorizedError';
 
 // Skeleton components
 import {
@@ -435,7 +436,12 @@ function CollectionReportPageContent() {
         if (process.env.NODE_ENV === 'development') {
           console.error('Error fetching collection report:', error);
         }
-        setError('Failed to fetch report data. Please try again.');
+        // Check if it's a 403 Unauthorized error
+        if (error?.response?.status === 403 || error?.message?.includes('Unauthorized') || error?.message?.includes('do not have access')) {
+          setError('UNAUTHORIZED');
+        } else {
+          setError('Failed to fetch report data. Please try again.');
+        }
         setReportData(null);
       })
       .finally(() => setLoading(false));
@@ -709,14 +715,24 @@ function CollectionReportPageContent() {
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        <NotFoundError
-          title="Report Error"
-          message={error}
-          resourceType="report"
-          showRetry={false}
-          customBackText="Back to Collection Reports"
-          customBackHref="/collection-reports"
-        />
+        {error === 'UNAUTHORIZED' ? (
+          <UnauthorizedError
+            title="Access Denied"
+            message="You are not authorized to view details for this collection report."
+            resourceType="report"
+            customBackText="Back to Collection Reports"
+            customBackHref="/collection-report"
+          />
+        ) : (
+          <NotFoundError
+            title="Report Error"
+            message={error}
+            resourceType="report"
+            showRetry={false}
+            customBackText="Back to Collection Reports"
+            customBackHref="/collection-report"
+          />
+        )}
       </PageLayout>
     );
   }

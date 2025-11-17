@@ -4,7 +4,7 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import { getUserAccessibleLicenseesFromToken } from '../../lib/helpers/licenseeFilter';
+import { checkUserLocationAccess } from '../../lib/helpers/licenseeFilter';
 
 /**
  * GET /api/machines/[machineId]
@@ -69,16 +69,13 @@ export async function GET(
         } | null;
 
         if (location) {
-          // Validate user has access to this location's licensee
-          const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-          if (userAccessibleLicensees !== 'all') {
-            const locationLicensee = location.rel?.licencee;
-            if (locationLicensee && !userAccessibleLicensees.includes(locationLicensee)) {
-              return NextResponse.json(
-                { success: false, error: 'Unauthorized: You do not have access to this cabinet' },
-                { status: 403 }
-              );
-            }
+          // Check if user has access to this location (includes both licensee and location permissions)
+          const hasAccess = await checkUserLocationAccess(String(machine.gamingLocation));
+          if (!hasAccess) {
+            return NextResponse.json(
+              { success: false, error: 'Unauthorized: You do not have access to this cabinet' },
+              { status: 403 }
+            );
           }
           
           locationName =

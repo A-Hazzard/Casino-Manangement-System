@@ -9,6 +9,7 @@ import { getUserFromServer } from "../../lib/helpers/users";
 import { getClientIP } from "@/lib/utils/ipAddress";
 import type { CreateCollectionReportPayload } from "@/lib/types/api";
 import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionRecalculation';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
 
 /**
  * API route handler for fetching a collection report by reportId.
@@ -30,6 +31,30 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // First, get the report to check location access before processing
+    const report = await CollectionReport.findOne({
+      locationReportId: reportId,
+    }).lean();
+    
+    if (!report) {
+      return NextResponse.json(
+        { message: "Collection Report not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if user has access to the report's location
+    if (report.location) {
+      const hasAccess = await checkUserLocationAccess(String(report.location));
+      if (!hasAccess) {
+        return NextResponse.json(
+          { message: "Unauthorized: You do not have access to this collection report's location" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Now fetch the full report data
     const reportData = await getCollectionReportById(reportId);
     if (!reportData) {
       return NextResponse.json(

@@ -109,11 +109,11 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
     };
 
     let dbUser: {
-      sessionVersion?: number;
-      roles?: string[];
-      rel?: { licencee?: string[] };
-      resourcePermissions?: Record<string, unknown>;
-      permissions?: string[];
+          sessionVersion?: number;
+          roles?: string[];
+          rel?: { licencee?: string[] };
+          resourcePermissions?: Record<string, unknown>;
+          permissions?: string[];
       isEnabled?: boolean;
       deletedAt?: Date | null;
     } | null = null;
@@ -378,7 +378,7 @@ export async function createUser(
       isAdmin,
       isManager,
       userId: requestingUser._id,
-    });
+  });
     throw new Error(
       'Insufficient permissions to create users. Only developers, admins, and managers can create users.'
     );
@@ -407,20 +407,47 @@ export async function createUser(
   }
 
   const hashedPassword = await hashPassword(password);
-  const newUser = await UserModel.create({
+  
+  // Create user - catch MongoDB duplicate key errors
+  let newUser;
+  try {
+    newUser = await UserModel.create({
     _id: new (await import('mongoose')).default.Types.ObjectId().toHexString(),
     username,
     emailAddress,
     password: hashedPassword,
     passwordUpdatedAt: new Date(),
-    roles: normalizedRoles,
+      roles: normalizedRoles,
     profile,
     isEnabled,
     profilePicture,
     resourcePermissions,
-    rel: rel || {},
+      rel: rel || {},
     deletedAt: new Date(-1), // SMIB boards require all fields to be present
   });
+  } catch (dbError: unknown) {
+    // Handle MongoDB duplicate key errors (E11000)
+    if (
+      dbError &&
+      typeof dbError === 'object' &&
+      'code' in dbError &&
+      dbError.code === 11000
+    ) {
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      
+      // Parse the error message to determine which field caused the conflict
+      if (errorMessage.includes('emailAddress') || errorMessage.includes('emailAddress_1')) {
+        throw new Error('Email already exists');
+      } else if (errorMessage.includes('username') || errorMessage.includes('username_1')) {
+        throw new Error('Username already exists');
+      } else {
+        // Generic duplicate key error
+        throw new Error('A field with this value already exists');
+      }
+    }
+    // Re-throw if it's not a duplicate key error
+    throw dbError;
+  }
 
   const currentUser = await getUserFromServer();
   if (currentUser && currentUser.emailAddress) {
@@ -569,6 +596,29 @@ export async function updateUser(
     }
   }
 
+  // For managers, ensure they can only toggle isEnabled for users in their licensee
+  if (isManager && updateFields.isEnabled !== undefined) {
+    const managerLicenseeIds =
+      ((requestingUser?.rel as { licencee?: string[] })?.licencee || []).map(
+        id => String(id)
+      );
+    const userLicenseeIds =
+      ((user.rel as { licencee?: string[] })?.licencee || []).map(id =>
+        String(id)
+      );
+
+    // Check if user belongs to any of the manager's licensees
+    const hasSharedLicensee = userLicenseeIds.some(id =>
+      managerLicenseeIds.includes(id)
+    );
+
+    if (!hasSharedLicensee) {
+      throw new Error(
+        'Managers can only enable/disable accounts for users in their licensee'
+      );
+    }
+  }
+
   // Normalize legacy profile payloads to the latest schema shape
   if (
     updateFields.profile &&
@@ -611,7 +661,7 @@ export async function updateUser(
       } else if (!validateOptionalGender(genderValue)) {
         throw new Error('Select a valid gender option.');
       } else {
-        profileUpdate.gender = genderValue;
+      profileUpdate.gender = genderValue;
       }
     } else if (
       profileUpdate.gender === undefined ||
@@ -665,8 +715,8 @@ export async function updateUser(
             'Identification type may only contain letters and spaces.'
           );
         } else {
-          identificationUpdate.idType = trimmed;
-        }
+        identificationUpdate.idType = trimmed;
+      }
       } else if (
         identificationUpdate.idType === undefined ||
         identificationUpdate.idType === null
@@ -708,15 +758,15 @@ export async function updateUser(
       // Only validate dateOfBirth if it's actually provided (not empty/null/undefined)
       // This allows admins to update users without requiring all fields
       if (dobValue !== null && dobValue !== undefined && dobValue !== '') {
-        const parsedDate =
-          dobValue instanceof Date ? dobValue : new Date(dobValue as string);
-        if (!isValidDateInput(parsedDate)) {
-          throw new Error('Date of birth must be a valid date.');
-        }
-        if (parsedDate > new Date()) {
-          throw new Error('Date of birth cannot be in the future.');
-        }
-        identificationUpdate.dateOfBirth = parsedDate;
+      const parsedDate =
+        dobValue instanceof Date ? dobValue : new Date(dobValue as string);
+      if (!isValidDateInput(parsedDate)) {
+        throw new Error('Date of birth must be a valid date.');
+      }
+      if (parsedDate > new Date()) {
+        throw new Error('Date of birth cannot be in the future.');
+      }
+      identificationUpdate.dateOfBirth = parsedDate;
       } else if (dobValue === '') {
         // If empty string is explicitly provided, remove the field from update
         // This preserves the existing value in the database
@@ -853,7 +903,12 @@ export async function updateUser(
   const currentEmailAddress = user.emailAddress;
 
   // Check username conflict if it's being changed
-  if (newUsername && newUsername !== currentUsername) {
+  // Also check for empty string usernames which can cause duplicate key errors
+  if (newUsername !== undefined && newUsername !== currentUsername) {
+    // Don't allow empty string usernames (they violate unique index)
+    if (newUsername === '' || newUsername === null) {
+      throw new Error('Username cannot be empty');
+    }
     const existingUserByUsername = await UserModel.findOne({
       username: newUsername,
       _id: { $ne: _id }, // Exclude the current user
@@ -864,7 +919,12 @@ export async function updateUser(
   }
 
   // Check email conflict if it's being changed
-  if (newEmailAddress && newEmailAddress !== currentEmailAddress) {
+  // Also check for empty string emails which can cause duplicate key errors
+  if (newEmailAddress !== undefined && newEmailAddress !== currentEmailAddress) {
+    // Don't allow empty string emails (they violate unique index)
+    if (newEmailAddress === '' || newEmailAddress === null) {
+      throw new Error('Email address cannot be empty');
+    }
     const existingUserByEmail = await UserModel.findOne({
       emailAddress: newEmailAddress,
       _id: { $ne: _id }, // Exclude the current user
@@ -907,12 +967,37 @@ export async function updateUser(
     JSON.stringify(updateOperation, null, 2)
   );
 
-  // Update user
-  const updatedUser = await UserModel.findOneAndUpdate(
+  // Update user - catch MongoDB duplicate key errors
+  let updatedUser;
+  try {
+    updatedUser = await UserModel.findOneAndUpdate(
     { _id },
     updateOperation,
     { new: true }
   );
+  } catch (dbError: unknown) {
+    // Handle MongoDB duplicate key errors (E11000)
+    if (
+      dbError &&
+      typeof dbError === 'object' &&
+      'code' in dbError &&
+      dbError.code === 11000
+    ) {
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      
+      // Parse the error message to determine which field caused the conflict
+      if (errorMessage.includes('emailAddress') || errorMessage.includes('emailAddress_1')) {
+        throw new Error('Email already exists');
+      } else if (errorMessage.includes('username') || errorMessage.includes('username_1')) {
+        throw new Error('Username already exists');
+      } else {
+        // Generic duplicate key error
+        throw new Error('A field with this value already exists');
+      }
+    }
+    // Re-throw if it's not a duplicate key error
+    throw dbError;
+  }
 
   // Log activity (reuse requestingUser from earlier)
   const currentUser = requestingUser as CurrentUser | null;

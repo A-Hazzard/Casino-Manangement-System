@@ -21,7 +21,7 @@ type UseCabinetDetailsDataReturn = {
   cabinet: CabinetDetail | null;
   locationName: string;
   error: string | null;
-  errorType: 'not-found' | 'network' | 'unknown';
+  errorType: 'not-found' | 'network' | 'unauthorized' | 'unknown';
   metricsLoading: boolean;
   isOnline: boolean;
   fetchCabinetDetailsData: () => Promise<void>;
@@ -39,7 +39,7 @@ export function useCabinetDetailsData({
   const [locationName, setLocationName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<
-    'not-found' | 'network' | 'unknown'
+    'not-found' | 'network' | 'unauthorized' | 'unknown'
   >('unknown');
   const [isOnline, setIsOnline] = useState(false);
   const [metricsLoading, setMetricsLoading] = useState(false);
@@ -92,7 +92,18 @@ export function useCabinetDetailsData({
 
       // Determine error type based on the error
       if (err instanceof Error) {
-        if (err.message.includes('404') || err.message.includes('not found')) {
+        // Check for unauthorized access (403)
+        const errorWithStatus = err as Error & { status?: number; isUnauthorized?: boolean; response?: { status?: number } };
+        if (
+          errorWithStatus.status === 403 ||
+          errorWithStatus.isUnauthorized ||
+          errorWithStatus.response?.status === 403 ||
+          err.message.includes('Unauthorized') ||
+          err.message.includes('do not have access')
+        ) {
+          setError('You are not authorized to view this cabinet');
+          setErrorType('unauthorized');
+        } else if (err.message.includes('404') || err.message.includes('not found')) {
           setError('Cabinet not found');
           setErrorType('not-found');
         } else if (
@@ -110,7 +121,19 @@ export function useCabinetDetailsData({
         setErrorType('unknown');
       }
 
-      toast.error('Failed to fetch cabinet details');
+      // Only show toast for non-unauthorized errors
+      const errorWithStatus = err instanceof Error ? err as Error & { status?: number; isUnauthorized?: boolean; response?: { status?: number } } : null;
+      const isUnauthorized = 
+        errorWithStatus &&
+        (errorWithStatus.status === 403 ||
+        errorWithStatus.isUnauthorized ||
+        errorWithStatus.response?.status === 403 ||
+        errorWithStatus.message.includes('Unauthorized') ||
+        errorWithStatus.message.includes('do not have access'));
+      
+      if (!isUnauthorized) {
+        toast.error('Failed to fetch cabinet details');
+      }
     } finally {
       setMetricsLoading(false);
     }

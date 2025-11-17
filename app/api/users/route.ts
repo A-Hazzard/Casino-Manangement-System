@@ -35,7 +35,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     const currentUserLicensees = (currentUser?.rel as { licencee?: string[] })?.licencee || [];
     
     const isAdmin = currentUserRoles.includes('admin') || currentUserRoles.includes('developer');
-    const isManager = currentUserRoles.includes('manager');
+    const isManager = currentUserRoles.includes('manager') && !isAdmin;
 
     const users = await getAllUsers();
     let result = users.map(user => ({
@@ -126,15 +126,19 @@ export async function PUT(request: NextRequest): Promise<Response> {
       errorMsg === 'Username already exists' ||
       errorMsg === 'Email already exists';
     
+    // Check if it's a validation error (should return specific message)
+    const isValidationError =
+      errorMsg.includes('cannot be empty') ||
+      errorMsg.includes('is required') ||
+      errorMsg.includes('must be') ||
+      errorMsg.includes('Invalid') ||
+      errorMsg.includes('already exists') ||
+      errorMsg === 'User not found';
+    
     return new Response(
       JSON.stringify({
         success: false,
-        message:
-          errorMsg === 'User not found'
-            ? errorMsg
-            : isConflictError
-              ? errorMsg
-              : 'Update failed',
+        message: isValidationError || isConflictError ? errorMsg : 'Update failed',
         error: errorMsg,
       }),
       {
@@ -143,7 +147,9 @@ export async function PUT(request: NextRequest): Promise<Response> {
             ? 404
             : isConflictError
               ? 409
-              : 500,
+              : isValidationError
+                ? 400
+                : 500,
       }
     );
   }

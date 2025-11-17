@@ -3,6 +3,7 @@ import { connectDB } from '../../../../lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Collections } from '@/app/api/lib/models/collections';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
 
 
 /**
@@ -17,6 +18,15 @@ export async function GET(
     const { locationId, cabinetId } = await params;
 
     await connectDB();
+
+    // Check if user has access to this location
+    const hasAccess = await checkUserLocationAccess(locationId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: You do not have access to this location' },
+        { status: 403 }
+      );
+    }
 
     // Verify location exists and is not deleted
     const location = await GamingLocations.findOne({
@@ -75,6 +85,15 @@ export async function PUT(
     const { locationId, cabinetId } = await params;
 
     await connectDB();
+
+    // Check if user has access to this location
+    const hasAccess = await checkUserLocationAccess(locationId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: You do not have access to this location' },
+        { status: 403 }
+      );
+    }
 
     // Verify location exists and is not deleted
     const location = await GamingLocations.findOne({
@@ -305,6 +324,15 @@ export async function PATCH(
 
     await connectDB();
 
+    // Check if user has access to this location
+    const hasAccess = await checkUserLocationAccess(locationId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: You do not have access to this location' },
+        { status: 403 }
+      );
+    }
+
     // Verify location exists and is not deleted
     const location = await GamingLocations.findOne({
       _id: locationId,
@@ -410,6 +438,15 @@ export async function DELETE(
     const { locationId, cabinetId } = await params;
 
     await connectDB();
+
+    // Check if user has access to this location
+    const hasAccess = await checkUserLocationAccess(locationId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: You do not have access to this location' },
+        { status: 403 }
+      );
+    }
 
     // Verify location exists and is not deleted
     const location = await GamingLocations.findOne({

@@ -733,9 +733,19 @@ export async function fetchCollectionReportById(
     const { data } = await axios.get(`/api/collection-report/${reportId}`);
     return data as CollectionReportData;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
-      console.warn(`Collection report with ID "${reportId}" not found`);
-      return null;
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 404) {
+        console.warn(`Collection report with ID "${reportId}" not found`);
+        return null;
+      }
+      // Check if it's a 403 Unauthorized error
+      if (error.response?.status === 403) {
+        const unauthorizedError = new Error('Unauthorized: You do not have access to this collection report');
+        const errorWithStatus = unauthorizedError as Error & { status: number; isUnauthorized: boolean };
+        errorWithStatus.status = 403;
+        errorWithStatus.isUnauthorized = true;
+        throw unauthorizedError;
+      }
     }
     console.error("Failed to fetch collection report by ID:", error);
     throw error; // Re-throw non-404 errors so the component can handle them

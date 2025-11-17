@@ -1,7 +1,7 @@
 # Authentication API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 29th, 2025
+**Last Updated:** December 2025
 
 ## Quick Search Guide
 
@@ -24,11 +24,12 @@ The Authentication API provides secure user authentication and session managemen
 ### What Happens When a User Logs In
 
 1. **Database Operations**:
-   - Queries `users` collection by email address
+   - Queries `users` collection by email address (primary) or username (fallback if identifier looks like email)
    - Validates password using bcrypt comparison
    - Generates JWT token with user claims
    - Sets HTTP-only cookie with token
-   - Updates user's last login timestamp
+   - Updates user's `lastLoginAt` timestamp
+   - Checks for hard-deleted users (`deletedAt` set) and disabled accounts (`isEnabled === false`)
 
 2. **User Model Fields**:
 
@@ -41,7 +42,7 @@ User {
   lastName: string;               // User's last name
   role: string;                   // User role (admin, user, viewer)
   permissions: string[];          // Array of permission strings
-  lastLogin?: Date;               // Last successful login timestamp
+  lastLoginAt?: Date;             // Last successful login timestamp
   accountLocked: boolean;         // Whether account is locked
   failedLoginAttempts: number;    // Number of consecutive failed login attempts
   createdAt: Date;                // Account creation timestamp
@@ -50,11 +51,13 @@ User {
 ```
 
 3. **Login Process Flow**:
-   - Validates email format and password strength
-   - Queries database for user by email
+   - Validates identifier format (accepts email or username) and password strength
+   - Queries database for user by email (primary) or username (if identifier looks like email)
    - Compares provided password with stored hash
+   - Checks user status (not hard-deleted, not soft-deleted, account enabled)
    - Generates JWT token with user information
    - Sets secure HTTP-only cookie
+   - Updates `lastLoginAt` timestamp
    - Returns user data and success message
 
 4. **JWT Token Structure**:
@@ -77,6 +80,7 @@ JWT_PAYLOAD {
    - Invalidates JWT token on server side
    - Logs logout activity for audit trail
    - Returns success confirmation
+   - Redirects to `/login?logout=success` for proper success message display
 
 2. **Session Cleanup**:
    - Removes token from client browser
@@ -416,6 +420,9 @@ Manually clears the authentication token (admin function).
 - **Invalid Token**: Malformed or tampered token
 - **Missing Token**: No authentication token provided
 - **Token Validation Failed**: Signature verification failed
+- **User Not Found**: User account hard-deleted from database (forces logout)
+- **User Deleted**: User account soft-deleted (`deletedAt` set, forces logout)
+- **Account Disabled**: User account disabled (`isEnabled === false`, forces logout)
 
 ### Password Reset Error Scenarios
 
@@ -423,6 +430,18 @@ Manually clears the authentication token (admin function).
 - **User Not Found**: Email address doesn't exist in system
 - **Rate Limited**: Too many reset requests from same IP
 - **Reset Token Expired**: Password reset token has expired
+
+### User Status Validation
+
+The authentication system now validates user status on every request:
+
+- **Hard Delete Detection**: If user is not found in database, session is invalidated
+- **Soft Delete Detection**: If `deletedAt` is set, session is invalidated
+- **Account Disabled**: If `isEnabled === false`, session is invalidated
+- **Automatic Logout**: Users are automatically logged out with appropriate error messages:
+  - `user_not_found`: User account hard-deleted
+  - `user_deleted`: User account soft-deleted
+  - `account_disabled`: User account disabled
 
 ### Error Response Format
 
@@ -463,7 +482,7 @@ db.users.findOne({ emailAddress: email });
 // Update last login
 db.users.updateOne(
   { _id: userId },
-  { $set: { lastLogin: new Date(), failedLoginAttempts: 0 } }
+  { $set: { lastLoginAt: new Date(), failedLoginAttempts: 0 } }
 );
 
 // Increment failed login attempts
