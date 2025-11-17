@@ -36,7 +36,7 @@ export function useReportsTabContent({
 
   // Get current tab component
   const currentTabComponent = useMemo(() => {
-    return tabComponents[activeView] || tabComponents.dashboard;
+    return tabComponents[activeView] || tabComponents.locations;
   }, [activeView, tabComponents]);
 
   return {

@@ -11,7 +11,6 @@
  * 4. Location Admin - Location-specific management
  * 5. Technician - Technical operations
  * 6. Collector - Collection operations
- * 7. Collector Meters - Meter-specific collections
  */
 
 export type UserRole =
@@ -20,8 +19,7 @@ export type UserRole =
   | 'manager'
   | 'location admin'
   | 'technician'
-  | 'collector'
-  | 'collector meters';
+  | 'collector';
 
 export type PageName =
   | 'dashboard'
@@ -59,7 +57,6 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'location admin',
       'technician',
       'collector',
-      'collector meters',
     ],
     locations: [
       'developer',
@@ -67,7 +64,6 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'manager',
       'location admin',
       'collector',
-      'collector meters',
     ],
     'location-details': [
       'developer',
@@ -76,7 +72,6 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'location admin',
       'technician',
       'collector',
-      'collector meters',
     ],
     members: ['developer'], // ✅ Restricted to developer only
     'member-details': ['developer'], // ✅ Restricted to developer only
@@ -86,7 +81,6 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'manager',
       'location admin',
       'collector',
-      'collector meters',
       'technician',
     ],
     reports: ['developer'], // ✅ Restricted to developer only
@@ -191,7 +185,6 @@ export const getHighestPriorityRole = (userRoles: string[]): string => {
     'location admin',
     'technician',
     'collector',
-    'collector meters',
   ];
 
   for (const role of roleHierarchy) {
@@ -295,7 +288,6 @@ export const getRoleDisplayName = (userRoles: string[]): string => {
     'location admin': 'Location Admin',
     technician: 'Technician',
     collector: 'Collector',
-    'collector meters': 'Collector Meters',
   };
 
   const highestRole = getHighestPriorityRole(userRoles);

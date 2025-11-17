@@ -29,8 +29,6 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
       setActiveView('locations');
     } else if (section === 'meters') {
       setActiveView('meters');
-    } else if (section === 'dashboard') {
-      setActiveView('dashboard');
     } else {
       // Default to locations if no section specified
       setActiveView('locations');
@@ -70,7 +68,6 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
       machines: '/reports?section=machines',
       locations: '/reports?section=locations',
       meters: '/reports?section=meters',
-      dashboard: '/reports?section=dashboard',
     };
 
     router.push(sectionMap[tabId]);

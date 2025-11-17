@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Badge } from '@/components/ui/badge';
 import type { ReportView, ReportTab } from '@/lib/types/reports';
 
 type ReportsNavigationProps = {
@@ -9,9 +8,6 @@ type ReportsNavigationProps = {
   activeView: ReportView;
   onTabChange: (tabId: ReportView) => void;
   _isLoading: boolean;
-  realTimeMetrics?: {
-    activeTerminals: number;
-  } | null;
 };
 
 /**
@@ -23,10 +19,8 @@ export default function ReportsNavigation({
   activeView,
   onTabChange,
   _isLoading,
-  realTimeMetrics,
 }: ReportsNavigationProps) {
-  // Filter out dashboard tab for navigation (it's not shown in tabs)
-  const visibleTabs = availableTabs.filter(tab => tab.id !== 'dashboard');
+  const visibleTabs = availableTabs;
 
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
@@ -46,11 +40,6 @@ export default function ReportsNavigation({
           >
             <span className="text-lg">{tab.icon}</span>
             <span>{tab.label}</span>
-            {tab.id === 'dashboard' && realTimeMetrics && (
-              <Badge variant="secondary" className="ml-2 text-xs">
-                {realTimeMetrics.activeTerminals}
-              </Badge>
-            )}
           </motion.button>
         ))}
       </nav>

@@ -20,7 +20,6 @@ export function getDefaultRedirectPath(userRole: UserRole): string {
     'location admin': '/locations',
     technician: '/cabinets', // machines page
     collector: '/collection-report', // collection report page
-    'collector meters': '/collection-report', // collection report page
   };
 
   return roleRedirectMap[userRole] || '/cabinets'; // fallback to machines page
@@ -46,7 +45,6 @@ export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
     'location admin',
     'technician',
     'collector',
-    'collector meters',
   ];
 
   // Find the highest priority role the user has
@@ -75,7 +73,6 @@ export function getRedirectDestinationName(userRole: UserRole): string {
     'location admin': 'Locations',
     technician: 'Machines',
     collector: 'Collection Report',
-    'collector meters': 'Collection Report',
   };
 
   return destinationNames[userRole] || 'Machines';
@@ -102,7 +99,6 @@ export function getRedirectDestinationNameFromRoles(
     'location admin',
     'technician',
     'collector',
-    'collector meters',
   ];
 
   // Find the highest priority role the user has

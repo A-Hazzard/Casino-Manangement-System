@@ -120,13 +120,31 @@ export async function PUT(request: NextRequest): Promise<Response> {
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     apiLogger.logError(context, 'User update failed', errorMsg);
+    
+    // Check if it's a conflict error (username/email already exists)
+    const isConflictError =
+      errorMsg === 'Username already exists' ||
+      errorMsg === 'Email already exists';
+    
     return new Response(
       JSON.stringify({
         success: false,
-        message: errorMsg === 'User not found' ? errorMsg : 'Update failed',
+        message:
+          errorMsg === 'User not found'
+            ? errorMsg
+            : isConflictError
+              ? errorMsg
+              : 'Update failed',
         error: errorMsg,
       }),
-      { status: errorMsg === 'User not found' ? 404 : 500 }
+      {
+        status:
+          errorMsg === 'User not found'
+            ? 404
+            : isConflictError
+              ? 409
+              : 500,
+      }
     );
   }
 }
@@ -185,6 +203,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       isEnabled = true,
       profilePicture = null,
       resourcePermissions = {},
+      rel,
     } = body;
 
     if (!username || typeof username !== 'string') {
@@ -255,6 +274,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         isEnabled,
         profilePicture,
         resourcePermissions,
+        rel,
       },
       request
     );
@@ -270,16 +290,20 @@ export async function POST(request: NextRequest): Promise<Response> {
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     apiLogger.logError(context, 'User creation failed', errorMsg);
+    
+    // Check if it's a conflict error (username/email already exists)
+    const isConflictError =
+      errorMsg === 'Username already exists' ||
+      errorMsg === 'Email already exists' ||
+      errorMsg === 'Username and email already exist';
+    
     return new Response(
       JSON.stringify({
         success: false,
-        message:
-          errorMsg === 'Username or email already exists'
-            ? errorMsg
-            : 'User creation failed',
+        message: isConflictError ? errorMsg : 'User creation failed',
         error: errorMsg,
       }),
-      { status: errorMsg === 'Username or email already exists' ? 409 : 500 }
+      { status: isConflictError ? 409 : 500 }
     );
   }
 }

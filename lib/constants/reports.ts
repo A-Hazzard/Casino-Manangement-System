@@ -6,12 +6,6 @@ import type { ReportTab } from '@/lib/types';
  */
 export const REPORTS_TABS_CONFIG: ReportTab[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: '📊',
-    description: 'Real-time overview of casino operations and KPIs',
-  },
-  {
     id: 'locations',
     label: 'Locations',
     icon: '🏢',

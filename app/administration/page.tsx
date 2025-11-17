@@ -18,7 +18,7 @@ import { ADMINISTRATION_TABS_CONFIG } from '@/lib/constants/administration';
 // Activity logging removed - handled via API calls
 import ActivityLogsTable from '@/components/administration/ActivityLogsTable';
 import AddLicenseeModal from '@/components/administration/AddLicenseeModal';
-import AddUserDetailsModal from '@/components/administration/AddUserDetailsModal';
+import AddUserModal from '@/components/administration/AddUserModal';
 import DeleteLicenseeModal from '@/components/administration/DeleteLicenseeModal';
 import EditLicenseeModal from '@/components/administration/EditLicenseeModal';
 import LicenseeCard from '@/components/administration/LicenseeCard';
@@ -171,10 +171,10 @@ function AdministrationPageContent() {
     null
   );
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [addUserStep, setAddUserStep] = useState<1 | 2>(1);
   const [addUserForm, setAddUserForm] = useState<AddUserForm>({
     roles: [],
     allowedLocations: [],
+    licenseeIds: [],
   });
   const [allLicensees, setAllLicensees] = useState<Licensee[]>([]);
   const [isLicenseesLoading, setIsLicenseesLoading] = useState(true);
@@ -350,9 +350,20 @@ function AdministrationPageContent() {
   ) => {
     if (!selectedUser) return;
 
-    // Validate that the updated data has the proper structure
-    if (!updated.profile || !updated.profile.firstName) {
-      toast.error('Invalid user data structure. Please check the form fields.');
+    // Validate that we have at least one field to update
+    const hasUpdates = 
+      updated.username !== undefined ||
+      updated.email !== undefined ||
+      updated.emailAddress !== undefined ||
+      updated.roles !== undefined ||
+      updated.profile !== undefined ||
+      updated.profilePicture !== undefined ||
+      updated.password !== undefined ||
+      updated.rel !== undefined ||
+      updated.resourcePermissions !== undefined;
+    
+    if (!hasUpdates) {
+      toast.error('No changes detected. Please update at least one field.');
       return;
     }
 
@@ -417,7 +428,7 @@ function AdministrationPageContent() {
       toast.info('No changes detected');
       return;
     }
-
+    
     console.log('[Administration] ✅ Changes detected, proceeding with save');
 
     // Check if permission-related fields changed (roles, resourcePermissions, rel)
@@ -426,24 +437,24 @@ function AdministrationPageContent() {
       '[Administration] All changed paths:',
       meaningfulChanges.map(c => c.path)
     );
-
+    
     const permissionFieldsChanged = meaningfulChanges.some(change => {
       const fieldPath = change.path;
       const isPermissionField =
         fieldPath === 'roles' ||
-        fieldPath.startsWith('resourcePermissions') ||
-        fieldPath.startsWith('rel');
-
+             fieldPath.startsWith('resourcePermissions') || 
+             fieldPath.startsWith('rel');
+      
       if (isPermissionField) {
         console.log(
           '[Administration] Found permission field change:',
           fieldPath
         );
       }
-
+      
       return isPermissionField;
     });
-
+    
     console.log(
       '[Administration] Permission fields changed:',
       permissionFieldsChanged
@@ -549,7 +560,7 @@ function AdministrationPageContent() {
       );
     } catch (error) {
       console.error('Failed to update user:', error);
-
+      
       // Extract detailed error message
       let errorMessage = 'Failed to update user';
       if (error instanceof Error) {
@@ -560,7 +571,7 @@ function AdministrationPageContent() {
           errorMessage = err.response.data.message;
         }
       }
-
+      
       toast.error(errorMessage);
       // Don't close modal on error - let user try again
     }
@@ -568,8 +579,7 @@ function AdministrationPageContent() {
 
   // Add User modal handlers
   const openAddUserModal = () => {
-    setAddUserStep(1);
-    setAddUserForm({ roles: [], allowedLocations: [] });
+    setAddUserForm({ roles: [], allowedLocations: [], licenseeIds: [] });
     setIsAddUserModalOpen(true);
   };
   const closeAddUserModal = async () => {
@@ -582,9 +592,18 @@ function AdministrationPageContent() {
       console.error('Failed to refresh users data:', error);
     }
   };
-  const handleAddUserNext = () => setAddUserStep(2);
   const handleAddUserFormChange = (data: Partial<AddUserForm>) =>
     setAddUserForm(prev => ({ ...prev, ...data }));
+  const handleSaveAddUser = async () => {
+    await administrationUtils.userManagement.createNewUser(
+      addUserForm,
+      setIsAddUserModalOpen,
+      async () => {
+        const usersData = await fetchUsers(selectedLicencee);
+        setAllUsers(usersData);
+      }
+    );
+  };
 
   const handleOpenAddLicensee = () => {
     setLicenseeForm({});
@@ -1311,10 +1330,10 @@ function AdministrationPageContent() {
             setSelectedUserToDelete(null);
           }}
         />
-        <AddUserDetailsModal
-          open={isAddUserModalOpen && addUserStep === 1}
+        <AddUserModal
+          open={isAddUserModalOpen}
           onClose={closeAddUserModal}
-          onNext={handleAddUserNext}
+          onSave={handleSaveAddUser}
           formState={addUserForm}
           setFormState={handleAddUserFormChange}
         />

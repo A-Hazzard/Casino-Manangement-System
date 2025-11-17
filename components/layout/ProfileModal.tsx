@@ -340,28 +340,40 @@ export default function ProfileModal({
   useEffect(() => {
     const fetchMissingLocations = async () => {
       if (!userData?.resourcePermissions?.['gaming-locations']?.resources) return;
+      if (locationsLoading) return; // Don't fetch if locations are still loading
       
       const locationIds = userData.resourcePermissions['gaming-locations'].resources;
       const missingIds = locationIds.filter(
-        id => !locations.find(l => String(l._id) === String(id))
+        id => {
+          const normalizedId = String(id);
+          return !locations.find(l => String(l._id) === normalizedId);
+        }
       );
       
       if (missingIds.length === 0) return;
       
-      console.log('[ProfileModal] Fetching missing location names for IDs:', missingIds);
+      // Check which ones we haven't fetched yet
+      const idsToFetch = missingIds.filter(
+        id => !missingLocationNames[String(id)]
+      );
+      
+      if (idsToFetch.length === 0) return;
+      
+      console.log('[ProfileModal] Fetching missing location names for IDs:', idsToFetch);
       
       // Fetch each missing location by ID
-      const fetchPromises = missingIds.map(async (locationId) => {
+      const fetchPromises = idsToFetch.map(async (locationId) => {
         try {
-          const response = await axios.get(`/api/locations/${locationId}`);
+          const normalizedId = String(locationId);
+          const response = await axios.get(`/api/locations/${normalizedId}`);
           const locationData = response.data?.location || response.data;
           if (locationData?.name) {
-            return { id: locationId, name: locationData.name };
+            return { id: normalizedId, name: locationData.name };
           }
-          return { id: locationId, name: `Unknown Location` };
+          return { id: normalizedId, name: `Unknown Location` };
         } catch (error) {
           console.error(`[ProfileModal] Failed to fetch location ${locationId}:`, error);
-          return { id: locationId, name: `Unknown (${locationId})` };
+          return { id: String(locationId), name: `Unknown (${locationId})` };
         }
       });
       
@@ -371,13 +383,20 @@ export default function ProfileModal({
         namesMap[result.id] = result.name;
       });
       
-      setMissingLocationNames(namesMap);
+      setMissingLocationNames(prev => ({ ...prev, ...namesMap }));
     };
     
-    if (open && userData && locations.length > 0) {
-      fetchMissingLocations();
+    if (open && userData && !locationsLoading && locations.length >= 0) {
+      // Wait a bit for locations to finish loading, then fetch missing ones
+      const timer = setTimeout(() => {
+        void fetchMissingLocations();
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [open, userData, locations]);
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, userData, locations, locationsLoading]);
 
   // Reset assignment initialization when closing modal
   useEffect(() => {
@@ -1360,7 +1379,6 @@ export default function ProfileModal({
                               'location admin',
                               'technician',
                               'collector',
-                              'collector meters',
                             ].map(role => (
                               <label
                                 key={role}
@@ -1443,15 +1461,42 @@ export default function ProfileModal({
                           </div>
                         ) : (
                           <p className="p-2">
-                            {userData?.rel?.licencee && userData.rel.licencee.length > 0
-                              ? userData.rel.licencee
-                                  .map(licenseeId => {
-                                    const match = licensees.find(
-                                      licensee => String(licensee._id) === String(licenseeId)
+                            {licenseesLoading ? (
+                              <Skeleton className="inline-block h-5 w-32" />
+                            ) : userData?.rel?.licencee && userData.rel.licencee.length > 0
+                              ? (() => {
+                                  const licenseeNames = userData.rel.licencee
+                                    .map(licenseeId => {
+                                      const normalizedId = String(licenseeId);
+                                      const match = licensees.find(
+                                        licensee => String(licensee._id) === normalizedId
+                                      );
+                                      return match?.name || null;
+                                    })
+                                    .filter((name): name is string => name !== null);
+                                  
+                                  if (licenseeNames.length === 0) {
+                                    // If no matches found, show IDs as fallback
+                                    return userData.rel.licencee
+                                      .map(id => `Unknown (${id})`)
+                                      .join(', ');
+                                  }
+                                  
+                                  // Show matched names, and any unmatched IDs
+                                  const unmatchedIds = userData.rel.licencee.filter(id => {
+                                    const normalizedId = String(id);
+                                    return !licensees.some(
+                                      licensee => String(licensee._id) === normalizedId
                                     );
-                                    return match?.name || `Unknown (${licenseeId})`;
-                                  })
-                                  .join(', ')
+                                  });
+                                  
+                                  const result = [...licenseeNames];
+                                  if (unmatchedIds.length > 0) {
+                                    result.push(...unmatchedIds.map(id => `Unknown (${id})`));
+                                  }
+                                  
+                                  return result.join(', ');
+                                })()
                               : isPrivilegedEditor
                                 ? 'All Licensees (Admin)'
                                 : 'None'}
@@ -1464,7 +1509,7 @@ export default function ProfileModal({
                         <label className="mb-1 block text-sm font-medium text-gray-700">
                           Assigned Locations
                         </label>
-                        {locationsLoading ? (
+                        {locationsLoading || (licenseesLoading && !locations.length) ? (
                           <div className="p-2">
                             <Skeleton className="h-5 w-32" />
                           </div>
@@ -1538,29 +1583,27 @@ export default function ProfileModal({
                                 return 'No locations assigned';
                               }
 
-                              const hasMissingLocations = locationPermissions.some(locationId => {
-                                const location = locations.find(
-                                  loc => String(loc._id) === String(locationId)
-                                );
-                                return !location && !missingLocationNames[locationId];
-                              });
-
-                              if (hasMissingLocations) {
+                              // Only show skeleton if we're still loading locations
+                              if (locationsLoading) {
                                 return <Skeleton className="inline-block h-5 w-48" />;
                               }
 
+                              // If we have missing locations, show them as "Unknown" instead of skeleton
+                              // The useEffect will fetch their names in the background
+
                               const locationNames = locationPermissions
                                 .map(locationId => {
+                                  const normalizedId = String(locationId);
                                   const location = locations.find(
-                                    loc => String(loc._id) === String(locationId)
+                                    loc => String(loc._id) === normalizedId
                                   );
                                   if (location) {
                                     return location.name;
                                   }
-                                  if (missingLocationNames[locationId]) {
-                                    return missingLocationNames[locationId];
+                                  if (missingLocationNames[normalizedId]) {
+                                    return missingLocationNames[normalizedId];
                                   }
-                                  return `Unknown (${locationId})`;
+                                  return `Unknown (${normalizedId})`;
                                 })
                                 .join(', ');
 

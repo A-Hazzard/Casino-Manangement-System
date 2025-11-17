@@ -14,7 +14,6 @@ const ROLE_OPTIONS = [
   { label: 'Location Admin', value: 'location admin' },
   { label: 'Technician', value: 'technician' },
   { label: 'Collector', value: 'collector' },
-  { label: 'Collector Meters', value: 'collector meters' },
 ];
 
 export type RolesPermissionsModalProps = {

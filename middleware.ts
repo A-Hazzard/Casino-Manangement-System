@@ -96,9 +96,11 @@ export async function middleware(request: NextRequest) {
           return createLogoutResponse(request, 'database_context_mismatch');
         }
 
-        // Check if user is enabled
-        if (!payload.isEnabled) {
-          console.warn('🔴 [MIDDLEWARE] User account is disabled');
+        // Check if user is enabled (from JWT payload)
+        // Note: Database checks for deleted users are handled in API routes
+        // since Edge Runtime doesn't support Mongoose
+        if (payload.isEnabled === false) {
+          console.warn('🔴 [MIDDLEWARE] User account is disabled (from JWT)');
           return createLogoutResponse(request, 'account_disabled');
         }
 

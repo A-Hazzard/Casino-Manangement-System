@@ -348,7 +348,7 @@ export type ReportData = {
 export type Reportable = Record<string, unknown>;
 
 // Report navigation types
-export type ReportView = 'machines' | 'locations' | 'meters' | 'dashboard';
+export type ReportView = 'machines' | 'locations' | 'meters';
 
 export type ReportTab = {
   id: ReportView;

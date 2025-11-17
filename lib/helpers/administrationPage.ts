@@ -5,7 +5,7 @@ import {
   updateUser,
 } from '@/lib/helpers/administration';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
-import type { SortKey, User } from '@/lib/types/administration';
+import type { ResourcePermissions, SortKey, User } from '@/lib/types/administration';
 import type { Licensee } from '@/lib/types/licensee';
 import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import { getNext30Days } from '@/lib/utils/licensee';
@@ -128,6 +128,16 @@ export const userManagement = {
       gender,
       profilePicture,
       resourcePermissions,
+      licenseeIds,
+      street,
+      town,
+      region,
+      country,
+      postalCode,
+      dateOfBirth,
+      idType,
+      idNumber,
+      notes,
     } = addUserForm;
 
     if (!username || typeof username !== 'string') {
@@ -147,20 +157,66 @@ export const userManagement = {
       return;
     }
 
+    // Build profile object with all fields
+    const profile: Record<string, unknown> = {};
+    if (firstName) profile.firstName = firstName.trim();
+    if (lastName) profile.lastName = lastName.trim();
+    if (gender) profile.gender = gender.trim().toLowerCase();
+
+    // Build address object
+    const address: Record<string, unknown> = {};
+    if (street) address.street = street.trim();
+    if (town) address.town = town.trim();
+    if (region) address.region = region.trim();
+    if (country) address.country = country.trim();
+    if (postalCode) address.postalCode = postalCode.trim();
+    if (Object.keys(address).length > 0) {
+      profile.address = address;
+    }
+
+    // Build identification object
+    const identification: Record<string, unknown> = {};
+    if (dateOfBirth) {
+      identification.dateOfBirth = new Date(dateOfBirth);
+    }
+    if (idType) identification.idType = idType.trim();
+    if (idNumber) identification.idNumber = idNumber.trim();
+    if (notes) identification.notes = notes.trim();
+    if (Object.keys(identification).length > 0) {
+      profile.identification = identification;
+    }
+
     // Map to backend payload
-    const payload = {
+    const payload: {
+      username: string;
+      emailAddress: string;
+      password: string;
+      roles: string[];
+      profile: Record<string, unknown>;
+      isEnabled: boolean;
+      profilePicture: string | null;
+      resourcePermissions: ResourcePermissions;
+      rel?: {
+        licencee?: string[];
+      };
+    } = {
       username,
       emailAddress: email,
       password,
       roles,
-      profile: {
-        firstName,
-        lastName,
-        gender,
-      },
+      profile,
       isEnabled: true,
       profilePicture: profilePicture || null,
       resourcePermissions: resourcePermissions || {},
+    };
+
+    // Include licensee assignments (required for all users)
+    if (!licenseeIds || !Array.isArray(licenseeIds) || licenseeIds.length === 0) {
+      toast.error('A user must be assigned to at least one licensee');
+      return;
+    }
+    payload.rel = {
+      licencee: licenseeIds,
     };
 
     try {
@@ -404,6 +460,16 @@ export const licenseeManagement = {
  * Utility functions for administration page
  */
 export const administrationUtils = {
+  /**
+   * User management operations
+   */
+  userManagement,
+
+  /**
+   * Licensee management operations
+   */
+  licenseeManagement,
+
   /**
    * Processes and sorts users based on search and sort configuration
    */

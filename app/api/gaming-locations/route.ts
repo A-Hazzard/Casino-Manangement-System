@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     await connectDB();
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get('licensee');
+    const licensees = searchParams.get('licensees'); // Support multiple licensees (comma-separated)
 
     const query: Record<string, unknown> = {
       $or: [
@@ -15,8 +16,14 @@ export async function GET(request: NextRequest) {
       ],
     };
 
-    // If licensee is provided, filter by licensee
-    if (licensee) {
+    // If multiple licensees are provided (comma-separated), filter by all of them
+    if (licensees) {
+      const licenseeArray = licensees.split(',').map(l => l.trim()).filter(l => l);
+      if (licenseeArray.length > 0) {
+        query['rel.licencee'] = { $in: licenseeArray };
+      }
+    } else if (licensee) {
+      // Single licensee filter (backwards compatibility)
       query['rel.licencee'] = licensee;
     }
 
@@ -24,18 +31,34 @@ export async function GET(request: NextRequest) {
       _id: 1,
       name: 1,
       'rel.licencee': 1,
-    }).lean();
+    })
+      .sort({ name: 1 })
+      .lean();
 
-    const formattedLocations = locations.map(loc => ({
-      _id: loc._id,
-      name: loc.name,
-      licenseeId: loc.rel?.licencee || null,
-    }));
+    const formattedLocations = locations.map(loc => {
+      const licenceeRaw = loc.rel?.licencee;
+      let licenseeId: string | null = null;
 
-    return NextResponse.json({
-      success: true,
-      data: formattedLocations,
+      if (Array.isArray(licenceeRaw)) {
+        licenseeId =
+          licenceeRaw.length > 0 && licenceeRaw[0]
+            ? String(licenceeRaw[0])
+            : null;
+      } else if (licenceeRaw) {
+        licenseeId = String(licenceeRaw);
+      }
+
+      return {
+        _id: loc._id,
+        id: String(loc._id), // Also include 'id' for compatibility
+        name: loc.name,
+        licenseeId,
+      };
     });
+
+    // Return in format expected by fetchAllGamingLocations (direct array)
+    // Also support the { success: true, data: [...] } format for backwards compatibility
+    return NextResponse.json(formattedLocations);
   } catch (error) {
     console.error('Error fetching gaming locations:', error);
     return NextResponse.json(

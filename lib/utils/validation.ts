@@ -200,6 +200,48 @@ export function validateAlphabeticField(value: string | null | undefined): boole
   return validateNameField(value);
 }
 
+/**
+ * Validates street address - allows letters, numbers, spaces, commas, and full stops
+ * @param value - The street address to validate
+ * @returns True if valid, false otherwise
+ */
+export function validateStreetAddress(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  // Allow letters, numbers, spaces, commas, and full stops
+  const allowedPattern = /^[a-zA-Z0-9\s,\.]+$/;
+  return allowedPattern.test(trimmed);
+}
+
+/**
+ * Validates town/region - allows letters, numbers, spaces, commas, and full stops
+ * @param value - The town/region to validate
+ * @returns True if valid, false otherwise
+ */
+export function validateTownRegion(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  // Allow letters, numbers, spaces, commas, and full stops
+  const allowedPattern = /^[a-zA-Z0-9\s,\.]+$/;
+  return allowedPattern.test(trimmed);
+}
+
+/**
+ * Validates country - only letters and spaces
+ * @param value - The country to validate
+ * @returns True if valid, false otherwise
+ */
+export function validateCountry(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  // Allow only letters and spaces
+  const allowedPattern = /^[a-zA-Z\s]+$/;
+  return allowedPattern.test(trimmed);
+}
+
 export function isValidDateInput(value: string | Date | null | undefined): boolean {
   if (!value) return true;
   const date = value instanceof Date ? value : new Date(value);

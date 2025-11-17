@@ -12,11 +12,12 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
  * Main entry point for the reports section with comprehensive analytics and reporting
  *
  * Features:
- * - Multi-tab interface (Dashboard, Locations, Machines, Meters)
+ * - Multi-tab interface (Locations, Machines, Meters)
  * - Role-based access control and permissions
  * - Real-time data updates and filtering
  * - Responsive design for desktop and mobile
  * - Advanced filtering and export capabilities
+ * - Currency conversion for Admin/Developer viewing "All Licensees"
  */
 export default function ReportsPage() {
   return (

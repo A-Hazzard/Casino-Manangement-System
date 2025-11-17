@@ -24,7 +24,8 @@ import {
 import cameraIcon from '@/public/cameraIcon.svg';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
-import { Edit3, Loader2, Save, Trash2, X, XCircle } from 'lucide-react';
+import { Edit3, Info, Loader2, Save, Trash2, X, XCircle } from 'lucide-react';
+import RolePermissionsDialog from './RolePermissionsDialog';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -36,7 +37,6 @@ const ROLE_OPTIONS = [
   { label: 'Location Admin', value: 'location admin' },
   { label: 'Technician', value: 'technician' },
   { label: 'Collector', value: 'collector' },
-  { label: 'Collector Meters', value: 'collector meters' },
 ];
 
 const arraysEqual = (a: string[], b: string[]) => {
@@ -70,14 +70,33 @@ export default function UserModal({
 }: UserModalProps) {
   const currentUser = useUserStore(state => state.user);
   const currentUserRoles = (currentUser?.roles || []) as string[];
-  const isAdmin = currentUserRoles.some(role => ['admin', 'developer'].includes(role));
-  const isManager = currentUserRoles.includes('manager') && !isAdmin;
+  const isDeveloper = currentUserRoles.includes('developer');
+  const isAdmin = currentUserRoles.includes('admin') && !isDeveloper;
+  const isManager = currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
   const canEditAccountFields = Boolean(
     currentUser?.roles?.some(role =>
       ['admin', 'developer', 'manager'].includes(role)
     )
   );
-  const canEditLicensees = isAdmin; // Only admins/developers can edit licensee assignments
+  const canEditLicensees = isDeveloper || isAdmin; // Only admins/developers can edit licensee assignments
+
+  // Filter available roles based on editor's permissions
+  const availableRoles = useMemo(() => {
+    if (isDeveloper) {
+      // Developer can assign all roles
+      return ROLE_OPTIONS;
+    } else if (isAdmin) {
+      // Admin can assign all roles except developer
+      return ROLE_OPTIONS.filter(role => role.value !== 'developer');
+    } else if (isManager) {
+      // Manager can only assign: location admin, technician, collector
+      return ROLE_OPTIONS.filter(role =>
+        ['location admin', 'technician', 'collector'].includes(role.value)
+      );
+    }
+    // No roles available for other users
+    return [];
+  }, [isDeveloper, isAdmin, isManager]);
   const currentUserLicenseeIds = useMemo(
     () => ((currentUser?.rel as { licencee?: string[] })?.licencee || []).map(id => String(id)),
     [currentUser?.rel]
@@ -97,8 +116,6 @@ export default function UserModal({
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    middleName: '',
-    otherName: '',
     gender: '',
     street: '',
     town: '',
@@ -136,6 +153,11 @@ export default function UserModal({
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
+  const [rolePermissionsDialog, setRolePermissionsDialog] = useState<{
+    open: boolean;
+    role: string;
+    roleLabel: string;
+  }>({ open: false, role: '', roleLabel: '' });
 
   // Licensees state
   const [licensees, setLicensees] = useState<Licensee[]>([]);
@@ -162,8 +184,6 @@ export default function UserModal({
       setFormData({
         firstName: targetUser.profile?.firstName || '',
         lastName: targetUser.profile?.lastName || '',
-        middleName: targetUser.profile?.middleName || '',
-        otherName: targetUser.profile?.otherName || '',
         gender: targetUser.profile?.gender || '',
         street: targetUser.profile?.address?.street || '',
         town: targetUser.profile?.address?.town || '',
@@ -332,7 +352,7 @@ export default function UserModal({
     loadLocations();
   }, [user]);
 
-  // Load licensees when the modal is open and normalise assignments
+  // Load licensees when the modal is open and normalise assignments - only when modal opens
   useEffect(() => {
     if (!open) {
       return;
@@ -419,7 +439,8 @@ export default function UserModal({
     return () => {
       cancelled = true;
     };
-  }, [open, isManager, currentUserLicenseeIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]); // Only depend on 'open' - fetch once when modal opens
 
   // Load countries
   useEffect(() => {
@@ -646,64 +667,194 @@ export default function UserModal({
       return;
     }
 
-    // Structure the data properly to match the User type
-    const updatedUser = {
-      ...user,
-      username: updatedUsername,
-      email: updatedEmail,
-      emailAddress: updatedEmail,
-      profile: {
-        ...user?.profile,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        middleName: formData.middleName,
-        otherName: formData.otherName,
-        gender: formData.gender,
-        address: {
-          ...user?.profile?.address,
-          street: formData.street,
-          town: formData.town,
-          region: formData.region,
-          country: formData.country,
-          postalCode: formData.postalCode,
+    // Validate email is required when editing from admin page
+    if (canEditAccountFields && !updatedEmail) {
+      toast.error('Email address is required');
+      return;
+    }
+
+    // Helper to check if a field value has changed
+    const hasChanged = (newValue: string, existingValue: string | undefined | null): boolean => {
+      const newTrimmed = newValue.trim();
+      const existingTrimmed = existingValue?.toString().trim() || '';
+      return newTrimmed !== existingTrimmed;
+    };
+
+    // Build profile update - only include fields that have actually changed
+    const profileUpdate: Record<string, unknown> = {};
+    const existingProfile = user?.profile || {};
+    
+    // Check and include profile fields only if they've changed
+    if (hasChanged(formData.firstName, existingProfile.firstName)) {
+      profileUpdate.firstName = formData.firstName.trim() || undefined;
+    }
+    if (hasChanged(formData.lastName, existingProfile.lastName)) {
+      profileUpdate.lastName = formData.lastName.trim() || undefined;
+    }
+    if (hasChanged(formData.gender, existingProfile.gender)) {
+      profileUpdate.gender = formData.gender.trim() || undefined;
+    }
+
+    // Build address update - only include fields that have changed
+    const addressUpdate: Record<string, unknown> = {};
+    const existingAddress = existingProfile.address || {};
+    
+    if (hasChanged(formData.street, existingAddress.street)) {
+      addressUpdate.street = formData.street.trim() || undefined;
+    }
+    if (hasChanged(formData.town, existingAddress.town)) {
+      addressUpdate.town = formData.town.trim() || undefined;
+    }
+    if (hasChanged(formData.region, existingAddress.region)) {
+      addressUpdate.region = formData.region.trim() || undefined;
+    }
+    if (hasChanged(formData.country, existingAddress.country)) {
+      addressUpdate.country = formData.country.trim() || undefined;
+    }
+    if (hasChanged(formData.postalCode, existingAddress.postalCode)) {
+      addressUpdate.postalCode = formData.postalCode.trim() || undefined;
+    }
+    
+    // Only include address if it has at least one changed field
+    if (Object.keys(addressUpdate).length > 0) {
+      profileUpdate.address = {
+        ...existingAddress,
+        ...addressUpdate,
+      };
+    }
+
+    // Build identification update - only include fields that have changed
+    const identificationUpdate: Record<string, unknown> = {};
+    const existingIdentification = existingProfile.identification || {};
+    
+    // Handle dateOfBirth specially - compare as dates
+    const existingDob = existingIdentification.dateOfBirth 
+      ? (typeof existingIdentification.dateOfBirth === 'string' 
+          ? existingIdentification.dateOfBirth 
+          : new Date(existingIdentification.dateOfBirth as Date).toISOString().split('T')[0])
+      : '';
+    if (formData.dateOfBirth.trim() !== existingDob) {
+      identificationUpdate.dateOfBirth = formData.dateOfBirth.trim() || undefined;
+    }
+    
+    if (hasChanged(formData.idType, existingIdentification.idType)) {
+      identificationUpdate.idType = formData.idType.trim() || undefined;
+    }
+    if (hasChanged(formData.idNumber, existingIdentification.idNumber)) {
+      identificationUpdate.idNumber = formData.idNumber.trim() || undefined;
+    }
+    if (hasChanged(formData.notes, existingIdentification.notes)) {
+      identificationUpdate.notes = formData.notes.trim() || undefined;
+    }
+    
+    // Only include identification if it has at least one changed field
+    if (Object.keys(identificationUpdate).length > 0) {
+      profileUpdate.identification = {
+        ...existingIdentification,
+        ...identificationUpdate,
+      };
+    }
+
+    // Check for location and licensee changes BEFORE building update object
+    const oldLocationIds = (user?.resourcePermissions?.['gaming-locations']?.resources || []).map(id => String(id));
+    const newLocationIds = selectedLocationIds.map(id => String(id));
+    
+    // Sort for comparison
+    const oldLocationIdsSorted = [...oldLocationIds].sort();
+    const newLocationIdsSorted = [...newLocationIds].sort();
+    
+    const locationIdsChanged = 
+      oldLocationIdsSorted.length !== newLocationIdsSorted.length ||
+      !oldLocationIdsSorted.every((id, idx) => id === newLocationIdsSorted[idx]);
+
+    const oldLicenseeIds = (user?.rel?.licencee || []).map(id => String(id));
+    const newLicenseeIds = selectedLicenseeIds.map(id => String(id));
+    
+    // Sort for comparison
+    const oldLicenseeIdsSorted = [...oldLicenseeIds].sort();
+    const newLicenseeIdsSorted = [...newLicenseeIds].sort();
+    
+    const licenseeIdsChanged = 
+      oldLicenseeIdsSorted.length !== newLicenseeIdsSorted.length ||
+      !oldLicenseeIdsSorted.every((id, idx) => id === newLicenseeIdsSorted[idx]);
+
+    // Prevent managers from changing licensee assignments
+    if (isManager && licenseeIdsChanged) {
+      toast.error('Managers cannot change licensee assignments');
+      return;
+    }
+
+    // Check for changes before building update object
+    const usernameChanged = user.username !== updatedUsername;
+    const emailChanged = (user.email || user.emailAddress || '') !== updatedEmail;
+    const rolesChanged = JSON.stringify((user.roles || []).sort()) !== JSON.stringify(roles.sort());
+    
+    // Structure the data properly to match the User type - only include changed fields
+    const updatedUser: Partial<User> & {
+      password?: string;
+      resourcePermissions: ResourcePermissions;
+    } = {
+      _id: user._id,
+      // Initialize with existing resourcePermissions or default
+      resourcePermissions: (user?.resourcePermissions || {
+        'gaming-locations': {
+          entity: 'gaming-locations' as const,
+          resources: [],
         },
-        identification: {
-          ...user?.profile?.identification,
-          dateOfBirth: formData.dateOfBirth,
-          idType: formData.idType,
-          idNumber: formData.idNumber,
-          notes: formData.notes,
-        },
-      },
-      profilePicture: formData.profilePicture || null,
-      roles,
-      password: password || undefined,
-      rel: {
-        // Managers cannot change licensee assignments - keep original
-        licencee: isManager ? (user?.rel?.licencee || []) : selectedLicenseeIds,
-      },
-      resourcePermissions: {
+      }) as ResourcePermissions,
+    };
+
+    // Only include fields that have changed
+    if (usernameChanged) {
+      updatedUser.username = updatedUsername;
+    }
+    if (emailChanged) {
+      updatedUser.email = updatedEmail;
+      updatedUser.emailAddress = updatedEmail;
+    }
+    if (rolesChanged) {
+      updatedUser.roles = roles;
+    }
+    
+    // Only include licensee if it changed (and user can edit it)
+    if (licenseeIdsChanged && !isManager) {
+      updatedUser.rel = {
+        licencee: selectedLicenseeIds,
+      };
+    }
+    
+    // Update resourcePermissions if locations changed
+    if (locationIdsChanged) {
+      updatedUser.resourcePermissions = {
         ...(user?.resourcePermissions || {}),
         'gaming-locations': {
           entity: 'gaming-locations' as const,
           resources: selectedLocationIds,
         },
-      },
-    };
-
-    // Validate that the form data has been properly structured
-    if (!updatedUser.profile) {
-      toast.error('Failed to structure user data properly');
-      return;
+      } as ResourcePermissions;
     }
 
-    // Validate required fields
-    if (!formData.firstName || formData.firstName.trim() === '') {
-      toast.error('First name is required');
-      return;
+    // Only include profile if it has fields to update
+    if (Object.keys(profileUpdate).length > 0) {
+      updatedUser.profile = {
+        ...existingProfile,
+        ...profileUpdate,
+      } as typeof user.profile;
     }
 
-    // Validate email if it exists in the user object
+    // Only include profilePicture if it's being updated and has changed
+    if (formData.profilePicture !== (user?.profilePicture || '')) {
+      updatedUser.profilePicture = formData.profilePicture || null;
+    }
+
+    // Only include password if it's being changed
+    if (password) {
+      updatedUser.password = password;
+    }
+
+    // Note: profile is optional - we only include it if there are fields to update
+
+    // Validate email format if provided
     if (updatedEmail && !/\S+@\S+\.\S+/.test(updatedEmail)) {
       toast.error('Please enter a valid email address');
       return;
@@ -722,9 +873,44 @@ export default function UserModal({
       }
     }
 
-    // Detect actual changes between old and new user data
-    const changes = detectChanges(user, updatedUser);
-    const meaningfulChanges = filterMeaningfulChanges(changes);
+    // System/metadata fields to exclude from change detection
+    const systemFields = new Set([
+      '_id',
+      'createdAt',
+      'updatedAt',
+      '__v',
+      'sessionVersion',
+      'loginCount',
+      'lastLoginAt',
+      'deletedAt',
+      'passwordUpdatedAt',
+      'isEnabled', // This is handled separately if needed
+    ]);
+
+    // Create a clean version of the user object without system fields for comparison
+    const cleanUser: Record<string, unknown> = {};
+    const fieldsToCompare = [
+      'username',
+      'email',
+      'emailAddress',
+      'roles',
+      'profile',
+      'profilePicture',
+      'rel',
+      'resourcePermissions',
+    ];
+
+    for (const field of fieldsToCompare) {
+      if (field in user) {
+        cleanUser[field] = user[field as keyof typeof user];
+      }
+    }
+
+    // Detect actual changes between old and new user data (excluding system fields)
+    const changes = detectChanges(cleanUser, updatedUser);
+    const meaningfulChanges = filterMeaningfulChanges(changes).filter(
+      change => !systemFields.has(change.field) && !systemFields.has(change.path.split('.')[0])
+    );
 
     const ensureChangeLogged = (
       fieldPath: string,
@@ -750,38 +936,29 @@ export default function UserModal({
       updatedEmail
     );
 
-    // Check for location and licensee changes separately (array comparison)
-    const oldLocationIds = user?.resourcePermissions?.['gaming-locations']?.resources || [];
-    const newLocationIds = selectedLocationIds;
-    const locationIdsChanged = 
-      oldLocationIds.length !== newLocationIds.length ||
-      !oldLocationIds.every((id, idx) => id === newLocationIds[idx]) ||
-      !newLocationIds.every((id, idx) => id === oldLocationIds[idx]);
-
-    const oldLicenseeIds = user?.rel?.licencee || [];
-    const newLicenseeIds = selectedLicenseeIds;
+    // Log location and licensee changes if they changed
+    if (locationIdsChanged) {
+      ensureChangeLogged(
+        'resourcePermissions.gaming-locations.resources',
+        oldLocationIds,
+        newLocationIds
+      );
+    }
     
-    // Normalize IDs to strings for comparison
-    const oldLicenseeIdsNormalized = oldLicenseeIds.map(id => String(id));
-    const newLicenseeIdsNormalized = newLicenseeIds.map(id => String(id));
-    
-    const licenseeIdsChanged = 
-      oldLicenseeIdsNormalized.length !== newLicenseeIdsNormalized.length ||
-      !oldLicenseeIdsNormalized.every(id => newLicenseeIdsNormalized.includes(id)) ||
-      !newLicenseeIdsNormalized.every(id => oldLicenseeIdsNormalized.includes(id));
-
-    // Prevent managers from changing licensee assignments
-    if (isManager && licenseeIdsChanged) {
-      toast.error('Managers cannot change licensee assignments');
-      return;
+    if (licenseeIdsChanged && !isManager) {
+      ensureChangeLogged(
+        'rel.licencee',
+        oldLicenseeIds,
+        newLicenseeIds
+      );
     }
 
     // Log for debugging
     console.log('[UserModal] Change Detection Debug:');
     console.log('  Old licensee IDs:', oldLicenseeIds);
     console.log('  New licensee IDs:', newLicenseeIds);
-    console.log('  Old normalized:', oldLicenseeIdsNormalized);
-    console.log('  New normalized:', newLicenseeIdsNormalized);
+    console.log('  Old sorted:', oldLicenseeIdsSorted);
+    console.log('  New sorted:', newLicenseeIdsSorted);
     console.log('  Licensee IDs changed:', licenseeIdsChanged);
     console.log('  Location IDs changed:', locationIdsChanged);
     console.log('  Meaningful changes:', meaningfulChanges.length);
@@ -801,8 +978,8 @@ export default function UserModal({
       console.warn('Changes summary:', getChangesSummary(meaningfulChanges));
       console.warn('Location IDs changed:', locationIdsChanged, { oldLocationIds, newLocationIds });
       console.warn('Licensee IDs changed:', licenseeIdsChanged, { 
-        old: oldLicenseeIdsNormalized, 
-        new: newLicenseeIdsNormalized 
+        old: oldLicenseeIdsSorted, 
+        new: newLicenseeIdsSorted 
       });
     }
 
@@ -938,6 +1115,7 @@ export default function UserModal({
                       }
                       placeholder="Enter username"
                       className="w-full"
+                      required
                     />
                   ) : (
                     <div className="w-full text-center text-gray-700 lg:text-left">
@@ -960,6 +1138,7 @@ export default function UserModal({
                       }
                       placeholder="Enter email address"
                       className="w-full"
+                      required
                     />
                   ) : (
                     <div className="w-full text-center text-gray-700 lg:text-left">
@@ -1002,7 +1181,6 @@ export default function UserModal({
                             handleInputChange('firstName', e.target.value)
                           }
                           placeholder="Enter First Name"
-                          required
                         />
                       ) : (
                         <div className="w-full text-gray-700">
@@ -1022,49 +1200,10 @@ export default function UserModal({
                             handleInputChange('lastName', e.target.value)
                           }
                           placeholder="Enter Last Name"
-                          required
                         />
                       ) : (
                         <div className="w-full text-gray-700">
                           {formData.lastName || 'Not specified'}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Middle Name:
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          className="w-full rounded-md border border-border bg-white p-3"
-                          value={formData.middleName}
-                          onChange={e =>
-                            handleInputChange('middleName', e.target.value)
-                          }
-                          placeholder="Enter Middle Name"
-                        />
-                      ) : (
-                        <div className="w-full text-gray-700">
-                          {formData.middleName || 'Not specified'}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Other Name:
-                      </label>
-                      {isEditMode ? (
-                        <input
-                          className="w-full rounded-md border border-border bg-white p-3"
-                          value={formData.otherName}
-                          onChange={e =>
-                            handleInputChange('otherName', e.target.value)
-                          }
-                          placeholder="Enter Other Name"
-                        />
-                      ) : (
-                        <div className="w-full text-gray-700">
-                          {formData.otherName || 'Not specified'}
                         </div>
                       )}
                     </div>
@@ -1079,7 +1218,6 @@ export default function UserModal({
                           onChange={e =>
                             handleInputChange('gender', e.target.value)
                           }
-                          required
                         >
                           <option value="">Select</option>
                           <option value="male">Male</option>
@@ -1483,47 +1621,88 @@ export default function UserModal({
                       </h4>
                       {isEditMode ? (
                         <div className="grid grid-cols-2 justify-items-center gap-3 md:grid-cols-3 md:gap-4">
-                          {ROLE_OPTIONS.map(role => (
-                            <label
+                          {availableRoles.map(role => (
+                            <div
                               key={role.value}
-                              className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900"
+                              className="flex items-center gap-2"
                             >
-                              <Checkbox
-                                id={role.value}
-                                checked={roles.includes(role.value)}
-                                onCheckedChange={checked =>
-                                  handleRoleChange(role.value, checked === true)
-                                }
-                                className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
-                              />
-                              {role.label}
-                            </label>
+                              <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900 flex-1">
+                                <Checkbox
+                                  id={role.value}
+                                  checked={roles.includes(role.value)}
+                                  onCheckedChange={checked =>
+                                    handleRoleChange(role.value, checked === true)
+                                  }
+                                  className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
+                                />
+                                {role.label}
+                              </label>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setRolePermissionsDialog({
+                                    open: true,
+                                    role: role.value,
+                                    roleLabel: role.label,
+                                  });
+                                }}
+                                className="flex items-center justify-center rounded-full p-1 text-gray-500 transition-colors hover:bg-gray-100 hover:text-blue-600"
+                                title={`View pages accessible to ${role.label}`}
+                              >
+                                <Info className="h-4 w-4" />
+                              </button>
+                            </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center">
-                          <div className="text-gray-700">
-                            {roles && roles.length > 0
-                              ? roles
-                                  .map(
-                                    role =>
-                                      ROLE_OPTIONS.find(r => r.value === role)
-                                        ?.label
-                                  )
-                                  .join(', ')
-                              : 'No roles assigned'}
-                          </div>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          {roles && roles.length > 0 ? (
+                            roles.map((roleValue) => {
+                              const roleOption = ROLE_OPTIONS.find(
+                                r => r.value === roleValue
+                              );
+                              if (!roleOption) return null;
+                              return (
+                                <div
+                                  key={roleValue}
+                                  className="flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-1"
+                                >
+                                  <span className="text-gray-700">
+                                    {roleOption.label}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setRolePermissionsDialog({
+                                        open: true,
+                                        role: roleValue,
+                                        roleLabel: roleOption.label,
+                                      })
+                                    }
+                                    className="flex items-center justify-center rounded-full p-0.5 text-gray-500 transition-colors hover:bg-gray-200 hover:text-blue-600"
+                                    title={`View pages accessible to ${roleOption.label}`}
+                                  >
+                                    <Info className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="text-gray-700">No roles assigned</div>
+                          )}
                         </div>
                       )}
                     </div>
 
                     {/* Licensees and Locations Container */}
                     <div className="flex flex-col md:flex-row md:gap-6 mb-6">
-                      {/* Licensees Section */}
+                    {/* Licensees Section */}
                       <div className="flex-1 mb-6 md:mb-0">
-                        <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
-                          Assigned Licensees
-                        </h4>
+                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
+                        Assigned Licensees
+                      </h4>
 
                       {/* For managers, always show as read-only */}
                       {!canEditLicensees ? (
@@ -1596,13 +1775,13 @@ export default function UserModal({
                           </div>
                         </div>
                       )}
-                      </div>
+                    </div>
 
-                      {/* Locations Section */}
+                    {/* Locations Section */}
                       <div className="flex-1">
-                        <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
-                          Allowed Locations
-                        </h4>
+                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
+                        Allowed Locations
+                      </h4>
 
                       {isEditMode ? (
                         <div className="space-y-3">
@@ -1656,7 +1835,7 @@ export default function UserModal({
                           {allLocationsSelected ? (
                             <div className="text-center text-gray-700">
                               All Locations ({locations.length} locations)
-                            </div>
+                          </div>
                           ) : selectedLocationIds.length > 0 ? (
                             <div className="overflow-x-auto">
                               <table className="w-full border-collapse border border-gray-300">
@@ -1702,8 +1881,8 @@ export default function UserModal({
                           ) : (
                             <div className="text-center text-gray-700">
                               No locations assigned
-                            </div>
-                          )}
+                        </div>
+                      )}
                         </div>
                       )}
                       </div>
@@ -1772,6 +1951,16 @@ export default function UserModal({
           onCropped={handleCropComplete}
         />
       )}
+
+      {/* Role Permissions Dialog */}
+      <RolePermissionsDialog
+        open={rolePermissionsDialog.open}
+        onClose={() =>
+          setRolePermissionsDialog({ open: false, role: '', roleLabel: '' })
+        }
+        role={rolePermissionsDialog.role}
+        roleLabel={rolePermissionsDialog.roleLabel}
+      />
     </>
   );
 }

@@ -6,6 +6,7 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { Db, Document } from 'mongodb';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 // Removed auto-index creation to avoid conflicts and extra latency
 
 export async function GET(req: NextRequest) {
@@ -83,6 +84,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Get user for role-based access control
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
+
     // Ensure indexes are created for optimal performance
     // Do not auto-create indexes on every request
 
@@ -152,7 +162,8 @@ export async function GET(req: NextRequest) {
           startDate,
           endDate,
           licencee,
-          displayCurrency
+          displayCurrency,
+          isAdminOrDev
         );
       case 'overview':
         return await getOverviewMachines(
@@ -210,7 +221,8 @@ const getMachineStats = async (
   startDate: Date | undefined,
   endDate: Date | undefined,
   licencee: string | undefined,
-  displayCurrency: CurrencyCode
+  displayCurrency: CurrencyCode,
+  isAdminOrDev: boolean
 ) => {
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
@@ -365,9 +377,10 @@ const getMachineStats = async (
   };
 
   // Apply currency conversion if needed (same pattern as /api/machines/aggregation)
+  // Currency conversion ONLY for Admin/Developer viewing "All Licensees"
   let convertedTotals = totals;
 
-  if (shouldApplyCurrencyConversion(licencee)) {
+  if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
     console.warn(
       '🔍 REPORTS MACHINES - Applying multi-currency aggregation for All Licensee mode'
     );
@@ -518,7 +531,7 @@ const getMachineStats = async (
     totalDrop: convertedTotals.totalDrop || 0,
     totalCancelledCredits: convertedTotals.totalCancelledCredits || 0,
     currency: displayCurrency,
-    converted: shouldApplyCurrencyConversion(licencee),
+    converted: isAdminOrDev && shouldApplyCurrencyConversion(licencee),
   });
 };
 

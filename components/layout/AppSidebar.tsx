@@ -742,7 +742,7 @@ export default function AppSidebar() {
                 setMenuOpen(false);
                 await logoutUser();
                 clearUser();
-                router.push('/login');
+                router.push('/login?logout=success');
               }}
             >
               Log out

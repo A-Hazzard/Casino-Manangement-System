@@ -3,6 +3,14 @@ import mongoose, { model, Schema } from 'mongoose';
 const NAME_REGEX = /^[A-Za-z\s]+$/;
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
 const ALLOWED_GENDERS = ['male', 'female', 'other'] as const;
+const ALLOWED_ROLES = [
+  'developer',
+  'admin',
+  'manager',
+  'location admin',
+  'technician',
+  'collector',
+] as const;
 
 function isBlank(value: unknown): boolean {
   return (
@@ -40,11 +48,25 @@ const genderValidator = {
   message: `{PATH} must be one of: ${ALLOWED_GENDERS.join(', ')}.`,
 };
 
+const roleValidator = {
+  validator(value: string) {
+    if (typeof value !== 'string') return false;
+    const normalized = value.trim().toLowerCase();
+    return (ALLOWED_ROLES as readonly string[]).includes(normalized);
+  },
+  message: `{PATH} must be one of: ${ALLOWED_ROLES.join(', ')}.`,
+};
+
 const UserSchema = new Schema(
   {
     _id: { type: String, required: true },
     isEnabled: { type: Boolean, default: true },
-    roles: [{ type: String }],
+    roles: [
+      {
+        type: String,
+        validate: [roleValidator],
+      },
+    ],
     permissions: [{ type: String }],
     username: {
       type: String,
@@ -52,6 +74,19 @@ const UserSchema = new Schema(
       unique: true,
       index: true,
       trim: true,
+      minlength: [3, 'Username must be at least 3 characters'],
+      validate: {
+        validator: function (value: string) {
+          // Username cannot look like an email
+          if (EMAIL_REGEX.test(value)) return false;
+          // Username cannot look like a phone number (10+ digits)
+          if (/^\d{10,}$/.test(value)) return false;
+          // Username can contain letters, numbers, spaces, hyphens, and apostrophes
+          return /^[A-Za-z0-9\s'-]+$/.test(value);
+        },
+        message:
+          'Username may only contain letters, numbers, spaces, hyphens, and apostrophes, and cannot look like an email or phone number.',
+      },
     },
     emailAddress: {
       type: String,
@@ -59,6 +94,12 @@ const UserSchema = new Schema(
       unique: true,
       index: true,
       trim: true,
+      validate: {
+        validator: function (value: string) {
+          return EMAIL_REGEX.test(value);
+        },
+        message: 'Email address must be a valid email format.',
+      },
     },
     rel: {
       licencee: [{ type: String }],
@@ -67,21 +108,13 @@ const UserSchema = new Schema(
       firstName: {
         type: String,
         trim: true,
+        minlength: [3, 'First name must be at least 3 characters'],
         ...alphabeticValidator,
       },
       lastName: {
         type: String,
         trim: true,
-        ...alphabeticValidator,
-      },
-      middleName: {
-        type: String,
-        trim: true,
-        ...alphabeticValidator,
-      },
-      otherName: {
-        type: String,
-        trim: true,
+        minlength: [3, 'Last name must be at least 3 characters'],
         ...alphabeticValidator,
       },
       gender: {
@@ -91,20 +124,105 @@ const UserSchema = new Schema(
         ...genderValidator,
       },
       address: {
-        street: { type: String, trim: true },
-        town: { type: String, trim: true },
-        region: { type: String, trim: true },
-        country: { type: String, trim: true },
+        street: {
+          type: String,
+          trim: true,
+          validate: {
+            validator: function (value: string | null | undefined) {
+              if (isBlank(value)) return true;
+              // Street can have letters, numbers, spaces, commas, and full stops
+              return /^[A-Za-z0-9\s,\.]+$/.test(value!.trim());
+            },
+            message:
+              'Street address may only contain letters, numbers, spaces, commas, and full stops.',
+          },
+        },
+        town: {
+          type: String,
+          trim: true,
+          validate: {
+            validator: function (value: string | null | undefined) {
+              if (isBlank(value)) return true;
+              const trimmed = value!.trim();
+              if (trimmed.length < 3) return false;
+              // Town can have letters, numbers, spaces, commas, and full stops
+              return /^[A-Za-z0-9\s,\.]+$/.test(trimmed);
+            },
+            message:
+              'Town must be at least 3 characters and may only contain letters, numbers, spaces, commas, and full stops.',
+          },
+        },
+        region: {
+          type: String,
+          trim: true,
+          validate: {
+            validator: function (value: string | null | undefined) {
+              if (isBlank(value)) return true;
+              const trimmed = value!.trim();
+              if (trimmed.length < 3) return false;
+              // Region can have letters, numbers, spaces, commas, and full stops
+              return /^[A-Za-z0-9\s,\.]+$/.test(trimmed);
+            },
+            message:
+              'Region must be at least 3 characters and may only contain letters, numbers, spaces, commas, and full stops.',
+          },
+        },
+        country: {
+          type: String,
+          trim: true,
+          validate: {
+            validator: function (value: string | null | undefined) {
+              if (isBlank(value)) return true;
+              const trimmed = value!.trim();
+              if (trimmed.length < 3) return false;
+              // Country can only have letters and spaces
+              return /^[A-Za-z\s]+$/.test(trimmed);
+            },
+            message:
+              'Country must be at least 3 characters and may only contain letters and spaces.',
+          },
+        },
         postalCode: { type: String, trim: true },
       },
       identification: {
-        dateOfBirth: { type: Date },
+        dateOfBirth: {
+          type: Date,
+          validate: {
+            validator: function (value: Date | null | undefined) {
+              if (!value) return true;
+              const date = value instanceof Date ? value : new Date(value);
+              if (isNaN(date.getTime())) return false;
+              return date <= new Date();
+            },
+            message:
+              'Date of birth must be a valid date and cannot be in the future.',
+          },
+        },
         idType: {
           type: String,
           trim: true,
-          ...alphabeticValidator,
+          validate: {
+            validator: function (value: string | null | undefined) {
+              if (isBlank(value)) return true;
+              const trimmed = value!.trim();
+              if (trimmed.length < 3) return false;
+              return NAME_REGEX.test(trimmed);
+            },
+            message:
+              'ID type must be at least 3 characters and may only contain letters and spaces.',
+          },
         },
-        idNumber: { type: String, trim: true },
+        idNumber: {
+          type: String,
+          trim: true,
+          validate: {
+            validator: function (value: string | null | undefined) {
+              if (isBlank(value)) return true;
+              return value!.trim().length >= 3;
+            },
+            message: 'ID number must be at least 3 characters.',
+          },
+        },
         notes: { type: String, trim: true },
       },
       phoneNumber: { type: String, trim: true },
@@ -135,8 +253,6 @@ const UserSchema = new Schema(
 
 UserSchema.path('profile.firstName').set(normalizeString);
 UserSchema.path('profile.lastName').set(normalizeString);
-UserSchema.path('profile.middleName').set(normalizeString);
-UserSchema.path('profile.otherName').set(normalizeString);
 UserSchema.path('profile.gender').set((value: unknown) =>
   normalizeString(value)?.toLowerCase()
 );

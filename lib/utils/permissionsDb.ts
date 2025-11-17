@@ -97,7 +97,6 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'location admin',
       'technician',
       'collector',
-      'collector meters',
     ],
     locations: [
       'developer',
@@ -105,7 +104,6 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'manager',
       'location admin',
       'collector',
-      'collector meters',
     ],
     'location-details': [
       'developer',
@@ -114,7 +112,6 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'location admin',
       'technician',
       'collector',
-      'collector meters',
     ],
     members: ['developer'],
     'member-details': ['developer'],
@@ -124,7 +121,6 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'manager',
       'location admin',
       'collector',
-      'collector meters',
     ],
     reports: ['developer'], // ✅ Restricted to developer only
     sessions: ['developer'],
@@ -164,7 +160,6 @@ export async function hasTabAccessDb(
         'manager',
         'location admin',
         'collector',
-        'collector meters',
       ],
       monthly: ['developer', 'admin', 'manager', 'location admin'],
       'manager-schedules': ['developer', 'admin', 'manager'],
@@ -190,7 +185,6 @@ export async function hasTabAccessDb(
         'manager',
         'location admin',
         'collector',
-        'collector meters',
       ],
     },
   };
@@ -244,7 +238,6 @@ export async function getHighestPriorityRoleDb(): Promise<UserRole | null> {
     'location admin',
     'technician',
     'collector',
-    'collector meters',
   ];
 
   for (const role of rolePriority) {

@@ -9,7 +9,6 @@ import PageLayout from '@/components/layout/PageLayout';
 
 // Store
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useReportsStore } from '@/lib/store/reportsStore';
 
 // Hooks
 import { useReportsNavigation } from '@/lib/hooks/navigation';
@@ -27,7 +26,6 @@ import Image from 'next/image';
 import { IMAGES } from '@/lib/constants/images';
 
 // Tab components
-import DashboardTab from '@/components/reports/tabs/DashboardTab';
 import LocationsTabWithErrorHandling from '@/components/reports/tabs/LocationsTabWithErrorHandling';
 import MachinesTab from '@/components/reports/tabs/MachinesTab';
 import MetersTab from '@/components/reports/tabs/MetersTab';
@@ -47,7 +45,6 @@ import type { ReportView } from '@/lib/types/reports';
  */
 export default function ReportsContent() {
   const { selectedLicencee } = useDashBoardStore();
-  const { realTimeMetrics } = useReportsStore();
 
   // All authenticated users have access to reports
   const hasAccess = true;
@@ -59,7 +56,6 @@ export default function ReportsContent() {
 
   // Tab content rendering
   const tabComponents: Record<ReportView, ReactElement> = {
-    dashboard: <DashboardTab />,
     locations: <LocationsTabWithErrorHandling />,
     machines: <MachinesTab />,
     meters: <MetersTab />,
@@ -131,7 +127,6 @@ export default function ReportsContent() {
         activeView={activeView}
         onTabChange={handleTabChange}
         _isLoading={isLoading}
-        realTimeMetrics={realTimeMetrics}
       />
 
       {/* Loading Overlay */}

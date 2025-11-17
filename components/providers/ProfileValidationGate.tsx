@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import ProfileValidationModal from '@/components/ui/ProfileValidationModal';
 import { useCurrentUserQuery } from '@/lib/hooks/useCurrentUserQuery';
 import { useUserStore } from '@/lib/store/userStore';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
+import { logoutUser } from '@/lib/helpers/clientAuth';
 import { validatePasswordStrength } from '@/lib/utils/validation';
 import type {
   InvalidProfileFields,
@@ -27,7 +30,8 @@ const EMPTY_FIELDS: InvalidProfileFields = {};
 const EMPTY_REASONS: ProfileValidationReasons = {};
 
 export default function ProfileValidationGate() {
-  const { user, setUser } = useUserStore();
+  const router = useRouter();
+  const { user, setUser, clearUser } = useUserStore();
   const { refetch } = useCurrentUserQuery();
   const { lastLoginPassword, clearLastLoginPassword } =
     useAuthSessionStore();
@@ -52,6 +56,9 @@ export default function ProfileValidationGate() {
     licenseeIds: [],
     locationIds: [],
   });
+  
+  // Track if we just successfully updated to prevent re-evaluation
+  const justUpdatedRef = useRef(false);
 
   const hasInvalidFields = useMemo(() => {
     if (!invalidFields) return false;
@@ -62,7 +69,14 @@ export default function ProfileValidationGate() {
     let cancelled = false;
 
     const evaluate = async () => {
+      // Skip evaluation if we just successfully updated (prevent modal from reopening)
+      if (justUpdatedRef.current) {
+        return;
+      }
+
       if (!user) {
+        // Reset the flag when user is null (e.g., after logout)
+        justUpdatedRef.current = false;
         setOpen(false);
         setInvalidFields(EMPTY_FIELDS);
         setFieldReasons(EMPTY_REASONS);
@@ -198,6 +212,13 @@ export default function ProfileValidationGate() {
 
       const result = await response.json();
 
+      console.log('[ProfileValidationGate] Profile update result:', {
+        success: result.success,
+        requiresProfileUpdate: result.requiresProfileUpdate,
+        invalidFields: result.invalidProfileFields,
+        hasInvalidFields: result.invalidProfileFields && Object.values(result.invalidProfileFields).some(Boolean),
+      });
+
       if (!response.ok || !result.success) {
         setInvalidFields(result.invalidProfileFields || invalidFields);
         setFieldReasons(result.invalidProfileReasons || fieldReasons);
@@ -257,12 +278,73 @@ export default function ProfileValidationGate() {
           : data.locationIds ?? [],
       });
 
-      if (!result.requiresProfileUpdate) {
-        await refetch();
+      // Check if profile update is complete (no invalid fields remaining)
+      const hasNoInvalidFields = !result.invalidProfileFields || 
+        !Object.values(result.invalidProfileFields).some(Boolean);
+      const profileUpdateComplete = !result.requiresProfileUpdate && hasNoInvalidFields;
+
+      console.log('[ProfileValidationGate] Profile update complete check:', {
+        requiresProfileUpdate: result.requiresProfileUpdate,
+        hasNoInvalidFields,
+        profileUpdateComplete,
+      });
+
+      // ALWAYS logout after successful profile update because sessionVersion is incremented
+      // This invalidates the JWT token, so user must re-login
+      if (result.success) {
+        console.log('[ProfileValidationGate] Profile update successful - initiating logout (sessionVersion incremented)...');
+        
+        // Set flag to prevent re-evaluation
+        justUpdatedRef.current = true;
+        
+        // Close modal immediately
+        setOpen(false);
+        
+        // Show success toast
+        const toastMessage = profileUpdateComplete
+          ? 'Profile updated successfully. Please log in again to continue.'
+          : 'Profile updated. Please log in again to continue. Some fields may still need attention.';
+        toast.success(toastMessage, {
+          duration: 5000,
+        });
+        
+        // Small delay to ensure toast is visible, then logout and redirect
+        setTimeout(async () => {
+          try {
+            console.log('[ProfileValidationGate] Calling logout...');
+            // Logout via API (clears cookies)
+            await logoutUser();
+            console.log('[ProfileValidationGate] Logout successful');
+            
+            // Clear user from store
+            clearUser();
+            
+            // Redirect to login with success message
+            console.log('[ProfileValidationGate] Redirecting to login...');
+            const loginMessage = profileUpdateComplete
+              ? 'Profile updated successfully. Please log in again to continue.'
+              : 'Profile updated. Please log in again to continue. Some fields may still need attention.';
+            router.push('/login?message=' + encodeURIComponent(loginMessage));
+          } catch (error) {
+            console.error('[ProfileValidationGate] Logout error:', error);
+            // Even if logout fails, clear local storage and redirect
+            clearUser();
+            const loginMessage = profileUpdateComplete
+              ? 'Profile updated successfully. Please log in again to continue.'
+              : 'Profile updated. Please log in again to continue. Some fields may still need attention.';
+            router.push('/login?message=' + encodeURIComponent(loginMessage));
+          }
+        }, 1000);
+        
+        return {
+          success: profileUpdateComplete,
+          invalidFields: result.invalidProfileFields,
+          invalidProfileReasons: result.invalidProfileReasons,
+        };
       }
 
       return {
-        success: !result.requiresProfileUpdate,
+        success: false,
         invalidFields: result.invalidProfileFields,
         invalidProfileReasons: result.invalidProfileReasons,
       };

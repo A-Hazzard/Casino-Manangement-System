@@ -9,6 +9,7 @@ import {
 import type { CurrencyCode } from '@/shared/types/currency';
 import { TimePeriod } from '@/app/api/lib/types';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
@@ -49,6 +50,15 @@ export async function GET(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Get user for role-based access control
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
 
     // Parse locations (comma-separated)
     const locationList = locations
@@ -308,9 +318,10 @@ export async function GET(req: NextRequest) {
     );
 
     // Apply currency conversion if needed (proper multi-currency pattern)
+    // Currency conversion ONLY for Admin/Developer viewing "All Licensees"
     let convertedData = paginatedData;
 
-    if (shouldApplyCurrencyConversion(licencee)) {
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       console.warn(
         '🔍 REPORTS METERS - Applying multi-currency conversion for All Licensee mode'
       );
@@ -431,7 +442,7 @@ export async function GET(req: NextRequest) {
       dateRange: { start: queryStartDate, end: queryEndDate },
       timePeriod,
       currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licencee),
+      converted: isAdminOrDev && shouldApplyCurrencyConversion(licencee),
       pagination: {
         page,
         limit,

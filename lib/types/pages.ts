@@ -48,6 +48,16 @@ export type AddUserForm = {
   profilePicture?: string | null;
   resourcePermissions?: ResourcePermissions;
   allowedLocations: string[];
+  licenseeIds?: string[];
+  street?: string;
+  town?: string;
+  region?: string;
+  country?: string;
+  postalCode?: string;
+  dateOfBirth?: string;
+  idType?: string;
+  idNumber?: string;
+  notes?: string;
 };
 
 export type AddLicenseeForm = {

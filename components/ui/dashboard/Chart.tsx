@@ -189,15 +189,30 @@ export default function Chart({
               }
             }}
           />
-          <YAxis />
+          <YAxis
+            tickFormatter={(value) => {
+              // Format Y-axis values to 2 decimal places
+              return typeof value === 'number'
+                ? value.toFixed(2)
+                : typeof value === 'string'
+                  ? parseFloat(value).toFixed(2)
+                  : String(value);
+            }}
+          />
           <Tooltip
             formatter={(value, name) => {
               // Debug: Log the tooltip values
               if (process.env.NODE_ENV === 'development') {
                 console.warn('Tooltip value:', value, 'name:', name);
               }
-              // Ensure values are displayed correctly without scaling
-              return [value, name];
+              // Format value to 2 decimal places
+              const formattedValue =
+                typeof value === 'number'
+                  ? value.toFixed(2)
+                  : typeof value === 'string'
+                    ? parseFloat(value).toFixed(2)
+                    : value;
+              return [formattedValue, name];
             }}
             labelFormatter={label => {
               // Format the date label properly

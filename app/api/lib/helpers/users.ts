@@ -108,29 +108,57 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       permissions?: string[];
     };
 
-    let dbUser:
-      | {
-          sessionVersion?: number;
-          roles?: string[];
-          rel?: { licencee?: string[] };
-          resourcePermissions?: Record<string, unknown>;
-          permissions?: string[];
-        }
-      | null = null;
+    let dbUser: {
+      sessionVersion?: number;
+      roles?: string[];
+      rel?: { licencee?: string[] };
+      resourcePermissions?: Record<string, unknown>;
+      permissions?: string[];
+      isEnabled?: boolean;
+      deletedAt?: Date | null;
+    } | null = null;
 
     if (jwtPayload._id) {
       try {
         await connectDB();
         const UserModel = (await import('../models/user')).default;
         dbUser = (await UserModel.findOne({ _id: jwtPayload._id })
-          .select('sessionVersion roles rel resourcePermissions permissions')
+          .select(
+            'sessionVersion roles rel resourcePermissions permissions isEnabled deletedAt'
+          )
           .lean()) as {
           sessionVersion?: number;
           roles?: string[];
           rel?: { licencee?: string[] };
           resourcePermissions?: Record<string, unknown>;
           permissions?: string[];
+          isEnabled?: boolean;
+          deletedAt?: Date | null;
         } | null;
+
+        // If user doesn't exist in database (hard deleted), invalidate session
+        if (!dbUser) {
+          console.warn(
+            `[SESSION INVALIDATION] User ${jwtPayload._id} not found in database - user may have been deleted`
+          );
+          return null;
+        }
+
+        // Check if user is soft-deleted (deletedAt is set and not in the past)
+        if (dbUser.deletedAt && dbUser.deletedAt > new Date('2020-01-01')) {
+          console.warn(
+            `[SESSION INVALIDATION] User ${jwtPayload._id} has been deleted (soft delete)`
+          );
+          return null;
+        }
+
+        // Check if user is disabled
+        if (dbUser.isEnabled === false) {
+          console.warn(
+            `[SESSION INVALIDATION] User ${jwtPayload._id} account is disabled`
+          );
+          return null;
+        }
 
         if (
           jwtPayload.sessionVersion !== undefined &&
@@ -147,13 +175,11 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
           'Session version validation / user hydration failed:',
           error
         );
+        return null;
       }
     }
 
-    if (
-      !jwtPayload.sessionVersion &&
-      dbUser?.sessionVersion !== undefined
-    ) {
+    if (!jwtPayload.sessionVersion && dbUser?.sessionVersion !== undefined) {
       jwtPayload.sessionVersion = dbUser.sessionVersion;
     }
 
@@ -272,6 +298,9 @@ export async function createUser(
     isEnabled?: boolean;
     profilePicture?: string | null;
     resourcePermissions?: ResourcePermissions;
+    rel?: {
+      licencee?: string[];
+    };
   },
   request: NextRequest
 ) {
@@ -284,14 +313,97 @@ export async function createUser(
     isEnabled = true,
     profilePicture = null,
     resourcePermissions = {},
+    rel,
   } = data;
 
-  const existingUser = await UserModel.findOne({
-    $or: [{ username }, { emailAddress }],
-  });
+  // Get current user to check permissions for role assignment
+  const requestingUser = await getUserFromServer();
 
-  if (existingUser) {
-    throw new Error('Username or email already exists');
+  if (!requestingUser) {
+    throw new Error('Authentication required. Please login again.');
+  }
+
+  const requestingUserRoles = (requestingUser?.roles || []) as string[];
+
+  if (!Array.isArray(requestingUserRoles) || requestingUserRoles.length === 0) {
+    throw new Error('User roles not found. Please contact an administrator.');
+  }
+
+  const isDeveloper = requestingUserRoles.includes('developer');
+  const isAdmin = requestingUserRoles.includes('admin') && !isDeveloper;
+  const isManager =
+    requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+
+  // Validate role assignments based on creator's permissions
+  const ALLOWED_ROLES = [
+    'developer',
+    'admin',
+    'manager',
+    'location admin',
+    'technician',
+    'collector',
+  ];
+  const normalizedRoles = roles.map(r => r.trim().toLowerCase());
+
+  // Check for invalid roles
+  const invalidRoles = normalizedRoles.filter(r => !ALLOWED_ROLES.includes(r));
+  if (invalidRoles.length > 0) {
+    throw new Error(
+      `Invalid roles: ${invalidRoles.join(', ')}. Allowed roles: ${ALLOWED_ROLES.join(', ')}`
+    );
+  }
+
+  // Check role assignment permissions
+  if (isManager) {
+    // Manager can only assign: location admin, technician, collector
+    const managerAllowedRoles = ['location admin', 'technician', 'collector'];
+    const unauthorizedRoles = normalizedRoles.filter(
+      r => !managerAllowedRoles.includes(r)
+    );
+    if (unauthorizedRoles.length > 0) {
+      throw new Error(
+        `Managers can only assign roles: ${managerAllowedRoles.join(', ')}`
+      );
+    }
+  } else if (isAdmin) {
+    // Admin can assign all roles except developer
+    if (normalizedRoles.includes('developer')) {
+      throw new Error('Admins cannot assign the developer role');
+    }
+  } else if (!isDeveloper && !isAdmin && !isManager) {
+    // Only developer/admin/manager can create users
+    console.error('[createUser] Permission check failed:', {
+      requestingUserRoles,
+      isDeveloper,
+      isAdmin,
+      isManager,
+      userId: requestingUser._id,
+    });
+    throw new Error(
+      'Insufficient permissions to create users. Only developers, admins, and managers can create users.'
+    );
+  }
+
+  // Validate that licensee is provided (user should never be created without a licensee)
+  if (
+    !rel ||
+    !rel.licencee ||
+    !Array.isArray(rel.licencee) ||
+    rel.licencee.length === 0
+  ) {
+    throw new Error('A user must be assigned to at least one licensee');
+  }
+
+  // Check for existing username and email separately to provide specific error messages
+  const existingUserByUsername = await UserModel.findOne({ username });
+  const existingUserByEmail = await UserModel.findOne({ emailAddress });
+
+  if (existingUserByUsername && existingUserByEmail) {
+    throw new Error('Username and email already exist');
+  } else if (existingUserByUsername) {
+    throw new Error('Username already exists');
+  } else if (existingUserByEmail) {
+    throw new Error('Email already exists');
   }
 
   const hashedPassword = await hashPassword(password);
@@ -301,11 +413,12 @@ export async function createUser(
     emailAddress,
     password: hashedPassword,
     passwordUpdatedAt: new Date(),
-    roles,
+    roles: normalizedRoles,
     profile,
     isEnabled,
     profilePicture,
     resourcePermissions,
+    rel: rel || {},
     deletedAt: new Date(-1), // SMIB boards require all fields to be present
   });
 
@@ -376,26 +489,80 @@ export async function updateUser(
   // Get current user to check permissions (early check for manager restrictions)
   const requestingUser = await getUserFromServer();
   const requestingUserRoles = (requestingUser?.roles || []) as string[];
-  const isAdmin = requestingUserRoles.some(role => ['admin', 'developer'].includes(role));
-  const isManager = requestingUserRoles.includes('manager') && !isAdmin;
+  const isDeveloper = requestingUserRoles.includes('developer');
+  const isAdmin = requestingUserRoles.includes('admin') && !isDeveloper;
+  const isManager =
+    requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+
+  // Validate role assignments if roles are being updated
+  if (updateFields.roles !== undefined) {
+    const ALLOWED_ROLES = [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+      'collector',
+    ];
+    const newRoles = Array.isArray(updateFields.roles)
+      ? updateFields.roles
+      : [];
+    const normalizedRoles = newRoles.map(r => String(r).trim().toLowerCase());
+
+    // Check for invalid roles
+    const invalidRoles = normalizedRoles.filter(
+      r => !ALLOWED_ROLES.includes(r)
+    );
+    if (invalidRoles.length > 0) {
+      throw new Error(
+        `Invalid roles: ${invalidRoles.join(', ')}. Allowed roles: ${ALLOWED_ROLES.join(', ')}`
+      );
+    }
+
+    // Check role assignment permissions
+    if (isManager) {
+      // Manager can only assign: location admin, technician, collector
+      const managerAllowedRoles = ['location admin', 'technician', 'collector'];
+      const unauthorizedRoles = normalizedRoles.filter(
+        r => !managerAllowedRoles.includes(r)
+      );
+      if (unauthorizedRoles.length > 0) {
+        throw new Error(
+          `Managers can only assign roles: ${managerAllowedRoles.join(', ')}`
+        );
+      }
+    } else if (isAdmin) {
+      // Admin can assign all roles except developer
+      if (normalizedRoles.includes('developer')) {
+        throw new Error('Admins cannot assign the developer role');
+      }
+    } else if (!isDeveloper) {
+      // Only developer/admin/manager can update roles
+      throw new Error('Insufficient permissions to update user roles');
+    }
+
+    // Normalize roles before saving
+    updateFields.roles = normalizedRoles;
+  }
 
   // Prevent managers from changing licensee assignments
   if (isManager && updateFields.rel && typeof updateFields.rel === 'object') {
     const relUpdate = updateFields.rel as Record<string, unknown>;
     if (relUpdate.licencee !== undefined) {
       // Get original licensee assignments
-      const originalLicensees = (user.rel as { licencee?: string[] })?.licencee || [];
-      const newLicensees = Array.isArray(relUpdate.licencee) 
+      const originalLicensees =
+        (user.rel as { licencee?: string[] })?.licencee || [];
+      const newLicensees = Array.isArray(relUpdate.licencee)
         ? relUpdate.licencee.map(id => String(id))
         : [];
-      
+
       // Check if licensee assignments changed
       const originalNormalized = originalLicensees.map(id => String(id)).sort();
       const newNormalized = newLicensees.sort();
-      const licenseeChanged = 
+      const licenseeChanged =
         originalNormalized.length !== newNormalized.length ||
         !originalNormalized.every((id, idx) => id === newNormalized[idx]);
-      
+
       if (licenseeChanged) {
         throw new Error('Managers cannot change licensee assignments');
       }
@@ -416,26 +583,42 @@ export async function updateUser(
       const value = profileUpdate[key];
       if (typeof value === 'string') {
         const trimmed = value.trim();
-        if (trimmed && !validateNameField(trimmed)) {
+        // If empty string, remove from update to preserve existing value
+        if (!trimmed) {
+          delete profileUpdate[key];
+          return;
+        }
+        if (!validateNameField(trimmed)) {
           throw new Error(
             `${label} may only contain letters and spaces and cannot resemble a phone number.`
           );
         }
         profileUpdate[key] = trimmed;
+      } else if (value === undefined || value === null) {
+        // Remove undefined/null values to preserve existing
+        delete profileUpdate[key];
       }
     };
 
     sanitizeNameField('firstName', 'First name');
     sanitizeNameField('lastName', 'Last name');
-    sanitizeNameField('middleName', 'Middle name');
-    sanitizeNameField('otherName', 'Other name');
 
     if (typeof profileUpdate.gender === 'string') {
       const genderValue = profileUpdate.gender.trim().toLowerCase();
-      if (genderValue && !validateOptionalGender(genderValue)) {
+      // If empty string, remove from update to preserve existing value
+      if (!genderValue) {
+        delete profileUpdate.gender;
+      } else if (!validateOptionalGender(genderValue)) {
         throw new Error('Select a valid gender option.');
+      } else {
+        profileUpdate.gender = genderValue;
       }
-      profileUpdate.gender = genderValue;
+    } else if (
+      profileUpdate.gender === undefined ||
+      profileUpdate.gender === null
+    ) {
+      // Remove undefined/null values to preserve existing
+      delete profileUpdate.gender;
     }
 
     const contact =
@@ -474,29 +657,114 @@ export async function updateUser(
 
       if (typeof identificationUpdate.idType === 'string') {
         const trimmed = identificationUpdate.idType.trim();
-        if (trimmed && !validateAlphabeticField(trimmed)) {
+        // If empty string, remove from update to preserve existing value
+        if (!trimmed) {
+          delete identificationUpdate.idType;
+        } else if (!validateAlphabeticField(trimmed)) {
           throw new Error(
             'Identification type may only contain letters and spaces.'
           );
+        } else {
+          identificationUpdate.idType = trimmed;
         }
-        identificationUpdate.idType = trimmed;
+      } else if (
+        identificationUpdate.idType === undefined ||
+        identificationUpdate.idType === null
+      ) {
+        // Remove undefined/null values to preserve existing
+        delete identificationUpdate.idType;
+      }
+
+      // Handle idNumber and notes similarly
+      if (typeof identificationUpdate.idNumber === 'string') {
+        const trimmed = identificationUpdate.idNumber.trim();
+        if (!trimmed) {
+          delete identificationUpdate.idNumber;
+        } else {
+          identificationUpdate.idNumber = trimmed;
+        }
+      } else if (
+        identificationUpdate.idNumber === undefined ||
+        identificationUpdate.idNumber === null
+      ) {
+        delete identificationUpdate.idNumber;
+      }
+
+      if (typeof identificationUpdate.notes === 'string') {
+        const trimmed = identificationUpdate.notes.trim();
+        if (!trimmed) {
+          delete identificationUpdate.notes;
+        } else {
+          identificationUpdate.notes = trimmed;
+        }
+      } else if (
+        identificationUpdate.notes === undefined ||
+        identificationUpdate.notes === null
+      ) {
+        delete identificationUpdate.notes;
       }
 
       const dobValue = identificationUpdate.dateOfBirth;
-      if (!dobValue) {
-        throw new Error('Date of birth is required.');
+      // Only validate dateOfBirth if it's actually provided (not empty/null/undefined)
+      // This allows admins to update users without requiring all fields
+      if (dobValue !== null && dobValue !== undefined && dobValue !== '') {
+        const parsedDate =
+          dobValue instanceof Date ? dobValue : new Date(dobValue as string);
+        if (!isValidDateInput(parsedDate)) {
+          throw new Error('Date of birth must be a valid date.');
+        }
+        if (parsedDate > new Date()) {
+          throw new Error('Date of birth cannot be in the future.');
+        }
+        identificationUpdate.dateOfBirth = parsedDate;
+      } else if (dobValue === '') {
+        // If empty string is explicitly provided, remove the field from update
+        // This preserves the existing value in the database
+        delete identificationUpdate.dateOfBirth;
+      } else {
+        // If dateOfBirth is not provided (undefined/null), remove it from update
+        // This preserves the existing value in the database
+        delete identificationUpdate.dateOfBirth;
       }
-      const parsedDate =
-        dobValue instanceof Date ? dobValue : new Date(dobValue as string);
-      if (!isValidDateInput(parsedDate)) {
-        throw new Error('Date of birth must be a valid date.');
-      }
-      if (parsedDate > new Date()) {
-        throw new Error('Date of birth cannot be in the future.');
-      }
-      identificationUpdate.dateOfBirth = parsedDate;
 
       profileUpdate.identification = identificationUpdate;
+    }
+
+    // Handle address fields - remove empty strings to preserve existing values
+    if (
+      profileUpdate.address &&
+      typeof profileUpdate.address === 'object' &&
+      profileUpdate.address !== null
+    ) {
+      const addressUpdate = profileUpdate.address as Record<string, unknown>;
+      const addressFields = [
+        'street',
+        'town',
+        'region',
+        'country',
+        'postalCode',
+      ];
+
+      for (const field of addressFields) {
+        const value = addressUpdate[field];
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (!trimmed) {
+            delete addressUpdate[field];
+          } else {
+            addressUpdate[field] = trimmed;
+          }
+        } else if (value === undefined || value === null) {
+          delete addressUpdate[field];
+        }
+      }
+
+      // If address object is now empty, remove it to preserve existing address
+      if (Object.keys(addressUpdate).length === 0) {
+        delete profileUpdate.address;
+      } else {
+        profileUpdate.address = addressUpdate;
+      }
     }
 
     updateFields.profile = profileUpdate;
@@ -575,6 +843,34 @@ export async function updateUser(
       throw new Error(
         'Invalid password format. Expected string or object with current and new properties.'
       );
+    }
+  }
+
+  // Check for username/email conflicts if they're being updated
+  const newUsername = updateFields.username as string | undefined;
+  const newEmailAddress = updateFields.emailAddress as string | undefined;
+  const currentUsername = user.username;
+  const currentEmailAddress = user.emailAddress;
+
+  // Check username conflict if it's being changed
+  if (newUsername && newUsername !== currentUsername) {
+    const existingUserByUsername = await UserModel.findOne({
+      username: newUsername,
+      _id: { $ne: _id }, // Exclude the current user
+    });
+    if (existingUserByUsername) {
+      throw new Error('Username already exists');
+    }
+  }
+
+  // Check email conflict if it's being changed
+  if (newEmailAddress && newEmailAddress !== currentEmailAddress) {
+    const existingUserByEmail = await UserModel.findOne({
+      emailAddress: newEmailAddress,
+      _id: { $ne: _id }, // Exclude the current user
+    });
+    if (existingUserByEmail) {
+      throw new Error('Email already exists');
     }
   }
 
@@ -816,16 +1112,6 @@ function calculateUserChanges(
       field: 'lastName',
       original: originalUser.profile?.lastName,
       updated: getUpdatedValue('lastName'),
-    },
-    {
-      field: 'middleName',
-      original: originalUser.profile?.middleName,
-      updated: getUpdatedValue('middleName'),
-    },
-    {
-      field: 'otherName',
-      original: originalUser.profile?.otherName,
-      updated: getUpdatedValue('otherName'),
     },
     {
       field: 'gender',

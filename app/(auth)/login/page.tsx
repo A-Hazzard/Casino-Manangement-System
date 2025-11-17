@@ -17,8 +17,8 @@ import type {
   ProfileValidationReasons,
 } from '@/shared/types/auth';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import React, { Suspense, useEffect, useState } from 'react';
 
 type ProfileUpdateResult = {
   success: boolean;
@@ -32,8 +32,9 @@ type ProfileUpdateResult = {
 import EOSLogo from '/public/EOS_Logo.png';
 import SlotMachineImage from '/public/slotMachine.png';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const { setUser, clearUser } = useUserStore();
   const { setLastLoginPassword, clearLastLoginPassword } =
@@ -79,6 +80,44 @@ export default function LoginPage() {
   useEffect(() => {
     setIsMounted(true);
 
+    // Check for URL parameters (logout success, errors, etc.)
+    const logoutParam = searchParams.get('logout');
+    const errorParam = searchParams.get('error');
+    const messageParam = searchParams.get('message');
+
+    if (logoutParam === 'success') {
+      setMessage('Logout successful');
+      setMessageType('success');
+      // Clean up URL by removing the parameter
+      router.replace('/login', { scroll: false });
+    } else if (errorParam) {
+      // Handle error parameters from middleware or other redirects
+      const errorMessages: Record<string, string> = {
+        invalid_token: 'Your session has expired. Please login again.',
+        token_expired: 'Your session has expired. Please login again.',
+        database_context_mismatch: 'Database environment has changed. Please login again.',
+        account_disabled: 'Your account has been disabled. Please contact support.',
+        unauthorized: 'You are not authorized to access this resource.',
+        user_not_found: 'Your account no longer exists. Please contact support if you believe this is an error.',
+        user_deleted: 'Your account has been deleted. Please contact support if you believe this is an error.',
+      };
+      const errorMsg = errorMessages[errorParam] || 'An error occurred. Please try again.';
+      setMessage(errorMsg);
+      setMessageType('error');
+      // Clean up URL by removing the parameter
+      router.replace('/login', { scroll: false });
+    } else if (messageParam) {
+      // Handle custom message parameters
+      const decodedMessage = decodeURIComponent(messageParam);
+      setMessage(decodedMessage);
+      // Check if message contains "success" or "successfully" to show as success type
+      const isSuccessMessage = decodedMessage.toLowerCase().includes('success') || 
+                               decodedMessage.toLowerCase().includes('successfully');
+      setMessageType(isSuccessMessage ? 'success' : 'info');
+      // Clean up URL by removing the parameter
+      router.replace('/login', { scroll: false });
+    }
+
     // Load saved identifier if "Remember Me" was checked
     const savedIdentifier = localStorage.getItem('rememberedIdentifier');
     const wasRemembered = localStorage.getItem('rememberMe') === 'true';
@@ -88,24 +127,26 @@ export default function LoginPage() {
       setRememberMe(true);
     }
 
-    // Check for database mismatch and handle it
-    const handleMismatch = async () => {
-      const hasMismatch = await checkForDatabaseMismatch();
-      if (hasMismatch) {
-        setMessage(
-          'Database environment has changed. Please login again to continue.'
-        );
-        setMessageType('info');
+    // Check for database mismatch and handle it (only if no URL params already set a message)
+    if (!logoutParam && !errorParam && !messageParam) {
+      const handleMismatch = async () => {
+        const hasMismatch = await checkForDatabaseMismatch();
+        if (hasMismatch) {
+          setMessage(
+            'Database environment has changed. Please login again to continue.'
+          );
+          setMessageType('info');
 
-        // Clear any existing form data
-        setIdentifier('');
-        setPassword('');
-        setRememberMe(false);
-      }
-    };
+          // Clear any existing form data
+          setIdentifier('');
+          setPassword('');
+          setRememberMe(false);
+        }
+      };
 
-    handleMismatch();
-  }, []);
+      handleMismatch();
+    }
+  }, [searchParams, router]);
 
   // Redirect if user is already logged in
   useEffect(() => {
@@ -632,5 +673,13 @@ export default function LoginPage() {
         enforceUpdate
       />
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageSkeleton />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

@@ -86,6 +86,9 @@ export const createUser = async (user: {
   isEnabled?: boolean;
   profilePicture?: string | null;
   resourcePermissions?: ResourcePermissions;
+  rel?: {
+    licencee?: string[];
+  };
 }) => {
   const response = await axios.post('/api/users', user);
   return response.data.user;
