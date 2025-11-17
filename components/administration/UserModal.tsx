@@ -26,7 +26,7 @@ import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import { Edit3, Loader2, Save, Trash2, X, XCircle } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const ROLE_OPTIONS = [
@@ -69,10 +69,18 @@ export default function UserModal({
   onSave,
 }: UserModalProps) {
   const currentUser = useUserStore(state => state.user);
+  const currentUserRoles = (currentUser?.roles || []) as string[];
+  const isAdmin = currentUserRoles.some(role => ['admin', 'developer'].includes(role));
+  const isManager = currentUserRoles.includes('manager') && !isAdmin;
   const canEditAccountFields = Boolean(
     currentUser?.roles?.some(role =>
       ['admin', 'developer', 'manager'].includes(role)
     )
+  );
+  const canEditLicensees = isAdmin; // Only admins/developers can edit licensee assignments
+  const currentUserLicenseeIds = useMemo(
+    () => ((currentUser?.rel as { licencee?: string[] })?.licencee || []).map(id => String(id)),
+    [currentUser?.rel]
   );
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -334,8 +342,13 @@ export default function UserModal({
 
     const loadLicensees = async () => {
       try {
-        const lics = await fetchLicensees();
+        let lics = await fetchLicensees();
         if (cancelled) return;
+
+        // Filter licensees for managers - only show their assigned licensees
+        if (isManager && currentUserLicenseeIds.length > 0) {
+          lics = lics.filter(lic => currentUserLicenseeIds.includes(String(lic._id)));
+        }
 
         setLicensees(lics);
 
@@ -406,7 +419,7 @@ export default function UserModal({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, isManager, currentUserLicenseeIds]);
 
   // Load countries
   useEffect(() => {
@@ -666,7 +679,8 @@ export default function UserModal({
       roles,
       password: password || undefined,
       rel: {
-        licencee: selectedLicenseeIds,
+        // Managers cannot change licensee assignments - keep original
+        licencee: isManager ? (user?.rel?.licencee || []) : selectedLicenseeIds,
       },
       resourcePermissions: {
         ...(user?.resourcePermissions || {}),
@@ -755,6 +769,12 @@ export default function UserModal({
       oldLicenseeIdsNormalized.length !== newLicenseeIdsNormalized.length ||
       !oldLicenseeIdsNormalized.every(id => newLicenseeIdsNormalized.includes(id)) ||
       !newLicenseeIdsNormalized.every(id => oldLicenseeIdsNormalized.includes(id));
+
+    // Prevent managers from changing licensee assignments
+    if (isManager && licenseeIdsChanged) {
+      toast.error('Managers cannot change licensee assignments');
+      return;
+    }
 
     // Log for debugging
     console.log('[UserModal] Change Detection Debug:');
@@ -1497,13 +1517,37 @@ export default function UserModal({
                       )}
                     </div>
 
-                    {/* Licensees Section */}
-                    <div className="mb-6">
-                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
-                        Assigned Licensees
-                      </h4>
+                    {/* Licensees and Locations Container */}
+                    <div className="flex flex-col md:flex-row md:gap-6 mb-6">
+                      {/* Licensees Section */}
+                      <div className="flex-1 mb-6 md:mb-0">
+                        <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
+                          Assigned Licensees
+                        </h4>
 
-                      {isEditMode ? (
+                      {/* For managers, always show as read-only */}
+                      {!canEditLicensees ? (
+                        <div className="text-center">
+                          <div className="text-gray-700">
+                            {allLicenseesSelected
+                              ? `All Licensees (${licensees.length} licensees)`
+                              : selectedLicenseeIds.length > 0
+                                ? selectedLicenseeIds
+                                    .map(
+                                      id =>
+                                        licensees.find(l => String(l._id) === String(id))?.name
+                                    )
+                                    .filter(Boolean)
+                                    .join(', ')
+                                : 'No licensees assigned'}
+                          </div>
+                          {isManager && (
+                            <p className="mt-2 text-xs text-gray-500 italic">
+                              Licensee assignments cannot be changed by managers
+                            </p>
+                          )}
+                        </div>
+                      ) : isEditMode ? (
                         <div className="space-y-3">
                           {/* All Licensees Checkbox */}
                           <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
@@ -1552,13 +1596,13 @@ export default function UserModal({
                           </div>
                         </div>
                       )}
-                    </div>
+                      </div>
 
-                    {/* Locations Section */}
-                    <div>
-                      <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
-                        Allowed Locations
-                      </h4>
+                      {/* Locations Section */}
+                      <div className="flex-1">
+                        <h4 className="mb-4 text-center text-lg font-semibold text-gray-900">
+                          Allowed Locations
+                        </h4>
 
                       {isEditMode ? (
                         <div className="space-y-3">
@@ -1608,22 +1652,61 @@ export default function UserModal({
                           )}
                         </div>
                       ) : (
-                        <div className="text-center">
-                          <div className="text-gray-700">
-                            {allLocationsSelected
-                              ? `All Locations (${locations.length} locations)`
-                              : selectedLocationIds.length > 0
-                                ? selectedLocationIds
-                                    .map(
-                                      id =>
-                                        locations.find(l => l._id === id)?.name
-                                    )
-                                    .filter(Boolean)
-                                    .join(', ')
-                                : 'No locations assigned'}
-                          </div>
+                        <div className="w-full">
+                          {allLocationsSelected ? (
+                            <div className="text-center text-gray-700">
+                              All Locations ({locations.length} locations)
+                            </div>
+                          ) : selectedLocationIds.length > 0 ? (
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse border border-gray-300">
+                                <thead>
+                                  <tr className="bg-gray-100">
+                                    <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
+                                      Location
+                                    </th>
+                                    <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
+                                      Licensee
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {selectedLocationIds
+                                    .map(id => {
+                                      const location = locations.find(l => l._id === id);
+                                      if (!location) return null;
+                                      
+                                      const licensee = location.licenseeId
+                                        ? licensees.find(l => String(l._id) === String(location.licenseeId))
+                                        : null;
+                                      
+                                      return {
+                                        locationName: location.name || 'Unknown',
+                                        licenseeName: licensee?.name || 'Unknown',
+                                      };
+                                    })
+                                    .filter((item): item is { locationName: string; licenseeName: string } => item !== null)
+                                    .map((item, index) => (
+                                      <tr key={index} className="hover:bg-gray-50">
+                                        <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                                          {item.locationName}
+                                        </td>
+                                        <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                                          {item.licenseeName}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="text-center text-gray-700">
+                              No locations assigned
+                            </div>
+                          )}
                         </div>
                       )}
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -187,22 +187,22 @@ func main() {
 	dstDB := dstClient.Database("sas-prod")
 
 	collections := []string{
-		"acceptedbills",
-		"activityLogs",
-		"collections",
-		"collectionreports",
-		"countries",
-		"firmwares",
+		"acceptedbills", //Check
+		"activityLogs", // Cleared db
+		// "collections", //Check
+		"collectionreports", //Check
+		"countries", //Check
+		"firmwares", //Check
 		"gaminglocations",
 		"licencees",
-		"machineevents",
-		"machinesessions",
-		"machines",
-		"meters",
-		"members",
-		"movementrequests",
-		"relaymessages",
-		"schedulers",
+		// "machineevents",
+		"machinesessions", //Check
+		"machines", //Check
+		// "meters",
+		"members", //Check
+		"movementrequests", //Check
+		"relaymessages", //Check
+		"schedulers", //Check
 		"users",
 		"workerstates",
 	}
@@ -313,6 +313,7 @@ func migrateCollection(ctx context.Context, srcDB, dstDB *mongo.Database, collNa
 		return
 	}
 
+	// Start with empty filter to include ALL documents (no filtering by deletedAt, status, etc.)
 	filter := bson.D{}
 	resumeID := getResumeID(collName)
 	if resumeID != "" {
@@ -358,11 +359,21 @@ func migrateCollection(ctx context.Context, srcDB, dstDB *mongo.Database, collNa
 
 		result, err := dstColl.ReplaceOne(ctx, filter, doc, opts)
 		if err != nil {
-			log.Printf("❌ Error upserting into %s: %v\n", collName, err)
+			log.Printf("❌ Error upserting into %s (id=%v): %v\n", collName, doc["_id"], err)
+			// Log relevant fields for debugging (varies by collection type)
+			if collName == "users" {
+				log.Printf("   User details: username=%v, emailAddress=%v, deletedAt=%v\n", 
+					doc["username"], doc["emailAddress"], doc["deletedAt"])
+			} else if collName == "gaminglocations" {
+				log.Printf("   Location details: name=%v, deletedAt=%v\n", 
+					doc["name"], doc["deletedAt"])
+			}
 			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 				hadFatalError = true
 				break
 			}
+			// Continue to next document but log the error for investigation
+			// Don't skip silently - this helps identify why documents aren't migrating
 			continue
 		}
 		log.Printf("📝 [%s] write result => matched:%d modified:%d upserted:%d upsertedID:%v\n",

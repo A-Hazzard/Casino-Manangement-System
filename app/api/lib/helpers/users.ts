@@ -373,6 +373,35 @@ export async function updateUser(
     throw new Error('User not found');
   }
 
+  // Get current user to check permissions (early check for manager restrictions)
+  const requestingUser = await getUserFromServer();
+  const requestingUserRoles = (requestingUser?.roles || []) as string[];
+  const isAdmin = requestingUserRoles.some(role => ['admin', 'developer'].includes(role));
+  const isManager = requestingUserRoles.includes('manager') && !isAdmin;
+
+  // Prevent managers from changing licensee assignments
+  if (isManager && updateFields.rel && typeof updateFields.rel === 'object') {
+    const relUpdate = updateFields.rel as Record<string, unknown>;
+    if (relUpdate.licencee !== undefined) {
+      // Get original licensee assignments
+      const originalLicensees = (user.rel as { licencee?: string[] })?.licencee || [];
+      const newLicensees = Array.isArray(relUpdate.licencee) 
+        ? relUpdate.licencee.map(id => String(id))
+        : [];
+      
+      // Check if licensee assignments changed
+      const originalNormalized = originalLicensees.map(id => String(id)).sort();
+      const newNormalized = newLicensees.sort();
+      const licenseeChanged = 
+        originalNormalized.length !== newNormalized.length ||
+        !originalNormalized.every((id, idx) => id === newNormalized[idx]);
+      
+      if (licenseeChanged) {
+        throw new Error('Managers cannot change licensee assignments');
+      }
+    }
+  }
+
   // Normalize legacy profile payloads to the latest schema shape
   if (
     updateFields.profile &&
@@ -589,8 +618,8 @@ export async function updateUser(
     { new: true }
   );
 
-  // Log activity
-  const currentUser = (await getUserFromServer()) as CurrentUser | null;
+  // Log activity (reuse requestingUser from earlier)
+  const currentUser = requestingUser as CurrentUser | null;
   const clientIP = getClientIP(request);
   if (currentUser && currentUser.emailAddress) {
     await logActivity({

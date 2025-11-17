@@ -1,26 +1,26 @@
 'use client';
 
-import PageLayout from '@/components/layout/PageLayout';
-import MobileLayout from '@/components/layout/MobileLayout';
-import PcLayout from '@/components/layout/PcLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import MobileLayout from '@/components/layout/MobileLayout';
+import PageLayout from '@/components/layout/PageLayout';
+import PcLayout from '@/components/layout/PcLayout';
 import PageErrorBoundary from '@/components/ui/errors/PageErrorBoundary';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 
-import { useCallback, useEffect, useRef } from 'react';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { TimePeriod } from '@/shared/types/common';
-import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { FloatingRefreshButton } from '@/components/ui/FloatingRefreshButton';
 import { PieChartLabelRenderer } from '@/components/ui/PieChartLabelRenderer';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { TimePeriod } from '@/shared/types/common';
+import { useCallback, useEffect, useRef } from 'react';
 
 import {
-  loadGamingLocations,
   fetchMetricsData,
   fetchTopPerformingDataHelper,
+  loadGamingLocations,
 } from '@/lib/helpers/dashboard';
-import { CustomizedLabelProps } from '@/lib/types/componentProps';
 import { DashboardTotals, TopPerformingData } from '@/lib/types';
+import { CustomizedLabelProps } from '@/lib/types/componentProps';
 
 // Custom hooks
 import {
@@ -31,7 +31,6 @@ import {
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
-import MaintenanceBanner from '@/components/ui/MaintenanceBanner';
 
 /**
  * Dashboard Page Component
@@ -61,7 +60,7 @@ function DashboardContent() {
   const stableHandleApiCallWithRetry = useCallback(handleApiCallWithRetry, [
     handleApiCallWithRetry,
   ]);
-  
+
   const {
     loadingChartData,
     setLoadingChartData,
@@ -172,13 +171,18 @@ function DashboardContent() {
             (data: TopPerformingData[]) =>
               setTopPerformingData(data as unknown as TopPerformingData),
             setLoadingTopPerforming,
-            selectedLicencee  // Pass selected licensee for filtering
+            selectedLicencee // Pass selected licensee for filtering
           ),
         'Dashboard Top Performing Data'
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, activePieChartFilter, selectedLicencee, stableHandleApiCallWithRetry]);
+  }, [
+    activeTab,
+    activePieChartFilter,
+    selectedLicencee,
+    stableHandleApiCallWithRetry,
+  ]);
 
   // Handle custom date range changes separately
   useEffect(() => {
@@ -253,7 +257,7 @@ function DashboardContent() {
       mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
       showToaster={true}
     >
-      <MaintenanceBanner />
+      {/* <MaintenanceBanner /> */}
       {/* Mobile Layout Section: Responsive layout for small screens */}
       <div className="block md:hidden">
         <MobileLayout

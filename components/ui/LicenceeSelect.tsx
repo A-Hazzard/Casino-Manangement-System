@@ -67,6 +67,12 @@ export default function LicenceeSelect({
       className={`block w-full rounded-md border border-gray-300 bg-white py-1 pl-2 pr-8 text-sm transition duration-150 ease-in-out focus:border-buttonActive focus:outline-none focus:ring-1 focus:ring-buttonActive ${
         disabled ? 'cursor-not-allowed opacity-50' : ''
       }`}
+      style={{
+        textOverflow: 'ellipsis',
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        maxWidth: '100%',
+      }}
     >
       {/* "All" option - always shown */}
       <option value="">All Licensees</option>

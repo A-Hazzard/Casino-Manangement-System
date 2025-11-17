@@ -36,7 +36,9 @@
     "test:comprehensive-suite": "node scripts/comprehensive-test-suite.js",
     "test:verify-aggregation": "node scripts/verify-aggregation-accuracy.js",
     "sandbox:seed": "ts-node --transpile-only --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/seed-sandbox-fixtures.ts",
-    "seed:collection-reports": "node scripts/seed-collection-reports.js"
+    "seed:collection-reports": "node scripts/seed-collection-reports.js",
+    "compare:db": "node scripts/compare-db-collections.js",
+    "check:import-errors": "node scripts/check-import-errors.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

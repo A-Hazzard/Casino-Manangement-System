@@ -272,28 +272,33 @@ export default function Header({
         {/* Header Section: Main header with title and licensee selector */}
         <header className="flex w-full flex-col p-0">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
-          <div className="flex w-full items-center justify-between gap-4">
+          <div className="flex w-full items-center justify-between gap-2 sm:gap-4 min-w-0">
             {/* Left side: Menu button and title */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-shrink">
               {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
               <SidebarTrigger
                 className={cn(
-                  'relative z-20 cursor-pointer p-2 text-foreground md:hidden',
+                  'relative z-20 cursor-pointer p-2 text-foreground md:hidden flex-shrink-0',
                   isOpen && 'invisible'
                 )}
                 aria-label="Toggle sidebar"
               >
                 <PanelLeft className="h-6 w-6" suppressHydrationWarning />
               </SidebarTrigger>
-              <h1 className="shrink-0 text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl">
+              <h1 className="shrink-0 text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl whitespace-nowrap">
                 Evolution CMS
               </h1>
             </div>
 
             {/* Right side: Filters */}
             {!hideLicenceeFilter && shouldShowLicenseeSelect && (
-              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-                <div className="min-w-0 max-w-[120px] sm:max-w-[160px] md:max-w-none">
+              <div className="flex shrink items-center gap-1 sm:gap-2 min-w-0">
+                <div 
+                  className="min-w-0 overflow-hidden md:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
+                  style={{
+                    width: 'clamp(120px, calc((100vw - 240px) * 0.5 + 120px), 200px)',
+                  }}
+                >
                   <LicenceeSelect
                     selected={selectedLicencee || ''}
                     onChange={handleLicenseeChange}

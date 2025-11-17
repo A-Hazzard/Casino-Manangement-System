@@ -567,14 +567,23 @@ export default function MapPreview(props: MapPreviewProps) {
   return (
     <>
       {/* Small Map Preview */}
-      <div className="relative w-full rounded-lg bg-container p-4 shadow-md">
-        <h3 className="mb-3 text-sm font-medium text-gray-700">Map Preview</h3>
+      <div className="relative w-full rounded-lg bg-container p-3 sm:p-4 shadow-md">
+        <div className="mb-2 sm:mb-3 flex items-center justify-between">
+          <h3 className="text-xs sm:text-sm font-medium text-gray-700">Map Preview</h3>
+          <button
+            className="rounded-full bg-white p-1.5 sm:p-2 shadow-lg transition-all duration-200 ease-in-out hover:scale-110 active:scale-95 flex-shrink-0 z-[30]"
+            onClick={() => setIsModalOpen(true)}
+            aria-label="Open map in fullscreen"
+          >
+            <EnterFullScreenIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+          </button>
+        </div>
 
         {/* Notification for locations without coordinates */}
         {locationsWithoutCoords.length > 0 && (
-          <div className="mb-3 rounded-md border border-yellow-200 bg-yellow-50 p-2">
-            <div className="flex items-center gap-2 text-sm text-yellow-800">
-              <MapPin className="h-4 w-4" />
+          <div className="mb-2 sm:mb-3 rounded-md border border-yellow-200 bg-yellow-50 p-2">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-yellow-800">
+              <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>
                 <strong>{locationsWithoutCoords.length}</strong> location
                 {locationsWithoutCoords.length !== 1 ? 's' : ''}
@@ -593,16 +602,10 @@ export default function MapPreview(props: MapPreviewProps) {
           </div>
         )}
 
-        <button
-          className="absolute right-5 top-8 z-[30] rounded-full bg-white p-2 shadow-lg transition-all duration-200 ease-in-out hover:scale-110"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <EnterFullScreenIcon className="h-5 w-5" />
-        </button>
         <MapContainer
           center={userDefaultCenter} // Always use licensee-based center
           zoom={10}
-          className="z-0 mt-2 h-48 w-full rounded-lg"
+          className="z-0 mt-2 h-48 sm:h-56 w-full rounded-lg"
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -626,32 +629,32 @@ export default function MapPreview(props: MapPreviewProps) {
 
       {/* Modal for Expanded Map */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-md">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-md p-2 sm:p-4">
           <div
             ref={modalRef}
-            className="relative w-[90vw] max-w-5xl rounded-lg bg-white p-4 shadow-lg"
+            className="relative w-full max-w-5xl rounded-lg bg-white p-3 sm:p-4 shadow-lg max-h-[95vh] overflow-y-auto"
           >
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
-                <MapPin className="h-5 w-5" />
-                Casino Locations Map
+            <div className="mb-3 sm:mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-800">
+                <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="truncate">Casino Locations Map</span>
               </h3>
               <button
-                className="rounded-full bg-gray-200 p-2 shadow-md transition-all duration-200 ease-in-out hover:scale-110"
+                className="rounded-full bg-gray-200 p-1.5 sm:p-2 shadow-md transition-all duration-200 ease-in-out hover:scale-110 flex-shrink-0"
                 onClick={closeModal}
               >
-                <ExitFullScreenIcon className="h-5 w-5" />
+                <ExitFullScreenIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
-            <p className="mb-4 text-sm text-muted-foreground">
+            <p className="mb-3 sm:mb-4 text-xs sm:text-sm text-muted-foreground">
               Interactive map showing casino location performance metrics
             </p>
 
             {/* Notification for locations without coordinates in modal */}
             {locationsWithoutCoords.length > 0 && (
-              <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-3">
-                <div className="flex items-center gap-2 text-sm text-yellow-800">
-                  <MapPin className="h-4 w-4" />
+              <div className="mb-3 sm:mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-2 sm:p-3">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-yellow-800">
+                  <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                   <span>
                     <strong>{locationsWithoutCoords.length}</strong> location
                     {locationsWithoutCoords.length !== 1 ? 's' : ''}
@@ -669,25 +672,25 @@ export default function MapPreview(props: MapPreviewProps) {
                 )}
               </div>
             )}
-            {/* Flex row: sidebar + map */}
-            <div className="flex gap-4">
+            {/* Flex row on desktop, column on mobile: sidebar + map */}
+            <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
               {/* Sidebar */}
-              <div className="flex w-72 flex-col">
-                <div className="relative mb-4">
+              <div className="flex w-full md:w-72 flex-col">
+                <div className="relative mb-3 sm:mb-4">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                    <Search className="absolute left-2 sm:left-3 top-1/2 h-3 w-3 sm:h-4 sm:w-4 -translate-y-1/2 transform text-gray-400" />
                     <input
                       type="text"
                       placeholder="Search locations..."
                       value={searchQuery}
                       onChange={e => handleSearch(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-gray-300 py-1.5 sm:py-2 pl-8 sm:pl-10 pr-3 sm:pr-4 text-sm sm:text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
                 {/* Dropdown always below input */}
                 {showSearchResults && (
-                  <div className="max-h-60 overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
+                  <div className="max-h-48 sm:max-h-60 overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
                     {searchResults.length > 0 ? (
                       searchResults.map(location => {
                         const locationName =
@@ -704,24 +707,24 @@ export default function MapPreview(props: MapPreviewProps) {
                           <button
                             key={location._id}
                             onClick={() => zoomToLocation(location)}
-                            className="flex w-full items-center gap-2 border-b border-gray-200 px-4 py-2 text-left last:border-b-0 hover:bg-gray-100"
+                            className="flex w-full items-center gap-2 border-b border-gray-200 px-3 sm:px-4 py-2 text-left last:border-b-0 hover:bg-gray-100 text-sm sm:text-base"
                           >
                             <MapPin
-                              className={`h-4 w-4 ${
+                              className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${
                                 hasValidCoords
                                   ? 'text-gray-400'
                                   : 'text-yellow-500'
                               }`}
                             />
                             <span
-                              className={
+                              className={`truncate ${
                                 hasValidCoords ? '' : 'text-yellow-600'
-                              }
+                              }`}
                             >
                               {locationName}
                             </span>
                             {!hasValidCoords && (
-                              <span className="ml-auto rounded bg-yellow-100 px-1 text-xs text-yellow-600">
+                              <span className="ml-auto rounded bg-yellow-100 px-1 text-xs text-yellow-600 flex-shrink-0">
                                 No map
                               </span>
                             )}
@@ -729,7 +732,7 @@ export default function MapPreview(props: MapPreviewProps) {
                         );
                       })
                     ) : (
-                      <div className="p-4 text-center text-gray-500">
+                      <div className="p-3 sm:p-4 text-center text-gray-500 text-sm sm:text-base">
                         No locations found matching &quot;{searchQuery}&quot;
                       </div>
                     )}
@@ -737,11 +740,11 @@ export default function MapPreview(props: MapPreviewProps) {
                 )}
               </div>
               {/* Map */}
-              <div className="relative z-0 flex-1">
+              <div className="relative z-0 flex-1 min-h-[300px] sm:min-h-[400px]">
                 <MapContainer
                   center={userDefaultCenter} // Always use licensee-based center
                   zoom={10}
-                  className="h-[70vh] w-full rounded-lg"
+                  className="h-[50vh] sm:h-[60vh] md:h-[70vh] w-full rounded-lg"
                   ref={handleMapCreated}
                 >
                   <TileLayer
@@ -763,22 +766,22 @@ export default function MapPreview(props: MapPreviewProps) {
                   })}
                 </MapContainer>
                 {/* Map Legend */}
-                <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                    <span>Excellent Performance</span>
+                    <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-green-500"></div>
+                    <span className="text-xs">Excellent</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-                    <span>Good Performance</span>
+                    <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-blue-500"></div>
+                    <span className="text-xs">Good</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
-                    <span>Average Performance</span>
+                    <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-yellow-500"></div>
+                    <span className="text-xs">Average</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded-full bg-red-500"></div>
-                    <span>Poor Performance</span>
+                    <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-red-500"></div>
+                    <span className="text-xs">Poor</span>
                   </div>
                 </div>
               </div>

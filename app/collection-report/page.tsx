@@ -97,7 +97,6 @@ import type { CollectorSchedule } from '@/lib/types/components';
 // Icons
 import CollectionNavigation from '@/components/collectionReport/CollectionNavigation';
 import { Button } from '@/components/ui/button';
-import MaintenanceBanner from '@/components/ui/MaintenanceBanner';
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants/collection';
 import { IMAGES } from '@/lib/constants/images';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
@@ -1160,7 +1159,7 @@ function CollectionReportContent() {
         mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
         showToaster={true}
       >
-        <MaintenanceBanner />
+        {/* <MaintenanceBanner /> */}
         {/* Header Section: Title, refresh icon, and create button */}
         <div className="mt-4 flex w-full max-w-full items-center justify-between">
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800 sm:text-2xl md:text-3xl">

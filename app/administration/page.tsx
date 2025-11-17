@@ -40,24 +40,23 @@ import type {
   SortKey,
   User,
 } from '@/lib/types/administration';
-import type { Licensee } from '@/lib/types/licensee';
 import type { Country } from '@/lib/types/country';
+import type { Licensee } from '@/lib/types/licensee';
 import {
   detectChanges,
   filterMeaningfulChanges,
   getChangesSummary,
 } from '@/lib/utils/changeDetection';
 import { getNext30Days } from '@/lib/utils/licensee';
+import { PlusCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { RefreshCw, PlusCircle } from 'lucide-react';
 // import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
 
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import axios from 'axios';
-import MaintenanceBanner from '@/components/ui/MaintenanceBanner';
 
 function AdministrationPageContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
@@ -359,17 +358,24 @@ function AdministrationPageContent() {
 
     // Build comparison objects with ONLY editable fields
     const normalizedOriginalEmail = (
-      selectedUser.email || selectedUser.emailAddress || ''
+      selectedUser.email ||
+      selectedUser.emailAddress ||
+      ''
     ).trim();
     const normalizedUpdatedEmail = (
-      updated.email || updated.emailAddress || ''
+      updated.email ||
+      updated.emailAddress ||
+      ''
     ).trim();
 
     const originalData = {
       username: selectedUser.username,
       email: normalizedOriginalEmail,
-      emailAddress:
-        (selectedUser.emailAddress || selectedUser.email || '').trim(),
+      emailAddress: (
+        selectedUser.emailAddress ||
+        selectedUser.email ||
+        ''
+      ).trim(),
       profile: selectedUser.profile,
       roles: selectedUser.roles,
       resourcePermissions: selectedUser.resourcePermissions,
@@ -397,7 +403,13 @@ function AdministrationPageContent() {
     console.log('  Original rel:', originalData.rel);
     console.log('  Updated rel:', formDataComparison.rel);
     console.log('  Meaningful changes:', meaningfulChanges);
-    console.log('  Changes summary:', meaningfulChanges.map(c => `${c.path}: ${JSON.stringify(c.oldValue)} → ${JSON.stringify(c.newValue)}`));
+    console.log(
+      '  Changes summary:',
+      meaningfulChanges.map(
+        c =>
+          `${c.path}: ${JSON.stringify(c.oldValue)} → ${JSON.stringify(c.newValue)}`
+      )
+    );
 
     // Only proceed if there are actual changes
     if (meaningfulChanges.length === 0) {
@@ -405,27 +417,37 @@ function AdministrationPageContent() {
       toast.info('No changes detected');
       return;
     }
-    
+
     console.log('[Administration] ✅ Changes detected, proceeding with save');
 
     // Check if permission-related fields changed (roles, resourcePermissions, rel)
     console.log('[Administration] Checking for permission field changes...');
-    console.log('[Administration] All changed paths:', meaningfulChanges.map(c => c.path));
-    
+    console.log(
+      '[Administration] All changed paths:',
+      meaningfulChanges.map(c => c.path)
+    );
+
     const permissionFieldsChanged = meaningfulChanges.some(change => {
       const fieldPath = change.path;
-      const isPermissionField = fieldPath === 'roles' || 
-             fieldPath.startsWith('resourcePermissions') || 
-             fieldPath.startsWith('rel');
-      
+      const isPermissionField =
+        fieldPath === 'roles' ||
+        fieldPath.startsWith('resourcePermissions') ||
+        fieldPath.startsWith('rel');
+
       if (isPermissionField) {
-        console.log('[Administration] Found permission field change:', fieldPath);
+        console.log(
+          '[Administration] Found permission field change:',
+          fieldPath
+        );
       }
-      
+
       return isPermissionField;
     });
-    
-    console.log('[Administration] Permission fields changed:', permissionFieldsChanged);
+
+    console.log(
+      '[Administration] Permission fields changed:',
+      permissionFieldsChanged
+    );
 
     // Build update payload with only changed fields + required _id
     const updatePayload: Record<string, unknown> = { _id: selectedUser._id };
@@ -471,7 +493,9 @@ function AdministrationPageContent() {
     // If permission-related fields changed, increment sessionVersion to invalidate existing JWT
     if (permissionFieldsChanged) {
       updatePayload.$inc = { sessionVersion: 1 };
-      console.log('[Administration] 🔒 Permission fields changed - incrementing sessionVersion to invalidate user session');
+      console.log(
+        '[Administration] 🔒 Permission fields changed - incrementing sessionVersion to invalidate user session'
+      );
     }
 
     console.log('[Administration] Update payload:', updatePayload);
@@ -525,7 +549,7 @@ function AdministrationPageContent() {
       );
     } catch (error) {
       console.error('Failed to update user:', error);
-      
+
       // Extract detailed error message
       let errorMessage = 'Failed to update user';
       if (error instanceof Error) {
@@ -536,7 +560,7 @@ function AdministrationPageContent() {
           errorMessage = err.response.data.message;
         }
       }
-      
+
       toast.error(errorMessage);
       // Don't close modal on error - let user try again
     }
@@ -723,7 +747,9 @@ function AdministrationPageContent() {
       }
 
       // Build update payload with only changed fields + required _id
-      const updatePayload: Record<string, unknown> = { _id: selectedLicensee._id };
+      const updatePayload: Record<string, unknown> = {
+        _id: selectedLicensee._id,
+      };
       meaningfulChanges.forEach(change => {
         const fieldPath = change.path; // Use full path for nested fields
         updatePayload[fieldPath] = change.newValue;
@@ -1343,18 +1369,18 @@ function AdministrationPageContent() {
       showToaster={false}
       hideCurrencyFilter
     >
-      <MaintenanceBanner />
+      {/* <MaintenanceBanner /> */}
       {/* Header Section: Admin icon, title, refresh icon, and action buttons */}
-      <div className="flex items-center justify-between mt-4 md:mt-6 w-full max-w-full">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-2">
+      <div className="mt-4 flex w-full max-w-full items-center justify-between md:mt-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800 sm:text-2xl md:text-3xl">
             Administration
             <Image
               src={IMAGES.adminIcon}
               alt="Admin Icon"
               width={32}
               height={32}
-              className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex-shrink-0"
+              className="h-5 w-5 flex-shrink-0 sm:h-6 sm:w-6 md:h-8 md:w-8"
             />
           </h1>
           {/* Mobile: Refresh icon */}
@@ -1371,17 +1397,17 @@ function AdministrationPageContent() {
               setRefreshing(false);
             }}
             disabled={refreshing}
-            className="md:hidden ml-auto p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            className="ml-auto flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
             aria-label="Refresh"
           >
             <RefreshCw
-              className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? "animate-spin" : ""}`}
+              className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
             />
           </button>
         </div>
 
         {/* Desktop: Refresh icon and Create button - Desktop full button, Mobile icon only */}
-        <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+        <div className="hidden flex-shrink-0 items-center gap-2 md:flex">
           {/* Refresh icon */}
           <button
             onClick={async () => {
@@ -1396,11 +1422,11 @@ function AdministrationPageContent() {
               setRefreshing(false);
             }}
             disabled={refreshing}
-            className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Refresh"
           >
             <RefreshCw
-              className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+              className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
             />
           </button>
           {activeSection === 'users' ? (
@@ -1424,12 +1450,12 @@ function AdministrationPageContent() {
         </div>
 
         {/* Mobile: Create button - Icon only */}
-        <div className="md:hidden flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-2 md:hidden">
           {activeSection === 'users' ? (
             <button
               onClick={openAddUserModal}
               disabled={refreshing}
-              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Add User"
             >
               <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
@@ -1440,7 +1466,7 @@ function AdministrationPageContent() {
               disabled={
                 refreshing || isCountriesLoading || countries.length === 0
               }
-              className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Add Licensee"
             >
               <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
