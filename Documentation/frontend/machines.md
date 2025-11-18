@@ -87,6 +87,7 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - View, search, sort, add, edit, and delete cabinets.
   - Real-time cabinet status monitoring.
   - Cabinet performance metrics and analytics.
+  - **Machine Status Widget**: Displays online/total machine count (e.g., "37/40 Online") with offline count on the Cabinets tab
 - **SMIB Management:**
   - SMIB (Slot Machine Interface Board) configuration.
   - Communication settings and firmware management.

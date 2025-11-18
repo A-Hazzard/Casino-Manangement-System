@@ -1,30 +1,48 @@
-import { NextRequest, NextResponse } from 'next/server';
+import {
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
+} from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
+  getLicenseeCurrency,
 } from '@/lib/helpers/rates';
-import type { CurrencyCode } from '@/shared/types/currency';
-import { TimePeriod } from '@/app/api/lib/types';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
   try {
     const { searchParams } = new URL(req.url);
     const locations = searchParams.get('locations');
-    const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+    const timePeriod =
+      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
     const customStartDate = searchParams.get('startDate');
     const customEndDate = searchParams.get('endDate');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const licencee = searchParams.get('licencee');
-    const displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || 'USD';
+
+    // Determine display currency:
+    // - If currency param is provided, use it (for "All Licensees" mode)
+    // - If viewing a specific licensee, use that licensee's native currency
+    // - Otherwise default to USD
+    let displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || undefined;
+
+    if (!displayCurrency && licencee && licencee !== 'all') {
+      // Use the licensee's native currency when viewing a specific licensee
+      displayCurrency = getLicenseeCurrency(licencee);
+    }
+
+    displayCurrency = displayCurrency || 'USD';
 
     if (!locations) {
       return NextResponse.json(
@@ -58,13 +76,61 @@ export async function GET(req: NextRequest) {
     }
 
     const userRoles = (userPayload?.roles as string[]) || [];
-    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
+    const isAdminOrDev =
+      userRoles.includes('admin') || userRoles.includes('developer');
 
-    // Parse locations (comma-separated)
-    const locationList = locations
+    // Get user's accessible licensees and location permissions for filtering
+    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userLocationPermissions =
+      (
+        userPayload?.resourcePermissions as {
+          'gaming-locations'?: { resources?: string[] };
+        }
+      )?.['gaming-locations']?.resources || [];
+
+    // Get allowed location IDs based on user role and permissions
+    const allowedLocationIds = await getUserLocationFilter(
+      userAccessibleLicensees,
+      licencee || undefined,
+      userLocationPermissions,
+      userRoles
+    );
+
+    // Parse locations (comma-separated) from request
+    const requestedLocationList = locations
       .split(',')
       .map(loc => loc.trim())
       .filter(loc => loc !== 'all' && loc !== '');
+
+    // For location admin, enforce their assigned locations only
+    const normalizedRoles = userRoles.map(role =>
+      typeof role === 'string' ? role.toLowerCase() : role
+    );
+    const isLocationAdmin = normalizedRoles.includes('location admin');
+
+    // Determine final location list to use
+    let locationList: string[] = [];
+    if (isLocationAdmin) {
+      // Location admin: only use their assigned locations (ignore request parameter)
+      if (allowedLocationIds === 'all') {
+        locationList = [];
+      } else {
+        locationList = allowedLocationIds;
+      }
+    } else if (requestedLocationList.length > 0) {
+      // Other roles: use requested locations, but filter by allowed locations
+      if (allowedLocationIds === 'all') {
+        locationList = requestedLocationList;
+      } else {
+        // Intersect requested locations with allowed locations
+        locationList = requestedLocationList.filter(loc =>
+          allowedLocationIds.includes(loc)
+        );
+      }
+    } else if (allowedLocationIds !== 'all') {
+      // No locations requested, use all allowed locations
+      locationList = allowedLocationIds;
+    }
 
     // Build query filter for machines
     const machineMatchStage: Record<string, unknown> = {
@@ -75,8 +141,33 @@ export async function GET(req: NextRequest) {
     };
 
     // Add location filter if specific locations are selected
-    if (locationList.length > 0 && !locationList.includes('all')) {
+    if (locationList.length > 0) {
       machineMatchStage.gamingLocation = { $in: locationList };
+    } else if (
+      allowedLocationIds !== 'all' &&
+      allowedLocationIds.length === 0
+    ) {
+      // User has no accessible locations, return empty result
+      return NextResponse.json({
+        data: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: page,
+        limit,
+        locations: [],
+        dateRange: { start: new Date(), end: new Date() },
+        timePeriod,
+        currency: displayCurrency,
+        converted: false,
+        pagination: {
+          page,
+          limit,
+          totalCount: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      });
     }
 
     // Get machines data for the selected locations
@@ -86,7 +177,7 @@ export async function GET(req: NextRequest) {
       .project({
         _id: 1,
         serialNumber: 1,
-        'Custom.name': 1,
+        custom: 1, // Get entire custom object to access custom.name
         gamingLocation: 1,
         sasMeters: 1,
         lastActivity: 1,
@@ -114,17 +205,27 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all gaming locations for name resolution and gaming day offset
+    // Use locationList if we have specific locations, otherwise use allowedLocationIds
+    const locationsToQuery =
+      locationList.length > 0
+        ? locationList
+        : allowedLocationIds === 'all'
+          ? []
+          : allowedLocationIds;
+
     const locationsData = await db
       .collection('gaminglocations')
       .find(
         {
-          _id: { $in: locationList as never[] },
+          _id: { $in: locationsToQuery as never[] },
           $or: [
             { deletedAt: null },
             { deletedAt: { $lt: new Date('2020-01-01') } },
           ],
         } as never,
-        { projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 } }
+        {
+          projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 },
+        }
       )
       .toArray();
 
@@ -135,7 +236,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Calculate gaming day ranges for all selected locations
-    const locationsList = locationsData.map((loc) => ({
+    const locationsListForGamingDay = locationsData.map(loc => ({
       _id: String(loc._id),
       gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM
     }));
@@ -149,7 +250,7 @@ export async function GET(req: NextRequest) {
     }
 
     const gamingDayRanges = getGamingDayRangesForLocations(
-      locationsList,
+      locationsListForGamingDay,
       timePeriod,
       customStart,
       customEnd
@@ -158,10 +259,10 @@ export async function GET(req: NextRequest) {
     // Get the earliest start and latest end across all locations
     const rangesArray = Array.from(gamingDayRanges.values());
     const queryStartDate = new Date(
-      Math.min(...rangesArray.map((r) => r.rangeStart.getTime()))
+      Math.min(...rangesArray.map(r => r.rangeStart.getTime()))
     );
     const queryEndDate = new Date(
-      Math.max(...rangesArray.map((r) => r.rangeEnd.getTime()))
+      Math.max(...rangesArray.map(r => r.rangeEnd.getTime()))
     );
 
     console.warn('🔍 METERS API - Date Range:', {
@@ -170,8 +271,10 @@ export async function GET(req: NextRequest) {
       queryEndDate: queryEndDate.toISOString(),
     });
 
-    // Aggregate meter data for the gaming day range
-    const machineIds = machinesData.map((m) => (m._id as string).toString());
+    // Get the LAST meter document for each machine within the gaming day range
+    // This captures the absolute values at the end of the gaming day period
+    // For Nov 18 with gameDayOffset=8: queries Nov 18 8AM to Nov 19 7:59:59.999AM
+    const machineIds = machinesData.map(m => (m._id as string).toString());
 
     const metersAggregation = await db
       .collection('meters')
@@ -182,22 +285,30 @@ export async function GET(req: NextRequest) {
             readAt: { $gte: queryStartDate, $lte: queryEndDate },
           },
         },
+        // Sort by readAt descending to get the latest meter first
+        {
+          $sort: { readAt: -1 },
+        },
+        // Group by machine and take the first (latest) document's absolute values
         {
           $group: {
             _id: '$machine',
-            drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            // Use top-level absolute values from the last meter document
+            drop: { $first: { $ifNull: ['$drop', 0] } },
             totalCancelledCredits: {
-              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+              $first: { $ifNull: ['$totalCancelledCredits', 0] },
             },
             totalHandPaidCancelledCredits: {
-              $sum: { $ifNull: ['$movement.totalHandPaidCancelledCredits', 0] },
+              $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
             },
-            coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
-            coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
-            totalWonCredits: { $sum: { $ifNull: ['$movement.totalWonCredits', 0] } },
-            gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
-            jackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
-            lastReadAt: { $max: '$readAt' },
+            coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
+            coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
+            totalWonCredits: {
+              $first: { $ifNull: ['$totalWonCredits', 0] },
+            },
+            gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
+            jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
+            lastReadAt: { $first: '$readAt' },
           },
         },
       ])
@@ -218,19 +329,35 @@ export async function GET(req: NextRequest) {
           : 'Unknown Location';
 
         // Machine ID display
+        // Check if serialNumber is blank or whitespace-only
         const serialNumber = machine.serialNumber?.toString().trim() || '';
+        const hasValidSerialNumber = serialNumber.length > 0;
+
+        // Get custom.name value from the custom object
         const customName =
-          (machine.Custom as Record<string, unknown>)?.name
+          ((machine.custom as Record<string, unknown>)?.name as string)
             ?.toString()
             .trim() || '';
 
-        let machineId = '';
-        if (serialNumber) {
-          machineId = serialNumber;
-        } else if (customName) {
-          machineId = customName;
-        } else {
-          machineId = `Machine ${(machine._id as string).toString().slice(-6)}`;
+        // Use serialNumber if available, otherwise fall back to custom.name
+        // There should always be at least one of these fields available
+        const machineId = hasValidSerialNumber ? serialNumber : customName;
+
+        // Debug logging for the specific machine
+        const machineIdStr =
+          (machine._id as { toString?: () => string })?.toString?.() ||
+          String(machine._id);
+        if (machineIdStr === '477493327262a58cb084f19d') {
+          console.warn('🔍 DEBUG Machine 477493327262a58cb084f19d:', {
+            serialNumber: `"${serialNumber}"`,
+            hasValidSerialNumber,
+            customName: `"${customName}"`,
+            machineKeys: Object.keys(machine),
+            customObject: machine.custom,
+            customObjectType: typeof machine.custom,
+            finalMachineId: machineId,
+            rawMachine: JSON.stringify(machine, null, 2),
+          });
         }
 
         const machineDocumentId = (machine._id as string).toString();
@@ -291,8 +418,11 @@ export async function GET(req: NextRequest) {
           );
 
           const serialNumber = machineData?.serialNumber || '';
+          // Get custom.name value from the custom object
           const customName =
-            (machineData?.Custom as Record<string, unknown>)?.name || '';
+            ((machineData?.custom as Record<string, unknown>)?.name as string)
+              ?.toString()
+              .trim() || '';
 
           return (
             (item.machineId as string).toLowerCase().includes(searchLower) ||
@@ -359,7 +489,7 @@ export async function GET(req: NextRequest) {
       locationsData.forEach((loc: Record<string, unknown>) => {
         const countryId = loc.country as string;
         const countryName = countryId ? countryNameMap.get(countryId) : null;
-        
+
         locationDetailsMap.set(String(loc._id), {
           licensee: (loc.rel as Record<string, unknown>)?.licencee || null,
           country: countryName || null,
@@ -381,7 +511,9 @@ export async function GET(req: NextRequest) {
               nativeCurrency = getCountryCurrency(licenseeCountry as string);
             }
           } else if (locationDetails.country) {
-            nativeCurrency = getCountryCurrency(locationDetails.country as string);
+            nativeCurrency = getCountryCurrency(
+              locationDetails.country as string
+            );
           }
         }
 
@@ -423,7 +555,10 @@ export async function GET(req: NextRequest) {
                 nativeCurrency
               );
               // Step 2: Convert from USD to display currency
-              convertedAsRecord[field] = convertFromUSD(usdValue, displayCurrency);
+              convertedAsRecord[field] = convertFromUSD(
+                usdValue,
+                displayCurrency
+              );
             }
           });
         }
@@ -432,13 +567,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Get actual location IDs used in the query for response
+    const actualLocationIds = locationsData.map(loc => String(loc._id));
+    const responseLocationList =
+      locationList.length > 0 ? locationList : actualLocationIds;
+
     return NextResponse.json({
       data: convertedData,
       totalCount,
       totalPages,
       currentPage: page,
       limit,
-      locations: locationList,
+      locations: responseLocationList,
       dateRange: { start: queryStartDate, end: queryEndDate },
       timePeriod,
       currency: displayCurrency,

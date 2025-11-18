@@ -49,7 +49,7 @@ export type TabName =
  */
 export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
   const pagePermissions: Record<PageName, string[]> = {
-    dashboard: ['developer', 'admin', 'manager'], // ✅ Removed 'location admin'
+    dashboard: ['developer', 'admin', 'manager', 'location admin'], // ✅ Location admin can access dashboard
     machines: [
       'developer',
       'admin',
@@ -83,7 +83,7 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'collector',
       'technician',
     ],
-    reports: ['developer'], // ✅ Restricted to developer only
+    reports: ['developer', 'admin', 'location admin'], // ✅ Restricted to developer, admin, and location admin
     sessions: ['developer'], // ✅ Restricted to developer only
     administration: ['developer', 'admin', 'manager'],
   };
@@ -265,10 +265,10 @@ export const shouldShowNavigationLink = (
     return false; // These are accessed via direct links only
   }
 
-  // Hide certain links (sessions, members, reports) unless the user has
+  // Hide certain links (sessions, members) unless the user has
   // the highest-level role. This affects NAV/Sidebar visibility only and
   // does not change actual route access rules handled by hasPageAccess.
-  if (page === 'sessions' || page === 'members' || page === 'reports') {
+  if (page === 'sessions' || page === 'members') {
     return userRoles.includes('developer');
   }
 

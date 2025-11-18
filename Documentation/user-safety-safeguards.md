@@ -274,12 +274,25 @@ Admin changes a location's licensee assignment while collectors are actively ent
 
 **Session Version System:**
 ```typescript
+// ⚠️ IMPORTANT: sessionVersion is ONLY incremented when permissions change
+// It is NOT incremented on login - this allows multiple concurrent sessions
+
 // When permissions change, sessionVersion increments
 await User.updateOne(
   { _id: userId },
   { 
     $set: { 'rel.licencee': newLicenseeId },
     $inc: { sessionVersion: 1 }  // Increment version
+  }
+);
+
+// On login, sessionVersion is NOT incremented:
+await User.updateOne(
+  { _id: userId },
+  {
+    $set: { lastLoginAt: now },  // Only update login metadata
+    $inc: { loginCount: 1 }      // Increment login count
+    // sessionVersion remains unchanged
   }
 );
 

@@ -30,10 +30,11 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
     } else if (section === 'meters') {
       setActiveView('meters');
     } else {
-      // Default to locations if no section specified
-      setActiveView('locations');
+      // Default to first available tab (meters for non-developers, locations for developers)
+      const defaultTab = availableTabs.length > 0 ? availableTabs[0].id : 'meters';
+      setActiveView(defaultTab as ReportView);
     }
-  }, [searchParams, setActiveView]);
+  }, [searchParams, setActiveView, availableTabs]);
 
   /**
    * Ensure user has access to current view, fallback to first available tab

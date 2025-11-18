@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    // Add search filter if provided (search by serial number, relay ID, smib board, or machine _id)
+    // Add search filter if provided (search by serial number, relay ID, smib board, custom.name, or machine _id)
     if (searchTerm) {
       aggregationPipeline.push({
         $match: {
@@ -174,6 +174,7 @@ export async function GET(request: NextRequest) {
             { 'machines.serialNumber': { $regex: searchTerm, $options: 'i' } },
             { 'machines.relayId': { $regex: searchTerm, $options: 'i' } },
             { 'machines.smibBoard': { $regex: searchTerm, $options: 'i' } },
+            { 'machines.custom.name': { $regex: searchTerm, $options: 'i' } },
             { 'machines._id': searchTerm }, // Exact match for machine _id
           ],
         },
@@ -224,8 +225,18 @@ export async function GET(request: NextRequest) {
         _id: '$machines._id',
         locationId: '$_id',
         locationName: '$name',
-        assetNumber: '$machines.serialNumber',
-        serialNumber: '$machines.serialNumber',
+        assetNumber: {
+          $ifNull: [
+            { $cond: [{ $eq: [{ $trim: { input: '$machines.serialNumber' } }, ''] }, null, '$machines.serialNumber'] },
+            '$machines.custom.name'
+          ]
+        },
+        serialNumber: {
+          $ifNull: [
+            { $cond: [{ $eq: [{ $trim: { input: '$machines.serialNumber' } }, ''] }, null, '$machines.serialNumber'] },
+            '$machines.custom.name'
+          ]
+        },
         relayId: '$machines.relayId',
         smibBoard: '$machines.smibBoard',
         smbId: {

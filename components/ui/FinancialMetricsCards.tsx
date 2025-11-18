@@ -1,13 +1,13 @@
 'use client';
 
 import { DashboardFinancialMetricsSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
+import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import { fetchLicenseeById } from '@/lib/helpers/clientLicensees';
 import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { useEffect, useState } from 'react';
-import { MobileValuePopover } from '@/components/ui/MobileValuePopover';
+import React, { useEffect, useState } from 'react';
 
 type FinancialMetricsCardsProps = {
   totals: {
@@ -177,18 +177,9 @@ export default function FinancialMetricsCards({
     };
   };
 
-    const moneyInScaled = totals
-      ? formatCurrencyWithScaling(totals.moneyIn)
-      : null;
-    const moneyOutScaled = totals
-      ? formatCurrencyWithScaling(totals.moneyOut)
-      : null;
-    const grossScaled = totals
-      ? formatCurrencyWithScaling(totals.gross)
-      : null;
 
-    return (
-      <div className={`space-y-4 ${className}`}>
+  return (
+    <div className={`space-y-4 ${className}`}>
       {title && (
         <h2 className="text-lg font-semibold text-gray-700">{title}</h2>
       )}
@@ -206,22 +197,17 @@ export default function FinancialMetricsCards({
                 <div className="h-2 w-2 rounded-full bg-purple-500"></div>
               </div>
 
-                <div className="space-y-2">
-                  <MobileValuePopover
-                    displayValue={moneyInScaled ? moneyInScaled.display : '--'}
-                    fullValue={
-                      totals ? formatCurrencyAmount(totals.moneyIn) : '--'
-                    }
-                    popoverLabel="Money In"
-                    triggerClassName={`font-bold text-gray-900 ${moneyInScaled?.size ?? 'text-lg sm:text-xl'}`}
-                    showIcon={Boolean(totals)}
+              <div className="space-y-2">
+                <div
+                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.moneyIn || 0).size}`}
+                >
+                  <CurrencyValueWithOverflow
+                    value={totals?.moneyIn}
+                    formatCurrencyFn={formatCurrencyAmount}
+                    formatCurrencyWithScalingFn={formatCurrencyWithScaling}
+                    currencyCode={currencyCode}
                   />
-
-                {totals && Math.abs(totals.moneyIn) >= 1000 && (
-                  <div className="font-mono text-xs text-gray-500">
-                    {formatCurrencyAmount(totals.moneyIn)}
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -237,21 +223,17 @@ export default function FinancialMetricsCards({
                 <div className="h-2 w-2 rounded-full bg-blue-500"></div>
               </div>
 
-                <div className="space-y-2">
-                  <MobileValuePopover
-                    displayValue={moneyOutScaled ? moneyOutScaled.display : '--'}
-                    fullValue={
-                      totals ? formatCurrencyAmount(totals.moneyOut) : '--'
-                    }
-                    popoverLabel="Money Out"
-                    triggerClassName={`font-bold text-gray-900 ${moneyOutScaled?.size ?? 'text-lg sm:text-xl'}`}
-                    showIcon={Boolean(totals)}
+              <div className="space-y-2">
+                <div
+                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.moneyOut || 0).size}`}
+                >
+                  <CurrencyValueWithOverflow
+                    value={totals?.moneyOut}
+                    formatCurrencyFn={formatCurrencyAmount}
+                    formatCurrencyWithScalingFn={formatCurrencyWithScaling}
+                    currencyCode={currencyCode}
                   />
-                {totals && Math.abs(totals.moneyOut) >= 1000 && (
-                  <div className="font-mono text-xs text-gray-500">
-                    {formatCurrencyAmount(totals.moneyOut)}
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -267,21 +249,17 @@ export default function FinancialMetricsCards({
                 <div className="h-2 w-2 rounded-full bg-orange-500"></div>
               </div>
 
-                <div className="space-y-2">
-                  <MobileValuePopover
-                    displayValue={grossScaled ? grossScaled.display : '--'}
-                    fullValue={
-                      totals ? formatCurrencyAmount(totals.gross) : '--'
-                    }
-                    popoverLabel="Gross"
-                    triggerClassName={`font-bold text-gray-900 ${grossScaled?.size ?? 'text-lg sm:text-xl'}`}
-                    showIcon={Boolean(totals)}
+              <div className="space-y-2">
+                <div
+                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.gross || 0).size}`}
+                >
+                  <CurrencyValueWithOverflow
+                    value={totals?.gross}
+                    formatCurrencyFn={formatCurrencyAmount}
+                    formatCurrencyWithScalingFn={formatCurrencyWithScaling}
+                    currencyCode={currencyCode}
                   />
-                {totals && Math.abs(totals.gross) >= 1000 && (
-                  <div className="font-mono text-xs text-gray-500">
-                    {formatCurrencyAmount(totals.gross)}
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -297,7 +275,12 @@ export default function FinancialMetricsCards({
             <div className="my-2 h-[4px] w-full rounded-full bg-buttonActive"></div>
             <div className="flex flex-1 items-center justify-center">
               <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
-                {totals ? formatCurrencyAmount(totals.moneyIn) : '--'}
+                <CurrencyValueWithOverflow
+                  value={totals?.moneyIn}
+                  formatCurrencyFn={formatCurrencyAmount}
+                  formatCurrencyWithScalingFn={formatCurrencyWithScaling}
+                  currencyCode={currencyCode}
+                />
               </p>
             </div>
           </div>
@@ -309,7 +292,12 @@ export default function FinancialMetricsCards({
             <div className="my-2 h-[4px] w-full rounded-full bg-lighterBlueHighlight"></div>
             <div className="flex flex-1 items-center justify-center">
               <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
-                {totals ? formatCurrencyAmount(totals.moneyOut) : '--'}
+                <CurrencyValueWithOverflow
+                  value={totals?.moneyOut}
+                  formatCurrencyFn={formatCurrencyAmount}
+                  formatCurrencyWithScalingFn={formatCurrencyWithScaling}
+                  currencyCode={currencyCode}
+                />
               </p>
             </div>
           </div>
@@ -321,7 +309,12 @@ export default function FinancialMetricsCards({
             <div className="my-2 h-[4px] w-full rounded-full bg-orangeHighlight"></div>
             <div className="flex flex-1 items-center justify-center">
               <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
-                {totals ? formatCurrencyAmount(totals.gross) : '--'}
+                <CurrencyValueWithOverflow
+                  value={totals?.gross}
+                  formatCurrencyFn={formatCurrencyAmount}
+                  formatCurrencyWithScalingFn={formatCurrencyWithScaling}
+                  currencyCode={currencyCode}
+                />
               </p>
             </div>
           </div>

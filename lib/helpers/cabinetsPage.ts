@@ -107,13 +107,22 @@ export function filterCabinets(
   // Filter by search term
   if (search.trim()) {
     const searchLower = search.toLowerCase();
-    filtered = filtered.filter(
-      cab =>
+    filtered = filtered.filter(cab => {
+      const cabRecord = cab as Record<string, unknown>;
+      // Check custom.name (lowercase - primary per schema) first, then Custom.name (uppercase - legacy fallback)
+      const customName = (
+        (cabRecord.custom as Record<string, unknown>)?.name ||
+        (cabRecord.Custom as Record<string, unknown>)?.name
+      )?.toString().toLowerCase() || '';
+      
+      return (
         cab.assetNumber?.toLowerCase().includes(searchLower) ||
         cab.smbId?.toLowerCase().includes(searchLower) ||
         cab.locationName?.toLowerCase().includes(searchLower) ||
-        cab.serialNumber?.toLowerCase().includes(searchLower)
-    );
+        cab.serialNumber?.toLowerCase().includes(searchLower) ||
+        customName.includes(searchLower)
+      );
+    });
   }
 
   // Sort the filtered cabinets alphabetically and numerically

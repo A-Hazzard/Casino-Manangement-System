@@ -155,7 +155,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <Button
           variant={'outline'}
           className={cn(
-            'w-full justify-start text-left font-normal',
+            'w-[280px] justify-start text-left font-normal',
             !value && 'text-muted-foreground',
             className
           )}

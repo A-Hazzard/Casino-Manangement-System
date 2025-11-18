@@ -10,6 +10,7 @@ import {
   validateProfileField,
   validateOptionalGender,
   validateUsername,
+  isPlaceholderEmail,
 } from '@/lib/utils/validation';
 
 type NullableString = string | undefined | null;
@@ -218,13 +219,17 @@ export function getInvalidProfileFields(
         username.length > 0 &&
         emailAddress.toLowerCase() === username.toLowerCase()
     ) ||
-    containsPhonePattern(emailAddress)
+    containsPhonePattern(emailAddress) ||
+    isPlaceholderEmail(emailAddress)
   ) {
     invalidFields.emailAddress = true;
     if (!emailAddress) {
       reasons.emailAddress = 'Email address is required.';
     } else if (!validateEmail(emailAddress)) {
       reasons.emailAddress = 'Provide a valid email address.';
+    } else if (isPlaceholderEmail(emailAddress)) {
+      reasons.emailAddress =
+        'Please use a real email address. Placeholder emails like example@example.com are not allowed.';
     } else if (
       username &&
       emailAddress.toLowerCase() === username.toLowerCase()

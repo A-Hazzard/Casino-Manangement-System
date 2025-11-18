@@ -496,15 +496,44 @@ export const administrationUtils = {
   licenseeManagement,
 
   /**
-   * Processes and sorts users based on search and sort configuration
+   * Checks if a user is a test account based on username, email, first name, or last name
    */
+  isTestUser: (user: User): boolean => {
+    const testPattern = /^test/i;
+    const username = user.username?.trim() || '';
+    const email = (user.email || user.emailAddress || '').trim();
+    const firstName = user.profile?.firstName?.trim() || '';
+    const lastName = user.profile?.lastName?.trim() || '';
+    
+    return (
+      testPattern.test(username) ||
+      testPattern.test(email) ||
+      testPattern.test(firstName) ||
+      testPattern.test(lastName)
+    );
+  },
+
+  /**
+   * Filters out test users unless the current user is a developer
+   */
+  filterTestUsers: (users: User[], isDeveloper: boolean): User[] => {
+    if (isDeveloper) {
+      return users; // Developers can see all users including test accounts
+    }
+    return users.filter(user => !administrationUtils.isTestUser(user));
+  },
+
   processUsers: (
     allUsers: User[],
     searchValue: string,
     searchMode: 'username' | 'email',
-    sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null
+    sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null,
+    isDeveloper: boolean = false
   ) => {
-    return filterAndSortUsers(allUsers, searchValue, searchMode, sortConfig);
+    // First filter out test users (unless developer)
+    const filteredUsers = administrationUtils.filterTestUsers(allUsers, isDeveloper);
+    // Then apply search and sort
+    return filterAndSortUsers(filteredUsers, searchValue, searchMode, sortConfig);
   },
 
   /**

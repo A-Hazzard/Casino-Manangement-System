@@ -39,6 +39,7 @@ import {
   validatePhoneNumber,
   validateProfileField,
   isValidDateInput,
+  isPlaceholderEmail,
 } from '@/lib/utils/validation';
 import type {
   InvalidProfileFields,
@@ -443,6 +444,9 @@ export default function ProfileValidationModal({
         newErrors.emailAddress = 'Email address is required.';
       } else if (!validateEmail(emailAddress)) {
         newErrors.emailAddress = 'Provide a valid email address.';
+      } else if (isPlaceholderEmail(emailAddress)) {
+        newErrors.emailAddress =
+          'Please use a real email address. Placeholder emails like example@example.com are not allowed.';
       } else if (
         username &&
         emailAddress.toLowerCase() === username.toLowerCase()

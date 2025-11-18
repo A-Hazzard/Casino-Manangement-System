@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
-import axios from 'axios';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -10,31 +9,45 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Download,
-  RefreshCw,
-  AlertCircle,
-  BarChart3,
-  Monitor,
-  Search,
-} from 'lucide-react';
-import { useReportsStore } from '@/lib/store/reportsStore';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { getLicenseeName } from '@/lib/utils/licenseeMapping';
-import { exportData } from '@/lib/utils/exportUtils';
-import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { MetersTabSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
+import {
+  exportMetersReportExcel,
+  exportMetersReportPDF,
+} from '@/lib/utils/export';
+import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import type {
   MetersReportData,
   MetersReportResponse,
 } from '@/shared/types/meters';
+import axios from 'axios';
+import {
+  AlertCircle,
+  BarChart3,
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Monitor,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function MetersTab() {
-  const [metersData, setMetersData] = useState<MetersReportData[]>([]);
+  const [allMetersData, setAllMetersData] = useState<MetersReportData[]>([]); // Store all fetched data
+  const [metersData, setMetersData] = useState<MetersReportData[]>([]); // Filtered and paginated data
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
   >([]);
@@ -48,98 +61,116 @@ export default function MetersTab() {
   const [totalCount, setTotalCount] = useState(0);
   const [paginationLoading, setPaginationLoading] = useState(false);
 
-  const { selectedDateRange } = useReportsStore();
   const {
     selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     displayCurrency,
   } = useDashBoardStore();
-  const licenseeName = getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
+  const { user } = useUserStore();
+  const licenseeName =
+    getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
   const locationsInitialized = useRef(false);
+
+  // Check if user is a location admin
+  const isLocationAdmin = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.some(
+      role =>
+        typeof role === 'string' && role.toLowerCase() === 'location admin'
+    );
+  }, [user?.roles]);
+
+  // Get location admin's assigned locations
+  const locationAdminLocations = useMemo(() => {
+    if (!isLocationAdmin) return [];
+    return (
+      user?.resourcePermissions?.['gaming-locations']?.resources || []
+    ).map(id => String(id));
+  }, [isLocationAdmin, user?.resourcePermissions]);
+
+  // Filter data based on search term (frontend filtering)
+  const filterMetersData = useCallback(
+    (data: MetersReportData[], search: string): MetersReportData[] => {
+      if (!search.trim()) {
+        return data;
+      }
+
+      const searchLower = search.toLowerCase().trim();
+      return data.filter(item => {
+        // Search in machineId, location, and any additional fields
+        const machineId = item.machineId?.toLowerCase() || '';
+        const location = item.location?.toLowerCase() || '';
+
+        // Also check serialNumber and custom name if available in the item
+        const itemRecord = item as Record<string, unknown>;
+        const serialNumber =
+          (itemRecord.serialNumber as string)?.toLowerCase() || '';
+        const customName =
+          (
+            (itemRecord.custom as Record<string, unknown>)?.name as string
+          )?.toLowerCase() || '';
+
+        return (
+          machineId.includes(searchLower) ||
+          location.includes(searchLower) ||
+          serialNumber.includes(searchLower) ||
+          customName.includes(searchLower)
+        );
+      });
+    },
+    []
+  );
+
+  // Apply pagination to filtered data
+  const applyPagination = useCallback(
+    (data: MetersReportData[], page: number, limit: number = 10) => {
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      return data.slice(startIndex, endIndex);
+    },
+    []
+  );
 
   // Handle page change
   const handlePageChange = (page: number) => {
     setPaginationLoading(true);
     setCurrentPage(page);
-    fetchMetersData(page, searchTerm).finally(() => {
-      setPaginationLoading(false);
-    });
+
+    // Filter and paginate the data
+    const filtered = filterMetersData(allMetersData, searchTerm);
+    const paginated = applyPagination(filtered, page);
+
+    setMetersData(paginated);
+    setTotalCount(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / 10));
+    setHasData(paginated.length > 0);
+
+    setPaginationLoading(false);
   };
 
-  // Handle search with debouncing
+  // Handle search - frontend filtering only
   const handleSearch = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1); // Reset to first page when searching
-    fetchMetersData(1, value);
+
+    // Filter and paginate the data
+    const filtered = filterMetersData(allMetersData, value);
+    const paginated = applyPagination(filtered, 1);
+
+    setMetersData(paginated);
+    setTotalCount(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / 10));
+    setHasData(paginated.length > 0);
   };
 
-  // Fetch all data for export (without pagination)
-  const fetchAllDataForExport = useCallback(
-    async (search: string = '') => {
-      if (selectedLocations.length === 0) {
-        return [];
-      }
-
-      try {
-        const params = new URLSearchParams({
-          locations: selectedLocations.join(','),
-          timePeriod: activeMetricsFilter,
-          page: '1',
-          limit: '10000', // Large limit to get all data
-          search: search,
-        });
-
-        // Add custom dates if needed (in YYYY-MM-DD format)
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
-          params.append(
-            'startDate',
-            customDateRange.startDate.toISOString().split('T')[0]
-          );
-          params.append(
-            'endDate',
-            customDateRange.endDate.toISOString().split('T')[0]
-          );
-        }
-
-        // Add licensee filter if selected
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
-        }
-
-        // Add currency parameter
-        if (displayCurrency) {
-          params.append('currency', displayCurrency);
-        }
-
-        const response = await axios.get<MetersReportResponse>(
-          `/api/reports/meters?${params}`
-        );
-        return response.data.data;
-      } catch (err: unknown) {
-        console.error('Error fetching all data for export:', err);
-        const errorMessage =
-          (
-            (
-              (err as Record<string, unknown>)?.response as Record<
-                string,
-                unknown
-              >
-            )?.data as Record<string, unknown>
-          )?.error ||
-          (err as Error)?.message ||
-          'Failed to load export data';
-        toast.error(errorMessage as string);
-        return [];
-      }
+  // Get filtered data for export (uses frontend filtering)
+  const getDataForExport = useCallback(
+    (search: string = '') => {
+      // Use the already-fetched allMetersData and apply frontend filtering
+      return filterMetersData(allMetersData, search);
     },
-    [
-      selectedLocations,
-      activeMetricsFilter,
-      customDateRange,
-      selectedLicencee,
-      displayCurrency,
-    ]
+    [allMetersData, filterMetersData]
   );
 
   // Fetch locations data
@@ -147,7 +178,8 @@ export default function MetersTab() {
     try {
       // Build API parameters
       const params: Record<string, string> = {};
-      if (selectedLicencee && selectedLicencee !== 'all') {
+      // Location admin should not filter by licensee (they only see their assigned location)
+      if (!isLocationAdmin && selectedLicencee && selectedLicencee !== 'all') {
         params.licencee = selectedLicencee;
       }
 
@@ -163,6 +195,20 @@ export default function MetersTab() {
       );
 
       setLocations(mappedLocations);
+
+      // Auto-select location admin's assigned locations
+      if (isLocationAdmin && locationAdminLocations.length > 0) {
+        // Filter to only locations that exist in the fetched list
+        const validLocations = locationAdminLocations.filter(locId =>
+          mappedLocations.some(
+            (loc: { id: string; name: string; sasEnabled: boolean }) =>
+              loc.id === locId
+          )
+        );
+        if (validLocations.length > 0) {
+          setSelectedLocations(validLocations);
+        }
+      }
     } catch (err: unknown) {
       console.error('Error fetching locations:', err);
       const errorMessage =
@@ -178,89 +224,89 @@ export default function MetersTab() {
         'Failed to load locations';
       toast.error(errorMessage as string);
     }
-  }, [selectedLicencee]);
+  }, [selectedLicencee, isLocationAdmin, locationAdminLocations]);
 
-  // Fetch meters data
-  const fetchMetersData = useCallback(
-    async (page: number = 1, search: string = '') => {
-      if (selectedLocations.length === 0) {
-        setMetersData([]);
-        setHasData(false);
-        setTotalCount(0);
-        setTotalPages(1);
-        return;
-      }
+  // Fetch meters data - fetch all data without pagination or search
+  const fetchMetersData = useCallback(async () => {
+    if (selectedLocations.length === 0) {
+      setAllMetersData([]);
+      setMetersData([]);
+      setHasData(false);
+      setTotalCount(0);
+      setTotalPages(1);
+      return;
+    }
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      try {
-        const params = new URLSearchParams({
-          locations: selectedLocations.join(','),
-          timePeriod: activeMetricsFilter,
-          page: page.toString(),
-          limit: '10',
-          search: search,
-        });
+    try {
+      const params = new URLSearchParams({
+        locations: selectedLocations.join(','),
+        timePeriod: activeMetricsFilter,
+        page: '1',
+        limit: '10000', // Fetch all data for frontend filtering
+        // Removed search parameter - we'll filter on frontend
+      });
 
-        // Add custom dates if needed (in YYYY-MM-DD format)
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
-          params.append(
-            'startDate',
-            customDateRange.startDate.toISOString().split('T')[0]
-          );
-          params.append(
-            'endDate',
-            customDateRange.endDate.toISOString().split('T')[0]
-          );
-        }
-
-        // Add licensee filter if selected
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
-        }
-
-        // Add currency parameter
-        if (displayCurrency) {
-          params.append('currency', displayCurrency);
-        }
-
-        const response = await axios.get<MetersReportResponse>(
-          `/api/reports/meters?${params}`
+      // Add custom dates if needed (in YYYY-MM-DD format)
+      if (activeMetricsFilter === 'Custom' && customDateRange) {
+        params.append(
+          'startDate',
+          customDateRange.startDate.toISOString().split('T')[0]
         );
-
-        setMetersData(response.data.data);
-        setHasData(response.data.data.length > 0);
-        setTotalCount(response.data.totalCount);
-        setTotalPages(response.data.totalPages);
-        setCurrentPage(response.data.currentPage);
-      } catch (err: unknown) {
-        console.error('Error fetching meters data:', err);
-        const errorMessage =
-          (
-            (
-              (err as Record<string, unknown>)?.response as Record<
-                string,
-                unknown
-              >
-            )?.data as Record<string, unknown>
-          )?.error ||
-          (err as Error)?.message ||
-          'Failed to load meters data';
-        setError(errorMessage as string);
-        toast.error(errorMessage as string);
-      } finally {
-        setLoading(false);
+        params.append(
+          'endDate',
+          customDateRange.endDate.toISOString().split('T')[0]
+        );
       }
-    },
-    [
-      selectedLocations,
-      activeMetricsFilter,
-      customDateRange,
-      selectedLicencee,
-      displayCurrency,
-    ]
-  );
+
+      // Add licensee filter if selected
+      if (selectedLicencee && selectedLicencee !== 'all') {
+        params.append('licencee', selectedLicencee);
+      }
+
+      // Add currency parameter
+      if (displayCurrency) {
+        params.append('currency', displayCurrency);
+      }
+
+      const response = await axios.get<MetersReportResponse>(
+        `/api/reports/meters?${params}`
+      );
+
+      // Store all fetched data
+      setAllMetersData(response.data.data);
+
+      // Don't apply filtering here - let the separate useEffect handle it
+      // This prevents loading state when searchTerm changes
+    } catch (err: unknown) {
+      console.error('Error fetching meters data:', err);
+      const errorMessage =
+        (
+          (
+            (err as Record<string, unknown>)?.response as Record<
+              string,
+              unknown
+            >
+          )?.data as Record<string, unknown>
+        )?.error ||
+        (err as Error)?.message ||
+        'Failed to load meters data';
+      setError(errorMessage as string);
+      toast.error(errorMessage as string);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    selectedLocations,
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    displayCurrency,
+    // Removed filterMetersData and applyPagination - filtering handled in separate useEffect
+    // Removed searchTerm - we filter locally in separate useEffect
+  ]);
 
   // Initialize locations once
   useEffect(() => {
@@ -270,10 +316,10 @@ export default function MetersTab() {
     }
   }, [fetchLocations]);
 
-  // Fetch meters data when locations or date range or licensee changes
+  // Fetch meters data when locations or date range or licensee changes (but not when search changes)
   useEffect(() => {
     if (selectedLocations.length > 0) {
-      void fetchMetersData(1, searchTerm);
+      void fetchMetersData();
     }
   }, [
     selectedLocations,
@@ -282,11 +328,32 @@ export default function MetersTab() {
     selectedLicencee,
     displayCurrency,
     fetchMetersData,
-    searchTerm,
   ]);
 
-  // Handle export
-  const handleExport = async () => {
+  // Re-apply filtering when search term or data changes (but don't refetch from API)
+  // This runs immediately when searchTerm changes, with no loading state
+  useEffect(() => {
+    if (allMetersData.length > 0) {
+      const filtered = filterMetersData(allMetersData, searchTerm);
+      const paginated = applyPagination(filtered, 1);
+
+      setMetersData(paginated);
+      setTotalCount(filtered.length);
+      setTotalPages(Math.ceil(filtered.length / 10));
+      setCurrentPage(1);
+      setHasData(paginated.length > 0);
+    } else {
+      // No data yet - clear the display
+      setMetersData([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      setCurrentPage(1);
+      setHasData(false);
+    }
+  }, [searchTerm, allMetersData, filterMetersData, applyPagination]);
+
+  // Handle export - now supports PDF and Excel
+  const handleExport = async (format: 'pdf' | 'excel') => {
     if (selectedLocations.length === 0) {
       toast.error('Please select at least one location to export');
       return;
@@ -297,82 +364,71 @@ export default function MetersTab() {
       .map(loc => loc.name);
 
     // Show loading toast
-    const loadingToast = toast.loading('Preparing export data...');
+    const loadingToast = toast.loading(
+      `Preparing ${format.toUpperCase()} export...`
+    );
 
     try {
-      // Fetch all data for the selected locations
-      const allData = await fetchAllDataForExport(searchTerm);
+      // Get filtered data for export (frontend filtering)
+      const allData = getDataForExport(searchTerm);
 
       if (allData.length === 0) {
         toast.error('No data found for export');
         return;
       }
 
-      const exportConfig = {
-        title: 'Meters Report',
-        subtitle: `Data for ${
-          selectedLocationNames.length
-        } location(s): ${selectedLocationNames.join(', ')}${
-          searchTerm ? ` (Filtered by: "${searchTerm}")` : ''
-        }`,
-        headers: [
-          'Machine ID',
-          'Location',
-          'Meters In',
-          'Money Won',
-          'Jackpot',
-          'Bill In',
-          'Voucher Out',
-          'Hand Paid Cancelled Credits',
-          'Games Played',
-          'Date',
-        ],
-        data: allData.map(item => [
-          `"${(typeof (item as Record<string, unknown>).serialNumber === 'string' && ((item as Record<string, unknown>).serialNumber as string).trim()) || (typeof (item as Record<string, unknown>).origSerialNumber === 'string' && ((item as Record<string, unknown>).origSerialNumber as string).trim()) || item.machineId}"`,
-          `"${item.location}"`,
-          item.metersIn.toString(), // Remove toLocaleString() to prevent Excel formatting issues
-          item.metersOut.toString(),
-          item.jackpot.toString(),
-          item.billIn.toString(),
-          item.voucherOut.toString(),
-          item.attPaidCredits.toString(),
-          item.gamesPlayed.toString(),
-          `"${new Date(item.createdAt).toLocaleDateString()}"`, // Wrap date in quotes
-        ]),
-        summary: [
-          { label: 'Total Records', value: allData.length.toString() },
-          {
-            label: 'Selected Locations',
-            value: selectedLocationNames.length.toString(),
-          },
-          {
-            label: 'Date Range',
-            value:
-              activeMetricsFilter === 'Custom' && customDateRange
-                ? `${customDateRange.startDate.toLocaleDateString()} - ${customDateRange.endDate.toLocaleDateString()}`
-                : activeMetricsFilter,
-          },
-          ...(searchTerm
-            ? [{ label: 'Search Filter', value: searchTerm }]
-            : []),
-        ],
-        metadata: {
-          generatedBy: 'Meters Report',
-          generatedAt: new Date().toISOString(),
-          timePeriod: activeMetricsFilter,
-          dateRange:
-            activeMetricsFilter === 'Custom' && customDateRange
-              ? `${customDateRange.startDate.toLocaleDateString()} - ${customDateRange.endDate.toLocaleDateString()}`
-              : activeMetricsFilter,
-          locations: selectedLocationNames.join(', '),
-        },
+      // Prepare date range string
+      const dateRangeStr =
+        activeMetricsFilter === 'Custom' && customDateRange
+          ? `${customDateRange.startDate.toLocaleDateString()} - ${customDateRange.endDate.toLocaleDateString()}`
+          : activeMetricsFilter;
+
+      // Prepare metadata
+      const metadata = {
+        locations: selectedLocationNames,
+        dateRange: dateRangeStr,
+        searchTerm: searchTerm || undefined,
+        totalCount: allData.length,
       };
 
-      await exportData(exportConfig);
-      toast.success(`Successfully exported ${allData.length} records`);
+      // Prepare data for export - the API already provides machineId computed from serialNumber or customName
+      const exportData = allData.map(item => {
+        // Extract serialNumber and origSerialNumber from the item if available
+        // These may be in the raw data structure
+        const itemRecord = item as Record<string, unknown>;
+        const serialNumber = itemRecord.serialNumber as string | undefined;
+        const origSerialNumber = itemRecord.origSerialNumber as
+          | string
+          | undefined;
+
+        return {
+          machineId: item.machineId,
+          location: item.location,
+          metersIn: item.metersIn,
+          metersOut: item.metersOut,
+          jackpot: item.jackpot,
+          billIn: item.billIn,
+          voucherOut: item.voucherOut,
+          attPaidCredits: item.attPaidCredits,
+          gamesPlayed: item.gamesPlayed,
+          createdAt: item.createdAt,
+          serialNumber: serialNumber?.trim(),
+          origSerialNumber: origSerialNumber?.trim(),
+        };
+      });
+
+      if (format === 'pdf') {
+        await exportMetersReportPDF(exportData, metadata);
+        toast.success(`Successfully exported ${allData.length} records to PDF`);
+      } else {
+        exportMetersReportExcel(exportData, metadata);
+        toast.success(
+          `Successfully exported ${allData.length} records to Excel`
+        );
+      }
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('Failed to export data');
+      toast.error(`Failed to export ${format.toUpperCase()}`);
     } finally {
       toast.dismiss(loadingToast);
     }
@@ -388,12 +444,7 @@ export default function MetersTab() {
     }
   }, [locations]);
 
-  // Fetch meters data when locations or date range changes
-  useEffect(() => {
-    if (selectedLocations.length > 0) {
-      fetchMetersData(1, '');
-    }
-  }, [selectedLocations, selectedDateRange, fetchMetersData]);
+  // This effect is now handled by the main fetchMetersData effect above
 
   // Skeleton loader component - now imported from ReportsSkeletons
 
@@ -404,9 +455,9 @@ export default function MetersTab() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => fetchMetersData(currentPage, searchTerm)}
+            onClick={() => fetchMetersData()}
             disabled={loading || selectedLocations.length === 0}
-            className="flex items-center gap-2 text-xs sm:text-sm xl:w-auto xl:px-4"
+            className="flex items-center gap-2 border-2 border-gray-300 text-xs hover:border-gray-400 sm:text-sm xl:w-auto xl:px-4"
             size="sm"
           >
             <RefreshCw
@@ -415,17 +466,37 @@ export default function MetersTab() {
             <span className="hidden sm:inline">Refresh</span>
             <span className="sm:hidden">↻</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            disabled={metersData.length === 0}
-            className="flex items-center gap-2 text-xs sm:text-sm xl:w-auto xl:px-4"
-            size="sm"
-          >
-            <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Export</span>
-            <span className="sm:hidden">↓</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={metersData.length === 0}
+                className="flex items-center gap-2 border-2 border-gray-300 text-xs hover:border-gray-400 sm:text-sm xl:w-auto xl:px-4"
+                size="sm"
+              >
+                <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Export</span>
+                <span className="sm:hidden">↓</span>
+                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleExport('pdf')}
+                className="cursor-pointer"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('excel')}
+                className="cursor-pointer"
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export as Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -444,27 +515,37 @@ export default function MetersTab() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
-                Select Locations
+                {isLocationAdmin ? 'Location' : 'Select Locations'}
               </label>
-              <LocationMultiSelect
-                locations={locations.map(loc => ({
-                  id: loc.id,
-                  name: loc.name,
-                }))}
-                selectedLocations={selectedLocations}
-                onSelectionChange={setSelectedLocations}
-                placeholder="Choose locations to filter..."
-              />
+              {isLocationAdmin ? (
+                <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                  {locations.find(loc =>
+                    locationAdminLocations.includes(loc.id)
+                  )?.name || 'Loading...'}
+                </div>
+              ) : (
+                <LocationMultiSelect
+                  locations={locations.map(loc => ({
+                    id: loc.id,
+                    name: loc.name,
+                  }))}
+                  selectedLocations={selectedLocations}
+                  onSelectionChange={setSelectedLocations}
+                  placeholder="Choose locations to filter..."
+                />
+              )}
             </div>
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedLocations([])}
-                className="w-full"
-              >
-                Clear Selection
-              </Button>
-            </div>
+            {!isLocationAdmin && (
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedLocations([])}
+                  className="w-full"
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            )}
             <div className="flex items-end">
               <div className="text-sm text-gray-600">
                 {selectedLocations.length > 0
@@ -549,7 +630,7 @@ export default function MetersTab() {
                   No Data Found
                 </h3>
                 <p className="text-gray-600">
-                  {searchTerm 
+                  {searchTerm
                     ? 'No meters data found matching your search criteria.'
                     : `No meters data found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}.`}
                 </p>
@@ -598,23 +679,10 @@ export default function MetersTab() {
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="whitespace-nowrap px-4 py-3">
                             <div className="font-mono text-sm text-gray-900">
-                              {(() => {
-                                const serialNumber = (
-                                  item as Record<string, unknown>
-                                ).serialNumber as string;
-                                const customName = (
-                                  (item as Record<string, unknown>)
-                                    .custom as Record<string, unknown>
-                                )?.name as string;
-
-                                if (serialNumber && serialNumber.trim()) {
-                                  return serialNumber.trim();
-                                } else if (customName && customName.trim()) {
-                                  return customName.trim();
-                                } else {
-                                  return item.machineId;
-                                }
-                              })()}
+                              {/* machineId is already computed by the API with proper fallback:
+                                  1. serialNumber (if not blank/whitespace)
+                                  2. custom.name (if serialNumber is blank) */}
+                              {item.machineId}
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
@@ -691,23 +759,10 @@ export default function MetersTab() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h3 className="truncate font-mono text-sm font-medium text-gray-900">
-                            {(() => {
-                              const serialNumber = (
-                                item as Record<string, unknown>
-                              ).serialNumber as string;
-                              const customName = (
-                                (item as Record<string, unknown>)
-                                  .custom as Record<string, unknown>
-                              )?.name as string;
-
-                              if (serialNumber && serialNumber.trim()) {
-                                return serialNumber.trim();
-                              } else if (customName && customName.trim()) {
-                                return customName.trim();
-                              } else {
-                                return item.machineId;
-                              }
-                            })()}
+                            {/* machineId is already computed by the API with proper fallback:
+                                1. serialNumber (if not blank/whitespace)
+                                2. custom.name (if serialNumber is blank) */}
+                            {item.machineId}
                           </h3>
                           <p className="truncate text-xs text-gray-500">
                             {item.location}

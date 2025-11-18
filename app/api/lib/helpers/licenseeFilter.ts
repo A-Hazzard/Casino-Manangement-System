@@ -257,7 +257,7 @@ export async function getUserLocationFilter(
   userLocationPermissions: string[],
   userRoles: string[] = []
 ): Promise<string[] | 'all'> {
-  // Check if user is admin or manager
+  // Check if user is admin, manager, or location admin
   const normalizedRoles = userRoles.map(role =>
     role?.toLowerCase?.() ?? role
   );
@@ -266,6 +266,7 @@ export async function getUserLocationFilter(
     normalizedRoles.includes('admin') ||
     normalizedRoles.includes('developer');
   const isManager = normalizedRoles.includes('manager');
+  const isLocationAdmin = normalizedRoles.includes('location admin');
 
   console.log('[getUserLocationFilter] User roles:', userRoles);
   console.log('[getUserLocationFilter] Is Admin:', isAdmin);
@@ -339,6 +340,26 @@ export async function getUserLocationFilter(
       result === 'all' ? 'all' : result.length
     );
     return result;
+  }
+
+  // LOCATION ADMINS see ONLY their assigned locations (intersect with location permissions)
+  if (isLocationAdmin) {
+    if (userLocationPermissions.length > 0) {
+      // Intersect licensee locations with location admin's assigned locations
+      const intersection = licenseeLocations.filter(id =>
+        userLocationPermissions.includes(id)
+      );
+      console.log(
+        '[getUserLocationFilter] Location Admin - returning assigned locations:',
+        intersection.length
+      );
+      return intersection;
+    }
+    // Location admin with no location permissions should see nothing
+    console.warn(
+      '[getUserLocationFilter] ⚠️ Location Admin with NO location permissions - returning empty array!'
+    );
+    return [];
   }
 
   // MANAGERS OR ADMINS see ALL locations for their assigned/selected licensees (no location permission intersection)

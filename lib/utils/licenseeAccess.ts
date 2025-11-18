@@ -119,3 +119,16 @@ export function shouldShowNoLicenseeMessage(
   return userLicensees.length === 0;
 }
 
+/**
+ * Determines if "No Role Assigned" message should be shown
+ * - Show for users with no roles
+ */
+export function shouldShowNoRoleMessage(
+  user: UserAuthPayload | null
+): boolean {
+  if (!user) return false;
+  
+  const roles = user.roles || [];
+  return roles.length === 0;
+}
+

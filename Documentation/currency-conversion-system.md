@@ -1,8 +1,8 @@
 # Currency Conversion System
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 3, 2025  
-**Version:** 3.0.0
+**Last Updated:** December 2025  
+**Version:** 3.1.0
 
 ## Table of Contents
 
@@ -90,6 +90,10 @@ export function getCountryCurrency(countryName: string): CurrencyCode
 - UI-focused currency state
 - Provides `isAllLicensee` flag
 - Used by currency filter components
+- **Auto-Set Logic**: Automatically sets currency for single-licensee non-admin users to their licensee's native currency
+  - Overrides localStorage if it contains USD from a previous admin session
+  - Only applies to users with exactly one licensee who are not admins/developers
+  - Runs whenever user data loads or changes
 
 **DashboardStore** (`lib/store/dashboardStore.ts`)
 - Data-fetching currency state
@@ -134,12 +138,20 @@ export function getCountryCurrency(countryName: string): CurrencyCode
 
 **Conversion Rules by Role:**
 
-| User Role | Licensee Filter | Currency Conversion | Currency Selector Visible |
-|-----------|----------------|---------------------|---------------------------|
-| Admin/Developer | "All Licensees" | ✅ YES (to selected display currency) | ✅ YES |
-| Admin/Developer | Specific Licensee (e.g., "Barbados") | ❌ NO (shows native currency) | ❌ NO |
-| Manager | Any (assigned licensee only) | ❌ NO (always native currency) | ❌ NO |
-| Other Roles | N/A | ❌ NO | ❌ NO |
+| User Role | Licensee Filter | Currency Conversion | Currency Selector Visible | Auto-Set Currency |
+|-----------|----------------|---------------------|---------------------------|-------------------|
+| Admin/Developer | "All Licensees" | ✅ YES (to selected display currency) | ✅ YES | ❌ NO (manual selection) |
+| Admin/Developer | Specific Licensee (e.g., "Barbados") | ❌ NO (shows native currency) | ❌ NO | ❌ NO (manual selection) |
+| Manager | Any (assigned licensee only) | ❌ NO (always native currency) | ❌ NO | ✅ YES (if single licensee) |
+| Single-Licensee Non-Admin | N/A (only one licensee) | ❌ NO (always native currency) | ❌ NO | ✅ YES (auto-set to licensee currency) |
+| Other Roles | N/A | ❌ NO | ❌ NO | ✅ YES (if single licensee) |
+
+**Auto-Set Currency Logic:**
+- **Trigger**: When user data loads or changes
+- **Condition**: User has exactly 1 licensee AND is not admin/developer
+- **Action**: Automatically sets `displayCurrency` to licensee's native currency (TTD, GYD, or BBD)
+- **Override**: Overrides localStorage if it contains USD from a previous admin session
+- **Purpose**: Ensures single-licensee users always see their native currency, preventing USD display from previous admin sessions
 
 **Implementation:**
 

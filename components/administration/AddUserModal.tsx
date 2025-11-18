@@ -14,6 +14,7 @@ import type { AddUserForm } from '@/lib/types/pages';
 import {
   containsEmailPattern,
   containsPhonePattern,
+  isPlaceholderEmail,
   isValidDateInput,
   validateAlphabeticField,
   validateCountry,
@@ -331,6 +332,9 @@ export default function AddUserModal({
       } else if (shouldValidateFormat('email') && email) {
         if (!validateEmail(email)) {
           newErrors.email = 'Provide a valid email address.';
+        } else if (isPlaceholderEmail(email)) {
+          newErrors.email =
+            'Please use a real email address. Placeholder emails like example@example.com are not allowed.';
         } else if (username && email.toLowerCase() === username.toLowerCase()) {
           newErrors.email = 'Email address must differ from your username.';
         } else if (containsPhonePattern(email)) {

@@ -1,29 +1,30 @@
 'use client';
 
-import { type ReactElement } from 'react';
+import { type ReactElement, useMemo } from 'react';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // Layout components
 import PageLayout from '@/components/layout/PageLayout';
 
 // Store
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
 
 // Hooks
-import { useReportsNavigation } from '@/lib/hooks/navigation';
 import { useReportsTabContent } from '@/lib/hooks/data';
+import { useReportsNavigation } from '@/lib/hooks/navigation';
 
 // Components
 import ReportsDateFilters from '@/components/reports/common/ReportsDateFilters';
-import ReportsNavigation from '@/components/reports/common/ReportsNavigation';
 import {
-  LoadingOverlay,
-  AuthLoadingState,
   AccessDeniedState,
+  AuthLoadingState,
+  LoadingOverlay,
 } from '@/components/reports/common/ReportsLoadingStates';
-import Image from 'next/image';
+import ReportsNavigation from '@/components/reports/common/ReportsNavigation';
 import { IMAGES } from '@/lib/constants/images';
+import Image from 'next/image';
 
 // Tab components
 import LocationsTabWithErrorHandling from '@/components/reports/tabs/LocationsTabWithErrorHandling';
@@ -32,8 +33,8 @@ import MetersTab from '@/components/reports/tabs/MetersTab';
 
 // Constants
 import {
-  REPORTS_TABS_CONFIG,
   REPORTS_ANIMATIONS,
+  REPORTS_TABS_CONFIG,
 } from '@/lib/constants/reports';
 
 // Types
@@ -45,14 +46,31 @@ import type { ReportView } from '@/lib/types/reports';
  */
 export default function ReportsContent() {
   const { selectedLicencee } = useDashBoardStore();
+  const { user } = useUserStore();
+
+  // Check if user is a developer
+  const isDeveloper = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.some(
+      role => typeof role === 'string' && role.toLowerCase() === 'developer'
+    );
+  }, [user?.roles]);
+
+  // Filter tabs: hide locations and machines tabs unless developer
+  // Location admins only see meters tab (same as admins)
+  const availableTabs = useMemo(() => {
+    if (isDeveloper) {
+      return REPORTS_TABS_CONFIG; // Developers see all tabs
+    }
+    // Non-developers (including location admin) only see meters tab
+    return REPORTS_TABS_CONFIG.filter(tab => tab.id === 'meters');
+  }, [isDeveloper]);
 
   // All authenticated users have access to reports
   const hasAccess = true;
-  const availableTabs = REPORTS_TABS_CONFIG;
   const isLoading = false;
 
-  const { activeView, handleTabChange } =
-    useReportsNavigation(REPORTS_TABS_CONFIG);
+  const { activeView, handleTabChange } = useReportsNavigation(availableTabs);
 
   // Tab content rendering
   const tabComponents: Record<ReportView, ReactElement> = {
@@ -73,7 +91,7 @@ export default function ReportsContent() {
   const renderTabContent = (): ReactElement => {
     const animationProps = getTabAnimationProps();
     const { key, ...restProps } = animationProps;
-    
+
     return (
       <AnimatePresence mode="wait">
         <motion.div key={key} {...restProps}>

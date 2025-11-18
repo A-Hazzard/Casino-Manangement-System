@@ -19,6 +19,8 @@ import {
 } from '@/lib/utils/changeDetection';
 import {
   getPasswordStrengthLabel,
+  isPlaceholderEmail,
+  validateEmail,
   validatePasswordStrength,
 } from '@/lib/utils/validation';
 import cameraIcon from '@/public/cameraIcon.svg';
@@ -713,6 +715,20 @@ export default function UserModal({
       );
       toast.error('Email address is required');
       return;
+    }
+
+    // Validate email format and check for placeholder emails
+    if (canEditAccountFields && updatedEmail) {
+      if (!validateEmail(updatedEmail)) {
+        toast.error('Please provide a valid email address');
+        return;
+      }
+      if (isPlaceholderEmail(updatedEmail)) {
+        toast.error(
+          'Please use a real email address. Placeholder emails like example@example.com are not allowed.'
+        );
+        return;
+      }
     }
 
     // Helper to check if a field value has changed

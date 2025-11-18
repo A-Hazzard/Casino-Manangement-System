@@ -224,11 +224,23 @@ export async function getCollectionReportById(
                 if: { $ne: ['$$machine', null] },
                 then: {
                   $cond: {
-                    if: { $ne: ['$$machine.serialNumber', null] },
+                    // Check if serialNumber is not null and not empty/whitespace
+                    if: {
+                      $and: [
+                        { $ne: ['$$machine.serialNumber', null] },
+                        { $ne: [{ $trim: { input: { $ifNull: ['$$machine.serialNumber', ''] } } }, ''] }
+                      ]
+                    },
                     then: '$$machine.serialNumber',
                     else: {
                       $cond: {
-                        if: { $ne: ['$$machine.custom.name', null] },
+                        // Check if custom.name is not null and not empty/whitespace
+                        if: {
+                          $and: [
+                            { $ne: ['$$machine.custom.name', null] },
+                            { $ne: [{ $trim: { input: { $ifNull: ['$$machine.custom.name', ''] } } }, ''] }
+                          ]
+                        },
                         then: '$$machine.custom.name',
                         else: {
                           $cond: {

@@ -34,6 +34,8 @@ export default function AdministrationNavigation({
         return hasTabAccess(userRoles, 'administration', 'licensees');
       case 'activity-logs':
         return hasTabAccess(userRoles, 'administration', 'activity-logs');
+      case 'feedback':
+        return hasTabAccess(userRoles, 'administration', 'feedback');
       default:
         return true;
     }

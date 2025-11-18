@@ -684,7 +684,9 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
   - "Email already exists" (instead of generic "Username or email already exists")
   - "Username and email already exist" (when both conflict)
 - **Last Login Tracking**: `lastLoginAt` field automatically updated on successful login
-- **Session Management**: Proper session version incrementing when licensee/location permissions change
+- **Session Management**: `sessionVersion` incremented ONLY when permissions change (licensees, locations, roles), NOT on login
+  - Allows multiple concurrent sessions across devices/tabs
+  - Sessions invalidated only when admin changes user permissions
 - **Files**: `components/administration/UserModal.tsx`, `app/api/lib/helpers/users.ts`, `app/api/users/route.ts`
 
 ### Authentication System Enhancements ✅ (December 2025)
@@ -702,7 +704,10 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
 - **Logout Success Message**: Logout now properly redirects to login page with "Logout Successful" message instead of "Session Expired"
   - Logout button redirects to `/login?logout=success`
   - Login page parses URL parameters and displays appropriate success/error messages
-- **Session Version Management**: Profile updates that change critical fields (username, email, name, password) increment `sessionVersion` to force re-authentication
+- **Session Version Management**: 
+  - `sessionVersion` incremented ONLY when permissions change (licensees, locations, roles)
+  - NOT incremented on login - allows multiple concurrent sessions
+  - Profile updates that change critical fields (username, email, name, password) increment `sessionVersion` to force re-authentication
 - **Files**: `app/api/lib/helpers/auth.ts`, `app/api/auth/login/route.ts`, `app/api/lib/helpers/users.ts`, `middleware.ts`, `app/(auth)/login/page.tsx`, `components/layout/AppSidebar.tsx`
 
 ### Collection Report System - Major Refactoring ✅
@@ -1117,7 +1122,32 @@ Native Currency (TTD $20)
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** December 2025 - Unauthorized Error Handling, User Management Enhancements, Authentication Improvements
+**Last Major Update:** December 2025 - Session Management Fix (Multi-Device Support), Machine Status Widgets, Currency Auto-Set for Single-Licensee Users
+
+### Recent Updates (December 2025)
+
+#### Session Management Fix ✅
+- **Issue Fixed**: Users logging in on one device/tab were logging out other devices
+- **Root Cause**: `sessionVersion` was being incremented on every login, invalidating other sessions
+- **Solution**: `sessionVersion` now only increments when permissions change (licensees, locations, roles), NOT on login
+- **Result**: Users can log in on multiple devices/tabs simultaneously without invalidating other sessions
+- **Files Modified**: `app/api/lib/helpers/auth.ts`
+
+#### Machine Status Widgets ✅
+- **Locations Page**: Added machine status widget showing online/total format (e.g., "37/40 Online")
+- **Cabinets Page**: Added machine status widget on Cabinets tab
+- **Location Details Page**: Added machine status widget alongside date filters
+- **Component**: `components/ui/MachineStatusWidget.tsx` - Reusable widget with `showTotal` prop
+- **Removed**: Redundant "Total Machines" count badges (now handled by widget)
+
+#### Currency Auto-Set for Single-Licensee Users ✅
+- **Issue Fixed**: Single-licensee users (e.g., Barbados) sometimes seeing USD instead of native currency (BBD)
+- **Root Cause**: localStorage containing USD from previous admin session
+- **Solution**: Auto-set logic in `CurrencyContext` automatically sets currency to licensee's native currency
+- **Trigger**: Runs whenever user data loads or changes
+- **Condition**: User has exactly 1 licensee AND is not admin/developer
+- **Override**: Overrides localStorage USD value to ensure correct currency display
+- **Files Modified**: `lib/contexts/CurrencyContext.tsx`
 
 **November 7th, 2025 Major Work:**
 

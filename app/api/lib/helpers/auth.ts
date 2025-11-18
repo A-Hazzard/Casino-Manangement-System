@@ -102,15 +102,16 @@ export async function authenticateUser(
       return { success: false, message: 'Invalid email/username or password.' };
     }
 
-    // Update session + login metadata on successful login
+    // Update login metadata on successful login
+    // NOTE: sessionVersion should NOT be incremented on login - only when permissions change
+    // Incrementing sessionVersion on login would invalidate all other active sessions
     const now = new Date();
-    const nextSessionVersion = (Number(user.sessionVersion) || 0) + 1;
+    const currentSessionVersion = Number(user.sessionVersion) || 0;
     await UserModel.findOneAndUpdate(
       { _id: user._id },
       {
         $set: {
           lastLoginAt: now,
-          sessionVersion: nextSessionVersion,
         },
         $inc: {
           loginCount: 1,
@@ -118,7 +119,7 @@ export async function authenticateUser(
       }
     );
     // Keep local in-sync values for token payload
-    user.sessionVersion = nextSessionVersion;
+    user.sessionVersion = currentSessionVersion; // Keep existing sessionVersion
     user.lastLoginAt = now;
     user.loginCount = (Number(user.loginCount) || 0) + 1;
 

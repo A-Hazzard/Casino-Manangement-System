@@ -58,13 +58,38 @@ export const filterAndSortUsers = (
   if (sortConfig !== null && sortConfig.key) {
     const { key, direction } = sortConfig;
     processedUsers.sort((a, b) => {
-      const valA = a[key!];
-      const valB = b[key!];
+      let valA: unknown = a[key!];
+      let valB: unknown = b[key!];
+      
+      // Handle email field - check both email and emailAddress
+      if (key === 'emailAddress') {
+        valA = a.email || a.emailAddress;
+        valB = b.email || b.emailAddress;
+      }
+      
+      // Handle date fields
+      if (key === 'lastLoginAt') {
+        valA = valA ? new Date(valA as string | Date).getTime() : null;
+        valB = valB ? new Date(valB as string | Date).getTime() : null;
+      }
+      
+      // Handle string comparison (case-insensitive for text fields)
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        const lowerA = valA.toLowerCase();
+        const lowerB = valB.toLowerCase();
+        if (lowerA < lowerB) return direction === 'ascending' ? -1 : 1;
+        if (lowerA > lowerB) return direction === 'ascending' ? 1 : -1;
+        return 0;
+      }
+      
+      // Handle null/undefined values
       if (valA == null && valB != null)
         return direction === 'ascending' ? -1 : 1;
       if (valA != null && valB == null)
         return direction === 'ascending' ? 1 : -1;
       if (valA == null && valB == null) return 0;
+      
+      // Handle numeric and boolean comparison
       if (valA! < valB!) return direction === 'ascending' ? -1 : 1;
       if (valA! > valB!) return direction === 'ascending' ? 1 : -1;
       return 0;

@@ -21,6 +21,7 @@ import AddLicenseeModal from '@/components/administration/AddLicenseeModal';
 import AddUserModal from '@/components/administration/AddUserModal';
 import DeleteLicenseeModal from '@/components/administration/DeleteLicenseeModal';
 import EditLicenseeModal from '@/components/administration/EditLicenseeModal';
+import FeedbackManagement from '@/components/administration/FeedbackManagement';
 import LicenseeCard from '@/components/administration/LicenseeCard';
 import LicenseeSearchBar from '@/components/administration/LicenseeSearchBar';
 import LicenseeSuccessModal from '@/components/administration/LicenseeSuccessModal';
@@ -291,14 +292,23 @@ function AdministrationPageContent() {
     }
   }, [activeSection, selectedLicencee, loadedSections]);
 
+  // Check if current user is a developer
+  const isDeveloper = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.some(
+      role => typeof role === 'string' && role.toLowerCase() === 'developer'
+    );
+  }, [user?.roles]);
+
   const processedUsers = useMemo(() => {
     return administrationUtils.processUsers(
       allUsers,
       searchValue,
       searchMode,
-      sortConfig
+      sortConfig,
+      isDeveloper
     );
-  }, [allUsers, searchValue, searchMode, sortConfig]);
+  }, [allUsers, searchValue, searchMode, sortConfig, isDeveloper]);
 
   const { paginatedItems: paginatedUsers, totalPages } = useMemo(() => {
     return administrationUtils.paginate(
@@ -351,7 +361,7 @@ function AdministrationPageContent() {
     if (!selectedUser) return;
 
     // Validate that we have at least one field to update
-    const hasUpdates = 
+    const hasUpdates =
       updated.username !== undefined ||
       updated.email !== undefined ||
       updated.emailAddress !== undefined ||
@@ -361,7 +371,7 @@ function AdministrationPageContent() {
       updated.password !== undefined ||
       updated.rel !== undefined ||
       updated.resourcePermissions !== undefined;
-    
+
     if (!hasUpdates) {
       toast.error('No changes detected. Please update at least one field.');
       return;
@@ -428,7 +438,7 @@ function AdministrationPageContent() {
       toast.info('No changes detected');
       return;
     }
-    
+
     console.log('[Administration] ✅ Changes detected, proceeding with save');
 
     // Check if permission-related fields changed (roles, resourcePermissions, rel)
@@ -437,24 +447,24 @@ function AdministrationPageContent() {
       '[Administration] All changed paths:',
       meaningfulChanges.map(c => c.path)
     );
-    
+
     const permissionFieldsChanged = meaningfulChanges.some(change => {
       const fieldPath = change.path;
       const isPermissionField =
         fieldPath === 'roles' ||
-             fieldPath.startsWith('resourcePermissions') || 
-             fieldPath.startsWith('rel');
-      
+        fieldPath.startsWith('resourcePermissions') ||
+        fieldPath.startsWith('rel');
+
       if (isPermissionField) {
         console.log(
           '[Administration] Found permission field change:',
           fieldPath
         );
       }
-      
+
       return isPermissionField;
     });
-    
+
     console.log(
       '[Administration] Permission fields changed:',
       permissionFieldsChanged
@@ -560,10 +570,10 @@ function AdministrationPageContent() {
       );
     } catch (error) {
       console.error('Failed to update user:', error);
-      
+
       // Extract detailed error message from axios error
       let errorMessage = 'Failed to update user';
-      
+
       // Handle axios errors (from updateUser helper)
       if (error && typeof error === 'object') {
         const axiosError = error as {
@@ -573,7 +583,7 @@ function AdministrationPageContent() {
           };
           message?: string;
         };
-        
+
         // Prioritize server error message from response.data
         if (axiosError.response?.data) {
           errorMessage =
@@ -587,7 +597,7 @@ function AdministrationPageContent() {
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorMessage);
       // Don't close modal on error - let user try again
     }
@@ -1059,6 +1069,10 @@ function AdministrationPageContent() {
   const renderSectionContent = useCallback(() => {
     if (activeSection === 'activity-logs') {
       return <ActivityLogsTable />;
+    }
+
+    if (activeSection === 'feedback') {
+      return <FeedbackManagement />;
     }
 
     if (activeSection === 'licensees') {

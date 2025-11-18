@@ -1451,10 +1451,16 @@ export default function MachinesTab() {
                 variant="outline"
                 size="sm"
                 onClick={() => fetchOverviewMachines(1, searchTerm)}
+                className="border-2 border-gray-300 hover:border-gray-400"
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportMeters}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportMeters}
+                className="border-2 border-gray-300 hover:border-gray-400"
+              >
                 <Download className="mr-2 h-4 w-4" /> Export
               </Button>
             </div>

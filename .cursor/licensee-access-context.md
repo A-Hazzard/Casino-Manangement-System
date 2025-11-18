@@ -318,6 +318,9 @@ if (isManager) {
 
 **Trigger Conditions:**
 ```typescript
+// ⚠️ CRITICAL: sessionVersion is ONLY incremented when permissions change
+// It is NOT incremented on login - this allows multiple concurrent sessions
+
 // Increment sessionVersion when changing ANY of these:
 const permissionFieldsChanged = 
   licenseeChanged ||           // rel.licencee array modified
@@ -330,6 +333,17 @@ if (permissionFieldsChanged) {
     { $inc: { sessionVersion: 1 } }
   );
 }
+
+// On login, sessionVersion is NOT incremented:
+// Only lastLoginAt and loginCount are updated
+await UserModel.findOneAndUpdate(
+  { _id: user._id },
+  {
+    $set: { lastLoginAt: now },
+    $inc: { loginCount: 1 }
+    // sessionVersion remains unchanged
+  }
+);
 ```
 
 ### JWT Validation on Every Request

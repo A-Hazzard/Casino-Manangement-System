@@ -1,5 +1,6 @@
 'use client';
 
+import { cn } from '@/lib/utils';
 import React, {
   createContext,
   useContext,
@@ -7,7 +8,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { cn } from '@/lib/utils';
 
 type SidebarContextValue = {
   isOpen: boolean;
@@ -23,6 +23,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(true); // Default to collapsed
 
+  // Helper function to check if screen is md or larger
+  const isMdOrLarger = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth >= 768; // md breakpoint is 768px
+  };
+
   // Initialize and persist collapsed state
   useEffect(() => {
     try {
@@ -30,19 +36,26 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         typeof window !== 'undefined'
           ? window.localStorage.getItem('sidebar-collapsed')
           : null;
-      // Default to collapsed (true) if no value is stored, otherwise use stored value
+      // If a value is stored, use it
       if (stored != null) {
         setCollapsed(stored === 'true');
       } else {
-        // If no stored value exists, default to collapsed and save it
-        setCollapsed(true);
+        // If no stored value exists, default based on screen size:
+        // - md and larger: open (collapsed = false)
+        // - smaller than md: collapsed (collapsed = true)
+        const shouldCollapse = !isMdOrLarger();
+        setCollapsed(shouldCollapse);
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem('sidebar-collapsed', 'true');
+          window.localStorage.setItem(
+            'sidebar-collapsed',
+            String(shouldCollapse)
+          );
         }
       }
     } catch {
-      // If localStorage fails, keep default collapsed state
-      setCollapsed(true);
+      // If localStorage fails, use screen size-based default
+      const shouldCollapse = !isMdOrLarger();
+      setCollapsed(shouldCollapse);
     }
   }, []);
 

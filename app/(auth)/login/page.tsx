@@ -1,6 +1,7 @@
 'use client';
 
 import LoginForm from '@/components/auth/LoginForm';
+import FeedbackButton from '@/components/ui/FeedbackButton';
 import LiquidGradient from '@/components/ui/LiquidGradient';
 import PasswordUpdateModal from '@/components/ui/PasswordUpdateModal';
 import ProfileValidationModal from '@/components/ui/ProfileValidationModal';
@@ -95,13 +96,18 @@ function LoginPageContent() {
       const errorMessages: Record<string, string> = {
         invalid_token: 'Your session has expired. Please login again.',
         token_expired: 'Your session has expired. Please login again.',
-        database_context_mismatch: 'Database environment has changed. Please login again.',
-        account_disabled: 'Your account has been disabled. Please contact support.',
+        database_context_mismatch:
+          'Database environment has changed. Please login again.',
+        account_disabled:
+          'Your account has been disabled. Please contact support.',
         unauthorized: 'You are not authorized to access this resource.',
-        user_not_found: 'Your account no longer exists. Please contact support if you believe this is an error.',
-        user_deleted: 'Your account has been deleted. Please contact support if you believe this is an error.',
+        user_not_found:
+          'Your account no longer exists. Please contact support if you believe this is an error.',
+        user_deleted:
+          'Your account has been deleted. Please contact support if you believe this is an error.',
       };
-      const errorMsg = errorMessages[errorParam] || 'An error occurred. Please try again.';
+      const errorMsg =
+        errorMessages[errorParam] || 'An error occurred. Please try again.';
       setMessage(errorMsg);
       setMessageType('error');
       // Clean up URL by removing the parameter
@@ -111,8 +117,9 @@ function LoginPageContent() {
       const decodedMessage = decodeURIComponent(messageParam);
       setMessage(decodedMessage);
       // Check if message contains "success" or "successfully" to show as success type
-      const isSuccessMessage = decodedMessage.toLowerCase().includes('success') || 
-                               decodedMessage.toLowerCase().includes('successfully');
+      const isSuccessMessage =
+        decodedMessage.toLowerCase().includes('success') ||
+        decodedMessage.toLowerCase().includes('successfully');
       setMessageType(isSuccessMessage ? 'success' : 'info');
       // Clean up URL by removing the parameter
       router.replace('/login', { scroll: false });
@@ -592,12 +599,20 @@ function LoginPageContent() {
   };
 
   if (!isMounted || authLoading) {
-    return <LoginPageSkeleton />;
+    return (
+      <>
+        <LoginPageSkeleton />
+        {/* Feedback Button - Always visible on login page */}
+        <FeedbackButton />
+      </>
+    );
   }
 
   return (
     <>
       <LiquidGradient />
+      {/* Feedback Button - Always visible on login page */}
+      <FeedbackButton />
       <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
         <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
           <div className="flex flex-col md:flex-row">

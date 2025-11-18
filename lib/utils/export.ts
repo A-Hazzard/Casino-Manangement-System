@@ -114,3 +114,219 @@ export function exportMonthlyReportExcel(
     'monthly_report.xlsx'
   );
 }
+
+/**
+ * Exports the meters report as a styled PDF file, with logo at the top.
+ * @param data - The meters report data array.
+ * @param metadata - Metadata about the report (locations, date range, etc.).
+ */
+export async function exportMetersReportPDF(
+  data: Array<{
+    machineId: string;
+    location: string;
+    metersIn: number;
+    metersOut: number;
+    jackpot: number;
+    billIn: number;
+    voucherOut: number;
+    attPaidCredits: number;
+    gamesPlayed: number;
+    createdAt: string;
+    serialNumber?: string;
+    origSerialNumber?: string;
+  }>,
+  metadata: {
+    locations: string[];
+    dateRange: string;
+    searchTerm?: string;
+    totalCount: number;
+  }
+) {
+  const doc = new jsPDF();
+  
+  // Add logo at the top (centered)
+  try {
+    const logoBase64 = await getBase64FromUrl(
+      '/Evolution_one_Solutions_logo.png'
+    );
+    // Only specify width to preserve aspect ratio (no stretching)
+    doc.addImage(logoBase64, 'PNG', 75, 6, 60, 0); // Centered, width=60, height auto
+  } catch {
+    // If logo fails to load, continue without it
+    doc.setFontSize(10);
+    doc.text('Evolution One Solutions', 10, 16);
+  }
+
+  // Title
+  doc.setFontSize(16);
+  doc.text('Meters Report', 10, 32);
+
+  // Metadata section
+  let yPosition = 40;
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  
+  if (metadata.locations.length > 0) {
+    const locationText = metadata.locations.length === 1 
+      ? `Location: ${metadata.locations[0]}`
+      : `Locations: ${metadata.locations.length} selected`;
+    doc.text(locationText, 10, yPosition);
+    yPosition += 6;
+  }
+
+  doc.text(`Date Range: ${metadata.dateRange}`, 10, yPosition);
+  yPosition += 6;
+
+  doc.text(`Total Records: ${metadata.totalCount}`, 10, yPosition);
+  yPosition += 6;
+
+  if (metadata.searchTerm) {
+    doc.text(`Search Filter: "${metadata.searchTerm}"`, 10, yPosition);
+    yPosition += 6;
+  }
+
+  yPosition += 4; // Add spacing before table
+
+  // Format numbers for display
+  const formatNumber = (num: number): string => {
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  // Prepare table data
+  const tableData = data.map(item => {
+    // machineId is already computed by the API with proper fallback logic:
+    // 1. serialNumber (if not blank/whitespace)
+    // 2. custom.name (if serialNumber is blank)
+    const machineId = item.machineId;
+    return [
+      machineId,
+      item.location,
+      formatNumber(item.metersIn),
+      formatNumber(item.metersOut),
+      formatNumber(item.jackpot),
+      formatNumber(item.billIn),
+      formatNumber(item.voucherOut),
+      formatNumber(item.attPaidCredits),
+      item.gamesPlayed.toLocaleString(),
+      new Date(item.createdAt).toLocaleDateString(),
+    ];
+  });
+
+  // Table colors: Tailwind buttonActive: #5119E9 (RGB: 81, 25, 233)
+  autoTable(doc, {
+    startY: yPosition,
+    head: [['Machine ID', 'Location', 'Meters In', 'Money Won', 'Jackpot', 'Bill In', 'Voucher Out', 'Hand Paid Cancelled Credits', 'Games Played', 'Date']],
+    body: tableData,
+    headStyles: { fillColor: [81, 25, 233], textColor: [255, 255, 255], fontStyle: 'bold' },
+    styles: { fontSize: 8, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 30 }, // Machine ID
+      1: { cellWidth: 25 }, // Location
+      2: { cellWidth: 20, halign: 'right' }, // Meters In
+      3: { cellWidth: 20, halign: 'right' }, // Money Won
+      4: { cellWidth: 20, halign: 'right' }, // Jackpot
+      5: { cellWidth: 20, halign: 'right' }, // Bill In
+      6: { cellWidth: 20, halign: 'right' }, // Voucher Out
+      7: { cellWidth: 25, halign: 'right' }, // Hand Paid Cancelled Credits
+      8: { cellWidth: 20, halign: 'right' }, // Games Played
+      9: { cellWidth: 20 }, // Date
+    },
+    margin: { left: 10, right: 10 },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+  });
+
+  // Generate filename with date
+  const dateStr = new Date().toISOString().split('T')[0];
+  doc.save(`meters_report_${dateStr}.pdf`);
+}
+
+/**
+ * Exports the meters report as an Excel file.
+ * @param data - The meters report data array.
+ * @param metadata - Metadata about the report (locations, date range, etc.).
+ */
+export function exportMetersReportExcel(
+  data: Array<{
+    machineId: string;
+    location: string;
+    metersIn: number;
+    metersOut: number;
+    jackpot: number;
+    billIn: number;
+    voucherOut: number;
+    attPaidCredits: number;
+    gamesPlayed: number;
+    createdAt: string;
+    serialNumber?: string;
+    origSerialNumber?: string;
+  }>,
+  metadata: {
+    locations: string[];
+    dateRange: string;
+    searchTerm?: string;
+    totalCount: number;
+  }
+) {
+  // Create header rows
+  const headerRows = [
+    ['Evolution One Solutions'],
+    [''],
+    ['Meters Report'],
+    [''],
+  ];
+
+  // Add metadata
+  if (metadata.locations.length > 0) {
+    const locationText = metadata.locations.length === 1 
+      ? `Location: ${metadata.locations[0]}`
+      : `Locations: ${metadata.locations.join(', ')}`;
+    headerRows.push([locationText]);
+  }
+  headerRows.push([`Date Range: ${metadata.dateRange}`]);
+  headerRows.push([`Total Records: ${metadata.totalCount}`]);
+  if (metadata.searchTerm) {
+    headerRows.push([`Search Filter: "${metadata.searchTerm}"`]);
+  }
+  headerRows.push(['']); // Empty row before table
+
+  // Create table headers
+  const tableHeaders = [
+    ['Machine ID', 'Location', 'Meters In', 'Money Won', 'Jackpot', 'Bill In', 'Voucher Out', 'Hand Paid Cancelled Credits', 'Games Played', 'Date'],
+  ];
+
+  // Create table data
+  const tableData = data.map(item => {
+    // machineId is already computed by the API with proper fallback logic:
+    // 1. serialNumber (if not blank/whitespace)
+    // 2. custom.name (if serialNumber is blank)
+    const machineId = item.machineId;
+    return [
+      machineId,
+      item.location,
+      item.metersIn,
+      item.metersOut,
+      item.jackpot,
+      item.billIn,
+      item.voucherOut,
+      item.attPaidCredits,
+      item.gamesPlayed,
+      new Date(item.createdAt).toLocaleDateString(),
+    ];
+  });
+
+  // Combine all rows
+  const allRows = [...headerRows, ...tableHeaders, ...tableData];
+
+  // Create workbook and worksheet
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(allRows);
+  XLSX.utils.book_append_sheet(wb, ws, 'Meters Report');
+
+  // Generate filename with date
+  const dateStr = new Date().toISOString().split('T')[0];
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  saveAs(
+    new Blob([wbout], { type: 'application/octet-stream' }),
+    `meters_report_${dateStr}.xlsx`
+  );
+}

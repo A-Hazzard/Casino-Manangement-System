@@ -5,23 +5,23 @@ import LicenceeSelect from '@/components/ui/LicenceeSelect';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { logoutUser } from '@/lib/helpers/clientAuth';
+import {
+  fetchLicenseeById,
+  fetchLicensees,
+} from '@/lib/helpers/clientLicensees';
 import { fetchMetricsData } from '@/lib/helpers/dashboard';
+import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { HeaderProps } from '@/lib/types/componentProps';
 import { cn } from '@/lib/utils';
 import { shouldShowNavigationLink } from '@/lib/utils/permissions';
+import type { CurrencyCode } from '@/shared/types/currency';
 import { ExitIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PanelLeft } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
-import { getLicenseeCurrency, getCountryCurrency } from '@/lib/helpers/rates';
-import {
-  fetchLicensees,
-  fetchLicenseeById,
-} from '@/lib/helpers/clientLicensees';
-import type { CurrencyCode } from '@/shared/types/currency';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function Header({
   selectedLicencee,
@@ -60,22 +60,31 @@ export default function Header({
     typeof role === 'string' ? role.toLowerCase() : role
   );
 
-  // Get user's licensee assignments
-  const userLicensees = user?.rel?.licencee || [];
+  // Get user's licensee assignments (memoized to prevent unnecessary re-renders)
+  const userLicensees = useMemo(() => {
+    return user?.rel?.licencee || [];
+  }, [user?.rel?.licencee]);
+
   const isAdmin =
     normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
   const isManager = normalizedRoles.includes('manager');
-  const hasMultipleLicensees = Array.isArray(userLicensees) && userLicensees.length > 1;
-  const hasSingleLicensee = Array.isArray(userLicensees) && userLicensees.length === 1;
-  
+  const isLocationAdmin = normalizedRoles.includes('location admin');
+  const hasMultipleLicensees =
+    Array.isArray(userLicensees) && userLicensees.length > 1;
+  const hasSingleLicensee =
+    Array.isArray(userLicensees) && userLicensees.length === 1;
+
   // Determine if licensee select should be shown
   // Show if: admin OR user has multiple licensees OR (manager with multiple licensees)
-  // Hide if: user has 0 or 1 licensee (and not admin/dev)
-  const shouldShowLicenseeSelect = isAdmin || hasMultipleLicensees || (isManager && hasMultipleLicensees);
-  
+  // Hide if: user has 0 or 1 licensee (and not admin/dev) OR location admin
+  const shouldShowLicenseeSelect =
+    (isAdmin || hasMultipleLicensees || (isManager && hasMultipleLicensees)) &&
+    !isLocationAdmin;
+
   // Determine if we should show licensee name next to "Evolution CMS"
   // Show if: user has exactly one licensee AND not admin/dev AND (not manager OR manager with single licensee)
-  const shouldShowLicenseeName = hasSingleLicensee && !isAdmin && (!isManager || hasSingleLicensee);
+  const shouldShowLicenseeName =
+    hasSingleLicensee && !isAdmin && (!isManager || hasSingleLicensee);
   const selectedLicenceeValue = selectedLicencee ?? '';
   const isAllLicenseeSelected =
     selectedLicenceeValue === '' || selectedLicenceeValue === 'all';
@@ -130,7 +139,11 @@ export default function Header({
   useEffect(() => {
     let cancelled = false;
     const loadSingleLicenseeName = async () => {
-      if (!shouldShowLicenseeName || !hasSingleLicensee || userLicensees.length === 0) {
+      if (
+        !shouldShowLicenseeName ||
+        !hasSingleLicensee ||
+        userLicensees.length === 0
+      ) {
         setSingleLicenseeName('');
         return;
       }
@@ -310,21 +323,21 @@ export default function Header({
         {/* Header Section: Main header with title and licensee selector */}
         <header className="flex w-full flex-col p-0">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
-          <div className="flex w-full items-center justify-between gap-2 sm:gap-4 min-w-0">
+          <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:gap-4">
             {/* Left side: Menu button and title */}
-            <div className="flex items-center gap-2 min-w-0 flex-shrink">
+            <div className="flex min-w-0 flex-shrink items-center gap-2">
               {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
               <SidebarTrigger
                 className={cn(
-                  'relative z-20 cursor-pointer p-2 text-foreground md:hidden flex-shrink-0',
+                  'relative z-20 flex-shrink-0 cursor-pointer p-2 text-foreground md:hidden',
                   isOpen && 'invisible'
                 )}
                 aria-label="Toggle sidebar"
               >
                 <PanelLeft className="h-6 w-6" suppressHydrationWarning />
               </SidebarTrigger>
-              <div className="flex items-center gap-2 min-w-0">
-                <h1 className="shrink-0 text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl whitespace-nowrap">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="shrink-0 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl">
                   Evolution CMS
                 </h1>
                 {shouldShowLicenseeName && singleLicenseeName && (
@@ -337,11 +350,12 @@ export default function Header({
 
             {/* Right side: Filters */}
             {!hideLicenceeFilter && shouldShowLicenseeSelect && (
-              <div className="flex shrink items-center gap-1 sm:gap-2 min-w-0">
-                <div 
+              <div className="flex min-w-0 shrink items-center gap-1 sm:gap-2">
+                <div
                   className="min-w-0 overflow-hidden md:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
                   style={{
-                    width: 'clamp(120px, calc((100vw - 240px) * 0.5 + 120px), 200px)',
+                    width:
+                      'clamp(120px, calc((100vw - 240px) * 0.5 + 120px), 200px)',
                   }}
                 >
                   <LicenceeSelect

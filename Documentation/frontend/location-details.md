@@ -35,6 +35,16 @@ The Location Details page provides comprehensive information about gaming locati
 
 The Location Details page (`app/locations/[slug]/details/page.tsx`) provides comprehensive information about gaming locations, including cabinet management, metrics, and detailed analytics. The main locations page (`app/locations/page.tsx`) offers location listing with advanced filtering capabilities.
 
+**Last Updated:** December 2025  
+**Version:** 2.2.0
+
+## Recent Updates (December 2025)
+
+### Machine Status Widget
+- **Machine Status Display**: Added machine status widget showing online/total format (e.g., "37/40 Online") with offline count
+- **Location**: Displayed alongside date filters, showing total machines and online/offline breakdown
+- **Responsive**: Works on both desktop and mobile layouts
+
 ## Current Implementation Status
 
 ### ✅ **Resolved Issues**

@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils';
+import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import { CabinetCardProps } from '@/lib/types/cardProps';
 import { motion } from 'framer-motion';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
@@ -99,31 +100,37 @@ export default function CabinetCard(props: CabinetCardProps) {
       <div className="border-t border-gray-200 pt-2 text-sm">
         <div className="mb-1 flex justify-between">
           <span className="text-gray-500">Money In</span>
-          <span className="font-medium">
-            {formatCurrency(props.moneyIn || 0)}
-          </span>
+          <CurrencyValueWithOverflow
+            value={props.moneyIn || 0}
+            className="font-medium"
+            formatCurrencyFn={formatCurrency}
+          />
         </div>
         <div className="mb-1 flex justify-between">
           <span className="text-gray-500">Money Out</span>
-          <span className="font-medium">
-            {formatCurrency(props.moneyOut || 0)}
-          </span>
+          <CurrencyValueWithOverflow
+            value={props.moneyOut || 0}
+            className="font-medium"
+            formatCurrencyFn={formatCurrency}
+          />
         </div>
         <div className="mb-1 flex justify-between">
           <span className="text-gray-500">Jackpot</span>
-          <span className="font-medium">
-            {formatCurrency(props.jackpot || 0)}
-          </span>
+          <CurrencyValueWithOverflow
+            value={props.jackpot || 0}
+            className="font-medium"
+            formatCurrencyFn={formatCurrency}
+          />
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Gross</span>
-          <span
+          <CurrencyValueWithOverflow
+            value={props.gross || 0}
             className={`font-medium ${
               (props.gross || 0) < 0 ? 'text-red-500' : 'text-green-600'
             }`}
-          >
-            {formatCurrency(props.gross || 0)}
-          </span>
+            formatCurrencyFn={formatCurrency}
+          />
         </div>
       </div>
 

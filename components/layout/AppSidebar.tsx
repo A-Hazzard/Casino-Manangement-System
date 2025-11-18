@@ -16,6 +16,7 @@ import { fetchUserId } from '@/lib/helpers/user';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
+import { shouldShowNoRoleMessage } from '@/lib/utils/licenseeAccess';
 import { shouldShowNavigationLinkDb } from '@/lib/utils/permissionsDb';
 import { CACHE_KEYS, fetchUserWithCache } from '@/lib/utils/userCache';
 import {
@@ -366,28 +367,36 @@ export default function AppSidebar() {
           </div>
           {/* Navigation Section: Main navigation menu with permission-based filtering */}
           <nav className="relative flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
-            {navigationLoading
-              ? // Show loading skeleton for all items with square icon skeletons
-                items.map(item => (
+            {shouldShowNoRoleMessage(user) ? (
+              // Show empty state when user has no roles
+              <div className="flex items-center justify-center py-8 text-center">
+                <p className="text-sm text-gray-500">
+                  {collapsed ? '' : 'No navigation available'}
+                </p>
+              </div>
+            ) : navigationLoading ? (
+              // Show loading skeleton for all items with square icon skeletons
+              items.map(item => (
+                <div
+                  key={item.href}
+                  className="flex h-9 items-center gap-3 rounded-md px-3 py-2"
+                >
+                  {/* Square skeleton for icon */}
+                  <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                  {/* Text skeleton - hidden when collapsed */}
                   <div
-                    key={item.href}
-                    className="flex h-9 items-center gap-3 rounded-md px-3 py-2"
-                  >
-                    {/* Square skeleton for icon */}
-                    <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
-                    {/* Text skeleton - hidden when collapsed */}
-                    <div
-                      className={cn(
-                        'h-4 w-20 animate-pulse rounded bg-gray-200',
-                        collapsed ? 'md:hidden' : ''
-                      )}
-                    />
-                  </div>
-                ))
-              : // Render items based on pre-loaded permissions
-                items
-                  .filter(item => navigationPermissions[item.href])
-                  .map(item => {
+                    className={cn(
+                      'h-4 w-20 animate-pulse rounded bg-gray-200',
+                      collapsed ? 'md:hidden' : ''
+                    )}
+                  />
+                </div>
+              ))
+            ) : (
+              // Render items based on pre-loaded permissions
+              items
+                .filter(item => navigationPermissions[item.href])
+                .map(item => {
                     const Icon = item.icon;
                     const active =
                       pathname === item.href ||
@@ -455,7 +464,8 @@ export default function AppSidebar() {
                           )}
                       </div>
                     );
-                  })}
+                  })
+            )}
           </nav>
           {/* Currency Filter Section - Mobile Only */}
           {collapsed && (

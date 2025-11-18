@@ -3,7 +3,7 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import Image from 'next/image';
-import { Suspense, useState, useCallback } from 'react';
+import { Suspense, useState, useCallback, useMemo } from 'react';
 
 // Modal components
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
@@ -40,6 +40,10 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 
 // Store hooks
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
+
+// Utils
+import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 
 // Constants and types
 import { CABINET_TABS_CONFIG } from '@/lib/constants/cabinets';
@@ -76,9 +80,19 @@ function CabinetsPageContent() {
   } = useCabinetFilters();
 
   // Custom hooks for data management
+  const user = useUserStore(state => state.user);
+
+  // Check if current user is a developer
+  const isDeveloper = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.some(role => 
+      typeof role === 'string' && role.toLowerCase() === 'developer'
+    );
+  }, [user?.roles]);
+
   const {
     allCabinets,
-    filteredCabinets,
+    filteredCabinets: rawFilteredCabinets,
     locations,
     gameTypes,
     financialTotals,
@@ -96,6 +110,19 @@ function CabinetsPageContent() {
     selectedStatus,
     displayCurrency,
   });
+
+  // Filter out test cabinets (unless developer)
+  const filteredCabinets = useMemo(() => {
+    if (isDeveloper) {
+      return rawFilteredCabinets; // Developers can see all cabinets including test ones
+    }
+    const testPattern = /^test/i;
+    return rawFilteredCabinets.filter(cabinet => {
+      const name = cabinet.custom?.name?.trim() || '';
+      const serialNumber = getSerialNumberIdentifier(cabinet)?.trim() || '';
+      return !testPattern.test(name) && !testPattern.test(serialNumber);
+    });
+  }, [rawFilteredCabinets, isDeveloper]);
 
   const {
     sortOrder,

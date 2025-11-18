@@ -221,6 +221,9 @@ importers:
       node-cron:
         specifier: ^3.0.3
         version: 3.0.3
+      profane-words:
+        specifier: ^2.1.0
+        version: 2.1.0
       react:
         specifier: 18.3.1
         version: 18.3.1
@@ -5082,6 +5085,9 @@ packages:
   process@0.11.10:
     resolution: {integrity: sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==}
     engines: {node: '>= 0.6.0'}
+
+  profane-words@2.1.0:
+    resolution: {integrity: sha512-bPiD1QwiLXnlC8ydATG/0DGzflkcfKVODt1c+srtrGaFaWoABjROrBEj9oHVGXAT7tQk7uo0LB782Fjkv47eHw==}
 
   prop-types@15.8.1:
     resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
@@ -11725,6 +11731,8 @@ snapshots:
   process-nextick-args@2.0.1: {}
 
   process@0.11.10: {}
+
+  profane-words@2.1.0: {}
 
   prop-types@15.8.1:
     dependencies:

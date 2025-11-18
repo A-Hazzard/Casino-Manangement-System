@@ -26,7 +26,8 @@ type MachineLike = {
  * @returns Formatted string for display
  */
 export function formatMachineDisplayName(machine: MachineLike): string {
-  const serialNumber = machine.serialNumber || machine.assetNumber || 'N/A';
+  // Use serialNumber if not blank/whitespace, otherwise fall back to custom.name, then assetNumber
+  const serialNumber = (machine.serialNumber?.trim() || machine.custom?.name?.trim() || machine.assetNumber?.trim() || 'N/A');
   const customName = machine.custom?.name;
   const game = machine.game || machine.installedGame;
 
@@ -59,7 +60,8 @@ export function formatMachineDisplayName(machine: MachineLike): string {
 export function formatMachineDisplayNameWithBold(
   machine: MachineLike
 ): React.JSX.Element {
-  const serialNumber = machine.serialNumber || machine.assetNumber || 'N/A';
+  // Use serialNumber if not blank/whitespace, otherwise fall back to custom.name, then assetNumber
+  const serialNumber = (machine.serialNumber?.trim() || machine.custom?.name?.trim() || machine.assetNumber?.trim() || 'N/A');
   const customName = machine.custom?.name;
   const game = machine.game || machine.installedGame;
 

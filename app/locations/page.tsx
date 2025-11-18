@@ -21,7 +21,7 @@ import {
   MagnifyingGlassIcon,
 } from '@radix-ui/react-icons';
 import { Plus, PlusCircle, RefreshCw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 
 import PageLayout from '@/components/layout/PageLayout';
 
@@ -86,6 +86,26 @@ function LocationsPageContent() {
       selectedFilters,
     });
 
+  // Check if current user is a developer
+  const isDeveloper = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.some(role => 
+      typeof role === 'string' && role.toLowerCase() === 'developer'
+    );
+  }, [user?.roles]);
+
+  // Filter out test locations (unless developer)
+  const filteredLocationData = useMemo(() => {
+    if (isDeveloper) {
+      return locationData; // Developers can see all locations including test ones
+    }
+    const testPattern = /^test/i;
+    return locationData.filter(location => {
+      const name = location.name?.trim() || '';
+      return !testPattern.test(name);
+    });
+  }, [locationData, isDeveloper]);
+
   const {
     sortedData,
     sortOrder,
@@ -94,7 +114,7 @@ function LocationsPageContent() {
     totalPages,
     currentItems,
   } = useLocationSorting({
-    locationData,
+    locationData: filteredLocationData,
     selectedFilters,
   });
 
@@ -277,6 +297,8 @@ function LocationsPageContent() {
               isLoading={machineStatsLoading}
               onlineCount={machineStats?.onlineMachines || 0}
               offlineCount={machineStats?.offlineMachines || 0}
+              totalCount={machineStats?.totalMachines}
+              showTotal={true}
             />
           </div>
         </div>
@@ -295,6 +317,8 @@ function LocationsPageContent() {
               isLoading={machineStatsLoading}
               onlineCount={machineStats?.onlineMachines || 0}
               offlineCount={machineStats?.offlineMachines || 0}
+              totalCount={machineStats?.totalMachines}
+              showTotal={true}
             />
           </div>
           <div className="relative w-full">

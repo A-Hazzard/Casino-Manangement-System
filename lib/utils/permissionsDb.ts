@@ -89,7 +89,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
 
   // Page permissions mapping
   const pagePermissions: Record<PageName, UserRole[]> = {
-    dashboard: ['developer', 'admin', 'manager'], // ✅ Removed 'location admin'
+    dashboard: ['developer', 'admin', 'manager', 'location admin'], // ✅ Location admin can access dashboard
     machines: [
       'developer',
       'admin',
@@ -122,7 +122,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'location admin',
       'collector',
     ],
-    reports: ['developer'], // ✅ Restricted to developer only
+    reports: ['developer', 'admin', 'location admin'], // ✅ Restricted to developer, admin, and location admin
     sessions: ['developer'],
     administration: ['developer', 'admin', 'manager'],
   };

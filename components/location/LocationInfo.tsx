@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { LocationData } from '@/lib/types/location';
 import { formatCurrency } from '@/lib/utils/formatting';
+import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import type { LocationData as LocationDataType } from '@/lib/types/location';
 
 type ExtendedLocationInfoProps = {
@@ -82,7 +83,10 @@ const LocationInfoCard: React.FC<ExtendedLocationInfoProps> = ({
             >
               <p className="text-sm text-gray-500">Money In</p>
               <p className="text-lg font-semibold">
-                {formatCurrency(location?.moneyIn ?? 0)}
+                <CurrencyValueWithOverflow
+                  value={location?.moneyIn ?? 0}
+                  formatCurrencyFn={formatCurrency}
+                />
               </p>
             </motion.div>
             <motion.div
@@ -94,7 +98,10 @@ const LocationInfoCard: React.FC<ExtendedLocationInfoProps> = ({
             >
               <p className="text-sm text-gray-500">Money Out</p>
               <p className="text-lg font-semibold">
-                {formatCurrency(location?.moneyOut ?? 0)}
+                <CurrencyValueWithOverflow
+                  value={location?.moneyOut ?? 0}
+                  formatCurrencyFn={formatCurrency}
+                />
               </p>
             </motion.div>
           </div>

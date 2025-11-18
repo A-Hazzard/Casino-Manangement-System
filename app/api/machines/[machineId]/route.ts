@@ -200,11 +200,16 @@ export async function GET(
       gross,
     });
 
+    // Get serialNumber with fallback to custom.name
+    const serialNumber = (machine.serialNumber as string)?.trim() || '';
+    const customName = ((machine.custom as Record<string, unknown>)?.name as string)?.trim() || '';
+    const finalSerialNumber = serialNumber || customName || '';
+
     // Transform the data to match frontend expectations
     const transformedMachine = {
       _id: machine._id,
-      assetNumber: machine.serialNumber || '',
-      serialNumber: machine.serialNumber || '',
+      assetNumber: finalSerialNumber,
+      serialNumber: finalSerialNumber,
       installedGame: machine.game || '',
       game: machine.game || '',
       gamingLocation: machine.gamingLocation || '',

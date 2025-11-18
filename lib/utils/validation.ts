@@ -26,6 +26,33 @@ export function containsEmailPattern(value: string): boolean {
 }
 
 /**
+ * Checks if an email address is a placeholder/example email.
+ * Detects common patterns like example@example.com, test@test.com, etc.
+ */
+export function isPlaceholderEmail(email: string): boolean {
+  if (!email || typeof email !== 'string') return false;
+  
+  const normalized = email.toLowerCase().trim();
+  
+  // Common placeholder email patterns
+  const placeholderPatterns = [
+    /^example\d*@example\.(com|org|net|test)$/i,
+    /^test\d*@test\.(com|org|net|example)$/i,
+    /^sample\d*@sample\.(com|org|net)$/i,
+    /^placeholder\d*@placeholder\.(com|org|net)$/i,
+    /^user\d*@example\.(com|org|net|test)$/i,
+    /^demo\d*@demo\.(com|org|net)$/i,
+    /^temp\d*@temp\.(com|org|net)$/i,
+    /^fake\d*@fake\.(com|org|net)$/i,
+    /^dummy\d*@dummy\.(com|org|net)$/i,
+    /^admin\d*@example\.(com|org|net)$/i,
+    /^[a-z]+\d*@example\.(com|org|net|test)$/i, // Any word followed by numbers @example.com
+  ];
+  
+  return placeholderPatterns.some(pattern => pattern.test(normalized));
+}
+
+/**
  * Validates if a password meets strength requirements.
  *
  * @param password - The password to validate.

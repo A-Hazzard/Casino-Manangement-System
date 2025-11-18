@@ -7,13 +7,18 @@ type MachineStatusWidgetProps = {
   isLoading?: boolean;
   onlineCount: number;
   offlineCount: number;
+  totalCount?: number; // Optional total count to show "X/Y" format
+  showTotal?: boolean; // Whether to show total count
 };
 
 export default function MachineStatusWidget({
   isLoading = false,
   onlineCount = 0,
   offlineCount = 0,
+  totalCount,
+  showTotal = false,
 }: MachineStatusWidgetProps) {
+  const total = totalCount ?? (onlineCount + offlineCount);
   if (isLoading) {
     return (
       <div className="flex min-w-0 items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">
@@ -46,7 +51,10 @@ export default function MachineStatusWidget({
         <span className="flex min-w-0 flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-green-50 px-1.5 py-1 text-xs text-green-700 sm:px-2">
           <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-500 sm:h-2 sm:w-2" />
           <span className="truncate">
-            {onlineCount.toLocaleString()} Online
+            {showTotal 
+              ? `${onlineCount.toLocaleString()}/${total.toLocaleString()} Online`
+              : `${onlineCount.toLocaleString()} Online`
+            }
           </span>
         </span>
         <span className="flex min-w-0 flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-red-50 px-1.5 py-1 text-xs text-red-700 sm:px-2">

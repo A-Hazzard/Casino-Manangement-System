@@ -273,12 +273,17 @@ export async function GET(req: NextRequest) {
           const jackpot = metrics.jackpot || 0;
           const gross = moneyIn - moneyOut;
 
+          // Get serialNumber with fallback to custom.name
+          const serialNumber = (machine.serialNumber as string)?.trim() || '';
+          const customName = ((machine.custom as Record<string, unknown>)?.name as string)?.trim() || '';
+          const finalSerialNumber = serialNumber || customName || '';
+
           allMachines.push({
             _id: machineId,
             locationId: locationId,
             locationName: (location.name as string) || '(No Location)',
-            assetNumber: machine.serialNumber || '',
-            serialNumber: machine.serialNumber || '',
+            assetNumber: finalSerialNumber,
+            serialNumber: finalSerialNumber,
             game: machine.game || '',
             installedGame: machine.game || '',
             denomination: machine.denomination || '',
@@ -403,12 +408,17 @@ export async function GET(req: NextRequest) {
             const gamesWon = metrics.gamesWon || 0;
             const gross = moneyIn - moneyOut;
 
+            // Get serialNumber with fallback to custom.name
+            const serialNumber = (machine.serialNumber as string)?.trim() || '';
+            const customName = ((machine.custom as Record<string, unknown>)?.name as string)?.trim() || '';
+            const finalSerialNumber = serialNumber || customName || '';
+
             return {
               _id: machineId,
               locationId: locationIdStr,
               locationName: (location.name as string) || '(No Location)',
-              assetNumber: machine.serialNumber || '',
-              serialNumber: machine.serialNumber || '',
+              assetNumber: finalSerialNumber,
+              serialNumber: finalSerialNumber,
               smbId: machine.relayId || '',
               relayId: machine.relayId || '',
               installedGame: machine.game || '',
@@ -454,18 +464,19 @@ export async function GET(req: NextRequest) {
     const queryTime = Date.now() - startTime;
     console.log(`[MACHINES AGGREGATION] ⚡ Processed ${locations.length} locations in ${queryTime}ms (${(queryTime / 1000).toFixed(2)}s)`);
 
-    // Apply search filter if provided (search by serial number, relay ID, smib ID, or machine _id)
+    // Apply search filter if provided (search by serial number, custom.name, relay ID, smib ID, or machine _id)
     let filteredMachines = allMachines;
     if (searchTerm) {
-      filteredMachines = allMachines.filter(
-        machine =>
-          machine.serialNumber
-            ?.toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          machine.relayId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          machine.smbId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          machine._id === searchTerm // Exact match for _id
-      );
+      const searchLower = searchTerm.toLowerCase();
+      filteredMachines = allMachines.filter(machine => {
+        // Search in serialNumber (which already includes custom.name fallback)
+        const matchesSerialNumber = machine.serialNumber?.toLowerCase().includes(searchLower);
+        const matchesRelayId = machine.relayId?.toLowerCase().includes(searchLower);
+        const matchesSmbId = machine.smbId?.toLowerCase().includes(searchLower);
+        const matchesId = machine._id === searchTerm; // Exact match for _id
+        
+        return matchesSerialNumber || matchesRelayId || matchesSmbId || matchesId;
+      });
     }
 
     // Get current user's role to determine if currency conversion should apply

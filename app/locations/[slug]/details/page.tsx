@@ -18,6 +18,7 @@ import {
   DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
 import { formatCurrency } from '@/lib/utils';
+import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -326,12 +327,23 @@ export default function LocationDetailsPage() {
     } else {
       const searchLower = searchTerm.toLowerCase();
       const filtered = cabinets.filter(
-        cabinet =>
-          cabinet.assetNumber?.toLowerCase().includes(searchLower) ||
-          cabinet.smbId?.toLowerCase().includes(searchLower) ||
-          cabinet.serialNumber?.toLowerCase().includes(searchLower) ||
-          cabinet.game?.toLowerCase().includes(searchLower) ||
-          cabinet.locationName?.toLowerCase().includes(searchLower)
+        cabinet => {
+          const cabinetRecord = cabinet as Record<string, unknown>;
+          // Check custom.name (lowercase - primary per schema) first, then Custom.name (uppercase - legacy fallback)
+          const customName = (
+            (cabinetRecord.custom as Record<string, unknown>)?.name ||
+            (cabinetRecord.Custom as Record<string, unknown>)?.name
+          )?.toString().toLowerCase() || '';
+          
+          return (
+            cabinet.assetNumber?.toLowerCase().includes(searchLower) ||
+            cabinet.smbId?.toLowerCase().includes(searchLower) ||
+            cabinet.serialNumber?.toLowerCase().includes(searchLower) ||
+            cabinet.game?.toLowerCase().includes(searchLower) ||
+            cabinet.locationName?.toLowerCase().includes(searchLower) ||
+            customName.includes(searchLower)
+          );
+        }
       );
 
       // Sort the filtered cabinets alphabetically and numerically
@@ -478,7 +490,10 @@ export default function LocationDetailsPage() {
                         locationInfo.gross
                       )}`}
                     >
-                      {formatCurrency(locationInfo.gross || 0)}
+                      <CurrencyValueWithOverflow
+                        value={locationInfo.gross || 0}
+                        formatCurrencyFn={formatCurrency}
+                      />
                     </p>
                   </div>
                   <div className="rounded-lg bg-gray-50 p-3">
@@ -488,7 +503,10 @@ export default function LocationDetailsPage() {
                         locationInfo.net
                       )}`}
                     >
-                      {formatCurrency(locationInfo.net || 0)}
+                      <CurrencyValueWithOverflow
+                        value={locationInfo.net || 0}
+                        formatCurrencyFn={formatCurrency}
+                      />
                     </p>
                   </div>
                 </div>

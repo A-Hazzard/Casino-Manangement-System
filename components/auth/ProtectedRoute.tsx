@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { PageName, hasPageAccess } from '@/lib/utils/permissions';
 import { hasAdminAccessDb, hasPageAccessDb } from '@/lib/utils/permissionsDb';
+import { shouldShowNoRoleMessage } from '@/lib/utils/licenseeAccess';
+import { NoRoleAssigned } from '@/components/ui/NoRoleAssigned';
+import PageLayout from '@/components/layout/PageLayout';
 
 import type React from 'react';
 
@@ -42,10 +45,8 @@ export default function ProtectedRoute({
           setHasWaitedForRoles(true);
           setTimeout(() => {
             if (!user.roles || user.roles.length === 0) {
-              console.warn(
-                'User has no roles after timeout, redirecting to login'
-              );
-              router.push('/login');
+              // User has no roles - allow them to see the NoRoleAssigned message
+              setIsChecking(false);
             }
           }, 2000);
         }
@@ -141,6 +142,26 @@ export default function ProtectedRoute({
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-gray-900"></div>
       </div>
+    );
+  }
+
+  // Show NoRoleAssigned message if user has no roles
+  if (shouldShowNoRoleMessage(user)) {
+    return (
+      <PageLayout
+        headerProps={{
+          selectedLicencee: '',
+          setSelectedLicencee: () => {},
+          disabled: false,
+        }}
+        pageTitle=""
+        hideOptions={true}
+        hideLicenceeFilter={true}
+        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
+        showToaster={false}
+      >
+        <NoRoleAssigned />
+      </PageLayout>
     );
   }
 

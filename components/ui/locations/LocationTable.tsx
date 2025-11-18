@@ -107,6 +107,37 @@ const LocationTable: React.FC<LocationTableProps> = ({
                         {(location.locationName as string) ||
                           'Unknown Location'}
                       </span>
+                      {typeof location.onlineMachines === 'number' && typeof location.totalMachines === 'number' && (() => {
+                        const online = location.onlineMachines;
+                        const total = location.totalMachines;
+                        const isAllOnline = total > 0 && online === total;
+                        const isAllOffline = total > 0 && online === 0;
+                        const hasMachines = total > 0;
+                        
+                        let badgeClass = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset';
+                        let dotClass = 'h-1.5 w-1.5 rounded-full';
+                        
+                        if (!hasMachines) {
+                          badgeClass += ' bg-gray-50 text-gray-600 ring-gray-200';
+                          dotClass += ' bg-gray-400';
+                        } else if (isAllOffline) {
+                          badgeClass += ' bg-red-50 text-red-700 ring-red-600/20';
+                          dotClass += ' bg-red-500';
+                        } else if (isAllOnline) {
+                          badgeClass += ' bg-green-50 text-green-700 ring-green-600/20';
+                          dotClass += ' bg-green-500';
+                        } else {
+                          badgeClass += ' bg-yellow-50 text-yellow-700 ring-yellow-600/20';
+                          dotClass += ' bg-yellow-500';
+                        }
+                        
+                        return (
+                          <span className={badgeClass}>
+                            <span className={dotClass}></span>
+                            {online}/{total} Online
+                          </span>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell>{formatCurrency(loc.moneyIn || 0)}</TableCell>

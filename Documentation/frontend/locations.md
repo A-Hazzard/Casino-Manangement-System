@@ -86,7 +86,7 @@ The Locations page provides comprehensive casino location management, including 
   - Location-specific cabinet management.
 - **Performance Analytics:**
   - Financial metrics per location (money in/out, gross revenue).
-  - Machine status tracking (online/offline machines).
+  - **Machine Status Widget**: Displays online/total machine count (e.g., "37/40 Online") with offline count
   - Location comparison and ranking.
 - **Cabinet Integration:**
   - View cabinets for each location.

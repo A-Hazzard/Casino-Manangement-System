@@ -29,27 +29,43 @@ export default function UserTable({
   onEdit,
   onDelete,
 }: UserTableProps) {
+  // Map column headers to their corresponding sort keys
+  const columnConfig = [
+    { header: 'NAME', sortKey: 'name' as SortKey },
+    { header: 'USERNAME', sortKey: 'username' as SortKey },
+    { header: 'EMAIL ADDRESS', sortKey: 'emailAddress' as SortKey },
+    { header: 'ENABLED', sortKey: 'enabled' as SortKey },
+    { header: 'LOGIN COUNT', sortKey: 'loginCount' as SortKey },
+    { header: 'LAST LOGIN', sortKey: 'lastLoginAt' as SortKey },
+    { header: 'SESSION', sortKey: 'sessionVersion' as SortKey },
+    { header: 'ACTIONS', sortKey: null }, // Not sortable
+  ];
+
   return (
     <div className="hidden overflow-x-auto rounded-lg bg-white shadow-md lg:block">
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            {['NAME', 'USERNAME', 'EMAIL ADDRESS', 'ENABLED', 'LOGIN COUNT', 'LAST LOGIN', 'SESSION', 'ACTIONS'].map(
-              col => {
-                const sortKey = col.toLowerCase().replace(' ', '') as SortKey;
-                return (
-                  <TableHead
-                    key={col}
-                    className="cursor-pointer select-none text-left font-semibold text-white"
-                    onClick={() => requestSort(sortKey)}
-                  >
-                    {col}
-                    {sortConfig?.key === sortKey &&
-                      (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
-                  </TableHead>
-                );
-              }
-            )}
+            {columnConfig.map(({ header, sortKey }) => {
+              const isSortable = sortKey !== null;
+              return (
+                <TableHead
+                  key={header}
+                  className={`text-left font-semibold text-white ${
+                    isSortable ? 'cursor-pointer select-none hover:bg-buttonActive/80' : ''
+                  }`}
+                  onClick={() => {
+                    if (isSortable && sortKey) {
+                      requestSort(sortKey);
+                    }
+                  }}
+                >
+                  {header}
+                  {isSortable && sortConfig?.key === sortKey &&
+                    (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>

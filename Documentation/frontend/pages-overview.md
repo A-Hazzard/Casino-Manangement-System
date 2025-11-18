@@ -373,10 +373,12 @@ All pages maintain consistent navigation through the sidebar and follow the esta
 
 ### Session Management
 
-- **Session Version**: Incremented when admin changes user permissions (licensees, locations, roles)
-- **Auto-Logout**: User automatically logged out when `sessionVersion` increments
+- **Session Version**: Incremented ONLY when admin changes user permissions (licensees, locations, roles)
+- **NOT Incremented on Login**: `sessionVersion` remains unchanged during login to allow multiple concurrent sessions across devices/tabs
+- **Auto-Logout**: User automatically logged out when `sessionVersion` increments (due to permission changes)
 - **Toast Notification**: User sees "Your session has been invalidated" message
 - **Re-authentication**: User must login again to get new JWT with updated permissions
+- **Multi-Device Support**: Users can log in on multiple devices/tabs simultaneously without logging out other sessions
 
 ### Permission Change Flow
 
@@ -389,6 +391,18 @@ All pages maintain consistent navigation through the sidebar and follow the esta
 6. User redirected to /login with toast message
 7. User logs in with new credentials
 8. New JWT issued with updated permissions
+```
+
+### Login Flow (No Session Invalidation)
+
+```
+1. User logs in on Device A
+2. sessionVersion remains unchanged (e.g., stays at 2)
+3. JWT issued with sessionVersion: 2
+4. User logs in on Device B
+5. sessionVersion still unchanged (remains 2)
+6. JWT issued with sessionVersion: 2
+7. Both devices maintain valid sessions independently
 ```
 
 ---

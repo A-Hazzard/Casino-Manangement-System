@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { formatCurrency } from '@/lib/utils';
+import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
@@ -12,7 +13,6 @@ import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.
 import CabinetTable from '@/components/ui/cabinets/CabinetTable';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import gsap from 'gsap';
-import { MobileValuePopover } from '@/components/ui/MobileValuePopover';
 
 function CabinetCardMobile({
   cabinet,
@@ -46,9 +46,6 @@ function CabinetCardMobile({
     }
     return undefined;
   }, [cabinet.isOnline]);
-  const moneyInDisplay = formatCurrency(cabinet.moneyIn || 0);
-  const moneyOutDisplay = formatCurrency(cabinet.moneyOut || 0);
-  const grossDisplay = formatCurrency(cabinet.gross || 0);
   return (
     <div
       key={cabinet._id}
@@ -72,41 +69,32 @@ function CabinetCardMobile({
       <p className="mb-1 text-sm text-gray-600">
         SMIB: {cabinet.smibBoard || cabinet.smbId || 'N/A'}
       </p>
-        <div className="mt-2 border-t border-gray-200 pt-2">
-          <div className="mb-1 flex justify-between">
-            <span className="text-xs text-gray-500">Money In:</span>
-            <MobileValuePopover
-              className="text-xs font-medium text-right"
-              triggerClassName="justify-end text-xs font-medium"
-              displayValue={moneyInDisplay}
-              fullValue={moneyInDisplay}
-              popoverLabel="Money In"
-              desktopBreakpoint="lg"
-            />
-          </div>
-          <div className="mb-1 flex justify-between">
-            <span className="text-xs text-gray-500">Money Out:</span>
-            <MobileValuePopover
-              className="text-xs font-medium text-right"
-              triggerClassName="justify-end text-xs font-medium"
-              displayValue={moneyOutDisplay}
-              fullValue={moneyOutDisplay}
-              popoverLabel="Money Out"
-              desktopBreakpoint="lg"
-            />
-          </div>
-          <div className="flex justify-between">
-            <span className="text-xs text-gray-500">Gross:</span>
-            <MobileValuePopover
-              className="text-xs font-medium text-right"
-              triggerClassName="justify-end text-xs font-medium"
-              displayValue={grossDisplay}
-              fullValue={grossDisplay}
-              popoverLabel="Gross"
-              desktopBreakpoint="lg"
-            />
-          </div>
+      <div className="mt-2 border-t border-gray-200 pt-2">
+        <div className="mb-1 flex justify-between">
+          <span className="text-xs text-gray-500">Money In:</span>
+          <CurrencyValueWithOverflow
+            value={cabinet.moneyIn || 0}
+            className="text-xs font-medium"
+            formatCurrencyFn={formatCurrency}
+          />
         </div>
+        <div className="mb-1 flex justify-between">
+          <span className="text-xs text-gray-500">Money Out:</span>
+          <CurrencyValueWithOverflow
+            value={cabinet.moneyOut || 0}
+            className="text-xs font-medium"
+            formatCurrencyFn={formatCurrency}
+          />
+        </div>
+        <div className="flex justify-between">
+          <span className="text-xs text-gray-500">Gross:</span>
+          <CurrencyValueWithOverflow
+            value={cabinet.gross || 0}
+            className="text-xs font-medium"
+            formatCurrencyFn={formatCurrency}
+          />
+        </div>
+      </div>
 
       {/* Action Buttons */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">

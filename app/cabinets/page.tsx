@@ -28,6 +28,7 @@ import { CabinetSearchFilters } from '@/components/cabinets/CabinetSearchFilters
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import { CabinetTableSkeleton } from '@/components/ui/cabinets/CabinetSkeletonLoader';
 import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
+import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import { RefreshCw } from 'lucide-react';
 
 // Custom hooks
@@ -324,6 +325,19 @@ function CabinetsPageContent() {
             title="Total for all Machines"
             className="mb-4 mt-4"
           />
+        )}
+
+        {/* Machine Statistics - Only show on cabinets section */}
+        {activeSection === 'cabinets' && (
+          <div className="mb-2 mt-4 flex items-center justify-end gap-4">
+            <MachineStatusWidget
+              isLoading={loading}
+              onlineCount={allCabinets.filter(c => c.online === true).length}
+              offlineCount={allCabinets.filter(c => c.online === false).length}
+              totalCount={allCabinets.length}
+              showTotal={true}
+            />
+          </div>
         )}
 
         {/* Date Filters - Only show on cabinets section */}

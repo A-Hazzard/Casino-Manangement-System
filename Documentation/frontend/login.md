@@ -19,7 +19,7 @@ The Login page provides secure authentication for users accessing the casino man
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** December 2025  
-**Version:** 2.2.0
+**Version:** 2.3.0
 
 ### File Information
 
@@ -132,6 +132,7 @@ The Login page provides secure authentication for users accessing the casino man
   - **Profile Validation:** Returns validation flags if profile data is invalid or missing required fields
   - **User Status Validation:** Checks for hard-deleted users, soft-deleted users, and disabled accounts
   - **Last Login Update:** Updates `lastLoginAt` timestamp on successful login
+  - **Session Version:** `sessionVersion` is NOT incremented on login - only when permissions change. This allows users to log in on multiple devices/tabs without invalidating other sessions.
 
 #### Authentication Process
 

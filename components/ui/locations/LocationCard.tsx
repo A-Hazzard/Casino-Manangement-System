@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import { Database, MapPin, Eye, Pencil } from 'lucide-react';
 import { LocationCardData } from '@/lib/types/location';
 import formatCurrency from '@/lib/utils/currency';
@@ -36,36 +37,73 @@ export default function LocationCard({
           title={location.onlineMachines > 0 ? 'Online' : 'Offline'}
         />
       )}
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-base font-semibold">
-          {(location as Record<string, unknown>).locationName as string}
-        </h3>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h3 className="truncate text-base font-semibold">
+            {(location as Record<string, unknown>).locationName as string}
+          </h3>
+          {typeof location.onlineMachines === 'number' && typeof location.totalMachines === 'number' && (() => {
+            const online = location.onlineMachines;
+            const total = location.totalMachines;
+            const isAllOnline = total > 0 && online === total;
+            const isAllOffline = total > 0 && online === 0;
+            const hasMachines = total > 0;
+            
+            let badgeClass = 'flex-shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset';
+            let dotClass = 'h-1.5 w-1.5 rounded-full';
+            
+            if (!hasMachines) {
+              badgeClass += ' bg-gray-50 text-gray-600 ring-gray-200';
+              dotClass += ' bg-gray-400';
+            } else if (isAllOffline) {
+              badgeClass += ' bg-red-50 text-red-700 ring-red-600/20';
+              dotClass += ' bg-red-500';
+            } else if (isAllOnline) {
+              badgeClass += ' bg-green-50 text-green-700 ring-green-600/20';
+              dotClass += ' bg-green-500';
+            } else {
+              badgeClass += ' bg-yellow-50 text-yellow-700 ring-yellow-600/20';
+              dotClass += ' bg-yellow-500';
+            }
+            
+            return (
+              <span className={badgeClass}>
+                <span className={dotClass}></span>
+                {online}/{total} Online
+              </span>
+            );
+          })()}
+        </div>
       </div>
 
       <div className="mb-2 flex flex-col space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="font-medium">Money In</span>
-          <span className="break-words text-right font-semibold text-foreground">
-            {formatCurrency(location.moneyIn ?? 0)}
-          </span>
+          <CurrencyValueWithOverflow
+            value={location.moneyIn ?? 0}
+            className="break-words text-right font-semibold text-foreground"
+            formatCurrencyFn={formatCurrency}
+          />
         </div>
         <div className="flex justify-between">
           <span className="font-medium">Money Out</span>
-          <span className="break-words text-right font-semibold text-foreground">
-            {formatCurrency(location.moneyOut ?? 0)}
-          </span>
+          <CurrencyValueWithOverflow
+            value={location.moneyOut ?? 0}
+            className="break-words text-right font-semibold text-foreground"
+            formatCurrencyFn={formatCurrency}
+          />
         </div>
       </div>
 
       <div className="mb-3 mt-1 flex justify-between">
         <span className="font-medium">Gross</span>
-        <span
+        <CurrencyValueWithOverflow
+          value={location.gross ?? 0}
           className={`break-words text-right font-semibold ${
             (location.gross ?? 0) < 0 ? 'text-destructive' : 'text-button'
           }`}
-        >
-          {formatCurrency(location.gross ?? 0)}
-        </span>
+          formatCurrencyFn={formatCurrency}
+        />
       </div>
 
       <div className="mt-2 flex justify-between gap-2">

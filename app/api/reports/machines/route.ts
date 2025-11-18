@@ -130,7 +130,8 @@ export async function GET(req: NextRequest) {
         { game: { $regex: searchTerm, $options: 'i' } },
         { manuf: { $regex: searchTerm, $options: 'i' } },
         { manufacturer: { $regex: searchTerm, $options: 'i' } },
-        { 'Custom.name': { $regex: searchTerm, $options: 'i' } },
+        { 'custom.name': { $regex: searchTerm, $options: 'i' } }, // Primary: lowercase as per schema
+        { 'custom.name': { $regex: searchTerm, $options: 'i' } }, // Fallback: uppercase for legacy data
       ];
     }
 
@@ -627,7 +628,7 @@ const getOverviewMachines = async (
         _id: 1,
         serialNumber: 1,
         origSerialNumber: 1,
-        'Custom.name': 1,
+        'custom.name': 1,
         gamingLocation: 1,
         game: 1,
         manuf: 1,
@@ -700,6 +701,7 @@ const getOverviewMachines = async (
       return {
         machineId: (machine._id as string).toString(),
         machineName:
+          (machine.custom as Record<string, unknown>)?.name ||
           (machine.Custom as Record<string, unknown>)?.name ||
           machine.serialNumber ||
           'Unknown Machine',
@@ -818,7 +820,7 @@ const getAllMachines = async (
         { serialNumber: { $regex: searchTerm, $options: 'i' } },
         { game: { $regex: searchTerm, $options: 'i' } },
         { manuf: { $regex: searchTerm, $options: 'i' } },
-        { 'Custom.name': { $regex: searchTerm, $options: 'i' } },
+        { 'custom.name': { $regex: searchTerm, $options: 'i' } },
       ];
     }
 
@@ -904,7 +906,7 @@ const getAllMachines = async (
         _id: 1,
         serialNumber: 1,
         origSerialNumber: 1,
-        'Custom.name': 1,
+        'custom.name': 1,
         gamingLocation: 1,
         game: 1,
         manuf: 1,
@@ -975,7 +977,7 @@ const getAllMachines = async (
             machine.origSerialNumber ||
             (machine._id as string).toString(),
           machineName:
-            (machine.Custom as Record<string, unknown>)?.name ||
+            (machine.custom as Record<string, unknown>)?.name ||
             machine.serialNumber ||
             'Unknown Machine',
           locationId: machine.gamingLocation?.toString() || '',
@@ -1070,7 +1072,7 @@ const getOfflineMachines = async (
         { serialNumber: { $regex: searchTerm, $options: 'i' } },
         { game: { $regex: searchTerm, $options: 'i' } },
         { manuf: { $regex: searchTerm, $options: 'i' } },
-        { 'Custom.name': { $regex: searchTerm, $options: 'i' } },
+        { 'custom.name': { $regex: searchTerm, $options: 'i' } },
       ];
     }
 
@@ -1232,7 +1234,7 @@ const getOfflineMachines = async (
         return {
           machineId: (machine._id as string).toString(),
           machineName:
-            (machine.Custom as Record<string, unknown>)?.name ||
+            (machine.custom as Record<string, unknown>)?.name ||
             machine.serialNumber ||
             'Unknown Machine',
           locationId: machine.gamingLocation?.toString() || '',

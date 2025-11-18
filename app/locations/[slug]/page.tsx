@@ -671,11 +671,13 @@ export default function LocationPage() {
                 enableTimeInputs={true}
               />
             </div>
-            <div className="flex-shrink-0 ml-4 w-auto">
+            <div className="ml-4 w-auto flex-shrink-0">
               <MachineStatusWidget
                 isLoading={loading || cabinetsLoading}
                 onlineCount={machineStats.onlineMachines}
                 offlineCount={machineStats.offlineMachines}
+                totalCount={allCabinets.length}
+                showTotal={true}
               />
             </div>
           </div>
@@ -695,6 +697,8 @@ export default function LocationPage() {
                 isLoading={loading || cabinetsLoading}
                 onlineCount={machineStats.onlineMachines}
                 offlineCount={machineStats.offlineMachines}
+                totalCount={allCabinets.length}
+                showTotal={true}
               />
             </div>
           </div>
