@@ -7,6 +7,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { useEffect, useState } from 'react';
+import { MobileValuePopover } from '@/components/ui/MobileValuePopover';
 
 type FinancialMetricsCardsProps = {
   totals: {
@@ -176,8 +177,18 @@ export default function FinancialMetricsCards({
     };
   };
 
-  return (
-    <div className={`space-y-4 ${className}`}>
+    const moneyInScaled = totals
+      ? formatCurrencyWithScaling(totals.moneyIn)
+      : null;
+    const moneyOutScaled = totals
+      ? formatCurrencyWithScaling(totals.moneyOut)
+      : null;
+    const grossScaled = totals
+      ? formatCurrencyWithScaling(totals.gross)
+      : null;
+
+    return (
+      <div className={`space-y-4 ${className}`}>
       {title && (
         <h2 className="text-lg font-semibold text-gray-700">{title}</h2>
       )}
@@ -195,14 +206,16 @@ export default function FinancialMetricsCards({
                 <div className="h-2 w-2 rounded-full bg-purple-500"></div>
               </div>
 
-              <div className="space-y-2">
-                <div
-                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.moneyIn || 0).size}`}
-                >
-                  {totals
-                    ? formatCurrencyWithScaling(totals.moneyIn).display
-                    : '--'}
-                </div>
+                <div className="space-y-2">
+                  <MobileValuePopover
+                    displayValue={moneyInScaled ? moneyInScaled.display : '--'}
+                    fullValue={
+                      totals ? formatCurrencyAmount(totals.moneyIn) : '--'
+                    }
+                    popoverLabel="Money In"
+                    triggerClassName={`font-bold text-gray-900 ${moneyInScaled?.size ?? 'text-lg sm:text-xl'}`}
+                    showIcon={Boolean(totals)}
+                  />
 
                 {totals && Math.abs(totals.moneyIn) >= 1000 && (
                   <div className="font-mono text-xs text-gray-500">
@@ -224,14 +237,16 @@ export default function FinancialMetricsCards({
                 <div className="h-2 w-2 rounded-full bg-blue-500"></div>
               </div>
 
-              <div className="space-y-2">
-                <div
-                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.moneyOut || 0).size}`}
-                >
-                  {totals
-                    ? formatCurrencyWithScaling(totals.moneyOut).display
-                    : '--'}
-                </div>
+                <div className="space-y-2">
+                  <MobileValuePopover
+                    displayValue={moneyOutScaled ? moneyOutScaled.display : '--'}
+                    fullValue={
+                      totals ? formatCurrencyAmount(totals.moneyOut) : '--'
+                    }
+                    popoverLabel="Money Out"
+                    triggerClassName={`font-bold text-gray-900 ${moneyOutScaled?.size ?? 'text-lg sm:text-xl'}`}
+                    showIcon={Boolean(totals)}
+                  />
                 {totals && Math.abs(totals.moneyOut) >= 1000 && (
                   <div className="font-mono text-xs text-gray-500">
                     {formatCurrencyAmount(totals.moneyOut)}
@@ -252,14 +267,16 @@ export default function FinancialMetricsCards({
                 <div className="h-2 w-2 rounded-full bg-orange-500"></div>
               </div>
 
-              <div className="space-y-2">
-                <div
-                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.gross || 0).size}`}
-                >
-                  {totals
-                    ? formatCurrencyWithScaling(totals.gross).display
-                    : '--'}
-                </div>
+                <div className="space-y-2">
+                  <MobileValuePopover
+                    displayValue={grossScaled ? grossScaled.display : '--'}
+                    fullValue={
+                      totals ? formatCurrencyAmount(totals.gross) : '--'
+                    }
+                    popoverLabel="Gross"
+                    triggerClassName={`font-bold text-gray-900 ${grossScaled?.size ?? 'text-lg sm:text-xl'}`}
+                    showIcon={Boolean(totals)}
+                  />
                 {totals && Math.abs(totals.gross) >= 1000 && (
                   <div className="font-mono text-xs text-gray-500">
                     {formatCurrencyAmount(totals.gross)}

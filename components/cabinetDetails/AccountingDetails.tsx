@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { MobileValuePopover } from '@/components/ui/MobileValuePopover';
 import { toast } from 'sonner';
 
 // Type for collection data from machine's embedded collectionMetersHistory
@@ -373,8 +374,63 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     Record<string, string>
   >({});
 
-  // Track if auto-fix has been attempted to prevent infinite loops
-  const autoFixAttemptedRef = React.useRef(false);
+    // Track if auto-fix has been attempted to prevent infinite loops
+    const autoFixAttemptedRef = React.useRef(false);
+
+    const formatFinancialValue = (amount: number) =>
+      shouldApplyCurrency ? formatAmount(amount) : formatCurrency(amount);
+
+    const moneyInValue = Number(
+      cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0
+    );
+    const moneyInDisplay = formatFinancialValue(moneyInValue);
+
+    const cancelledCreditsValue = Number(
+      cabinet?.moneyOut ??
+        cabinet?.sasMeters?.totalCancelledCredits ??
+        0
+    );
+    const cancelledCreditsDisplay = formatFinancialValue(
+      cancelledCreditsValue
+    );
+
+    const grossValue = Number(
+      cabinet?.gross ??
+        (Number(cabinet?.moneyIn ?? 0) - Number(cabinet?.moneyOut ?? 0))
+    );
+    const grossDisplay = formatFinancialValue(grossValue);
+
+    const jackpotValue = Number(
+      cabinet?.jackpot ?? cabinet?.sasMeters?.jackpot ?? 0
+    );
+    const jackpotDisplay = formatFinancialValue(jackpotValue);
+
+    const coinInValue = Number(
+      cabinet?.coinIn ??
+        cabinet?.handle ??
+        cabinet?.sasMeters?.coinIn ??
+        0
+    );
+    const coinInDisplay = formatFinancialValue(coinInValue);
+
+    const coinOutValue = Number(
+      cabinet?.coinOut ?? cabinet?.sasMeters?.coinOut ?? 0
+    );
+    const coinOutDisplay = formatFinancialValue(coinOutValue);
+
+    const handPaidValue = Number(
+      cabinet?.sasMeters?.totalHandPaidCancelledCredits ??
+        cabinet?.meterData?.movement?.totalHandPaidCancelledCredits ??
+        0
+    );
+    const handPaidDisplay = formatFinancialValue(handPaidValue);
+
+    const currentCreditsValue = Number(
+      cabinet?.sasMeters?.currentCredits ??
+        cabinet?.meterData?.movement?.currentCredits ??
+        0
+    );
+    const currentCreditsDisplay = formatFinancialValue(currentCreditsValue);
 
   // Function to check for collection history issues (defined first as it's used by handleFix)
   const checkForCollectionHistoryIssues = React.useCallback(async () => {
@@ -833,25 +889,16 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           Money In
                         </h4>
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
-                            {shouldApplyCurrency
-                              ? formatAmount(
-                                  Number(
-                                    cabinet?.moneyIn ??
-                                      cabinet?.sasMeters?.drop ??
-                                      0
-                                  )
-                                )
-                              : formatCurrency(
-                                  Number(
-                                    cabinet?.moneyIn ??
-                                      cabinet?.sasMeters?.drop ??
-                                      0
-                                  )
-                                )}
-                          </p>
-                        </div>
+                          <div className="flex items-center justify-center">
+                            <p className="max-w-full text-center text-base font-bold md:text-xl">
+                              <MobileValuePopover
+                                className="block w-full"
+                                displayValue={moneyInDisplay}
+                                fullValue={moneyInDisplay}
+                                popoverLabel="Money In"
+                              />
+                            </p>
+                          </div>
                       </motion.div>
 
                       {/* Total Cancelled Credits */}
@@ -868,27 +915,16 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           Total Cancelled Credits
                         </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
-                            {shouldApplyCurrency
-                              ? formatAmount(
-                                  Number(
-                                    cabinet?.moneyOut ??
-                                      cabinet?.sasMeters
-                                        ?.totalCancelledCredits ??
-                                      0
-                                  )
-                                )
-                              : formatCurrency(
-                                  Number(
-                                    cabinet?.moneyOut ??
-                                      cabinet?.sasMeters
-                                        ?.totalCancelledCredits ??
-                                      0
-                                  )
-                                )}
-                          </p>
-                        </div>
+                          <div className="flex items-center justify-center">
+                            <p className="max-w-full text-center text-base font-bold md:text-xl">
+                              <MobileValuePopover
+                                className="block w-full"
+                                displayValue={cancelledCreditsDisplay}
+                                fullValue={cancelledCreditsDisplay}
+                                popoverLabel="Total Cancelled Credits"
+                              />
+                            </p>
+                          </div>
                       </motion.div>
 
                       {/* Gross */}
@@ -905,25 +941,16 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           Gross
                         </h4>
                         <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
-                            {shouldApplyCurrency
-                              ? formatAmount(
-                                  Number(
-                                    cabinet?.gross ??
-                                      Number(cabinet?.moneyIn ?? 0) -
-                                        Number(cabinet?.moneyOut ?? 0)
-                                  )
-                                )
-                              : formatCurrency(
-                                  Number(
-                                    cabinet?.gross ??
-                                      Number(cabinet?.moneyIn ?? 0) -
-                                        Number(cabinet?.moneyOut ?? 0)
-                                  )
-                                )}
-                          </p>
-                        </div>
+                          <div className="flex items-center justify-center">
+                            <p className="max-w-full text-center text-base font-bold md:text-xl">
+                              <MobileValuePopover
+                                className="block w-full"
+                                displayValue={grossDisplay}
+                                fullValue={grossDisplay}
+                                popoverLabel="Gross"
+                              />
+                            </p>
+                          </div>
                       </motion.div>
 
                       {/* Jackpot */}
@@ -940,17 +967,16 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           Jackpot
                         </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(
-                                cabinet?.jackpot ??
-                                  cabinet?.sasMeters?.jackpot ??
-                                  0
-                              )
-                            )}
-                          </p>
-                        </div>
+                          <div className="flex items-center justify-center">
+                            <p className="max-w-full text-center text-base font-bold md:text-xl">
+                              <MobileValuePopover
+                                className="block w-full"
+                                displayValue={jackpotDisplay}
+                                fullValue={jackpotDisplay}
+                                popoverLabel="Jackpot"
+                              />
+                            </p>
+                          </div>
                       </motion.div>
                     </motion.div>
                   )
@@ -980,18 +1006,16 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           Coin In
                         </h4>
                         <div className="mb-4 h-1 w-full bg-greenHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(
-                                cabinet?.coinIn ??
-                                  cabinet?.handle ??
-                                  cabinet?.sasMeters?.coinIn ??
-                                  0
-                              )
-                            )}
-                          </p>
-                        </div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              <MobileValuePopover
+                                className="block w-full"
+                                displayValue={coinInDisplay}
+                                fullValue={coinInDisplay}
+                                popoverLabel="Coin In"
+                              />
+                            </p>
+                          </div>
                       </motion.div>
 
                       {/* Coin Out */}
@@ -1008,17 +1032,16 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           Coin Out
                         </h4>
                         <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(
-                                cabinet?.coinOut ??
-                                  cabinet?.sasMeters?.coinOut ??
-                                  0
-                              )
-                            )}
-                          </p>
-                        </div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              <MobileValuePopover
+                                className="block w-full"
+                                displayValue={coinOutDisplay}
+                                fullValue={coinOutDisplay}
+                                popoverLabel="Coin Out"
+                              />
+                            </p>
+                          </div>
                       </motion.div>
 
                       {/* Total Hand Paid Cancelled Credits */}
@@ -1035,19 +1058,16 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           Total Hand Paid Cancelled Credits
                         </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(
-                                cabinet?.sasMeters
-                                  ?.totalHandPaidCancelledCredits ??
-                                  cabinet?.meterData?.movement
-                                    ?.totalHandPaidCancelledCredits ??
-                                  0
-                              )
-                            )}
-                          </p>
-                        </div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              <MobileValuePopover
+                                className="block w-full"
+                                displayValue={handPaidDisplay}
+                                fullValue={handPaidDisplay}
+                                popoverLabel="Total Hand Paid Cancelled Credits"
+                              />
+                            </p>
+                          </div>
                       </motion.div>
 
                       {/* Current Credits */}
@@ -1064,18 +1084,16 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                           Current Credits
                         </h4>
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(
-                                cabinet?.sasMeters?.currentCredits ??
-                                  cabinet?.meterData?.movement
-                                    ?.currentCredits ??
-                                  0
-                              )
-                            )}
-                          </p>
-                        </div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              <MobileValuePopover
+                                className="block w-full"
+                                displayValue={currentCreditsDisplay}
+                                fullValue={currentCreditsDisplay}
+                                popoverLabel="Current Credits"
+                              />
+                            </p>
+                          </div>
                       </motion.div>
 
                       {/* Games Played */}
