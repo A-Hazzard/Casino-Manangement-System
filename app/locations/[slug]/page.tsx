@@ -2,6 +2,7 @@
 
 import PageLayout from '@/components/layout/PageLayout';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
+import { useDebounce } from '@/lib/utils/hooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import CabinetGrid from '@/components/locationDetails/CabinetGrid';
@@ -92,6 +93,8 @@ export default function LocationPage() {
   const [loading, setLoading] = useState(true);
   const [cabinetsLoading, setCabinetsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  // Debounce search term to reduce API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [locationName, setLocationName] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<
     'All' | 'Online' | 'Offline'
@@ -165,11 +168,16 @@ export default function LocationPage() {
     // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
     if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
       const nextBatchNumber = nextBatch;
+      // Don't fetch next batch if searching (search fetches all results)
+      if (debouncedSearchTerm?.trim()) {
+        return;
+      }
+
       fetchCabinetsForLocation(
         locationId,
         selectedLicencee,
         activeMetricsFilter,
-        undefined,
+        undefined, // No searchTerm for batch fetching
         activeMetricsFilter === 'Custom' && customDateRange
           ? { from: customDateRange.startDate, to: customDateRange.endDate }
           : undefined,
@@ -191,11 +199,16 @@ export default function LocationPage() {
 
     // Also ensure current batch is loaded
     if (!loadedBatches.has(currentBatch)) {
+      // Don't fetch batch if searching (search fetches all results)
+      if (debouncedSearchTerm?.trim()) {
+        return;
+      }
+
       fetchCabinetsForLocation(
         locationId,
         selectedLicencee,
         activeMetricsFilter,
-        undefined,
+        undefined, // No searchTerm for batch fetching
         activeMetricsFilter === 'Custom' && customDateRange
           ? { from: customDateRange.startDate, to: customDateRange.endDate }
           : undefined,
@@ -225,6 +238,7 @@ export default function LocationPage() {
     customDateRange,
     calculateBatchNumber,
     pagesPerBatch,
+    searchTerm, // Skip batch fetching when searching
   ]);
 
   // Update allCabinets when accumulatedCabinets changes
@@ -233,28 +247,53 @@ export default function LocationPage() {
   }, [accumulatedCabinets]);
 
   // Get items for current page from the current batch
+  // When searching, use allCabinets directly (API returns all search results)
+  // When not searching, use accumulatedCabinets (batched loading)
   const paginatedCabinets = useMemo(() => {
+    // When searching, API returns all results, so use allCabinets directly
+    const sourceCabinets = debouncedSearchTerm?.trim()
+      ? allCabinets
+      : accumulatedCabinets;
+
     // Calculate position within current batch (0-4 for pages 0-4, 0-4 for pages 5-9, etc.)
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
 
-    return accumulatedCabinets.slice(startIndex, endIndex);
-  }, [accumulatedCabinets, currentPage, itemsPerPage, pagesPerBatch]);
+    return sourceCabinets.slice(startIndex, endIndex);
+  }, [
+    accumulatedCabinets,
+    allCabinets,
+    currentPage,
+    itemsPerPage,
+    pagesPerBatch,
+    debouncedSearchTerm,
+  ]);
 
   // Calculate total pages based on all loaded batches (dynamically increases as batches load)
+  // When searching, use allCabinets length (API returns all search results)
   const effectiveTotalPages = useMemo(() => {
-    const totalItems = accumulatedCabinets.length;
+    const totalItems = debouncedSearchTerm?.trim()
+      ? allCabinets.length
+      : accumulatedCabinets.length;
     const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [accumulatedCabinets.length, itemsPerPage]);
+  }, [
+    accumulatedCabinets.length,
+    allCabinets.length,
+    itemsPerPage,
+    debouncedSearchTerm,
+  ]);
 
   // ====== Filter Cabinets by search and sort ======
   // Filter and sort from paginated cabinets (current page's data from loaded batches)
   const applyFiltersAndSort = useCallback(() => {
+    // When searchTerm is provided, API already filtered the results
+    // We only need to apply sorting and other filters (game type, status)
+    // Don't apply search filter again since API already handled it
     let filtered = filterAndSortCabinetsUtil(
       paginatedCabinets,
-      searchTerm,
+      '', // Empty search term since API already handled search filtering
       sortOption,
       sortOrder
     );
@@ -282,17 +321,26 @@ export default function LocationPage() {
     setFilteredCabinets(filtered);
   }, [
     paginatedCabinets,
-    searchTerm,
     sortOption,
     sortOrder,
     selectedStatus,
     selectedGameType,
   ]);
 
-  // Reset to first page when filters change
+  // Reset to default view when search is cleared
+  useEffect(() => {
+    if (!debouncedSearchTerm?.trim()) {
+      // Reset to first page, clear accumulated data, and reset batches when search is cleared
+      setCurrentPage(0);
+      setAccumulatedCabinets([]);
+      setLoadedBatches(new Set([1]));
+    }
+  }, [debouncedSearchTerm]);
+
+  // Reset to first page when other filters change
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchTerm, sortOption, sortOrder, selectedStatus, selectedGameType]);
+  }, [sortOption, sortOrder, selectedStatus, selectedGameType]);
 
   // Consolidated data fetch - single useEffect to prevent duplicate requests
   useEffect(() => {
@@ -419,20 +467,34 @@ export default function LocationPage() {
             return;
           }
 
+          // When searching, fetch all results (no pagination limit) to find matches across all machines
+          // Otherwise, use pagination for performance
+          const effectivePage = debouncedSearchTerm?.trim() ? 1 : 1;
+          const effectiveLimit = debouncedSearchTerm?.trim()
+            ? undefined
+            : itemsPerBatch;
+
           const result = await fetchCabinetsForLocation(
             locationId, // Always use the URL slug for cabinet fetching
             selectedLicencee,
             activeMetricsFilter, // Pass the selected filter directly
-            undefined, // Don't pass searchTerm (4th parameter)
+            debouncedSearchTerm?.trim() || undefined, // Pass debouncedSearchTerm to API
             activeMetricsFilter === 'Custom' && customDateRange
               ? { from: customDateRange.startDate, to: customDateRange.endDate }
               : undefined, // Only pass customDateRange when filter is "Custom"
-            1, // page
-            itemsPerBatch // limit
+            effectivePage, // page
+            effectiveLimit // limit (undefined when searching = fetch all)
           );
           setAllCabinets(result.data);
-          setAccumulatedCabinets(result.data);
-          setLoadedBatches(new Set([1]));
+          // When search is cleared, reset accumulated data to start fresh
+          if (!debouncedSearchTerm?.trim()) {
+            setAccumulatedCabinets(result.data);
+            setLoadedBatches(new Set([1]));
+          } else {
+            // When searching, use allCabinets directly (API returns all results)
+            setAccumulatedCabinets([]);
+            setLoadedBatches(new Set());
+          }
           setError(null);
         } catch (error) {
           // Error handling for cabinet data fetch
@@ -481,6 +543,7 @@ export default function LocationPage() {
     dateFilterInitialized,
     router,
     isAdminUser,
+    debouncedSearchTerm, // Use debounced value to trigger fetch only after user stops typing
   ]);
 
   // Effect to re-run filtering and sorting when dependencies change
@@ -586,20 +649,33 @@ export default function LocationPage() {
           return;
         }
 
+        // When searching, fetch all results (no pagination limit) to find matches across all machines
+        const effectivePage = debouncedSearchTerm?.trim() ? 1 : 1;
+        const effectiveLimit = debouncedSearchTerm?.trim()
+          ? undefined
+          : itemsPerBatch;
+
         const result = await fetchCabinetsForLocation(
           locationId, // Always use the URL slug for cabinet fetching
           selectedLicencee,
           activeMetricsFilter,
-          undefined, // Don't pass searchTerm
+          debouncedSearchTerm?.trim() || undefined, // Pass debouncedSearchTerm to API
           activeMetricsFilter === 'Custom' && customDateRange
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined, // Only pass customDateRange when filter is "Custom"
-          1, // page
-          itemsPerBatch // limit
+          effectivePage, // page
+          effectiveLimit // limit (undefined when searching = fetch all)
         );
         setAllCabinets(result.data);
-        setAccumulatedCabinets(result.data);
-        setLoadedBatches(new Set([1]));
+        // When search is cleared, reset accumulated data to start fresh
+        if (!debouncedSearchTerm?.trim()) {
+          setAccumulatedCabinets(result.data);
+          setLoadedBatches(new Set([1]));
+        } else {
+          // When searching, use allCabinets directly (API returns all results)
+          setAccumulatedCabinets([]);
+          setLoadedBatches(new Set());
+        }
         setError(null); // Clear any previous errors on successful refresh
       } catch {
         setAllCabinets([]);
@@ -618,6 +694,8 @@ export default function LocationPage() {
     customDateRange,
     dateFilterInitialized,
     locationId,
+    debouncedSearchTerm,
+    itemsPerBatch,
   ]);
 
   // Handle location change without navigation - just update the selected location
@@ -1122,7 +1200,8 @@ export default function LocationPage() {
                 </>
               ) : filteredCabinets.length === 0 ? (
                 <div className="mt-10 text-center text-gray-500">
-                  No cabinets found{searchTerm ? ' matching your search' : ''}.
+                  No cabinets found
+                  {debouncedSearchTerm ? ' matching your search' : ''}.
                 </div>
               ) : filteredCabinets == null ? (
                 <div className="mt-10 text-center text-gray-500">

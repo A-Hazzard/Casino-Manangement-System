@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { buildSessionsQueryParams } from '@/lib/helpers/sessions';
+import { useDebounce } from '@/lib/utils/hooks';
 import type { Session, PaginationData } from '@/lib/types/sessions';
 
 /**
@@ -14,6 +15,8 @@ export function useSessions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  // Debounce search term to reduce API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [sortBy, setSortBy] = useState('startTime');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
@@ -74,7 +77,7 @@ export function useSessions() {
       const queryParams = buildSessionsQueryParams({
         page: batch,
         limit: itemsPerBatch,
-        search: searchTerm,
+        search: debouncedSearchTerm,
         sortBy,
         sortOrder,
         licensee: selectedLicencee === 'all' ? undefined : selectedLicencee,
@@ -104,7 +107,7 @@ export function useSessions() {
       setLoading(false);
     }
   }, [
-    searchTerm,
+    debouncedSearchTerm, // Use debounced value instead of searchTerm
     sortBy,
     sortOrder,
     selectedLicencee,

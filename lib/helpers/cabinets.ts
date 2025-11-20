@@ -36,7 +36,8 @@ export const fetchCabinets = async (
   customDateRange?: DateRange,
   currency?: string,
   page?: number,
-  limit?: number
+  limit?: number,
+  searchTerm?: string
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -65,6 +66,11 @@ export const fetchCabinets = async (
       queryParams.push(`currency=${encodeURIComponent(currency)}`);
     }
 
+    // Add search parameter if provided
+    if (searchTerm && searchTerm.trim()) {
+      queryParams.push(`search=${encodeURIComponent(searchTerm.trim())}`);
+    }
+
     // Add pagination parameters
     if (page !== undefined) {
       queryParams.push(`page=${page}`);
@@ -85,14 +91,21 @@ export const fetchCabinets = async (
 
     console.warn('[FETCH CABINETS] Response status:', response.status);
     console.warn('[FETCH CABINETS] Response data type:', typeof response.data);
-    
+
     // Check if the response contains a data property with an array
     if (response.status === 200) {
       if (response.data && response.data.success === true) {
         // API response follows { success: true, data: [...], pagination?: {...} } format
-        const cabinets = Array.isArray(response.data.data) ? response.data.data : [];
+        const cabinets = Array.isArray(response.data.data)
+          ? response.data.data
+          : [];
         const pagination = response.data.pagination;
-        console.warn('[FETCH CABINETS] Success format - returning', cabinets.length, 'cabinets', pagination ? `(pagination: ${JSON.stringify(pagination)})` : '');
+        console.warn(
+          '[FETCH CABINETS] Success format - returning',
+          cabinets.length,
+          'cabinets',
+          pagination ? `(pagination: ${JSON.stringify(pagination)})` : ''
+        );
         // Return both cabinets and pagination info if available
         if (pagination) {
           return { cabinets, pagination };
@@ -100,11 +113,18 @@ export const fetchCabinets = async (
         return cabinets;
       } else if (response.data && Array.isArray(response.data)) {
         // API response is a direct array (backward compatibility)
-        console.warn('[FETCH CABINETS] Array format - returning', response.data.length, 'cabinets');
+        console.warn(
+          '[FETCH CABINETS] Array format - returning',
+          response.data.length,
+          'cabinets'
+        );
         return response.data;
       } else {
         // Unexpected response format
-        console.error('❌ [FETCH CABINETS] Unexpected API response format:', response.data);
+        console.error(
+          '❌ [FETCH CABINETS] Unexpected API response format:',
+          response.data
+        );
         return [];
       }
     }
@@ -183,15 +203,17 @@ export const fetchCabinetById = async (
     throw new Error('Failed to fetch cabinet details');
   } catch (error) {
     console.error(`Error fetching cabinet with ID ${cabinetId}:`, error);
-    
+
     // Check if it's a 403 Unauthorized error
     if (axios.isAxiosError(error) && error.response?.status === 403) {
-      const unauthorizedError = new Error('Unauthorized: You do not have access to this cabinet') as Error & { status: number; isUnauthorized: boolean };
+      const unauthorizedError = new Error(
+        'Unauthorized: You do not have access to this cabinet'
+      ) as Error & { status: number; isUnauthorized: boolean };
       unauthorizedError.status = 403;
       unauthorizedError.isUnauthorized = true;
       throw unauthorizedError;
     }
-    
+
     throw error;
   }
 };
@@ -265,7 +287,7 @@ export const updateCabinet = async (
 
     // Get the machine data with gamingLocation from the new endpoint
     let cabinetUrl = `/api/machines/${data._id}`;
-    
+
     // Add query parameters
     const queryParams = [];
     if (
@@ -282,7 +304,7 @@ export const updateCabinet = async (
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     }
-    
+
     if (queryParams.length > 0) {
       cabinetUrl += `?${queryParams.join('&')}`;
     }
@@ -344,7 +366,7 @@ export const deleteCabinet = async (
 
     // Get the machine data with gamingLocation from the new endpoint
     let cabinetUrl = `/api/machines/${cabinetId}`;
-    
+
     // Add query parameters
     const queryParams = [];
     if (
@@ -361,7 +383,7 @@ export const deleteCabinet = async (
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     }
-    
+
     if (queryParams.length > 0) {
       cabinetUrl += `?${queryParams.join('&')}`;
     }
@@ -454,7 +476,15 @@ export async function fetchCabinetsForLocation(
   customDateRange?: DateRange,
   page?: number,
   limit?: number
-): Promise<{ data: GamingMachine[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }> {
+): Promise<{
+  data: GamingMachine[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}> {
   try {
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
@@ -498,7 +528,7 @@ export async function fetchCabinetsForLocation(
       // Backend will apply gaming day offset to these dates
       const fromDate = customDateRange.from.toISOString().split('T')[0];
       const toDate = customDateRange.to.toISOString().split('T')[0];
-      
+
       params.startDate = fromDate;
       params.endDate = toDate;
       params.timePeriod = 'Custom';
@@ -524,7 +554,12 @@ export async function fetchCabinetsForLocation(
     const data = response.data;
 
     // Handle paginated response format
-    if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+    if (
+      data &&
+      typeof data === 'object' &&
+      'success' in data &&
+      'data' in data
+    ) {
       // New paginated format: { success: true, data: [...], pagination: {...} }
       return {
         data: Array.isArray(data.data) ? data.data : [],
@@ -539,15 +574,17 @@ export async function fetchCabinetsForLocation(
     }
   } catch (error) {
     console.error(' Error in fetchCabinetsForLocation:', error);
-    
+
     // Check if it's a 403 Unauthorized error
     if (axios.isAxiosError(error) && error.response?.status === 403) {
-      const unauthorizedError = new Error('Unauthorized: You do not have access to this location') as Error & { status: number; isUnauthorized: boolean };
+      const unauthorizedError = new Error(
+        'Unauthorized: You do not have access to this location'
+      ) as Error & { status: number; isUnauthorized: boolean };
       unauthorizedError.status = 403;
       unauthorizedError.isUnauthorized = true;
       throw unauthorizedError;
     }
-    
+
     // Always return an empty array for other errors instead of throwing
     return { data: [] };
   }

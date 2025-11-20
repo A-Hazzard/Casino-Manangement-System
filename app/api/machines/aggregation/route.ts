@@ -479,9 +479,17 @@ export async function GET(req: NextRequest) {
         const matchesSerialNumber = machine.serialNumber?.toLowerCase().includes(searchLower);
         const matchesRelayId = machine.relayId?.toLowerCase().includes(searchLower);
         const matchesSmbId = machine.smbId?.toLowerCase().includes(searchLower);
-        const matchesId = machine._id === searchTerm; // Exact match for _id
+        // Search by _id (case-insensitive)
+        const matchesId = machine._id?.toLowerCase().includes(searchLower);
+        // Also check custom.name directly if available
+        const machineRecord = machine as Record<string, unknown>;
+        const customName = (
+          (machineRecord.custom as Record<string, unknown>)?.name ||
+          (machineRecord.Custom as Record<string, unknown>)?.name
+        )?.toString().toLowerCase() || '';
+        const matchesCustomName = customName.includes(searchLower);
         
-        return matchesSerialNumber || matchesRelayId || matchesSmbId || matchesId;
+        return matchesSerialNumber || matchesRelayId || matchesSmbId || matchesId || matchesCustomName;
       });
     }
 

@@ -122,7 +122,8 @@ export function filterCabinets(
         cab.locationName?.toLowerCase().includes(searchLower) ||
         cab.serialNumber?.toLowerCase().includes(searchLower) ||
         customName.includes(searchLower) ||
-        cabinetId.includes(searchLower)
+        cabinetId.includes(searchLower) ||
+        cab._id?.toLowerCase().includes(searchLower)
       );
     });
   }

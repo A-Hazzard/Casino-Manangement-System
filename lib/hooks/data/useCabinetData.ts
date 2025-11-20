@@ -4,8 +4,8 @@
  */
 
 import { fetchCabinetLocations, fetchCabinets } from '@/lib/helpers/cabinets';
-import { filterCabinets as filterCabinetsHelper } from '@/lib/helpers/cabinetsPage';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
+import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 type CustomDateRange = {
@@ -61,6 +61,9 @@ export const useCabinetData = ({
   selectedStatus,
   displayCurrency,
 }: UseCabinetDataProps): UseCabinetDataReturn => {
+  // Debounce search term to reduce API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   // State management
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -107,11 +110,15 @@ export const useCabinetData = ({
       selectedStatus,
     });
 
-    let filtered = filterCabinetsHelper(
-      allCabinets,
-      searchTerm,
-      selectedLocation
-    );
+    // If searchTerm is provided, the API already filtered the results by search
+    // We still need to apply frontend filters (location, game type, status)
+    // But we don't need to apply search filter again since API already did it
+    let filtered = allCabinets;
+
+    // Apply location filter
+    if (selectedLocation !== 'all') {
+      filtered = filtered.filter(cab => cab.locationId === selectedLocation);
+    }
 
     // Apply game type filter
     if (selectedGameType && selectedGameType !== 'all') {
@@ -136,6 +143,10 @@ export const useCabinetData = ({
         return true;
       });
     }
+
+    // Note: Search filtering is handled by the API when searchTerm is provided
+    // Frontend search filter is only needed if we're doing client-side only filtering
+    // which we're not doing anymore - all search goes through the API
 
     console.warn('Filtered cabinets result:', filtered.length);
     return filtered;
@@ -163,112 +174,150 @@ export const useCabinetData = ({
   );
 
   // Load cabinets with proper error handling and logging
-  const loadCabinets = useCallback(async (page?: number, limit?: number) => {
-    try {
-      console.warn('Loading cabinets with filters:', {
-        selectedLicencee,
-        activeMetricsFilter,
-        page,
-        limit,
-        customDateRange: customDateRange
-          ? {
-              startDate: customDateRange.startDate?.toISOString(),
-              endDate: customDateRange.endDate?.toISOString(),
-            }
-          : undefined,
-      });
+  const loadCabinets = useCallback(
+    async (page?: number, limit?: number) => {
+      try {
+        console.warn('Loading cabinets with filters:', {
+          selectedLicencee,
+          activeMetricsFilter,
+          page,
+          limit,
+          customDateRange: customDateRange
+            ? {
+                startDate: customDateRange.startDate?.toISOString(),
+                endDate: customDateRange.endDate?.toISOString(),
+              }
+            : undefined,
+        });
 
-      setLoading(true);
-      setError(null);
+        setLoading(true);
+        setError(null);
 
-      const dateRangeForFetch =
-        activeMetricsFilter === 'Custom' &&
-        customDateRange?.startDate &&
-        customDateRange?.endDate
-          ? {
-              from: customDateRange.startDate,
-              to: customDateRange.endDate,
-            }
-          : undefined;
+        const dateRangeForFetch =
+          activeMetricsFilter === 'Custom' &&
+          customDateRange?.startDate &&
+          customDateRange?.endDate
+            ? {
+                from: customDateRange.startDate,
+                to: customDateRange.endDate,
+              }
+            : undefined;
 
-      const cabinetsData = await fetchCabinets(
-        selectedLicencee,
-        activeMetricsFilter,
-        dateRangeForFetch,
-        displayCurrency,
-        page,
-        limit
-      );
+        // When searching, fetch all results (no pagination limit) to find matches across all machines
+        // Otherwise, use pagination for performance
+        // Note: When debouncedSearchTerm is provided, we want to search ALL machines, not just the current batch
+        const effectivePage = debouncedSearchTerm?.trim() ? 1 : page;
+        const effectiveLimit = debouncedSearchTerm?.trim() ? undefined : limit; // No limit when searching = fetch all
 
-      console.warn('✅ [USE CABINET DATA] Fetch completed, received:', {
-        isArray: Array.isArray(cabinetsData),
-        isObject: typeof cabinetsData === 'object' && cabinetsData !== null && !Array.isArray(cabinetsData),
-        length: Array.isArray(cabinetsData) ? cabinetsData.length : (cabinetsData && typeof cabinetsData === 'object' && 'cabinets' in cabinetsData ? (cabinetsData as { cabinets: unknown[] }).cabinets.length : 0),
-        type: typeof cabinetsData,
-      });
-
-      // Handle paginated response
-      if (cabinetsData && typeof cabinetsData === 'object' && !Array.isArray(cabinetsData) && 'cabinets' in cabinetsData) {
-        const paginatedResponse = cabinetsData as { cabinets: Cabinet[]; pagination?: { total: number; totalPages: number; page: number; limit: number } };
-        console.warn(
-          '✅ [USE CABINET DATA] Successfully loaded cabinets (paginated):',
-          paginatedResponse.cabinets.length,
-          'pagination:',
-          paginatedResponse.pagination
+        const cabinetsData = await fetchCabinets(
+          selectedLicencee,
+          activeMetricsFilter,
+          dateRangeForFetch,
+          displayCurrency,
+          effectivePage,
+          effectiveLimit,
+          debouncedSearchTerm
         );
-        setAllCabinets(paginatedResponse.cabinets);
-        if (paginatedResponse.pagination) {
-          setTotalCount(paginatedResponse.pagination.total);
-        }
 
-        // Extract unique game types from all cabinets (we may need to fetch all for this)
-        const uniqueGameTypes = Array.from(
-          new Set(
-            paginatedResponse.cabinets
-              .map(cabinet => cabinet.game || cabinet.installedGame)
-              .filter((game): game is string => !!game && game.trim() !== '')
-          )
-        ).sort();
-        setGameTypes(uniqueGameTypes);
-      } else if (Array.isArray(cabinetsData)) {
-        // Backward compatibility: direct array response
-        console.warn(
-          '✅ [USE CABINET DATA] Successfully loaded cabinets (array):',
-          cabinetsData.length
-        );
-        setAllCabinets(cabinetsData);
-        setTotalCount(cabinetsData.length);
+        console.warn('✅ [USE CABINET DATA] Fetch completed, received:', {
+          isArray: Array.isArray(cabinetsData),
+          isObject:
+            typeof cabinetsData === 'object' &&
+            cabinetsData !== null &&
+            !Array.isArray(cabinetsData),
+          length: Array.isArray(cabinetsData)
+            ? cabinetsData.length
+            : cabinetsData &&
+                typeof cabinetsData === 'object' &&
+                'cabinets' in cabinetsData
+              ? (cabinetsData as { cabinets: unknown[] }).cabinets.length
+              : 0,
+          type: typeof cabinetsData,
+        });
 
-        // PERFORMANCE OPTIMIZATION: Extract unique game types efficiently
-        const uniqueGameTypes = Array.from(
-          new Set(
+        // Handle paginated response
+        if (
+          cabinetsData &&
+          typeof cabinetsData === 'object' &&
+          !Array.isArray(cabinetsData) &&
+          'cabinets' in cabinetsData
+        ) {
+          const paginatedResponse = cabinetsData as {
+            cabinets: Cabinet[];
+            pagination?: {
+              total: number;
+              totalPages: number;
+              page: number;
+              limit: number;
+            };
+          };
+          console.warn(
+            '✅ [USE CABINET DATA] Successfully loaded cabinets (paginated):',
+            paginatedResponse.cabinets.length,
+            'pagination:',
+            paginatedResponse.pagination
+          );
+          setAllCabinets(paginatedResponse.cabinets);
+          if (paginatedResponse.pagination) {
+            setTotalCount(paginatedResponse.pagination.total);
+          }
+
+          // Extract unique game types from all cabinets (we may need to fetch all for this)
+          const uniqueGameTypes = Array.from(
+            new Set(
+              paginatedResponse.cabinets
+                .map(cabinet => cabinet.game || cabinet.installedGame)
+                .filter((game): game is string => !!game && game.trim() !== '')
+            )
+          ).sort();
+          setGameTypes(uniqueGameTypes);
+        } else if (Array.isArray(cabinetsData)) {
+          // Backward compatibility: direct array response
+          console.warn(
+            '✅ [USE CABINET DATA] Successfully loaded cabinets (array):',
+            cabinetsData.length
+          );
+          setAllCabinets(cabinetsData);
+          setTotalCount(cabinetsData.length);
+
+          // PERFORMANCE OPTIMIZATION: Extract unique game types efficiently
+          const uniqueGameTypes = Array.from(
+            new Set(
+              cabinetsData
+                .map(cabinet => cabinet.game || cabinet.installedGame)
+                .filter(game => game && game.trim() !== '')
+            )
+          ).sort();
+          setGameTypes(uniqueGameTypes);
+        } else {
+          console.error(
+            '❌ [USE CABINET DATA] Cabinets data is not in expected format:',
             cabinetsData
-              .map(cabinet => cabinet.game || cabinet.installedGame)
-              .filter(game => game && game.trim() !== '')
-          )
-        ).sort();
-        setGameTypes(uniqueGameTypes);
-      } else {
-        console.error(
-          '❌ [USE CABINET DATA] Cabinets data is not in expected format:',
-          cabinetsData
-        );
+          );
+          setAllCabinets([]);
+          setTotalCount(0);
+          setError('Invalid data format received from server');
+        }
+      } catch (error) {
+        console.error('Error fetching cabinet data:', error);
         setAllCabinets([]);
         setTotalCount(0);
-        setError('Invalid data format received from server');
+        setError(
+          error instanceof Error ? error.message : 'Failed to load cabinets'
+        );
+      } finally {
+        setLoading(false);
+        setInitialLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching cabinet data:', error);
-      setAllCabinets([]);
-      setTotalCount(0);
-      setError(
-        error instanceof Error ? error.message : 'Failed to load cabinets'
-      );
-    } finally {
-      setLoading(false);
-      setInitialLoading(false);
-    }
-  }, [selectedLicencee, activeMetricsFilter, customDateRange, displayCurrency]);
+    },
+    [
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      displayCurrency,
+      debouncedSearchTerm,
+    ]
+  );
 
   // Effect hooks for data loading
   useEffect(() => {

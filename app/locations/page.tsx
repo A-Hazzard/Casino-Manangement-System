@@ -101,7 +101,10 @@ function LocationsPageContent() {
     return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
   };
 
-  // Initialize: fetch first batch on mount and when filters change
+  // Reset to default view when search is cleared (moved after setCurrentPage declaration)
+
+  // Initialize: fetch first batch on mount and when filters change (excluding searchTerm)
+  // Search is handled internally by useLocationData hook with debouncing
   useEffect(() => {
     if (!searchTerm.trim()) {
       // Reset accumulated data when filters change
@@ -115,7 +118,7 @@ function LocationsPageContent() {
     activeMetricsFilter,
     customDateRange,
     selectedFilters,
-    searchTerm,
+    // Note: searchTerm is NOT in dependencies - it's handled by useLocationData hook with debouncing
   ]);
 
   // Update accumulated locations when new data arrives
@@ -176,12 +179,12 @@ function LocationsPageContent() {
 
   const { sortOrder, sortOption, handleColumnSort, totalPages, currentItems } =
     useLocationSorting({
-      locationData: filteredLocationData,
-      selectedFilters,
-      currentPage, // Pass currentPage from page state
-      totalCount: searchTerm.trim() ? undefined : totalCount,
-      itemsPerPage,
-    });
+    locationData: filteredLocationData,
+    selectedFilters,
+    currentPage, // Pass currentPage from page state
+    totalCount: searchTerm.trim() ? undefined : totalCount,
+    itemsPerPage,
+  });
 
   // Handler for refresh button
   const handleRefresh = async () => {

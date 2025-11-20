@@ -31,6 +31,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { useDebounce } from '@/lib/utils/hooks';
 
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -216,6 +217,8 @@ export default function MachinesTab() {
 
   // Search states for different tabs
   const [searchTerm, setSearchTerm] = useState('');
+  // Debounce search term to reduce API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const [offlineSearchTerm, setOfflineSearchTerm] = useState('');
   const [evaluationSearchTerm, setEvaluationSearchTerm] = useState('');
@@ -519,24 +522,13 @@ export default function MachinesTab() {
   ]);
 
   // Handle search with backend fallback for overview tab
-  const handleSearchChange = useCallback(
-    async (value: string) => {
-      setSearchTerm(value);
-      setAllOverviewMachines([]);
-      setOverviewLoadedBatches(new Set([1]));
-      setOverviewCurrentPage(0);
-
-      // If search term is cleared, reset to original data
-      if (!value.trim()) {
-        fetchOverviewMachines(1);
-        return;
-      }
-
-      // Use backend search directly for better results
-      await fetchOverviewMachines(1, value.trim());
-    },
-    [fetchOverviewMachines]
-  );
+  // Note: The actual API call is triggered by debouncedSearchTerm in useEffect
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+    setAllOverviewMachines([]);
+    setOverviewLoadedBatches(new Set([1]));
+    setOverviewCurrentPage(0);
+  }, []);
 
   // Handle evaluation search change
 
@@ -546,12 +538,13 @@ export default function MachinesTab() {
   }, []);
 
   // Load initial batch for overview on mount and when filters change
+  // Use debouncedSearchTerm to avoid API calls on every keystroke
   useEffect(() => {
     if (activeTab === 'overview') {
       setAllOverviewMachines([]);
       setOverviewLoadedBatches(new Set([1]));
       setOverviewCurrentPage(0);
-      fetchOverviewMachines(1, searchTerm);
+      fetchOverviewMachines(1, debouncedSearchTerm);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -563,7 +556,7 @@ export default function MachinesTab() {
     overviewSelectedLocation,
     activeMetricsFilter,
     displayCurrency,
-    searchTerm,
+    debouncedSearchTerm, // Use debounced value instead of searchTerm
   ]);
 
   // Fetch next batch for overview when crossing batch boundaries

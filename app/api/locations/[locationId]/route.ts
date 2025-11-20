@@ -76,9 +76,11 @@ export async function GET(request: NextRequest) {
     const customEndDate = url.searchParams.get('endDate');
     
     // Pagination parameters
+    // When searching, limit may be undefined to fetch all results
+    const limitParam = url.searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam) : undefined;
     const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '50');
-    const skip = (page - 1) * limit;
+    const skip = limit ? (page - 1) * limit : 0;
 
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
@@ -180,7 +182,16 @@ export async function GET(request: NextRequest) {
             { 'machines.relayId': { $regex: searchTerm, $options: 'i' } },
             { 'machines.smibBoard': { $regex: searchTerm, $options: 'i' } },
             { 'machines.custom.name': { $regex: searchTerm, $options: 'i' } },
-            { 'machines._id': searchTerm }, // Exact match for machine _id
+            // Search by _id (case-insensitive partial match)
+            { 
+              $expr: { 
+                $regexMatch: { 
+                  input: { $toString: '$machines._id' }, 
+                  regex: searchTerm, 
+                  options: 'i' 
+                } 
+              } 
+            },
           ],
         },
       });
@@ -316,10 +327,11 @@ export async function GET(request: NextRequest) {
     const totalCount = countResult[0]?.total || 0;
 
     // Add pagination stages to the aggregation pipeline
+    // When limit is undefined (search mode), fetch all results
     const paginatedPipeline = [
       ...aggregationPipeline,
-      { $skip: skip },
-      { $limit: limit },
+      ...(skip > 0 ? [{ $skip: skip }] : []),
+      ...(limit ? [{ $limit: limit }] : []),
     ];
 
     // Execute the aggregation with pagination
@@ -366,19 +378,19 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const totalPages = Math.ceil(totalCount / limit);
+    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
     const totalTime = Date.now() - perfStart;
-    console.log(`⚡ /api/locations/${locationId} - ${totalTime}ms | ${transformedCabinets.length}/${totalCount} machines | ${timePeriod}`);
+    console.log(`⚡ /api/locations/${locationId} - ${totalTime}ms | ${transformedCabinets.length}/${totalCount} machines | ${timePeriod}${searchTerm ? ` | search: ${searchTerm}` : ''}`);
 
     return NextResponse.json({
       success: true,
       data: transformedCabinets,
       pagination: {
         page,
-        limit,
+        limit: limit || totalCount, // Return totalCount as limit when fetching all
         total: totalCount,
         totalPages,
-        hasNextPage: page < totalPages,
+        hasNextPage: limit ? page < totalPages : false,
         hasPrevPage: page > 1,
       },
     });

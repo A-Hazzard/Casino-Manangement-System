@@ -138,8 +138,21 @@ function CabinetsPageContent() {
   // Track loaded batches to avoid refetching
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
 
-  // Load initial batch on mount and when filters change
+  // Reset to default view when search is cleared (use debounced value to avoid flicker)
+  // Note: The actual API call is handled by useCabinetData hook with debouncing
+  // This effect only handles UI state reset
   useEffect(() => {
+    if (!searchTerm?.trim()) {
+      // Reset to first page when search is cleared
+      setCurrentPage(0);
+      setLoadedBatches(new Set([1]));
+    }
+  }, [searchTerm, setCurrentPage]);
+
+  // Load initial batch on mount and when filters change (excluding searchTerm)
+  // Search is handled internally by useCabinetData hook with debouncing
+  useEffect(() => {
+    // Reset batches when filters change
     setLoadedBatches(new Set([1]));
     loadCabinets(1, itemsPerBatch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,7 +164,7 @@ function CabinetsPageContent() {
     selectedLocation,
     selectedGameType,
     selectedStatus,
-    searchTerm,
+    // Note: searchTerm is NOT in dependencies - it's handled by useCabinetData hook with debouncing
   ]);
 
   // Fetch next batch when crossing batch boundaries
