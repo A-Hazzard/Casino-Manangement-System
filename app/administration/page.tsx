@@ -481,7 +481,7 @@ function AdministrationPageContent() {
             const updated = [...prev, ...newItems];
             setAllLoadedUsers(updated);
             return updated;
-          });
+      });
         })
         .catch(error => {
           if (process.env.NODE_ENV === 'development') {
@@ -922,9 +922,9 @@ function AdministrationPageContent() {
             `User updated successfully. Note: The user may need to log out and log back in for location permission changes to take effect.`
           );
         } else {
-          toast.success(
-            `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
-          );
+      toast.success(
+        `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
+      );
         }
       } else {
         toast.success(
@@ -1463,7 +1463,7 @@ function AdministrationPageContent() {
 
   const renderSectionContent = useCallback(() => {
     const userRoles = user?.roles || [];
-
+    
     // Check access for each section
     if (activeSection === 'activity-logs') {
       if (!hasTabAccess(userRoles, 'administration', 'activity-logs')) {
@@ -1715,16 +1715,16 @@ function AdministrationPageContent() {
             </div>
           ) : processedUsers.length > 0 ? (
             <>
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                {processedUsers.map(user => (
-                  <UserCard
-                    key={user.username}
-                    user={user}
-                    onEdit={handleEditUser}
-                    onDelete={handleDeleteUser}
-                  />
-                ))}
-              </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {processedUsers.map(user => (
+                <UserCard
+                  key={user.username}
+                  user={user}
+                  onEdit={handleEditUser}
+                  onDelete={handleDeleteUser}
+                />
+              ))}
+            </div>
               {/* Pagination Controls */}
               {!isLoading && totalPages > 1 && (
                 <PaginationControls
@@ -1745,13 +1745,13 @@ function AdministrationPageContent() {
             <UserTableSkeleton />
           ) : processedUsers.length > 0 ? (
             <>
-              <UserTable
-                users={processedUsers}
-                sortConfig={sortConfig}
-                requestSort={requestSort}
-                onEdit={handleEditUser}
-                onDelete={handleDeleteUser}
-              />
+            <UserTable
+              users={processedUsers}
+              sortConfig={sortConfig}
+              requestSort={requestSort}
+              onEdit={handleEditUser}
+              onDelete={handleDeleteUser}
+            />
               {/* Pagination Controls */}
               {!isLoading && totalPages > 1 && (
                 <PaginationControls

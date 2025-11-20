@@ -10,6 +10,9 @@ export type MetersReportData = {
   gamesPlayed: number;
   location: string;
   createdAt: string;
+  // Optional fields for export logic
+  customName?: string;
+  serialNumber?: string;
 };
 
 export type MetersReportResponse = {

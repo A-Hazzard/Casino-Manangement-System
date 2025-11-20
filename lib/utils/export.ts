@@ -194,9 +194,8 @@ export async function exportMetersReportPDF(
 
   // Prepare table data
   const tableData = data.map(item => {
-    // machineId is already computed by the API with proper fallback logic:
-    // 1. serialNumber (if not blank/whitespace)
-    // 2. custom.name (if serialNumber is blank)
+    // machineId: if custom.name exists, it contains only custom.name (not serialNumber)
+    // Otherwise, it contains the computed machineId from the API
     const machineId = item.machineId;
     return [
       machineId,
@@ -296,9 +295,8 @@ export function exportMetersReportExcel(
 
   // Create table data
   const tableData = data.map(item => {
-    // machineId is already computed by the API with proper fallback logic:
-    // 1. serialNumber (if not blank/whitespace)
-    // 2. custom.name (if serialNumber is blank)
+    // machineId: if custom.name exists, it contains only custom.name (not serialNumber)
+    // Otherwise, it contains the computed machineId from the API
     const machineId = item.machineId;
     return [
       machineId,

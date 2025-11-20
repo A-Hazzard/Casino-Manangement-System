@@ -743,9 +743,9 @@ export const exportAllReports = async (
   licencee?: string,
   locationIds?: string[]
 ) => {
+  const loadingToast = toast.loading('Preparing export...');
+  
   try {
-    toast.loading('Preparing export...');
-
     // Fetch all data including machines
     const [overviewData, sasData, revenueData, machinesData] =
       await Promise.all([
@@ -779,19 +779,20 @@ export const exportAllReports = async (
     // Download file
     downloadExcel(workbook, filename);
 
-    toast.dismiss();
+    toast.dismiss(loadingToast);
     toast.success('Export completed successfully!');
   } catch (error) {
     console.error('Export error:', error);
-    toast.dismiss();
+    toast.dismiss(loadingToast);
     toast.error('Failed to export reports. Please try again.');
   }
 };
 
 // Legacy export function for individual reports (maintains backward compatibility)
 export const exportData = async (data: ExtendedLegacyExportData) => {
+  const loadingToast = toast.loading('Preparing export...');
+  
   try {
-    toast.loading('Preparing export...');
 
     // For now, we'll create a CSV-like format that can be opened in Excel
     let csvContent = '';
@@ -857,11 +858,11 @@ export const exportData = async (data: ExtendedLegacyExportData) => {
     link.click();
     document.body.removeChild(link);
 
-    toast.dismiss();
+    toast.dismiss(loadingToast);
     toast.success('Export completed successfully!');
   } catch (error) {
     console.error('Export error:', error);
-    toast.dismiss();
+    toast.dismiss(loadingToast);
     toast.error('Failed to export data. Please try again.');
   }
 };

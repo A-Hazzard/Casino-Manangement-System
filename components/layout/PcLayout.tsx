@@ -25,10 +25,24 @@ import CustomSelect from '../ui/CustomSelect';
 export default function PcLayout(props: PcLayoutProps) {
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
-  const { formatAmount, shouldShowCurrency, displayCurrency } =
+  const { shouldShowCurrency, displayCurrency } =
     useCurrencyFormat();
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
+
+  // Format amount with currency code (BBD) instead of symbol (Bds$)
+  const formatAmountWithCode = (amount: number, currency: string) => {
+    const hasDecimals = amount % 1 !== 0;
+    const decimalPart = Math.abs(amount % 1);
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+
+    const formatted = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+      maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    }).format(amount);
+
+    return `${currency} ${formatted}`;
+  };
 
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">
@@ -165,7 +179,7 @@ export default function PcLayout(props: PcLayoutProps) {
                   >
                     {props.totals
                       ? shouldShowCurrency()
-                        ? formatAmount(props.totals.moneyIn, displayCurrency)
+                        ? formatAmountWithCode(props.totals.moneyIn, displayCurrency)
                         : formatCurrency(props.totals.moneyIn)
                       : '--'}
                   </p>
@@ -185,7 +199,7 @@ export default function PcLayout(props: PcLayoutProps) {
                   >
                     {props.totals
                       ? shouldShowCurrency()
-                        ? formatAmount(props.totals.moneyOut, displayCurrency)
+                        ? formatAmountWithCode(props.totals.moneyOut, displayCurrency)
                         : formatCurrency(props.totals.moneyOut)
                       : '--'}
                   </p>
@@ -205,7 +219,7 @@ export default function PcLayout(props: PcLayoutProps) {
                   >
                     {props.totals
                       ? shouldShowCurrency()
-                        ? formatAmount(props.totals.gross, displayCurrency)
+                        ? formatAmountWithCode(props.totals.gross, displayCurrency)
                         : formatCurrency(props.totals.gross)
                       : '--'}
                   </p>

@@ -247,7 +247,7 @@ export default function MetersTab() {
             {
               locationIds,
               locationNames: mappedLocations.map(
-                (loc: { id: string; name: string; sasEnabled: boolean }) =>
+            (loc: { id: string; name: string; sasEnabled: boolean }) =>
                   loc.name
               ),
             }
@@ -293,50 +293,50 @@ export default function MetersTab() {
   // Fetch meters data - batch-based pagination
   const fetchMetersData = useCallback(
     async (batch: number = 1) => {
-      if (selectedLocations.length === 0) {
-        setAllMetersData([]);
-        setHasData(false);
+    if (selectedLocations.length === 0) {
+      setAllMetersData([]);
+      setHasData(false);
         setLoadedBatches(new Set());
         setCurrentPage(0);
-        return;
-      }
+      return;
+    }
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      try {
-        const params = new URLSearchParams({
-          locations: selectedLocations.join(','),
-          timePeriod: activeMetricsFilter,
+    try {
+      const params = new URLSearchParams({
+        locations: selectedLocations.join(','),
+        timePeriod: activeMetricsFilter,
           page: batch.toString(),
           limit: itemsPerBatch.toString(),
-        });
+      });
 
-        // Add custom dates if needed (in YYYY-MM-DD format)
-        if (activeMetricsFilter === 'Custom' && customDateRange) {
-          params.append(
-            'startDate',
-            customDateRange.startDate.toISOString().split('T')[0]
-          );
-          params.append(
-            'endDate',
-            customDateRange.endDate.toISOString().split('T')[0]
-          );
-        }
-
-        // Add licensee filter if selected
-        if (selectedLicencee && selectedLicencee !== 'all') {
-          params.append('licencee', selectedLicencee);
-        }
-
-        // Add currency parameter
-        if (displayCurrency) {
-          params.append('currency', displayCurrency);
-        }
-
-        const response = await axios.get<MetersReportResponse>(
-          `/api/reports/meters?${params}`
+      // Add custom dates if needed (in YYYY-MM-DD format)
+      if (activeMetricsFilter === 'Custom' && customDateRange) {
+        params.append(
+          'startDate',
+          customDateRange.startDate.toISOString().split('T')[0]
         );
+        params.append(
+          'endDate',
+          customDateRange.endDate.toISOString().split('T')[0]
+        );
+      }
+
+      // Add licensee filter if selected
+      if (selectedLicencee && selectedLicencee !== 'all') {
+        params.append('licencee', selectedLicencee);
+      }
+
+      // Add currency parameter
+      if (displayCurrency) {
+        params.append('currency', displayCurrency);
+      }
+
+      const response = await axios.get<MetersReportResponse>(
+        `/api/reports/meters?${params}`
+      );
 
         const newMetersData = response.data.data || [];
 
@@ -356,31 +356,31 @@ export default function MetersTab() {
           );
           return [...prev, ...uniqueNewMeters];
         });
-      } catch (err: unknown) {
-        console.error('Error fetching meters data:', err);
-        const errorMessage =
+    } catch (err: unknown) {
+      console.error('Error fetching meters data:', err);
+      const errorMessage =
+        (
           (
-            (
-              (err as Record<string, unknown>)?.response as Record<
-                string,
-                unknown
-              >
-            )?.data as Record<string, unknown>
-          )?.error ||
-          (err as Error)?.message ||
-          'Failed to load meters data';
-        setError(errorMessage as string);
-        toast.error(errorMessage as string);
-      } finally {
-        setLoading(false);
-      }
+            (err as Record<string, unknown>)?.response as Record<
+              string,
+              unknown
+            >
+          )?.data as Record<string, unknown>
+        )?.error ||
+        (err as Error)?.message ||
+        'Failed to load meters data';
+      setError(errorMessage as string);
+      toast.error(errorMessage as string);
+    } finally {
+      setLoading(false);
+    }
     },
     [
-      selectedLocations,
-      activeMetricsFilter,
-      customDateRange,
-      selectedLicencee,
-      displayCurrency,
+    selectedLocations,
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    displayCurrency,
       itemsPerBatch,
     ]
   );
@@ -486,6 +486,7 @@ export default function MetersTab() {
       const allData = getDataForExport(searchTerm);
 
       if (allData.length === 0) {
+        toast.dismiss(loadingToast);
         toast.error('No data found for export');
         return;
       }
@@ -504,18 +505,21 @@ export default function MetersTab() {
         totalCount: allData.length,
       };
 
-      // Prepare data for export - the API already provides machineId computed from serialNumber or customName
+      // Prepare data for export
+      // If custom.name has a value, only export custom.name (not serialNumber)
       const exportData = allData.map(item => {
-        // Extract serialNumber and origSerialNumber from the item if available
-        // These may be in the raw data structure
         const itemRecord = item as Record<string, unknown>;
-        const serialNumber = itemRecord.serialNumber as string | undefined;
+        const customName = (itemRecord.customName as string)?.trim() || undefined;
+        const serialNumber = (itemRecord.serialNumber as string)?.trim() || undefined;
         const origSerialNumber = itemRecord.origSerialNumber as
           | string
           | undefined;
 
+        // For export: if customName exists, use only customName, otherwise use machineId
+        const exportMachineId = customName || item.machineId;
+
         return {
-          machineId: item.machineId,
+          machineId: exportMachineId,
           location: item.location,
           metersIn: item.metersIn,
           metersOut: item.metersOut,
@@ -525,25 +529,27 @@ export default function MetersTab() {
           attPaidCredits: item.attPaidCredits,
           gamesPlayed: item.gamesPlayed,
           createdAt: item.createdAt,
-          serialNumber: serialNumber?.trim(),
-          origSerialNumber: origSerialNumber?.trim(),
+          // Don't include serialNumber in export if customName exists
+          serialNumber: customName ? undefined : serialNumber,
+          origSerialNumber: customName ? undefined : origSerialNumber?.trim(),
         };
       });
 
       if (format === 'pdf') {
         await exportMetersReportPDF(exportData, metadata);
+        toast.dismiss(loadingToast);
         toast.success(`Successfully exported ${allData.length} records to PDF`);
       } else {
         exportMetersReportExcel(exportData, metadata);
+        toast.dismiss(loadingToast);
         toast.success(
           `Successfully exported ${allData.length} records to Excel`
         );
       }
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(`Failed to export ${format.toUpperCase()}`);
-    } finally {
       toast.dismiss(loadingToast);
+      toast.error(`Failed to export ${format.toUpperCase()}`);
     }
   };
 
@@ -966,7 +972,7 @@ export default function MetersTab() {
                     currentPage={currentPage}
                     totalPages={totalPages}
                     setCurrentPage={setCurrentPage}
-                  />
+                          />
                 )}
               </>
             )}

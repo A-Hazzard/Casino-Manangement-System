@@ -119,9 +119,10 @@ function MemberDetailsPageContent() {
 
   // Export functionality
   const handleExport = async (format: 'csv' | 'excel' = 'csv') => {
+    const loadingToast = toast.info('Preparing export...');
+    
     try {
       setLoading(true);
-      toast.info('Preparing export...');
 
       // Fetch all session data for export
       const response = await axios.get(
@@ -138,6 +139,7 @@ function MemberDetailsPageContent() {
       if (format === 'csv') {
         const sessions = data.data.sessions;
         if (sessions.length === 0) {
+          toast.dismiss(loadingToast);
           toast.warning('No session data to export');
           return;
         }
@@ -201,12 +203,14 @@ function MemberDetailsPageContent() {
         link.click();
         document.body.removeChild(link);
 
+        toast.dismiss(loadingToast);
         toast.success('Session data exported successfully!');
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Export error:', error);
       }
+      toast.dismiss(loadingToast);
       toast.error('Failed to export session data. Please try again.');
     } finally {
       setLoading(false);

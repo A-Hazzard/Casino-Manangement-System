@@ -1,13 +1,13 @@
 'use client';
 
-import { DashboardFinancialMetricsSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
+import { DashboardFinancialMetricsSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
 import { fetchLicenseeById } from '@/lib/helpers/clientLicensees';
 import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { CurrencyCode } from '@/shared/types/currency';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type FinancialMetricsCardsProps = {
   totals: {
@@ -176,7 +176,6 @@ export default function FinancialMetricsCards({
       size: 'text-lg sm:text-xl md:text-2xl lg:text-3xl',
     };
   };
-
 
   return (
     <div className={`space-y-4 ${className}`}>

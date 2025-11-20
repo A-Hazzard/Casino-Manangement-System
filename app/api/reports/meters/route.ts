@@ -339,9 +339,19 @@ export async function GET(req: NextRequest) {
             ?.toString()
             .trim() || '';
 
-        // Use serialNumber if available, otherwise fall back to custom.name
-        // There should always be at least one of these fields available
-        const machineId = hasValidSerialNumber ? serialNumber : customName;
+        // Display logic: if custom.name and serialNumber are different, show custom.name (serialNumber)
+        // Otherwise, use serialNumber if available, otherwise fall back to custom.name
+        let machineId = '';
+        if (customName && hasValidSerialNumber && customName !== serialNumber) {
+          machineId = `${customName} (${serialNumber})`;
+        } else if (hasValidSerialNumber) {
+          machineId = serialNumber;
+        } else if (customName) {
+          machineId = customName;
+        } else {
+          // Final fallback
+          machineId = `Machine ${(machine._id as string).toString().slice(-6)}`;
+        }
 
         // Debug logging for the specific machine
         const machineIdStr =
@@ -401,6 +411,9 @@ export async function GET(req: NextRequest) {
           locationId: machine.gamingLocation?.toString() || '',
           createdAt: meterData.lastReadAt || machine.lastActivity,
           machineDocumentId: machineDocumentId,
+          // Include raw fields for export logic
+          customName: customName || undefined,
+          serialNumber: hasValidSerialNumber ? serialNumber : undefined,
         };
       }
     );
