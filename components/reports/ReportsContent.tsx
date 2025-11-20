@@ -48,23 +48,43 @@ export default function ReportsContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
 
-  // Check if user is a developer
-  const isDeveloper = useMemo(() => {
-    const userRoles = user?.roles || [];
-    return userRoles.some(
-      role => typeof role === 'string' && role.toLowerCase() === 'developer'
+  // Check user roles
+  const userRoles = useMemo(() => {
+    const roles = user?.roles || [];
+    return roles.map(role => 
+      typeof role === 'string' ? role.toLowerCase() : ''
     );
   }, [user?.roles]);
 
-  // Filter tabs: hide locations and machines tabs unless developer
-  // Location admins only see meters tab (same as admins)
+  const isDeveloper = useMemo(() => {
+    return userRoles.includes('developer');
+  }, [userRoles]);
+
+  const isAdmin = useMemo(() => {
+    return userRoles.includes('admin');
+  }, [userRoles]);
+
+  const isLocationAdmin = useMemo(() => {
+    return userRoles.includes('location admin');
+  }, [userRoles]);
+
+  // Filter tabs based on user role
+  // Developers: all tabs
+  // Admins and Location Admins: meters and locations tabs
+  // Others: only meters tab
   const availableTabs = useMemo(() => {
     if (isDeveloper) {
       return REPORTS_TABS_CONFIG; // Developers see all tabs
     }
-    // Non-developers (including location admin) only see meters tab
+    if (isAdmin || isLocationAdmin) {
+      // Admins and Location Admins see meters and locations tabs
+      return REPORTS_TABS_CONFIG.filter(
+        tab => tab.id === 'meters' || tab.id === 'locations'
+      );
+    }
+    // Others only see meters tab
     return REPORTS_TABS_CONFIG.filter(tab => tab.id === 'meters');
-  }, [isDeveloper]);
+  }, [isDeveloper, isAdmin, isLocationAdmin]);
 
   // All authenticated users have access to reports
   const hasAccess = true;
