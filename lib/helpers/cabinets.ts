@@ -34,7 +34,9 @@ export const fetchCabinets = async (
   licensee?: string,
   timePeriod?: string,
   customDateRange?: DateRange,
-  currency?: string
+  currency?: string,
+  page?: number,
+  limit?: number
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -63,6 +65,14 @@ export const fetchCabinets = async (
       queryParams.push(`currency=${encodeURIComponent(currency)}`);
     }
 
+    // Add pagination parameters
+    if (page !== undefined) {
+      queryParams.push(`page=${page}`);
+    }
+    if (limit !== undefined) {
+      queryParams.push(`limit=${limit}`);
+    }
+
     // Append query string if we have parameters
     if (queryParams.length > 0) {
       url += `?${queryParams.join('&')}`;
@@ -79,12 +89,17 @@ export const fetchCabinets = async (
     // Check if the response contains a data property with an array
     if (response.status === 200) {
       if (response.data && response.data.success === true) {
-        // API response follows { success: true, data: [...] } format
+        // API response follows { success: true, data: [...], pagination?: {...} } format
         const cabinets = Array.isArray(response.data.data) ? response.data.data : [];
-        console.warn('[FETCH CABINETS] Success format - returning', cabinets.length, 'cabinets');
+        const pagination = response.data.pagination;
+        console.warn('[FETCH CABINETS] Success format - returning', cabinets.length, 'cabinets', pagination ? `(pagination: ${JSON.stringify(pagination)})` : '');
+        // Return both cabinets and pagination info if available
+        if (pagination) {
+          return { cabinets, pagination };
+        }
         return cabinets;
       } else if (response.data && Array.isArray(response.data)) {
-        // API response is a direct array
+        // API response is a direct array (backward compatibility)
         console.warn('[FETCH CABINETS] Array format - returning', response.data.length, 'cabinets');
         return response.data;
       } else {
@@ -120,7 +135,8 @@ export const fetchCabinets = async (
 export const fetchCabinetById = async (
   cabinetId: string,
   timePeriod?: string,
-  customDateRange?: DateRange
+  customDateRange?: DateRange,
+  currency?: string
 ) => {
   try {
     // Use the main machines endpoint with time period filtering
@@ -142,6 +158,10 @@ export const fetchCabinetById = async (
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     } else if (timePeriod) {
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
+    }
+
+    if (currency) {
+      queryParams.push(`currency=${encodeURIComponent(currency)}`);
     }
 
     // Add cache-busting timestamp to prevent caching issues
@@ -431,15 +451,17 @@ export async function fetchCabinetsForLocation(
   licencee?: string,
   timePeriod?: string,
   searchTerm?: string,
-  customDateRange?: DateRange
-) {
+  customDateRange?: DateRange,
+  page?: number,
+  limit?: number
+): Promise<{ data: GamingMachine[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }> {
   try {
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       console.warn(
         '⚠️ No timePeriod provided to fetchCabinetsForLocation, returning empty array'
       );
-      return [];
+      return { data: [] };
     }
 
     const params: Record<string, string> = {
@@ -456,6 +478,14 @@ export async function fetchCabinetsForLocation(
 
     if (searchTerm) {
       params.search = searchTerm;
+    }
+
+    // Add pagination parameters
+    if (page !== undefined) {
+      params.page = page.toString();
+    }
+    if (limit !== undefined) {
+      params.limit = limit.toString();
     }
 
     // Handle custom date range
@@ -488,17 +518,25 @@ export async function fetchCabinetsForLocation(
 
     if (response.status !== 200) {
       console.error(` API error (${response.status}):`, response.data);
-      return [];
+      return { data: [] };
     }
 
     const data = response.data;
 
-    if (!data || !Array.isArray(data)) {
+    // Handle paginated response format
+    if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+      // New paginated format: { success: true, data: [...], pagination: {...} }
+      return {
+        data: Array.isArray(data.data) ? data.data : [],
+        pagination: data.pagination,
+      };
+    } else if (data && Array.isArray(data)) {
+      // Backward compatibility: direct array response
+      return { data };
+    } else {
       console.error(`⚠️ Invalid data format received:`, data);
-      return [];
+      return { data: [] };
     }
-
-    return data;
   } catch (error) {
     console.error(' Error in fetchCabinetsForLocation:', error);
     
@@ -511,7 +549,7 @@ export async function fetchCabinetsForLocation(
     }
     
     // Always return an empty array for other errors instead of throwing
-    return [];
+    return { data: [] };
   }
 }
 

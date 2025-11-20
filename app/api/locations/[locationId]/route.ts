@@ -74,6 +74,11 @@ export async function GET(request: NextRequest) {
     const timePeriod = url.searchParams.get('timePeriod') as TimePeriod;
     const customStartDate = url.searchParams.get('startDate');
     const customEndDate = url.searchParams.get('endDate');
+    
+    // Pagination parameters
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const skip = (page - 1) * limit;
 
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
@@ -299,10 +304,28 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Execute the aggregation
+    // First, get total count for pagination metadata
+    const countPipeline = [...aggregationPipeline, { $count: 'total' }];
+    const countResult = await db
+      .collection('gaminglocations')
+      .aggregate(countPipeline, {
+        allowDiskUse: true,
+        maxTimeMS: 60000,
+      })
+      .toArray();
+    const totalCount = countResult[0]?.total || 0;
+
+    // Add pagination stages to the aggregation pipeline
+    const paginatedPipeline = [
+      ...aggregationPipeline,
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
+    // Execute the aggregation with pagination
     const cabinetsWithMeters = await db
       .collection('gaminglocations')
-      .aggregate(aggregationPipeline, {
+      .aggregate(paginatedPipeline, {
         allowDiskUse: true,
         maxTimeMS: 60000,
       })
@@ -343,10 +366,22 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    const totalPages = Math.ceil(totalCount / limit);
     const totalTime = Date.now() - perfStart;
-    console.log(`⚡ /api/locations/${locationId} - ${totalTime}ms | ${transformedCabinets.length} machines | ${timePeriod}`);
+    console.log(`⚡ /api/locations/${locationId} - ${totalTime}ms | ${transformedCabinets.length}/${totalCount} machines | ${timePeriod}`);
 
-    return NextResponse.json(transformedCabinets);
+    return NextResponse.json({
+      success: true,
+      data: transformedCabinets,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
   } catch (error) {
     console.error('Error processing location cabinets request:', error);
     return NextResponse.json(

@@ -1,10 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import {
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+} from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { NextRequest, NextResponse } from 'next/server';
 import { checkUserLocationAccess } from '../../lib/helpers/licenseeFilter';
+import { getUserFromServer } from '../../lib/helpers/users';
+import { connectDB } from '../../lib/middleware/db';
 
 /**
  * GET /api/machines/[machineId]
@@ -21,12 +28,15 @@ export async function GET(
     const timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     console.warn('[DEBUG] API received parameters:', {
       machineId,
       timePeriod,
       startDateParam,
       endDateParam,
+      displayCurrency,
     });
 
     // Only proceed if timePeriod or custom date range is provided
@@ -70,14 +80,19 @@ export async function GET(
 
         if (location) {
           // Check if user has access to this location (includes both licensee and location permissions)
-          const hasAccess = await checkUserLocationAccess(String(machine.gamingLocation));
+          const hasAccess = await checkUserLocationAccess(
+            String(machine.gamingLocation)
+          );
           if (!hasAccess) {
             return NextResponse.json(
-              { success: false, error: 'Unauthorized: You do not have access to this cabinet' },
+              {
+                success: false,
+                error: 'Unauthorized: You do not have access to this cabinet',
+              },
               { status: 403 }
             );
           }
-          
+
           locationName =
             location.name || location.locationName || 'Unknown Location';
           gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
@@ -100,14 +115,14 @@ export async function GET(
       // With 8 AM offset: Oct 31, 8:00 AM → Nov 1, 8:00 AM
       const customStart = new Date(startDateParam + 'T00:00:00.000Z');
       const customEnd = new Date(endDateParam + 'T00:00:00.000Z');
-      
+
       const gamingDayRange = getGamingDayRangeForPeriod(
         'Custom',
         gameDayOffset,
         customStart,
         customEnd
       );
-      
+
       startDate = gamingDayRange.rangeStart;
       endDate = gamingDayRange.rangeEnd;
     } else if (timePeriod === 'All Time') {
@@ -200,9 +215,105 @@ export async function GET(
       gross,
     });
 
+    // Currency conversion logic (similar to aggregation endpoint)
+    let finalMoneyIn = moneyIn;
+    let finalMoneyOut = moneyOut;
+    let finalCancelledCredits = moneyOut;
+    let finalJackpot = jackpot;
+    let finalGross = gross;
+    let finalCoinIn = coinIn;
+    let finalCoinOut = coinOut;
+
+    // Get user's role to determine if currency conversion should apply
+    const user = await getUserFromServer();
+    const userRoles = (user?.roles as string[]) || [];
+    const isAdminOrDev = userRoles.some(role =>
+      ['admin', 'developer'].includes(role)
+    );
+
+    // Currency conversion ONLY for Admin/Developer when viewing "All Licensees" (no specific licensee selected)
+    // For detail pages, we check if currency parameter is provided (which means "All Licensees" was selected)
+    if (isAdminOrDev && displayCurrency && displayCurrency !== 'USD') {
+      // Get location details to determine native currency
+      let locationData: {
+        rel?: { licencee?: string };
+        country?: string;
+      } | null = null;
+      if (machine.gamingLocation) {
+        try {
+          locationData = (await GamingLocations.findOne({
+            _id: machine.gamingLocation,
+          })
+            .select('rel country')
+            .lean()) as {
+            rel?: { licencee?: string };
+            country?: string;
+          } | null;
+        } catch (error) {
+          console.warn(
+            'Failed to fetch location for currency conversion:',
+            error
+          );
+        }
+      }
+
+      // Determine native currency from licensee or country
+      let nativeCurrency: string = 'USD';
+      if (locationData?.rel?.licencee) {
+        // Get licensee name from ID
+        const { default: db } = await import('mongoose');
+        const Licencee = db.connection.collection('licencees');
+        const licenseeDoc = await Licencee.findOne({
+          _id: new db.Types.ObjectId(locationData.rel.licencee),
+        });
+        const licenseeName = licenseeDoc?.name as string | undefined;
+
+        if (licenseeName) {
+          // Map licensee name to currency
+          const LICENSEE_CURRENCY: Record<string, string> = {
+            TTG: 'TTD',
+            Cabana: 'GYD',
+            Barbados: 'BBD',
+          };
+          nativeCurrency = LICENSEE_CURRENCY[licenseeName] || 'USD';
+        }
+      } else if (locationData?.country) {
+        // Get country name from ID
+        const { default: db } = await import('mongoose');
+        const Country = db.connection.collection('countries');
+        const countryDoc = await Country.findOne({
+          _id: new db.Types.ObjectId(locationData.country),
+        });
+        const countryName = countryDoc?.name as string | undefined;
+
+        if (countryName) {
+          nativeCurrency = getCountryCurrency(countryName) || 'USD';
+        }
+      }
+
+      // Convert from native currency to USD, then to display currency
+      if (nativeCurrency !== 'USD') {
+        const moneyInUSD = convertToUSD(moneyIn, nativeCurrency);
+        const moneyOutUSD = convertToUSD(moneyOut, nativeCurrency);
+        const jackpotUSD = convertToUSD(jackpot, nativeCurrency);
+        const coinInUSD = convertToUSD(coinIn, nativeCurrency);
+        const coinOutUSD = convertToUSD(coinOut, nativeCurrency);
+
+        finalMoneyIn = convertFromUSD(moneyInUSD, displayCurrency);
+        finalMoneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
+        finalCancelledCredits = finalMoneyOut;
+        finalJackpot = convertFromUSD(jackpotUSD, displayCurrency);
+        finalGross = finalMoneyIn - finalMoneyOut;
+        finalCoinIn = convertFromUSD(coinInUSD, displayCurrency);
+        finalCoinOut = convertFromUSD(coinOutUSD, displayCurrency);
+      }
+    }
+
     // Get serialNumber with fallback to custom.name
     const serialNumber = (machine.serialNumber as string)?.trim() || '';
-    const customName = ((machine.custom as Record<string, unknown>)?.name as string)?.trim() || '';
+    const customName =
+      ((machine.custom as Record<string, unknown>)?.name as string)?.trim() ||
+      '';
     const finalSerialNumber = serialNumber || customName || '';
 
     // Transform the data to match frontend expectations
@@ -228,14 +339,14 @@ export async function GET(
       updatedAt: machine.updatedAt,
       deletedAt: machine.deletedAt, // Include deletedAt field
       // Financial metrics from meters collection according to financial-metrics-guide.md
-      moneyIn,
-      moneyOut,
-      cancelledCredits: moneyOut, // Same as moneyOut (totalCancelledCredits)
-      jackpot,
-      gross,
+      moneyIn: finalMoneyIn,
+      moneyOut: finalMoneyOut,
+      cancelledCredits: finalCancelledCredits, // Same as moneyOut (totalCancelledCredits)
+      jackpot: finalJackpot,
+      gross: finalGross,
       // Additional metrics for comprehensive financial tracking
-      coinIn,
-      coinOut,
+      coinIn: finalCoinIn,
+      coinOut: finalCoinOut,
       gamesPlayed,
       gamesWon,
       handPaidCancelledCredits,

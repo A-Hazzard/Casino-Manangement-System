@@ -31,6 +31,7 @@ type UseCabinetDataReturn = {
   locations: { _id: string; name: string }[];
   gameTypes: string[];
   financialTotals: ReturnType<typeof calculateCabinetFinancialTotals>;
+  totalCount: number;
 
   // Loading states
   initialLoading: boolean;
@@ -38,7 +39,7 @@ type UseCabinetDataReturn = {
   error: string | null;
 
   // Actions
-  loadCabinets: () => Promise<void>;
+  loadCabinets: (page?: number, limit?: number) => Promise<void>;
   loadLocations: () => Promise<void>;
   filterCabinets: (
     cabinets: Cabinet[],
@@ -70,6 +71,7 @@ export const useCabinetData = ({
     []
   );
   const [gameTypes, setGameTypes] = useState<string[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
 
   // PERFORMANCE OPTIMIZATION: Memoize financial totals calculation
   const financialTotals = useMemo(() => {
@@ -161,11 +163,13 @@ export const useCabinetData = ({
   );
 
   // Load cabinets with proper error handling and logging
-  const loadCabinets = useCallback(async () => {
+  const loadCabinets = useCallback(async (page?: number, limit?: number) => {
     try {
       console.warn('Loading cabinets with filters:', {
         selectedLicencee,
         activeMetricsFilter,
+        page,
+        limit,
         customDateRange: customDateRange
           ? {
               startDate: customDateRange.startDate?.toISOString(),
@@ -191,28 +195,49 @@ export const useCabinetData = ({
         selectedLicencee,
         activeMetricsFilter,
         dateRangeForFetch,
-        displayCurrency
+        displayCurrency,
+        page,
+        limit
       );
 
       console.warn('✅ [USE CABINET DATA] Fetch completed, received:', {
         isArray: Array.isArray(cabinetsData),
-        length: Array.isArray(cabinetsData) ? cabinetsData.length : 0,
+        isObject: typeof cabinetsData === 'object' && cabinetsData !== null && !Array.isArray(cabinetsData),
+        length: Array.isArray(cabinetsData) ? cabinetsData.length : (cabinetsData && typeof cabinetsData === 'object' && 'cabinets' in cabinetsData ? (cabinetsData as { cabinets: unknown[] }).cabinets.length : 0),
         type: typeof cabinetsData,
       });
 
-      if (!Array.isArray(cabinetsData)) {
-        console.error(
-          '❌ [USE CABINET DATA] Cabinets data is not an array:',
-          cabinetsData
-        );
-        setAllCabinets([]);
-        setError('Invalid data format received from server');
-      } else {
+      // Handle paginated response
+      if (cabinetsData && typeof cabinetsData === 'object' && !Array.isArray(cabinetsData) && 'cabinets' in cabinetsData) {
+        const paginatedResponse = cabinetsData as { cabinets: Cabinet[]; pagination?: { total: number; totalPages: number; page: number; limit: number } };
         console.warn(
-          '✅ [USE CABINET DATA] Successfully loaded cabinets:',
+          '✅ [USE CABINET DATA] Successfully loaded cabinets (paginated):',
+          paginatedResponse.cabinets.length,
+          'pagination:',
+          paginatedResponse.pagination
+        );
+        setAllCabinets(paginatedResponse.cabinets);
+        if (paginatedResponse.pagination) {
+          setTotalCount(paginatedResponse.pagination.total);
+        }
+
+        // Extract unique game types from all cabinets (we may need to fetch all for this)
+        const uniqueGameTypes = Array.from(
+          new Set(
+            paginatedResponse.cabinets
+              .map(cabinet => cabinet.game || cabinet.installedGame)
+              .filter((game): game is string => !!game && game.trim() !== '')
+          )
+        ).sort();
+        setGameTypes(uniqueGameTypes);
+      } else if (Array.isArray(cabinetsData)) {
+        // Backward compatibility: direct array response
+        console.warn(
+          '✅ [USE CABINET DATA] Successfully loaded cabinets (array):',
           cabinetsData.length
         );
         setAllCabinets(cabinetsData);
+        setTotalCount(cabinetsData.length);
 
         // PERFORMANCE OPTIMIZATION: Extract unique game types efficiently
         const uniqueGameTypes = Array.from(
@@ -223,12 +248,19 @@ export const useCabinetData = ({
           )
         ).sort();
         setGameTypes(uniqueGameTypes);
-
-        // Filtering is now handled by the memoized filteredCabinets above
+      } else {
+        console.error(
+          '❌ [USE CABINET DATA] Cabinets data is not in expected format:',
+          cabinetsData
+        );
+        setAllCabinets([]);
+        setTotalCount(0);
+        setError('Invalid data format received from server');
       }
     } catch (error) {
       console.error('Error fetching cabinet data:', error);
       setAllCabinets([]);
+      setTotalCount(0);
       setError(
         error instanceof Error ? error.message : 'Failed to load cabinets'
       );
@@ -256,6 +288,7 @@ export const useCabinetData = ({
     locations,
     gameTypes,
     financialTotals,
+    totalCount,
 
     // Loading states
     initialLoading,

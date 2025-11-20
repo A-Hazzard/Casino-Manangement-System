@@ -28,13 +28,18 @@ type MachineLike = {
 export function formatMachineDisplayName(machine: MachineLike): string {
   // Use serialNumber if not blank/whitespace, otherwise fall back to custom.name, then assetNumber
   const serialNumber = (machine.serialNumber?.trim() || machine.custom?.name?.trim() || machine.assetNumber?.trim() || 'N/A');
-  const customName = machine.custom?.name;
+  const customName = machine.custom?.name?.trim() || '';
   const game = machine.game || machine.installedGame;
+
+  // Check if custom.name and serialNumber are the same
+  const serialNumberTrimmed = machine.serialNumber?.trim() || '';
+  const isCustomNameSameAsSerial = serialNumberTrimmed !== '' && customName !== '' && serialNumberTrimmed === customName;
 
   // Build the bracket content
   const bracketParts: string[] = [];
 
-  if (customName && customName.trim() !== '') {
+  // Only add customName if it's different from serialNumber
+  if (customName && !isCustomNameSameAsSerial) {
     bracketParts.push(customName);
   }
 
@@ -62,13 +67,18 @@ export function formatMachineDisplayNameWithBold(
 ): React.JSX.Element {
   // Use serialNumber if not blank/whitespace, otherwise fall back to custom.name, then assetNumber
   const serialNumber = (machine.serialNumber?.trim() || machine.custom?.name?.trim() || machine.assetNumber?.trim() || 'N/A');
-  const customName = machine.custom?.name;
+  const customName = machine.custom?.name?.trim() || '';
   const game = machine.game || machine.installedGame;
+
+  // Check if custom.name and serialNumber are the same
+  const serialNumberTrimmed = machine.serialNumber?.trim() || '';
+  const isCustomNameSameAsSerial = serialNumberTrimmed !== '' && customName !== '' && serialNumberTrimmed === customName;
 
   // Build the bracket content
   const bracketParts: string[] = [];
 
-  if (customName && customName.trim() !== '') {
+  // Only add customName if it's different from serialNumber
+  if (customName && !isCustomNameSameAsSerial) {
     bracketParts.push(customName);
   }
 
@@ -78,15 +88,15 @@ export function formatMachineDisplayNameWithBold(
 
   // Return formatted JSX
   if (bracketParts.length === 0) {
-    return <>{serialNumber}</>;
+    return <span className="break-words whitespace-normal">{serialNumber}</span>;
   } else {
     return (
-      <>
+      <span className="break-words whitespace-normal">
         {serialNumber}{' '}
         <span className="break-words font-semibold">
           ({bracketParts.join(', ')})
         </span>
-      </>
+      </span>
     );
   }
 }

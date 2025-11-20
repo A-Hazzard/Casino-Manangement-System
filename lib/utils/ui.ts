@@ -214,13 +214,16 @@ export const filterAndSortCabinets = (
   // Apply search term filter
   if (searchTerm.trim()) {
     const searchLower = searchTerm.toLowerCase();
-    filtered = filtered.filter(
-      cab =>
+    filtered = filtered.filter(cab => {
+      const cabinetId = String(cab._id || '').toLowerCase();
+      return (
         cab.assetNumber?.toLowerCase().includes(searchLower) ||
         cab.smbId?.toLowerCase().includes(searchLower) ||
         cab.serialNumber?.toLowerCase().includes(searchLower) ||
-        cab.game?.toLowerCase().includes(searchLower)
-    );
+        cab.game?.toLowerCase().includes(searchLower) ||
+        cabinetId.includes(searchLower)
+      );
+    });
   }
 
   // Apply sorting

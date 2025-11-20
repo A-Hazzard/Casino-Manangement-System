@@ -37,6 +37,7 @@ export type TabName =
   | 'administration-users'
   | 'administration-licensees'
   | 'administration-activity-logs'
+  | 'administration-feedback'
   | 'collection-reports-monthly'
   | 'collection-reports-manager-schedules'
   | 'collection-reports-collector-schedules';
@@ -83,9 +84,9 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'collector',
       'technician',
     ],
-    reports: ['developer', 'admin', 'location admin'], // ✅ Restricted to developer, admin, and location admin
+    reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
     sessions: ['developer'], // ✅ Restricted to developer only
-    administration: ['developer', 'admin', 'manager'],
+    administration: ['developer', 'admin', 'manager', 'location admin'],
   };
 
   const requiredRoles = pagePermissions[page] || [];
@@ -105,9 +106,10 @@ export const hasTabAccess = (
   tab: string
 ): boolean => {
   const tabPermissions: Record<string, string[]> = {
-    'administration-users': ['developer', 'admin', 'manager'],
+    'administration-users': ['developer', 'admin', 'manager', 'location admin'],
     'administration-licensees': ['developer', 'admin'],
-    'administration-activity-logs': ['developer', 'admin', 'manager'],
+    'administration-activity-logs': ['developer', 'admin', 'manager', 'location admin'],
+    'administration-feedback': ['developer', 'admin'],
     'collection-reports-monthly': [
       'developer',
       'admin',

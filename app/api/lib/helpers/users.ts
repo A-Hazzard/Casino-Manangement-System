@@ -109,11 +109,11 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
     };
 
     let dbUser: {
-          sessionVersion?: number;
-          roles?: string[];
-          rel?: { licencee?: string[] };
-          resourcePermissions?: Record<string, unknown>;
-          permissions?: string[];
+      sessionVersion?: number;
+      roles?: string[];
+      rel?: { licencee?: string[] };
+      resourcePermissions?: Record<string, unknown>;
+      permissions?: string[];
       isEnabled?: boolean;
       deletedAt?: Date | null;
     } | null = null;
@@ -270,11 +270,12 @@ export async function getAllUsers() {
     {
       $or: [
         { deletedAt: null },
+        { deletedAt: { $exists: false } },
         { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     },
     '-password'
-  );
+  ).lean(); // Use lean() to get plain JavaScript objects instead of Mongoose documents
 }
 
 /**
@@ -378,7 +379,7 @@ export async function createUser(
       isAdmin,
       isManager,
       userId: requestingUser._id,
-  });
+    });
     throw new Error(
       'Insufficient permissions to create users. Only developers, admins, and managers can create users.'
     );
@@ -407,24 +408,26 @@ export async function createUser(
   }
 
   const hashedPassword = await hashPassword(password);
-  
+
   // Create user - catch MongoDB duplicate key errors
   let newUser;
   try {
     newUser = await UserModel.create({
-    _id: new (await import('mongoose')).default.Types.ObjectId().toHexString(),
-    username,
-    emailAddress,
-    password: hashedPassword,
-    passwordUpdatedAt: new Date(),
+      _id: new (
+        await import('mongoose')
+      ).default.Types.ObjectId().toHexString(),
+      username,
+      emailAddress,
+      password: hashedPassword,
+      passwordUpdatedAt: new Date(),
       roles: normalizedRoles,
-    profile,
-    isEnabled,
-    profilePicture,
-    resourcePermissions,
+      profile,
+      isEnabled,
+      profilePicture,
+      resourcePermissions,
       rel: rel || {},
-    deletedAt: new Date(-1), // SMIB boards require all fields to be present
-  });
+      deletedAt: new Date(-1), // SMIB boards require all fields to be present
+    });
   } catch (dbError: unknown) {
     // Handle MongoDB duplicate key errors (E11000)
     if (
@@ -433,12 +436,19 @@ export async function createUser(
       'code' in dbError &&
       dbError.code === 11000
     ) {
-      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
-      
+      const errorMessage =
+        dbError instanceof Error ? dbError.message : String(dbError);
+
       // Parse the error message to determine which field caused the conflict
-      if (errorMessage.includes('emailAddress') || errorMessage.includes('emailAddress_1')) {
+      if (
+        errorMessage.includes('emailAddress') ||
+        errorMessage.includes('emailAddress_1')
+      ) {
         throw new Error('Email already exists');
-      } else if (errorMessage.includes('username') || errorMessage.includes('username_1')) {
+      } else if (
+        errorMessage.includes('username') ||
+        errorMessage.includes('username_1')
+      ) {
         throw new Error('Username already exists');
       } else {
         // Generic duplicate key error
@@ -598,14 +608,12 @@ export async function updateUser(
 
   // For managers, ensure they can only toggle isEnabled for users in their licensee
   if (isManager && updateFields.isEnabled !== undefined) {
-    const managerLicenseeIds =
-      ((requestingUser?.rel as { licencee?: string[] })?.licencee || []).map(
-        id => String(id)
-      );
-    const userLicenseeIds =
-      ((user.rel as { licencee?: string[] })?.licencee || []).map(id =>
-        String(id)
-      );
+    const managerLicenseeIds = (
+      (requestingUser?.rel as { licencee?: string[] })?.licencee || []
+    ).map(id => String(id));
+    const userLicenseeIds = (
+      (user.rel as { licencee?: string[] })?.licencee || []
+    ).map(id => String(id));
 
     // Check if user belongs to any of the manager's licensees
     const hasSharedLicensee = userLicenseeIds.some(id =>
@@ -661,7 +669,7 @@ export async function updateUser(
       } else if (!validateOptionalGender(genderValue)) {
         throw new Error('Select a valid gender option.');
       } else {
-      profileUpdate.gender = genderValue;
+        profileUpdate.gender = genderValue;
       }
     } else if (
       profileUpdate.gender === undefined ||
@@ -715,8 +723,8 @@ export async function updateUser(
             'Identification type may only contain letters and spaces.'
           );
         } else {
-        identificationUpdate.idType = trimmed;
-      }
+          identificationUpdate.idType = trimmed;
+        }
       } else if (
         identificationUpdate.idType === undefined ||
         identificationUpdate.idType === null
@@ -758,15 +766,15 @@ export async function updateUser(
       // Only validate dateOfBirth if it's actually provided (not empty/null/undefined)
       // This allows admins to update users without requiring all fields
       if (dobValue !== null && dobValue !== undefined && dobValue !== '') {
-      const parsedDate =
-        dobValue instanceof Date ? dobValue : new Date(dobValue as string);
-      if (!isValidDateInput(parsedDate)) {
-        throw new Error('Date of birth must be a valid date.');
-      }
-      if (parsedDate > new Date()) {
-        throw new Error('Date of birth cannot be in the future.');
-      }
-      identificationUpdate.dateOfBirth = parsedDate;
+        const parsedDate =
+          dobValue instanceof Date ? dobValue : new Date(dobValue as string);
+        if (!isValidDateInput(parsedDate)) {
+          throw new Error('Date of birth must be a valid date.');
+        }
+        if (parsedDate > new Date()) {
+          throw new Error('Date of birth cannot be in the future.');
+        }
+        identificationUpdate.dateOfBirth = parsedDate;
       } else if (dobValue === '') {
         // If empty string is explicitly provided, remove the field from update
         // This preserves the existing value in the database
@@ -920,7 +928,10 @@ export async function updateUser(
 
   // Check email conflict if it's being changed
   // Also check for empty string emails which can cause duplicate key errors
-  if (newEmailAddress !== undefined && newEmailAddress !== currentEmailAddress) {
+  if (
+    newEmailAddress !== undefined &&
+    newEmailAddress !== currentEmailAddress
+  ) {
     // Don't allow empty string emails (they violate unique index)
     if (newEmailAddress === '' || newEmailAddress === null) {
       throw new Error('Email address cannot be empty');
@@ -970,11 +981,9 @@ export async function updateUser(
   // Update user - catch MongoDB duplicate key errors
   let updatedUser;
   try {
-    updatedUser = await UserModel.findOneAndUpdate(
-    { _id },
-    updateOperation,
-    { new: true }
-  );
+    updatedUser = await UserModel.findOneAndUpdate({ _id }, updateOperation, {
+      new: true,
+    });
   } catch (dbError: unknown) {
     // Handle MongoDB duplicate key errors (E11000)
     if (
@@ -983,12 +992,19 @@ export async function updateUser(
       'code' in dbError &&
       dbError.code === 11000
     ) {
-      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
-      
+      const errorMessage =
+        dbError instanceof Error ? dbError.message : String(dbError);
+
       // Parse the error message to determine which field caused the conflict
-      if (errorMessage.includes('emailAddress') || errorMessage.includes('emailAddress_1')) {
+      if (
+        errorMessage.includes('emailAddress') ||
+        errorMessage.includes('emailAddress_1')
+      ) {
         throw new Error('Email already exists');
-      } else if (errorMessage.includes('username') || errorMessage.includes('username_1')) {
+      } else if (
+        errorMessage.includes('username') ||
+        errorMessage.includes('username_1')
+      ) {
         throw new Error('Username already exists');
       } else {
         // Generic duplicate key error

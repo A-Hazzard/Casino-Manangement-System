@@ -259,7 +259,8 @@ export default function EditLocationModal({
   const loadLicensees = async () => {
     setLicenseesLoading(true);
     try {
-      const licenseesData = await fetchLicensees();
+      const result = await fetchLicensees();
+      const licenseesData = Array.isArray(result.licensees) ? result.licensees : [];
       setLicensees(licenseesData);
     } catch (error) {
       console.error('Failed to fetch licensees:', error);

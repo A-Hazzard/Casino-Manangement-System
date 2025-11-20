@@ -68,18 +68,16 @@ export default function Header({
   const isAdmin =
     normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
   const isManager = normalizedRoles.includes('manager');
-  const isLocationAdmin = normalizedRoles.includes('location admin');
   const hasMultipleLicensees =
     Array.isArray(userLicensees) && userLicensees.length > 1;
   const hasSingleLicensee =
     Array.isArray(userLicensees) && userLicensees.length === 1;
 
   // Determine if licensee select should be shown
-  // Show if: admin OR user has multiple licensees OR (manager with multiple licensees)
-  // Hide if: user has 0 or 1 licensee (and not admin/dev) OR location admin
+  // Show if: admin OR user has multiple licensees (including location admins with multiple licensees)
+  // Hide if: user has 0 or 1 licensee (and not admin/dev) OR location admin with single/no licensee
   const shouldShowLicenseeSelect =
-    (isAdmin || hasMultipleLicensees || (isManager && hasMultipleLicensees)) &&
-    !isLocationAdmin;
+    isAdmin || hasMultipleLicensees;
 
   // Determine if we should show licensee name next to "Evolution CMS"
   // Show if: user has exactly one licensee AND not admin/dev AND (not manager OR manager with single licensee)
@@ -101,8 +99,11 @@ export default function Header({
     let cancelled = false;
     const loadLicensees = async () => {
       try {
-        const licensees = await fetchLicensees();
+        const result = await fetchLicensees();
         if (cancelled) return;
+        
+        // Extract licensees array from the result
+        const licensees = Array.isArray(result.licensees) ? result.licensees : [];
 
         const map: Record<string, CurrencyCode> = {};
         licensees.forEach(licensee => {
@@ -349,22 +350,24 @@ export default function Header({
             </div>
 
             {/* Right side: Filters */}
-            {!hideLicenceeFilter && shouldShowLicenseeSelect && (
+            {(!hideLicenceeFilter && shouldShowLicenseeSelect) || shouldRenderCurrencyFilter ? (
               <div className="flex min-w-0 shrink items-center gap-1 sm:gap-2">
-                <div
-                  className="min-w-0 overflow-hidden md:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
-                  style={{
-                    width:
-                      'clamp(120px, calc((100vw - 240px) * 0.5 + 120px), 200px)',
-                  }}
-                >
-                  <LicenceeSelect
-                    selected={selectedLicencee || ''}
-                    onChange={handleLicenseeChange}
-                    userLicenseeIds={isAdmin ? undefined : userLicensees}
-                    disabled={disabled}
-                  />
-                </div>
+                {!hideLicenceeFilter && shouldShowLicenseeSelect && (
+                  <div
+                    className="min-w-0 overflow-hidden md:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
+                    style={{
+                      width:
+                        'clamp(120px, calc((100vw - 240px) * 0.5 + 120px), 200px)',
+                    }}
+                  >
+                    <LicenceeSelect
+                      selected={selectedLicencee || ''}
+                      onChange={handleLicenseeChange}
+                      userLicenseeIds={isAdmin ? undefined : userLicensees}
+                      disabled={disabled}
+                    />
+                  </div>
+                )}
                 {shouldRenderCurrencyFilter && (
                   <CurrencyFilter
                     className="hidden md:flex"
@@ -390,7 +393,7 @@ export default function Header({
                   />
                 )}
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Mobile Menu Overlay Section: Full-screen mobile navigation menu */}

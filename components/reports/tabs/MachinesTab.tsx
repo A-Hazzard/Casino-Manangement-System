@@ -66,6 +66,7 @@ import type {
 } from '@/shared/types/machines';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import { Trash2 } from 'lucide-react';
+import PaginationControls from '@/components/ui/PaginationControls';
 
 import StatusIcon from '@/components/ui/common/StatusIcon';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
@@ -114,9 +115,9 @@ export default function MachinesTab() {
   const { formatAmount, shouldShowCurrency, displayCurrency } =
     useCurrencyFormat();
   // Separate states for different purposes (streaming approach)
-  const [overviewMachines, setOverviewMachines] = useState<MachineData[]>([]); // Paginated for overview
+  const [allOverviewMachines, setAllOverviewMachines] = useState<MachineData[]>([]); // All loaded machines for overview
   const [allMachines, setAllMachines] = useState<MachineData[]>([]); // All machines for performance analysis
-  const [offlineMachines, setOfflineMachines] = useState<MachineData[]>([]); // Offline machines only
+  const [allOfflineMachines, setAllOfflineMachines] = useState<MachineData[]>([]); // All offline machines loaded
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null); // Counts for dashboard cards
 
   // Manufacturer performance data
@@ -162,15 +163,12 @@ export default function MachinesTab() {
   const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pagination for overview tab
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    totalCount: 0,
-    totalPages: 1,
-    hasNextPage: false,
-    hasPrevPage: false,
-  });
+  // Batch-based pagination for overview tab
+  const [overviewCurrentPage, setOverviewCurrentPage] = useState(0);
+  const [overviewLoadedBatches, setOverviewLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const overviewItemsPerPage = 10;
+  const overviewItemsPerBatch = 50;
+  const overviewPagesPerBatch = overviewItemsPerBatch / overviewItemsPerPage; // 5
 
   // Sorting state for machine overview table
   const [sortConfig, setSortConfig] = useState<{
@@ -181,15 +179,22 @@ export default function MachinesTab() {
     direction: 'desc',
   });
 
-  // Pagination for offline machines tab
-  const [offlinePagination, setOfflinePagination] = useState({
-    page: 1,
-    limit: 10,
-    totalCount: 0,
-    totalPages: 1,
-    hasNextPage: false,
-    hasPrevPage: false,
-  });
+  // Batch-based pagination for offline machines tab
+  const [offlineCurrentPage, setOfflineCurrentPage] = useState(0);
+  const [offlineLoadedBatches, setOfflineLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const offlineItemsPerPage = 10;
+  const offlineItemsPerBatch = 50;
+  const offlinePagesPerBatch = offlineItemsPerBatch / offlineItemsPerPage; // 5
+
+  // Calculate which batch we need based on current page for overview
+  const calculateOverviewBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / overviewPagesPerBatch) + 1;
+  }, [overviewPagesPerBatch]);
+
+  // Calculate which batch we need based on current page for offline
+  const calculateOfflineBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / offlinePagesPerBatch) + 1;
+  }, [offlinePagesPerBatch]);
 
   // Sorting function for machine overview table
   const handleSort = (key: keyof MachineData) => {
@@ -325,7 +330,7 @@ export default function MachinesTab() {
         const params: Record<string, string> = {
           type: 'overview',
           page: page.toString(),
-          limit: '10',
+          limit: overviewItemsPerBatch.toString(),
           timePeriod: activeMetricsFilter || 'Today',
         };
 
@@ -360,11 +365,17 @@ export default function MachinesTab() {
           '/api/reports/machines',
           { params }
         );
-        const { data: machinesData, pagination: paginationData } =
-          response.data;
+        const { data: machinesData } = response.data;
+        const newMachines = machinesData || [];
 
-        setOverviewMachines(machinesData);
-        setPagination(paginationData);
+        // Merge new machines into allOverviewMachines, avoiding duplicates
+        setAllOverviewMachines(prev => {
+          const existingIds = new Set(prev.map(m => m.machineId));
+          const uniqueNewMachines = newMachines.filter((m: MachineData) => 
+            !existingIds.has(m.machineId)
+          );
+          return [...prev, ...uniqueNewMachines];
+        });
       } catch (error) {
         console.error('Failed to fetch overview machines:', error);
         setError('Failed to load overview machines');
@@ -381,6 +392,7 @@ export default function MachinesTab() {
       overviewSelectedLocation,
       activeMetricsFilter,
       displayCurrency,
+      overviewItemsPerBatch,
     ]
   );
 
@@ -443,13 +455,15 @@ export default function MachinesTab() {
     displayCurrency,
   ]);
 
-  // Fetch offline machines (loads on tab switch)
-  const fetchOfflineMachines = useCallback(async () => {
+  // Fetch offline machines (batch-based, loads on tab switch)
+  const fetchOfflineMachines = useCallback(async (batch: number = 1) => {
     try {
       setOfflineLoading(true);
       const params: Record<string, string> = {
         type: 'offline',
         timePeriod: activeMetricsFilter || 'Today',
+        page: batch.toString(),
+        limit: offlineItemsPerBatch.toString(),
       };
 
       if (selectedLicencee && selectedLicencee !== 'all') {
@@ -479,8 +493,16 @@ export default function MachinesTab() {
         { params }
       );
       const { data: offlineMachinesData } = response.data;
+      const newOfflineMachines = offlineMachinesData || [];
 
-      setOfflineMachines(offlineMachinesData);
+      // Merge new offline machines into allOfflineMachines, avoiding duplicates
+      setAllOfflineMachines(prev => {
+        const existingIds = new Set(prev.map(m => m.machineId));
+        const uniqueNewMachines = newOfflineMachines.filter((m: MachineData) => 
+          !existingIds.has(m.machineId)
+        );
+        return [...prev, ...uniqueNewMachines];
+      });
     } catch (error) {
       console.error('Failed to fetch offline machines:', error);
       toast.error('Failed to load offline machines data');
@@ -493,12 +515,16 @@ export default function MachinesTab() {
     selectedDateRange?.end,
     offlineSelectedLocation,
     activeMetricsFilter,
+    offlineItemsPerBatch,
   ]);
 
   // Handle search with backend fallback for overview tab
   const handleSearchChange = useCallback(
     async (value: string) => {
       setSearchTerm(value);
+      setAllOverviewMachines([]);
+      setOverviewLoadedBatches(new Set([1]));
+      setOverviewCurrentPage(0);
 
       // If search term is cleared, reset to original data
       if (!value.trim()) {
@@ -519,26 +545,111 @@ export default function MachinesTab() {
     setOfflineSearchTerm(value);
   }, []);
 
-  // Handle pagination for overview tab
-  const handlePageChange = (newPage: number) => {
-    fetchOverviewMachines(newPage, searchTerm);
-  };
+  // Load initial batch for overview on mount and when filters change
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      setAllOverviewMachines([]);
+      setOverviewLoadedBatches(new Set([1]));
+      setOverviewCurrentPage(0);
+      fetchOverviewMachines(1, searchTerm);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    selectedLicencee,
+    selectedDateRange?.start,
+    selectedDateRange?.end,
+    onlineStatusFilter,
+    overviewSelectedLocation,
+    activeMetricsFilter,
+    displayCurrency,
+    searchTerm,
+  ]);
 
-  // Handle pagination for offline tab
-  const handleOfflinePageChange = (newPage: number) => {
-    setOfflinePagination(prev => ({
-      ...prev,
-      page: newPage,
-      hasNextPage: newPage < prev.totalPages,
-      hasPrevPage: newPage > 1,
-    }));
-  };
+  // Fetch next batch for overview when crossing batch boundaries
+  useEffect(() => {
+    if (activeTab !== 'overview' || overviewLoading) return;
+
+    const currentBatch = calculateOverviewBatchNumber(overviewCurrentPage);
+    const isLastPageOfBatch = (overviewCurrentPage + 1) % overviewPagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !overviewLoadedBatches.has(nextBatch)) {
+      setOverviewLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchOverviewMachines(nextBatch, searchTerm);
+    }
+
+    // Also ensure current batch is loaded
+    if (!overviewLoadedBatches.has(currentBatch)) {
+      setOverviewLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchOverviewMachines(currentBatch, searchTerm);
+    }
+  }, [
+    activeTab,
+    overviewCurrentPage,
+    overviewLoading,
+    fetchOverviewMachines,
+    overviewItemsPerBatch,
+    overviewPagesPerBatch,
+    overviewLoadedBatches,
+    calculateOverviewBatchNumber,
+    searchTerm,
+  ]);
+
+  // Load initial batch for offline on mount and when filters change
+  useEffect(() => {
+    if (activeTab === 'offline') {
+      setAllOfflineMachines([]);
+      setOfflineLoadedBatches(new Set([1]));
+      setOfflineCurrentPage(0);
+      fetchOfflineMachines(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    selectedLicencee,
+    selectedDateRange?.start,
+    selectedDateRange?.end,
+    offlineSelectedLocation,
+    activeMetricsFilter,
+  ]);
+
+  // Fetch next batch for offline when crossing batch boundaries
+  useEffect(() => {
+    if (activeTab !== 'offline' || offlineLoading) return;
+
+    const currentBatch = calculateOfflineBatchNumber(offlineCurrentPage);
+    const isLastPageOfBatch = (offlineCurrentPage + 1) % offlinePagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !offlineLoadedBatches.has(nextBatch)) {
+      setOfflineLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchOfflineMachines(nextBatch);
+    }
+
+    // Also ensure current batch is loaded
+    if (!offlineLoadedBatches.has(currentBatch)) {
+      setOfflineLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchOfflineMachines(currentBatch);
+    }
+  }, [
+    activeTab,
+    offlineCurrentPage,
+    offlineLoading,
+    fetchOfflineMachines,
+    offlineItemsPerBatch,
+    offlinePagesPerBatch,
+    offlineLoadedBatches,
+    calculateOfflineBatchNumber,
+  ]);
 
   const handleExportMeters = async () => {
     await handleExportMetersHelper(
       activeTab,
-      overviewMachines,
-      offlineMachines,
+      allOverviewMachines,
+      allOfflineMachines,
       activeMetricsFilter,
       customDateRange,
       exportData,
@@ -547,8 +658,24 @@ export default function MachinesTab() {
   };
 
   // Filter offline data based on search
+  // Get items for current page from overview machines
+  const paginatedOverviewMachines = useMemo(() => {
+    const positionInBatch = (overviewCurrentPage % overviewPagesPerBatch) * overviewItemsPerPage;
+    const startIndex = positionInBatch;
+    const endIndex = startIndex + overviewItemsPerPage;
+    return allOverviewMachines.slice(startIndex, endIndex);
+  }, [allOverviewMachines, overviewCurrentPage, overviewItemsPerPage, overviewPagesPerBatch]);
+
+  // Calculate total pages for overview based on all loaded batches
+  const overviewTotalPages = useMemo(() => {
+    const totalItems = allOverviewMachines.length;
+    const totalPagesFromItems = Math.ceil(totalItems / overviewItemsPerPage);
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [allOverviewMachines.length, overviewItemsPerPage]);
+
+  // Filter offline data based on search and location (filter first)
   const filteredOfflineData = useMemo(() => {
-    const filtered = offlineMachines.filter(machine => {
+    const filtered = allOfflineMachines.filter(machine => {
       const matchesSearch =
         (machine.machineName || '')
           .toLowerCase()
@@ -571,7 +698,23 @@ export default function MachinesTab() {
     });
 
     return filtered;
-  }, [offlineMachines, offlineSearchTerm, offlineSelectedLocation]);
+  }, [allOfflineMachines, offlineSearchTerm, offlineSelectedLocation]);
+
+  // Get items for current page from filtered offline machines (paginate after filtering)
+  const paginatedOfflineMachines = useMemo(() => {
+    const positionInBatch = (offlineCurrentPage % offlinePagesPerBatch) * offlineItemsPerPage;
+    const startIndex = positionInBatch;
+    const endIndex = startIndex + offlineItemsPerPage;
+    return filteredOfflineData.slice(startIndex, endIndex);
+  }, [filteredOfflineData, offlineCurrentPage, offlineItemsPerPage, offlinePagesPerBatch]);
+
+  // Calculate total pages for offline based on all loaded batches (not filtered)
+  // This ensures we only show pages for data we've actually loaded
+  const offlineTotalPages = useMemo(() => {
+    const totalItems = allOfflineMachines.length;
+    const totalPagesFromItems = Math.ceil(totalItems / offlineItemsPerPage);
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [allOfflineMachines.length, offlineItemsPerPage]);
 
   // Helper functions for performance analysis
   const getPerformanceRating = (holdDifference: number) => {
@@ -1152,6 +1295,9 @@ export default function MachinesTab() {
       } catch {}
 
       if (tab === 'overview') {
+        setAllOverviewMachines([]);
+        setOverviewLoadedBatches(new Set([1]));
+        setOverviewCurrentPage(0);
         setOverviewLoading(true);
         try {
           await fetchOverviewMachines(1, searchTerm);
@@ -1166,9 +1312,12 @@ export default function MachinesTab() {
           setEvaluationLoading(false);
         }
       } else if (tab === 'offline') {
+        setAllOfflineMachines([]);
+        setOfflineLoadedBatches(new Set([1]));
+        setOfflineCurrentPage(0);
         setOfflineLoading(true);
         try {
-          await fetchOfflineMachines();
+          await fetchOfflineMachines(1);
         } finally {
           setOfflineLoading(false);
         }
@@ -1194,9 +1343,9 @@ export default function MachinesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Offline machines with duration calculation and pagination
+  // Offline machines with duration calculation
   const offlineMachinesWithDuration = useMemo(() => {
-    const allOfflineMachines = filteredOfflineData
+    const machinesWithDuration = paginatedOfflineMachines
       .map(machine => {
         const now = new Date();
         const lastActivity = new Date(machine.lastActivity);
@@ -1214,28 +1363,12 @@ export default function MachinesTab() {
       })
       .sort((a, b) => a.offlineDurationHours - b.offlineDurationHours);
 
-    // Update pagination info
-    const totalCount = allOfflineMachines.length;
-    const totalPages = Math.ceil(totalCount / offlinePagination.limit);
-    const hasNextPage = offlinePagination.page < totalPages;
-    const hasPrevPage = offlinePagination.page > 1;
-    setOfflinePagination(prev => ({
-      ...prev,
-      totalCount,
-      totalPages,
-      hasNextPage,
-      hasPrevPage,
-    }));
-
-    // Return paginated data
-    const startIndex = (offlinePagination.page - 1) * offlinePagination.limit;
-    const endIndex = startIndex + offlinePagination.limit;
-    return allOfflineMachines.slice(startIndex, endIndex);
-  }, [filteredOfflineData, offlinePagination.page, offlinePagination.limit]);
+    return machinesWithDuration;
+  }, [paginatedOfflineMachines]);
 
   // Calculate derived fields for overview machines (backend handles filtering)
   const processedOverviewMachines = useMemo(() => {
-    return overviewMachines.map(machine => ({
+    return paginatedOverviewMachines.map(machine => ({
       ...machine,
       // Calculate derived fields on frontend for better performance
       actualHold:
@@ -1246,7 +1379,7 @@ export default function MachinesTab() {
       currentCredits: 0, // Default value since not provided by API
       gamesWon: 0, // Default value since not provided by API
     }));
-  }, [overviewMachines]);
+  }, [paginatedOverviewMachines]);
 
   if (error) {
     return (
@@ -1260,7 +1393,12 @@ export default function MachinesTab() {
           </h3>
           <p className="mb-4 text-gray-600">{error}</p>
           <Button
-            onClick={() => fetchOverviewMachines(1, searchTerm)}
+            onClick={() => {
+              setAllOverviewMachines([]);
+              setOverviewLoadedBatches(new Set([1]));
+              setOverviewCurrentPage(0);
+              fetchOverviewMachines(1, searchTerm);
+            }}
             className="bg-buttonActive hover:bg-buttonActive/90"
           >
             Try Again
@@ -1837,158 +1975,15 @@ export default function MachinesTab() {
                     )}
                   </div>
 
-                  {/* Pagination - Mobile Responsive */}
-                  {pagination.totalPages > 1 && (
-                    <>
-                      {/* Mobile Pagination */}
-                      <div className="mt-6 flex flex-col space-y-3 sm:hidden">
-                        <div className="text-center text-xs text-gray-600">
-                          Page {pagination.page} of {pagination.totalPages} (
-                          {pagination.totalCount} machines)
-                        </div>
-                        <div className="flex items-center justify-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange(1)}
-                            disabled={pagination.page === 1}
-                            className="px-2 py-1 text-xs"
-                          >
-                            ««
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handlePageChange(pagination.page - 1)
-                            }
-                            disabled={!pagination.hasPrevPage}
-                            className="px-2 py-1 text-xs"
-                          >
-                            ‹
-                          </Button>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-gray-600">Page</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={pagination.totalPages}
-                              value={pagination.page}
-                              onChange={e => {
-                                let val = Number(e.target.value);
-                                if (isNaN(val)) val = 1;
-                                if (val < 1) val = 1;
-                                if (val > pagination.totalPages)
-                                  val = pagination.totalPages;
-                                handlePageChange(val);
-                              }}
-                              className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                              aria-label="Page number"
-                            />
-                            <span className="text-xs text-gray-600">
-                              of {pagination.totalPages}
-                            </span>
+                  {/* Pagination Controls - Desktop and Mobile */}
+                  {!overviewLoading && overviewTotalPages > 1 && (
+                    <div className="mt-4">
+                      <PaginationControls
+                        currentPage={overviewCurrentPage}
+                        totalPages={overviewTotalPages}
+                        setCurrentPage={setOverviewCurrentPage}
+                      />
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handlePageChange(pagination.page + 1)
-                            }
-                            disabled={!pagination.hasNextPage}
-                            className="px-2 py-1 text-xs"
-                          >
-                            ›
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handlePageChange(pagination.totalPages)
-                            }
-                            disabled={pagination.page === pagination.totalPages}
-                            className="px-2 py-1 text-xs"
-                          >
-                            »»
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Desktop Pagination */}
-                      <div className="mt-6 hidden items-center justify-between sm:flex">
-                        <div className="text-sm text-muted-foreground">
-                          Showing {(pagination.page - 1) * pagination.limit + 1}{' '}
-                          to{' '}
-                          {Math.min(
-                            pagination.page * pagination.limit,
-                            pagination.totalCount
-                          )}{' '}
-                          of {pagination.totalCount} machines
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange(1)}
-                            disabled={pagination.page === 1}
-                          >
-                            First
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handlePageChange(pagination.page - 1)
-                            }
-                            disabled={!pagination.hasPrevPage}
-                          >
-                            Previous
-                          </Button>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">Page</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={pagination.totalPages}
-                              value={pagination.page}
-                              onChange={e => {
-                                let val = Number(e.target.value);
-                                if (isNaN(val)) val = 1;
-                                if (val < 1) val = 1;
-                                if (val > pagination.totalPages)
-                                  val = pagination.totalPages;
-                                handlePageChange(val);
-                              }}
-                              className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                              aria-label="Page number"
-                            />
-                            <span className="text-sm text-gray-600">
-                              of {pagination.totalPages}
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handlePageChange(pagination.page + 1)
-                            }
-                            disabled={!pagination.hasNextPage}
-                          >
-                            Next
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handlePageChange(pagination.totalPages)
-                            }
-                            disabled={pagination.page === pagination.totalPages}
-                          >
-                            Last
-                          </Button>
-                        </div>
-                      </div>
-                    </>
                   )}
                 </>
               )}
@@ -2512,7 +2507,7 @@ export default function MachinesTab() {
 
                   <div className="mb-4">
                     <Badge variant="destructive" className="mb-2">
-                      {offlineMachines.length} Machines Offline
+                      {filteredOfflineData.length} Machines Offline
                     </Badge>
                   </div>
 
@@ -2686,166 +2681,12 @@ export default function MachinesTab() {
               )}
 
               {/* Offline Machines Pagination */}
-              {offlinePagination.totalPages > 1 && (
-                <>
-                  {/* Mobile Pagination */}
-                  <div className="mt-6 flex flex-col space-y-3 sm:hidden">
-                    <div className="text-center text-xs text-gray-600">
-                      Page {offlinePagination.page} of{' '}
-                      {offlinePagination.totalPages} (
-                      {offlinePagination.totalCount} offline machines)
-                    </div>
-                    <div className="flex items-center justify-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOfflinePageChange(1)}
-                        disabled={offlinePagination.page === 1}
-                        className="px-2 py-1 text-xs"
-                      >
-                        ««
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOfflinePageChange(offlinePagination.page - 1)
-                        }
-                        disabled={!offlinePagination.hasPrevPage}
-                        className="px-2 py-1 text-xs"
-                      >
-                        ‹
-                      </Button>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-600">Page</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={offlinePagination.totalPages}
-                          value={offlinePagination.page}
-                          onChange={e => {
-                            let val = Number(e.target.value);
-                            if (isNaN(val)) val = 1;
-                            if (val < 1) val = 1;
-                            if (val > offlinePagination.totalPages)
-                              val = offlinePagination.totalPages;
-                            handleOfflinePageChange(val);
-                          }}
-                          className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                          aria-label="Page number"
-                        />
-                        <span className="text-xs text-gray-600">
-                          of {offlinePagination.totalPages}
-                        </span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOfflinePageChange(offlinePagination.page + 1)
-                        }
-                        disabled={!offlinePagination.hasNextPage}
-                        className="px-2 py-1 text-xs"
-                      >
-                        ›
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOfflinePageChange(offlinePagination.totalPages)
-                        }
-                        disabled={
-                          offlinePagination.page ===
-                          offlinePagination.totalPages
-                        }
-                        className="px-2 py-1 text-xs"
-                      >
-                        »»
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Desktop Pagination */}
-                  <div className="mt-6 hidden items-center justify-between sm:flex">
-                    <div className="text-sm text-muted-foreground">
-                      Showing{' '}
-                      {(offlinePagination.page - 1) * offlinePagination.limit +
-                        1}{' '}
-                      to{' '}
-                      {Math.min(
-                        offlinePagination.page * offlinePagination.limit,
-                        offlinePagination.totalCount
-                      )}{' '}
-                      of {offlinePagination.totalCount} offline machines
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOfflinePageChange(1)}
-                        disabled={offlinePagination.page === 1}
-                      >
-                        First
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOfflinePageChange(offlinePagination.page - 1)
-                        }
-                        disabled={!offlinePagination.hasPrevPage}
-                      >
-                        Previous
-                      </Button>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Page</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={offlinePagination.totalPages}
-                          value={offlinePagination.page}
-                          onChange={e => {
-                            let val = Number(e.target.value);
-                            if (isNaN(val)) val = 1;
-                            if (val < 1) val = 1;
-                            if (val > offlinePagination.totalPages)
-                              val = offlinePagination.totalPages;
-                            handleOfflinePageChange(val);
-                          }}
-                          className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                          aria-label="Page number"
-                        />
-                        <span className="text-sm text-gray-600">
-                          of {offlinePagination.totalPages}
-                        </span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOfflinePageChange(offlinePagination.page + 1)
-                        }
-                        disabled={!offlinePagination.hasNextPage}
-                      >
-                        Next
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOfflinePageChange(offlinePagination.totalPages)
-                        }
-                        disabled={
-                          offlinePagination.page ===
-                          offlinePagination.totalPages
-                        }
-                      >
-                        Last
-                      </Button>
-                    </div>
-                  </div>
-                </>
+              {!offlineLoading && offlineTotalPages > 1 && (
+                <PaginationControls
+                  currentPage={offlineCurrentPage}
+                  totalPages={offlineTotalPages}
+                  setCurrentPage={setOfflineCurrentPage}
+                />
               )}
             </CardContent>
           </Card>

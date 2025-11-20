@@ -4,7 +4,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageLayout from '@/components/layout/PageLayout';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import Image from 'next/image';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 // Modal components
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
@@ -110,6 +110,9 @@ function CabinetsPageContent() {
   const showLocationFilter =
     new Set(locations.map(location => String(location._id ?? ''))).size > 1;
 
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+
   const {
     sortOrder,
     sortOption,
@@ -121,8 +124,65 @@ function CabinetsPageContent() {
     transformCabinet,
   } = useCabinetSorting({
     filteredCabinets,
-    itemsPerPage: 10,
+    itemsPerPage,
   });
+
+  // Calculate which batch of 50 items we need (each batch covers 5 pages of 10 items)
+  // Page 0-4 = batch 1, Page 5-9 = batch 2, etc.
+  const calculateBatchNumber = (page: number) => {
+    return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
+  };
+
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
+
+  // Track loaded batches to avoid refetching
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+
+  // Load initial batch on mount and when filters change
+  useEffect(() => {
+    setLoadedBatches(new Set([1]));
+    loadCabinets(1, itemsPerBatch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    displayCurrency,
+    selectedLocation,
+    selectedGameType,
+    selectedStatus,
+    searchTerm,
+  ]);
+
+  // Fetch next batch when crossing batch boundaries
+  useEffect(() => {
+    if (loading) return;
+
+    const currentBatch = calculateBatchNumber(currentPage);
+
+    // Check if we're on the last page of the current batch
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      loadCabinets(nextBatch, itemsPerBatch);
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      loadCabinets(currentBatch, itemsPerBatch);
+    }
+  }, [
+    currentPage,
+    loading,
+    loadCabinets,
+    itemsPerBatch,
+    pagesPerBatch,
+    loadedBatches,
+  ]);
 
   const { activeSection, handleSectionChange } = useCabinetNavigation();
 

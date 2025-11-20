@@ -130,12 +130,12 @@ export const fetchLocationData = async (
 
     // Fetch cabinets data
     try {
-      const cabinetsData = await fetchCabinetsForLocation(
+      const result = await fetchCabinetsForLocation(
         locationId,
         selectedLicencee,
         activeMetricsFilter
       );
-      setAllCabinets(cabinetsData);
+      setAllCabinets(result.data);
     } catch {
       setAllCabinets([]);
       errors.push('Failed to load cabinets.');
@@ -174,12 +174,12 @@ export const refreshLocationData = async (
 
     // Fetch cabinets data
     try {
-      const cabinetsData = await fetchCabinetsForLocation(
+      const result = await fetchCabinetsForLocation(
         locationId,
         selectedLicencee,
         activeMetricsFilter
       );
-      setAllCabinets(cabinetsData);
+      setAllCabinets(result.data);
     } catch {
       setAllCabinets([]);
       errors.push('Failed to refresh cabinets.');

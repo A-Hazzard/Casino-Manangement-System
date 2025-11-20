@@ -68,6 +68,8 @@ export default function AddUserModal({
   const isAdmin = currentUserRoles.includes('admin') && !isDeveloper;
   const isManager =
     currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+  const isLocationAdmin =
+    currentUserRoles.includes('location admin') && !isAdmin && !isDeveloper && !isManager;
 
   // Filter available roles based on creator's permissions
   const availableRoles = useMemo(() => {
@@ -82,16 +84,29 @@ export default function AddUserModal({
       return ALL_ROLE_OPTIONS.filter(role =>
         ['location admin', 'technician', 'collector'].includes(role.value)
       );
+    } else if (isLocationAdmin) {
+      // Location admin can only create: technician, collector
+      return ALL_ROLE_OPTIONS.filter(role =>
+        ['technician', 'collector'].includes(role.value)
+      );
     }
     // No roles available for other users
     return [];
-  }, [isDeveloper, isAdmin, isManager]);
+  }, [isDeveloper, isAdmin, isManager, isLocationAdmin]);
   const currentUserLicenseeIds = useMemo(
     () =>
       ((currentUser?.rel as { licencee?: string[] })?.licencee || []).map(id =>
         String(id)
       ),
     [currentUser?.rel]
+  );
+  
+  // Get location admin's assigned locations
+  const currentUserLocationPermissions = useMemo(
+    () =>
+      ((currentUser?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [])
+      .map(id => String(id)),
+    [currentUser?.resourcePermissions]
   );
 
   const [isCropOpen, setIsCropOpen] = useState(false);
@@ -126,14 +141,14 @@ export default function AddUserModal({
     },
   });
 
-  // Initialize selected licensee IDs based on manager's licensees - only when modal opens
+  // Initialize selected licensee IDs based on manager's or location admin's licensees - only when modal opens
   useEffect(() => {
     if (!open) return;
-    if (isManager && currentUserLicenseeIds.length > 0) {
+    if ((isManager || isLocationAdmin) && currentUserLicenseeIds.length > 0) {
       setFormState({ ...formState, licenseeIds: currentUserLicenseeIds });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]); // Only depend on 'open' - initialize once when modal opens
+  }, [open, isManager, isLocationAdmin, currentUserLicenseeIds]); // Only depend on 'open' - initialize once when modal opens
 
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
@@ -185,13 +200,28 @@ export default function AddUserModal({
     const loadLicensees = async () => {
       setIsLoadingAssignments(true);
       try {
-        let lics = await fetchLicensees();
+        const result = await fetchLicensees();
         if (cancelled) return;
+        
+        // Extract licensees array from the result
+        let lics = Array.isArray(result.licensees) ? result.licensees : [];
 
         if (isManager && currentUserLicenseeIds.length > 0) {
           lics = lics.filter(lic =>
             currentUserLicenseeIds.includes(String(lic._id))
           );
+        }
+
+        // For location admins, filter to only show their licensee and auto-set it
+        if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
+          lics = lics.filter(lic =>
+            currentUserLicenseeIds.includes(String(lic._id))
+          );
+          // Auto-set the licensee for location admins
+          if (lics.length > 0 && !cancelled) {
+            setFormState({ ...formState, licenseeIds: [String(lics[0]._id)] });
+            setAllLicenseesSelected(false);
+          }
         }
 
         setLicensees(lics);
@@ -257,7 +287,7 @@ export default function AddUserModal({
         }
 
         // Map to LocationSelectItem format
-        const formattedLocations: LocationSelectItem[] = locationsArray.map(
+        let formattedLocations: LocationSelectItem[] = locationsArray.map(
           (loc: {
             _id?: unknown;
             id?: unknown;
@@ -270,6 +300,13 @@ export default function AddUserModal({
           })
         );
 
+        // Filter locations for location admins - only show their assigned locations
+        if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
+          formattedLocations = formattedLocations.filter(loc =>
+            currentUserLocationPermissions.includes(loc._id)
+          );
+        }
+
         setLocations(formattedLocations);
       } catch (error) {
         console.error('Error loading locations:', error);
@@ -281,7 +318,7 @@ export default function AddUserModal({
     return () => {
       cancelled = true;
     };
-  }, [open, formState.licenseeIds]);
+  }, [open, formState.licenseeIds, isLocationAdmin, currentUserLocationPermissions]);
 
   // Debounced validation - only validate fields that have been touched or on submit
   useEffect(() => {
@@ -638,12 +675,18 @@ export default function AddUserModal({
       },
     };
 
+    // For location admins, ensure licensee is set to their licensee
+    const finalLicenseeIds = isLocationAdmin && currentUserLicenseeIds.length > 0
+      ? currentUserLicenseeIds
+      : (formState.licenseeIds || []);
+
     // Update form state with resourcePermissions and ensure licenseeIds is set
     setFormState({
       ...formState,
       resourcePermissions,
       // Ensure licenseeIds is set (required for all users)
-      licenseeIds: formState.licenseeIds || [],
+      // For location admins, use their licensee
+      licenseeIds: finalLicenseeIds,
     });
 
     // Wait for state update to complete
@@ -667,6 +710,9 @@ export default function AddUserModal({
     isManager && currentUserLicenseeIds.length === 1;
   const managerHasMultipleLicensees =
     isManager && currentUserLicenseeIds.length > 1;
+  const locationAdminHasSingleLicensee =
+    isLocationAdmin && currentUserLicenseeIds.length === 1;
+  const canEditLicensees = isDeveloper || isAdmin; // Only admins/developers can edit licensee assignments
 
   return (
     <>
@@ -1268,8 +1314,8 @@ export default function AddUserModal({
                       Assigned Licensees <span className="text-red-500">*</span>
                     </h4>
 
-                    {/* For managers with single licensee, show as read-only */}
-                    {managerHasSingleLicensee ? (
+                    {/* For managers and location admins, show as read-only */}
+                    {managerHasSingleLicensee || locationAdminHasSingleLicensee ? (
                       <div className="text-center">
                         <div className="text-gray-700">
                           {licensees.find(
@@ -1277,11 +1323,12 @@ export default function AddUserModal({
                           )?.name || 'No licensee assigned'}
                         </div>
                         <p className="mt-2 text-xs italic text-gray-500">
-                          Licensee is automatically assigned based on your
-                          access
+                          {isLocationAdmin
+                            ? 'Licensee is automatically set to your assigned licensee'
+                            : 'Licensee is automatically assigned based on your access'}
                         </p>
                       </div>
-                    ) : managerHasMultipleLicensees ? (
+                    ) : (managerHasMultipleLicensees || (isLocationAdmin && !canEditLicensees)) ? (
                       <div className="space-y-3">
                         <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                           <Checkbox
@@ -1303,7 +1350,7 @@ export default function AddUserModal({
                             searchPlaceholder="Search licensees..."
                             label="licensees"
                             showSelectAll={true}
-                            disabled={isLoadingAssignments}
+                            disabled={isLoadingAssignments || (isLocationAdmin && !canEditLicensees)}
                           />
                         )}
 
@@ -1335,7 +1382,7 @@ export default function AddUserModal({
                             searchPlaceholder="Search licensees..."
                             label="licensees"
                             showSelectAll={true}
-                            disabled={isLoadingAssignments}
+                            disabled={isLoadingAssignments || (isLocationAdmin && !canEditLicensees)}
                           />
                         )}
 

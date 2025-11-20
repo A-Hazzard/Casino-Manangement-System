@@ -335,13 +335,15 @@ export default function LocationDetailsPage() {
             (cabinetRecord.Custom as Record<string, unknown>)?.name
           )?.toString().toLowerCase() || '';
           
+          const cabinetId = String(cabinet._id || '').toLowerCase();
           return (
             cabinet.assetNumber?.toLowerCase().includes(searchLower) ||
             cabinet.smbId?.toLowerCase().includes(searchLower) ||
             cabinet.serialNumber?.toLowerCase().includes(searchLower) ||
             cabinet.game?.toLowerCase().includes(searchLower) ||
             cabinet.locationName?.toLowerCase().includes(searchLower) ||
-            customName.includes(searchLower)
+            customName.includes(searchLower) ||
+            cabinetId.includes(searchLower)
           );
         }
       );

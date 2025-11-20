@@ -447,8 +447,10 @@ export async function fetchAggregatedLocationsData(
   licensee?: string,
   filterString?: string,
   dateRange?: { from: Date; to: Date },
-  displayCurrency?: string
-): Promise<AggregatedLocation[]> {
+  displayCurrency?: string,
+  page?: number,
+  limit?: number
+): Promise<{ data: AggregatedLocation[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }> {
   try {
     // Construct the URL with appropriate parameters
     let url = `/api/reports/locations`;
@@ -463,8 +465,13 @@ export async function fetchAggregatedLocationsData(
     if (displayCurrency)
       queryParams.push(`currency=${encodeURIComponent(displayCurrency)}`);
     
-    // CRITICAL: Request ALL locations for client-side pagination (matches locations page requirement)
-    queryParams.push('showAllLocations=true');
+    // Add pagination parameters (default: page=1, limit=50)
+    if (page !== undefined) {
+      queryParams.push(`page=${page}`);
+    }
+    if (limit !== undefined) {
+      queryParams.push(`limit=${limit}`);
+    }
 
     // Handle custom date range
     if (timePeriod === 'Custom' && dateRange?.from && dateRange?.to) {
@@ -486,7 +493,7 @@ export async function fetchAggregatedLocationsData(
 
     if (response.status !== 200) {
       console.error(` API error (${response.status}):`, response.data);
-      return [];
+      return { data: [] };
     }
 
     // Handle paginated response structure
@@ -497,18 +504,21 @@ export async function fetchAggregatedLocationsData(
       'data' in responseData
     ) {
       // Paginated response: { data: [...], pagination: {...} }
-      return responseData.data || [];
+      return {
+        data: responseData.data || [],
+        pagination: responseData.pagination,
+      };
     } else if (Array.isArray(responseData)) {
-      // Direct array response
-      return responseData;
+      // Direct array response (backward compatibility)
+      return { data: responseData };
     } else {
       // Fallback for unexpected structure
       console.warn('Unexpected API response structure:', responseData);
-      return [];
+      return { data: [] };
     }
   } catch (error) {
     console.error('Error fetching locations data:', error);
-    return [];
+    return { data: [] };
   }
 }
 

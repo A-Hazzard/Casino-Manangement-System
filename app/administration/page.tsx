@@ -57,6 +57,7 @@ import { toast } from 'sonner';
 
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
+import { hasTabAccess } from '@/lib/utils/permissions';
 import axios from 'axios';
 
 function AdministrationPageContent() {
@@ -145,13 +146,29 @@ function AdministrationPageContent() {
   }, [selectedLicencee, setSelectedLicencee]);
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  // Store all loaded users for frontend search
+  const [allLoadedUsers, setAllLoadedUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
+  // Separate loading state for backend search (doesn't show full skeleton)
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Batch-based pagination state
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [currentPage, setCurrentPage] = useState(0); // 0-indexed
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
   const [searchValue, setSearchValue] = useState('');
-  const [searchMode, setSearchMode] = useState<'username' | 'email'>(
-    'username'
-  );
+  // Debounced search value for backend search
+  const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
+  // Track if we're using backend search results
+  const [usingBackendSearch, setUsingBackendSearch] = useState(false);
+  // Store pagination metadata from API (used for search results)
+  const [paginationMetadata, setPaginationMetadata] = useState<{
+    total: number;
+    totalPages: number;
+  } | null>(null);
 
   // URL protection for administration tabs - temporarily disabled for debugging
   // useUrlProtection({
@@ -160,7 +177,6 @@ function AdministrationPageContent() {
   //   defaultTab: 'users',
   //   redirectPath: '/unauthorized',
   // });
-  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey;
     direction: 'ascending' | 'descending';
@@ -179,6 +195,23 @@ function AdministrationPageContent() {
   });
   const [allLicensees, setAllLicensees] = useState<Licensee[]>([]);
   const [isLicenseesLoading, setIsLicenseesLoading] = useState(true);
+
+  // Batch-based pagination state for licensees
+  const [licenseesLoadedBatches, setLicenseesLoadedBatches] = useState<
+    Set<number>
+  >(new Set([1]));
+  const [licenseesCurrentPage, setLicenseesCurrentPage] = useState(0); // 0-indexed
+  const licenseesItemsPerPage = 10;
+  const licenseesItemsPerBatch = 50;
+  const licenseesPagesPerBatch = licenseesItemsPerBatch / licenseesItemsPerPage; // 5
+
+  // Calculate which batch corresponds to the current page for licensees
+  const calculateLicenseesBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / licenseesPagesPerBatch) + 1;
+    },
+    [licenseesPagesPerBatch]
+  );
   const [isAddLicenseeModalOpen, setIsAddLicenseeModalOpen] = useState(false);
   const [isEditLicenseeModalOpen, setIsEditLicenseeModalOpen] = useState(false);
   const [isDeleteLicenseeModalOpen, setIsDeleteLicenseeModalOpen] =
@@ -223,8 +256,6 @@ function AdministrationPageContent() {
     [countryNameById]
   );
 
-  const itemsPerPage = 5;
-
   // Track which sections have been loaded
   const [loadedSections, setLoadedSections] = useState<
     Set<AdministrationSection>
@@ -233,9 +264,19 @@ function AdministrationPageContent() {
   // Track tab transition loading state
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
 
+  // Calculate which batch corresponds to the current page
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
+
   useEffect(() => {
     if (!mounted) return;
 
+    setAllUsers([]);
+    setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     setLoadedSections(prev => {
       if (!prev.has('users')) {
@@ -248,14 +289,153 @@ function AdministrationPageContent() {
     });
   }, [selectedLicencee, mounted]);
 
-  // Load users only when users tab is active and not already loaded
+  // Debounce search value
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchValue(searchValue);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchValue]);
+
+  // Reset backend search state when search is cleared
+  useEffect(() => {
+    if (!debouncedSearchValue || !debouncedSearchValue.trim()) {
+      setUsingBackendSearch(false);
+      setPaginationMetadata(null);
+      setIsSearching(false);
+      // Restore frontend data when search is cleared
+      setAllUsers(allLoadedUsers);
+      setCurrentPage(0);
+    }
+  }, [debouncedSearchValue, allLoadedUsers]);
+
+  // Frontend search - search through loaded users first
+  useEffect(() => {
+    if (activeSection !== 'users') return;
+    if (!debouncedSearchValue || !debouncedSearchValue.trim()) {
+      setUsingBackendSearch(false);
+      return;
+    }
+
+    // Try frontend search first
+    const lowerSearchValue = debouncedSearchValue.toLowerCase().trim();
+    const frontendResults = allLoadedUsers.filter(user => {
+      // Search by username, email, and _id simultaneously
+      const username = (user.username || '').toLowerCase();
+      const email = (user.email || user.emailAddress || '').toLowerCase();
+      const userId = String(user._id || '').toLowerCase();
+
+      return (
+        username.includes(lowerSearchValue) ||
+        email.includes(lowerSearchValue) ||
+        userId.includes(lowerSearchValue)
+      );
+    });
+
+    if (frontendResults.length > 0) {
+      // Found results in frontend, use them
+      setAllUsers(frontendResults);
+      setUsingBackendSearch(false);
+      setPaginationMetadata(null);
+      setCurrentPage(0);
+    } else {
+      // No results in frontend, do backend search
+      setUsingBackendSearch(true);
+      setIsSearching(true);
+      const loadBackendSearch = async () => {
+        try {
+          const result = await fetchUsers(
+            selectedLicencee,
+            1,
+            itemsPerBatch,
+            debouncedSearchValue,
+            'all' // Search all fields
+          );
+          setAllUsers(result.users || []);
+          setPaginationMetadata({
+            total: result.pagination.total,
+            totalPages: result.pagination.totalPages,
+          });
+          setCurrentPage(0);
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to fetch search results:', error);
+          }
+          setAllUsers([]);
+        } finally {
+          setIsSearching(false);
+        }
+      };
+      loadBackendSearch();
+    }
+  }, [
+    debouncedSearchValue,
+    allLoadedUsers,
+    activeSection,
+    selectedLicencee,
+    itemsPerBatch,
+  ]);
+
+  // Handle pagination for backend search results
+  useEffect(() => {
+    if (isLoading || activeSection !== 'users') return;
+    if (
+      !usingBackendSearch ||
+      !debouncedSearchValue ||
+      !debouncedSearchValue.trim()
+    )
+      return;
+
+    // When using backend search, fetch the current page from backend
+    const currentPage1Indexed = currentPage + 1;
+    const loadSearchPage = async () => {
+      setIsSearching(true);
+      try {
+        const result = await fetchUsers(
+          selectedLicencee,
+          currentPage1Indexed,
+          itemsPerBatch,
+          debouncedSearchValue,
+          'all' // Search all fields
+        );
+        setAllUsers(result.users || []);
+        setPaginationMetadata({
+          total: result.pagination.total,
+          totalPages: result.pagination.totalPages,
+        });
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to fetch search results:', error);
+        }
+        setAllUsers([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    loadSearchPage();
+  }, [
+    currentPage,
+    usingBackendSearch,
+    debouncedSearchValue,
+    selectedLicencee,
+    itemsPerBatch,
+    isLoading,
+    activeSection,
+  ]);
+
+  // Load users only when users tab is active and not already loaded (initial batch)
   useEffect(() => {
     if (activeSection === 'users' && !loadedSections.has('users')) {
       const loadUsers = async () => {
         setIsLoading(true);
         try {
-          const usersData = await fetchUsers(selectedLicencee);
-          setAllUsers(usersData || []);
+          // Use backend search if searchValue is provided
+          const result = await fetchUsers(selectedLicencee, 1, itemsPerBatch);
+          setAllUsers(result.users || []);
+          setAllLoadedUsers(result.users || []);
+          setLoadedBatches(new Set([1]));
           setLoadedSections(prev => new Set(prev).add('users'));
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
@@ -268,16 +448,96 @@ function AdministrationPageContent() {
       };
       loadUsers();
     }
-  }, [activeSection, selectedLicencee, loadedSections]);
+  }, [activeSection, selectedLicencee, loadedSections, itemsPerBatch]);
 
-  // Load licensees only when licensees tab is active and not already loaded
+  // Fetch next batch when crossing batch boundaries
+  useEffect(() => {
+    if (isLoading || activeSection !== 'users') return;
+
+    // If searching, don't use batch loading - search results are already filtered on backend
+    if (debouncedSearchValue && debouncedSearchValue.trim()) {
+      return;
+    }
+
+    const currentBatch = calculateBatchNumber(currentPage);
+
+    // Check if we're on the last page of the current batch (page 4, 0-indexed = page 5, 1-indexed)
+    // We should fetch the next batch proactively so it's ready when user navigates
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    // This ensures the next batch is ready when user navigates to page 6
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchUsers(selectedLicencee, nextBatch, itemsPerBatch)
+        .then(result => {
+          setAllUsers(prev => {
+            // Merge new data, avoiding duplicates
+            const existingIds = new Set(prev.map(item => item._id));
+            const newItems = result.users.filter(
+              item => !existingIds.has(item._id)
+            );
+            const updated = [...prev, ...newItems];
+            setAllLoadedUsers(updated);
+            return updated;
+          });
+        })
+        .catch(error => {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to fetch next batch:', error);
+          }
+        });
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchUsers(selectedLicencee, currentBatch, itemsPerBatch)
+        .then(result => {
+          setAllUsers(prev => {
+            const existingIds = new Set(prev.map(item => item._id));
+            const newItems = result.users.filter(
+              item => !existingIds.has(item._id)
+            );
+            const updated = [...prev, ...newItems];
+            setAllLoadedUsers(updated);
+            return updated;
+          });
+        })
+        .catch(error => {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to fetch current batch:', error);
+          }
+        });
+    }
+  }, [
+    currentPage,
+    isLoading,
+    activeSection,
+    loadedBatches,
+    selectedLicencee,
+    itemsPerBatch,
+    pagesPerBatch,
+    calculateBatchNumber,
+    searchValue,
+    debouncedSearchValue,
+  ]);
+
+  // Load licensees only when licensees tab is active and not already loaded (initial batch)
   useEffect(() => {
     if (activeSection === 'licensees' && !loadedSections.has('licensees')) {
       const loadLicensees = async () => {
         setIsLicenseesLoading(true);
         try {
-          const licenseesData = await fetchLicensees();
-          setAllLicensees(licenseesData);
+          const result = await fetchLicensees(1, licenseesItemsPerBatch);
+          // Ensure we always set an array
+          const licenseesArray = Array.isArray(result.licensees)
+            ? result.licensees
+            : [];
+          setAllLicensees(licenseesArray);
+          setLicenseesLoadedBatches(new Set([1]));
+          setLicenseesCurrentPage(0);
           setLoadedSections(prev => new Set(prev).add('licensees'));
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
@@ -290,7 +550,80 @@ function AdministrationPageContent() {
       };
       loadLicensees();
     }
-  }, [activeSection, selectedLicencee, loadedSections]);
+  }, [activeSection, selectedLicencee, loadedSections, licenseesItemsPerBatch]);
+
+  // Fetch next batch for licensees when crossing batch boundaries
+  useEffect(() => {
+    if (isLicenseesLoading || activeSection !== 'licensees') return;
+
+    const currentBatch = calculateLicenseesBatchNumber(licenseesCurrentPage);
+
+    // Check if we're on the last page of the current batch
+    const isLastPageOfBatch =
+      (licenseesCurrentPage + 1) % licenseesPagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !licenseesLoadedBatches.has(nextBatch)) {
+      setLicenseesLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchLicensees(nextBatch, licenseesItemsPerBatch)
+        .then(result => {
+          setAllLicensees(prev => {
+            // Ensure prev is an array
+            const prevArray = Array.isArray(prev) ? prev : [];
+            // Ensure result.licensees is an array
+            const newLicensees = Array.isArray(result.licensees)
+              ? result.licensees
+              : [];
+            // Merge new data, avoiding duplicates
+            const existingIds = new Set(prevArray.map(item => item._id));
+            const newItems = newLicensees.filter(
+              item => !existingIds.has(item._id)
+            );
+            return [...prevArray, ...newItems];
+          });
+        })
+        .catch(error => {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to fetch next licensees batch:', error);
+          }
+        });
+    }
+
+    // Also ensure current batch is loaded
+    if (!licenseesLoadedBatches.has(currentBatch)) {
+      setLicenseesLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchLicensees(currentBatch, licenseesItemsPerBatch)
+        .then(result => {
+          setAllLicensees(prev => {
+            // Ensure prev is an array
+            const prevArray = Array.isArray(prev) ? prev : [];
+            // Ensure result.licensees is an array
+            const newLicensees = Array.isArray(result.licensees)
+              ? result.licensees
+              : [];
+            const existingIds = new Set(prevArray.map(item => item._id));
+            const newItems = newLicensees.filter(
+              item => !existingIds.has(item._id)
+            );
+            return [...prevArray, ...newItems];
+          });
+        })
+        .catch(error => {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to fetch current licensees batch:', error);
+          }
+        });
+    }
+  }, [
+    licenseesCurrentPage,
+    isLicenseesLoading,
+    activeSection,
+    licenseesLoadedBatches,
+    licenseesItemsPerBatch,
+    licenseesPagesPerBatch,
+    calculateLicenseesBatchNumber,
+  ]);
 
   // Check if current user is a developer
   const isDeveloper = useMemo(() => {
@@ -300,28 +633,56 @@ function AdministrationPageContent() {
     );
   }, [user?.roles]);
 
+  // Get items for current page from the current batch
+  const paginatedUsers = useMemo(() => {
+    // Calculate position within current batch (0-4 for pages 0-4, 0-4 for pages 5-9, etc.)
+    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
+    const startIndex = positionInBatch;
+    const endIndex = startIndex + itemsPerPage;
+
+    return allUsers.slice(startIndex, endIndex);
+  }, [allUsers, currentPage, itemsPerPage, pagesPerBatch]);
+
+  // Calculate total pages based on all loaded batches or search results
+  const totalPages = useMemo(() => {
+    // When using backend search, use pagination metadata from API
+    if (usingBackendSearch && paginationMetadata) {
+      return paginationMetadata.totalPages > 0
+        ? paginationMetadata.totalPages
+        : 1;
+    }
+
+    // Otherwise, calculate total pages from all loaded batches
+    const totalItems = allUsers.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+
+    // If we have items, return the calculated pages (based on all loaded data)
+    // This will dynamically increase as more batches are loaded
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [allUsers.length, itemsPerPage, usingBackendSearch, paginationMetadata]);
+
   const processedUsers = useMemo(() => {
+    // When using backend search, backend already filters, so we only need to sort and filter test users
+    // Pass empty searchValue to skip client-side search filtering
+    const effectiveSearchValue = usingBackendSearch ? '' : searchValue;
     return administrationUtils.processUsers(
-      allUsers,
-      searchValue,
-      searchMode,
+      paginatedUsers,
+      effectiveSearchValue,
+      'username', // Not used when effectiveSearchValue is empty
       sortConfig,
       isDeveloper
     );
-  }, [allUsers, searchValue, searchMode, sortConfig, isDeveloper]);
-
-  const { paginatedItems: paginatedUsers, totalPages } = useMemo(() => {
-    return administrationUtils.paginate(
-      processedUsers,
-      currentPage,
-      itemsPerPage
-    );
-  }, [processedUsers, currentPage, itemsPerPage]);
+  }, [
+    paginatedUsers,
+    searchValue,
+    usingBackendSearch,
+    sortConfig,
+    isDeveloper,
+  ]);
 
   const requestSort = administrationUtils.createSortHandler(
     sortConfig,
-    setSortConfig,
-    setCurrentPage
+    setSortConfig
   );
 
   const handleEditUser = async (user: User) => {
@@ -473,43 +834,33 @@ function AdministrationPageContent() {
     // Build update payload with only changed fields + required _id
     const updatePayload: Record<string, unknown> = { _id: selectedUser._id };
 
-    const setNestedValue = (
-      target: Record<string, unknown>,
-      path: string,
-      value: unknown
-    ) => {
-      if (value === undefined) {
-        return;
-      }
-
-      const segments = path.split('.');
-      let cursor: Record<string, unknown> = target;
-
-      segments.forEach((segment, index) => {
-        const isLeaf = index === segments.length - 1;
-
-        if (isLeaf) {
-          cursor[segment] = value;
-          return;
-        }
-
-        const existing = cursor[segment];
-        if (
-          !existing ||
-          typeof existing !== 'object' ||
-          existing === null ||
-          Array.isArray(existing)
-        ) {
-          cursor[segment] = {};
-        }
-
-        cursor = cursor[segment] as Record<string, unknown>;
-      });
-    };
-
+    // For MongoDB, we can use dot notation directly for nested fields
+    // This allows MongoDB to update only the specific nested field without replacing the entire parent object
     meaningfulChanges.forEach(change => {
-      setNestedValue(updatePayload, change.path, change.newValue);
+      if (change.newValue !== undefined) {
+        // Use dot notation for nested paths (MongoDB supports this in $set)
+        // For paths with hyphens like "resourcePermissions.gaming-locations.resources",
+        // MongoDB dot notation works correctly
+        updatePayload[change.path] = change.newValue;
+      }
     });
+
+    // Debug logging for location permission updates
+    if (permissionFieldsChanged) {
+      const locationChanges = meaningfulChanges.filter(c =>
+        c.path.startsWith('resourcePermissions.gaming-locations.resources')
+      );
+      if (locationChanges.length > 0) {
+        console.log('[Administration] Location permission update:', {
+          path: locationChanges[0].path,
+          oldValue: locationChanges[0].oldValue,
+          newValue: locationChanges[0].newValue,
+          updatePayloadKey: Object.keys(updatePayload).find(k =>
+            k.includes('resourcePermissions')
+          ),
+        });
+      }
+    }
 
     // If permission-related fields changed, increment sessionVersion to invalidate existing JWT
     if (permissionFieldsChanged) {
@@ -560,14 +911,34 @@ function AdministrationPageContent() {
       // Only close modal and refresh data on success
       setIsUserModalOpen(false);
       setSelectedUser(null);
+
+      // If location permissions were updated, warn user about JWT refresh
+      if (permissionFieldsChanged) {
+        const locationChanges = meaningfulChanges.filter(c =>
+          c.path.startsWith('resourcePermissions.gaming-locations.resources')
+        );
+        if (locationChanges.length > 0) {
+          toast.success(
+            `User updated successfully. Note: The user may need to log out and log back in for location permission changes to take effect.`
+          );
+        } else {
+          toast.success(
+            `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
+          );
+        }
+      } else {
+        toast.success(
+          `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
+        );
+      }
+
       // Refresh users with licensee filter
       setRefreshing(true);
-      const usersData = await fetchUsers(selectedLicencee);
-      setAllUsers(usersData);
+      const result = await fetchUsers(selectedLicencee, 1, itemsPerBatch);
+      setAllUsers(result.users);
+      setLoadedBatches(new Set([1]));
+      setCurrentPage(0);
       setRefreshing(false);
-      toast.success(
-        `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
-      );
     } catch (error) {
       console.error('Failed to update user:', error);
 
@@ -612,8 +983,10 @@ function AdministrationPageContent() {
     setIsAddUserModalOpen(false);
     // Refresh users data when modal is closed
     try {
-      const usersData = await fetchUsers(selectedLicencee);
-      setAllUsers(usersData);
+      const result = await fetchUsers(selectedLicencee, 1, itemsPerBatch);
+      setAllUsers(result.users);
+      setLoadedBatches(new Set([1]));
+      setCurrentPage(0);
     } catch (error) {
       console.error('Failed to refresh users data:', error);
     }
@@ -625,8 +998,10 @@ function AdministrationPageContent() {
       addUserForm,
       setIsAddUserModalOpen,
       async () => {
-        const usersData = await fetchUsers(selectedLicencee);
-        setAllUsers(usersData);
+        const result = await fetchUsers(selectedLicencee, 1, itemsPerBatch);
+        setAllUsers(result.users);
+        setLoadedBatches(new Set([1]));
+        setCurrentPage(0);
       }
     );
   };
@@ -672,14 +1047,14 @@ function AdministrationPageContent() {
         body: JSON.stringify(licenseeData),
       });
 
-      const result = await response.json();
+      const createResult = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to create licensee');
+        throw new Error(createResult.message || 'Failed to create licensee');
       }
 
       // Log the creation activity
-      if (result.licensee) {
+      if (createResult.licensee) {
         try {
           await fetch('/api/activity-logs', {
             method: 'POST',
@@ -689,14 +1064,14 @@ function AdministrationPageContent() {
             body: JSON.stringify({
               action: 'create',
               resource: 'licensee',
-              resourceId: result.licensee._id,
-              resourceName: result.licensee.name,
-              details: `Created new licensee: ${result.licensee.name} in ${getCountryNameById(licenseeForm.country)}`,
+              resourceId: createResult.licensee._id,
+              resourceName: createResult.licensee.name,
+              details: `Created new licensee: ${createResult.licensee.name} in ${getCountryNameById(licenseeForm.country)}`,
               userId: user?._id || 'unknown',
               username: getUserDisplayName(),
               userRole: 'user',
               previousData: null,
-              newData: result.licensee,
+              newData: createResult.licensee,
               changes: [], // Will be calculated by the API
             }),
           });
@@ -708,10 +1083,10 @@ function AdministrationPageContent() {
       }
 
       // Show success modal with license key
-      if (result.licensee && result.licensee.licenseKey) {
+      if (createResult.licensee && createResult.licensee.licenseKey) {
         setCreatedLicensee({
-          name: result.licensee.name,
-          licenseKey: result.licensee.licenseKey,
+          name: createResult.licensee.name,
+          licenseKey: createResult.licensee.licenseKey,
         });
         setIsLicenseeSuccessModalOpen(true);
       }
@@ -719,8 +1094,14 @@ function AdministrationPageContent() {
       setIsAddLicenseeModalOpen(false);
       setLicenseeForm({});
       setIsLicenseesLoading(true);
-      const data = await fetchLicensees();
-      setAllLicensees(data);
+      const licenseesResult = await fetchLicensees(1, licenseesItemsPerBatch);
+      setAllLicensees(
+        Array.isArray(licenseesResult.licensees)
+          ? licenseesResult.licensees
+          : []
+      );
+      setLicenseesLoadedBatches(new Set([1]));
+      setLicenseesCurrentPage(0);
       setIsLicenseesLoading(false);
       toast.success('Licensee created successfully');
     } catch (err) {
@@ -808,10 +1189,10 @@ function AdministrationPageContent() {
         body: JSON.stringify(updatePayload),
       });
 
-      const result = await response.json();
+      const updateResult = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to update licensee');
+        throw new Error(updateResult.message || 'Failed to update licensee');
       }
 
       // Log the update activity with proper change tracking
@@ -851,8 +1232,10 @@ function AdministrationPageContent() {
       setSelectedLicensee(null);
       setLicenseeForm({});
       setIsLicenseesLoading(true);
-      const data = await fetchLicensees();
-      setAllLicensees(data);
+      const result = await fetchLicensees(1, licenseesItemsPerBatch);
+      setAllLicensees(Array.isArray(result.licensees) ? result.licensees : []);
+      setLicenseesLoadedBatches(new Set([1]));
+      setLicenseesCurrentPage(0);
       setIsLicenseesLoading(false);
       toast.success(
         `Licensee updated successfully: ${getChangesSummary(meaningfulChanges)}`
@@ -887,10 +1270,10 @@ function AdministrationPageContent() {
         body: JSON.stringify({ _id: selectedLicensee._id }),
       });
 
-      const result = await response.json();
+      const deleteResult = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to delete licensee');
+        throw new Error(deleteResult.message || 'Failed to delete licensee');
       }
 
       // Log the deletion activity
@@ -926,8 +1309,17 @@ function AdministrationPageContent() {
       setIsDeleteLicenseeModalOpen(false);
       setSelectedLicensee(null);
       setIsLicenseesLoading(true);
-      const data = await fetchLicensees();
-      setAllLicensees(data);
+      const deleteLicenseesResult = await fetchLicensees(
+        1,
+        licenseesItemsPerBatch
+      );
+      setAllLicensees(
+        Array.isArray(deleteLicenseesResult.licensees)
+          ? deleteLicenseesResult.licensees
+          : []
+      );
+      setLicenseesLoadedBatches(new Set([1]));
+      setLicenseesCurrentPage(0);
       setIsLicenseesLoading(false);
       toast.success('Licensee deleted successfully');
     } catch (err) {
@@ -943,6 +1335,11 @@ function AdministrationPageContent() {
   };
 
   const licenseesWithCountryNames = useMemo(() => {
+    // Safety check: ensure allLicensees is always an array
+    if (!Array.isArray(allLicensees)) {
+      console.warn('allLicensees is not an array:', allLicensees);
+      return [];
+    }
     if (allLicensees.length === 0) return allLicensees;
     return allLicensees.map(licensee => ({
       ...licensee,
@@ -960,17 +1357,6 @@ function AdministrationPageContent() {
       (licensee.name || '').toLowerCase().includes(search)
     );
   }, [licenseesWithCountryNames, licenseeSearchValue]);
-
-  const paginatedLicensees = useMemo(() => {
-    return filteredLicensees.slice(
-      currentPage * itemsPerPage,
-      (currentPage + 1) * itemsPerPage
-    );
-  }, [filteredLicensees, currentPage, itemsPerPage]);
-
-  const totalLicenseePages = useMemo(() => {
-    return Math.ceil(filteredLicensees.length / itemsPerPage);
-  }, [filteredLicensees, itemsPerPage]);
 
   const handlePaymentHistory = (licensee: Licensee) => {
     setSelectedLicenseeForPayment(licensee);
@@ -1050,8 +1436,17 @@ function AdministrationPageContent() {
 
       // Refresh licensees list
       setIsLicenseesLoading(true);
-      const data = await fetchLicensees();
-      setAllLicensees(data);
+      const paymentLicenseesResult = await fetchLicensees(
+        1,
+        licenseesItemsPerBatch
+      );
+      setAllLicensees(
+        Array.isArray(paymentLicenseesResult.licensees)
+          ? paymentLicenseesResult.licensees
+          : []
+      );
+      setLicenseesLoadedBatches(new Set([1]));
+      setLicenseesCurrentPage(0);
       setIsLicenseesLoading(false);
 
       // Close modal
@@ -1067,15 +1462,63 @@ function AdministrationPageContent() {
   };
 
   const renderSectionContent = useCallback(() => {
+    const userRoles = user?.roles || [];
+
+    // Check access for each section
     if (activeSection === 'activity-logs') {
+      if (!hasTabAccess(userRoles, 'administration', 'activity-logs')) {
+        return (
+          <div className="flex min-h-[400px] items-center justify-center">
+            <div className="text-center">
+              <h2 className="mb-2 text-xl font-semibold text-gray-900">
+                Access Restricted
+              </h2>
+              <p className="text-gray-600">
+                You don&apos;t have permission to access Activity Logs. Please
+                contact your administrator for access.
+              </p>
+            </div>
+          </div>
+        );
+      }
       return <ActivityLogsTable />;
     }
 
     if (activeSection === 'feedback') {
+      if (!hasTabAccess(userRoles, 'administration', 'feedback')) {
+        return (
+          <div className="flex min-h-[400px] items-center justify-center">
+            <div className="text-center">
+              <h2 className="mb-2 text-xl font-semibold text-gray-900">
+                Access Restricted
+              </h2>
+              <p className="text-gray-600">
+                You don&apos;t have permission to access Feedback. Please
+                contact your administrator for access.
+              </p>
+            </div>
+          </div>
+        );
+      }
       return <FeedbackManagement />;
     }
 
     if (activeSection === 'licensees') {
+      if (!hasTabAccess(userRoles, 'administration', 'licensees')) {
+        return (
+          <div className="flex min-h-[400px] items-center justify-center">
+            <div className="text-center">
+              <h2 className="mb-2 text-xl font-semibold text-gray-900">
+                Access Restricted
+              </h2>
+              <p className="text-gray-600">
+                You don&apos;t have permission to access Licensees. Please
+                contact your administrator for access.
+              </p>
+            </div>
+          </div>
+        );
+      }
       if (isLicenseesLoading) {
         return (
           <>
@@ -1101,9 +1544,9 @@ function AdministrationPageContent() {
             </p>
           )}
           <div className="block xl:hidden">
-            {paginatedLicensees.length > 0 ? (
+            {filteredLicensees.length > 0 ? (
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                {paginatedLicensees.map(licensee => (
+                {filteredLicensees.map(licensee => (
                   <LicenseeCard
                     key={licensee._id}
                     licensee={licensee}
@@ -1122,26 +1565,25 @@ function AdministrationPageContent() {
           </div>
           <div className="hidden xl:block">
             <LicenseeTable
-              licensees={paginatedLicensees}
+              licensees={filteredLicensees}
               onEdit={handleOpenEditLicensee}
               onDelete={handleOpenDeleteLicensee}
               onPaymentHistory={handlePaymentHistory}
               onTogglePaymentStatus={handleTogglePaymentStatus}
             />
           </div>
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalLicenseePages}
-            setCurrentPage={setCurrentPage}
-          />
           <AddLicenseeModal
             open={isAddLicenseeModalOpen}
             onClose={async () => {
               setIsAddLicenseeModalOpen(false);
               // Refresh licensees data when modal is closed
               try {
-                const data = await fetchLicensees();
-                setAllLicensees(data);
+                const result = await fetchLicensees(1, licenseesItemsPerBatch);
+                setAllLicensees(
+                  Array.isArray(result.licensees) ? result.licensees : []
+                );
+                setLicenseesLoadedBatches(new Set([1]));
+                setLicenseesCurrentPage(0);
               } catch (error) {
                 console.error('Failed to refresh licensees data:', error);
               }
@@ -1160,8 +1602,12 @@ function AdministrationPageContent() {
               setIsEditLicenseeModalOpen(false);
               // Refresh licensees data when modal is closed
               try {
-                const data = await fetchLicensees();
-                setAllLicensees(data);
+                const result = await fetchLicensees(1, licenseesItemsPerBatch);
+                setAllLicensees(
+                  Array.isArray(result.licensees) ? result.licensees : []
+                );
+                setLicenseesLoadedBatches(new Set([1]));
+                setLicenseesCurrentPage(0);
               } catch (error) {
                 console.error('Failed to refresh licensees data:', error);
               }
@@ -1218,6 +1664,23 @@ function AdministrationPageContent() {
       );
     }
 
+    // Default to users section
+    if (!hasTabAccess(userRoles, 'administration', 'users')) {
+      return (
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="text-center">
+            <h2 className="mb-2 text-xl font-semibold text-gray-900">
+              Access Restricted
+            </h2>
+            <p className="text-gray-600">
+              You don&apos;t have permission to access Users. Please contact
+              your administrator for access.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     if (isLoading) {
       return (
         <>
@@ -1241,23 +1704,36 @@ function AdministrationPageContent() {
         <SearchFilterBar
           searchValue={searchValue}
           setSearchValue={setSearchValue}
-          searchMode={searchMode}
-          setSearchMode={setSearchMode}
-          searchDropdownOpen={searchDropdownOpen}
-          setSearchDropdownOpen={setSearchDropdownOpen}
         />
         <div className="block md:block xl:hidden">
-          {paginatedUsers.length > 0 ? (
+          {isSearching ? (
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              {paginatedUsers.map(user => (
-                <UserCard
-                  key={user.username}
-                  user={user}
-                  onEdit={handleEditUser}
-                  onDelete={handleDeleteUser}
-                />
-              ))}
+              <UserCardSkeleton />
+              <UserCardSkeleton />
+              <UserCardSkeleton />
+              <UserCardSkeleton />
             </div>
+          ) : processedUsers.length > 0 ? (
+            <>
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                {processedUsers.map(user => (
+                  <UserCard
+                    key={user.username}
+                    user={user}
+                    onEdit={handleEditUser}
+                    onDelete={handleDeleteUser}
+                  />
+                ))}
+              </div>
+              {/* Pagination Controls */}
+              {!isLoading && totalPages > 1 && (
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                />
+              )}
+            </>
           ) : (
             <p className="py-4 text-center text-gray-500">
               No users found matching your criteria.
@@ -1265,25 +1741,32 @@ function AdministrationPageContent() {
           )}
         </div>
         <div className="hidden xl:block">
-          {paginatedUsers.length > 0 ? (
-            <UserTable
-              users={paginatedUsers}
-              sortConfig={sortConfig}
-              requestSort={requestSort}
-              onEdit={handleEditUser}
-              onDelete={handleDeleteUser}
-            />
+          {isSearching ? (
+            <UserTableSkeleton />
+          ) : processedUsers.length > 0 ? (
+            <>
+              <UserTable
+                users={processedUsers}
+                sortConfig={sortConfig}
+                requestSort={requestSort}
+                onEdit={handleEditUser}
+                onDelete={handleDeleteUser}
+              />
+              {/* Pagination Controls */}
+              {!isLoading && totalPages > 1 && (
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                />
+              )}
+            </>
           ) : (
             <p className="py-10 text-center text-gray-500">
               No users found matching your criteria.
             </p>
           )}
         </div>
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          setCurrentPage={setCurrentPage}
-        />
         <UserModal
           open={isUserModalOpen}
           user={selectedUser}
@@ -1292,8 +1775,14 @@ function AdministrationPageContent() {
             setSelectedUser(null);
             // Refresh users data when modal is closed
             try {
-              const usersData = await fetchUsers(selectedLicencee);
-              setAllUsers(usersData);
+              const result = await fetchUsers(
+                selectedLicencee,
+                1,
+                itemsPerBatch
+              );
+              setAllUsers(result.users);
+              setLoadedBatches(new Set([1]));
+              setCurrentPage(0);
             } catch (error) {
               console.error('Failed to refresh users data:', error);
             }
@@ -1347,8 +1836,14 @@ function AdministrationPageContent() {
               }
 
               // Refresh users
-              const usersData = await fetchUsers();
-              setAllUsers(usersData);
+              const result = await fetchUsers(
+                selectedLicencee,
+                1,
+                itemsPerBatch
+              );
+              setAllUsers(result.users);
+              setLoadedBatches(new Set([1]));
+              setCurrentPage(0);
               toast.success('User deleted successfully');
             } catch (error) {
               if (process.env.NODE_ENV === 'development') {
@@ -1374,16 +1869,12 @@ function AdministrationPageContent() {
     activeSection,
     isLicenseesLoading,
     isLoading,
-    paginatedLicensees,
-    paginatedUsers,
-    currentPage,
-    totalLicenseePages,
-    totalPages,
+    filteredLicensees,
+    processedUsers,
     sortConfig,
     licenseeSearchValue,
     allUsers,
     searchValue,
-    searchMode,
     handleOpenEditLicensee,
     handleOpenDeleteLicensee,
     handlePaymentHistory,
@@ -1391,7 +1882,6 @@ function AdministrationPageContent() {
     handleEditUser,
     handleDeleteUser,
     requestSort,
-    setCurrentPage,
     isAddLicenseeModalOpen,
     isEditLicenseeModalOpen,
     isDeleteLicenseeModalOpen,
@@ -1437,11 +1927,25 @@ function AdministrationPageContent() {
             onClick={async () => {
               setRefreshing(true);
               if (activeSection === 'users') {
-                const usersData = await fetchUsers(selectedLicencee);
-                setAllUsers(usersData);
+                const result = await fetchUsers(
+                  selectedLicencee,
+                  1,
+                  itemsPerBatch
+                );
+                setAllUsers(result.users);
+                setLoadedBatches(new Set([1]));
+                setCurrentPage(0);
               } else if (activeSection === 'licensees') {
-                const licenseesData = await fetchLicensees();
-                setAllLicensees(licenseesData);
+                const result = await fetchLicensees(1, licenseesItemsPerBatch);
+                setAllLicensees(
+                  Array.isArray(result.licensees) ? result.licensees : []
+                );
+                setLicenseesLoadedBatches(new Set([1]));
+                setLicenseesCurrentPage(0);
+              } else if (activeSection === 'feedback') {
+                // Feedback section refreshes itself via FeedbackManagement component
+                // Dispatch a custom event that FeedbackManagement can listen to
+                window.dispatchEvent(new CustomEvent('refreshFeedback'));
               }
               setRefreshing(false);
             }}
@@ -1462,11 +1966,25 @@ function AdministrationPageContent() {
             onClick={async () => {
               setRefreshing(true);
               if (activeSection === 'users') {
-                const usersData = await fetchUsers(selectedLicencee);
-                setAllUsers(usersData);
+                const result = await fetchUsers(
+                  selectedLicencee,
+                  1,
+                  itemsPerBatch
+                );
+                setAllUsers(result.users);
+                setLoadedBatches(new Set([1]));
+                setCurrentPage(0);
               } else if (activeSection === 'licensees') {
-                const licenseesData = await fetchLicensees();
-                setAllLicensees(licenseesData);
+                const result = await fetchLicensees(1, licenseesItemsPerBatch);
+                setAllLicensees(
+                  Array.isArray(result.licensees) ? result.licensees : []
+                );
+                setLicenseesLoadedBatches(new Set([1]));
+                setLicenseesCurrentPage(0);
+              } else if (activeSection === 'feedback') {
+                // Feedback section refreshes itself via FeedbackManagement component
+                // Dispatch a custom event that FeedbackManagement can listen to
+                window.dispatchEvent(new CustomEvent('refreshFeedback'));
               }
               setRefreshing(false);
             }}

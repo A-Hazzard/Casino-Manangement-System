@@ -21,7 +21,8 @@ export function LicenceeSelector() {
     const loadLicensees = async () => {
       try {
         setLoading(true);
-        const licenseesData = await fetchLicensees();
+        const result = await fetchLicensees();
+        const licenseesData = Array.isArray(result.licensees) ? result.licensees : [];
         setLicensees(licenseesData);
       } catch (error) {
         console.error('Failed to fetch licensees:', error);

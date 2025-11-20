@@ -33,10 +33,10 @@ export async function GET(req: NextRequest) {
 
     // Pagination parameters
     const page = parseInt(searchParams.get('page') || '1');
-    const requestedLimit = parseInt(searchParams.get('limit') || '10');
+    const requestedLimit = parseInt(searchParams.get('limit') || '50');
 
     // When showAllLocations is true, return all locations for client-side pagination
-    // Otherwise, use server-side pagination with limit
+    // Otherwise, use server-side pagination with limit (default 50 items per batch)
     const limit = showAllLocations ? 10000 : Math.min(requestedLimit, 50); // Cap at 50 for performance
     const skip = showAllLocations ? 0 : (page - 1) * limit;
 

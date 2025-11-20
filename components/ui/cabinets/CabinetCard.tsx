@@ -9,6 +9,8 @@ import { CabinetCardProps } from '@/lib/types/cardProps';
 import { motion } from 'framer-motion';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 
 export default function CabinetCard(props: CabinetCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -41,7 +43,7 @@ export default function CabinetCard(props: CabinetCardProps) {
     }
   }, [props]);
 
-  const handleCardClick = () => {
+  const handleViewClick = () => {
     const currentPath = window.location.pathname;
 
     // If we're already in a location-specific view, use that path structure
@@ -54,8 +56,21 @@ export default function CabinetCard(props: CabinetCardProps) {
     }
   };
 
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
+  };
+
   // Determine if cabinet is online (you may need to adjust this based on your data structure)
   const isOnline = props.status === 'functional' || props.online === true;
+  const serialNumber = props.serialNumber?.trim() || '';
+  const customName = props.custom?.name?.trim() || '';
+  const smbId = props.smbId || '';
 
   return (
     <div
@@ -64,8 +79,20 @@ export default function CabinetCard(props: CabinetCardProps) {
     >
       {/* Header with Asset Number and Status Indicator */}
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="flex flex-1 items-center gap-1 truncate pr-2 text-base font-semibold">
-          {props.assetNumber || props.serialNumber || '(No Asset #)'}
+        <div className="flex flex-1 items-center gap-1 truncate pr-2">
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              const textToCopy = serialNumber || customName || props.assetNumber || '';
+              if (textToCopy) {
+                copyToClipboard(textToCopy, 'Serial Number');
+              }
+            }}
+            className="text-base font-semibold hover:text-blue-600 hover:underline cursor-pointer text-left truncate"
+            title="Click to copy serial number"
+          >
+            {formatMachineDisplayNameWithBold(props)}
+          </button>
           <motion.span
             className={`h-2 w-2 rounded-full ${
               isOnline ? 'bg-green-500' : 'bg-red-500'
@@ -73,26 +100,26 @@ export default function CabinetCard(props: CabinetCardProps) {
             animate={{ scale: [1, 1.2, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           ></motion.span>
-        </h3>
+        </div>
       </div>
 
       {/* SMIB ID and Details */}
       <div className="mb-3">
-        <p className="mb-1 text-sm text-green-600">
-          {props.smbId || 'N/A'}
-        </p>
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            if (smbId) {
+              copyToClipboard(smbId, 'SMIB');
+            }
+          }}
+          className={`mb-1 text-sm ${smbId ? 'text-green-600 hover:text-blue-600 hover:underline cursor-pointer' : 'text-gray-400'}`}
+          title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
+          disabled={!smbId}
+        >
+          {smbId || 'N/A'}
+        </button>
         <p className="mb-1 text-sm font-medium text-gray-900">
           {props.locationName || 'No Location'}
-        </p>
-        <p className="text-sm text-gray-600">
-          {(() => {
-            const assetNum = props.assetNumber || props.serialNumber || '';
-            const game = props.game || props.installedGame || '';
-            if (game) {
-              return `${assetNum} (${game})`;
-            }
-            return assetNum || 'Unknown';
-          })()}
         </p>
       </div>
 
@@ -137,13 +164,13 @@ export default function CabinetCard(props: CabinetCardProps) {
       {/* Action Buttons - Fixed at bottom */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
         <Button
-          onClick={() => handleCardClick()}
+          onClick={handleViewClick}
           variant="outline"
           size="sm"
           className="flex-1 flex items-center justify-center gap-1.5 text-xs"
         >
           <Eye className="h-3.5 w-3.5" />
-          <span>View Details</span>
+          <span>View</span>
         </Button>
         <Button
           onClick={() => props.onEdit?.(props)}

@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { buildSessionsQueryParams } from '@/lib/helpers/sessions';
-import { SESSIONS_PAGINATION } from '@/lib/constants/sessions';
 import type { Session, PaginationData } from '@/lib/types/sessions';
 
 /**
@@ -11,22 +10,31 @@ import type { Session, PaginationData } from '@/lib/types/sessions';
  * Handles fetching, pagination, search, and sorting
  */
 export function useSessions() {
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('startTime');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState<PaginationData | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
 
+  // Calculate which batch we need based on current page
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / pagesPerBatch) + 1;
+  }, [pagesPerBatch]);
+
   /**
    * Fetch sessions from API
    */
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (batch: number = 1) => {
     try {
       setLoading(true);
       setError(null);
@@ -64,8 +72,8 @@ export function useSessions() {
       }
 
       const queryParams = buildSessionsQueryParams({
-        page: currentPage,
-        limit: SESSIONS_PAGINATION.DEFAULT_LIMIT,
+        page: batch,
+        limit: itemsPerBatch,
         search: searchTerm,
         sortBy,
         sortOrder,
@@ -78,26 +86,31 @@ export function useSessions() {
         `/api/sessions?${queryParams.toString()}`
       );
       const data = response.data;
-      setSessions(data.sessions || []);
-      setPagination(data.pagination || null);
+      const newSessions = data.sessions || [];
+      
+      // Merge new sessions into allSessions, avoiding duplicates
+      setAllSessions(prev => {
+        const existingIds = new Set(prev.map(s => s._id));
+        const uniqueNewSessions = newSessions.filter((s: Session) => !existingIds.has(s._id));
+        return [...prev, ...uniqueNewSessions];
+      });
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch sessions';
       setError(errorMessage);
       toast.error(errorMessage);
-      setSessions([]);
-      setPagination(null);
+      setAllSessions([]);
     } finally {
       setLoading(false);
     }
   }, [
-    currentPage,
     searchTerm,
     sortBy,
     sortOrder,
     selectedLicencee,
     activeMetricsFilter,
     customDateRange,
+    itemsPerBatch,
   ]);
 
   /**
@@ -105,7 +118,7 @@ export function useSessions() {
    */
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1); // Reset to first page
+    setCurrentPage(0); // Reset to first page
   }, []);
 
   /**
@@ -121,7 +134,7 @@ export function useSessions() {
         setSortBy(field);
         setSortOrder('desc');
       }
-      setCurrentPage(1); // Reset to first page
+      setCurrentPage(0); // Reset to first page
     },
     [sortBy, sortOrder]
   );
@@ -133,13 +146,80 @@ export function useSessions() {
     setCurrentPage(page);
   }, []);
 
-  // Fetch sessions when dependencies change
+  // Load initial batch on mount and when filters change
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    setAllSessions([]);
+    setLoadedBatches(new Set([1]));
+    setCurrentPage(0);
+    fetchSessions(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    searchTerm,
+    sortBy,
+    sortOrder,
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+  ]);
+
+  // Fetch next batch when crossing batch boundaries
+  useEffect(() => {
+    if (loading) return;
+
+    const currentBatch = calculateBatchNumber(currentPage);
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchSessions(nextBatch);
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchSessions(currentBatch);
+    }
+  }, [
+    currentPage,
+    loading,
+    fetchSessions,
+    itemsPerBatch,
+    pagesPerBatch,
+    loadedBatches,
+    calculateBatchNumber,
+  ]);
+
+  // Get items for current page from the current batch
+  const paginatedSessions = useMemo(() => {
+    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
+    const startIndex = positionInBatch;
+    const endIndex = startIndex + itemsPerPage;
+    return allSessions.slice(startIndex, endIndex);
+  }, [allSessions, currentPage, itemsPerPage, pagesPerBatch]);
+
+  // Calculate total pages based on all loaded batches
+  const totalPages = useMemo(() => {
+    const totalItems = allSessions.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [allSessions.length, itemsPerPage]);
+
+  // Create pagination object for compatibility
+  const pagination: PaginationData | null = useMemo(() => {
+    if (allSessions.length === 0) return null;
+    return {
+      currentPage: currentPage + 1, // Convert to 1-based for display
+      totalPages,
+      totalSessions: allSessions.length, // Required by PaginationData type
+      hasNextPage: currentPage < totalPages - 1,
+      hasPrevPage: currentPage > 0,
+    };
+  }, [currentPage, totalPages, allSessions.length]);
 
   return {
-    sessions,
+    sessions: paginatedSessions,
     loading,
     error,
     searchTerm,
@@ -150,6 +230,6 @@ export function useSessions() {
     handleSearch,
     handleSort,
     handlePageChange,
-    fetchSessions,
+    fetchSessions: () => fetchSessions(1),
   };
 }

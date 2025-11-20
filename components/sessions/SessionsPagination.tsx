@@ -16,7 +16,7 @@ export default function SessionsPagination({
   pagination,
   onPageChange,
 }: SessionsPaginationProps) {
-  if (!pagination || pagination.totalPages <= 1) {
+  if (!pagination || pagination.totalPages <= 0) {
     return null;
   }
 
@@ -80,7 +80,7 @@ export default function SessionsPagination({
             variant="outline"
             size="sm"
             onClick={() => onPageChange(totalPages)}
-            disabled={currentPage === totalPages}
+            disabled={currentPage >= totalPages}
             className="px-2 py-1 text-xs"
           >
             »»
@@ -144,7 +144,7 @@ export default function SessionsPagination({
             variant="outline"
             size="sm"
             onClick={() => onPageChange(totalPages)}
-            disabled={currentPage === totalPages}
+            disabled={currentPage >= totalPages}
           >
             Last
           </Button>

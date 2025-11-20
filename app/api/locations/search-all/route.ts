@@ -58,18 +58,43 @@ export async function GET(request: NextRequest) {
     );
 
     // Build location matching - apply user location permissions
-    const locationMatch: Record<string, unknown> = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
+    const locationMatch: {
+      $and: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    } = {
+      $and: [
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+        },
       ],
     };
 
     if (search) {
-      locationMatch.name = { $regex: search, $options: 'i' };
+      // Check if search looks like an _id (MongoDB ObjectId format or string ID)
+      const isObjectIdFormat = /^[0-9a-fA-F]{24}$/.test(search.trim());
+      if (isObjectIdFormat) {
+        // Try to match _id first, then fall back to name search
+        locationMatch.$and.push({
+          $or: [
+            { _id: search.trim() },
+            { name: { $regex: search, $options: 'i' } },
+          ],
+        });
+      } else {
+        // Regular search - match name or _id (partial match)
+        locationMatch.$and.push({
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { _id: { $regex: search, $options: 'i' } },
+          ],
+        });
+      }
     }
     if (licencee) {
-      locationMatch['rel.licencee'] = licencee;
+      locationMatch.$and.push({ 'rel.licencee': licencee });
     }
 
     // Apply user location permissions filter
@@ -78,7 +103,7 @@ export async function GET(request: NextRequest) {
         // No accessible locations - return empty array
         return NextResponse.json([]);
       }
-      locationMatch._id = { $in: allowedLocationIds };
+      locationMatch.$and.push({ _id: { $in: allowedLocationIds } });
     }
 
     // Get all locations that match the criteria with financial data

@@ -4,22 +4,67 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Copy, Check } from 'lucide-react';
 import { formatDate } from '@/lib/utils/formatting';
+import { toast } from 'sonner';
 import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 
 type ActivityLogCardProps = {
   log: ActivityLog;
-  searchMode: 'username' | 'email' | 'description';
+  searchMode: 'username' | 'email' | 'description' | '_id';
   onDescriptionClick?: (log: ActivityLog) => void;
 };
 
 const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
   log,
-  searchMode,
+  searchMode: _searchMode,
   onDescriptionClick,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string, fieldId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldId);
+      toast.success(`${label} copied to clipboard`);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
+  };
+
+  // Extract attempted identifier from description for failed logins
+  const getDisplayUsername = () => {
+    // If username is "unknown" and description contains an identifier, extract it
+    if (log.username === 'unknown' && log.description) {
+      // Try to extract email/username from description like "Invalid password for: email@example.com"
+      const emailMatch = log.description.match(/(?:for|:)\s*([^\s:]+@[^\s:]+)/i);
+      if (emailMatch) return emailMatch[1];
+      
+      const userMatch = log.description.match(/(?:for|:)\s*([^\s:]+)/i);
+      if (userMatch) return userMatch[1];
+    }
+    return log.username || 'Unknown User';
+  };
+
+  // Get display email (prefer actor.email, fallback to username if it's an email)
+  const getDisplayEmail = () => {
+    if (log.actor?.email && log.actor.email !== 'unknown') {
+      return log.actor.email;
+    }
+    // If username looks like an email, use it
+    const username = log.username || '';
+    if (/\S+@\S+\.\S+/.test(username)) {
+      return username;
+    }
+    return null;
+  };
+
+  const displayUsername = getDisplayUsername();
+  const displayEmail = getDisplayEmail();
+  const displayUserId = log.userId && log.userId !== 'unknown' ? log.userId : null;
 
   // Handle undefined _id
   if (!log._id) {
@@ -91,7 +136,22 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
             </div>
             <div className="font-mono text-xs text-gray-500">
               <div className="flex items-center gap-2">
-                <span>{log.ipAddress || 'N/A'}</span>
+                {log.ipAddress && log.ipAddress !== 'unknown' ? (
+                  <button
+                    onClick={() => copyToClipboard(log.ipAddress!, 'IP Address', 'ip')}
+                    className="flex items-center gap-1 hover:text-blue-600 hover:underline"
+                    title="Click to copy IP address"
+                  >
+                    <span>{log.ipAddress}</span>
+                    {copiedField === 'ip' ? (
+                      <Check className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <Copy className="h-3 w-3 opacity-50" />
+                    )}
+                  </button>
+                ) : (
+                  <span>N/A</span>
+                )}
                 {log.ipAddress && log.ipAddress.includes('(Local)') && (
                   <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
                     Local
@@ -108,24 +168,61 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
         </div>
 
         {/* User Info */}
-        <div className="mb-3">
-          <div className="text-sm font-medium text-gray-900">
-            {searchMode === 'email' ? (
-              <>
-                <div className="font-medium">{log.actor?.email || 'N/A'}</div>
-                {log.username && (
-                  <div className="text-sm text-gray-500">{log.username}</div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="font-medium">{log.username}</div>
-                {log.actor?.email && (
-                  <div className="text-sm text-gray-500">{log.actor.email}</div>
-                )}
-              </>
-            )}
+        <div className="mb-3 space-y-1">
+          {/* Username */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-500">Username:</span>
+            <button
+              onClick={() => copyToClipboard(displayUsername, 'Username', 'username')}
+              className="flex items-center gap-1 text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
+              title="Click to copy username"
+            >
+              {displayUsername}
+              {copiedField === 'username' ? (
+                <Check className="h-3 w-3 text-green-600" />
+              ) : (
+                <Copy className="h-3 w-3 opacity-50" />
+              )}
+            </button>
           </div>
+          
+          {/* User ID */}
+          {displayUserId && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-500">User ID:</span>
+              <button
+                onClick={() => copyToClipboard(displayUserId, 'User ID', 'userId')}
+                className="flex items-center gap-1 font-mono text-xs text-gray-700 hover:text-blue-600 hover:underline"
+                title="Click to copy user ID"
+              >
+                {displayUserId}
+                {copiedField === 'userId' ? (
+                  <Check className="h-3 w-3 text-green-600" />
+                ) : (
+                  <Copy className="h-3 w-3 opacity-50" />
+                )}
+              </button>
+            </div>
+          )}
+          
+          {/* Email (only show if different from username) */}
+          {displayEmail && displayEmail !== displayUsername && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-500">Email:</span>
+              <button
+                onClick={() => copyToClipboard(displayEmail, 'Email', 'email')}
+                className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 hover:underline"
+                title="Click to copy email"
+              >
+                {displayEmail}
+                {copiedField === 'email' ? (
+                  <Check className="h-3 w-3 text-green-600" />
+                ) : (
+                  <Copy className="h-3 w-3 opacity-50" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Description */}
@@ -187,7 +284,25 @@ const ActivityLogCard: React.FC<ActivityLogCardProps> = ({
                         </span>
                       </button>
                     ) : (
-                      description
+                      <button
+                        onClick={() => {
+                          // Extract email/identifier from description if it's a login message
+                          const emailMatch = description.match(/(?:Successful login|Invalid password|User not found)[\s:]+([^\s]+@[^\s]+)/i);
+                          const textToCopy = emailMatch ? emailMatch[1] : description;
+                          copyToClipboard(textToCopy, 'Description', 'description');
+                        }}
+                        className="text-left transition-colors hover:text-blue-600 hover:underline"
+                        title="Click to copy description"
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {description}
+                          {copiedField === 'description' ? (
+                            <Check className="h-3 w-3 text-green-600" />
+                          ) : (
+                            <Copy className="h-3 w-3 opacity-50" />
+                          )}
+                        </span>
+                      </button>
                     )}
                   </div>
                 )}

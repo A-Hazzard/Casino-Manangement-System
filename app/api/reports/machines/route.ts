@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     // Pagination parameters for overview
     const page = parseInt(searchParams.get('page') || '1');
     const requestedLimit = parseInt(searchParams.get('limit') || '10');
-    const limit = Math.min(requestedLimit, 10);
+    const limit = Math.min(requestedLimit, 50); // Allow up to 50 items per batch for batch-based pagination
     const skip = (page - 1) * limit;
 
     let startDate: Date | undefined, endDate: Date | undefined;

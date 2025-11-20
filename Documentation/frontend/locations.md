@@ -1,8 +1,28 @@
 # Locations Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 11th, 2025  
-**Version:** 2.2.0
+**Last Updated:** December 2024  
+**Version:** 2.3.0
+
+## Recent Updates (December 2024)
+
+### Per-Location Machine Status Badges ✅
+
+**Feature:** Added inline machine status badges next to location names in both desktop table and mobile card views.
+
+**Implementation:**
+- **LocationTable**: Displays color-coded status badge showing "X/Y Online" format next to each location name
+- **LocationCard**: Displays the same status badge in mobile card view
+- **Color Coding**:
+  - Green: All machines online (e.g., "40/40 Online")
+  - Yellow: Some machines online (e.g., "30/40 Online")
+  - Red: All machines offline (e.g., "0/40 Online")
+  - Gray: No machines (e.g., "0/0 Online")
+
+**Benefits:**
+- Quick visual identification of location machine status at a glance
+- Consistent status display across desktop and mobile views
+- Enhanced user experience with color-coded indicators
 
 ## Recent Critical Fixes & Optimizations (November 11th, 2025)
 
@@ -87,6 +107,11 @@ The Locations page provides comprehensive casino location management, including 
 - **Performance Analytics:**
   - Financial metrics per location (money in/out, gross revenue).
   - **Machine Status Widget**: Displays online/total machine count (e.g., "37/40 Online") with offline count
+  - **Per-Location Status Badges**: Each location name displays an inline status badge showing "X/Y Online" with color-coded indicators:
+    - **Green**: All machines online (e.g., "40/40 Online")
+    - **Yellow**: Some machines online (e.g., "30/40 Online")
+    - **Red**: All machines offline (e.g., "0/40 Online")
+    - **Gray**: No machines (e.g., "0/0 Online")
   - Location comparison and ranking.
 - **Cabinet Integration:**
   - View cabinets for each location.
@@ -107,8 +132,8 @@ The Locations page provides comprehensive casino location management, including 
   - **Supported Currencies**: USD, TTD, GYD, BBD
   - **Manager View**: Always shows native currency (no conversion, no selector)
 - **Responsive Design:**
-  - Desktop table view with detailed metrics.
-  - Mobile card view with touch-friendly controls.
+  - Desktop table view with detailed metrics and inline machine status badges next to location names.
+  - Mobile card view with touch-friendly controls and inline machine status badges next to location names.
 - **Sidebar Navigation:**
   - Persistent sidebar for navigation to other modules.
 
@@ -121,8 +146,8 @@ The Locations page provides comprehensive casino location management, including 
   - `components/layout/Header.tsx` - Top navigation header
   - `components/layout/Sidebar.tsx` - Persistent navigation sidebar
 - **Location Management Components:**
-  - `components/ui/locations/LocationTable.tsx` - Desktop location table view
-  - `components/ui/locations/LocationCard.tsx` - Mobile location card view
+  - `components/ui/locations/LocationTable.tsx` - Desktop location table view with inline machine status badges
+  - `components/ui/locations/LocationCard.tsx` - Mobile location card view with inline machine status badges
   - `components/ui/locations/LocationSkeleton.tsx` - Loading skeleton
   - `components/ui/locations/NewLocationModal.tsx` - Add location form
   - `components/ui/locations/EditLocationModal.tsx` - Edit location form
@@ -232,7 +257,9 @@ LocationsPage (app/locations/page.tsx)
 ├── DashboardDateFilters (components/dashboard/DashboardDateFilters.tsx)
 ├── Search and Filter Controls
 ├── LocationTable (components/ui/locations/LocationTable.tsx) [Desktop]
+│   └── Inline machine status badges (X/Y Online) with color coding
 ├── LocationCard (components/ui/locations/LocationCard.tsx) [Mobile]
+│   └── Inline machine status badges (X/Y Online) with color coding
 ├── Pagination Controls
 ├── MachineStatusWidget (components/ui/MachineStatusWidget.tsx)
 └── Location Modals
@@ -342,6 +369,11 @@ The locations page is like a **map of all your casino locations** with performan
 - **Collection**: Queries `machines` collection with status filtering
 - **Fields Used**: `lastActivity`, `assetStatus`, `deletedAt` per location
 - **Simple Explanation**: Shows how many machines are working vs. offline at each location
+- **Visual Indicators**: Each location displays a color-coded status badge next to its name:
+  - Green badge: All machines online
+  - Yellow badge: Some machines online (partial)
+  - Red badge: All machines offline
+  - Gray badge: No machines at location
 
 **📊 Location Ranking**
 

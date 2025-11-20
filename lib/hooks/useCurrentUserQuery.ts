@@ -68,7 +68,15 @@ export function useCurrentUserQuery() {
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Don't retry on 401 errors (unauthorized) - this is expected when not logged in
+      // @ts-expect-error - axios error structure
+      if (error?.response?.status === 401) {
+        return false;
+      }
+      // Retry once for other errors
+      return failureCount < 1;
+    },
     retryDelay: 1000,
   });
 

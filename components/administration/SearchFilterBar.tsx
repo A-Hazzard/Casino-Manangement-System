@@ -1,21 +1,13 @@
-import { MagnifyingGlassIcon, ChevronDownIcon } from '@radix-ui/react-icons';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 
 type SearchFilterBarProps = {
   searchValue: string;
   setSearchValue: (value: string) => void;
-  searchMode: 'username' | 'email';
-  setSearchMode: (mode: 'username' | 'email') => void;
-  searchDropdownOpen: boolean;
-  setSearchDropdownOpen: (open: boolean) => void;
 };
 
 export default function SearchFilterBar({
   searchValue,
   setSearchValue,
-  searchMode,
-  setSearchMode,
-  searchDropdownOpen,
-  setSearchDropdownOpen,
 }: SearchFilterBarProps) {
   // Responsive Search and Filter Layout
   return (
@@ -25,7 +17,7 @@ export default function SearchFilterBar({
           <div className="flex h-11 w-full rounded-md bg-white shadow-sm sm:max-w-md">
             <input
               type="text"
-              placeholder="Search by...."
+              placeholder="Search by username, email, or user ID..."
               value={searchValue}
               onChange={e => setSearchValue(e.target.value)}
               className="h-full flex-1 cursor-text rounded-l-md border-none bg-white px-3 text-sm outline-none md:text-base"
@@ -33,50 +25,6 @@ export default function SearchFilterBar({
             <span className="flex cursor-pointer items-center border-l border-gray-300 bg-white px-2 text-gray-400 transition-colors hover:text-gray-600">
               <MagnifyingGlassIcon className="h-4 w-4 md:h-5 md:w-5" />
             </span>
-          </div>
-          <div className="relative">
-            <button
-              type="button"
-              className={`flex h-11 cursor-pointer items-center whitespace-nowrap rounded-md bg-blue-400 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-500 md:px-4 md:text-sm`}
-              onClick={() => setSearchDropdownOpen(!searchDropdownOpen)}
-            >
-              {searchMode === 'username' ? 'Username' : 'Email Address'}
-              <ChevronDownIcon
-                className={`ml-1 h-3 w-3 transition-transform md:ml-2 md:h-4 md:w-4 ${
-                  searchDropdownOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
-            {searchDropdownOpen && (
-              <div className="absolute left-0 top-full z-20 mt-1 w-auto min-w-[150px] rounded-md border border-gray-200 bg-white shadow-lg">
-                <button
-                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-100 ${
-                    searchMode === 'username'
-                      ? 'font-semibold text-buttonActive'
-                      : 'text-gray-700'
-                  }`}
-                  onClick={() => {
-                    setSearchMode('username');
-                    setSearchDropdownOpen(false);
-                  }}
-                >
-                  Username
-                </button>
-                <button
-                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-100 ${
-                    searchMode === 'email'
-                      ? 'font-semibold text-buttonActive'
-                      : 'text-gray-700'
-                  }`}
-                  onClick={() => {
-                    setSearchMode('email');
-                    setSearchDropdownOpen(false);
-                  }}
-                >
-                  Email Address
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>

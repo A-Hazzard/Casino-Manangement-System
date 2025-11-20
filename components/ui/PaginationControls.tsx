@@ -12,8 +12,8 @@ export default function PaginationControls({
   totalPages,
   setCurrentPage,
 }: PaginationControlsProps) {
-  if (totalPages <= 1) {
-    return null; // Don't render pagination if there's only one page or less
+  if (totalPages <= 0) {
+    return null; // Don't render pagination if there are no pages
   }
 
   const handlePageChange = (page: number) => {
@@ -75,7 +75,7 @@ export default function PaginationControls({
             variant="outline"
             size="sm"
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages - 1}
+            disabled={currentPage >= totalPages - 1}
             className="px-2 py-1 text-xs"
             aria-label="Go to next page"
           >
@@ -85,7 +85,7 @@ export default function PaginationControls({
             variant="outline"
             size="sm"
             onClick={() => handlePageChange(totalPages - 1)}
-            disabled={currentPage === totalPages - 1}
+            disabled={currentPage >= totalPages - 1}
             className="px-2 py-1 text-xs"
             aria-label="Go to last page"
           >

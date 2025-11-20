@@ -122,9 +122,9 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'location admin',
       'collector',
     ],
-    reports: ['developer', 'admin', 'location admin'], // ✅ Restricted to developer, admin, and location admin
+    reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
     sessions: ['developer'],
-    administration: ['developer', 'admin', 'manager'],
+    administration: ['developer', 'admin', 'manager', 'location admin'],
   };
 
   const allowedRoles = pagePermissions[page] || [];
@@ -149,9 +149,10 @@ export async function hasTabAccessDb(
   // Tab permissions mapping
   const tabPermissions: Record<string, Record<string, UserRole[]>> = {
     administration: {
-      users: ['developer', 'admin', 'manager'],
+      users: ['developer', 'admin', 'manager', 'location admin'],
       licensees: ['developer', 'admin'],
-      'activity-logs': ['developer', 'admin', 'manager'],
+      'activity-logs': ['developer', 'admin', 'manager', 'location admin'],
+      feedback: ['developer', 'admin'],
     },
     'collection-reports': {
       collection: [

@@ -206,7 +206,7 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
               ))}
             </div>
 
-            {totalPages > 1 && (
+            {totalPages > 0 && (
               <PaginationControls
                 currentPage={currentPage - 1}
                 totalPages={totalPages}

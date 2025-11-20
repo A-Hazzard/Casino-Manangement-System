@@ -148,13 +148,14 @@ export default function ProfileValidationModal({
     const loadAssignments = async () => {
       setIsLoadingAssignments(true);
       try {
-        const [licenseesData, locationsResponse] = await Promise.all([
+        const [licenseesResult, locationsResponse] = await Promise.all([
           fetchLicensees(),
           fetch('/api/locations?showAll=true&minimal=1', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
           }),
         ]);
+        const licenseesData = Array.isArray(licenseesResult.licensees) ? licenseesResult.licensees : [];
 
         if (cancelled) return;
 

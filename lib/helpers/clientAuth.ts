@@ -62,7 +62,10 @@ export async function logoutUser(): Promise<AuthResult> {
     // Clear client-side storage regardless of API response
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user-auth-store');
+      // Clear sessionStorage but preserve the just-logged-out flag
+      const justLoggedOutFlag = Date.now().toString();
       sessionStorage.clear();
+      sessionStorage.setItem('just-logged-out', justLoggedOutFlag);
     }
     useAuthSessionStore.getState().clearLastLoginPassword();
 
@@ -75,7 +78,10 @@ export async function logoutUser(): Promise<AuthResult> {
     console.error('Logout error:', error);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user-auth-store');
+      // Clear sessionStorage but preserve the just-logged-out flag
+      const justLoggedOutFlag = Date.now().toString();
       sessionStorage.clear();
+      sessionStorage.setItem('just-logged-out', justLoggedOutFlag);
     }
     useAuthSessionStore.getState().clearLastLoginPassword();
     return { success: true, message: 'Logged out locally' };

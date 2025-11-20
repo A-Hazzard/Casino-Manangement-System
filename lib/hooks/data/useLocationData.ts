@@ -26,7 +26,9 @@ type UseLocationDataReturn = {
   loading: boolean;
   searchLoading: boolean;
   error: string | null;
-  fetchData: () => Promise<void>;
+  fetchData: (page?: number, limit?: number) => Promise<void>;
+  totalCount: number;
+  fetchBatch: (page: number, limit: number) => Promise<{ data: AggregatedLocation[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }>;
 };
 
 export function useLocationData({
@@ -37,6 +39,7 @@ export function useLocationData({
   selectedFilters,
 }: UseLocationDataProps): UseLocationDataReturn {
   const [locationData, setLocationData] = useState<AggregatedLocation[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,8 +51,47 @@ export function useLocationData({
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+  // Fetch a specific batch of locations
+  const fetchBatch = useCallback(async (page: number = 1, limit: number = 50) => {
+    const filterString = selectedFilters.length
+      ? selectedFilters.join(',')
+      : '';
+
+    let dateRangeForFetch = undefined;
+    const effectiveFilter = activeMetricsFilter || 'Today';
+
+    if (
+      effectiveFilter === 'Custom' &&
+      customDateRange?.startDate &&
+      customDateRange?.endDate
+    ) {
+      dateRangeForFetch = {
+        from: customDateRange.startDate,
+        to: customDateRange.endDate,
+      };
+    }
+
+    const effectiveLicencee = selectedLicencee || '';
+
+    return await fetchAggregatedLocationsData(
+      (activeMetricsFilter || 'Today') as TimePeriod,
+      effectiveLicencee,
+      filterString,
+      dateRangeForFetch,
+      displayCurrency,
+      page,
+      limit
+    );
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    selectedFilters,
+    customDateRange,
+    displayCurrency,
+  ]);
+
   // Optimized data fetching with better error handling
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (page?: number, limit?: number) => {
     setLoading(true);
     setError(null);
 
@@ -64,55 +106,33 @@ export function useLocationData({
           displayCurrency
         );
         setLocationData(searchData);
+        setTotalCount(searchData.length);
         setSearchLoading(false);
         return;
       }
 
       // Otherwise, use the normal fetchLocationsData for metrics-based data
-      const filterString = selectedFilters.length
-        ? selectedFilters.join(',')
-        : '';
-
-      let dateRangeForFetch = undefined;
-      const effectiveFilter = activeMetricsFilter || 'Today';
-
-      if (
-        effectiveFilter === 'Custom' &&
-        customDateRange?.startDate &&
-        customDateRange?.endDate
-      ) {
-        dateRangeForFetch = {
-          from: customDateRange.startDate,
-          to: customDateRange.endDate,
-        };
+      const result = await fetchBatch(page || 1, limit || 50);
+      
+      setLocationData(result.data);
+      if (result.pagination) {
+        setTotalCount(result.pagination.total);
+      } else {
+        setTotalCount(result.data.length);
       }
-
-      // Use empty string as fallback if selectedLicencee is empty
-      const effectiveLicencee = selectedLicencee || '';
-
-      const data = await fetchAggregatedLocationsData(
-        (activeMetricsFilter || 'Today') as TimePeriod,
-        effectiveLicencee,
-        filterString,
-        dateRangeForFetch,
-        displayCurrency
-      );
-
-      setLocationData(data);
     } catch (err) {
       setLocationData([]);
+      setTotalCount(0);
       setError(err instanceof Error ? err.message : 'Failed to load locations');
     } finally {
       lastFetchRef.current = Date.now();
       setLoading(false);
     }
   }, [
-    selectedLicencee,
-    activeMetricsFilter,
-    selectedFilters,
-    customDateRange,
     debouncedSearchTerm,
     displayCurrency,
+    fetchBatch,
+    selectedLicencee,
   ]);
 
   // Fetch data when dependencies change
@@ -146,5 +166,7 @@ export function useLocationData({
     searchLoading,
     error,
     fetchData,
+    totalCount,
+    fetchBatch,
   };
 }

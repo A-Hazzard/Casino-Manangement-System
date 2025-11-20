@@ -105,7 +105,7 @@ function CabinetCardMobile({
           className="flex-1 flex items-center justify-center gap-1.5 text-xs"
         >
           <Eye className="h-3.5 w-3.5" />
-          <span>View Details</span>
+          <span>View</span>
         </Button>
         <Button
           onClick={() => onEdit(cabinet)}

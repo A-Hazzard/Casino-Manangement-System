@@ -18,6 +18,7 @@ export const useAdministrationNavigation = () => {
     console.log('🔄 [ADMIN HOOK] Getting section from URL:', section);
     if (section === 'licensees') return 'licensees';
     if (section === 'activity-logs') return 'activity-logs';
+    if (section === 'feedback') return 'feedback';
     return 'users';
   }, [searchParams]);
 

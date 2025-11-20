@@ -10,6 +10,9 @@ import { LocationFilter, LocationSortOption } from '@/lib/types/location';
 type UseLocationSortingProps = {
   locationData: AggregatedLocation[];
   selectedFilters: LocationFilter[];
+  currentPage?: number;
+  totalCount?: number;
+  itemsPerPage?: number;
 };
 
 type UseLocationSortingReturn = {
@@ -32,10 +35,17 @@ type UseLocationSortingReturn = {
 export function useLocationSorting({
   locationData,
   selectedFilters,
+  currentPage: externalCurrentPage = 0,
+  totalCount,
+  itemsPerPage: externalItemsPerPage = 10,
 }: UseLocationSortingProps): UseLocationSortingReturn {
-  const [currentPage, setCurrentPage] = useState(0);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<LocationSortOption>('moneyIn');
+  
+  // Use external currentPage if provided, otherwise use internal state
+  const [internalCurrentPage, setInternalCurrentPage] = useState(0);
+  const currentPage = externalCurrentPage !== undefined ? externalCurrentPage : internalCurrentPage;
+  const setCurrentPage = externalCurrentPage !== undefined ? () => {} : setInternalCurrentPage;
 
   // Memoized filtered data to prevent unnecessary recalculations
   const filtered = useMemo(() => {
@@ -85,19 +95,22 @@ export function useLocationSorting({
     }
   };
 
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+  const itemsPerPage = externalItemsPerPage;
+  // Use totalCount if provided (for server-side pagination), otherwise calculate from sortedData
+  const totalPages = totalCount !== undefined 
+    ? Math.ceil(totalCount / itemsPerPage)
+    : Math.ceil(sortedData.length / itemsPerPage);
   const currentItems = sortedData.slice(
     currentPage * itemsPerPage,
     (currentPage + 1) * itemsPerPage
   );
 
-  // Reset current page if it exceeds total pages
+  // Reset current page if it exceeds total pages (only for internal state)
   useEffect(() => {
-    if (currentPage >= totalPages && totalPages > 0) {
-      setCurrentPage(0);
+    if (externalCurrentPage === undefined && currentPage >= totalPages && totalPages > 0) {
+      setInternalCurrentPage(0);
     }
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, externalCurrentPage]);
 
   return {
     filtered,

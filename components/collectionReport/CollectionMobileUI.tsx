@@ -2,17 +2,12 @@ import React from 'react';
 import CollectionReportCards from '@/components/collectionReport/CollectionReportCards';
 import CollectionReportCardSkeleton from '@/components/collectionReport/CollectionReportCardSkeleton';
 import CollectionReportFilters from '@/components/collectionReport/CollectionReportFilters';
-import PaginationControls from '@/components/ui/PaginationControls';
 import type { CollectionMobileUIProps } from '@/lib/types/componentProps';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 
 const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
   loading,
   filteredReports,
-  mobileCurrentItems,
-  mobileTotalPages,
-  mobilePage,
-  onPaginateMobile,
   mobileCardsRef,
   reportIssues,
   // Filter props
@@ -78,7 +73,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
             {/* Mobile cards (single column) - hidden on md and above */}
             <div className="md:hidden">
               <CollectionReportCards
-                data={mobileCurrentItems}
+                data={filteredReports}
                 gridLayout={false}
                 reportIssues={reportIssues}
                 onEdit={onEdit}
@@ -90,7 +85,7 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
             {/* Medium breakpoint cards (2x2 grid) - visible only on md */}
             <div className="hidden md:block lg:hidden">
               <CollectionReportCards
-                data={mobileCurrentItems}
+                data={filteredReports}
                 gridLayout={true}
                 reportIssues={reportIssues}
                 onEdit={onEdit}
@@ -98,20 +93,6 @@ const CollectionMobileUI: React.FC<CollectionMobileUIProps> = ({
                 editableReportIds={editableReportIds}
               />
             </div>
-
-            {/* Pagination - below cards */}
-            {mobileTotalPages > 1 && (
-              <div
-                className="animate-in fade-in-0 slide-in-from-bottom-2"
-                style={{ animationDelay: '200ms' }}
-              >
-                <PaginationControls
-                  currentPage={mobilePage - 1}
-                  totalPages={mobileTotalPages}
-                  setCurrentPage={page => onPaginateMobile(page + 1)}
-                />
-              </div>
-            )}
           </div>
         )}
       </div>

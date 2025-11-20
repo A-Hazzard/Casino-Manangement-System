@@ -3,19 +3,24 @@ import type { UserAuthPayload } from '@/shared/types/auth';
 /**
  * Determines if the licensee filter should be shown to the user
  * - Always show for admin/developer
- * - Show for non-admin users with multiple licensees
+ * - Show for non-admin users with multiple licensees (including location admins)
  * - Hide for non-admin users with single or no licensee
+ * - Hide for location admins with single or no licensee
  */
 export function shouldShowLicenseeFilter(user: UserAuthPayload | null): boolean {
   if (!user) return false;
   
   const roles = user.roles || [];
-  const isAdmin = roles.includes('admin') || roles.includes('developer');
+  const normalizedRoles = roles.map(role =>
+    typeof role === 'string' ? role.toLowerCase() : role
+  );
+  const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
   
   // Always show for admins
   if (isAdmin) return true;
   
-  // Show for non-admin users with multiple licensees
+  // For location admins, only show if they have multiple licensees
+  // For other users, show if they have multiple licensees
   const userLicensees = user.rel?.licencee || [];
   return userLicensees.length > 1;
 }

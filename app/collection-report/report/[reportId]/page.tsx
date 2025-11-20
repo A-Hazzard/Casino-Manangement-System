@@ -226,11 +226,15 @@ function CollectionReportPageContent() {
 
     // Apply search filter
     if (searchTerm) {
-      filtered = metricsData.filter(metric =>
-        (metric.machineId?.toLowerCase() || '').includes(
-          searchTerm.toLowerCase()
-        )
-      );
+      const searchLower = searchTerm.toLowerCase();
+      filtered = metricsData.filter(metric => {
+        const machineId = (metric.machineId?.toLowerCase() || '');
+        const machineIdFromId = (metric.id ? String(metric.id).toLowerCase() : '');
+        return (
+          machineId.includes(searchLower) ||
+          machineIdFromId.includes(searchLower)
+        );
+      });
     }
 
     // Apply sorting
@@ -266,9 +270,10 @@ function CollectionReportPageContent() {
     return sorted;
   }, [metricsData, searchTerm, sortField, sortDirection]);
 
-  const machineTotalPages = Math.ceil(
-    filteredAndSortedData.length / ITEMS_PER_PAGE
-  );
+  const machineTotalPages = useMemo(() => {
+    const total = Math.ceil(filteredAndSortedData.length / ITEMS_PER_PAGE);
+    return total > 0 ? total : 1; // At least 1 page if there's data
+  }, [filteredAndSortedData.length]);
   const hasData = filteredAndSortedData.length > 0;
 
   // Apply pagination to the filtered and sorted data
@@ -984,7 +989,7 @@ function CollectionReportPageContent() {
               onClick={() =>
                 setMachinePage(p => Math.min(machineTotalPages, p + 1))
               }
-              disabled={machinePage === machineTotalPages}
+              disabled={machinePage >= machineTotalPages}
               className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
             >
               <ChevronRightIcon className="h-4 w-4" />
@@ -993,7 +998,7 @@ function CollectionReportPageContent() {
               variant="outline"
               size="icon"
               onClick={() => setMachinePage(machineTotalPages)}
-              disabled={machinePage === machineTotalPages}
+              disabled={machinePage >= machineTotalPages}
               className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
             >
               <DoubleArrowRightIcon className="h-4 w-4" />

@@ -38,7 +38,7 @@ export function useAdministrationData({
 
     try {
       const usersData = await fetchUsers(selectedLicencee);
-      setUsers(usersData);
+      setUsers(usersData.users);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch users';

@@ -6,6 +6,7 @@ import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow
 import { Database, MapPin, Eye, Pencil } from 'lucide-react';
 import { LocationCardData } from '@/lib/types/location';
 import formatCurrency from '@/lib/utils/currency';
+import { toast } from 'sonner';
 
 export default function LocationCard({
   location,
@@ -18,8 +19,14 @@ export default function LocationCard({
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const handleCardClick = () => {
-    onLocationClick(location._id);
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
   };
 
   return (
@@ -39,9 +46,17 @@ export default function LocationCard({
       )}
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <h3 className="truncate text-base font-semibold">
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              const locationName = (location as Record<string, unknown>).locationName as string;
+              copyToClipboard(locationName, 'Location Name');
+            }}
+            className="truncate text-base font-semibold hover:text-blue-600 hover:underline cursor-pointer text-left"
+            title="Click to copy location name"
+          >
             {(location as Record<string, unknown>).locationName as string}
-          </h3>
+          </button>
           {typeof location.onlineMachines === 'number' && typeof location.totalMachines === 'number' && (() => {
             const online = location.onlineMachines;
             const total = location.totalMachines;
@@ -124,13 +139,13 @@ export default function LocationCard({
       {/* Action Buttons */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
         <Button
-          onClick={() => handleCardClick()}
+          onClick={() => onLocationClick(location._id)}
           variant="outline"
           size="sm"
           className="flex-1 flex items-center justify-center gap-1.5 text-xs"
         >
           <Eye className="h-3.5 w-3.5" />
-          <span>View Details</span>
+          <span>View</span>
         </Button>
         <Button
           onClick={() => onEdit(location)}

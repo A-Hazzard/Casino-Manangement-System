@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Check, ChevronDown, Search } from 'lucide-react';
 
 type LocationSingleSelectOption = {
@@ -123,18 +124,36 @@ export default function LocationSingleSelect({
             </div>
           </div>
 
+          {/* Select All / All Locations Option */}
+          {includeAllOption && filteredOptions.length > 0 && (
+            <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+              <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-gray-100">
+                <Checkbox
+                  checked={selectedLocation === 'all'}
+                  onCheckedChange={() => handleSelectLocation('all')}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  {allOptionLabel} ({locations.length})
+                </span>
+              </label>
+            </div>
+          )}
+
           {/* Options */}
           <div className="py-1">
-            {filteredOptions.map(option => {
-              const isSelected = selectedLocation === option.id;
-              return (
-                <div
-                  key={option.id}
-                  className={`flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-gray-50 ${
-                    isSelected ? 'bg-blue-50' : ''
-                  }`}
-                  onClick={() => handleSelectLocation(option.id)}
-                >
+            {filteredOptions
+              .filter(option => !includeAllOption || option.id !== 'all')
+              .map(option => {
+                const isSelected = selectedLocation === option.id;
+                return (
+                  <div
+                    key={option.id}
+                    className={`flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-gray-50 ${
+                      isSelected ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => handleSelectLocation(option.id)}
+                  >
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <div className="flex-shrink-0">
                       {isSelected ? (

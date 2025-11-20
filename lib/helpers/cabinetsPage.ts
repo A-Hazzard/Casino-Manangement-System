@@ -115,12 +115,14 @@ export function filterCabinets(
         (cabRecord.Custom as Record<string, unknown>)?.name
       )?.toString().toLowerCase() || '';
       
+      const cabinetId = String(cab._id || '').toLowerCase();
       return (
         cab.assetNumber?.toLowerCase().includes(searchLower) ||
         cab.smbId?.toLowerCase().includes(searchLower) ||
         cab.locationName?.toLowerCase().includes(searchLower) ||
         cab.serialNumber?.toLowerCase().includes(searchLower) ||
-        customName.includes(searchLower)
+        customName.includes(searchLower) ||
+        cabinetId.includes(searchLower)
       );
     });
   }

@@ -97,7 +97,7 @@ const CabinetCard: React.FC<ExtendedCabinetCardProps> = ({
             className="w-full flex items-center justify-center gap-1.5 text-xs"
           >
             <Eye className="h-3.5 w-3.5" />
-            <span>View Details</span>
+            <span>View</span>
           </Button>
         </div>
       </div>

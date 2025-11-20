@@ -8,6 +8,7 @@ import GlobalSidebarWrapper from '@/components/layout/GlobalSidebarWrapper';
 import ProfileValidationGate from '@/components/providers/ProfileValidationGate';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
+import FeedbackButton from '@/components/ui/FeedbackButton';
 // Removed AuthProvider and AuthGuard to prevent conflicts with ProtectedRoute
 
 export const metadata: Metadata = {
@@ -80,6 +81,7 @@ export default function RootLayout({
               <SidebarInset>{children}</SidebarInset>
             </SidebarProvider>
             <Toaster position="top-right" />
+            <FeedbackButton />
           </CurrencyProvider>
           </QueryProvider>
         </GlobalErrorBoundary>

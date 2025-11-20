@@ -269,7 +269,8 @@ export default function ProfileModal({
     const loadLicensees = async () => {
       setLicenseesLoading(true);
       try {
-        const licenseesData = await fetchLicensees();
+        const result = await fetchLicensees();
+        const licenseesData = Array.isArray(result.licensees) ? result.licensees : [];
         console.log('[ProfileModal] Fetched licensees:', licenseesData);
         console.log('[ProfileModal] Licensees count:', licenseesData.length);
         console.log('[ProfileModal] Licensee IDs:', licenseesData.map(l => ({ id: String(l._id), name: l.name })));

@@ -35,7 +35,10 @@ import PageLayout from '@/components/layout/PageLayout';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import {
+  shouldShowLicenseeFilter,
+  shouldShowNoLicenseeMessage,
+} from '@/lib/utils/licenseeAccess';
 import { hasManagerAccess } from '@/lib/utils/permissions';
 
 // GSAP will be loaded dynamically in useEffect
@@ -47,7 +50,6 @@ import {
   getLocationsWithMachines,
 } from '@/lib/helpers/collectionReport';
 import {
-  handlePaginationWithAnimation,
   handleTabChange,
   resetCollectorFilters,
   resetSchedulerFilters,
@@ -56,9 +58,7 @@ import {
 import {
   animateCards,
   animateContentTransition,
-  animatePagination,
   animateTableRows,
-  calculatePagination,
   fetchAndFormatSchedulers,
   filterCollectionReports,
   setLastMonthDateRange,
@@ -97,6 +97,7 @@ import type { CollectorSchedule } from '@/lib/types/components';
 // Icons
 import CollectionNavigation from '@/components/collectionReport/CollectionNavigation';
 import { Button } from '@/components/ui/button';
+import PaginationControls from '@/components/ui/PaginationControls';
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants/collection';
 import { IMAGES } from '@/lib/constants/images';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
@@ -107,7 +108,7 @@ import Image from 'next/image';
 import './animations.css';
 /**
  * Main page component for the Collection Report.
- * Handles tab switching, data fetching, filtering, and pagination for:
+ * Handles tab switching, data fetching, and filtering for:
  * - Collection Reports
  * - Monthly Reports
  * - Manager Schedules
@@ -163,23 +164,35 @@ function CollectionReportContent() {
   }, []);
 
   // Initialize selectedLicencee from user's assigned licensees if not set
+  // Only auto-select on initial mount, not when user manually changes to "All Licensees"
+  const hasInitializedLicensee = useRef(false);
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
-    if (user && (!selectedLicencee || selectedLicencee === '')) {
+    // Only auto-select on initial mount (when user is loaded for the first time)
+    if (user && isInitialMount.current && !hasInitializedLicensee.current) {
       const userLicensees = user.rel?.licencee || [];
 
-      // If user has exactly 1 licensee, auto-select it
-      if (userLicensees.length === 1) {
+      // If user has exactly 1 licensee, auto-select it (only on initial mount)
+      if (
+        userLicensees.length === 1 &&
+        (!selectedLicencee || selectedLicencee === '')
+      ) {
         console.log(
           "[Collection Report] Auto-selecting user's only licensee:",
           userLicensees[0]
         );
         setSelectedLicencee(userLicensees[0]);
-      } else if (userLicensees.length > 1) {
-        // User has multiple licensees but none selected - they need to choose
-        console.log(
-          '[Collection Report] User has multiple licensees, waiting for selection'
-        );
+        hasInitializedLicensee.current = true;
+        isInitialMount.current = false;
+      } else {
+        // User has multiple licensees or no licensees - mark as initialized
+        hasInitializedLicensee.current = true;
+        isInitialMount.current = false;
       }
+    } else if (user) {
+      // User is loaded, mark as no longer initial mount
+      isInitialMount.current = false;
     }
   }, [user, selectedLicencee, setSelectedLicencee]);
 
@@ -217,18 +230,11 @@ function CollectionReportContent() {
     syncStateWithURL(searchParams, activeTab, setActiveTab);
   }, [searchParams, activeTab]);
 
-  // Refs for animation and pagination
+  // Refs for animation
   const contentRef = useRef<HTMLDivElement>(null);
-  const mobilePaginationRef = useRef<HTMLDivElement>(null);
-  const desktopPaginationRef = useRef<HTMLDivElement>(null);
   const mobileCardsRef = useRef<HTMLDivElement>(null);
   const desktopTableRef = useRef<HTMLDivElement>(null);
   const monthlyPaginationRef = useRef<HTMLDivElement>(null);
-
-  // Pagination state
-  const [mobilePage, setMobilePage] = useState(1);
-  const [desktopPage, setDesktopPage] = useState(1);
-  const itemsPerPage = 10;
 
   // Sorting state
   const [sortField, setSortField] = useState<keyof CollectionReportRow>('time');
@@ -242,15 +248,20 @@ function CollectionReportContent() {
       setSortField(field);
       setSortDirection('desc');
     }
-    setDesktopPage(1); // Reset to first page when sorting
-    setMobilePage(1);
   };
 
   // Collection report data state
-  const [reports, setReports] = useState<CollectionReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Batch-based pagination state
+  const [allReports, setAllReports] = useState<CollectionReportRow[]>([]);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [currentPage, setCurrentPage] = useState(0); // 0-indexed
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   // Collection Modal states - separate for mobile and desktop
   const [showMobileCollectionModal, setShowMobileCollectionModal] =
@@ -488,10 +499,21 @@ function CollectionReportContent() {
     refreshLocations();
   }, [refreshLocations]);
 
-  // Fetch collection reports data when collection tab is active
+  // Calculate which batch corresponds to the current page
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
+
+  // Fetch collection reports data when collection tab is active (initial batch)
   useEffect(() => {
     if (activeTab === 'collection') {
       setLoading(true);
+      setAllReports([]);
+      setLoadedBatches(new Set([1]));
+      setCurrentPage(0);
 
       // Determine parameters for fetch based on activeMetricsFilter
       let dateRangeForFetch = undefined;
@@ -515,20 +537,22 @@ function CollectionReportContent() {
         timePeriodForFetch = mapTimePeriodForAPI(activeMetricsFilter);
       }
 
+      // Fetch first batch
       fetchCollectionReportsByLicencee(
         selectedLicencee === '' ? undefined : selectedLicencee,
         dateRangeForFetch,
-        timePeriodForFetch
+        timePeriodForFetch,
+        1, // page
+        itemsPerBatch // limit
       )
-        .then(async (data: CollectionReportRow[]) => {
-          setReports(data);
+        .then(async result => {
+          setAllReports(result.data);
+          setLoadedBatches(new Set([1]));
           setLoading(false);
-
-          // Report issues checking removed - no more global scans
         })
         .catch((error: unknown) => {
           // Error is already handled gracefully in fetchCollectionReportsByLicencee
-          setReports([]);
+          setAllReports([]);
           setLoading(false);
           if (error instanceof Error) {
             handleError(error);
@@ -541,11 +565,111 @@ function CollectionReportContent() {
     activeMetricsFilter,
     customDateRange,
     handleError,
+    itemsPerBatch,
+  ]);
+
+  // Fetch next batch when crossing batch boundaries
+  useEffect(() => {
+    if (loading || activeTab !== 'collection') return;
+
+    const currentBatch = calculateBatchNumber(currentPage);
+
+    // Check if we're on the last page of the current batch (page 4, 0-indexed = page 5, 1-indexed)
+    // We should fetch the next batch proactively so it's ready when user navigates
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Determine parameters for fetch
+    let dateRangeForFetch = undefined;
+    let timePeriodForFetch = undefined;
+
+    if (activeMetricsFilter === 'Custom') {
+      if (customDateRange?.startDate && customDateRange?.endDate) {
+        dateRangeForFetch = {
+          from: customDateRange.startDate,
+          to: customDateRange.endDate,
+        };
+        timePeriodForFetch = 'Custom';
+      } else {
+        return;
+      }
+    } else {
+      timePeriodForFetch = mapTimePeriodForAPI(activeMetricsFilter);
+    }
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    // This ensures the next batch is ready when user navigates to page 6
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchCollectionReportsByLicencee(
+        selectedLicencee === '' ? undefined : selectedLicencee,
+        dateRangeForFetch,
+        timePeriodForFetch,
+        nextBatch, // page
+        itemsPerBatch // limit
+      )
+        .then(result => {
+          setAllReports(prev => {
+            // Merge new data, avoiding duplicates
+            const existingIds = new Set(prev.map(item => item._id));
+            const newItems = result.data.filter(
+              item => !existingIds.has(item._id)
+            );
+            return [...prev, ...newItems];
+          });
+        })
+        .catch((error: unknown) => {
+          if (error instanceof Error) {
+            handleError(error);
+          }
+        });
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchCollectionReportsByLicencee(
+        selectedLicencee === '' ? undefined : selectedLicencee,
+        dateRangeForFetch,
+        timePeriodForFetch,
+        currentBatch, // page
+        itemsPerBatch // limit
+      )
+        .then(result => {
+          setAllReports(prev => {
+            const existingIds = new Set(prev.map(item => item._id));
+            const newItems = result.data.filter(
+              item => !existingIds.has(item._id)
+            );
+            return [...prev, ...newItems];
+          });
+        })
+        .catch((error: unknown) => {
+          if (error instanceof Error) {
+            handleError(error);
+          }
+        });
+    }
+  }, [
+    currentPage,
+    loading,
+    activeTab,
+    loadedBatches,
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    handleError,
+    itemsPerBatch,
+    pagesPerBatch,
+    calculateBatchNumber,
   ]);
 
   const refreshCollectionReports = useCallback(() => {
     if (activeTab === 'collection') {
       setLoading(true);
+      setAllReports([]);
+      setLoadedBatches(new Set([1]));
+      setCurrentPage(0);
 
       let dateRangeForFetch = undefined;
       let timePeriodForFetch = undefined;
@@ -565,20 +689,22 @@ function CollectionReportContent() {
         timePeriodForFetch = mapTimePeriodForAPI(activeMetricsFilter);
       }
 
+      // Fetch first batch
       fetchCollectionReportsByLicencee(
         selectedLicencee === '' ? undefined : selectedLicencee,
         dateRangeForFetch,
-        timePeriodForFetch
+        timePeriodForFetch,
+        1, // page
+        itemsPerBatch // limit
       )
-        .then(async (data: CollectionReportRow[]) => {
-          setReports(data);
+        .then(async result => {
+          setAllReports(result.data);
+          setLoadedBatches(new Set([1]));
           setLoading(false);
-
-          // Report issues checking removed - no more global scans
         })
         .catch((error: unknown) => {
           // Error is already handled gracefully in fetchCollectionReportsByLicencee
-          setReports([]);
+          setAllReports([]);
           setLoading(false);
           if (error instanceof Error) {
             handleError(error);
@@ -591,6 +717,7 @@ function CollectionReportContent() {
     activeMetricsFilter,
     customDateRange,
     handleError,
+    itemsPerBatch,
   ]);
 
   useEffect(() => {
@@ -600,10 +727,6 @@ function CollectionReportContent() {
   }, [activeTab]);
 
   useEffect(() => {
-    setDesktopPage(1);
-    setMobilePage(1);
-  }, [selectedLocation, search, showUncollectedOnly, selectedFilters]);
-  useEffect(() => {
     if (!loading && !isSearching && activeTab === 'collection') {
       if (desktopTableRef.current) {
         animateTableRows(desktopTableRef);
@@ -612,27 +735,48 @@ function CollectionReportContent() {
         animateCards(mobileCardsRef);
       }
     }
-  }, [loading, isSearching, mobilePage, desktopPage, activeTab]);
+  }, [loading, isSearching, activeTab]);
+
+  // Get items for current page from the current batch
+  const paginatedReports = useMemo(() => {
+    // Calculate position within current batch (0-4 for pages 0-4, 0-4 for pages 5-9, etc.)
+    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
+    const startIndex = positionInBatch;
+    const endIndex = startIndex + itemsPerPage;
+
+    return allReports.slice(startIndex, endIndex);
+  }, [allReports, currentPage, itemsPerPage, pagesPerBatch]);
+
+  // Calculate total pages based on all loaded batches
+  const totalPages = useMemo(() => {
+    // Calculate total pages from all loaded batches
+    const totalItems = allReports.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+
+    // If we have items, return the calculated pages (based on all loaded data)
+    // This will dynamically increase as more batches are loaded
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [allReports.length, itemsPerPage]);
 
   const filteredReports = useMemo(() => {
     console.warn('[COLLECTION REPORT FILTERING - LICENSEE CHANGE DEBUG]');
     console.warn(`Selected licensee: "${selectedLicencee}"`);
-    console.warn(`Reports count: ${reports?.length || 0}`);
+    console.warn(`Reports count: ${paginatedReports?.length || 0}`);
     console.warn(`Selected location: "${selectedLocation}"`);
     console.warn(`Locations count: ${locations?.length || 0}`);
     console.warn(`Search term: "${search}"`);
     console.warn(`Show uncollected only: ${showUncollectedOnly}`);
     console.warn(`Selected filters: ${JSON.stringify(selectedFilters)}`);
 
-    if (!reports || !Array.isArray(reports)) {
+    if (!paginatedReports || !Array.isArray(paginatedReports)) {
       console.warn('No reports or reports is not an array');
       return [];
     }
 
     // Log first few reports to see what data we have
-    if (reports.length > 0) {
+    if (paginatedReports.length > 0) {
       console.warn('First 3 reports:');
-      reports.slice(0, 3).forEach((report, index) => {
+      paginatedReports.slice(0, 3).forEach((report, index) => {
         console.warn(
           `  ${index + 1}. Location: "${report.location}", Collector: "${
             report.collector
@@ -655,7 +799,7 @@ function CollectionReportContent() {
     }
 
     const filtered = filterCollectionReports(
-      reports,
+      paginatedReports,
       selectedLocation,
       search,
       showUncollectedOnly,
@@ -716,7 +860,7 @@ function CollectionReportContent() {
 
     return sorted;
   }, [
-    reports,
+    paginatedReports,
     selectedLocation,
     showUncollectedOnly,
     search,
@@ -813,38 +957,7 @@ function CollectionReportContent() {
       });
   }, [monthlyDateRange, monthlyLocation, selectedLicencee]);
 
-  // Pagination calculations for mobile and desktop
-  const mobileData = calculatePagination(
-    filteredReports,
-    mobilePage,
-    itemsPerPage
-  );
-  const desktopData = calculatePagination(
-    filteredReports,
-    desktopPage,
-    itemsPerPage
-  );
-
-  // Pagination handlers with animation
-  const paginateMobile = (pageNumber: number) => {
-    handlePaginationWithAnimation(
-      pageNumber,
-      setMobilePage,
-      activeTab,
-      mobilePaginationRef,
-      animatePagination
-    );
-  };
-
-  const paginateDesktop = (pageNumber: number) => {
-    handlePaginationWithAnimation(
-      pageNumber,
-      setDesktopPage,
-      activeTab,
-      desktopPaginationRef,
-      animatePagination
-    );
-  };
+  // Fetch new batch when crossing batch boundary (similar to locations page)
 
   // Fetch manager schedules and collectors when manager tab is active or filters change
   useEffect(() => {
@@ -988,9 +1101,10 @@ function CollectionReportContent() {
     (monthlyPage - 1) * monthlyItemsPerPage,
     monthlyPage * monthlyItemsPerPage
   );
-  const monthlyTotalPages = Math.ceil(
-    monthlyDetails.length / monthlyItemsPerPage
-  );
+  const monthlyTotalPages = useMemo(() => {
+    const total = Math.ceil(monthlyDetails.length / monthlyItemsPerPage);
+    return total > 0 ? total : monthlyDetails.length > 0 ? 1 : 0;
+  }, [monthlyDetails.length, monthlyItemsPerPage]);
 
   // Handle changes to the pending date range for monthly report
   const handlePendingRangeChange = (range?: RDPDateRange) => {
@@ -1120,14 +1234,12 @@ function CollectionReportContent() {
   // if (process.env.NODE_ENV === "development") {
   //   console.log("DEBUG: reports", reports);
   //   console.log("DEBUG: filteredReports", filteredReports);
-  //   console.log("DEBUG: desktopData", desktopData);
-  //   console.log("DEBUG: mobileData", mobileData);
-  //   console.log("DEBUG: desktopPage", desktopPage);
-  //   console.log("DEBUG: mobilePage", mobilePage);
   // }
 
   // Show "No Licensee Assigned" message for non-admin users without licensees
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  const showLicenseeFilter = shouldShowLicenseeFilter(user);
+
   if (showNoLicenseeMessage) {
     return (
       <PageLayout
@@ -1137,7 +1249,7 @@ function CollectionReportContent() {
         }}
         pageTitle="Collection Reports"
         hideOptions
-        hideLicenceeFilter={false}
+        hideLicenceeFilter={!showLicenseeFilter}
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         showToaster={true}
@@ -1151,10 +1263,11 @@ function CollectionReportContent() {
     <>
       <PageLayout
         headerProps={{
-          selectedLicencee,
-          setSelectedLicencee,
+          // Don't pass selectedLicencee - let PageLayout use store value directly
+          setSelectedLicencee: setSelectedLicencee,
           disabled: false,
         }}
+        hideLicenceeFilter={!showLicenseeFilter}
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
         showToaster={true}
@@ -1278,13 +1391,7 @@ function CollectionReportContent() {
                   <CollectionDesktopUI
                     loading={loading}
                     filteredReports={filteredReports}
-                    desktopCurrentItems={desktopData.currentItems}
-                    desktopTotalPages={desktopData.totalPages}
-                    desktopPage={desktopPage}
-                    onPaginateDesktop={paginateDesktop}
-                    desktopPaginationRef={desktopPaginationRef}
                     desktopTableRef={desktopTableRef}
-                    itemsPerPage={itemsPerPage}
                     locations={locations}
                     selectedLocation={selectedLocation}
                     onLocationChange={handleLocationChange}
@@ -1311,13 +1418,7 @@ function CollectionReportContent() {
                   <CollectionMobileUI
                     loading={loading}
                     filteredReports={filteredReports}
-                    mobileCurrentItems={mobileData.currentItems}
-                    mobileTotalPages={mobileData.totalPages}
-                    mobilePage={mobilePage}
-                    onPaginateMobile={paginateMobile}
-                    mobilePaginationRef={mobilePaginationRef}
                     mobileCardsRef={mobileCardsRef}
-                    itemsPerPage={itemsPerPage}
                     reportIssues={{}}
                     locations={locations}
                     selectedLocation={selectedLocation}
@@ -1338,6 +1439,14 @@ function CollectionReportContent() {
                     selectedLicencee={selectedLicencee}
                     editableReportIds={editableReportIds}
                   />
+                  {/* Pagination Controls */}
+                  {!loading && filteredReports.length > 0 && (
+                    <PaginationControls
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      setCurrentPage={setCurrentPage}
+                    />
+                  )}
                 </div>
               )}
               {activeTab === 'monthly' && (

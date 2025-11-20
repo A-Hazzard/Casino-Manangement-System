@@ -116,9 +116,9 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
       setLoadingCabinets(true);
       // Use "All" as the default timePeriod to get all available machines
       fetchCabinetsForLocation(fromLocation, undefined, 'All')
-        .then(cabs => {
-          setCabinets(cabs);
-          setAvailableCabinets(cabs);
+        .then(result => {
+          setCabinets(result.data);
+          setAvailableCabinets(result.data);
           setSelectedCabinets([]);
         })
         .catch(error => {

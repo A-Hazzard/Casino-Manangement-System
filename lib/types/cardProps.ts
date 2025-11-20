@@ -20,6 +20,7 @@ export type CabinetCardProps = {
   lastOnline?: string | Date;
   status?: string;
   online?: boolean;
+  custom?: { name?: string };
   onEdit?: (cabinet: CabinetCardProps) => void;
   onDelete?: (cabinet: CabinetCardProps) => void;
 };

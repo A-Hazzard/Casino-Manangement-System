@@ -164,7 +164,7 @@ components/ui/locations/
 ├── NewLocationModal.tsx        # Location creation interface
 ├── EditLocationModal.tsx       # Location editing interface
 ├── DeleteLocationModal.tsx     # Location deletion confirmation
-└── LocationCard.tsx            # Individual location display
+└── LocationCard.tsx            # Individual location display with inline machine status badges
 
 components/locationDetails/
 ├── LocationMetrics.tsx         # Location-specific metrics

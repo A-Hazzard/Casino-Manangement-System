@@ -4,10 +4,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { X, Trash2 } from 'lucide-react';
 import type { UserDetailsModalProps } from '@/lib/types/administration';
+import { validatePhoneNumber } from '@/lib/utils/validation';
 import gsap from 'gsap';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import cameraIcon from '@/public/cameraIcon.svg';
 import CircleCropModal from '@/components/ui/image/CircleCropModal';
+import { toast } from 'sonner';
 
 export default function UserDetailsModal({
   open,
@@ -29,6 +31,7 @@ export default function UserDetailsModal({
     middleName: '',
     otherName: '',
     gender: '',
+    phoneNumber: '',
     street: '',
     town: '',
     region: '',
@@ -51,6 +54,8 @@ export default function UserDetailsModal({
         middleName: user.profile?.middleName || '',
         otherName: user.profile?.otherName || '',
         gender: user.profile?.gender || '',
+        phoneNumber: (user.profile as { phoneNumber?: string } | undefined)?.phoneNumber || 
+                     (user.profile as { contact?: { phone?: string } } | undefined)?.contact?.phone || '',
         street: user.profile?.address?.street || '',
         town: user.profile?.address?.town || '',
         region: user.profile?.address?.region || '',
@@ -114,6 +119,13 @@ export default function UserDetailsModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate phone number if provided (optional field)
+    if (formData.phoneNumber.trim() && !validatePhoneNumber(formData.phoneNumber.trim())) {
+      toast.error('Please enter a valid phone number (7-20 digits, spaces, hyphens, parentheses, optional leading +)');
+      return;
+    }
+    
     onSave({
       ...formData,
       profilePicture: formData.profilePicture || null,
@@ -217,6 +229,24 @@ export default function UserDetailsModal({
                         value={user?.email || user?.emailAddress || ''}
                         disabled
                         placeholder="Email Address"
+                      />
+                    )}
+                  </div>
+                  <div className="w-full">
+                    <label className="mb-1 block text-sm font-semibold text-gray-900">
+                      Phone Number:
+                    </label>
+                    {isLoading ? (
+                      <Skeleton className="h-12 w-full" />
+                    ) : (
+                      <input
+                        type="tel"
+                        className="w-full rounded-md border border-border bg-white p-3 text-center lg:text-left"
+                        value={formData.phoneNumber}
+                        onChange={e =>
+                          handleInputChange('phoneNumber', e.target.value)
+                        }
+                        placeholder="Enter Phone Number"
                       />
                     )}
                   </div>
@@ -446,18 +476,18 @@ export default function UserDetailsModal({
               </div>
             </div>
 
-            <div className="mt-8 flex justify-center gap-4 lg:justify-end">
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="rounded-md px-8 py-3 text-lg font-semibold"
+                className="w-full rounded-md px-8 py-3 text-lg font-semibold sm:w-auto"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="rounded-md bg-button px-8 py-3 text-lg font-semibold text-white hover:bg-buttonActive"
+                className="w-full rounded-md bg-button px-8 py-3 text-lg font-semibold text-white hover:bg-buttonActive sm:w-auto"
               >
                 Save Changes
               </Button>

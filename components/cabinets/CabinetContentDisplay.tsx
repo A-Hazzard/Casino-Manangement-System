@@ -17,14 +17,9 @@ import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import type { GamingMachine as Machine } from '@/shared/types/entities';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from '@radix-ui/react-icons';
 import { useEffect, useRef, useState } from 'react';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
+import PaginationControls from '@/components/ui/PaginationControls';
 
 type CabinetContentDisplayProps = {
   paginatedCabinets: Machine[];
@@ -78,7 +73,8 @@ export const CabinetContentDisplay = ({
   useEffect(() => {
     const loadLicenseeNames = async () => {
       if (user?.rel?.licencee && user.rel.licencee.length > 0) {
-        const allLicensees = await fetchLicensees();
+        const result = await fetchLicensees();
+        const allLicensees = Array.isArray(result.licensees) ? result.licensees : [];
         const names = user.rel.licencee
           .map(id => {
             const licensee = allLicensees.find(l => String(l._id) === String(id));
@@ -129,17 +125,6 @@ export const CabinetContentDisplay = ({
     }
   };
 
-  // Handle page number input change
-  const handlePageNumberChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    let pageNumber = Number(event.target.value);
-    if (isNaN(pageNumber)) pageNumber = 1;
-    if (pageNumber < 1) pageNumber = 1;
-    if (pageNumber > totalPages) pageNumber = totalPages;
-
-    onPageChange(pageNumber - 1);
-  };
 
   // Render error state
   if (error) {
@@ -159,14 +144,14 @@ export const CabinetContentDisplay = ({
     return (
       <>
         {/* Table Skeleton for large screens */}
-        <div className="hidden md:block">
+        <div className="hidden lg:block">
           <ClientOnly fallback={<CabinetTableSkeleton />}>
             <CabinetTableSkeleton />
           </ClientOnly>
         </div>
 
-        {/* Card Skeleton for small screens */}
-        <div className="block md:hidden">
+        {/* Card Skeleton for small and medium screens */}
+        <div className="block lg:hidden">
           <ClientOnly fallback={<CabinetCardSkeleton />}>
             <CabinetCardSkeleton />
           </ClientOnly>
@@ -226,7 +211,7 @@ export const CabinetContentDisplay = ({
   return (
     <>
       {/* Desktop Table View */}
-      <div className="hidden md:block" ref={tableRef}>
+      <div className="hidden lg:block" ref={tableRef}>
         <CabinetTable
           data={paginatedCabinets.map(transformCabinet)}
           loading={loading}
@@ -239,97 +224,50 @@ export const CabinetContentDisplay = ({
         />
       </div>
 
-      {/* Mobile Card View */}
-      <div
-        className="mt-4 block w-full max-w-full space-y-3 px-1 sm:space-y-4 sm:px-2 md:hidden"
-        ref={cardsRef}
-      >
-        <ClientOnly fallback={<CabinetTableSkeleton />}>
-          {paginatedCabinets.map(machine => (
-            <CabinetCard
-              key={machine._id}
-              _id={machine._id}
-              assetNumber={machine.assetNumber || ''}
-              game={machine.game || ''}
-              smbId={
-                machine.relayId || machine.smbId || machine.smibBoard || ''
-              }
-              serialNumber={getSerialNumberIdentifier(machine)}
-              locationId={machine.locationId || ''}
-              locationName={machine.locationName || ''}
-              moneyIn={machine.moneyIn || 0}
-              moneyOut={machine.moneyOut || 0}
-              cancelledCredits={machine.moneyOut || 0}
-              jackpot={machine.jackpot || 0}
-              gross={machine.gross || 0}
-              lastOnline={
-                machine.lastOnline instanceof Date
-                  ? machine.lastOnline.toISOString()
-                  : typeof machine.lastOnline === 'string'
-                    ? machine.lastOnline
-                    : undefined
-              }
-              installedGame={machine.installedGame || machine.game || ''}
-              onEdit={() => handleEdit(machine)}
-              onDelete={() => handleDelete(machine)}
-            />
-          ))}
-        </ClientOnly>
+      {/* Mobile and Tablet Card View - 2x2 Grid */}
+      <div className="mt-4 block lg:hidden" ref={cardsRef}>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ClientOnly fallback={<CabinetTableSkeleton />}>
+            {paginatedCabinets.map(machine => (
+              <CabinetCard
+                key={machine._id}
+                _id={machine._id}
+                assetNumber={machine.assetNumber || ''}
+                game={machine.game || ''}
+                smbId={
+                  machine.relayId || machine.smbId || machine.smibBoard || ''
+                }
+                serialNumber={getSerialNumberIdentifier(machine)}
+                locationId={machine.locationId || ''}
+                locationName={machine.locationName || ''}
+                moneyIn={machine.moneyIn || 0}
+                moneyOut={machine.moneyOut || 0}
+                cancelledCredits={machine.moneyOut || 0}
+                jackpot={machine.jackpot || 0}
+                gross={machine.gross || 0}
+                lastOnline={
+                  machine.lastOnline instanceof Date
+                    ? machine.lastOnline.toISOString()
+                    : typeof machine.lastOnline === 'string'
+                      ? machine.lastOnline
+                      : undefined
+                }
+                installedGame={machine.installedGame || machine.game || ''}
+                onEdit={() => handleEdit(machine)}
+                onDelete={() => handleDelete(machine)}
+              />
+            ))}
+          </ClientOnly>
+        </div>
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-center space-x-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => onPageChange(0)}
-            disabled={currentPage === 0}
-            className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
-          >
-            <DoubleArrowLeftIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => onPageChange(Math.max(0, currentPage - 1))}
-            disabled={currentPage === 0}
-            className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-gray-700">Page</span>
-          <input
-            type="number"
-            min={1}
-            max={totalPages}
-            value={currentPage + 1}
-            onChange={handlePageNumberChange}
-            className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-            aria-label="Page number"
-          />
-          <span className="text-sm text-gray-700">of {totalPages}</span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() =>
-              onPageChange(Math.min(totalPages - 1, currentPage + 1))
-            }
-            disabled={currentPage === totalPages - 1}
-            className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
-          >
-            <ChevronRightIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => onPageChange(totalPages - 1)}
-            disabled={currentPage === totalPages - 1}
-            className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
-          >
-            <DoubleArrowRightIcon className="h-4 w-4" />
-          </Button>
-        </div>
+      {!loading && paginatedCabinets.length > 0 && totalPages > 1 && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          setCurrentPage={onPageChange}
+        />
       )}
     </>
   );

@@ -52,6 +52,8 @@ export function handleSectionChange(
     params.set('section', 'licensees');
   } else if (section === 'activity-logs') {
     params.set('section', 'activity-logs');
+  } else if (section === 'feedback') {
+    params.set('section', 'feedback');
   }
 
   const newURL = params.toString()
@@ -75,7 +77,7 @@ export const userManagement = {
     setIsLoading(true);
     try {
       const usersData = await fetchUsers();
-      setAllUsers(usersData);
+      setAllUsers(usersData.users);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to fetch users:', error);
@@ -275,7 +277,9 @@ export const licenseeManagement = {
   ) => {
     setIsLicenseesLoading(true);
     try {
-      const licenseesData = await fetchLicensees();
+      const result = await fetchLicensees();
+      // Extract licensees array from the result
+      const licenseesData = Array.isArray(result.licensees) ? result.licensees : [];
       setAllLicensees(licenseesData);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -526,7 +530,7 @@ export const administrationUtils = {
   processUsers: (
     allUsers: User[],
     searchValue: string,
-    searchMode: 'username' | 'email',
+    searchMode: 'username' | 'email' | '_id',
     sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null,
     isDeveloper: boolean = false
   ) => {
@@ -565,8 +569,7 @@ export const administrationUtils = {
     sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null,
     setSortConfig: (
       config: { key: SortKey; direction: 'ascending' | 'descending' } | null
-    ) => void,
-    setCurrentPage: (page: number) => void
+    ) => void
   ) => {
     return (key: SortKey) => {
       let direction: 'ascending' | 'descending' = 'ascending';
@@ -578,7 +581,6 @@ export const administrationUtils = {
         direction = 'descending';
       }
       setSortConfig({ key, direction });
-      setCurrentPage(0);
     };
   },
 };

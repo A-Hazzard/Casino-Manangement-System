@@ -3,8 +3,8 @@ import { MagnifyingGlassIcon, ChevronDownIcon } from '@radix-ui/react-icons';
 type ActivityLogsSearchBarProps = {
   searchValue: string;
   setSearchValue: (value: string) => void;
-  searchMode: 'username' | 'email' | 'description';
-  setSearchMode: (mode: 'username' | 'email' | 'description') => void;
+  searchMode: 'username' | 'email' | 'description' | '_id';
+  setSearchMode: (mode: 'username' | 'email' | 'description' | '_id') => void;
   searchDropdownOpen: boolean;
   setSearchDropdownOpen: (open: boolean) => void;
 };
@@ -43,7 +43,9 @@ export default function ActivityLogsSearchBar({
                 ? 'Username'
                 : searchMode === 'email'
                   ? 'Email'
-                  : 'Description'}
+                  : searchMode === 'description'
+                    ? 'Description'
+                    : 'ID'}
               <ChevronDownIcon
                 className={`ml-1 h-3 w-3 transition-transform md:ml-2 md:h-4 md:w-4 ${
                   searchDropdownOpen ? 'rotate-180' : ''
@@ -90,6 +92,19 @@ export default function ActivityLogsSearchBar({
                   }}
                 >
                   Description
+                </button>
+                <button
+                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-100 ${
+                    searchMode === '_id'
+                      ? 'font-semibold text-buttonActive'
+                      : 'text-gray-700'
+                  }`}
+                  onClick={() => {
+                    setSearchMode('_id');
+                    setSearchDropdownOpen(false);
+                  }}
+                >
+                  ID
                 </button>
               </div>
             )}

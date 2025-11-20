@@ -1,7 +1,6 @@
 'use client';
 
 import LoginForm from '@/components/auth/LoginForm';
-import FeedbackButton from '@/components/ui/FeedbackButton';
 import LiquidGradient from '@/components/ui/LiquidGradient';
 import PasswordUpdateModal from '@/components/ui/PasswordUpdateModal';
 import ProfileValidationModal from '@/components/ui/ProfileValidationModal';
@@ -40,7 +39,6 @@ function LoginPageContent() {
   const { setUser, clearUser } = useUserStore();
   const { setLastLoginPassword, clearLastLoginPassword } =
     useAuthSessionStore();
-  const [isMounted, setIsMounted] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -79,8 +77,6 @@ function LoginPageContent() {
   const [profileUpdating, setProfileUpdating] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
-
     // Check for URL parameters (logout success, errors, etc.)
     const logoutParam = searchParams.get('logout');
     const errorParam = searchParams.get('error');
@@ -598,12 +594,12 @@ function LoginPageContent() {
     }
   };
 
-  if (!isMounted || authLoading) {
+  // Only show skeleton during initial auth check, not during component mount
+  // This prevents the annoying flicker where form -> skeleton -> form
+  if (authLoading) {
     return (
       <>
         <LoginPageSkeleton />
-        {/* Feedback Button - Always visible on login page */}
-        <FeedbackButton />
       </>
     );
   }
@@ -611,8 +607,6 @@ function LoginPageContent() {
   return (
     <>
       <LiquidGradient />
-      {/* Feedback Button - Always visible on login page */}
-      <FeedbackButton />
       <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
         <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
           <div className="flex flex-col md:flex-row">

@@ -17,7 +17,7 @@ type ActivityLogDescriptionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   log: ActivityLog | null;
-  searchMode: 'username' | 'email' | 'description';
+  searchMode: 'username' | 'email' | 'description' | '_id';
 };
 
 const ActivityLogDescriptionDialog: React.FC<

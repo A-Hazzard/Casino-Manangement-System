@@ -6,7 +6,37 @@ All notable changes to the project and its documentation are recorded here. The 
 
 ## [Unreleased]
 
-- Placeholder for upcoming work.
+### Added
+
+- **Feedback Management System**
+  - Complete feedback management interface in Administration page
+  - Status workflow: pending → reviewed → resolved
+  - Archive/unarchive functionality independent of status
+  - Mobile-responsive card view and desktop table view
+  - Category and status filtering with archived items support
+  - Email-based search functionality
+  - Review tracking with automatic reviewer information capture
+  - Global floating feedback button on all pages
+  - Auto-fill user information for logged-in users
+  - PATCH endpoint using MongoDB native driver for reliable field updates
+  - Delete and restore confirmation dialogs with proper HTML structure
+
+- **Per-Location Machine Status Badges**
+  - Added inline machine status badges next to location names in both desktop table and mobile card views
+  - Displays "X/Y Online" format with color-coded indicators:
+    - Green: All machines online
+    - Yellow: Some machines online (partial)
+    - Red: All machines offline
+    - Gray: No machines
+  - Implemented in `components/ui/locations/LocationTable.tsx` and `components/ui/locations/LocationCard.tsx`
+  - Provides quick visual identification of location machine status at a glance
+
+### Fixed
+
+- **Feedback Archive Persistence**
+  - Fixed archived field not persisting correctly by implementing PATCH endpoint with MongoDB native driver
+  - Resolved hydration errors in AlertDialog components (invalid HTML nesting)
+  - Fixed mobile responsiveness issues in feedback management modals
 
 ## [1.0.0] - 2025-11-15
 

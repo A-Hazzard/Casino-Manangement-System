@@ -19,7 +19,7 @@ import {
 // Components
 import SessionsFilters from '@/components/sessions/SessionsFilters';
 import SessionsTable from '@/components/sessions/SessionsTable';
-import SessionsPagination from '@/components/sessions/SessionsPagination';
+import PaginationControls from '@/components/ui/PaginationControls';
 import { SessionsPageSkeleton } from '@/components/ui/skeletons/SessionsSkeletons';
 
 // Constants
@@ -42,7 +42,7 @@ function SessionsPageContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   // Custom hooks for sessions functionality
-  const { sessions, loading, error, pagination, handlePageChange } =
+  const { sessions, loading, error, pagination, currentPage, handlePageChange } =
     useSessions();
 
   const { searchTerm, sortBy, sortOrder, setSearchTerm, setSortBy, setSortOrder, handleSort } =
@@ -122,10 +122,13 @@ function SessionsPageContent() {
               </div>
 
               {/* Pagination Section: Navigation controls for session pages */}
-              <SessionsPagination
-                pagination={pagination}
-                onPageChange={handlePageChange}
+              {pagination && pagination.totalPages > 1 && (
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  setCurrentPage={handlePageChange}
               />
+              )}
             </>
           )}
         </motion.div>

@@ -50,16 +50,57 @@ export function setupAxiosInterceptors() {
             const currentPath = window.location.pathname;
             const requestUrl = error.config?.url || '';
             
+            // Check if we're already on the login page - if so, silently handle the error
+            // This prevents annoying "session expired" messages when just visiting the login page
+            const isOnLoginPage = 
+              currentPath === '/login' || 
+              currentPath === '/authentication' ||
+              currentPath.startsWith('/login?') ||
+              currentPath.startsWith('/authentication?');
+            
             // Check if this is from a manual logout
             const isLogout = requestUrl.includes('/api/auth/logout');
             
+            // Check if we just logged out (within last 5 seconds)
+            // This helps show "Logged out successfully" instead of "session expired" for 401s after logout
+            let justLoggedOut = false;
+            if (typeof window !== 'undefined') {
+              const justLoggedOutTimestamp = sessionStorage.getItem('just-logged-out');
+              if (justLoggedOutTimestamp) {
+                const timeSinceLogout = Date.now() - parseInt(justLoggedOutTimestamp, 10);
+                if (timeSinceLogout < 5000) { // 5 seconds
+                  justLoggedOut = true;
+                } else {
+                  // Clean up old flag
+                  sessionStorage.removeItem('just-logged-out');
+                }
+              }
+            }
+            
+            // Check if this is from the current-user endpoint on login page (expected 401)
+            const isCurrentUserOnLoginPage = 
+              isOnLoginPage && requestUrl.includes('/api/auth/current-user');
+            
+            // Skip showing error if we're on login page and it's a current-user check
+            // This is expected behavior - no valid session on login page
+            if (isCurrentUserOnLoginPage) {
+              // Silently handle - this is expected when not logged in
+              return Promise.reject(error);
+            }
+            
             let message: string;
             let toastType: 'error' | 'success' = 'error';
+            let redirectUrl = '/login?error=token_expired';
             
-            if (isLogout) {
-              // Manual logout - show success message
+            // Check if we're already on login page with logout=success - preserve it
+            const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+            const hasLogoutSuccess = currentUrl.includes('logout=success');
+            
+            if (isLogout || justLoggedOut || hasLogoutSuccess) {
+              // Manual logout or just logged out - show success message
               message = 'Logged out successfully';
               toastType = 'success';
+              redirectUrl = '/login?logout=success'; // Use logout=success instead of error
             } else if (errorMessage.includes('session') || errorMessage.includes('permission')) {
               // Session version mismatch (permissions changed)
               message = 'Your permissions have changed. Please login again.';
@@ -69,16 +110,20 @@ export function setupAxiosInterceptors() {
             }
             
             // Show toast notification
-            if (toastType === 'success') {
-              toast.success(message, {
-                duration: 3000,
-                description: 'Redirecting to login page...',
-              });
-            } else {
-              toast.error(message, {
-                duration: 5000,
-                description: 'Redirecting to login page...',
-              });
+            // Don't show toast for logout - the login page will show the success message
+            // For other errors: only show if not on login page
+            if (!isOnLoginPage && !(isLogout || justLoggedOut || hasLogoutSuccess)) {
+              if (toastType === 'success') {
+                toast.success(message, {
+                  duration: 3000,
+                  description: 'Redirecting to login page...',
+                });
+              } else {
+                toast.error(message, {
+                  duration: 5000,
+                  description: 'Redirecting to login page...',
+                });
+              }
             }
             
             // Clear local storage
@@ -97,14 +142,25 @@ export function setupAxiosInterceptors() {
                   });
             
             clearTokensPromise.finally(() => {
-              // Redirect after a short delay to allow toast to be visible
-              const redirectDelay = isLogout ? 1000 : 1500;
-              setTimeout(() => {
-                // Only redirect if not already on login page
-                if (currentPath !== '/authentication' && currentPath !== '/login') {
-                  window.location.href = `/authentication?message=${encodeURIComponent(message)}`;
-                }
-              }, redirectDelay);
+              // Only redirect if:
+              // 1. Not on login page, OR
+              // 2. On login page but it's a logout and we need to update URL to ?logout=success
+              const isLogoutFlow = isLogout || justLoggedOut || hasLogoutSuccess;
+              const needsUrlUpdate = isOnLoginPage && isLogoutFlow && !hasLogoutSuccess;
+              const shouldRedirect = !isOnLoginPage || needsUrlUpdate;
+              
+              if (shouldRedirect) {
+                // For logout, use a very short delay since we're already redirecting
+                // For other errors, use a longer delay to show the toast
+                const redirectDelay = isLogoutFlow ? 50 : 1500;
+                setTimeout(() => {
+                  // Only redirect if URL is different to avoid unnecessary navigation
+                  const currentUrl = window.location.pathname + window.location.search;
+                  if (currentUrl !== redirectUrl) {
+                    window.location.href = redirectUrl;
+                  }
+                }, redirectDelay);
+              }
             });
           }
         }

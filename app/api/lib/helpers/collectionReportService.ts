@@ -29,8 +29,20 @@ export async function getAllCollectionReportsWithMachineCounts(
 ): Promise<CollectionReportRow[]> {
   let rawReports: Array<Record<string, unknown>> = [];
 
-  // Build base match criteria
-  const matchCriteria: Record<string, unknown> = {};
+  // Build base match criteria with deletedAt filter
+  // Filter out documents with deletedAt >= 2025 (only return deletedAt < 2025 or null/undefined)
+  const deletedAtFilter = {
+    $or: [
+      { deletedAt: null },
+      { deletedAt: { $exists: false } },
+      { deletedAt: { $lt: new Date('2025-01-01') } },
+    ],
+  };
+
+  // Build match criteria combining deletedAt filter with date range if provided
+  const matchCriteria: Record<string, unknown> = {
+    ...deletedAtFilter,
+  };
 
   // Add date range filtering if provided
   if (startDate && endDate) {
@@ -38,19 +50,16 @@ export async function getAllCollectionReportsWithMachineCounts(
   }
 
   if (!licenceeId) {
-    // No licencee filter, just apply date filter if present
-    if (Object.keys(matchCriteria).length > 0) {
-      rawReports = await CollectionReport.find(matchCriteria)
-        .sort({ timestamp: -1 })
-        .lean();
-    } else {
-      rawReports = await CollectionReport.find({})
-        .sort({ timestamp: -1 })
-        .lean();
-    }
+    // No licencee filter, just apply date filter and deletedAt filter
+    rawReports = await CollectionReport.find(matchCriteria)
+      .sort({ timestamp: -1 })
+      .lean();
   } else {
-    // Apply licencee filter with aggregation, plus date filter if present
+    // Apply licencee filter with aggregation, plus date filter and deletedAt filter
     const aggregationPipeline: PipelineStage[] = [
+      {
+        $match: deletedAtFilter,
+      },
       {
         $lookup: {
           from: "gaminglocations",
@@ -63,7 +72,7 @@ export async function getAllCollectionReportsWithMachineCounts(
       {
         $match: {
           "locationDetails.rel.licencee": licenceeId,
-          ...matchCriteria,
+          ...(startDate && endDate ? { timestamp: { $gte: startDate, $lte: endDate } } : {}),
         },
       },
       { $sort: { timestamp: -1 } },

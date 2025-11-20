@@ -18,6 +18,8 @@ import { formatDistanceToNow } from 'date-fns';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import type { DataTableProps } from '@/shared/types/components';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
+import { toast } from 'sonner';
+import { Eye } from 'lucide-react';
 type CabinetTableProps = DataTableProps<Cabinet> & {
   onMachineClick?: (machineId: string) => void;
   showLocation?: boolean;
@@ -45,13 +47,23 @@ export default function CabinetTable({
     router.push(`/cabinets/${cabinetId}`);
   };
 
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
+  };
+
   return (
     <div className="overflow-x-auto bg-white shadow">
-      <Table ref={tableRef} className="w-full table-fixed">
+      <Table ref={tableRef} className="w-full">
         <TableHeader>
           <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
             <TableHead
-              className="relative cursor-pointer font-semibold text-white"
+              className="relative cursor-pointer font-semibold text-white w-[240px]"
               onClick={() => onSort('assetNumber')}
               isFirstColumn={true}
             >
@@ -120,52 +132,75 @@ export default function CabinetTable({
                 })
               : 'Never';
 
+            const serialNumber = cab.serialNumber?.trim() || '';
+            const customName = cab.custom?.name?.trim() || '';
+            const smbId = cab.smbId || '';
+
             return (
               <TableRow
                 key={cab._id}
-                className="cursor-pointer hover:bg-grayHighlight/10"
-                onClick={e => {
-                  // Don't navigate if clicking on action buttons or their container
-                  const target = e.target as HTMLElement;
-                  if (
-                    target.closest('.action-buttons') ||
-                    target.closest('button')
-                  ) {
-                    return;
-                  }
-                  navigateToCabinet(cab._id);
-                }}
+                className="hover:bg-grayHighlight/10"
               >
-                <TableCell isFirstColumn={true}>
-                  <div className="font-medium">
-                    {cab.assetNumber || '(No Asset #)'}
-                  </div>
-                  <div className="mt-1 text-xs text-gray-600">
-                    {formatMachineDisplayNameWithBold(cab)}
-                  </div>
-                  <div className="mt-1 text-xs font-bold text-gray-600">
-                    {cab.locationName || '(No Location)'}
-                  </div>
-                  <div className="mt-1 text-xs text-gray-500">
-                    SMIB: {cab.smbId || 'N/A'}
-                  </div>
-                  <Badge
-                    variant={isOnline ? 'default' : 'destructive'}
-                    className={`mt-1 inline-block w-fit rounded-full px-2 py-0.5 text-xs ${
-                      isOnline
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-red-100 text-red-700 hover:bg-red-200'
-                    } flex items-center gap-1`}
-                  >
-                    {isOnline ? (
-                      <MobileIcon className="h-3 w-3" />
-                    ) : (
-                      <Cross1Icon className="h-3 w-3" />
-                    )}
-                    {isOnline ? 'Online' : 'Offline'}
-                  </Badge>
-                  <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
-                    <ClockIcon className="h-3 w-3" /> {lastOnlineText}
+                <TableCell isFirstColumn={true} className="w-[240px]">
+                  <div className="space-y-1">
+                    {/* Row 1: Serial Number/Asset Number */}
+                    <div className="min-w-0">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          const textToCopy = serialNumber || customName || cab.assetNumber || '';
+                          if (textToCopy) {
+                            copyToClipboard(textToCopy, 'Serial Number');
+                          }
+                        }}
+                        className="font-medium text-sm hover:text-blue-600 hover:underline cursor-pointer text-left break-words whitespace-normal"
+                        title="Click to copy serial number"
+                      >
+                        {formatMachineDisplayNameWithBold(cab)}
+                      </button>
+                    </div>
+                    {/* Row 2: Location Name */}
+                    <div className="text-xs font-semibold text-gray-600 break-words whitespace-normal">
+                      {cab.locationName || '(No Location)'}
+                    </div>
+                    
+                    {/* Row 2: SMIB and Status */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (smbId) {
+                            copyToClipboard(smbId, 'SMIB');
+                          }
+                        }}
+                        className={`text-xs break-words whitespace-normal ${smbId ? 'text-gray-500 hover:text-blue-600 hover:underline cursor-pointer' : 'text-gray-400'}`}
+                        title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
+                        disabled={!smbId}
+                      >
+                        SMIB: {smbId || 'N/A'}
+                      </button>
+                      <Badge
+                        variant={isOnline ? 'default' : 'destructive'}
+                        className={`ml-auto inline-block w-fit rounded-full px-2 py-0.5 text-xs flex-shrink-0 ${
+                          isOnline
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : 'bg-red-100 text-red-700 hover:bg-red-200'
+                        } flex items-center gap-1`}
+                      >
+                        {isOnline ? (
+                          <MobileIcon className="h-3 w-3" />
+                        ) : (
+                          <Cross1Icon className="h-3 w-3" />
+                        )}
+                        {isOnline ? 'Online' : 'Offline'}
+                      </Badge>
+                    </div>
+                    
+                    {/* Row 3: Last Activity */}
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <ClockIcon className="h-3 w-3 flex-shrink-0" /> 
+                      <span className="break-words whitespace-normal">{lastOnlineText}</span>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>{formatCurrency(cab.moneyIn)}</TableCell>
@@ -186,9 +221,21 @@ export default function CabinetTable({
                       variant="ghost"
                       onClick={e => {
                         e.stopPropagation();
+                        navigateToCabinet(cab._id);
+                      }}
+                      className="h-8 w-8 p-1 hover:bg-accent"
+                      title="View details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={e => {
+                        e.stopPropagation();
                         onEdit?.(cab);
                       }}
                       className="h-8 w-8 p-1 hover:bg-accent"
+                      title="Edit"
                     >
                       <Image
                         src={IMAGES.editIcon}
@@ -205,6 +252,7 @@ export default function CabinetTable({
                         onDelete?.(cab);
                       }}
                       className="h-8 w-8 p-1 hover:bg-accent"
+                      title="Delete"
                     >
                       <Image
                         src={IMAGES.deleteIcon}

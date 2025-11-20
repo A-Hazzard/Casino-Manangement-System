@@ -52,19 +52,42 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Pagination parameters
+    const page = parseInt(searchParams.get('page') || '1');
+    const requestedLimit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
+    const skip = (page - 1) * limit;
+
+    // Get total count before pagination
+    const totalCount = formattedLicensees.length;
+
+    // Apply pagination
+    const paginatedLicensees = formattedLicensees.slice(skip, skip + limit);
+
     apiLogger.logSuccess(
       context,
-      `Successfully fetched ${formattedLicensees.length} licensees`
+      `Successfully fetched ${totalCount} licensees (returning ${paginatedLicensees.length} on page ${page})`
     );
     
-    console.log('[API /api/licensees] Returning licensees:', formattedLicensees);
+    console.log('[API /api/licensees] Returning licensees:', paginatedLicensees);
     
-    return new Response(JSON.stringify({ licensees: formattedLicensees }), {
+    return new Response(
+      JSON.stringify({
+        licensees: paginatedLicensees,
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+      }),
+      {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
       },
-    });
+      }
+    );
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';

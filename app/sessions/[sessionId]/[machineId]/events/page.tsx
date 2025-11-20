@@ -11,17 +11,22 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { SessionEventsPageSkeleton } from '@/components/ui/skeletons/SessionsSkeletons';
+import PaginationControls from '@/components/ui/PaginationControls';
 
-import type { MachineEvent, PaginationData } from '@/lib/types/sessions';
+import type { MachineEvent } from '@/lib/types/sessions';
 
 export default function SessionEventsPage() {
   const params = useParams();
   const router = useRouter();
-  const [events, setEvents] = useState<MachineEvent[]>([]);
+  const [allEvents, setAllEvents] = useState<MachineEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState<PaginationData | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [selectedLicencee, setSelectedLicencee] = useState('All Licensees');
@@ -32,20 +37,26 @@ export default function SessionEventsPage() {
   const sessionId = params.sessionId as string;
   const machineId = params.machineId as string;
 
+  // Calculate which batch we need based on current page
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / pagesPerBatch) + 1;
+  }, [pagesPerBatch]);
+
   const handleFilter = useCallback(() => {
     // Reset to first page when filtering
-    setCurrentPage(1);
-    // The fetchEvents function will be called by the useEffect when currentPage changes
+    setCurrentPage(0);
+    setAllEvents([]);
+    setLoadedBatches(new Set([1]));
   }, []);
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (batch: number = 1) => {
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: '10',
+        page: batch.toString(),
+        limit: itemsPerBatch.toString(),
       });
 
       // Add date filtering based on activeMetricsFilter
@@ -119,22 +130,77 @@ export default function SessionEventsPage() {
       );
 
       const data = response.data;
+      const newEvents = data.data.events || [];
 
-      setEvents(data.data.events);
-      setPagination(data.data.pagination);
+      // Merge new events into allEvents, avoiding duplicates
+      setAllEvents(prev => {
+        const existingIds = new Set(prev.map(e => e._id));
+        const uniqueNewEvents = newEvents.filter((e: MachineEvent) => !existingIds.has(e._id));
+        return [...prev, ...uniqueNewEvents];
+      });
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
         console.error('❌ Events Page Error:', err);
       }
       toast.error('Failed to fetch events');
+      setAllEvents([]);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, sessionId, machineId, activeMetricsFilter, customDateRange]);
+  }, [sessionId, machineId, activeMetricsFilter, customDateRange, itemsPerBatch]);
 
+  // Load initial batch on mount and when filters change
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    setAllEvents([]);
+    setLoadedBatches(new Set([1]));
+    setCurrentPage(0);
+    fetchEvents(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, machineId, activeMetricsFilter, customDateRange]);
+
+  // Fetch next batch when crossing batch boundaries
+  useEffect(() => {
+    if (loading) return;
+
+    const currentBatch = calculateBatchNumber(currentPage);
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchEvents(nextBatch);
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchEvents(currentBatch);
+    }
+  }, [
+    currentPage,
+    loading,
+    fetchEvents,
+    itemsPerBatch,
+    pagesPerBatch,
+    loadedBatches,
+    calculateBatchNumber,
+  ]);
+
+  // Get items for current page from the current batch
+  const paginatedEvents = React.useMemo(() => {
+    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
+    const startIndex = positionInBatch;
+    const endIndex = startIndex + itemsPerPage;
+    return allEvents.slice(startIndex, endIndex);
+  }, [allEvents, currentPage, itemsPerPage, pagesPerBatch]);
+
+  // Calculate total pages based on all loaded batches
+  const totalPages = React.useMemo(() => {
+    const totalItems = allEvents.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [allEvents.length, itemsPerPage]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -181,11 +247,11 @@ export default function SessionEventsPage() {
   };
 
   const renderEventsTable = () => {
-    if (loading) {
+    if (loading && allEvents.length === 0) {
       return <SessionEventsPageSkeleton />;
     }
 
-    if (events.length === 0) {
+    if (paginatedEvents.length === 0) {
       return (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
           <p className="text-gray-500">No events found for this session</p>
@@ -208,7 +274,7 @@ export default function SessionEventsPage() {
               </tr>
             </thead>
             <tbody>
-              {events.map(event => (
+              {paginatedEvents.map(event => (
                 <React.Fragment key={event._id}>
                   <tr className="text-center hover:bg-muted">
                     <td className="border border-border p-3">
@@ -307,7 +373,7 @@ export default function SessionEventsPage() {
   };
 
   const renderEventsCards = () => {
-    if (loading) {
+    if (loading && allEvents.length === 0) {
       return (
         <div className="grid grid-cols-1 gap-4">
           {[...Array(5)].map((_, i) => (
@@ -323,7 +389,7 @@ export default function SessionEventsPage() {
       );
     }
 
-    if (events.length === 0) {
+    if (paginatedEvents.length === 0) {
       return (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
           <p className="text-gray-500">No events found for this session</p>
@@ -333,7 +399,7 @@ export default function SessionEventsPage() {
 
     return (
       <div className="grid grid-cols-1 gap-4">
-        {events.map(event => (
+        {paginatedEvents.map(event => (
           <div
             key={event._id}
             className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
@@ -431,61 +497,6 @@ export default function SessionEventsPage() {
     );
   };
 
-  const renderPagination = () => {
-    if (!pagination || pagination.totalPages <= 1) return null;
-
-    return (
-      <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
-        <div className="flex flex-1 justify-between sm:hidden">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={!pagination.hasPrevPage}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={!pagination.hasNextPage}
-          >
-            Next
-          </Button>
-        </div>
-        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-gray-700">
-              Showing page{' '}
-              <span className="font-medium">{pagination.currentPage}</span> of{' '}
-              <span className="font-medium">{pagination.totalPages}</span>
-            </p>
-          </div>
-          <div>
-            <nav className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={!pagination.hasPrevPage}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={!pagination.hasNextPage}
-              >
-                Next
-              </Button>
-            </nav>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <>
@@ -541,7 +552,13 @@ export default function SessionEventsPage() {
           <div className="block lg:hidden">{renderEventsCards()}</div>
 
           {/* Pagination Section: Navigation controls for event pages */}
-          {renderPagination()}
+          {!loading && totalPages > 1 && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={handlePageChange}
+            />
+          )}
         </div>
       </PageLayout>
     </>

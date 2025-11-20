@@ -24,6 +24,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import profaneWords from 'profane-words';
 import { ADDITIONAL_BAD_WORDS } from '@/lib/constants/badWords';
+import { useUserStore } from '@/lib/store/userStore';
 
 const FEEDBACK_CATEGORIES = [
   { value: 'bug', label: '🐛 Bug Report' },
@@ -41,6 +42,8 @@ type FeedbackFormProps = {
 };
 
 export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
+  const { user } = useUserStore();
+  const isLoggedIn = !!user;
   const [email, setEmail] = useState('');
   const [category, setCategory] = useState<string>('other');
   const [description, setDescription] = useState('');
@@ -50,6 +53,15 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
   const [hasProfanity, setHasProfanity] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previousLengthRef = useRef(0);
+
+  // Set email from logged-in user when form opens
+  useEffect(() => {
+    if (isOpen && isLoggedIn && user?.emailAddress) {
+      setEmail(user.emailAddress);
+    } else if (isOpen && !isLoggedIn) {
+      setEmail('');
+    }
+  }, [isOpen, isLoggedIn, user?.emailAddress]);
 
   // Combine profane-words library with custom bad words list
   const badWordsSet = useMemo(() => {
@@ -141,8 +153,8 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.trim() || !category || !description.trim()) {
-      toast.error('Please fill in all fields');
+    if ((!isLoggedIn && !email.trim()) || !category || !description.trim()) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -165,16 +177,38 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     setIsSubmitting(true);
 
     try {
+      const requestBody: {
+        email?: string;
+        username?: string;
+        userId?: string;
+        category: string;
+        description: string;
+      } = {
+        category,
+        description: description.trim(),
+      };
+
+      // If logged in, use user info
+      if (isLoggedIn && user) {
+        requestBody.email = user.emailAddress || email.trim() || undefined;
+        requestBody.username = user.username || undefined;
+        requestBody.userId = user._id ? String(user._id) : undefined;
+      } else {
+        // If not logged in, require email
+        if (!email.trim()) {
+          toast.error('Please provide your email address');
+          setIsSubmitting(false);
+          return;
+        }
+        requestBody.email = email.trim();
+      }
+
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: email.trim(),
-          category,
-          description: description.trim(),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -254,18 +288,20 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
+                {!isLoggedIn && (
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="your.email@example.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
                   <Select

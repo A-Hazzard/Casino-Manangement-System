@@ -8,6 +8,7 @@ import { differenceInMinutes } from 'date-fns';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import { toast } from 'sonner';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
 type UseCabinetDetailsDataProps = {
   slug: string;
@@ -30,7 +31,7 @@ type UseCabinetDetailsDataReturn = {
 
 export function useCabinetDetailsData({
   slug,
-  selectedLicencee: _selectedLicencee,
+  selectedLicencee,
   activeMetricsFilter,
   customDateRange,
   dateFilterInitialized,
@@ -44,6 +45,9 @@ export function useCabinetDetailsData({
   const [isOnline, setIsOnline] = useState(false);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
+  // Get display currency from store for currency conversion
+  const { displayCurrency } = useDashBoardStore();
+
   const fetchCabinetDetailsData = useCallback(async () => {
     setError(null);
     setErrorType('unknown');
@@ -56,12 +60,16 @@ export function useCabinetDetailsData({
         return;
       }
 
+      // Pass currency for conversion when viewing "All Licensees"
+      const currency = selectedLicencee === '' || !selectedLicencee ? displayCurrency : undefined;
+
       const cabinetData = await fetchCabinetById(
         slug,
         activeMetricsFilter,
         activeMetricsFilter === 'Custom' && customDateRange
           ? { from: customDateRange.startDate, to: customDateRange.endDate }
-          : undefined
+          : undefined,
+        currency
       );
 
       // Check if cabinet was not found
@@ -137,7 +145,7 @@ export function useCabinetDetailsData({
     } finally {
       setMetricsLoading(false);
     }
-  }, [slug, activeMetricsFilter, customDateRange]);
+  }, [slug, activeMetricsFilter, customDateRange, selectedLicencee, displayCurrency]);
 
   // Callback function to refresh cabinet data after updates
   const handleCabinetUpdated = useCallback(() => {
@@ -150,7 +158,7 @@ export function useCabinetDetailsData({
       fetchCabinetDetailsData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, activeMetricsFilter, dateFilterInitialized, customDateRange]);
+  }, [slug, activeMetricsFilter, dateFilterInitialized, customDateRange, displayCurrency]);
 
   return {
     cabinet,

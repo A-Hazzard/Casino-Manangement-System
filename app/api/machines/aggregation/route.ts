@@ -25,6 +25,12 @@ export async function GET(req: NextRequest) {
     const timePeriod = searchParams.get('timePeriod');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
+    
+    // Pagination parameters
+    const pageParam = searchParams.get('page');
+    const limitParam = searchParams.get('limit');
+    const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
+    const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : undefined;
 
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
@@ -608,16 +614,45 @@ export async function GET(req: NextRequest) {
       locationsFound: number;
       locationSample: Array<{ id: string; name: string; licensee?: string }>;
       machinesReturned: number;
+      totalMachines?: number;
       timePeriod: string | undefined;
+    }
+
+    // Apply pagination if limit is provided
+    const totalCount = filteredMachines.length;
+    let paginatedMachines = filteredMachines;
+    
+    if (limit) {
+      const skip = (page - 1) * limit;
+      paginatedMachines = filteredMachines.slice(skip, skip + limit);
     }
 
     interface ApiResponse {
       success: boolean;
-      data: typeof filteredMachines;
+      data: typeof paginatedMachines;
+      pagination?: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
       debug?: DebugInfo;
     }
 
-    const response: ApiResponse = { success: true, data: filteredMachines };
+    const response: ApiResponse = { 
+      success: true, 
+      data: paginatedMachines 
+    };
+    
+    // Add pagination info if limit is provided
+    if (limit) {
+      response.pagination = {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      };
+    }
     
     // DEBUG: Add debug info if ?debug=true
     if (debug) {
@@ -633,7 +668,8 @@ export async function GET(req: NextRequest) {
           name: String(l.name), 
           licensee: l.rel?.licencee ? String(l.rel.licencee) : undefined 
         })),
-        machinesReturned: filteredMachines.length,
+        machinesReturned: paginatedMachines.length,
+        totalMachines: totalCount,
         timePeriod: timePeriodForGamingDay
       };
     }

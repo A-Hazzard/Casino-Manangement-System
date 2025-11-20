@@ -57,6 +57,7 @@ const roleValidator = {
   message: `{PATH} must be one of: ${ALLOWED_ROLES.join(', ')}.`,
 };
 
+// Add missing fields based on provided JSON
 const UserSchema = new Schema(
   {
     _id: { type: String, required: true },
@@ -228,25 +229,27 @@ const UserSchema = new Schema(
       phoneNumber: { type: String, trim: true },
       notes: { type: String, trim: true },
     },
-    profilePicture: { type: String },
-    resourcePermissions: {
-      type: Map,
-      of: new Schema(
+    profilePicture: { type: String, default: null }, // default null for missing entries
+    resourcePermission: {
+      type: new Schema(
         {
-          entity: { type: String },
-          resources: [{ type: String }],
+          gamingLocations: {
+            resources: [{ type: String }]
+          }
         },
         { _id: false }
       ),
+      default: undefined,
     },
     password: { type: String, required: true },
     passwordUpdatedAt: { type: Date, default: null },
     sessionVersion: { type: Number, default: 1 },
     loginCount: { type: Number, default: 0 },
     lastLoginAt: { type: Date, default: null },
-    deletedAt: { type: Date, default: null },
+    deletedAt: { type: Schema.Types.Mixed, default: null }, // allow for { $date: { $numberLong: "-1" } }
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },
+    __v: { type: Number, select: false, default: 0 }, // add missing __v field, default to 0, hide by default
   },
   { timestamps: true }
 );

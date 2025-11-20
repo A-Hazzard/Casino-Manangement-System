@@ -15,18 +15,19 @@
 
 ## Overview
 
-The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, and activity logging.
+The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, activity logging, and feedback management.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** December 2025  
-**Version:** 2.3.0
+**Version:** 2.4.0
 
 ### File Information
 
 - **File:** `app/administration/page.tsx`
 - **URL Pattern:** `/administration`
 - **Component Type:** Administrative Management Page
-- **Authentication:** Required (Admin Role)
+- **Authentication:** Required (Admin/Developer Role)
+- **Sections:** Users, Licensees, Activity Logs, Feedback
 
 ## Main Features
 
@@ -58,6 +59,15 @@ The Administration page provides comprehensive user and licensee management for 
   - Filterable activity logs by date, user, and action type
   - IP address logging for security tracking
   - **Enhanced API Logging:** All endpoints include structured logging with duration, timestamps, and context
+- **Feedback Management:**
+  - View, filter, and manage user feedback submissions
+  - Status management (pending, reviewed, resolved)
+  - Archive/unarchive functionality for feedback organization
+  - Notes and review tracking with reviewer information
+  - Mobile-responsive card view for smaller screens
+  - Category-based filtering (bug, suggestion, general-review, etc.)
+  - Status-based filtering with archived items support
+  - Email-based search functionality
 - **Security Features:**
   - Role-based access control (RBAC)
   - Resource permissions for location-specific access
@@ -107,6 +117,12 @@ The Administration page provides comprehensive user and licensee management for 
   - `components/administration/UserActivityLogModal.tsx` - User activity logs with mobile-responsive design
   - `components/administration/LicenseeSuccessModal.tsx` - Licensee creation success
   - `components/administration/PaymentStatusConfirmModal.tsx` - Payment status change confirmation
+- **Feedback Management Components:**
+  - `components/administration/FeedbackManagement.tsx` - Main feedback management interface with filtering, status management, and archive functionality
+  - Mobile-responsive card view for feedback items
+  - Desktop table view with inline actions
+  - Detail modal for viewing and editing feedback
+  - Delete and restore confirmation dialogs
 - **Profile Picture Components:**
   - `components/ui/image/CircleCropModal.tsx` - Circular image cropping functionality
   - `components/ui/image/ImageUpload.tsx` - Image upload with preview
@@ -185,6 +201,26 @@ The Administration page provides comprehensive user and licensee management for 
   - Body: `{ actor, actionType, entityType, entity, changes, timestamp }`
   - Returns: `{ success: true, activityLog: ActivityLog }`
   - **Logging:** Creation logging for audit trail entries
+
+#### Feedback Management Endpoints
+
+- **GET `/api/feedback`** - Retrieves feedback with filtering
+  - Query Parameters: `category`, `status`, `archived`, `email`, `page`, `limit`
+  - Returns: `{ feedback: Feedback[], total: number, page: number, totalPages: number }`
+  - Supports filtering by category, status, archived state, and email search
+- **POST `/api/feedback`** - Creates new feedback submission
+  - Body: `{ email, username, userId, category, description }`
+  - Returns: `{ success: true, feedback: Feedback }`
+  - Automatically captures logged-in user information if available
+- **PATCH `/api/feedback`** - Updates feedback (status, archived, notes)
+  - Body: `{ _id, status?, archived?, notes? }`
+  - Returns: `{ success: true, feedback: Feedback }`
+  - Uses MongoDB native driver for reliable field updates
+  - Automatically sets `reviewedBy` and `reviewedAt` when status changes
+- **DELETE `/api/feedback`** - Deletes feedback permanently
+  - Body: `{ _id }`
+  - Returns: `{ success: true }`
+  - Logs deletion activity for audit trail
 
 #### Data Processing
 
@@ -268,6 +304,15 @@ AdministrationPage (app/administration/page.tsx)
         ├── PaymentHistoryModal
         ├── LicenseeSuccessModal
         └── PaymentStatusConfirmModal
+└── Feedback Section
+    ├── FeedbackManagement (components/administration/FeedbackManagement.tsx)
+    │   ├── Search and Filter Controls
+    │   ├── Feedback Table [Desktop]
+    │   ├── Feedback Cards [Mobile]
+    │   ├── Detail Modal (view/edit feedback)
+    │   ├── Delete Confirmation Dialog
+    │   └── Restore Confirmation Dialog
+    └── FeedbackButton (components/ui/FeedbackButton.tsx) [Global]
 ```
 
 ### Business Logic
@@ -362,6 +407,19 @@ AdministrationPage (app/administration/page.tsx)
 - **Touch-Friendly Controls:** Improved touch targets and interactions
 - **Responsive Layouts:** Flexible layouts that adapt to screen size
 - **Performance Optimization:** Optimized rendering for mobile devices
+
+### Feedback Management System (Latest - December 2025)
+
+- **Comprehensive Feedback Management:** Full CRUD operations for user feedback submissions
+- **Status Workflow:** Track feedback through pending → reviewed → resolved states
+- **Archive System:** Separate archive functionality independent of status (can archive resolved items)
+- **Mobile-First Design:** Card-based layout for mobile devices, table view for desktop
+- **Advanced Filtering:** Filter by category, status, archived state, and email search
+- **Review Tracking:** Automatic capture of reviewer information and timestamps
+- **PATCH Endpoint:** Uses MongoDB native driver for reliable field updates (archived, status, notes)
+- **Global Feedback Button:** Floating feedback button available on all pages
+- **Auto-Fill User Info:** Logged-in users automatically have their information pre-filled
+- **HTML Structure Fixes:** Resolved hydration errors in AlertDialog components
 
 ## Notes Section
 

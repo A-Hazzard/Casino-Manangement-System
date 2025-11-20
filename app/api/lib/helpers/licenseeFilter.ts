@@ -243,6 +243,7 @@ export async function getLicenseeLocationFilter(
  * ROLE-BASED BEHAVIOR:
  * - Admin/Developer: See all locations (or restricted by location permissions if assigned)
  * - Manager: See ALL locations for their assigned licensees (location permissions ignored)
+ * - Location Admin: See ONLY their assigned locations (no licensee filtering - assigned locations are source of truth)
  * - Collector/Technician: See only intersection of licensee locations + their assigned locations
  *
  * @param userAccessibleLicensees - Licensees the user has access to ('all' for admins)
@@ -342,18 +343,17 @@ export async function getUserLocationFilter(
     return result;
   }
 
-  // LOCATION ADMINS see ONLY their assigned locations (intersect with location permissions)
+  // LOCATION ADMINS see ONLY their assigned locations (no licensee intersection needed)
+  // Location admins can have locations from any licensee, so we return their assigned locations directly
   if (isLocationAdmin) {
     if (userLocationPermissions.length > 0) {
-      // Intersect licensee locations with location admin's assigned locations
-      const intersection = licenseeLocations.filter(id =>
-        userLocationPermissions.includes(id)
-      );
+      // Return location admin's assigned locations directly (no licensee filtering)
+      // This allows location admins to see their assigned locations even if they belong to different licensees
       console.log(
-        '[getUserLocationFilter] Location Admin - returning assigned locations:',
-        intersection.length
+        '[getUserLocationFilter] Location Admin - returning assigned locations directly:',
+        userLocationPermissions.length
       );
-      return intersection;
+      return userLocationPermissions;
     }
     // Location admin with no location permissions should see nothing
     console.warn(

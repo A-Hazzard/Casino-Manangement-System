@@ -8,16 +8,44 @@ import type {
 /**
  * Fetches a list of users with full profile data.
  * @param licensee - (Optional) Licensee filter for users.
- * @returns A promise that resolves to an array of User objects with complete profile information.
+ * @param page - Page number (1-based, default: 1)
+ * @param limit - Items per page (default: 50)
+ * @param search - (Optional) Search term to filter users by username, email, or _id
+ * @param searchMode - (Optional) Search mode: 'username', 'email', '_id', or 'all' (default: 'username', 'all' searches all fields)
+ * @returns A promise that resolves to paginated users with pagination metadata.
  */
-export const fetchUsers = async (licensee?: string): Promise<User[]> => {
+export const fetchUsers = async (
+  licensee?: string,
+  page: number = 1,
+  limit: number = 50,
+  search?: string,
+  searchMode: 'username' | 'email' | '_id' | 'all' = 'username'
+): Promise<{
+  users: User[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}> => {
   const params: Record<string, string> = {};
   if (licensee && licensee !== 'all') {
     params.licensee = licensee;
   }
+  if (search && search.trim()) {
+    params.search = search.trim();
+    params.searchMode = searchMode;
+  }
+  params.page = String(page);
+  params.limit = String(limit);
 
   const response = await axios.get('/api/users', { params });
-  return response.data?.users || [];
+  return {
+    users: response.data?.users || [],
+    pagination:
+      response.data?.pagination || {
+        page: 1,
+        limit,
+        total: 0,
+        totalPages: 0,
+      },
+  };
 };
 
 export const updateUser = async (
@@ -41,19 +69,28 @@ export const updateUser = async (
 export const filterAndSortUsers = (
   users: User[],
   searchValue: string,
-  searchMode: 'username' | 'email',
+  searchMode: 'username' | 'email' | '_id',
   sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null
 ): User[] => {
   let processedUsers = [...users];
   if (searchValue) {
     const lowerSearchValue = searchValue.toLowerCase();
-    processedUsers = processedUsers.filter(user =>
-      searchMode === 'username'
-        ? user.username.toLowerCase().includes(lowerSearchValue)
-        : (user.email || user.emailAddress || '')
-            .toLowerCase()
-            .includes(lowerSearchValue)
-    );
+    processedUsers = processedUsers.filter(user => {
+      if (searchMode === 'username') {
+        // Add null/undefined check for username
+        const username = user.username || '';
+        return username.toLowerCase().includes(lowerSearchValue);
+      } else if (searchMode === 'email') {
+        return (user.email || user.emailAddress || '')
+          .toLowerCase()
+          .includes(lowerSearchValue);
+      } else if (searchMode === '_id') {
+        // Search by _id (exact match or partial match)
+        const userId = String(user._id || '').toLowerCase();
+        return userId.includes(lowerSearchValue);
+      }
+      return false;
+    });
   }
   if (sortConfig !== null && sortConfig.key) {
     const { key, direction } = sortConfig;

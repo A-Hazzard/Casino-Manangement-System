@@ -90,13 +90,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Global search across multiple fields (only if no specific filters are applied)
-    if (search && !username && !email) {
+    if (search && !username && !email && !resourceId) {
       filter.$or = [
         { username: { $regex: search, $options: 'i' } },
         { 'actor.email': { $regex: search, $options: 'i' } },
         { resourceName: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
         { details: { $regex: search, $options: 'i' } },
+        { _id: { $regex: search, $options: 'i' } },
+        { resourceId: { $regex: search, $options: 'i' } },
+        { userId: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -104,16 +107,20 @@ export async function GET(request: NextRequest) {
     const sort: Record<string, 1 | -1> = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-    // Apply manager-specific filtering
+    // Apply role-based filtering
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const currentUserLicensees =
       (currentUser?.rel as { licencee?: string[] })?.licencee || [];
+    const currentUserLocationPermissions = 
+      ((currentUser?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [])
+      .map(id => String(id));
 
     const isAdmin =
       currentUserRoles.includes('admin') ||
       currentUserRoles.includes('developer');
-    const isManager = currentUserRoles.includes('manager');
+    const isManager = currentUserRoles.includes('manager') && !isAdmin;
+    const isLocationAdmin = currentUserRoles.includes('location admin') && !isAdmin && !isManager;
 
     // If manager (not admin), filter activity logs to only their licensees' resources
     if (isManager && !isAdmin && currentUserLicensees.length > 0) {
@@ -155,6 +162,45 @@ export async function GET(request: NextRequest) {
       console.warn('[ACTIVITY LOGS] Manager filter applied:', {
         managerLicensees: currentUserLicensees,
         locationCount: locationIds.length,
+        machineCount: machineIds.length,
+        userCount: userIds.length,
+      });
+    } else if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
+      // Location admins can only see activity logs related to their assigned locations
+      // Get all machines in location admin's assigned locations
+      const machines = await Machine.find({
+        gamingLocation: { $in: currentUserLocationPermissions },
+      })
+        .select('_id')
+        .lean();
+      const machineIds = machines.map(m => String(m._id));
+
+      // Get all users who have access to at least one of the location admin's assigned locations
+      const users = await User.find({
+        'resourcePermissions.gaming-locations.resources': {
+          $in: currentUserLocationPermissions,
+        },
+      })
+        .select('_id')
+        .lean();
+      const userIds = users.map(u => String(u._id));
+
+      // Activity log must be related to one of location admin's resources
+      filter.$or = [
+        // Activities on locations
+        { resource: 'location', resourceId: { $in: currentUserLocationPermissions } },
+        // Activities on machines in assigned locations
+        { resource: 'machine', resourceId: { $in: machineIds } },
+        { resource: 'cabinet', resourceId: { $in: machineIds } },
+        // Activities on users with access to assigned locations
+        { resource: 'user', resourceId: { $in: userIds } },
+        // Activities by users with access to assigned locations
+        { userId: { $in: userIds } },
+      ];
+
+      console.warn('[ACTIVITY LOGS] Location Admin filter applied:', {
+        locationAdminLocations: currentUserLocationPermissions,
+        locationCount: currentUserLocationPermissions.length,
         machineCount: machineIds.length,
         userCount: userIds.length,
       });

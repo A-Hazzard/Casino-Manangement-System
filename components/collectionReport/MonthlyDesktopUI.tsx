@@ -94,7 +94,7 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
         ) : monthlyCurrentItems.length === 0 && !monthlyLoading ? null : (
           <>
             <MonthlyReportDetailsTable details={monthlyCurrentItems} />
-            {monthlyTotalPages > 1 && (
+            {monthlyTotalPages > 0 && (
               <PaginationControls
                 currentPage={monthlyPage - 1}
                 totalPages={monthlyTotalPages}

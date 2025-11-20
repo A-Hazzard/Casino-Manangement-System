@@ -39,7 +39,10 @@ export default function LicenceeSelect({
     const loadLicensees = async () => {
       setLoading(true);
       try {
-        const allLicensees = await fetchLicensees();
+        const result = await fetchLicensees();
+        
+        // Extract licensees array from the result
+        const allLicensees = Array.isArray(result.licensees) ? result.licensees : [];
         
         // Filter licensees if userLicenseeIds is provided (non-admin users)
         const filteredLicensees = normalizedUserLicenseeIds

@@ -3,16 +3,11 @@ import CollectionReportTable from '@/components/collectionReport/CollectionRepor
 import CollectionReportTableSkeleton from '@/components/collectionReport/CollectionReportTableSkeleton';
 import CollectionReportFilters from '@/components/collectionReport/CollectionReportFilters';
 import type { CollectionDesktopUIProps } from '@/lib/types/componentProps';
-import PaginationControls from '@/components/ui/PaginationControls';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 
 const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
   loading,
   filteredReports,
-  desktopCurrentItems,
-  desktopTotalPages,
-  desktopPage,
-  onPaginateDesktop,
   desktopTableRef,
   // Filter props
   locations,
@@ -77,7 +72,7 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
             className="animate-in fade-in-0 slide-in-from-bottom-2"
           >
             <CollectionReportTable
-              data={desktopCurrentItems}
+              data={filteredReports}
               reportIssues={reportIssues}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -89,24 +84,6 @@ const CollectionDesktopUI: React.FC<CollectionDesktopUIProps> = ({
           </div>
         )}
       </div>
-
-      {/* Pagination - below table */}
-      {!loading && filteredReports.length > 0 && (
-        <div className="mt-4 flex flex-col items-center space-y-3">
-          {desktopTotalPages > 1 && (
-            <div
-              className="animate-in fade-in-0 slide-in-from-bottom-2"
-              style={{ animationDelay: '200ms' }}
-            >
-              <PaginationControls
-                currentPage={desktopPage - 1}
-                totalPages={desktopTotalPages}
-                setCurrentPage={page => onPaginateDesktop(page + 1)}
-              />
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };

@@ -497,7 +497,7 @@ export default function PlayerSessionTable({
             variant="outline"
             size="sm"
             onClick={handleNextPage}
-            disabled={currentPage === totalPages - 1}
+            disabled={currentPage >= totalPages - 1}
             className="px-2 py-1 text-xs"
           >
             ›
@@ -506,7 +506,7 @@ export default function PlayerSessionTable({
             variant="outline"
             size="sm"
             onClick={handleLastPage}
-            disabled={currentPage === totalPages - 1}
+            disabled={currentPage >= totalPages - 1}
             className="px-2 py-1 text-xs"
           >
             »»
@@ -559,7 +559,7 @@ export default function PlayerSessionTable({
             variant="outline"
             size="sm"
             onClick={handleNextPage}
-            disabled={currentPage === totalPages - 1}
+            disabled={currentPage >= totalPages - 1}
           >
             Next
           </Button>
@@ -567,7 +567,7 @@ export default function PlayerSessionTable({
             variant="outline"
             size="sm"
             onClick={handleLastPage}
-            disabled={currentPage === totalPages - 1}
+            disabled={currentPage >= totalPages - 1}
           >
             Last
           </Button>

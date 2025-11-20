@@ -13,16 +13,16 @@ import {
 } from '@/lib/helpers/collectionReport';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
-import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 
 export async function GET(req: NextRequest) {
   // 🔍 PERFORMANCE: Start overall timer
   const perfStart = Date.now();
   const perfTimers: Record<string, number> = {};
-  
+
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
@@ -34,25 +34,30 @@ export async function GET(req: NextRequest) {
 
         // Support both spellings for backwards compatibility
         const rawLicenseeParam =
-          searchParams.get('licensee') || searchParams.get('licencee') || undefined;
+          searchParams.get('licensee') ||
+          searchParams.get('licencee') ||
+          undefined;
         const normalizedLicensee =
           rawLicenseeParam && rawLicenseeParam !== 'all'
             ? getLicenseeObjectId(rawLicenseeParam) || rawLicenseeParam
             : rawLicenseeParam;
-        
+
         // Get current user and their permissions
         const user = await getUserFromServer();
         if (!user) {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        
+
         const userRoles = (user.roles as string[]) || [];
-        const userAccessibleLicensees = ((user.rel as Record<string, unknown>)?.licencee as string[]) || [];
-        const userLocationPermissions = ((user.resourcePermissions as Record<string, Record<string, unknown>>)?.[
-          'gaming-locations'
-        ]?.resources as string[]) || [];
-        const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
-        
+        const userAccessibleLicensees =
+          ((user.rel as Record<string, unknown>)?.licencee as string[]) || [];
+        const userLocationPermissions =
+          ((
+            user.resourcePermissions as Record<string, Record<string, unknown>>
+          )?.['gaming-locations']?.resources as string[]) || [];
+        const isAdmin =
+          userRoles.includes('admin') || userRoles.includes('developer');
+
         // Get user's accessible locations based on role and permissions
         const allowedLocationIds = await getUserLocationFilter(
           isAdmin ? 'all' : userAccessibleLicensees,
@@ -60,17 +65,22 @@ export async function GET(req: NextRequest) {
           userLocationPermissions,
           userRoles
         );
-        
+
         console.warn(
           `[LOCATIONS WITH MACHINES] Licensee: ${
             normalizedLicensee || 'All'
           } (original: ${rawLicenseeParam || 'All'})`
         );
-        console.warn(`[LOCATIONS WITH MACHINES] Allowed locations:`, allowedLocationIds);
-        
+        console.warn(
+          `[LOCATIONS WITH MACHINES] Allowed locations:`,
+          allowedLocationIds
+        );
+
         // If user has no access, return empty array
         if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
-          console.warn('[LOCATIONS WITH MACHINES] User has no accessible locations');
+          console.warn(
+            '[LOCATIONS WITH MACHINES] User has no accessible locations'
+          );
           return NextResponse.json({ locations: [] });
         }
 
@@ -86,88 +96,91 @@ export async function GET(req: NextRequest) {
           matchCriteria['_id'] = { $in: allowedLocationIds };
         }
 
-      // 🚀 OPTIMIZATION: Add projection to reduce data transfer
-      const locationsWithMachines = await GamingLocations.aggregate([
-        {
-          $match: matchCriteria,
-        },
-        // Project only essential location fields BEFORE $lookup
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            previousCollectionTime: 1,
-            profitShare: 1,
+        // 🚀 OPTIMIZATION: Add projection to reduce data transfer
+        const locationsWithMachines = await GamingLocations.aggregate([
+          {
+            $match: matchCriteria,
           },
-        },
-        {
-          $lookup: {
-            from: 'machines',
-            localField: '_id',
-            foreignField: 'gamingLocation',
-            as: 'machines',
-            pipeline: [
-              {
-                $match: {
-                  $or: [
-                    { deletedAt: null },
-                    { deletedAt: { $lt: new Date('1970-01-01') } },
-                  ],
-                },
-              },
-              // Only fetch essential machine fields
-              {
-                $project: {
-                  _id: 1,
-                  serialNumber: 1,
-                  'custom.name': 1,
-                  smibBoard: 1,
-                  smbId: 1,
-                  game: 1,
-                  collectionMeters: 1,
-                  collectionTime: 1,
-                },
-              },
-            ],
+          // Project only essential location fields BEFORE $lookup
+          {
+            $project: {
+              _id: 1,
+              name: 1,
+              previousCollectionTime: 1,
+              profitShare: 1,
+            },
           },
-        },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            previousCollectionTime: 1,
-            profitShare: 1,
-            machines: {
-              $map: {
-                input: '$machines',
-                as: 'machine',
-                in: {
-                  _id: '$$machine._id',
-                  serialNumber: '$$machine.serialNumber',
-                  name: {
-                    $ifNull: [
-                      '$$machine.custom.name',
-                      {
-                        $ifNull: ['$$machine.serialNumber', 'Unnamed Machine'],
-                      },
+          {
+            $lookup: {
+              from: 'machines',
+              localField: '_id',
+              foreignField: 'gamingLocation',
+              as: 'machines',
+              pipeline: [
+                {
+                  $match: {
+                    $or: [
+                      { deletedAt: null },
+                      { deletedAt: { $lt: new Date('1970-01-01') } },
                     ],
                   },
-                  game: '$$machine.game',
-                  smibBoard: '$$machine.smibBoard',
-                  smbId: '$$machine.smbId',
-                  collectionMeters: {
-                    $ifNull: [
-                      '$$machine.collectionMeters',
-                      { metersIn: 0, metersOut: 0 },
-                    ],
+                },
+                // Only fetch essential machine fields
+                {
+                  $project: {
+                    _id: 1,
+                    serialNumber: 1,
+                    'custom.name': 1,
+                    smibBoard: 1,
+                    smbId: 1,
+                    game: 1,
+                    collectionMeters: 1,
+                    collectionTime: 1,
                   },
-                  collectionTime: '$$machine.collectionTime',
+                },
+              ],
+            },
+          },
+          {
+            $project: {
+              _id: 1,
+              name: 1,
+              previousCollectionTime: 1,
+              profitShare: 1,
+              machines: {
+                $map: {
+                  input: '$machines',
+                  as: 'machine',
+                  in: {
+                    _id: '$$machine._id',
+                    serialNumber: '$$machine.serialNumber',
+                    name: {
+                      $ifNull: [
+                        '$$machine.custom.name',
+                        {
+                          $ifNull: [
+                            '$$machine.serialNumber',
+                            'Unnamed Machine',
+                          ],
+                        },
+                      ],
+                    },
+                    game: '$$machine.game',
+                    smibBoard: '$$machine.smibBoard',
+                    smbId: '$$machine.smbId',
+                    collectionMeters: {
+                      $ifNull: [
+                        '$$machine.collectionMeters',
+                        { metersIn: 0, metersOut: 0 },
+                      ],
+                    },
+                    collectionTime: '$$machine.collectionTime',
+                  },
                 },
               },
             },
           },
-        },
-      ]);
+        ]);
 
         console.warn(
           `Locations with machines fetched in ${Date.now() - startTime}ms`
@@ -176,7 +189,10 @@ export async function GET(req: NextRequest) {
       } catch (error) {
         console.error('[LOCATIONS WITH MACHINES] Error:', error);
         return NextResponse.json(
-          { error: 'Failed to fetch locations with machines', details: error instanceof Error ? error.message : String(error) },
+          {
+            error: 'Failed to fetch locations with machines',
+            details: error instanceof Error ? error.message : String(error),
+          },
           { status: 500 }
         );
       }
@@ -315,18 +331,30 @@ export async function GET(req: NextRequest) {
     if (!userPayload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const userRoles = (userPayload?.roles as string[]) || [];
-    const userLicensees = (userPayload?.rel as { licencee?: string[] })?.licencee || [];
-    const userLocationPermissions = 
-      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
-    
+    const userLicensees =
+      (userPayload?.rel as { licencee?: string[] })?.licencee || [];
+    const userLocationPermissions =
+      (
+        userPayload?.resourcePermissions as {
+          'gaming-locations'?: { resources?: string[] };
+        }
+      )?.['gaming-locations']?.resources || [];
+
     console.warn('[COLLECTION REPORT] User roles:', userRoles);
     console.warn('[COLLECTION REPORT] User licensees:', userLicensees);
-    console.warn('[COLLECTION REPORT] User location permissions:', userLocationPermissions);
+    console.warn(
+      '[COLLECTION REPORT] User location permissions:',
+      userLocationPermissions
+    );
     console.warn(`[COLLECTION REPORT] Time Period: ${timePeriod || 'Custom'}`);
-    console.warn(`[COLLECTION REPORT] Start Date: ${startDate?.toISOString() || 'None'}`);
-    console.warn(`[COLLECTION REPORT] End Date: ${endDate?.toISOString() || 'None'}`);
+    console.warn(
+      `[COLLECTION REPORT] Start Date: ${startDate?.toISOString() || 'None'}`
+    );
+    console.warn(
+      `[COLLECTION REPORT] End Date: ${endDate?.toISOString() || 'None'}`
+    );
     console.warn(
       `[COLLECTION REPORT] Licensee param: ${licencee || 'All'} (original: ${
         rawLicenceeParam || 'All'
@@ -334,64 +362,86 @@ export async function GET(req: NextRequest) {
     );
 
     // Check if user is admin or manager
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
+    const isAdmin =
+      userRoles.includes('admin') || userRoles.includes('developer');
     const isManager = userRoles.includes('manager');
-    
+
     // Determine which location IDs the user can access
     let allowedLocationIds: string[] | 'all';
-    
+
     if (isAdmin) {
       // Admins and developers can always access all locations regardless of assignments
       allowedLocationIds = 'all';
-      console.warn('[COLLECTION REPORT] Admin/Developer override - granting access to all locations');
+      console.warn(
+        '[COLLECTION REPORT] Admin/Developer override - granting access to all locations'
+      );
     } else if (isManager) {
       // Manager - get ALL locations for their assigned licensees
-      console.warn('[COLLECTION REPORT] Manager - fetching all locations for licensees:', userLicensees);
-      
+      console.warn(
+        '[COLLECTION REPORT] Manager - fetching all locations for licensees:',
+        userLicensees
+      );
+
       if (userLicensees.length === 0) {
-        console.warn('[COLLECTION REPORT] Manager has no licensees - returning empty');
+        console.warn(
+          '[COLLECTION REPORT] Manager has no licensees - returning empty'
+        );
         return NextResponse.json([]);
       }
-      
+
       const db = await connectDB();
       if (!db) {
-        return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Database connection failed' },
+          { status: 500 }
+        );
       }
-      
-      const managerLocations = await db.collection('gaminglocations').find({
-        'rel.licencee': { $in: userLicensees },
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      }, { projection: { _id: 1 } }).toArray();
-      
+
+      const managerLocations = await db
+        .collection('gaminglocations')
+        .find(
+          {
+            'rel.licencee': { $in: userLicensees },
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          },
+          { projection: { _id: 1 } }
+        )
+        .toArray();
+
       allowedLocationIds = managerLocations.map(loc => String(loc._id));
-      console.warn('[COLLECTION REPORT] Manager allowed location IDs:', allowedLocationIds);
-      
+      console.warn(
+        '[COLLECTION REPORT] Manager allowed location IDs:',
+        allowedLocationIds
+      );
+
       if (allowedLocationIds.length === 0) {
-        console.warn('[COLLECTION REPORT] No locations found for manager licensees - returning empty');
+        console.warn(
+          '[COLLECTION REPORT] No locations found for manager licensees - returning empty'
+        );
         return NextResponse.json([]);
       }
     } else {
       // Collector/Technician - use ONLY their assigned location permissions
       if (userLocationPermissions.length === 0) {
-        console.warn('[COLLECTION REPORT] Non-manager with no location permissions - returning empty');
+        console.warn(
+          '[COLLECTION REPORT] Non-manager with no location permissions - returning empty'
+        );
         return NextResponse.json([]);
       }
-      
+
       allowedLocationIds = userLocationPermissions;
-      console.warn('[COLLECTION REPORT] Collector/Technician - allowed location IDs:', allowedLocationIds);
+      console.warn(
+        '[COLLECTION REPORT] Collector/Technician - allowed location IDs:',
+        allowedLocationIds
+      );
     }
 
     const queryStart = Date.now();
 
-    // 🚀 OPTIMIZATION: Add pagination to avoid fetching all reports at once
-    const page = parseInt(searchParams.get('page') || '1');
-    const requestedLimit = parseInt(searchParams.get('limit') || '50');
-    const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
-    const skip = (page - 1) * limit;
-
+    // Fetch all reports with deletedAt filter (only return deletedAt < 2025 or null/undefined)
     const reports = await getAllCollectionReportsWithMachineCounts(
       licencee,
       startDate,
@@ -409,60 +459,98 @@ export async function GET(req: NextRequest) {
     if (allowedLocationIds !== 'all') {
       const db = await connectDB();
       if (!db) {
-        return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Database connection failed' },
+          { status: 500 }
+        );
       }
-      
+
       // allowedLocationIds are strings, not ObjectIds, which is how they're stored in our database
-      const allowedLocations = await db.collection('gaminglocations')
-        .find({
-          _id: { $in: allowedLocationIds as never }  // Type assertion needed as DB uses string IDs, not ObjectIds
-        }, { projection: { _id: 1, name: 1 } })
+      const allowedLocations = await db
+        .collection('gaminglocations')
+        .find(
+          {
+            _id: { $in: allowedLocationIds as never }, // Type assertion needed as DB uses string IDs, not ObjectIds
+          },
+          { projection: { _id: 1, name: 1 } }
+        )
         .toArray();
-      
+
       allowedLocationNames = allowedLocations.map(loc => String(loc.name));
-      console.warn('[COLLECTION REPORT] Allowed location names:', allowedLocationNames);
+      console.warn(
+        '[COLLECTION REPORT] Allowed location names:',
+        allowedLocationNames
+      );
     }
-    
+
     // Filter reports by allowed locations (using location name since that's what's stored)
     let filteredReports = reports;
     if (allowedLocationIds !== 'all') {
       console.warn('[COLLECTION REPORT] Filtering reports...');
-      console.warn('[COLLECTION REPORT] Allowed location IDs:', allowedLocationIds);
-      console.warn('[COLLECTION REPORT] Allowed location names:', allowedLocationNames);
-      console.warn('[COLLECTION REPORT] Sample reports:', reports.slice(0, 3).map(r => ({
-        location: r.location,
-        type: typeof r.location
-      })));
-      
+      console.warn(
+        '[COLLECTION REPORT] Allowed location IDs:',
+        allowedLocationIds
+      );
+      console.warn(
+        '[COLLECTION REPORT] Allowed location names:',
+        allowedLocationNames
+      );
+      console.warn(
+        '[COLLECTION REPORT] Sample reports:',
+        reports.slice(0, 3).map(r => ({
+          location: r.location,
+          type: typeof r.location,
+        }))
+      );
+
       filteredReports = reports.filter(report => {
         // Collection reports store location NAME in the location field, not ID
         const reportLocationName = String(report.location);
         const included = allowedLocationNames.includes(reportLocationName);
         if (!included) {
-          console.warn(`[COLLECTION REPORT] Report location "${reportLocationName}" NOT in allowed names: ${allowedLocationNames.join(', ')}`);
+          console.warn(
+            `[COLLECTION REPORT] Report location "${reportLocationName}" NOT in allowed names: ${allowedLocationNames.join(', ')}`
+          );
         }
         return included;
       });
-      console.warn(`[COLLECTION REPORT] Filtered to ${filteredReports.length} reports for allowed locations`);
+      console.warn(
+        `[COLLECTION REPORT] Filtered to ${filteredReports.length} reports for allowed locations`
+      );
     }
-    
+
     perfTimers.filtering = Date.now() - filterStart;
 
-    // 🚀 OPTIMIZATION: Apply pagination after filtering
+    // Pagination parameters
+    const page = parseInt(searchParams.get('page') || '1');
+    const requestedLimit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
+    const skip = (page - 1) * limit;
+
+    // Get total count before pagination
     const totalCount = filteredReports.length;
+
+    // Apply pagination
     const paginatedReports = filteredReports.slice(skip, skip + limit);
-    const totalPages = Math.ceil(totalCount / limit);
 
     perfTimers.total = Date.now() - perfStart;
 
     console.log(
       `[COLLECTION REPORT] ⚡ Query complete: ${perfTimers.total}ms | ` +
-      `Reports: ${perfTimers.queryReports}ms | Filter: ${perfTimers.filtering || 0}ms | ` +
-      `Total: ${totalCount} | Returned: ${paginatedReports.length} (page ${page}/${totalPages})`
+        `Reports: ${perfTimers.queryReports}ms | Filter: ${perfTimers.filtering || 0}ms | ` +
+        `Total: ${totalCount} | Page: ${page} | Limit: ${limit} | Returned: ${paginatedReports.length}`
     );
 
-    // Return with pagination metadata (backward compatible - clients expecting array will still work)
-    return NextResponse.json(paginatedReports);
+    // Return paginated reports with pagination metadata
+    return NextResponse.json({
+      data: paginatedReports,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    });
   } catch (error) {
     console.error('Error in collectionReport GET endpoint:', error);
     return NextResponse.json(
@@ -659,7 +747,8 @@ export async function POST(req: NextRequest) {
                 'collectionMeters.metersIn': normalizedMetersIn,
                 'collectionMeters.metersOut': normalizedMetersOut,
                 collectionTime: collectionTimestamp,
-                previousCollectionTime: currentMachineCollectionTime || undefined,
+                previousCollectionTime:
+                  currentMachineCollectionTime || undefined,
                 updatedAt: new Date(),
               },
             }).catch(err => {

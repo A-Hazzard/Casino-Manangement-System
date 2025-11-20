@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import PaginationControls from '@/components/ui/PaginationControls';
 import { MetersTabSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -46,20 +47,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function MetersTab() {
-  const [allMetersData, setAllMetersData] = useState<MetersReportData[]>([]); // Store all fetched data
-  const [metersData, setMetersData] = useState<MetersReportData[]>([]); // Filtered and paginated data
+  const [allMetersData, setAllMetersData] = useState<MetersReportData[]>([]); // Store all fetched data (batches)
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
   >([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [locationsLoading, setLocationsLoading] = useState(true); // Track locations/permissions loading
   const [error, setError] = useState<string | null>(null);
   const [hasData, setHasData] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [paginationLoading, setPaginationLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
   const {
     selectedLicencee,
@@ -82,12 +84,26 @@ export default function MetersTab() {
   }, [user?.roles]);
 
   // Get location admin's assigned locations
+  // If JWT has no locations, we'll fetch from server as fallback
+  const [fetchedLocationPermissions, setFetchedLocationPermissions] = useState<
+    string[]
+  >([]);
   const locationAdminLocations = useMemo(() => {
     if (!isLocationAdmin) return [];
-    return (
+    const jwtLocations = (
       user?.resourcePermissions?.['gaming-locations']?.resources || []
     ).map(id => String(id));
-  }, [isLocationAdmin, user?.resourcePermissions]);
+    // If JWT has locations, use them; otherwise use fetched permissions
+    return jwtLocations.length > 0 ? jwtLocations : fetchedLocationPermissions;
+  }, [isLocationAdmin, user?.resourcePermissions, fetchedLocationPermissions]);
+
+  // Calculate which batch we need based on current page
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
 
   // Filter data based on search term (frontend filtering)
   const filterMetersData = useCallback(
@@ -122,46 +138,10 @@ export default function MetersTab() {
     []
   );
 
-  // Apply pagination to filtered data
-  const applyPagination = useCallback(
-    (data: MetersReportData[], page: number, limit: number = 10) => {
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + limit;
-      return data.slice(startIndex, endIndex);
-    },
-    []
-  );
-
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    setPaginationLoading(true);
-    setCurrentPage(page);
-
-    // Filter and paginate the data
-    const filtered = filterMetersData(allMetersData, searchTerm);
-    const paginated = applyPagination(filtered, page);
-
-    setMetersData(paginated);
-    setTotalCount(filtered.length);
-    setTotalPages(Math.ceil(filtered.length / 10));
-    setHasData(paginated.length > 0);
-
-    setPaginationLoading(false);
-  };
-
   // Handle search - frontend filtering only
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1); // Reset to first page when searching
-
-    // Filter and paginate the data
-    const filtered = filterMetersData(allMetersData, value);
-    const paginated = applyPagination(filtered, 1);
-
-    setMetersData(paginated);
-    setTotalCount(filtered.length);
-    setTotalPages(Math.ceil(filtered.length / 10));
-    setHasData(paginated.length > 0);
+    setCurrentPage(0); // Reset to first page when searching
   };
 
   // Get filtered data for export (uses frontend filtering)
@@ -173,9 +153,56 @@ export default function MetersTab() {
     [allMetersData, filterMetersData]
   );
 
+  // Fetch current user's permissions from server if JWT is stale (for location admins)
+  const fetchUserPermissions = useCallback(async () => {
+    if (!isLocationAdmin || !user?._id) return;
+
+    const jwtLocations = (
+      user?.resourcePermissions?.['gaming-locations']?.resources || []
+    ).map(id => String(id));
+
+    // Only fetch if JWT has no location permissions (might be stale)
+    if (jwtLocations.length === 0) {
+      try {
+        setLocationsLoading(true);
+        const response = await axios.get('/api/auth/current-user');
+        if (
+          response.data?.success &&
+          response.data?.user?.resourcePermissions
+        ) {
+          const serverLocations = (
+            response.data.user.resourcePermissions['gaming-locations']
+              ?.resources || []
+          ).map((id: unknown) => String(id));
+          if (serverLocations.length > 0) {
+            console.log(
+              '[MetersTab] Fetched fresh location permissions from server:',
+              serverLocations
+            );
+            setFetchedLocationPermissions(serverLocations);
+          }
+        }
+      } catch (err) {
+        console.error('[MetersTab] Failed to fetch user permissions:', err);
+      } finally {
+        setLocationsLoading(false);
+      }
+    } else {
+      // JWT has locations, no need to fetch
+      setLocationsLoading(false);
+    }
+  }, [isLocationAdmin, user?._id, user?.resourcePermissions]);
+
   // Fetch locations data
   const fetchLocations = useCallback(async () => {
     try {
+      setLocationsLoading(true);
+
+      // For location admins with stale JWT, fetch fresh permissions first
+      if (isLocationAdmin) {
+        await fetchUserPermissions();
+      }
+
       // Build API parameters
       const params: Record<string, string> = {};
       // Location admin should not filter by licensee (they only see their assigned location)
@@ -194,19 +221,49 @@ export default function MetersTab() {
         })
       );
 
+      console.log('[MetersTab] Fetched locations:', {
+        total: mappedLocations.length,
+        locationAdmin: isLocationAdmin,
+        assignedLocations: locationAdminLocations,
+        fetchedLocationIds: mappedLocations.map(
+          (l: { id: string; name: string; sasEnabled: boolean }) => l.id
+        ),
+      });
+
       setLocations(mappedLocations);
 
       // Auto-select location admin's assigned locations
-      if (isLocationAdmin && locationAdminLocations.length > 0) {
-        // Filter to only locations that exist in the fetched list
-        const validLocations = locationAdminLocations.filter(locId =>
-          mappedLocations.some(
-            (loc: { id: string; name: string; sasEnabled: boolean }) =>
-              loc.id === locId
-          )
-        );
-        if (validLocations.length > 0) {
-          setSelectedLocations(validLocations);
+      // For location admins, the API returns only their accessible locations,
+      // so we can use the fetched locations as the source of truth
+      if (isLocationAdmin) {
+        if (mappedLocations.length > 0) {
+          // API returned locations - these are the locations the user has access to
+          // Auto-select all of them (location admins typically have access to specific locations)
+          const locationIds = mappedLocations.map(
+            (loc: { id: string; name: string; sasEnabled: boolean }) => loc.id
+          );
+          console.log(
+            '[MetersTab] Location admin - auto-selecting locations from API:',
+            {
+              locationIds,
+              locationNames: mappedLocations.map(
+                (loc: { id: string; name: string; sasEnabled: boolean }) =>
+                  loc.name
+              ),
+            }
+          );
+          setSelectedLocations(locationIds);
+        } else if (locationAdminLocations.length > 0) {
+          // JWT has locations but API returned none - might be a permission mismatch
+          console.warn(
+            '[MetersTab] JWT has location permissions but API returned no locations. This may indicate a permission mismatch.'
+          );
+          toast.warning(
+            'No locations found. Your permissions may have changed. Please refresh the page or log out and log back in.'
+          );
+        } else {
+          // No locations in JWT and API returned none - user has no location access
+          console.warn('[MetersTab] Location admin has no assigned locations.');
         }
       }
     } catch (err: unknown) {
@@ -223,90 +280,110 @@ export default function MetersTab() {
         (err as Error)?.message ||
         'Failed to load locations';
       toast.error(errorMessage as string);
-    }
-  }, [selectedLicencee, isLocationAdmin, locationAdminLocations]);
-
-  // Fetch meters data - fetch all data without pagination or search
-  const fetchMetersData = useCallback(async () => {
-    if (selectedLocations.length === 0) {
-      setAllMetersData([]);
-      setMetersData([]);
-      setHasData(false);
-      setTotalCount(0);
-      setTotalPages(1);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const params = new URLSearchParams({
-        locations: selectedLocations.join(','),
-        timePeriod: activeMetricsFilter,
-        page: '1',
-        limit: '10000', // Fetch all data for frontend filtering
-        // Removed search parameter - we'll filter on frontend
-      });
-
-      // Add custom dates if needed (in YYYY-MM-DD format)
-      if (activeMetricsFilter === 'Custom' && customDateRange) {
-        params.append(
-          'startDate',
-          customDateRange.startDate.toISOString().split('T')[0]
-        );
-        params.append(
-          'endDate',
-          customDateRange.endDate.toISOString().split('T')[0]
-        );
-      }
-
-      // Add licensee filter if selected
-      if (selectedLicencee && selectedLicencee !== 'all') {
-        params.append('licencee', selectedLicencee);
-      }
-
-      // Add currency parameter
-      if (displayCurrency) {
-        params.append('currency', displayCurrency);
-      }
-
-      const response = await axios.get<MetersReportResponse>(
-        `/api/reports/meters?${params}`
-      );
-
-      // Store all fetched data
-      setAllMetersData(response.data.data);
-
-      // Don't apply filtering here - let the separate useEffect handle it
-      // This prevents loading state when searchTerm changes
-    } catch (err: unknown) {
-      console.error('Error fetching meters data:', err);
-      const errorMessage =
-        (
-          (
-            (err as Record<string, unknown>)?.response as Record<
-              string,
-              unknown
-            >
-          )?.data as Record<string, unknown>
-        )?.error ||
-        (err as Error)?.message ||
-        'Failed to load meters data';
-      setError(errorMessage as string);
-      toast.error(errorMessage as string);
     } finally {
-      setLoading(false);
+      setLocationsLoading(false);
     }
   }, [
-    selectedLocations,
-    activeMetricsFilter,
-    customDateRange,
     selectedLicencee,
-    displayCurrency,
-    // Removed filterMetersData and applyPagination - filtering handled in separate useEffect
-    // Removed searchTerm - we filter locally in separate useEffect
+    isLocationAdmin,
+    locationAdminLocations,
+    fetchUserPermissions,
   ]);
+
+  // Fetch meters data - batch-based pagination
+  const fetchMetersData = useCallback(
+    async (batch: number = 1) => {
+      if (selectedLocations.length === 0) {
+        setAllMetersData([]);
+        setHasData(false);
+        setLoadedBatches(new Set());
+        setCurrentPage(0);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const params = new URLSearchParams({
+          locations: selectedLocations.join(','),
+          timePeriod: activeMetricsFilter,
+          page: batch.toString(),
+          limit: itemsPerBatch.toString(),
+        });
+
+        // Add custom dates if needed (in YYYY-MM-DD format)
+        if (activeMetricsFilter === 'Custom' && customDateRange) {
+          params.append(
+            'startDate',
+            customDateRange.startDate.toISOString().split('T')[0]
+          );
+          params.append(
+            'endDate',
+            customDateRange.endDate.toISOString().split('T')[0]
+          );
+        }
+
+        // Add licensee filter if selected
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
+        }
+
+        // Add currency parameter
+        if (displayCurrency) {
+          params.append('currency', displayCurrency);
+        }
+
+        const response = await axios.get<MetersReportResponse>(
+          `/api/reports/meters?${params}`
+        );
+
+        const newMetersData = response.data.data || [];
+
+        // Merge new meters data into allMetersData, avoiding duplicates
+        setAllMetersData(prev => {
+          const existingIds = new Set(
+            prev.map(
+              m => m.machineId || ((m as Record<string, unknown>)._id as string)
+            )
+          );
+          const uniqueNewMeters = newMetersData.filter(
+            (m: MetersReportData) => {
+              const id =
+                m.machineId || ((m as Record<string, unknown>)._id as string);
+              return !existingIds.has(id);
+            }
+          );
+          return [...prev, ...uniqueNewMeters];
+        });
+      } catch (err: unknown) {
+        console.error('Error fetching meters data:', err);
+        const errorMessage =
+          (
+            (
+              (err as Record<string, unknown>)?.response as Record<
+                string,
+                unknown
+              >
+            )?.data as Record<string, unknown>
+          )?.error ||
+          (err as Error)?.message ||
+          'Failed to load meters data';
+        setError(errorMessage as string);
+        toast.error(errorMessage as string);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      selectedLocations,
+      activeMetricsFilter,
+      customDateRange,
+      selectedLicencee,
+      displayCurrency,
+      itemsPerBatch,
+    ]
+  );
 
   // Initialize locations once
   useEffect(() => {
@@ -316,41 +393,77 @@ export default function MetersTab() {
     }
   }, [fetchLocations]);
 
-  // Fetch meters data when locations or date range or licensee changes (but not when search changes)
+  // Load initial batch on mount and when filters change
   useEffect(() => {
     if (selectedLocations.length > 0) {
-      void fetchMetersData();
+      setAllMetersData([]);
+      setLoadedBatches(new Set([1]));
+      setCurrentPage(0);
+      fetchMetersData(1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedLocations,
     activeMetricsFilter,
     customDateRange,
     selectedLicencee,
     displayCurrency,
-    fetchMetersData,
   ]);
 
-  // Re-apply filtering when search term or data changes (but don't refetch from API)
-  // This runs immediately when searchTerm changes, with no loading state
+  // Fetch next batch when crossing batch boundaries
   useEffect(() => {
-    if (allMetersData.length > 0) {
-      const filtered = filterMetersData(allMetersData, searchTerm);
-      const paginated = applyPagination(filtered, 1);
+    if (loading || selectedLocations.length === 0) return;
 
-      setMetersData(paginated);
-      setTotalCount(filtered.length);
-      setTotalPages(Math.ceil(filtered.length / 10));
-      setCurrentPage(1);
-      setHasData(paginated.length > 0);
-    } else {
-      // No data yet - clear the display
-      setMetersData([]);
-      setTotalCount(0);
-      setTotalPages(1);
-      setCurrentPage(1);
-      setHasData(false);
+    const currentBatch = calculateBatchNumber(currentPage);
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchMetersData(nextBatch);
     }
-  }, [searchTerm, allMetersData, filterMetersData, applyPagination]);
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchMetersData(currentBatch);
+    }
+  }, [
+    currentPage,
+    loading,
+    fetchMetersData,
+    itemsPerBatch,
+    pagesPerBatch,
+    loadedBatches,
+    calculateBatchNumber,
+    selectedLocations.length,
+  ]);
+
+  // Filter and paginate data
+  const filteredMetersData = useMemo(() => {
+    return filterMetersData(allMetersData, searchTerm);
+  }, [allMetersData, searchTerm, filterMetersData]);
+
+  // Get items for current page from filtered data
+  const paginatedMetersData = useMemo(() => {
+    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
+    const startIndex = positionInBatch;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredMetersData.slice(startIndex, endIndex);
+  }, [filteredMetersData, currentPage, itemsPerPage, pagesPerBatch]);
+
+  // Calculate total pages based on filtered data
+  const totalPages = useMemo(() => {
+    const totalItems = filteredMetersData.length;
+    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
+    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
+  }, [filteredMetersData.length, itemsPerPage]);
+
+  // Update hasData
+  useEffect(() => {
+    setHasData(paginatedMetersData.length > 0);
+  }, [paginatedMetersData.length]);
 
   // Handle export - now supports PDF and Excel
   const handleExport = async (format: 'pdf' | 'excel') => {
@@ -455,7 +568,12 @@ export default function MetersTab() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => fetchMetersData()}
+            onClick={() => {
+              setAllMetersData([]);
+              setLoadedBatches(new Set([1]));
+              setCurrentPage(0);
+              fetchMetersData(1);
+            }}
             disabled={loading || selectedLocations.length === 0}
             className="flex items-center gap-2 border-2 border-gray-300 text-xs hover:border-gray-400 sm:text-sm xl:w-auto xl:px-4"
             size="sm"
@@ -470,7 +588,7 @@ export default function MetersTab() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                disabled={metersData.length === 0}
+                disabled={paginatedMetersData.length === 0}
                 className="flex items-center gap-2 border-2 border-gray-300 text-xs hover:border-gray-400 sm:text-sm xl:w-auto xl:px-4"
                 size="sm"
               >
@@ -519,9 +637,14 @@ export default function MetersTab() {
               </label>
               {isLocationAdmin ? (
                 <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                  {locations.find(loc =>
-                    locationAdminLocations.includes(loc.id)
-                  )?.name || 'Loading...'}
+                  {selectedLocations.length > 0 && locations.length > 0
+                    ? locations
+                        .filter(loc => selectedLocations.includes(loc.id))
+                        .map(loc => loc.name)
+                        .join(', ') || 'Loading...'
+                    : locations.length === 0
+                      ? 'Loading...'
+                      : 'No location selected'}
                 </div>
               ) : (
                 <LocationMultiSelect
@@ -560,7 +683,9 @@ export default function MetersTab() {
       </Card>
 
       {/* Data Display */}
-      {selectedLocations.length === 0 ? (
+      {locationsLoading || loading ? (
+        <MetersTabSkeleton />
+      ) : selectedLocations.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
             <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-400" />
@@ -572,8 +697,6 @@ export default function MetersTab() {
             </p>
           </CardContent>
         </Card>
-      ) : loading ? (
-        <MetersTabSkeleton />
       ) : error ? (
         <Card>
           <CardContent className="p-8 text-center">
@@ -596,7 +719,7 @@ export default function MetersTab() {
                 variant="secondary"
                 className="self-start text-xs sm:self-auto"
               >
-                {metersData.length} records
+                {paginatedMetersData.length} records
               </Badge>
             </div>
             <CardDescription className="text-sm">
@@ -618,7 +741,8 @@ export default function MetersTab() {
                 />
               </div>
               <p className="mt-2 text-sm text-gray-600">
-                Showing {metersData.length} of {totalCount} records
+                Showing {paginatedMetersData.length} of{' '}
+                {filteredMetersData.length} records
                 {searchTerm && ` (filtered by "${searchTerm}")`}
               </p>
             </div>
@@ -675,7 +799,7 @@ export default function MetersTab() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {metersData.map((item, index) => (
+                      {paginatedMetersData.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="whitespace-nowrap px-4 py-3">
                             <div className="font-mono text-sm text-gray-900">
@@ -750,7 +874,7 @@ export default function MetersTab() {
 
                 {/* Mobile Card View */}
                 <div className="space-y-4 md:hidden">
-                  {metersData.map((item, index) => (
+                  {paginatedMetersData.map((item, index) => (
                     <div
                       key={index}
                       className="space-y-3 rounded-lg border border-gray-200 bg-white p-4"
@@ -837,148 +961,12 @@ export default function MetersTab() {
                 </div>
 
                 {/* Pagination Controls - Mobile Responsive */}
-                {totalPages > 1 && (
-                  <>
-                    {/* Mobile Pagination */}
-                    <div className="mt-4 flex flex-col space-y-3 sm:hidden">
-                      <div className="text-center text-xs text-gray-600">
-                        Page {currentPage} of {totalPages} ({totalCount} total
-                        records)
-                      </div>
-                      <div className="flex items-center justify-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(1)}
-                          disabled={currentPage === 1 || paginationLoading}
-                          className="px-2 py-1 text-xs"
-                        >
-                          ««
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1 || paginationLoading}
-                          className="px-2 py-1 text-xs"
-                        >
-                          ‹
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-600">Page</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={totalPages}
-                            value={currentPage}
-                            onChange={e => {
-                              let val = Number(e.target.value);
-                              if (isNaN(val)) val = 1;
-                              if (val < 1) val = 1;
-                              if (val > totalPages) val = totalPages;
-                              handlePageChange(val);
-                            }}
-                            className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                            aria-label="Page number"
-                            disabled={paginationLoading}
-                          />
-                          <span className="text-xs text-gray-600">
-                            of {totalPages}
-                          </span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={
-                            currentPage === totalPages || paginationLoading
-                          }
-                          className="px-2 py-1 text-xs"
-                        >
-                          ›
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(totalPages)}
-                          disabled={
-                            currentPage === totalPages || paginationLoading
-                          }
-                          className="px-2 py-1 text-xs"
-                        >
-                          »»
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Desktop Pagination */}
-                    <div className="mt-4 hidden items-center justify-between sm:flex">
-                      <div className="text-sm text-gray-600">
-                        Page {currentPage} of {totalPages} ({totalCount} total
-                        records)
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(1)}
-                          disabled={currentPage === 1 || paginationLoading}
-                        >
-                          First
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1 || paginationLoading}
-                        >
-                          Previous
-                        </Button>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">Page</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={totalPages}
-                            value={currentPage}
-                            onChange={e => {
-                              let val = Number(e.target.value);
-                              if (isNaN(val)) val = 1;
-                              if (val < 1) val = 1;
-                              if (val > totalPages) val = totalPages;
-                              handlePageChange(val);
-                            }}
-                            className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                            aria-label="Page number"
-                            disabled={paginationLoading}
-                          />
-                          <span className="text-sm text-gray-600">
-                            of {totalPages}
-                          </span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={
-                            currentPage === totalPages || paginationLoading
-                          }
-                        >
-                          Next
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(totalPages)}
-                          disabled={
-                            currentPage === totalPages || paginationLoading
-                          }
-                        >
-                          Last
-                        </Button>
-                      </div>
-                    </div>
-                  </>
+                {!loading && totalPages > 1 && (
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    setCurrentPage={setCurrentPage}
+                  />
                 )}
               </>
             )}

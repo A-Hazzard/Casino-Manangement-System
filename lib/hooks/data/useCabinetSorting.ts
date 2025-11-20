@@ -3,9 +3,9 @@
  * Handles sort state, pagination logic, and data transformation
  */
 
-import { useState, useMemo, useCallback } from 'react';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { mapToCabinetProps } from '@/lib/utils/cabinet';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { useCallback, useMemo, useState } from 'react';
 
 export type CabinetSortOption =
   | 'assetNumber'
@@ -23,6 +23,7 @@ export type CabinetSortOption =
 type UseCabinetSortingProps = {
   filteredCabinets: Cabinet[];
   itemsPerPage?: number;
+  onPageChange?: (page: number) => void;
 };
 
 type UseCabinetSortingReturn = {
@@ -94,33 +95,43 @@ export const useCabinetSorting = ({
     return sorted;
   }, [filteredCabinets, sortOption, sortOrder]);
 
-  // Paginate sorted cabinets
+  // Paginate sorted cabinets - slice from the current batch (50 items)
   const paginatedCabinets = useMemo(() => {
-    const startIndex = currentPage * itemsPerPage;
+    // Calculate which items to show from the current batch (10 items per page from 50-item batch)
+    const positionInBatch = (currentPage % 5) * itemsPerPage;
+    const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
     const paginated = sortedCabinets.slice(startIndex, endIndex);
 
     console.warn('Paginated cabinets:', {
       currentPage,
       itemsPerPage,
+      positionInBatch,
       startIndex,
       endIndex,
-      totalItems: sortedCabinets.length,
+      totalItemsInBatch: sortedCabinets.length,
       paginatedItems: paginated.length,
     });
 
     return paginated;
   }, [sortedCabinets, currentPage, itemsPerPage]);
 
-  // Calculate total pages
+  // Calculate total pages based on current batch size (50 items = 5 pages)
+  // Each batch has 50 items, which equals 5 pages of 10 items each
   const totalPages = useMemo(() => {
-    const total = Math.ceil(sortedCabinets.length / itemsPerPage);
+    // For the current batch, we always have 5 pages (50 items / 10 per page)
+    // But if we have fewer items than a full batch, calculate based on actual items
+    const pagesInCurrentBatch = Math.min(
+      5,
+      Math.ceil(sortedCabinets.length / itemsPerPage)
+    );
+    const total = pagesInCurrentBatch > 0 ? pagesInCurrentBatch : 1;
     console.warn(
       'Total pages calculated:',
       total,
-      'for',
+      'for current batch with',
       sortedCabinets.length,
-      'items'
+      'items (max 5 pages per batch)'
     );
     return total;
   }, [sortedCabinets.length, itemsPerPage]);

@@ -13,15 +13,9 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useLocationActionsStore } from '@/lib/store/locationActionsStore';
 import { LocationFilter } from '@/lib/types/location';
 import { formatCurrency } from '@/lib/utils/number';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-  MagnifyingGlassIcon,
-} from '@radix-ui/react-icons';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { Plus, PlusCircle, RefreshCw } from 'lucide-react';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import PageLayout from '@/components/layout/PageLayout';
 
@@ -37,12 +31,12 @@ import LocationCard from '@/components/ui/locations/LocationCard';
 import LocationSkeleton from '@/components/ui/locations/LocationSkeleton';
 import LocationTable from '@/components/ui/locations/LocationTable';
 import NewLocationModal from '@/components/ui/locations/NewLocationModal';
+import PaginationControls from '@/components/ui/PaginationControls';
 import { IMAGES } from '@/lib/constants/images';
 import {
   useLocationData,
   useLocationMachineStats,
   useLocationModals,
-  useLocationPagination,
   useLocationSorting,
 } from '@/lib/hooks/data';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
@@ -51,6 +45,7 @@ import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
+import { AggregatedLocation } from '@/shared/types/common';
 import Image from 'next/image';
 
 function LocationsPageContent() {
@@ -77,46 +72,93 @@ function LocationsPageContent() {
   const cardsRef = useRef<HTMLDivElement>(null);
 
   // Custom hooks for data management
-  const { locationData, loading, searchLoading, error, fetchData } =
-    useLocationData({
-      selectedLicencee,
-      activeMetricsFilter,
-      customDateRange,
-      searchTerm,
-      selectedFilters,
-    });
+  const {
+    locationData,
+    loading,
+    searchLoading,
+    error,
+    fetchData,
+    totalCount,
+    fetchBatch,
+  } = useLocationData({
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    searchTerm,
+    selectedFilters,
+  });
+
+  // Track accumulated locations from multiple batches
+  const [accumulatedLocations, setAccumulatedLocations] = useState<
+    AggregatedLocation[]
+  >([]);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+
+  // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
+  const calculateBatchNumber = (page: number) => {
+    return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
+  };
+
+  // Initialize: fetch first batch on mount and when filters change
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      // Reset accumulated data when filters change
+      setAccumulatedLocations([]);
+      setLoadedBatches(new Set());
+      fetchData(1, itemsPerBatch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    selectedFilters,
+    searchTerm,
+  ]);
+
+  // Update accumulated locations when new data arrives
+  useEffect(() => {
+    if (locationData.length > 0 && !searchTerm.trim()) {
+      setAccumulatedLocations(prev => {
+        // Merge with existing, avoiding duplicates
+        const existingIds = new Set(prev.map(loc => loc._id));
+        const newLocations = locationData.filter(
+          loc => !existingIds.has(loc._id)
+        );
+        return [...prev, ...newLocations];
+      });
+    } else if (searchTerm.trim()) {
+      // For search, use the data directly
+      setAccumulatedLocations(locationData);
+    }
+  }, [locationData, searchTerm]);
 
   // Check if current user is a developer
   const isDeveloper = useMemo(() => {
     const userRoles = user?.roles || [];
-    return userRoles.some(role => 
-      typeof role === 'string' && role.toLowerCase() === 'developer'
+    return userRoles.some(
+      role => typeof role === 'string' && role.toLowerCase() === 'developer'
     );
   }, [user?.roles]);
+
+  // Use accumulated locations for pagination (or filtered data for search)
+  const locationsForPagination = searchTerm.trim()
+    ? locationData
+    : accumulatedLocations;
 
   // Filter out test locations (unless developer)
   const filteredLocationData = useMemo(() => {
     if (isDeveloper) {
-      return locationData; // Developers can see all locations including test ones
+      return locationsForPagination; // Developers can see all locations including test ones
     }
     const testPattern = /^test/i;
-    return locationData.filter(location => {
+    return locationsForPagination.filter(location => {
       const name = location.name?.trim() || '';
       return !testPattern.test(name);
     });
-  }, [locationData, isDeveloper]);
-
-  const {
-    sortedData,
-    sortOrder,
-    sortOption,
-    handleColumnSort,
-    totalPages,
-    currentItems,
-  } = useLocationSorting({
-    locationData: filteredLocationData,
-    selectedFilters,
-  });
+  }, [locationsForPagination, isDeveloper]);
 
   // Custom hooks for additional functionality
   const { machineStats, machineStatsLoading } = useLocationMachineStats();
@@ -129,14 +171,17 @@ function LocationsPageContent() {
     handleTableAction,
   } = useLocationModals();
 
-  const {
-    currentPage,
-    setCurrentPage,
-    handleFirstPage,
-    handleLastPage,
-    handlePrevPage,
-    handleNextPage,
-  } = useLocationPagination({ totalPages });
+  // Use a single currentPage state managed at the page level
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const { sortOrder, sortOption, handleColumnSort, totalPages, currentItems } =
+    useLocationSorting({
+      locationData: filteredLocationData,
+      selectedFilters,
+      currentPage, // Pass currentPage from page state
+      totalCount: searchTerm.trim() ? undefined : totalCount,
+      itemsPerPage,
+    });
 
   // Handler for refresh button
   const handleRefresh = async () => {
@@ -147,8 +192,10 @@ function LocationsPageContent() {
 
   // Note: Machine stats and modal state are now managed by custom hooks
 
-  // Calculate financial totals from location data
-  const financialTotals = calculateLocationFinancialTotals(locationData);
+  // Calculate financial totals from location data (use accumulated for better totals)
+  const financialTotals = calculateLocationFinancialTotals(
+    accumulatedLocations.length > 0 ? accumulatedLocations : locationData
+  );
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -163,6 +210,58 @@ function LocationsPageContent() {
   useEffect(() => {
     setCurrentPage(0);
   }, [searchTerm, selectedFilters, setCurrentPage]);
+
+  // Fetch new batch when crossing batch boundary
+  useEffect(() => {
+    if (searchTerm.trim() || loading) return; // Skip for search or while loading
+
+    const currentBatch = calculateBatchNumber(currentPage);
+    const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
+
+    // Check if we're on the last page of the current batch
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchBatch(nextBatch, itemsPerBatch).then(result => {
+        if (result.data.length > 0) {
+          setAccumulatedLocations(prev => {
+            const existingIds = new Set(prev.map(loc => loc._id));
+            const newLocations = result.data.filter(
+              loc => !existingIds.has(loc._id)
+            );
+            return [...prev, ...newLocations];
+          });
+        }
+      });
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchBatch(currentBatch, itemsPerBatch).then(result => {
+        if (result.data.length > 0) {
+          setAccumulatedLocations(prev => {
+            const existingIds = new Set(prev.map(loc => loc._id));
+            const newLocations = result.data.filter(
+              loc => !existingIds.has(loc._id)
+            );
+            return [...prev, ...newLocations];
+          });
+        }
+      });
+    }
+  }, [
+    currentPage,
+    searchTerm,
+    loading,
+    loadedBatches,
+    fetchBatch,
+    itemsPerBatch,
+    itemsPerPage,
+  ]);
 
   // Note: Scroll handling is now managed by custom hooks
 
@@ -538,8 +637,8 @@ function LocationsPageContent() {
             </div>
           ) : (
             <>
-              {/* Mobile: show cards */}
-              <div className="block md:hidden">
+              {/* Mobile and Tablet: show cards */}
+              <div className="block lg:hidden">
                 <ClientOnly
                   fallback={
                     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -573,7 +672,7 @@ function LocationsPageContent() {
                 </ClientOnly>
               </div>
               {/* Desktop: show table */}
-              <div className="hidden md:block" ref={tableRef}>
+              <div className="hidden lg:block" ref={tableRef}>
                 <LocationTable
                   locations={currentItems}
                   sortOption={sortOption}
@@ -588,124 +687,13 @@ function LocationsPageContent() {
           )}
         </div>
 
-        {/* Pagination Section: Navigation controls for data pages */}
-        {totalPages > 1 && (
-          <>
-            {/* Mobile Pagination */}
-            <div className="mt-4 flex flex-col space-y-3 sm:hidden">
-              <div className="text-center text-xs text-gray-600">
-                Page {currentPage + 1} of {totalPages} ({sortedData.length}{' '}
-                locations)
-              </div>
-              <div className="flex items-center justify-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleFirstPage}
-                  disabled={currentPage === 0}
-                  className="px-2 py-1 text-xs"
-                >
-                  ««
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrevPage}
-                  disabled={currentPage === 0}
-                  className="px-2 py-1 text-xs"
-                >
-                  ‹
-                </Button>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-600">Page</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalPages}
-                    value={currentPage + 1}
-                    onChange={e => {
-                      let val = Number(e.target.value);
-                      if (isNaN(val)) val = 1;
-                      if (val < 1) val = 1;
-                      if (val > totalPages) val = totalPages;
-                      setCurrentPage(val - 1);
-                    }}
-                    className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                    aria-label="Page number"
-                  />
-                  <span className="text-xs text-gray-600">of {totalPages}</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages - 1}
-                  className="px-2 py-1 text-xs"
-                >
-                  ›
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLastPage}
-                  disabled={currentPage === totalPages - 1}
-                  className="px-2 py-1 text-xs"
-                >
-                  »»
-                </Button>
-              </div>
-            </div>
-            {/* Desktop Pagination */}
-            <div className="mt-4 hidden items-center justify-center space-x-2 sm:flex">
-              <Button
-                onClick={handleFirstPage}
-                disabled={currentPage === 0}
-                variant="ghost"
-              >
-                <DoubleArrowLeftIcon />
-              </Button>
-              <Button
-                onClick={handlePrevPage}
-                disabled={currentPage === 0}
-                variant="ghost"
-              >
-                <ChevronLeftIcon />
-              </Button>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Page</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
-                  value={currentPage + 1}
-                  onChange={e => {
-                    let val = Number(e.target.value);
-                    if (isNaN(val)) val = 1;
-                    if (val < 1) val = 1;
-                    if (val > totalPages) val = totalPages;
-                    setCurrentPage(val - 1);
-                  }}
-                  className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                  aria-label="Page number"
-                />
-                <span className="text-sm text-gray-600">of {totalPages}</span>
-              </div>
-              <Button
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages - 1}
-                variant="ghost"
-              >
-                <ChevronRightIcon />
-              </Button>
-              <Button
-                onClick={handleLastPage}
-                disabled={currentPage === totalPages - 1}
-                variant="ghost"
-              >
-                <DoubleArrowRightIcon />
-              </Button>
-            </div>
-          </>
+        {/* Pagination Controls */}
+        {!isLoading && currentItems.length > 0 && totalPages > 1 && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+          />
         )}
       </PageLayout>
       <EditLocationModal onLocationUpdated={fetchData} />

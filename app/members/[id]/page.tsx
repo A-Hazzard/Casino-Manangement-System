@@ -249,7 +249,8 @@ function MemberDetailsPageContent() {
       );
     }
 
-    const totalPages = member.pagination?.totalPages || 1;
+    const pages = member.pagination?.totalPages || 1;
+    const totalPages = pages > 0 ? pages : ((member.sessions?.length ?? 0) > 0 ? 1 : 0);
     const currentSessions = member.sessions || [];
 
     return (

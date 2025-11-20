@@ -35,8 +35,12 @@ const FeedbackSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'reviewed', 'resolved', 'archived'],
+      enum: ['pending', 'reviewed', 'resolved'],
       default: 'pending',
+    },
+    archived: {
+      type: Boolean,
+      default: false,
     },
     reviewedBy: {
       type: String,
@@ -52,6 +56,16 @@ const FeedbackSchema = new Schema(
       trim: true,
       default: null,
     },
+    username: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    userId: {
+      type: String,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -64,6 +78,7 @@ FeedbackSchema.index({ email: 1 });
 FeedbackSchema.index({ submittedAt: -1 });
 FeedbackSchema.index({ status: 1 });
 FeedbackSchema.index({ category: 1 });
+FeedbackSchema.index({ archived: 1 });
 
 // Generate _id before saving
 FeedbackSchema.pre('save', function (next) {
@@ -82,10 +97,13 @@ export type Feedback = {
   category: 'bug' | 'suggestion' | 'general-review' | 'feature-request' | 'performance' | 'ui-ux' | 'other';
   description: string;
   submittedAt: Date;
-  status: 'pending' | 'reviewed' | 'resolved' | 'archived';
+  status: 'pending' | 'reviewed' | 'resolved';
+  archived: boolean;
   reviewedBy?: string | null;
   reviewedAt?: Date | null;
   notes?: string | null;
+  username?: string | null;
+  userId?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 };

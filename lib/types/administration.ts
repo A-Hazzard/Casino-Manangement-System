@@ -31,6 +31,7 @@ export type User = {
     middleName?: string;
     otherName?: string;
     gender?: string;
+    phoneNumber?: string;
     address?: {
       street?: string;
       town?: string;
@@ -70,6 +71,7 @@ export type UserDetailsModalProps = {
     middleName?: string;
     otherName?: string;
     gender?: string;
+    phoneNumber?: string;
     street?: string;
     town?: string;
     region?: string;

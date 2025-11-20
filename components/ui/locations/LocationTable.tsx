@@ -12,6 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { LocationTableProps } from '@/lib/types/location';
+import { toast } from 'sonner';
+import { Eye } from 'lucide-react';
 
 import React from 'react';
 import editIcon from '@/public/editIcon.svg';
@@ -28,8 +30,14 @@ const LocationTable: React.FC<LocationTableProps> = ({
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const handleRowClick = (locationId: string) => {
-    onLocationClick(locationId);
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
   };
 
   return (
@@ -94,19 +102,22 @@ const LocationTable: React.FC<LocationTableProps> = ({
               return (
                 <TableRow
                   key={location.locationName as string}
-                  className="cursor-pointer hover:bg-muted"
-                  onClick={e => {
-                    if (!(e.target as HTMLElement).closest('td:last-child')) {
-                      handleRowClick(location.location as string);
-                    }
-                  }}
+                  className="hover:bg-muted"
                 >
                   <TableCell isFirstColumn={true}>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          const locationName = (location.locationName as string) || 'Unknown Location';
+                          copyToClipboard(locationName, 'Location Name');
+                        }}
+                        className="font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer text-left"
+                        title="Click to copy location name"
+                      >
                         {(location.locationName as string) ||
                           'Unknown Location'}
-                      </span>
+                      </button>
                       {typeof location.onlineMachines === 'number' && typeof location.totalMachines === 'number' && (() => {
                         const online = location.onlineMachines;
                         const total = location.totalMachines;
@@ -154,9 +165,22 @@ const LocationTable: React.FC<LocationTableProps> = ({
                         size="sm"
                         onClick={e => {
                           e.stopPropagation();
+                          onLocationClick(location.location as string);
+                        }}
+                        className="h-8 w-8 p-1 hover:bg-accent"
+                        title="View details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={e => {
+                          e.stopPropagation();
                           onAction('edit', loc);
                         }}
                         className="h-8 w-8 p-1 hover:bg-accent"
+                        title="Edit"
                       >
                         <Image
                           src={editIcon}
@@ -174,6 +198,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
                           onAction('delete', loc);
                         }}
                         className="h-8 w-8 p-1 hover:bg-accent"
+                        title="Delete"
                       >
                         <Image
                           src={deleteIcon}

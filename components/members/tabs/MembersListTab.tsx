@@ -29,15 +29,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
   MagnifyingGlassIcon,
 } from '@radix-ui/react-icons';
 import { PlusCircle, RefreshCw, ArrowUpDown } from 'lucide-react';
 import { Toaster } from 'sonner';
 import Image from 'next/image';
+import PaginationControls from '@/components/ui/PaginationControls';
 
 // Import SVG icons for pre-rendering
 import membersIcon from '@/public/membersIcon.svg';
@@ -64,22 +61,29 @@ export default function MembersListTab() {
   const router = useRouter();
 
   // State management
-  const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
+  const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState<MemberSortOption>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [isNewMemberModalOpen, setIsNewMemberModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+
+  // Calculate which batch we need based on current page
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / pagesPerBatch) + 1;
+  }, [pagesPerBatch]);
 
   // Fetch members data with backend pagination
   const fetchMembers = useCallback(
     async (
-      page: number = 1,
+      batch: number = 1,
       search: string = '',
       sortBy: string = 'name',
       sortOrder: 'asc' | 'desc' = 'asc'
@@ -88,8 +92,8 @@ export default function MembersListTab() {
         setLoading(true);
 
         const params = new URLSearchParams({
-          page: page.toString(),
-          limit: itemsPerPage.toString(),
+          page: batch.toString(),
+          limit: itemsPerBatch.toString(),
           search: search,
           sortBy: sortBy,
           sortOrder: sortOrder,
@@ -99,26 +103,67 @@ export default function MembersListTab() {
         const result = response.data;
 
         if (result.success && result.data) {
-          setFilteredMembers(result.data.members);
-          setTotalPages(result.data.pagination.totalPages);
-          setCurrentPage(result.data.pagination.currentPage - 1); // Convert to 0-based
+          const newMembers = result.data.members || [];
+          // Merge new members into allMembers, avoiding duplicates
+          setAllMembers(prev => {
+            const existingIds = new Set(prev.map(m => m._id));
+            const uniqueNewMembers = newMembers.filter((m: Member) => !existingIds.has(m._id));
+            return [...prev, ...uniqueNewMembers];
+          });
         } else {
           console.error('Invalid response format:', result);
-          setFilteredMembers([]);
+          setAllMembers([]);
         }
       } catch (error) {
         console.error('Error fetching members:', error);
-        setFilteredMembers([]);
+        setAllMembers([]);
       } finally {
         setLoading(false);
       }
     },
-    [itemsPerPage]
+    [itemsPerBatch]
   );
 
+  // Load initial batch on mount and when filters change
   useEffect(() => {
+    setAllMembers([]);
+    setLoadedBatches(new Set([1]));
+    setCurrentPage(0);
     fetchMembers(1, searchTerm, sortOption, sortOrder);
-  }, [fetchMembers, searchTerm, sortOption, sortOrder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, sortOption, sortOrder]);
+
+  // Fetch next batch when crossing batch boundaries
+  useEffect(() => {
+    if (loading) return;
+
+    const currentBatch = calculateBatchNumber(currentPage);
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchMembers(nextBatch, searchTerm, sortOption, sortOrder);
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchMembers(currentBatch, searchTerm, sortOption, sortOrder);
+    }
+  }, [
+    currentPage,
+    loading,
+    fetchMembers,
+    itemsPerBatch,
+    pagesPerBatch,
+    loadedBatches,
+    calculateBatchNumber,
+    searchTerm,
+    sortOption,
+    sortOrder,
+  ]);
 
   // Sorting functionality - now handled by backend
   const handleSort = useCallback(
@@ -132,9 +177,9 @@ export default function MembersListTab() {
     [sortOption, sortOrder]
   );
 
-  // Sort members
+  // Sort members (backend already sorts, but we keep this for consistency)
   const sortedMembers = useMemo(() => {
-    const sorted = [...filteredMembers].sort((a, b) => {
+    const sorted = [...allMembers].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
 
@@ -184,7 +229,7 @@ export default function MembersListTab() {
     });
 
     return sorted;
-  }, [filteredMembers, sortOption, sortOrder]);
+  }, [allMembers, sortOption, sortOrder]);
 
   // Pagination
   const paginatedMembers = useMemo(() => {
@@ -213,12 +258,6 @@ export default function MembersListTab() {
     }
   };
 
-  const handleFirstPage = () => setCurrentPage(0);
-  const handleLastPage = () => setCurrentPage(totalPages - 1);
-  const handlePrevPage = () =>
-    currentPage > 0 && setCurrentPage(prev => prev - 1);
-  const handleNextPage = () =>
-    currentPage < totalPages - 1 && setCurrentPage(prev => prev + 1);
 
   const handleNewMember = () => {
     setIsNewMemberModalOpen(true);
@@ -229,7 +268,10 @@ export default function MembersListTab() {
   };
 
   const handleMemberCreated = () => {
-    fetchMembers();
+    setAllMembers([]);
+    setLoadedBatches(new Set([1]));
+    setCurrentPage(0);
+    fetchMembers(1, searchTerm, sortOption, sortOrder);
   };
 
   return (
@@ -253,6 +295,9 @@ export default function MembersListTab() {
             onClick={async () => {
               setRefreshing(true);
               await fetchMembers(1, searchTerm, sortOption, sortOrder);
+              setAllMembers([]);
+              setLoadedBatches(new Set([1]));
+              setCurrentPage(0);
               setRefreshing(false);
             }}
             disabled={refreshing}
@@ -293,6 +338,9 @@ export default function MembersListTab() {
             onClick={async () => {
               setRefreshing(true);
               await fetchMembers(1, searchTerm, sortOption, sortOrder);
+              setAllMembers([]);
+              setLoadedBatches(new Set([1]));
+              setCurrentPage(0);
               setRefreshing(false);
             }}
             disabled={refreshing}
@@ -427,124 +475,16 @@ export default function MembersListTab() {
       </div>
 
       {/* Pagination - Mobile Responsive */}
-      {totalPages > 1 && (
-        <>
-          {/* Mobile Pagination */}
-          <div className="mt-4 flex flex-col space-y-3 sm:hidden">
-            <div className="text-center text-xs text-gray-600">
-              Page {currentPage + 1} of {totalPages}
-            </div>
-            <div className="flex items-center justify-center space-x-2">
-              <Button
-                onClick={handleFirstPage}
-                disabled={currentPage === 0}
-                variant="outline"
-                size="sm"
-                className="px-2 py-1 text-xs"
-              >
-                ««
-              </Button>
-              <Button
-                onClick={handlePrevPage}
-                disabled={currentPage === 0}
-                variant="outline"
-                size="sm"
-                className="px-2 py-1 text-xs"
-              >
-                ‹
-              </Button>
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-gray-600">Page</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
-                  value={currentPage + 1}
-                  onChange={e => {
-                    let val = Number(e.target.value);
-                    if (isNaN(val)) val = 1;
-                    if (val < 1) val = 1;
-                    if (val > totalPages) val = totalPages;
-                    setCurrentPage(val - 1);
-                  }}
-                  className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                  aria-label="Page number"
-                />
-                <span className="text-xs text-gray-600">of {totalPages}</span>
-              </div>
-              <Button
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages - 1}
-                variant="outline"
-                size="sm"
-                className="px-2 py-1 text-xs"
-              >
-                ›
-              </Button>
-              <Button
-                onClick={handleLastPage}
-                disabled={currentPage === totalPages - 1}
-                variant="outline"
-                size="sm"
-                className="px-2 py-1 text-xs"
-              >
-                »»
-              </Button>
-            </div>
-          </div>
-
-          {/* Desktop Pagination */}
-          <div className="mt-4 hidden items-center justify-center space-x-2 sm:flex">
-            <Button
-              onClick={handleFirstPage}
-              disabled={currentPage === 0}
-              variant="ghost"
-            >
-              <DoubleArrowLeftIcon />
-            </Button>
-            <Button
-              onClick={handlePrevPage}
-              disabled={currentPage === 0}
-              variant="ghost"
-            >
-              <ChevronLeftIcon />
-            </Button>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Page</span>
-              <input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={currentPage + 1}
-                onChange={e => {
-                  let val = Number(e.target.value);
-                  if (isNaN(val)) val = 1;
-                  if (val < 1) val = 1;
-                  if (val > totalPages) val = totalPages;
-                  setCurrentPage(val - 1);
-                }}
-                className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                aria-label="Page number"
-              />
-              <span className="text-sm text-gray-600">of {totalPages}</span>
-            </div>
-            <Button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages - 1}
-              variant="ghost"
-            >
-              <ChevronRightIcon />
-            </Button>
-            <Button
-              onClick={handleLastPage}
-              disabled={currentPage === totalPages - 1}
-              variant="ghost"
-            >
-              <DoubleArrowRightIcon />
-            </Button>
-          </div>
-        </>
-      )}
+      {(() => {
+        const totalPages = Math.ceil(allMembers.length / itemsPerPage);
+        return totalPages > 1 ? (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+          />
+        ) : null;
+      })()}
 
       {/* Modals */}
       <EditMemberModal

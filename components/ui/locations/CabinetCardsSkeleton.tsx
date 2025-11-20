@@ -2,8 +2,8 @@ import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const CabinetCardsSkeleton: React.FC = () => (
-  <div className="mt-4 space-y-4">
-    {[...Array(5)].map((_, i) => (
+  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+    {[...Array(4)].map((_, i) => (
       <div
         key={i}
         className="relative mx-auto w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm"

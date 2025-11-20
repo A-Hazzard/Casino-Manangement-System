@@ -119,13 +119,13 @@ export default function EditMovementRequestModal({
         const fetchCabinets = async () => {
           setLoadingCabinets(true);
           try {
-            const cabinetsData = await fetchCabinetsForLocation(
+            const result = await fetchCabinetsForLocation(
               location.id,
               undefined,
               'All'
             );
-            setCabinets(cabinetsData);
-            setAvailableCabinets(cabinetsData);
+            setCabinets(result.data);
+            setAvailableCabinets(result.data);
           } catch (error) {
             console.error('Failed to fetch cabinets:', error);
             setCabinets([]);

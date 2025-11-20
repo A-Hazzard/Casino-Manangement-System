@@ -213,13 +213,7 @@ export type NewCollectionModalProps = {
 export type CollectionDesktopUIProps = {
   loading: boolean;
   filteredReports: CollectionReportRow[];
-  desktopCurrentItems: CollectionReportRow[];
-  desktopTotalPages: number;
-  desktopPage: number;
-  onPaginateDesktop: (_page: number) => void;
-  desktopPaginationRef: React.RefObject<HTMLDivElement | null>;
   desktopTableRef: React.RefObject<HTMLDivElement | null>;
-  itemsPerPage: number;
   locations: LocationSelectItem[];
   selectedLocation: string;
   onLocationChange: (_value: string) => void;
@@ -245,13 +239,7 @@ export type CollectionDesktopUIProps = {
 export type CollectionMobileUIProps = {
   loading: boolean;
   filteredReports: CollectionReportRow[];
-  mobileCurrentItems: CollectionReportRow[];
-  mobileTotalPages: number;
-  mobilePage: number;
-  onPaginateMobile: (_page: number) => void;
-  mobilePaginationRef: React.RefObject<HTMLDivElement | null>;
   mobileCardsRef: React.RefObject<HTMLDivElement | null>;
-  itemsPerPage: number;
   disabled?: boolean;
   locations: LocationSelectItem[];
   selectedLocation: string;

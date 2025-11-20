@@ -43,6 +43,7 @@ const ActivityLogSchema = new Schema(
         'collection',
         'firmware',
         'auth',
+        'feedback',
       ],
     },
     resourceId: { type: String, required: true },

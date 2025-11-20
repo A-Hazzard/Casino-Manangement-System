@@ -640,18 +640,23 @@ export async function updateCollectionReport(
 }
 
 /**
- * Fetches collection reports for a given licencee (or all) with optional date filtering.
+ * Fetches collection reports for a given licencee (or all) with optional date filtering and pagination.
  * @param licencee - The licencee name or "all" (optional)
  * @param dateRange - Optional date range for filtering { from: Date, to: Date }
  * @param timePeriod - Optional time period for filtering (Today, Yesterday, etc.)
- * @returns Promise resolving to an array of CollectionReportRow
+ * @param page - Page number (1-based, default: 1)
+ * @param limit - Items per page (default: 50)
+ * @param retryCount - Internal retry counter for error handling
+ * @returns Promise resolving to paginated collection reports with pagination metadata
  */
 export async function fetchCollectionReportsByLicencee(
   licencee?: string,
   dateRange?: { from: Date; to: Date },
   timePeriod?: string,
+  page: number = 1,
+  limit: number = 50,
   retryCount = 0
-): Promise<CollectionReportRow[]> {
+): Promise<{ data: CollectionReportRow[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
   const maxRetries = 2;
 
   try {
@@ -674,10 +679,46 @@ export async function fetchCollectionReportsByLicencee(
       params.endDate = dateRange.to.toISOString();
     }
 
+    // Add pagination parameters
+    params.page = String(page);
+    params.limit = String(limit);
+
     const { data } = await axios.get("/api/collectionReport", {
       params,
     });
-    return Array.isArray(data) ? data : [];
+    
+    // Response format: { data: CollectionReportRow[], pagination: {...} }
+    if (data && typeof data === 'object' && 'data' in data) {
+      return {
+        data: data.data || [],
+        pagination: data.pagination || {
+          page: 1,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    } else if (Array.isArray(data)) {
+      // Fallback for old API format (no pagination)
+      return {
+        data,
+        pagination: {
+          page: 1,
+          limit: data.length,
+          total: data.length,
+          totalPages: 1,
+        },
+      };
+    }
+    return {
+      data: [],
+      pagination: {
+        page: 1,
+        limit,
+        total: 0,
+        totalPages: 0,
+      },
+    };
   } catch (error) {
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
@@ -717,7 +758,15 @@ export async function fetchCollectionReportsByLicencee(
     } else {
       console.warn("⚠️ Unexpected error fetching collection reports:", error);
     }
-    return [];
+    return {
+      data: [],
+      pagination: {
+        page: 1,
+        limit,
+        total: 0,
+        totalPages: 0,
+      },
+    };
   }
 }
 

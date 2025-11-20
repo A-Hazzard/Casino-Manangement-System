@@ -9,6 +9,8 @@ import { CabinetCardProps } from '@/lib/types/cardProps';
 import { motion } from 'framer-motion';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 
 export default function CabinetCard(props: CabinetCardProps) {
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
@@ -44,7 +46,7 @@ export default function CabinetCard(props: CabinetCardProps) {
     }
   }, [props]);
 
-  const handleCardClick = () => {
+  const handleViewClick = () => {
     if (props._id) {
       // Ensure locationId is available, fallback if needed
       const targetLocationId = locationId || props.locationId;
@@ -59,6 +61,16 @@ export default function CabinetCard(props: CabinetCardProps) {
           return;
         }
       }
+    }
+  };
+
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      toast.error(`Failed to copy ${label}`);
     }
   };
 
@@ -128,6 +140,9 @@ export default function CabinetCard(props: CabinetCardProps) {
 
   // Determine if cabinet is online
   const isOnline = props.status === 'functional' || props.online === true;
+  const serialNumber = props.serialNumber?.trim() || '';
+  const customName = props.custom?.name?.trim() || '';
+  const smbId = props.smbId || '';
 
   return (
     <div
@@ -136,8 +151,20 @@ export default function CabinetCard(props: CabinetCardProps) {
     >
       {/* Header with Asset Number and Status Indicator */}
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="flex items-center gap-1 text-base font-semibold">
-          {props.assetNumber || '(No Asset #)'}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              const textToCopy = serialNumber || customName || props.assetNumber || '';
+              if (textToCopy) {
+                copyToClipboard(textToCopy, 'Serial Number');
+              }
+            }}
+            className="text-base font-semibold hover:text-blue-600 hover:underline cursor-pointer text-left"
+            title="Click to copy serial number"
+          >
+            {formatMachineDisplayNameWithBold(props)}
+          </button>
           <motion.span
             className={`h-2 w-2 rounded-full ${
               isOnline ? 'bg-button' : 'bg-destructive'
@@ -145,12 +172,24 @@ export default function CabinetCard(props: CabinetCardProps) {
             animate={{ scale: [1, 1.2, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           ></motion.span>
-        </h3>
+        </div>
       </div>
 
       {/* SMIB ID and Location */}
       <div className="mb-3">
-        <p className="text-sm text-button">SMIB ID: {props.smbId || 'N/A'}</p>
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            if (smbId) {
+              copyToClipboard(smbId, 'SMIB');
+            }
+          }}
+          className={`text-sm ${smbId ? 'text-button hover:text-blue-600 hover:underline cursor-pointer' : 'text-gray-400'}`}
+          title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
+          disabled={!smbId}
+        >
+          SMIB ID: {smbId || 'N/A'}
+        </button>
         <p className="text-sm font-bold text-grayHighlight">
           {props.locationName || 'Unknown Location'}
         </p>
@@ -191,13 +230,13 @@ export default function CabinetCard(props: CabinetCardProps) {
       {/* Action Buttons */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
         <Button
-          onClick={() => handleCardClick()}
+          onClick={handleViewClick}
           variant="outline"
           size="sm"
           className="flex-1 flex items-center justify-center gap-1.5 text-xs"
         >
           <Eye className="h-3.5 w-3.5" />
-          <span>View Details</span>
+          <span>View</span>
         </Button>
         <Button
           onClick={handleEditClick}

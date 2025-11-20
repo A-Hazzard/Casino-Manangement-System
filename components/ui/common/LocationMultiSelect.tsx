@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Check, ChevronDown, X, Search } from 'lucide-react';
+import { Check, ChevronDown, Search, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { LocationMultiSelectProps } from '@/lib/types/components';
 
@@ -51,6 +52,19 @@ export default function LocationMultiSelect({
     const name = option.name || '';
     return name.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  // Calculate select all state
+  const allSelected =
+    locations.length > 0 && selectedLocations.length === locations.length;
+  const someSelected = selectedLocations.length > 0 && !allSelected;
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      onSelectionChange([]);
+    } else {
+      onSelectionChange(locations.map(loc => loc.id));
+    }
+  };
 
   const selectedOptions = locations.filter(option =>
     selectedLocations.includes(option.id)
@@ -113,6 +127,28 @@ export default function LocationMultiSelect({
               />
             </div>
           </div>
+
+          {/* Select All Option */}
+          {locations.length > 0 && (
+            <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+              <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-gray-100">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={handleSelectAll}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  {allSelected ? 'Deselect All' : 'Select All'} (
+                  {locations.length})
+                </span>
+                {someSelected && !allSelected && (
+                  <span className="ml-auto text-xs text-gray-500">
+                    {selectedLocations.length} selected
+                  </span>
+                )}
+              </label>
+            </div>
+          )}
 
           {/* Options */}
           <div className="py-1">

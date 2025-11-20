@@ -477,6 +477,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
+          hideCurrencyFilter: selectedLicencee !== '' && selectedLicencee !== undefined,
         }}
         pageTitle=""
         hideOptions={true}
@@ -507,6 +508,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
+          hideCurrencyFilter: selectedLicencee !== '' && selectedLicencee !== undefined,
         }}
         pageTitle=""
         hideOptions={true}
@@ -575,6 +577,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
+          hideCurrencyFilter: selectedLicencee !== '' && selectedLicencee !== undefined,
         }}
         pageTitle=""
         hideOptions={true}
@@ -1857,7 +1860,7 @@ function CabinetDetailPageContent() {
             cabinet={cabinet}
             loading={metricsLoading}
             activeMetricsTabContent={activeMetricsTabContent}
-            disableCurrencyConversion={true}
+            disableCurrencyConversion={selectedLicencee !== '' && selectedLicencee !== undefined}
             setActiveMetricsTabContent={handleTabChange}
             onDataRefresh={fetchCabinetDetailsData}
           />

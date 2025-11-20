@@ -22,6 +22,7 @@ import {
   isPlaceholderEmail,
   validateEmail,
   validatePasswordStrength,
+  validatePhoneNumber,
 } from '@/lib/utils/validation';
 import cameraIcon from '@/public/cameraIcon.svg';
 import defaultAvatar from '@/public/defaultAvatar.svg';
@@ -76,9 +77,11 @@ export default function UserModal({
   const isAdmin = currentUserRoles.includes('admin') && !isDeveloper;
   const isManager =
     currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+  const isLocationAdmin =
+    currentUserRoles.includes('location admin') && !isAdmin && !isDeveloper && !isManager;
   const canEditAccountFields = Boolean(
     currentUser?.roles?.some(role =>
-      ['admin', 'developer', 'manager'].includes(role)
+      ['admin', 'developer', 'manager', 'location admin'].includes(role)
     )
   );
   const canEditLicensees = isDeveloper || isAdmin; // Only admins/developers can edit licensee assignments
@@ -96,16 +99,29 @@ export default function UserModal({
       return ROLE_OPTIONS.filter(role =>
         ['location admin', 'technician', 'collector'].includes(role.value)
       );
+    } else if (isLocationAdmin) {
+      // Location admin can only assign: technician, collector
+      return ROLE_OPTIONS.filter(role =>
+        ['technician', 'collector'].includes(role.value)
+      );
     }
     // No roles available for other users
     return [];
-  }, [isDeveloper, isAdmin, isManager]);
+  }, [isDeveloper, isAdmin, isManager, isLocationAdmin]);
   const currentUserLicenseeIds = useMemo(
     () =>
       ((currentUser?.rel as { licencee?: string[] })?.licencee || []).map(id =>
         String(id)
       ),
     [currentUser?.rel]
+  );
+  
+  // Get location admin's assigned locations
+  const currentUserLocationPermissions = useMemo(
+    () =>
+      ((currentUser?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [])
+      .map(id => String(id)),
+    [currentUser?.resourcePermissions]
   );
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -123,6 +139,7 @@ export default function UserModal({
     firstName: '',
     lastName: '',
     gender: '',
+    phoneNumber: '',
     street: '',
     town: '',
     region: '',
@@ -191,6 +208,8 @@ export default function UserModal({
       firstName: targetUser.profile?.firstName || '',
       lastName: targetUser.profile?.lastName || '',
       gender: targetUser.profile?.gender || '',
+      phoneNumber: (targetUser.profile as { phoneNumber?: string } | undefined)?.phoneNumber || 
+                   (targetUser.profile as { contact?: { phone?: string } } | undefined)?.contact?.phone || '',
       street: targetUser.profile?.address?.street || '',
       town: targetUser.profile?.address?.town || '',
       region: targetUser.profile?.address?.region || '',
@@ -294,8 +313,14 @@ export default function UserModal({
       hydrateFormFromUser(user);
     } else if (open) {
       setIsLoading(true);
+      
+      // For location admins creating new user, auto-set licensee
+      if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
+        setSelectedLicenseeIds(currentUserLicenseeIds);
+        setAllLicenseesSelected(false);
+      }
     }
-  }, [user, open, hydrateFormFromUser, locations.length, licensees.length]);
+  }, [user, open, hydrateFormFromUser, locations.length, licensees.length, isLocationAdmin, currentUserLicenseeIds]);
 
   // Load locations
   useEffect(() => {
@@ -320,7 +345,7 @@ export default function UserModal({
         const data = await response.json();
         const locationsList = data.locations || [];
 
-        const formattedLocs = locationsList.map(
+        let formattedLocs = locationsList.map(
           (loc: {
             _id?: string;
             id?: string;
@@ -333,6 +358,13 @@ export default function UserModal({
             licenseeId: loc.licenseeId ? String(loc.licenseeId) : null,
           })
         );
+
+        // Filter locations for location admins - only show their assigned locations
+        if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
+          formattedLocs = formattedLocs.filter((loc: LocationSelectItem) =>
+            currentUserLocationPermissions.includes(loc._id)
+          );
+        }
 
         setLocations(formattedLocs);
 
@@ -351,7 +383,7 @@ export default function UserModal({
     };
 
     loadLocations();
-  }, [user]);
+  }, [user, isLocationAdmin, currentUserLocationPermissions]);
 
   // Load licensees when the modal is open and normalise assignments - only when modal opens
   useEffect(() => {
@@ -363,14 +395,30 @@ export default function UserModal({
 
     const loadLicensees = async () => {
       try {
-        let lics = await fetchLicensees();
+        const result = await fetchLicensees();
         if (cancelled) return;
+        
+        // Extract licensees array from the result
+        let lics = Array.isArray(result.licensees) ? result.licensees : [];
 
         // Filter licensees for managers - only show their assigned licensees
         if (isManager && currentUserLicenseeIds.length > 0) {
           lics = lics.filter(lic =>
             currentUserLicenseeIds.includes(String(lic._id))
           );
+        }
+
+        // For location admins, auto-set licensee based on their licensee
+        // and filter to only show their licensee
+        if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
+          lics = lics.filter(lic =>
+            currentUserLicenseeIds.includes(String(lic._id))
+          );
+          // Auto-set the licensee for location admins
+          if (lics.length > 0 && selectedLicenseeIds.length === 0) {
+            setSelectedLicenseeIds([String(lics[0]._id)]);
+            setAllLicenseesSelected(false);
+          }
         }
 
         setLicensees(lics);
@@ -442,7 +490,7 @@ export default function UserModal({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]); // Only depend on 'open' - fetch once when modal opens
+  }, [open, isLocationAdmin, currentUserLicenseeIds]); // Only depend on 'open' - fetch once when modal opens
 
   // Load countries
   useEffect(() => {
@@ -582,13 +630,24 @@ export default function UserModal({
   };
 
   // Filter locations based on selected licensees
-  const availableLocations = allLicenseesSelected
-    ? locations
-    : selectedLicenseeIds.length > 0
-      ? locations.filter(
-          loc => loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
-        )
-      : [];
+  // For location admins, only show their assigned locations
+  const availableLocations = useMemo(() => {
+    if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
+      // Location admins can only see their assigned locations
+      return locations.filter(loc =>
+        currentUserLocationPermissions.includes(loc._id)
+      );
+    }
+    
+    // For other roles, filter by selected licensees
+    return allLicenseesSelected
+      ? locations
+      : selectedLicenseeIds.length > 0
+        ? locations.filter(
+            loc => loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
+          )
+        : [];
+  }, [isLocationAdmin, currentUserLocationPermissions, locations, allLicenseesSelected, selectedLicenseeIds]);
 
   const handleAllLocationsChange = (checked: boolean) => {
     setAllLocationsSelected(checked);
@@ -755,6 +814,15 @@ export default function UserModal({
     if (hasChanged(formData.gender, existingProfile.gender)) {
       profileUpdate.gender = formData.gender.trim() || undefined;
     }
+    if (hasChanged(formData.phoneNumber, (existingProfile as { phoneNumber?: string }).phoneNumber)) {
+      const trimmedPhone = formData.phoneNumber.trim();
+      // Phone number is optional, but if provided, it must be valid
+      if (trimmedPhone && !validatePhoneNumber(trimmedPhone)) {
+        toast.error('Please enter a valid phone number (7-20 digits, spaces, hyphens, parentheses, optional leading +)');
+        return;
+      }
+      profileUpdate.phoneNumber = trimmedPhone || undefined;
+    }
 
     // Build address update - only include fields that have changed
     const addressUpdate: Record<string, unknown> = {};
@@ -848,7 +916,7 @@ export default function UserModal({
         (id, idx) => id === newLicenseeIdsSorted[idx]
       );
 
-    // Prevent managers from changing licensee assignments
+    // Prevent managers and location admins from changing licensee assignments
     if (isManager && licenseeIdsChanged) {
       toast.error('Managers cannot change licensee assignments');
       return;
@@ -892,6 +960,14 @@ export default function UserModal({
         },
       }) as ResourcePermissions,
     };
+    
+    // For location admins, auto-set licensee to their licensee
+    if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
+      // Always use the location admin's licensee
+      updatedUser.rel = {
+        licencee: currentUserLicenseeIds,
+      };
+    }
 
     // Only include fields that have changed
     if (usernameChanged) {
@@ -921,7 +997,8 @@ export default function UserModal({
     }
 
     // Only include licensee if it changed (and user can edit it)
-    if (licenseeIdsChanged && !isManager) {
+    // Location admins have their licensee auto-set above, so skip here
+    if (licenseeIdsChanged && !isManager && !isLocationAdmin) {
       updatedUser.rel = {
         licencee: selectedLicenseeIds,
       };
@@ -1258,6 +1335,28 @@ export default function UserModal({
                     ) : (
                       <div className="w-full text-center text-gray-700 lg:text-left">
                         {accountData.email || 'Not specified'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-full">
+                    <label className="mb-1 block text-sm font-semibold text-gray-900">
+                      Phone Number:
+                    </label>
+                    {isLoading ? (
+                      <Skeleton className="h-12 w-full" />
+                    ) : isEditMode ? (
+                      <Input
+                        type="tel"
+                        value={formData.phoneNumber}
+                        onChange={e =>
+                          setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))
+                        }
+                        placeholder="Enter phone number"
+                        className="w-full"
+                      />
+                    ) : (
+                      <div className="w-full text-center text-gray-700 lg:text-left">
+                        {formData.phoneNumber || 'Not specified'}
                       </div>
                     )}
                   </div>
@@ -1875,7 +1974,7 @@ export default function UserModal({
                           Assigned Licensees
                         </h4>
 
-                        {/* For managers, always show as read-only */}
+                        {/* For managers and location admins, always show as read-only */}
                         {!canEditLicensees ? (
                           <div className="text-center">
                             <div className="text-gray-700">
@@ -1897,6 +1996,11 @@ export default function UserModal({
                               <p className="mt-2 text-xs italic text-gray-500">
                                 Licensee assignments cannot be changed by
                                 managers
+                              </p>
+                            )}
+                            {isLocationAdmin && (
+                              <p className="mt-2 text-xs italic text-gray-500">
+                                Licensee is automatically set to your assigned licensee
                               </p>
                             )}
                           </div>
