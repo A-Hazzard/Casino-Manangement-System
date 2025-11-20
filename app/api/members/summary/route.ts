@@ -167,8 +167,20 @@ export async function GET(request: NextRequest) {
       {
         $lookup: {
           from: 'gaminglocations',
-          localField: 'gamingLocation',
-          foreignField: '_id',
+          let: { memberLocation: '$gamingLocation' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$_id', '$$memberLocation'] },
+                    { $eq: [{ $toString: '$_id' }, { $toString: '$$memberLocation' }] },
+                    { $eq: ['$_id', { $toObjectId: { $ifNull: ['$$memberLocation', ''] } }] },
+                  ],
+                },
+              },
+            },
+          ],
           as: 'location',
         },
       },

@@ -21,6 +21,7 @@ export function useSessions() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [totalSessionsFromAPI, setTotalSessionsFromAPI] = useState<number>(0);
 
   const itemsPerPage = 10;
   const itemsPerBatch = 50;
@@ -89,7 +90,13 @@ export function useSessions() {
         `/api/sessions?${queryParams.toString()}`
       );
       const data = response.data;
-      const newSessions = data.sessions || [];
+      // API returns { success: true, data: { sessions, pagination } }
+      const newSessions = data.data?.sessions || data.sessions || [];
+      
+      // Update total sessions count from API pagination
+      if (data.data?.pagination?.totalSessions) {
+        setTotalSessionsFromAPI(data.data.pagination.totalSessions);
+      }
       
       // Merge new sessions into allSessions, avoiding duplicates
       setAllSessions(prev => {
@@ -154,10 +161,11 @@ export function useSessions() {
     setAllSessions([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
+    setTotalSessionsFromAPI(0); // Reset API total when filters change
     fetchSessions(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    searchTerm,
+    debouncedSearchTerm, // Use debounced search term
     sortBy,
     sortOrder,
     selectedLicencee,
@@ -202,24 +210,41 @@ export function useSessions() {
     return allSessions.slice(startIndex, endIndex);
   }, [allSessions, currentPage, itemsPerPage, pagesPerBatch]);
 
-  // Calculate total pages based on all loaded batches
+  // Calculate total pages - use API total if available, otherwise use loaded sessions
   const totalPages = useMemo(() => {
+    if (totalSessionsFromAPI > 0) {
+      // Use API total for accurate pagination
+      return Math.ceil(totalSessionsFromAPI / itemsPerPage);
+    }
+    // Fallback to loaded sessions count
     const totalItems = allSessions.length;
     const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [allSessions.length, itemsPerPage]);
+  }, [totalSessionsFromAPI, allSessions.length, itemsPerPage]);
 
   // Create pagination object for compatibility
   const pagination: PaginationData | null = useMemo(() => {
-    if (allSessions.length === 0) return null;
+    // Use API total if available, otherwise use loaded sessions count
+    const totalCount = totalSessionsFromAPI > 0 ? totalSessionsFromAPI : allSessions.length;
+    if (totalCount === 0 && allSessions.length === 0) return null;
     return {
       currentPage: currentPage + 1, // Convert to 1-based for display
       totalPages,
-      totalSessions: allSessions.length, // Required by PaginationData type
+      totalSessions: totalCount, // Use API total or loaded count
       hasNextPage: currentPage < totalPages - 1,
       hasPrevPage: currentPage > 0,
     };
-  }, [currentPage, totalPages, allSessions.length]);
+  }, [currentPage, totalPages, allSessions.length, totalSessionsFromAPI]);
+
+  /**
+   * Refresh sessions - clear and reload from batch 1
+   */
+  const refreshSessions = useCallback(async () => {
+    setAllSessions([]);
+    setLoadedBatches(new Set([1]));
+    setCurrentPage(0);
+    await fetchSessions(1);
+  }, [fetchSessions]);
 
   return {
     sessions: paginatedSessions,
@@ -233,6 +258,7 @@ export function useSessions() {
     handleSearch,
     handleSort,
     handlePageChange,
+    refreshSessions,
     fetchSessions: () => fetchSessions(1),
   };
 }

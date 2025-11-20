@@ -93,11 +93,24 @@ export async function GET(request: NextRequest) {
     pipeline.push({ $match: query });
 
     // Stage 2: Join members with gaming locations to get location names
+    // Handle both string and ObjectId formats for gamingLocation
     pipeline.push({
       $lookup: {
         from: 'gaminglocations',
-        localField: 'gamingLocation',
-        foreignField: '_id',
+        let: { memberLocation: '$gamingLocation' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $or: [
+                  { $eq: ['$_id', '$$memberLocation'] },
+                  { $eq: [{ $toString: '$_id' }, { $toString: '$$memberLocation' }] },
+                  { $eq: ['$_id', { $toObjectId: { $ifNull: ['$$memberLocation', ''] } }] },
+                ],
+              },
+            },
+          },
+        ],
         as: 'locationInfo',
       },
     });

@@ -6,6 +6,12 @@ import type { ReportTab } from '@/lib/types';
  */
 export const REPORTS_TABS_CONFIG: ReportTab[] = [
   {
+    id: 'meters',
+    label: 'Meters',
+    icon: '📈',
+    description: 'Meter readings and financial data by location',
+  },
+  {
     id: 'locations',
     label: 'Locations',
     icon: '🏢',
@@ -16,12 +22,6 @@ export const REPORTS_TABS_CONFIG: ReportTab[] = [
     label: 'Machines',
     icon: '🎰',
     description: 'Individual machine performance and revenue tracking',
-  },
-  {
-    id: 'meters',
-    label: 'Meters',
-    icon: '📈',
-    description: 'Meter readings and financial data by location',
   },
 ];
 

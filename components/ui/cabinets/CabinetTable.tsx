@@ -19,7 +19,7 @@ import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import type { DataTableProps } from '@/shared/types/components';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 import { toast } from 'sonner';
-import { Eye } from 'lucide-react';
+import { Eye, ExternalLink } from 'lucide-react';
 type CabinetTableProps = DataTableProps<Cabinet> & {
   onMachineClick?: (machineId: string) => void;
   showLocation?: boolean;
@@ -132,8 +132,6 @@ export default function CabinetTable({
                 })
               : 'Never';
 
-            const serialNumber = cab.serialNumber?.trim() || '';
-            const customName = cab.custom?.name?.trim() || '';
             const smbId = cab.smbId || '';
 
             return (
@@ -143,25 +141,48 @@ export default function CabinetTable({
               >
                 <TableCell isFirstColumn={true} className="w-[240px]">
                   <div className="space-y-1">
-                    {/* Row 1: Serial Number/Asset Number */}
+                    {/* Row 1: Serial Number/Asset Number - Navigate to cabinet details */}
                     <div className="min-w-0">
                       <button
                         onClick={e => {
                           e.stopPropagation();
-                          const textToCopy = serialNumber || customName || cab.assetNumber || '';
-                          if (textToCopy) {
-                            copyToClipboard(textToCopy, 'Serial Number');
-                          }
+                          navigateToCabinet(cab._id);
                         }}
                         className="font-medium text-sm hover:text-blue-600 hover:underline cursor-pointer text-left break-words whitespace-normal"
-                        title="Click to copy serial number"
+                        title="Click to view cabinet details"
                       >
                         {formatMachineDisplayNameWithBold(cab)}
                       </button>
                     </div>
-                    {/* Row 2: Location Name */}
-                    <div className="text-xs font-semibold text-gray-600 break-words whitespace-normal">
-                      {cab.locationName || '(No Location)'}
+                    {/* Row 2: Location Name - Navigate to location details with icon */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (cab.locationId) {
+                            router.push(`/locations/${cab.locationId}`);
+                          }
+                        }}
+                        className="text-xs font-semibold text-gray-600 hover:text-blue-600 hover:underline cursor-pointer break-words whitespace-normal flex items-center gap-1"
+                        title="Click to view location details"
+                        disabled={!cab.locationId}
+                      >
+                        {cab.locationName || '(No Location)'}
+                      </button>
+                      {cab.locationId && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            router.push(`/locations/${cab.locationId}`);
+                          }}
+                          className="flex-shrink-0"
+                          title="View location details"
+                        >
+                          <ExternalLink
+                            className="h-3 w-3 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110"
+                          />
+                        </button>
+                      )}
                     </div>
                     
                     {/* Row 2: SMIB and Status */}

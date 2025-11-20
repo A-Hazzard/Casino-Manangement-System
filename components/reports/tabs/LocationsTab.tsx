@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -11,6 +11,9 @@ import {
   Activity,
   RefreshCw,
   TrendingUp,
+  ChevronDown,
+  FileText,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 import {
@@ -24,6 +27,13 @@ import { Button } from '@/components/ui/button';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import PaginationControls from '@/components/ui/PaginationControls';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   MachineHourlyChartsSkeleton,
   RevenueAnalysisChartsSkeleton,
@@ -36,10 +46,9 @@ import {
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import {
-  exportData,
-  type ExtendedLegacyExportData,
-} from '@/lib/utils/exportUtils';
+import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
+import { DashboardTotals } from '@/lib/types';
+import type { ExtendedLegacyExportData } from '@/lib/utils/exportUtils';
 import LocationMap from '@/components/reports/common/LocationMap';
 import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from '@/lib/helpers/reportsPage';
 // Error handling imports removed - using wrapper component instead
@@ -188,7 +197,14 @@ export default function LocationsTab() {
 
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [locationsLoading, setLocationsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Initialize from URL parameter immediately
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('ltab') || 'overview';
+    }
+    return 'overview';
+  });
 
   // Independent loading states for each tab (currently unused but available for future use)
   // const [sasLoading, setSasLoading] = useState(false);
@@ -197,7 +213,7 @@ export default function LocationsTab() {
   // Helper function to set current selected locations based on active tab
   const setCurrentSelectedLocations = useCallback(
     (locations: string[]) => {
-      if (activeTab === 'sas-evaluation') {
+      if (activeTab === 'sas-evaluation' || activeTab === 'location-evaluation') {
         setSelectedSasLocations(locations);
       } else {
         setSelectedRevenueLocations(locations);
@@ -210,7 +226,10 @@ export default function LocationsTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 10; // Items per page for overview table
 
+  // Store all locations (for pagination and export)
+  const [allLocations, setAllLocations] = useState<AggregatedLocation[]>([]);
   const [paginatedLocations, setPaginatedLocations] = useState<
     AggregatedLocation[]
   >([]);
@@ -342,7 +361,9 @@ export default function LocationsTab() {
         // Check for error response
         if (response.data.error) {
           console.error('❌ LocationData API Error:', response.data.error);
-          toast.error('Failed to fetch location data. Please try again.');
+          toast.error('Failed to fetch location data. Please try again.', {
+            duration: 3000,
+          });
           throw new Error(response.data.error);
         }
 
@@ -402,47 +423,116 @@ export default function LocationsTab() {
 
         // Filter data based on selected locations if any are selected
         const currentSelectedLocations =
-          activeTab === 'sas-evaluation'
+          activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
             ? selectedSasLocations
             : selectedRevenueLocations;
+        
+        console.warn('🔍 Filtering locations:', {
+          activeTab,
+          currentSelectedLocations,
+          normalizedLocationsCount: normalizedLocations.length,
+          sampleLocationIds: normalizedLocations.slice(0, 3).map((loc: Record<string, unknown>) => ({
+            location: loc.location,
+            locationName: loc.locationName,
+            locationType: typeof loc.location,
+          })),
+        });
+        
         const filteredData =
           currentSelectedLocations.length > 0
-            ? normalizedLocations.filter((loc: Record<string, unknown>) =>
-                currentSelectedLocations.includes(loc.location as string)
-              )
-            : normalizedLocations;
+            ? normalizedLocations.filter((loc: Record<string, unknown>) => {
+                const locId = String(loc.location || '');
+                const isIncluded = currentSelectedLocations.some(selectedId => 
+                  String(selectedId) === locId
+                );
+                if (!isIncluded && currentSelectedLocations.length > 0) {
+                  console.warn('🔍 Location not in selection:', {
+                    locationId: locId,
+                    locationName: loc.locationName,
+                    selectedIds: currentSelectedLocations,
+                  });
+                }
+                return isIncluded;
+              })
+            : []; // Return empty array when no locations are selected
+        
+        console.warn('🔍 Filtered data result:', {
+          filteredCount: filteredData.length,
+          selectedCount: currentSelectedLocations.length,
+        });
 
-        // Set paginated data (filtered if locations are selected) - show immediately
-        setPaginatedLocations(filteredData);
+        // Store all locations for pagination and export
+        setAllLocations(filteredData);
+        setTotalCount(filteredData.length);
+        setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
         setCurrentPage(1);
-        setTotalPages(1);
-        setTotalCount(normalizedLocations.length);
         setPaginationLoading(false); // Show pagination immediately
 
-        // Calculate metrics overview (use filtered data if locations are selected)
-        const dataForMetrics =
-          currentSelectedLocations.length > 0
-            ? filteredData
-            : normalizedLocations;
-        const overview = dataForMetrics.reduce(
-          (acc: Record<string, unknown>, loc: Record<string, unknown>) => {
-            (acc.totalGross as number) += (loc.gross as number) || 0;
-            (acc.totalDrop as number) += (loc.moneyIn as number) || 0;
-            (acc.totalCancelledCredits as number) +=
-              (loc.moneyOut as number) || 0;
-            (acc.onlineMachines as number) +=
-              (loc.onlineMachines as number) || 0;
-            (acc.totalMachines as number) += (loc.totalMachines as number) || 0;
-            return acc;
-          },
-          {
-            totalGross: 0,
-            totalDrop: 0,
-            totalCancelledCredits: 0,
-            onlineMachines: 0,
-            totalMachines: 0,
+        // Calculate metrics overview
+        // Use dashboard totals API when no specific locations are selected (more efficient and consistent)
+        // Otherwise calculate from filtered location data
+        let overview: LocationMetrics;
+        
+        if (currentSelectedLocations.length === 0) {
+          // No locations selected - use dashboard totals API for financial metrics
+          let dashboardTotals: DashboardTotals = { moneyIn: 0, moneyOut: 0, gross: 0 };
+          try {
+            // Use Promise to ensure callback completes before proceeding
+            await new Promise<void>((resolve, reject) => {
+              fetchDashboardTotals(
+                activeMetricsFilter || 'Today',
+                customDateRange || { startDate: new Date(), endDate: new Date() },
+                selectedLicencee,
+                (totals) => {
+                  dashboardTotals = totals || { moneyIn: 0, moneyOut: 0, gross: 0 };
+                  resolve(); // Resolve after callback sets the value
+                },
+                displayCurrency
+              ).catch(reject);
+            });
+          } catch (error) {
+            console.error('Failed to fetch dashboard totals:', error);
+            // Use default values (already set above)
           }
-        );
+
+          // Get machine counts from location data
+          const machineCounts = normalizedLocations.reduce(
+            (acc: { onlineMachines: number; totalMachines: number }, loc: Record<string, unknown>) => {
+              acc.onlineMachines += (loc.onlineMachines as number) || 0;
+              acc.totalMachines += (loc.totalMachines as number) || 0;
+              return acc;
+            },
+            { onlineMachines: 0, totalMachines: 0 }
+          );
+
+          overview = {
+            totalGross: dashboardTotals.gross || 0,
+            totalDrop: dashboardTotals.moneyIn || 0,
+            totalCancelledCredits: dashboardTotals.moneyOut || 0,
+            onlineMachines: machineCounts.onlineMachines,
+            totalMachines: machineCounts.totalMachines,
+          };
+        } else {
+          // Specific locations selected - calculate from filtered location data
+          const dataForMetrics = filteredData;
+          overview = dataForMetrics.reduce(
+            (acc: LocationMetrics, loc: Record<string, unknown>) => {
+              acc.totalGross += (loc.gross as number) || 0;
+              acc.totalDrop += (loc.moneyIn as number) || 0;
+              acc.totalCancelledCredits += (loc.moneyOut as number) || 0;
+              acc.onlineMachines += (loc.onlineMachines as number) || 0;
+              acc.totalMachines += (loc.totalMachines as number) || 0;
+              return acc;
+            },
+            {
+              totalGross: 0,
+              totalDrop: 0,
+              totalCancelledCredits: 0,
+              onlineMachines: 0,
+              totalMachines: 0,
+            }
+          );
+        }
 
         setMetricsOverview(overview);
         setMetricsLoading(false);
@@ -494,15 +584,22 @@ export default function LocationsTab() {
         if (axios.isAxiosError(error)) {
           if (error.response?.status === 500) {
             toast.error(
-              'Server error: Database query timeout. Please try again.'
+              'Server error: Database query timeout. Please try again.',
+              { duration: 3000 }
             );
           } else if (error.response?.status === 404) {
-            toast.error('Location data not found. Please check your filters.');
+            toast.error('Location data not found. Please check your filters.', {
+              duration: 3000,
+            });
           } else {
-            toast.error('Failed to load location data. Please try again.');
+            toast.error('Failed to load location data. Please try again.', {
+              duration: 3000,
+            });
           }
         } else {
-          toast.error('Failed to load location data. Please try again.');
+          toast.error('Failed to load location data. Please try again.', {
+            duration: 3000,
+          });
         }
 
         // Reset loading states and data
@@ -521,8 +618,7 @@ export default function LocationsTab() {
       selectedLicencee,
       activeTab,
       activeMetricsFilter,
-      customDateRange?.startDate,
-      customDateRange?.endDate,
+      customDateRange,
       fetchGamingLocationsAsync,
       selectedSasLocations,
       selectedRevenueLocations,
@@ -533,7 +629,7 @@ export default function LocationsTab() {
   // Function to fetch top machines data
   const fetchTopMachines = useCallback(async () => {
     const currentSelectedLocations =
-      activeTab === 'sas-evaluation'
+      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
         : selectedRevenueLocations;
     if (currentSelectedLocations.length === 0) {
@@ -603,7 +699,9 @@ export default function LocationsTab() {
       setTopMachinesData(filteredMachines);
     } catch (error) {
       console.error('Error fetching top machines:', error);
-      toast.error('Failed to fetch top machines data');
+      toast.error('Failed to fetch top machines data', {
+        duration: 3000,
+      });
       setTopMachinesData([]);
     } finally {
       setTopMachinesLoading(false);
@@ -621,7 +719,7 @@ export default function LocationsTab() {
   // Function to fetch location trend data (daily or hourly based on time period)
   const fetchLocationTrendData = useCallback(async () => {
     const currentSelectedLocations =
-      activeTab === 'sas-evaluation'
+      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
         : selectedRevenueLocations;
     if (currentSelectedLocations.length === 0) {
@@ -688,7 +786,9 @@ export default function LocationsTab() {
       setLocationTrendData(response.data);
     } catch (error) {
       console.error('Error fetching location trend data:', error);
-      toast.error('Failed to fetch location trend data');
+      toast.error('Failed to fetch location trend data', {
+        duration: 3000,
+      });
       setLocationTrendData(null);
     } finally {
       setLocationTrendLoading(false);
@@ -706,7 +806,7 @@ export default function LocationsTab() {
   // Consolidated useEffect to handle all data fetching
   useEffect(() => {
     const currentSelectedLocations =
-      activeTab === 'sas-evaluation'
+      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
         : selectedRevenueLocations;
     // Fetch location data when filters change or when locations are selected
@@ -736,10 +836,12 @@ export default function LocationsTab() {
 
   // Initialize from URL
   useEffect(() => {
-    const initial = searchParams?.get('ltab');
-    if (initial && initial !== activeTab) setActiveTab(initial);
+    const initial = searchParams?.get('ltab') || 'overview';
+    if (initial !== activeTab) {
+      setActiveTab(initial);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   const handleLocationsTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -759,9 +861,9 @@ export default function LocationsTab() {
   useEffect(() => {
     if (allLocationsForDropdown.length > 0) {
       const currentSelectedLocations =
-        activeTab === 'sas-evaluation'
-          ? selectedSasLocations
-          : selectedRevenueLocations;
+                  activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+                    ? selectedSasLocations
+                    : selectedRevenueLocations;
       const filteredData =
         currentSelectedLocations.length > 0
           ? allLocationsForDropdown.filter(loc => {
@@ -769,14 +871,15 @@ export default function LocationsTab() {
               const locationId = (loc._id || loc.location) as string;
               return currentSelectedLocations.includes(locationId);
             })
-          : allLocationsForDropdown;
+          : []; // Return empty array when no locations are selected
 
       console.warn(
         `🔍 Filtering locations - allLocationsForDropdown: ${allLocationsForDropdown.length}, filteredData: ${filteredData.length}, selectedLocations: ${currentSelectedLocations.length}`
       );
 
-      setPaginatedLocations(filteredData);
+      setAllLocations(filteredData);
       setTotalCount(filteredData.length);
+      setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
       setCurrentPage(1);
 
       // Recalculate metrics overview
@@ -839,7 +942,7 @@ export default function LocationsTab() {
   // Debug effect to log state changes
   useEffect(() => {
     console.warn(
-      `🔍 State Debug - paginationLoading: ${paginationLoading}, locations count: ${paginatedLocations.length}, currentPage: ${currentPage}, totalPages: ${totalPages}, totalCount: ${totalCount}`
+      `🔍 State Debug - paginationLoading: ${paginationLoading}, locations count: ${allLocations.length}, currentPage: ${currentPage}, totalPages: ${totalPages}, totalCount: ${totalCount}`
     );
     console.warn(
       `🔍 Table Props Debug - totalPages: ${totalPages}, totalCount: ${totalCount}`
@@ -849,41 +952,184 @@ export default function LocationsTab() {
     );
   }, [
     paginationLoading,
-    paginatedLocations.length,
+    allLocations.length,
     currentPage,
     totalPages,
     totalCount,
   ]);
 
+  // Calculate paginated items for overview table
+  const paginatedTableItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return allLocations.slice(startIndex, endIndex);
+  }, [allLocations, currentPage, itemsPerPage]);
+
+  // Update paginatedLocations state from allLocations (for Location Evaluation and Revenue Analysis tabs)
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedLocations(allLocations.slice(startIndex, endIndex));
+  }, [allLocations, currentPage, itemsPerPage]);
+
   const handleLocationSelect = (locationIds: string[]) => {
     setCurrentSelectedLocations(locationIds);
   };
 
-  const handleExportSASEvaluation = async () => {
+  // Handle export for location overview
+  const handleExportLocationOverview = async (format: 'pdf' | 'excel') => {
+    if (allLocations.length === 0) {
+      toast.error('No location data to export', {
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Calculate totals from all locations if metricsOverview is not available
+      const calculatedTotals = allLocations.reduce(
+        (acc, loc) => {
+          acc.totalGross += (loc.gross as number) || 0;
+          acc.totalDrop += (loc.moneyIn as number) || 0;
+          acc.totalCancelledCredits += (loc.moneyOut as number) || 0;
+          acc.totalMachines += (loc.totalMachines || 0);
+          acc.onlineMachines += (loc.onlineMachines || 0);
+          return acc;
+        },
+        {
+          totalGross: 0,
+          totalDrop: 0,
+          totalCancelledCredits: 0,
+          totalMachines: 0,
+          onlineMachines: 0,
+        }
+      );
+
+      // Use metricsOverview if available, otherwise use calculated totals
+      const finalTotals = metricsOverview || {
+        totalGross: calculatedTotals.totalGross,
+        totalDrop: calculatedTotals.totalDrop,
+        totalCancelledCredits: calculatedTotals.totalCancelledCredits,
+        totalMachines: calculatedTotals.totalMachines,
+        onlineMachines: calculatedTotals.onlineMachines,
+      };
+
+      // Calculate overall hold percentage
+      const overallHoldPercentage = finalTotals.totalDrop > 0
+        ? ((finalTotals.totalGross / finalTotals.totalDrop) * 100).toFixed(2)
+        : '0.00';
+
+      // Prepare location data rows
+      const locationRows = allLocations.map(loc => [
+        loc.locationName || loc.name || 'Unknown',
+        (loc.totalMachines || 0).toString(),
+        (loc.onlineMachines || 0).toString(),
+        shouldShowCurrency() 
+          ? formatAmount(loc.moneyIn || 0)
+          : `$${((loc.moneyIn as number) || 0).toLocaleString()}`,
+        shouldShowCurrency()
+          ? formatAmount(loc.moneyOut || 0)
+          : `$${((loc.moneyOut as number) || 0).toLocaleString()}`,
+        shouldShowCurrency()
+          ? formatAmount(loc.gross || 0)
+          : `$${((loc.gross as number) || 0).toLocaleString()}`,
+        ((loc.moneyIn as number) || 0) > 0
+          ? `${(((loc.gross as number) || 0) / ((loc.moneyIn as number) || 1) * 100).toFixed(2)}%`
+          : '0%',
+      ]);
+
+      // Add totals row at the end
+      const totalsRow = [
+        'TOTAL',
+        finalTotals.totalMachines.toString(),
+        finalTotals.onlineMachines.toString(),
+        shouldShowCurrency()
+          ? formatAmount(finalTotals.totalDrop)
+          : `$${finalTotals.totalDrop.toLocaleString()}`,
+        shouldShowCurrency()
+          ? formatAmount(finalTotals.totalCancelledCredits)
+          : `$${finalTotals.totalCancelledCredits.toLocaleString()}`,
+        shouldShowCurrency()
+          ? formatAmount(finalTotals.totalGross)
+          : `$${finalTotals.totalGross.toLocaleString()}`,
+        `${overallHoldPercentage}%`,
+      ];
+
+      const exportDataObj: ExtendedLegacyExportData = {
+        title: 'Location Overview Report',
+        subtitle: `Location performance metrics for ${activeMetricsFilter || 'Today'}`,
+        metadata: {
+          generatedBy: 'Evolution CMS',
+          generatedAt: new Date().toISOString(),
+          dateRange: activeMetricsFilter || 'Today',
+          tab: 'location-overview',
+          selectedLocations: allLocations.length,
+        },
+        summary: [
+          { label: 'Total Gross Revenue', value: shouldShowCurrency() ? formatAmount(finalTotals.totalGross) : `$${finalTotals.totalGross.toLocaleString()}` },
+          { label: 'Total Drop', value: shouldShowCurrency() ? formatAmount(finalTotals.totalDrop) : `$${finalTotals.totalDrop.toLocaleString()}` },
+          { label: 'Total Cancelled Credits', value: shouldShowCurrency() ? formatAmount(finalTotals.totalCancelledCredits) : `$${finalTotals.totalCancelledCredits.toLocaleString()}` },
+          { label: 'Online Machines', value: `${finalTotals.onlineMachines}/${finalTotals.totalMachines}` },
+          { label: 'Overall Hold %', value: `${overallHoldPercentage}%` },
+        ],
+        headers: [
+          'Location Name',
+          'Total Machines',
+          'Online Machines',
+          'Drop',
+          'Cancelled Credits',
+          'Gross Revenue',
+          'Hold %',
+        ],
+        data: [...locationRows, totalsRow],
+      };
+
+      if (format === 'pdf') {
+        const { ExportUtils } = await import('@/lib/utils/exportUtils');
+        await ExportUtils.exportToPDF(exportDataObj);
+      } else {
+        // Excel export (synchronous)
+        const { ExportUtils } = await import('@/lib/utils/exportUtils');
+        ExportUtils.exportToExcel(exportDataObj);
+      }
+      
+      toast.success(`Successfully exported ${allLocations.length} locations to ${format.toUpperCase()}`, {
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to export location overview report as ${format.toUpperCase()}: ${errorMessage}`, {
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleExportSASEvaluation = async (format: 'pdf' | 'excel') => {
     const currentSelectedLocations =
-      activeTab === 'sas-evaluation'
+      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
         : selectedRevenueLocations;
     await handleExportSASEvaluationHelper(
       currentSelectedLocations,
-      paginatedLocations as unknown as LocationExportData[],
+      allLocations as unknown as LocationExportData[],
       topLocations as TopLocationData[],
       selectedDateRange,
       activeMetricsFilter,
-      exportData,
+      format,
       toast
     );
   };
 
-  const handleExportRevenueAnalysis = async () => {
+  const handleExportRevenueAnalysis = async (format: 'pdf' | 'excel') => {
     try {
       const currentSelectedLocations =
-        activeTab === 'sas-evaluation'
-          ? selectedSasLocations
-          : selectedRevenueLocations;
+                  activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
+                    ? selectedSasLocations
+                    : selectedRevenueLocations;
       const filteredData =
         currentSelectedLocations.length > 0
-          ? paginatedLocations.filter(loc => {
+          ? allLocations.filter(loc => {
               // Find the corresponding topLocation to get the correct locationId
               const topLocation = topLocations.find(
                 tl => tl.locationName === loc.name
@@ -892,7 +1138,7 @@ export default function LocationsTab() {
                 ? currentSelectedLocations.includes(topLocation.locationId)
                 : false;
             })
-          : paginatedLocations;
+          : allLocations;
 
       const exportDataObj: ExtendedLegacyExportData = {
         title: 'Revenue Analysis Report',
@@ -957,10 +1203,19 @@ export default function LocationsTab() {
         },
       };
 
-      await exportData(exportDataObj);
-      toast.success('Revenue analysis report exported successfully');
+      const { ExportUtils } = await import('@/lib/utils/exportUtils');
+      if (format === 'pdf') {
+        await ExportUtils.exportToPDF(exportDataObj);
+      } else {
+        ExportUtils.exportToExcel(exportDataObj);
+      }
+      toast.success(`Revenue analysis report exported successfully as ${format.toUpperCase()}`, {
+        duration: 3000,
+      });
     } catch (error) {
-      toast.error('Failed to export report');
+      toast.error('Failed to export report', {
+        duration: 3000,
+      });
       console.error('Export error:', error);
     }
   };
@@ -1043,7 +1298,7 @@ export default function LocationsTab() {
                   size="sm"
                   onClick={() => {
                     const currentSelectedLocations =
-                      activeTab === 'sas-evaluation'
+                      activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
                         ? selectedSasLocations
                         : selectedRevenueLocations;
                     fetchLocationDataAsync(
@@ -1070,9 +1325,6 @@ export default function LocationsTab() {
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
                         Total Gross Revenue
                       </p>
-                      <p className="text-xs font-medium text-green-600">
-                        (Green - Gross)
-                      </p>
                     </CardContent>
                   </Card>
                   <Card>
@@ -1085,22 +1337,17 @@ export default function LocationsTab() {
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
                         Total Drop
                       </p>
-                      <p className="text-xs font-medium text-yellow-600">
-                        (Yellow - Drop)
-                      </p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4">
                       <div className="break-words text-lg font-bold text-black sm:text-xl lg:text-2xl">
-                        $
-                        {metricsOverview.totalCancelledCredits.toLocaleString()}
+                        {shouldShowCurrency()
+                          ? formatAmount(metricsOverview.totalCancelledCredits)
+                          : `$${metricsOverview.totalCancelledCredits.toLocaleString()}`}
                       </div>
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
                         Total Cancelled Credits
-                      </p>
-                      <p className="text-xs font-medium text-black">
-                        (Black - Cancelled)
                       </p>
                     </CardContent>
                   </Card>
@@ -1132,33 +1379,176 @@ export default function LocationsTab() {
             </div>
 
             {/* Interactive Map */}
-            <LocationMap
-              key={`map-${activeTab}-${topLocations.length}`}
-              locations={topLocations.map(location => ({
-                id: location.locationId,
-                name: location.locationName,
-                coordinates: location.coordinates || { lat: 0, lng: 0 },
-                performance:
-                  location.performance === 'excellent'
-                    ? 95
-                    : location.performance === 'good'
-                      ? 80
-                      : location.performance === 'average'
-                        ? 65
-                        : 50,
-                revenue: location.gross,
-              }))}
-              selectedLocations={
-                activeTab === 'sas-evaluation'
-                  ? selectedSasLocations
-                  : selectedRevenueLocations
-              }
-              onLocationSelect={handleLocationSelect}
-              aggregates={paginatedLocations}
-              gamingLocations={gamingLocations}
-              gamingLocationsLoading={gamingLocationsLoading}
-              financialDataLoading={locationsLoading}
-            />
+            <div className="w-full overflow-hidden rounded-lg border border-gray-200">
+              <LocationMap
+                key={`map-${activeTab}-${topLocations.length}`}
+                locations={topLocations.map(location => ({
+                  id: location.locationId,
+                  name: location.locationName,
+                  coordinates: location.coordinates || { lat: 0, lng: 0 },
+                  performance:
+                    location.performance === 'excellent'
+                      ? 95
+                      : location.performance === 'good'
+                        ? 80
+                        : location.performance === 'average'
+                          ? 65
+                          : 50,
+                  revenue: location.gross,
+                }))}
+                selectedLocations={
+                  activeTab === 'sas-evaluation'
+                    ? selectedSasLocations
+                    : selectedRevenueLocations
+                }
+                onLocationSelect={handleLocationSelect}
+                aggregates={allLocations}
+                gamingLocations={gamingLocations}
+                gamingLocationsLoading={gamingLocationsLoading}
+                financialDataLoading={locationsLoading}
+              />
+            </div>
+
+            {/* Location Overview Table */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Location Overview Report
+                    </CardTitle>
+                    <CardDescription>
+                      Comprehensive overview of all locations with financial metrics and machine status
+                    </CardDescription>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={allLocations.length === 0 || locationsLoading}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleExportLocationOverview('pdf')}
+                        className="cursor-pointer"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Export as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExportLocationOverview('excel')}
+                        className="cursor-pointer"
+                      >
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        Export as Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {locationsLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className="h-12 w-full animate-pulse rounded bg-gray-100" />
+                    ))}
+                  </div>
+                ) : allLocations.length > 0 ? (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="border-b bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Location Name
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Total Machines
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Online Machines
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Drop
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Cancelled Credits
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Gross Revenue
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                              Hold %
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {paginatedTableItems.map((loc, index) => {
+                          const holdPercentage = ((loc.moneyIn as number) || 0) > 0
+                            ? (((loc.gross as number) || 0) / ((loc.moneyIn as number) || 1)) * 100
+                            : 0;
+                          return (
+                            <tr key={loc.location || loc._id || index} className="hover:bg-gray-50">
+                              <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                                {loc.locationName || loc.name || 'Unknown'}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-500">
+                                {loc.totalMachines || 0}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-500">
+                                {loc.onlineMachines || 0}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900">
+                                {shouldShowCurrency()
+                                  ? formatAmount(loc.moneyIn || 0)
+                                  : `$${((loc.moneyIn as number) || 0).toLocaleString()}`}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900">
+                                {shouldShowCurrency()
+                                  ? formatAmount(loc.moneyOut || 0)
+                                  : `$${((loc.moneyOut as number) || 0).toLocaleString()}`}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-green-600">
+                                {shouldShowCurrency()
+                                  ? formatAmount(loc.gross || 0)
+                                  : `$${((loc.gross as number) || 0).toLocaleString()}`}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-medium text-gray-900">
+                                <span className={holdPercentage >= 10 ? 'text-green-600' : holdPercentage >= 5 ? 'text-yellow-600' : 'text-red-600'}>
+                                  {holdPercentage.toFixed(2)}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {totalPages > 1 && (
+                      <div className="mt-4 flex justify-center">
+                        <PaginationControls
+                          currentPage={currentPage - 1}
+                          totalPages={totalPages}
+                          setCurrentPage={(page) => setCurrentPage(page + 1)}
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="py-8 text-center text-gray-500">
+                    No location data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Top 5 Locations - Commented Out */}
             {/* <div>
@@ -1231,14 +1621,34 @@ export default function LocationsTab() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleExportSASEvaluation}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Export
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleExportSASEvaluation('pdf')}
+                        className="cursor-pointer"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Export as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExportSASEvaluation('excel')}
+                        className="cursor-pointer"
+                      >
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        Export as Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
@@ -1286,7 +1696,7 @@ export default function LocationsTab() {
                             }));
                           })()}
                           selectedLocations={
-                            activeTab === 'sas-evaluation'
+                            activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
                               ? selectedSasLocations
                               : selectedRevenueLocations
                           }
@@ -1296,7 +1706,8 @@ export default function LocationsTab() {
                               setCurrentSelectedLocations(newSelection);
                             } else {
                               toast.error(
-                                'Maximum 5 locations can be selected'
+                                'Maximum 5 locations can be selected',
+                                { duration: 3000 }
                               );
                             }
                           }}
@@ -1340,17 +1751,10 @@ export default function LocationsTab() {
                 </CardContent>
               </Card>
 
-              {/* Show skeleton loaders only when locations are selected and data is loading */}
-              {(activeTab === 'sas-evaluation'
-                ? selectedSasLocations
-                : selectedRevenueLocations
-              ).length > 0 &&
-              (metricsLoading || paginationLoading) ? (
+              {/* Show skeleton loaders when data is loading */}
+              {(metricsLoading || paginationLoading) ? (
                 <LocationsSASEvaluationSkeleton />
-              ) : (activeTab === 'sas-evaluation'
-                  ? selectedSasLocations
-                  : selectedRevenueLocations
-                ).length > 0 ? (
+              ) : paginatedLocations.length > 0 ? (
                 <>
                   {/* Enhanced Location Table */}
                   <Card>
@@ -1415,11 +1819,8 @@ export default function LocationsTab() {
                     </CardContent>
                   </Card>
 
-                  {/* Summary Cards for SAS Evaluation - Only show when more than 1 location selected */}
-                  {(activeTab === 'sas-evaluation'
-                    ? selectedSasLocations
-                    : selectedRevenueLocations
-                  ).length > 1 &&
+                  {/* Summary Cards for SAS Evaluation - Show when locations are available */}
+                  {paginatedLocations.length > 0 &&
                     (locationsLoading ? (
                       <SummaryCardsSkeleton />
                     ) : (
@@ -1427,26 +1828,9 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div className="break-words text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
-                              $
-                              {(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc =>
-                                        (activeTab === 'sas-evaluation'
-                                          ? selectedSasLocations
-                                          : selectedRevenueLocations
-                                        ).includes(loc.location)
-                                      )
-                                    : [];
-                                const totalGross = filteredLocations.reduce(
-                                  (sum, loc) => sum + (loc.gross || 0),
-                                  0
-                                );
-                                return totalGross.toLocaleString();
-                              })()}
+                              {shouldShowCurrency() ? formatAmount(
+                                paginatedLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0)
+                              ) : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0).toLocaleString()}`}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Net Win (Gross)
@@ -1459,26 +1843,9 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div className="break-words text-lg font-bold text-yellow-600 sm:text-xl lg:text-2xl">
-                              $
-                              {(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc =>
-                                        (activeTab === 'sas-evaluation'
-                                          ? selectedSasLocations
-                                          : selectedRevenueLocations
-                                        ).includes(loc.location)
-                                      )
-                                    : [];
-                                const totalDrop = filteredLocations.reduce(
-                                  (sum, loc) => sum + (loc.moneyIn || 0),
-                                  0
-                                );
-                                return totalDrop.toLocaleString();
-                              })()}
+                              {shouldShowCurrency() ? formatAmount(
+                                paginatedLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0)
+                              ) : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0).toLocaleString()}`}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Drop
@@ -1491,27 +1858,9 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div className="break-words text-lg font-bold text-black sm:text-xl lg:text-2xl">
-                              $
-                              {(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc =>
-                                        (activeTab === 'sas-evaluation'
-                                          ? selectedSasLocations
-                                          : selectedRevenueLocations
-                                        ).includes(loc.location)
-                                      )
-                                    : [];
-                                const totalCancelledCredits =
-                                  filteredLocations.reduce(
-                                    (sum, loc) => sum + (loc.moneyOut || 0),
-                                    0
-                                  );
-                                return totalCancelledCredits.toLocaleString();
-                              })()}
+                              {shouldShowCurrency()
+                                ? formatAmount(paginatedLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0))
+                                : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0).toLocaleString()}`}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Cancelled Credits
@@ -1526,12 +1875,12 @@ export default function LocationsTab() {
                             <div className="break-words text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
                               {(() => {
                                 const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
+                                  (activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
                                     ? selectedSasLocations
                                     : selectedRevenueLocations
                                   ).length > 0
                                     ? paginatedLocations.filter(loc =>
-                                        (activeTab === 'sas-evaluation'
+                                        (activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
                                           ? selectedSasLocations
                                           : selectedRevenueLocations
                                         ).includes(loc.location)
@@ -1553,23 +1902,11 @@ export default function LocationsTab() {
                             </p>
                             <Progress
                               value={(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc =>
-                                        (activeTab === 'sas-evaluation'
-                                          ? selectedSasLocations
-                                          : selectedRevenueLocations
-                                        ).includes(loc.location)
-                                      )
-                                    : [];
-                                const onlineMachines = filteredLocations.reduce(
+                                const onlineMachines = paginatedLocations.reduce(
                                   (sum, loc) => sum + (loc.onlineMachines || 0),
                                   0
                                 );
-                                const totalMachines = filteredLocations.reduce(
+                                const totalMachines = paginatedLocations.reduce(
                                   (sum, loc) => sum + (loc.totalMachines || 0),
                                   0
                                 );
@@ -2014,14 +2351,34 @@ export default function LocationsTab() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleExportRevenueAnalysis}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Export
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleExportRevenueAnalysis('pdf')}
+                        className="cursor-pointer"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Export as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExportRevenueAnalysis('excel')}
+                        className="cursor-pointer"
+                      >
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        Export as Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
@@ -2067,7 +2424,7 @@ export default function LocationsTab() {
                             }));
                           })()}
                           selectedLocations={
-                            activeTab === 'sas-evaluation'
+                            activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
                               ? selectedSasLocations
                               : selectedRevenueLocations
                           }
@@ -2077,7 +2434,8 @@ export default function LocationsTab() {
                               setCurrentSelectedLocations(newSelection);
                             } else {
                               toast.error(
-                                'Maximum 5 locations can be selected'
+                                'Maximum 5 locations can be selected',
+                                { duration: 3000 }
                               );
                             }
                           }}
@@ -2121,40 +2479,15 @@ export default function LocationsTab() {
                 </CardContent>
               </Card>
 
-              {/* Show skeleton loaders only when locations are selected and data is loading */}
-              {(activeTab === 'sas-evaluation'
-                ? selectedSasLocations
-                : selectedRevenueLocations
-              ).length > 0 &&
-              (metricsLoading || paginationLoading) ? (
+              {/* Show skeleton loaders when data is loading */}
+              {(metricsLoading || paginationLoading) ? (
                 <LocationsRevenueAnalysisSkeleton />
-              ) : (activeTab === 'sas-evaluation'
-                  ? selectedSasLocations
-                  : selectedRevenueLocations
-                ).length > 0 ? (
+              ) : paginatedLocations.length > 0 ? (
                 <>
                   {/* Revenue Analysis Table */}
                   <RevenueAnalysisTable
                     key={`revenue-table-${activeTab}-${paginatedLocations.length}`}
-                    locations={
-                      (activeTab === 'sas-evaluation'
-                        ? selectedSasLocations
-                        : selectedRevenueLocations
-                      ).length > 0
-                        ? paginatedLocations.filter(loc => {
-                            // Find the corresponding topLocation to get the correct locationId
-                            const topLocation = topLocations.find(
-                              tl => tl.locationName === loc.locationName
-                            );
-                            return topLocation
-                              ? (activeTab === 'sas-evaluation'
-                                  ? selectedSasLocations
-                                  : selectedRevenueLocations
-                                ).includes(topLocation.locationId)
-                              : false;
-                          })
-                        : []
-                    }
+                    locations={paginatedLocations}
                     loading={paginationLoading}
                     onLocationClick={(location: AggregatedLocation) => {
                       // Handle location click if needed
@@ -2164,11 +2497,8 @@ export default function LocationsTab() {
                     }}
                   />
 
-                  {/* Summary Cards for Revenue Analysis - Only show when more than 1 location selected */}
-                  {(activeTab === 'sas-evaluation'
-                    ? selectedSasLocations
-                    : selectedRevenueLocations
-                  ).length > 1 &&
+                  {/* Summary Cards for Revenue Analysis - Show when locations are available */}
+                  {paginatedLocations.length > 0 &&
                     (locationsLoading ? (
                       <SummaryCardsSkeleton />
                     ) : (
@@ -2176,32 +2506,9 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div className="break-words text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
-                              $
-                              {(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc => {
-                                        const topLocation = topLocations.find(
-                                          tl =>
-                                            tl.locationName === loc.locationName
-                                        );
-                                        return topLocation
-                                          ? (activeTab === 'sas-evaluation'
-                                              ? selectedSasLocations
-                                              : selectedRevenueLocations
-                                            ).includes(topLocation.locationId)
-                                          : false;
-                                      })
-                                    : [];
-                                const totalGross = filteredLocations.reduce(
-                                  (sum, loc) => sum + (loc.gross || 0),
-                                  0
-                                );
-                                return totalGross.toLocaleString();
-                              })()}
+                              {shouldShowCurrency() ? formatAmount(
+                                paginatedLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0)
+                              ) : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0).toLocaleString()}`}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Net Win (Gross)
@@ -2215,32 +2522,9 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div className="break-words text-lg font-bold text-yellow-600 sm:text-xl lg:text-2xl">
-                              $
-                              {(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc => {
-                                        const topLocation = topLocations.find(
-                                          tl =>
-                                            tl.locationName === loc.locationName
-                                        );
-                                        return topLocation
-                                          ? (activeTab === 'sas-evaluation'
-                                              ? selectedSasLocations
-                                              : selectedRevenueLocations
-                                            ).includes(topLocation.locationId)
-                                          : false;
-                                      })
-                                    : [];
-                                const totalDrop = filteredLocations.reduce(
-                                  (sum, loc) => sum + (loc.moneyIn || 0),
-                                  0
-                                );
-                                return totalDrop.toLocaleString();
-                              })()}
+                              {shouldShowCurrency() ? formatAmount(
+                                paginatedLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0)
+                              ) : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0).toLocaleString()}`}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Drop
@@ -2254,33 +2538,9 @@ export default function LocationsTab() {
                         <Card>
                           <CardContent className="p-4">
                             <div className="break-words text-lg font-bold text-black sm:text-xl lg:text-2xl">
-                              $
-                              {(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc => {
-                                        const topLocation = topLocations.find(
-                                          tl =>
-                                            tl.locationName === loc.locationName
-                                        );
-                                        return topLocation
-                                          ? (activeTab === 'sas-evaluation'
-                                              ? selectedSasLocations
-                                              : selectedRevenueLocations
-                                            ).includes(topLocation.locationId)
-                                          : false;
-                                      })
-                                    : [];
-                                const totalCancelledCredits =
-                                  filteredLocations.reduce(
-                                    (sum, loc) => sum + (loc.moneyOut || 0),
-                                    0
-                                  );
-                                return totalCancelledCredits.toLocaleString();
-                              })()}
+                              {shouldShowCurrency()
+                                ? formatAmount(paginatedLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0))
+                                : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0).toLocaleString()}`}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Cancelled Credits
@@ -2295,29 +2555,11 @@ export default function LocationsTab() {
                           <CardContent className="p-4">
                             <div className="break-words text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
                               {(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc => {
-                                        const topLocation = topLocations.find(
-                                          tl =>
-                                            tl.locationName === loc.locationName
-                                        );
-                                        return topLocation
-                                          ? (activeTab === 'sas-evaluation'
-                                              ? selectedSasLocations
-                                              : selectedRevenueLocations
-                                            ).includes(topLocation.locationId)
-                                          : false;
-                                      })
-                                    : [];
-                                const onlineMachines = filteredLocations.reduce(
+                                const onlineMachines = paginatedLocations.reduce(
                                   (sum, loc) => sum + (loc.onlineMachines || 0),
                                   0
                                 );
-                                const totalMachines = filteredLocations.reduce(
+                                const totalMachines = paginatedLocations.reduce(
                                   (sum, loc) => sum + (loc.totalMachines || 0),
                                   0
                                 );
@@ -2329,29 +2571,11 @@ export default function LocationsTab() {
                             </p>
                             <Progress
                               value={(() => {
-                                const filteredLocations =
-                                  (activeTab === 'sas-evaluation'
-                                    ? selectedSasLocations
-                                    : selectedRevenueLocations
-                                  ).length > 0
-                                    ? paginatedLocations.filter(loc => {
-                                        const topLocation = topLocations.find(
-                                          tl =>
-                                            tl.locationName === loc.locationName
-                                        );
-                                        return topLocation
-                                          ? (activeTab === 'sas-evaluation'
-                                              ? selectedSasLocations
-                                              : selectedRevenueLocations
-                                            ).includes(topLocation.locationId)
-                                          : false;
-                                      })
-                                    : [];
-                                const onlineMachines = filteredLocations.reduce(
+                                const onlineMachines = paginatedLocations.reduce(
                                   (sum, loc) => sum + (loc.onlineMachines || 0),
                                   0
                                 );
-                                const totalMachines = filteredLocations.reduce(
+                                const totalMachines = paginatedLocations.reduce(
                                   (sum, loc) => sum + (loc.totalMachines || 0),
                                   0
                                 );

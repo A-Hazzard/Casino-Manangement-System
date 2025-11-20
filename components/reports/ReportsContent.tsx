@@ -45,7 +45,7 @@ import type { ReportView } from '@/lib/types/reports';
  * Handles layout, navigation, and tab rendering
  */
 export default function ReportsContent() {
-  const { selectedLicencee } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
 
   // Check if user is a developer
@@ -115,7 +115,7 @@ export default function ReportsContent() {
     <PageLayout
       headerProps={{
         selectedLicencee,
-        setSelectedLicencee: () => {},
+        setSelectedLicencee,
         disabled: isLoading,
       }}
       showToaster={true}

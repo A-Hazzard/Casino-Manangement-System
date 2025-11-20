@@ -317,7 +317,7 @@ export default function RevenueAnalysisTable({
                 ) : (
                   paginatedLocations.map(location => (
                     <TableRow
-                      key={location.name}
+                      key={location._id || location.location || location.name}
                       className="cursor-pointer transition-colors hover:bg-gray-50"
                       onClick={() => onLocationClick?.(location)}
                     >
@@ -359,7 +359,7 @@ export default function RevenueAnalysisTable({
             </div>
           ) : (
             paginatedLocations.map(location => (
-              <LocationCard key={location.name} location={location} />
+              <LocationCard key={location._id || location.location || location.name} location={location} />
             ))
           )}
         </div>

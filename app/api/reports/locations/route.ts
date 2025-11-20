@@ -137,7 +137,32 @@ export async function GET(req: NextRequest) {
       locationMatchStage['_id'] = { $in: allowedLocationIds };
     } else if (licencee && licencee !== 'all') {
       // Admin with all access but specific licensee filter requested
-      locationMatchStage['rel.licencee'] = licencee;
+      // Resolve licensee name to ID if needed (getUserLocationFilter should handle this, but double-check)
+      let licenseeId = licencee;
+      try {
+        const licenseeDoc = await db
+          .collection('licencees')
+          .findOne(
+            {
+              $or: [
+                { _id: licencee },
+                { name: { $regex: new RegExp(`^${licencee}$`, 'i') } },
+              ],
+            } as Record<string, unknown>,
+            { projection: { _id: 1 } }
+          );
+        if (licenseeDoc) {
+          licenseeId = licenseeDoc._id.toString();
+        }
+      } catch (error) {
+        console.warn(
+          '[reports/locations] Failed to resolve licensee, using as-is:',
+          licencee,
+          error
+        );
+      }
+      // rel.licencee is stored as a String
+      locationMatchStage['rel.licencee'] = licenseeId;
     }
 
     // Add search filter for location name or _id

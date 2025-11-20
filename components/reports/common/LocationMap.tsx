@@ -36,6 +36,31 @@ const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), {
   ssr: false,
 });
 
+// Component to access map instance using useMap hook
+const MapController = dynamic(
+  () =>
+    Promise.all([import('react-leaflet'), import('react')]).then(
+      ([leafletMod, reactMod]) => {
+        const { useMap } = leafletMod;
+        const { useEffect } = reactMod;
+        return function MapController({
+          onMapReady,
+        }: {
+          onMapReady: (map: ReturnType<typeof useMap>) => void;
+        }) {
+          const map = useMap();
+          useEffect(() => {
+            if (map && onMapReady) {
+              onMapReady(map);
+            }
+          }, [map, onMapReady]);
+          return null;
+        };
+      }
+    ),
+  { ssr: false }
+);
+
 // Helper function to get the valid longitude (checks both "longitude" and "longtitude")
 const getValidLongitude = (geo: {
   longitude?: number;
@@ -220,6 +245,7 @@ export default function LocationMap({
   financialDataLoading = false,
 }: LocationMapProps) {
   const [mapReady, setMapReady] = useState(false);
+  const [mapInstanceReady, setMapInstanceReady] = useState(false);
   const [locationAggregates, setLocationAggregates] = useState<
     Record<string, unknown>[]
   >([]);
@@ -241,7 +267,33 @@ export default function LocationMap({
   const mapRef = useRef<{
     setView: (coords: [number, number], zoom: number) => void;
     on: (event: string, callback: () => void) => void;
+    _panes?: Record<string, HTMLElement>;
+    getContainer?: () => HTMLElement | null;
   } | null>(null);
+
+  // Helper function to safely check if map is ready for operations
+  const isMapReadyForOperations = (map: typeof mapRef.current): boolean => {
+    if (!map) return false;
+
+    // Check if map panes exist (critical for _leaflet_pos)
+    if (!map._panes) return false;
+
+    const panes = map._panes;
+    // Check for essential panes that Leaflet needs
+    if (!panes.mapPane || !panes.markerPane || !panes.overlayPane) return false;
+
+    // Verify panes are actual DOM elements
+    if (!(panes.mapPane instanceof HTMLElement)) return false;
+    if (!(panes.markerPane instanceof HTMLElement)) return false;
+
+    // Check if container exists
+    if (map.getContainer) {
+      const container = map.getContainer();
+      if (!container || !(container instanceof HTMLElement)) return false;
+    }
+
+    return true;
+  };
 
   // Initialize Leaflet on client side
   useEffect(() => {
@@ -257,14 +309,146 @@ export default function LocationMap({
     });
   }, []);
 
-  // Get default center based on selected licensee
+  // Get default center based on selected licensee and zoom to actual location
   useEffect(() => {
-    const defaultCenter = getMapCenterByLicensee(selectedLicencee);
-    console.warn(
-      `📍 LocationMap: Setting default center for licensee ${selectedLicencee} to: ${JSON.stringify(defaultCenter)}`
-    );
-    setUserDefaultCenter(defaultCenter);
-  }, [selectedLicencee]);
+    let timeoutId: NodeJS.Timeout;
+
+    const updateMapCenter = async () => {
+      // Wait a bit for locations to load
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Find valid locations for the selected licensee
+      const validLocationsForLicensee = gamingLocations.filter(location => {
+        if (!location.geoCoords) return false;
+        const validLongitude = getValidLongitude(location.geoCoords);
+        const lat = (location.geoCoords as Record<string, unknown>).latitude;
+        return (
+          lat &&
+          lat !== 0 &&
+          validLongitude !== undefined &&
+          validLongitude !== 0
+        );
+      });
+
+      // If we have valid locations, zoom to the first one
+      if (
+        validLocationsForLicensee.length > 0 &&
+        selectedLicencee &&
+        selectedLicencee !== 'all'
+      ) {
+        const firstLocation = validLocationsForLicensee[0];
+        const lat = (firstLocation.geoCoords as Record<string, unknown>)
+          .latitude as number;
+        const lon = getValidLongitude(
+          firstLocation.geoCoords as Record<string, unknown>
+        );
+
+        if (lat && lon) {
+          const locationCenter: [number, number] = [lat, lon];
+          console.warn(
+            `📍 LocationMap: Found ${validLocationsForLicensee.length} valid locations, zooming to first location: ${JSON.stringify(locationCenter)}`
+          );
+
+          timeoutId = setTimeout(() => {
+            if (
+              mapRef.current &&
+              mapInstanceReady &&
+              isMapReadyForOperations(mapRef.current)
+            ) {
+              // Use zoom level 11 to show the location with more context
+              const zoomLevel = 11;
+              console.warn(
+                `🗺️ LocationMap: Zooming to location ${JSON.stringify(locationCenter)} at zoom level ${zoomLevel} for licensee ${selectedLicencee}`
+              );
+              try {
+                mapRef.current.setView(locationCenter, zoomLevel);
+              } catch (error) {
+                console.warn('LocationMap: Error setting view:', error);
+              }
+            } else {
+              console.warn(
+                'LocationMap: Map not ready for operations, skipping setView'
+              );
+            }
+          }, 1000);
+          return;
+        }
+      }
+
+      // Fallback to country center if no valid locations found
+      let licenseeName: string | undefined = selectedLicencee;
+
+      // If selectedLicencee is an ID (not 'all' or empty), fetch the licensee name
+      if (
+        selectedLicencee &&
+        selectedLicencee !== 'all' &&
+        selectedLicencee !== ''
+      ) {
+        try {
+          // Check if it looks like an ID (24 character hex string)
+          if (
+            selectedLicencee.length === 24 &&
+            /^[0-9a-fA-F]+$/.test(selectedLicencee)
+          ) {
+            const { fetchLicenseeById } = await import(
+              '@/lib/helpers/clientLicensees'
+            );
+            const result = await fetchLicenseeById(selectedLicencee);
+            if (result?.name) {
+              licenseeName = result.name;
+              console.warn(
+                `📍 LocationMap: Resolved licensee ID ${selectedLicencee} to name: ${licenseeName}`
+              );
+            }
+          }
+        } catch (error) {
+          console.warn(
+            `📍 LocationMap: Failed to fetch licensee name for ${selectedLicencee}, using as-is:`,
+            error
+          );
+        }
+      }
+
+      const defaultCenter = getMapCenterByLicensee(licenseeName);
+      console.warn(
+        `📍 LocationMap: No valid locations found, using country center for licensee ${selectedLicencee} (name: ${licenseeName}) to: ${JSON.stringify(defaultCenter)}`
+      );
+      setUserDefaultCenter(defaultCenter);
+
+      // Zoom to the country center as fallback
+      timeoutId = setTimeout(() => {
+        if (
+          mapRef.current &&
+          mapInstanceReady &&
+          isMapReadyForOperations(mapRef.current)
+        ) {
+          // Use higher zoom level (10) for country view when a specific licensee is selected
+          const zoomLevel =
+            selectedLicencee && selectedLicencee !== 'all' ? 10 : 7;
+          console.warn(
+            `🗺️ LocationMap: Zooming to country center ${JSON.stringify(defaultCenter)} at zoom level ${zoomLevel} for licensee ${selectedLicencee}`
+          );
+          try {
+            mapRef.current.setView(defaultCenter, zoomLevel);
+          } catch (error) {
+            console.warn('LocationMap: Error setting view:', error);
+          }
+        } else {
+          console.warn(
+            'LocationMap: Map not ready for operations, skipping setView'
+          );
+        }
+      }, 1000);
+    };
+
+    void updateMapCenter();
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [selectedLicencee, gamingLocations, mapInstanceReady]);
 
   // Handle external gaming locations
   useEffect(() => {
@@ -438,7 +622,7 @@ export default function LocationMap({
 
   // Zoom to location
   const zoomToLocation = (location: Record<string, unknown>) => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapInstanceReady) return;
 
     // Check if location has valid coordinates
     if (!location.geoCoords) {
@@ -453,7 +637,17 @@ export default function LocationMap({
     const lon = getValidLongitude(location.geoCoords);
 
     if (lat && lon && lat !== 0 && lon !== 0) {
-      mapRef.current?.setView([lat as number, lon as number], 15);
+      if (isMapReadyForOperations(mapRef.current)) {
+        try {
+          mapRef.current.setView([lat as number, lon as number], 15);
+        } catch (error) {
+          console.warn('LocationMap: Error zooming to location:', error);
+        }
+      } else {
+        console.warn(
+          'LocationMap: Map not ready for operations, cannot zoom to location'
+        );
+      }
       setSearchQuery(
         (location.name as string) || (location.locationName as string) || ''
       );
@@ -466,20 +660,85 @@ export default function LocationMap({
     }
   };
 
-  // Handle map instance
-  const handleMapCreated = (map: unknown) => {
-    if (map) {
-      const mapInstance = map as {
-        setView: (coords: [number, number], zoom: number) => void;
-        on: (event: string, callback: () => void) => void;
-      };
-      mapRef.current = mapInstance;
-      // When the map fires its load event, ensure loading is cleared
-      if (typeof mapInstance.on === 'function') {
-        mapInstance.on('load', () => setLoading(false));
-        // Also clear when first tile layer loads
-        mapInstance.on('layeradd', () => setLoading(false));
-      }
+  // Handle map instance from useMap hook
+  const handleMapReady = (map: {
+    setView: (coords: [number, number], zoom: number) => void;
+    on: (event: string, callback: () => void) => void;
+    whenReady?: (callback: () => void) => void;
+    getContainer?: () => HTMLElement | null;
+    _panes?: Record<string, HTMLElement>;
+  }) => {
+    mapRef.current = map;
+
+    // Wait for map to be fully ready before allowing position updates
+    if (typeof map.whenReady === 'function') {
+      map.whenReady(() => {
+        // Additional check after whenReady - wait a bit for DOM to settle
+        setTimeout(() => {
+          if (isMapReadyForOperations(mapRef.current)) {
+            setMapInstanceReady(true);
+            setLoading(false);
+          } else {
+            // Retry after more time
+            setTimeout(() => {
+              if (isMapReadyForOperations(mapRef.current)) {
+                setMapInstanceReady(true);
+                setLoading(false);
+              } else {
+                // Final fallback - set ready anyway but log warning
+                console.warn(
+                  'LocationMap: Map may not be fully ready, but setting ready state'
+                );
+                setMapInstanceReady(true);
+                setLoading(false);
+              }
+            }, 300);
+          }
+        }, 200);
+      });
+    } else {
+      // Fallback: wait longer and check readiness
+      setTimeout(() => {
+        if (isMapReadyForOperations(mapRef.current)) {
+          setMapInstanceReady(true);
+          setLoading(false);
+        } else {
+          // Retry
+          setTimeout(() => {
+            if (isMapReadyForOperations(mapRef.current)) {
+              setMapInstanceReady(true);
+              setLoading(false);
+            } else {
+              console.warn(
+                'LocationMap: Map may not be fully ready, but setting ready state'
+              );
+              setMapInstanceReady(true);
+              setLoading(false);
+            }
+          }, 500);
+        }
+      }, 800);
+    }
+
+    // When the map fires its load event, ensure loading is cleared
+    if (typeof map.on === 'function') {
+      map.on('load', () => {
+        setTimeout(() => {
+          if (isMapReadyForOperations(mapRef.current)) {
+            setMapInstanceReady(true);
+            setLoading(false);
+          }
+        }, 200);
+      });
+      // Also clear when first tile layer loads
+      map.on('layeradd', () => {
+        setTimeout(() => {
+          if (isMapReadyForOperations(mapRef.current)) {
+            setMapInstanceReady(true);
+            setLoading(false);
+          }
+        }, 200);
+      });
     }
   };
 
@@ -536,12 +795,13 @@ export default function LocationMap({
     return (
       <div className="relative z-0 h-full w-full">
         <MapContainer
+          key={`map-${selectedLicencee}`}
           center={mapCenter}
-          zoom={6}
+          zoom={selectedLicencee && selectedLicencee !== 'all' ? 10 : 6}
           scrollWheelZoom={true}
           style={{ height: '100%', width: '100%' }}
-          ref={handleMapCreated}
         >
+          <MapController onMapReady={handleMapReady} />
           {/* Grey map tiles similar to Google Analytics */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -549,20 +809,21 @@ export default function LocationMap({
             className="grayscale"
           />
 
-          {validLocations.map(location => {
-            const locationName =
-              (location.name as string) ||
-              (location.locationName as string) ||
-              'Unknown Location';
-            const geoCoords = location.geoCoords as Record<string, unknown>;
-            return renderMarker(
-              geoCoords.latitude as number,
-              geoCoords,
-              locationName,
-              location._id as string,
-              location
-            );
-          })}
+          {mapInstanceReady &&
+            validLocations.map(location => {
+              const locationName =
+                (location.name as string) ||
+                (location.locationName as string) ||
+                'Unknown Location';
+              const geoCoords = location.geoCoords as Record<string, unknown>;
+              return renderMarker(
+                geoCoords.latitude as number,
+                geoCoords,
+                locationName,
+                location._id as string,
+                location
+              );
+            })}
         </MapContainer>
       </div>
     );
@@ -671,7 +932,7 @@ export default function LocationMap({
             )}
           </div>
           {/* Map */}
-          <div className="relative z-0 min-h-[400px] flex-1 lg:min-h-[32rem]">
+          <div className="relative z-0 min-h-[400px] flex-1 overflow-hidden rounded-lg lg:min-h-[32rem]">
             <TooltipProvider>
               <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground lg:gap-4">
                 <Tooltip>
@@ -736,30 +997,34 @@ export default function LocationMap({
             </TooltipProvider>
             <MapContainer
               center={mapCenter}
-              zoom={6}
+              zoom={selectedLicencee && selectedLicencee !== 'all' ? 10 : 6}
               scrollWheelZoom={true}
               style={{ height: '100%', width: '100%', minHeight: '400px' }}
-              ref={handleMapCreated}
             >
+              <MapController onMapReady={handleMapReady} />
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                 className="grayscale"
               />
-              {validLocations.map(location => {
-                const locationName =
-                  (location.name as string) ||
-                  (location.locationName as string) ||
-                  'Unknown Location';
-                const geoCoords = location.geoCoords as Record<string, unknown>;
-                return renderMarker(
-                  geoCoords.latitude as number,
-                  geoCoords,
-                  locationName,
-                  location._id as string,
-                  location
-                );
-              })}
+              {mapInstanceReady &&
+                validLocations.map(location => {
+                  const locationName =
+                    (location.name as string) ||
+                    (location.locationName as string) ||
+                    'Unknown Location';
+                  const geoCoords = location.geoCoords as Record<
+                    string,
+                    unknown
+                  >;
+                  return renderMarker(
+                    geoCoords.latitude as number,
+                    geoCoords,
+                    locationName,
+                    location._id as string,
+                    location
+                  );
+                })}
             </MapContainer>
             {/* Map Legend with tooltips */}
           </div>

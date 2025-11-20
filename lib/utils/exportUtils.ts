@@ -1,20 +1,20 @@
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 // Remove the problematic import since ExportDataStructure doesn't exist
 import { toast } from 'sonner';
 
 // jsPDF autotable typings are declared in lib/types/jspdf-autotable.d.ts
 
 import type {
-  ExportFormat,
   ExportData,
+  ExportFormat,
   LegacyExportData,
 } from '@shared/types/export';
 
 // Re-export shared types for convenience
-export type { ExportFormat, ExportData, LegacyExportData };
+export type { ExportData, ExportFormat, LegacyExportData };
 
 // Local types for export utilities
 export type MachineExportData = {
@@ -200,7 +200,7 @@ export class ExportUtils {
         (item: { label: string; value: string }) => [item.label, item.value]
       );
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPosition,
         head: [['Metric', 'Value']],
         body: summaryData,
@@ -221,15 +221,48 @@ export class ExportUtils {
       doc.text('Detailed Data', 15, yPosition);
       yPosition += 10;
 
-      doc.autoTable({
+      // Check if last row is a totals row (starts with "TOTAL")
+      const lastRow = data.data[data.data.length - 1];
+      const isTotalsRow = lastRow && lastRow[0] === 'TOTAL';
+      const bodyData = isTotalsRow ? data.data.slice(0, -1) : data.data;
+      const totalsRow = isTotalsRow ? lastRow : null;
+
+      autoTable(doc, {
         startY: yPosition,
         head: [data.headers],
-        body: data.data,
+        body: bodyData as (string | number)[][],
         theme: 'striped',
         headStyles: { fillColor: [52, 152, 219] },
         margin: { left: 15, right: 15 },
         styles: { fontSize: 8 },
       });
+
+      // Add totals row with bold styling if it exists
+      if (totalsRow) {
+        const finalY =
+          (doc as jsPDF & { lastAutoTable?: { finalY?: number } }).lastAutoTable
+            ?.finalY || yPosition;
+        autoTable(doc, {
+          startY: finalY + 5,
+          body: [totalsRow.map(cell => cell ?? '') as (string | number)[]],
+          theme: 'plain',
+          headStyles: { fillColor: [52, 152, 219] },
+          margin: { left: 15, right: 15 },
+          styles: {
+            fontSize: 8,
+            fontStyle: 'bold' as const,
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+          },
+          columnStyles: data.headers.reduce(
+            (acc: Record<string, { fontStyle: 'bold' }>, _, index) => {
+              acc[index.toString()] = { fontStyle: 'bold' };
+              return acc;
+            },
+            {}
+          ),
+        });
+      }
     }
 
     // Footer
@@ -743,8 +776,6 @@ export const exportAllReports = async (
   licencee?: string,
   locationIds?: string[]
 ) => {
-  const loadingToast = toast.loading('Preparing export...');
-  
   try {
     // Fetch all data including machines
     const [overviewData, sasData, revenueData, machinesData] =
@@ -779,21 +810,20 @@ export const exportAllReports = async (
     // Download file
     downloadExcel(workbook, filename);
 
-    toast.dismiss(loadingToast);
-    toast.success('Export completed successfully!');
+    toast.success('Export completed successfully!', {
+      duration: 3000,
+    });
   } catch (error) {
     console.error('Export error:', error);
-    toast.dismiss(loadingToast);
-    toast.error('Failed to export reports. Please try again.');
+    toast.error('Failed to export reports. Please try again.', {
+      duration: 3000,
+    });
   }
 };
 
 // Legacy export function for individual reports (maintains backward compatibility)
 export const exportData = async (data: ExtendedLegacyExportData) => {
-  const loadingToast = toast.loading('Preparing export...');
-  
   try {
-
     // For now, we'll create a CSV-like format that can be opened in Excel
     let csvContent = '';
 
@@ -858,11 +888,13 @@ export const exportData = async (data: ExtendedLegacyExportData) => {
     link.click();
     document.body.removeChild(link);
 
-    toast.dismiss(loadingToast);
-    toast.success('Export completed successfully!');
+    toast.success('Export completed successfully!', {
+      duration: 3000,
+    });
   } catch (error) {
     console.error('Export error:', error);
-    toast.dismiss(loadingToast);
-    toast.error('Failed to export data. Please try again.');
+    toast.error('Failed to export data. Please try again.', {
+      duration: 3000,
+    });
   }
 };

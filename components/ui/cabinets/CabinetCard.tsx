@@ -7,7 +7,7 @@ import { formatCurrency } from '@/lib/utils';
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import { CabinetCardProps } from '@/lib/types/cardProps';
 import { motion } from 'framer-motion';
-import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
@@ -68,8 +68,6 @@ export default function CabinetCard(props: CabinetCardProps) {
 
   // Determine if cabinet is online (you may need to adjust this based on your data structure)
   const isOnline = props.status === 'functional' || props.online === true;
-  const serialNumber = props.serialNumber?.trim() || '';
-  const customName = props.custom?.name?.trim() || '';
   const smbId = props.smbId || '';
 
   return (
@@ -83,13 +81,10 @@ export default function CabinetCard(props: CabinetCardProps) {
           <button
             onClick={e => {
               e.stopPropagation();
-              const textToCopy = serialNumber || customName || props.assetNumber || '';
-              if (textToCopy) {
-                copyToClipboard(textToCopy, 'Serial Number');
-              }
+              handleViewClick();
             }}
             className="text-base font-semibold hover:text-blue-600 hover:underline cursor-pointer text-left truncate"
-            title="Click to copy serial number"
+            title="Click to view cabinet details"
           >
             {formatMachineDisplayNameWithBold(props)}
           </button>
@@ -118,9 +113,39 @@ export default function CabinetCard(props: CabinetCardProps) {
         >
           {smbId || 'N/A'}
         </button>
-        <p className="mb-1 text-sm font-medium text-gray-900">
-          {props.locationName || 'No Location'}
-        </p>
+        {/* Location Name - Navigate to location details with icon */}
+        <div className="mb-1 flex items-center gap-1.5">
+          {props.locationId ? (
+            <>
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  router.push(`/locations/${props.locationId}`);
+                }}
+                className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer"
+                title="Click to view location details"
+              >
+                {props.locationName || 'No Location'}
+              </button>
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  router.push(`/locations/${props.locationId}`);
+                }}
+                className="flex-shrink-0"
+                title="View location details"
+              >
+                <ExternalLink
+                  className="h-3 w-3 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110"
+                />
+              </button>
+            </>
+          ) : (
+            <p className="text-sm font-medium text-gray-900">
+              {props.locationName || 'No Location'}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Financial Data - List Layout */}

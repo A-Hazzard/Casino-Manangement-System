@@ -302,9 +302,43 @@ export async function getUserLocationFilter(
     selectedLicenseeFilter !== 'all'
   ) {
     // Filter by specific licensee (even for admins - they can use dropdown to filter)
+    // First, try to resolve the licensee filter (could be ID or name)
+    let licenseeId = selectedLicenseeFilter;
+    
+    // Check if it's a name by trying to find the licensee by name
+    try {
+      const licenseeDoc = await Licencee.findOne(
+        {
+          $or: [
+            { _id: selectedLicenseeFilter },
+            { name: { $regex: new RegExp(`^${selectedLicenseeFilter}$`, 'i') } },
+          ],
+        },
+        { _id: 1 }
+      ).lean();
+      
+      if (licenseeDoc && !Array.isArray(licenseeDoc)) {
+        licenseeId = String(licenseeDoc._id);
+        console.log(
+          '[getUserLocationFilter] Resolved licensee filter:',
+          selectedLicenseeFilter,
+          '->',
+          licenseeId
+        );
+      }
+    } catch (error) {
+      console.warn(
+        '[getUserLocationFilter] Failed to resolve licensee, using as-is:',
+        selectedLicenseeFilter,
+        error
+      );
+    }
+    
+    // Now query locations by licensee ID
+    // rel.licencee is stored as a String, so we can query directly
     const locations = await GamingLocations.find(
       {
-        'rel.licencee': selectedLicenseeFilter,
+        'rel.licencee': licenseeId,
         $or: [
           { deletedAt: null },
           { deletedAt: { $lt: new Date('2020-01-01') } },
@@ -316,7 +350,9 @@ export async function getUserLocationFilter(
     console.log(
       '[getUserLocationFilter] Filtered by specific licensee:',
       selectedLicenseeFilter,
-      '- Found',
+      '(ID:',
+      licenseeId,
+      ') - Found',
       licenseeLocations.length,
       'locations'
     );

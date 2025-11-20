@@ -147,7 +147,7 @@ type ReportsActions = {
 
 const initialState: ReportsState = {
   // Current view and navigation
-  activeView: 'locations',
+  activeView: 'meters',
   isLoading: false,
   error: null,
   userPermissions: null,

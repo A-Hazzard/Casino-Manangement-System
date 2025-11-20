@@ -122,7 +122,7 @@ export async function handleExportSASEvaluation(
   topLocations: TopLocationData[],
   selectedDateRange: DateRange | null,
   activeMetricsFilter: string,
-  exportData: (data: ExtendedLegacyExportData) => Promise<void>,
+  format: 'pdf' | 'excel',
   toast: {
     success: (message: string) => void;
     error: (message: string) => void;
@@ -207,8 +207,13 @@ export async function handleExportSASEvaluation(
       },
     };
 
-    await exportData(exportDataObj);
-    toast.success('SAS evaluation report exported successfully');
+    const { ExportUtils } = await import('@/lib/utils/exportUtils');
+    if (format === 'pdf') {
+      await ExportUtils.exportToPDF(exportDataObj);
+    } else {
+      ExportUtils.exportToExcel(exportDataObj);
+    }
+    toast.success(`SAS evaluation report exported successfully as ${format.toUpperCase()}`);
   } catch (error) {
     console.error('Error exporting SAS evaluation:', error);
     toast.error('Failed to export SAS evaluation report');
@@ -334,7 +339,7 @@ export async function handleExportMeters(
   offlineMachines: MachineExportData[],
   activeMetricsFilter: string,
   customDateRange: { startDate: Date; endDate: Date } | null,
-  exportData: (data: ExtendedLegacyExportData) => Promise<void>,
+  format: 'pdf' | 'excel',
   toast: {
     error: (message: string) => void;
     success: (message: string) => void;
@@ -463,8 +468,13 @@ export async function handleExportMeters(
       },
     };
 
-    await exportData(metersData);
-    toast.success('Machine data exported successfully');
+    const { ExportUtils } = await import('@/lib/utils/exportUtils');
+    if (format === 'pdf') {
+      await ExportUtils.exportToPDF(metersData);
+    } else {
+      ExportUtils.exportToExcel(metersData);
+    }
+    toast.success(`Machine data exported successfully as ${format.toUpperCase()}`);
   } catch (error) {
     console.error('Error exporting machine data:', error);
     toast.error('Failed to export machine data');

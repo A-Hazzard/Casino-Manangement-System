@@ -294,10 +294,10 @@ export default function MembersListTab() {
           <button
             onClick={async () => {
               setRefreshing(true);
-              await fetchMembers(1, searchTerm, sortOption, sortOrder);
               setAllMembers([]);
               setLoadedBatches(new Set([1]));
               setCurrentPage(0);
+              await fetchMembers(1, searchTerm, sortOption, sortOrder);
               setRefreshing(false);
             }}
             disabled={refreshing}
@@ -337,10 +337,10 @@ export default function MembersListTab() {
           <button
             onClick={async () => {
               setRefreshing(true);
-              await fetchMembers(1, searchTerm, sortOption, sortOrder);
               setAllMembers([]);
               setLoadedBatches(new Set([1]));
               setCurrentPage(0);
+              await fetchMembers(1, searchTerm, sortOption, sortOrder);
               setRefreshing(false);
             }}
             disabled={refreshing}

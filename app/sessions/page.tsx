@@ -26,6 +26,8 @@ import { SessionsPageSkeleton } from '@/components/ui/skeletons/SessionsSkeleton
 import { SESSIONS_ANIMATIONS } from '@/lib/constants/sessions';
 import Image from 'next/image';
 import { IMAGES } from '@/lib/constants/images';
+import { RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 
 /**
  * Sessions Page
@@ -42,8 +44,10 @@ function SessionsPageContent() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   // Custom hooks for sessions functionality
-  const { sessions, loading, error, pagination, currentPage, handlePageChange } =
+  const { sessions, loading, error, pagination, currentPage, handlePageChange, refreshSessions } =
     useSessions();
+  
+  const [refreshing, setRefreshing] = useState(false);
 
   const { searchTerm, sortBy, sortOrder, setSearchTerm, setSortBy, setSortOrder, handleSort } =
     useSessionsFilters();
@@ -75,15 +79,33 @@ function SessionsPageContent() {
         >
           {/* Page Header Section: Title, icon, and description */}
           <div className="mb-6">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
-              <Image
-                src={IMAGES.activityLogIcon}
-                alt="Sessions Icon"
-                width={32}
-                height={32}
-                className="h-6 w-6 sm:h-8 sm:w-8"
-              />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
+                <Image
+                  src={IMAGES.activityLogIcon}
+                  alt="Sessions Icon"
+                  width={32}
+                  height={32}
+                  className="h-6 w-6 sm:h-8 sm:w-8"
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  setRefreshing(true);
+                  if (refreshSessions) {
+                    await refreshSessions();
+                  }
+                  setRefreshing(false);
+                }}
+                disabled={loading || refreshing}
+                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                aria-label="Refresh"
+              >
+                <RefreshCw
+                  className={`h-5 w-5 ${loading || refreshing ? "animate-spin" : ""}`}
+                />
+              </button>
             </div>
             <p className="text-gray-600">
               View all gaming sessions and their events

@@ -265,6 +265,9 @@ export default function Header({
         setLoadingChartData(false);
       }
     }
+
+    // For reports page, the tabs will automatically re-fetch when selectedLicencee changes
+    // because they have selectedLicencee in their useEffect dependencies
   };
 
   // Check if the current path is related to locations

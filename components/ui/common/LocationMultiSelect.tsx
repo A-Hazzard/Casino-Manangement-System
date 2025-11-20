@@ -15,6 +15,7 @@ export default function LocationMultiSelect({
   onSelectionChange,
   placeholder = 'Select locations...',
   className,
+  maxSelections,
 }: LocationMultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,7 +63,11 @@ export default function LocationMultiSelect({
     if (allSelected) {
       onSelectionChange([]);
     } else {
-      onSelectionChange(locations.map(loc => loc.id));
+      // If maxSelections is set, only select up to that limit
+      const locationsToSelect = maxSelections
+        ? locations.slice(0, maxSelections).map(loc => loc.id)
+        : locations.map(loc => loc.id);
+      onSelectionChange(locationsToSelect);
     }
   };
 

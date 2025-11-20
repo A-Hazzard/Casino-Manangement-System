@@ -11,7 +11,42 @@ export async function GET(
   try {
     await connectDB();
 
-    const member = await Member.findById(id).lean();
+    // Use aggregation to populate location name
+    const members = await Member.aggregate([
+      { $match: { _id: id } },
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          let: { memberLocation: '$gamingLocation' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$_id', '$$memberLocation'] },
+                    { $eq: [{ $toString: '$_id' }, { $toString: '$$memberLocation' }] },
+                    { $eq: ['$_id', { $toObjectId: { $ifNull: ['$$memberLocation', ''] } }] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: 'locationInfo',
+        },
+      },
+      {
+        $addFields: {
+          locationName: { $arrayElemAt: ['$locationInfo.name', 0] },
+        },
+      },
+      {
+        $project: {
+          locationInfo: 0, // Remove the lookup array
+        },
+      },
+    ]);
+
+    const member = members[0];
 
     if (!member) {
       return NextResponse.json(

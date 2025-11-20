@@ -27,6 +27,8 @@ import {
   Download,
   Monitor,
   RefreshCw,
+  FileText,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,12 +38,17 @@ import { useDebounce } from '@/lib/utils/hooks';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   handleExportMeters as handleExportMetersHelper,
   handleMachineSort as handleMachineSortHelper,
   sortEvaluationData as sortEvaluationDataHelper,
 } from '@/lib/helpers/reportsPage';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { exportData } from '@/lib/utils/exportUtils';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 
 import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
@@ -232,7 +239,7 @@ export default function MachinesTab() {
     useState<string>('all');
 
   const [evaluationSelectedLocation, setEvaluationSelectedLocation] =
-    useState<string>('');
+    useState<string>('all');
   const [offlineSelectedLocation, setOfflineSelectedLocation] =
     useState<string>('all');
 
@@ -269,7 +276,9 @@ export default function MachinesTab() {
         )?.error ||
         (error as Record<string, unknown>).message ||
         'Failed to load locations';
-      toast.error(errorMessage as string);
+      toast.error(errorMessage as string, {
+        duration: 3000,
+      });
       // Set empty locations array to prevent further errors
       setLocations([]);
     }
@@ -310,7 +319,9 @@ export default function MachinesTab() {
     } catch (error) {
       console.error('Failed to fetch machine stats:', error);
       setError('Failed to load machine statistics');
-      toast.error('Failed to load machine statistics');
+      toast.error('Failed to load machine statistics', {
+        duration: 3000,
+      });
     } finally {
       setStatsLoading(false);
     }
@@ -382,7 +393,9 @@ export default function MachinesTab() {
       } catch (error) {
         console.error('Failed to fetch overview machines:', error);
         setError('Failed to load overview machines');
-        toast.error('Failed to load overview machines');
+        toast.error('Failed to load overview machines', {
+          duration: 3000,
+        });
       } finally {
         setOverviewLoading(false);
       }
@@ -444,7 +457,9 @@ export default function MachinesTab() {
       setAllMachines(allMachinesData);
     } catch (error) {
       console.error('Failed to fetch all machines:', error);
-      toast.error('Failed to load performance analysis data');
+      toast.error('Failed to load performance analysis data', {
+        duration: 3000,
+      });
     } finally {
     }
   }, [
@@ -508,7 +523,9 @@ export default function MachinesTab() {
       });
     } catch (error) {
       console.error('Failed to fetch offline machines:', error);
-      toast.error('Failed to load offline machines data');
+      toast.error('Failed to load offline machines data', {
+        duration: 3000,
+      });
     } finally {
       setOfflineLoading(false);
     }
@@ -524,7 +541,7 @@ export default function MachinesTab() {
   // Handle search with backend fallback for overview tab
   // Note: The actual API call is triggered by debouncedSearchTerm in useEffect
   const handleSearchChange = useCallback((value: string) => {
-    setSearchTerm(value);
+      setSearchTerm(value);
     setAllOverviewMachines([]);
     setOverviewLoadedBatches(new Set([1]));
     setOverviewCurrentPage(0);
@@ -638,14 +655,14 @@ export default function MachinesTab() {
     calculateOfflineBatchNumber,
   ]);
 
-  const handleExportMeters = async () => {
+  const handleExportMeters = async (format: 'pdf' | 'excel') => {
     await handleExportMetersHelper(
       activeTab,
       allOverviewMachines,
       allOfflineMachines,
       activeMetricsFilter,
       customDateRange,
-      exportData,
+      format,
       toast
     );
   };
@@ -1586,14 +1603,35 @@ export default function MachinesTab() {
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExportMeters}
-                className="border-2 border-gray-300 hover:border-gray-400"
-              >
-                <Download className="mr-2 h-4 w-4" /> Export
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-2 border-gray-300 hover:border-gray-400"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExportMeters('pdf')}
+                    className="cursor-pointer"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExportMeters('excel')}
+                    className="cursor-pointer"
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export as Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -2001,7 +2039,7 @@ export default function MachinesTab() {
                 selectedLocation={evaluationSelectedLocation}
                 onSelectionChange={setEvaluationSelectedLocation}
                 placeholder="Select Location"
-                includeAllOption={false}
+                includeAllOption={true}
               />
             </div>
             <div className="flex gap-2">
@@ -2019,22 +2057,40 @@ export default function MachinesTab() {
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  // reuse meters export for now as representative (net win and games)
-                  await handleExportMeters();
-                }}
-              >
-                <Download className="mr-2 h-4 w-4" /> Export
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExportMeters('pdf')}
+                    className="cursor-pointer"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExportMeters('excel')}
+                    className="cursor-pointer"
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export as Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           {evaluationLoading ? (
             <MachinesEvaluationSkeleton />
           ) : !evaluationSelectedLocation ||
-            evaluationSelectedLocation === '' ? (
+            (evaluationSelectedLocation !== 'all' && evaluationSelectedLocation === '') ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Monitor className="mx-auto mb-4 h-12 w-12 text-gray-400" />
@@ -2495,6 +2551,50 @@ export default function MachinesTab() {
                         onSelectionChange={setOfflineSelectedLocation}
                         placeholder="Select Location"
                       />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          setOfflineLoading(true);
+                          try {
+                            await fetchOfflineMachines(1);
+                          } finally {
+                            setOfflineLoading(false);
+                          }
+                        }}
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            Export
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleExportMeters('pdf')}
+                            className="cursor-pointer"
+                          >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Export as PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExportMeters('excel')}
+                            className="cursor-pointer"
+                          >
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Export as Excel
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
 

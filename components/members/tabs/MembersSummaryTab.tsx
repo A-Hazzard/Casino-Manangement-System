@@ -54,7 +54,7 @@ export default function MembersSummaryTab() {
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
-  const { activeMetricsFilter, customDateRange } = useDashBoardStore();
+  const { activeMetricsFilter, customDateRange, selectedLicencee } = useDashBoardStore();
 
   // Fetch locations for the filter dropdown
   const fetchLocations = useCallback(async () => {
@@ -131,6 +131,11 @@ export default function MembersSummaryTab() {
       }
       params.append('dateFilter', dateFilter);
       params.append('filterBy', 'lastLogin'); // Add this to filter by last login date
+      
+      // Add licencee parameter if selected
+      if (selectedLicencee && selectedLicencee !== 'all') {
+        params.append('licencee', selectedLicencee);
+      }
 
       const response = await axios.get(`/api/members/summary?${params}`);
       const data = response.data;
@@ -151,6 +156,7 @@ export default function MembersSummaryTab() {
     searchTerm,
     locationFilter,
     currentPage,
+    selectedLicencee,
   ]);
 
   useEffect(() => {

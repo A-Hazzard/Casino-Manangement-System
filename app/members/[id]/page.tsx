@@ -119,8 +119,6 @@ function MemberDetailsPageContent() {
 
   // Export functionality
   const handleExport = async (format: 'csv' | 'excel' = 'csv') => {
-    const loadingToast = toast.info('Preparing export...');
-    
     try {
       setLoading(true);
 
@@ -139,8 +137,9 @@ function MemberDetailsPageContent() {
       if (format === 'csv') {
         const sessions = data.data.sessions;
         if (sessions.length === 0) {
-          toast.dismiss(loadingToast);
-          toast.warning('No session data to export');
+          toast.warning('No session data to export', {
+            duration: 3000,
+          });
           return;
         }
 
@@ -203,15 +202,17 @@ function MemberDetailsPageContent() {
         link.click();
         document.body.removeChild(link);
 
-        toast.dismiss(loadingToast);
-        toast.success('Session data exported successfully!');
+        toast.success('Session data exported successfully!', {
+          duration: 3000,
+        });
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Export error:', error);
       }
-      toast.dismiss(loadingToast);
-      toast.error('Failed to export session data. Please try again.');
+      toast.error('Failed to export session data. Please try again.', {
+        duration: 3000,
+      });
     } finally {
       setLoading(false);
     }

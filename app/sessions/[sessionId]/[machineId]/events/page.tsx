@@ -23,6 +23,7 @@ export default function SessionEventsPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [totalEventsFromAPI, setTotalEventsFromAPI] = useState<number>(0);
 
   const itemsPerPage = 10;
   const itemsPerBatch = 50;
@@ -132,6 +133,11 @@ export default function SessionEventsPage() {
       const data = response.data;
       const newEvents = data.data.events || [];
 
+      // Update total events count from API pagination
+      if (data.data.pagination?.totalEvents) {
+        setTotalEventsFromAPI(data.data.pagination.totalEvents);
+      }
+
       // Merge new events into allEvents, avoiding duplicates
       setAllEvents(prev => {
         const existingIds = new Set(prev.map(e => e._id));
@@ -195,12 +201,17 @@ export default function SessionEventsPage() {
     return allEvents.slice(startIndex, endIndex);
   }, [allEvents, currentPage, itemsPerPage, pagesPerBatch]);
 
-  // Calculate total pages based on all loaded batches
+  // Calculate total pages - use API total if available, otherwise use loaded events
   const totalPages = React.useMemo(() => {
+    if (totalEventsFromAPI > 0) {
+      // Use API total for accurate pagination
+      return Math.ceil(totalEventsFromAPI / itemsPerPage);
+    }
+    // Fallback to loaded events count
     const totalItems = allEvents.length;
     const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [allEvents.length, itemsPerPage]);
+  }, [totalEventsFromAPI, allEvents.length, itemsPerPage]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -552,7 +563,7 @@ export default function SessionEventsPage() {
           <div className="block lg:hidden">{renderEventsCards()}</div>
 
           {/* Pagination Section: Navigation controls for event pages */}
-          {!loading && totalPages > 1 && (
+          {!loading && paginatedEvents.length > 0 && totalPages > 0 && (
             <PaginationControls
               currentPage={currentPage}
               totalPages={totalPages}

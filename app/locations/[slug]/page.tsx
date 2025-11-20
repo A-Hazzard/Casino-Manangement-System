@@ -238,7 +238,7 @@ export default function LocationPage() {
     customDateRange,
     calculateBatchNumber,
     pagesPerBatch,
-    searchTerm, // Skip batch fetching when searching
+    debouncedSearchTerm, // Skip batch fetching when searching
   ]);
 
   // Update allCabinets when accumulatedCabinets changes

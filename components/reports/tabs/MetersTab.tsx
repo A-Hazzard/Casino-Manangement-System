@@ -43,6 +43,7 @@ import {
   RefreshCw,
   Search,
 } from 'lucide-react';
+import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -59,6 +60,16 @@ export default function MetersTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [hourlyChartData, setHourlyChartData] = useState<
+    Array<{
+      day: string;
+      hour: string;
+      gamesPlayed: number;
+      coinIn: number;
+      coinOut: number;
+    }>
+  >([]);
+  const [hourlyChartLoading, setHourlyChartLoading] = useState(false);
   const itemsPerPage = 10;
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
@@ -259,7 +270,8 @@ export default function MetersTab() {
             '[MetersTab] JWT has location permissions but API returned no locations. This may indicate a permission mismatch.'
           );
           toast.warning(
-            'No locations found. Your permissions may have changed. Please refresh the page or log out and log back in.'
+            'No locations found. Your permissions may have changed. Please refresh the page or log out and log back in.',
+            { duration: 3000 }
           );
         } else {
           // No locations in JWT and API returned none - user has no location access
@@ -279,7 +291,9 @@ export default function MetersTab() {
         )?.error ||
         (err as Error)?.message ||
         'Failed to load locations';
-      toast.error(errorMessage as string);
+      toast.error(errorMessage as string, {
+        duration: 3000,
+      });
     } finally {
       setLocationsLoading(false);
     }
@@ -334,11 +348,29 @@ export default function MetersTab() {
         params.append('currency', displayCurrency);
       }
 
-      const response = await axios.get<MetersReportResponse>(
-        `/api/reports/meters?${params}`
-      );
+      // Add includeHourlyData parameter when location is selected
+      if (selectedLocations.length > 0) {
+        params.append('includeHourlyData', 'true');
+        setHourlyChartLoading(true);
+      }
+
+      const response = await axios.get<MetersReportResponse & {
+        hourlyChartData?: Array<{
+          day: string;
+          hour: string;
+          gamesPlayed: number;
+          coinIn: number;
+          coinOut: number;
+        }>;
+      }>(`/api/reports/meters?${params}`);
 
         const newMetersData = response.data.data || [];
+        
+        // Update hourly chart data if provided
+        if (response.data.hourlyChartData) {
+          setHourlyChartData(response.data.hourlyChartData);
+        }
+        setHourlyChartLoading(false);
 
         // Merge new meters data into allMetersData, avoiding duplicates
         setAllMetersData(prev => {
@@ -370,7 +402,9 @@ export default function MetersTab() {
         (err as Error)?.message ||
         'Failed to load meters data';
       setError(errorMessage as string);
-      toast.error(errorMessage as string);
+      toast.error(errorMessage as string, {
+        duration: 3000,
+      });
     } finally {
       setLoading(false);
     }
@@ -468,7 +502,9 @@ export default function MetersTab() {
   // Handle export - now supports PDF and Excel
   const handleExport = async (format: 'pdf' | 'excel') => {
     if (selectedLocations.length === 0) {
-      toast.error('Please select at least one location to export');
+      toast.error('Please select at least one location to export', {
+        duration: 3000,
+      });
       return;
     }
 
@@ -476,18 +512,14 @@ export default function MetersTab() {
       .filter(loc => selectedLocations.includes(loc.id))
       .map(loc => loc.name);
 
-    // Show loading toast
-    const loadingToast = toast.loading(
-      `Preparing ${format.toUpperCase()} export...`
-    );
-
     try {
       // Get filtered data for export (frontend filtering)
       const allData = getDataForExport(searchTerm);
 
       if (allData.length === 0) {
-        toast.dismiss(loadingToast);
-        toast.error('No data found for export');
+        toast.error('No data found for export', {
+          duration: 3000,
+        });
         return;
       }
 
@@ -537,19 +569,19 @@ export default function MetersTab() {
 
       if (format === 'pdf') {
         await exportMetersReportPDF(exportData, metadata);
-        toast.dismiss(loadingToast);
-        toast.success(`Successfully exported ${allData.length} records to PDF`);
       } else {
         exportMetersReportExcel(exportData, metadata);
-        toast.dismiss(loadingToast);
-        toast.success(
-          `Successfully exported ${allData.length} records to Excel`
-        );
       }
+      
+      toast.success(
+        `Successfully exported ${allData.length} records to ${format.toUpperCase()}`,
+        { duration: 3000 }
+      );
     } catch (error) {
       console.error('Export error:', error);
-      toast.dismiss(loadingToast);
-      toast.error(`Failed to export ${format.toUpperCase()}`);
+      toast.error(`Failed to export ${format.toUpperCase()}`, {
+        duration: 3000,
+      });
     }
   };
 
@@ -767,6 +799,16 @@ export default function MetersTab() {
               </div>
             ) : (
               <>
+                {/* Hourly Charts - Only show when location is selected */}
+                {selectedLocations.length > 0 && (
+                  <div className="mb-6">
+                    <MetersHourlyCharts
+                      data={hourlyChartData}
+                      loading={hourlyChartLoading}
+                    />
+                  </div>
+                )}
+
                 {/* Desktop Table View */}
                 <div className="hidden overflow-x-auto md:block">
                   <table className="w-full">

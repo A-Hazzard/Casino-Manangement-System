@@ -12,7 +12,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { LocationTableProps } from '@/lib/types/location';
-import { toast } from 'sonner';
 import { Eye } from 'lucide-react';
 
 import React from 'react';
@@ -29,16 +28,6 @@ const LocationTable: React.FC<LocationTableProps> = ({
   formatCurrency,
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
-
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(`${label} copied to clipboard`);
-    } catch {
-      toast.error(`Failed to copy ${label}`);
-    }
-  };
 
   return (
     <>
@@ -109,11 +98,14 @@ const LocationTable: React.FC<LocationTableProps> = ({
                       <button
                         onClick={e => {
                           e.stopPropagation();
-                          const locationName = (location.locationName as string) || 'Unknown Location';
-                          copyToClipboard(locationName, 'Location Name');
+                          const locationId = location.location as string;
+                          if (locationId) {
+                            onLocationClick(locationId);
+                          }
                         }}
                         className="font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer text-left"
-                        title="Click to copy location name"
+                        title="Click to view location details"
+                        disabled={!location.location}
                       >
                         {(location.locationName as string) ||
                           'Unknown Location'}

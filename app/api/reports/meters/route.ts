@@ -276,6 +276,91 @@ export async function GET(req: NextRequest) {
     // For Nov 18 with gameDayOffset=8: queries Nov 18 8AM to Nov 19 7:59:59.999AM
     const machineIds = machinesData.map(m => (m._id as string).toString());
 
+    // Check if hourly chart data is requested
+    const includeHourlyData = searchParams.get('includeHourlyData') === 'true';
+    let hourlyChartData = null;
+
+    if (includeHourlyData && locationList.length > 0) {
+      // Aggregate meters by hour for chart visualization
+      // Use movement fields (deltas) and sum them by hour
+      const hourlyAggregation = await db
+        .collection('meters')
+        .aggregate([
+          {
+            $match: {
+              machine: { $in: machineIds },
+              readAt: { $gte: queryStartDate, $lte: queryEndDate },
+            },
+          },
+          {
+            $project: {
+              machine: 1,
+              readAt: 1,
+              'movement.gamesPlayed': 1,
+              'movement.coinIn': 1,
+              'movement.coinOut': 1,
+              // Also use top-level fields as fallback
+              gamesPlayed: 1,
+              coinIn: 1,
+              coinOut: 1,
+            },
+          },
+          {
+            $addFields: {
+              hour: {
+                $dateToString: {
+                  format: '%H:00',
+                  date: '$readAt',
+                },
+              },
+              day: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: '$readAt',
+                },
+              },
+              gamesPlayedValue: {
+                $ifNull: ['$movement.gamesPlayed', '$gamesPlayed', 0],
+              },
+              coinInValue: {
+                $ifNull: ['$movement.coinIn', '$coinIn', 0],
+              },
+              coinOutValue: {
+                $ifNull: ['$movement.coinOut', '$coinOut', 0],
+              },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                day: '$day',
+                hour: '$hour',
+              },
+              gamesPlayed: { $sum: '$gamesPlayedValue' },
+              coinIn: { $sum: '$coinInValue' },
+              coinOut: { $sum: '$coinOutValue' },
+            },
+          },
+          {
+            $sort: {
+              '_id.day': 1,
+              '_id.hour': 1,
+            },
+          },
+        ])
+        .toArray();
+
+      hourlyChartData = hourlyAggregation.map(
+        (item: Record<string, unknown>) => ({
+          day: (item._id as Record<string, unknown>).day,
+          hour: (item._id as Record<string, unknown>).hour,
+          gamesPlayed: item.gamesPlayed || 0,
+          coinIn: item.coinIn || 0,
+          coinOut: item.coinOut || 0,
+        })
+      );
+    }
+
     const metersAggregation = await db
       .collection('meters')
       .aggregate([
@@ -585,7 +670,27 @@ export async function GET(req: NextRequest) {
     const responseLocationList =
       locationList.length > 0 ? locationList : actualLocationIds;
 
-    return NextResponse.json({
+    const response: {
+      data: unknown[];
+      totalCount: number;
+      totalPages: number;
+      currentPage: number;
+      limit: number;
+      locations: string[];
+      dateRange: { start: Date; end: Date };
+      timePeriod: string;
+      currency: string;
+      converted: boolean;
+      pagination: {
+        page: number;
+        limit: number;
+        totalCount: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+      };
+      hourlyChartData?: unknown;
+    } = {
       data: convertedData,
       totalCount,
       totalPages,
@@ -604,7 +709,13 @@ export async function GET(req: NextRequest) {
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
       },
-    });
+    };
+
+    if (hourlyChartData) {
+      response.hourlyChartData = hourlyChartData;
+    }
+
+    return NextResponse.json(response);
   } catch (err) {
     const duration = Date.now() - startTime;
     console.error(

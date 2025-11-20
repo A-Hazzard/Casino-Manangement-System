@@ -77,7 +77,7 @@ export function buildSessionsQueryParams(params: {
   if (params.search) queryParams.append('search', params.search);
   if (params.sortBy) queryParams.append('sortBy', params.sortBy);
   if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
-  if (params.licensee) queryParams.append('licensee', params.licensee);
+  if (params.licensee) queryParams.append('licencee', params.licensee);
   if (params.startDate)
     queryParams.append('startDate', params.startDate.toISOString());
   if (params.endDate)

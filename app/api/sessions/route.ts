@@ -12,8 +12,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'startTime';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
-    const licencee = searchParams.get('licencee') || '';
+    const licencee = searchParams.get('licencee') || searchParams.get('licensee') || '';
     const dateFilter = searchParams.get('dateFilter') || 'all';
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
 
     // Build query
     const query: Record<string, unknown> = {};
@@ -27,15 +29,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Add licencee filtering if provided
-    if (licencee && licencee !== 'All Licensees') {
+    if (licencee && licencee !== 'All Licensees' && licencee !== 'all') {
       // We'll filter by licencee through the machine -> location -> licencee relationship
       // This will be handled in the aggregation pipeline
     }
 
-    // Add date filtering
-    if (dateFilter !== 'all') {
+    // Add date filtering - support both dateFilter and startDate/endDate
+    if (startDateParam && endDateParam) {
+      // Use explicit date range if provided
+      query.startTime = {
+        $gte: new Date(startDateParam),
+        $lte: new Date(endDateParam),
+      };
+    } else if (dateFilter !== 'all') {
       const now = new Date();
       let startDate: Date;
+      let endDate: Date | undefined;
 
       switch (dateFilter) {
         case 'today':
@@ -44,6 +53,15 @@ export async function GET(request: NextRequest) {
             now.getMonth(),
             now.getDate()
           );
+          endDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            23,
+            59,
+            59,
+            999
+          );
           break;
         case 'yesterday':
           startDate = new Date(
@@ -51,22 +69,35 @@ export async function GET(request: NextRequest) {
             now.getMonth(),
             now.getDate() - 1
           );
+          endDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() - 1,
+            23,
+            59,
+            59,
+            999
+          );
           break;
         case 'week':
+        case 'last7days':
           startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          endDate = now;
           break;
         case 'month':
-          startDate = new Date(
-            now.getFullYear(),
-            now.getMonth() - 1,
-            now.getDate()
-          );
+        case 'last30days':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          endDate = now;
           break;
         default:
           startDate = new Date(0);
       }
 
-      query.startTime = { $gte: startDate };
+      if (endDate) {
+        query.startTime = { $gte: startDate, $lte: endDate };
+      } else {
+        query.startTime = { $gte: startDate };
+      }
     }
 
     // console.log("🔍 Sessions API Debug - Query:", query);
