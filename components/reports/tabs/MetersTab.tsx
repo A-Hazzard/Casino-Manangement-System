@@ -46,6 +46,7 @@ import {
 import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useDebounce } from '@/lib/utils/hooks';
 
 export default function MetersTab() {
   const [allMetersData, setAllMetersData] = useState<MetersReportData[]>([]); // Store all fetched data (batches)
@@ -58,6 +59,7 @@ export default function MetersTab() {
   const [error, setError] = useState<string | null>(null);
   const [hasData, setHasData] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500); // Debounce search by 500ms
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [hourlyChartData, setHourlyChartData] = useState<
@@ -69,6 +71,15 @@ export default function MetersTab() {
       coinOut: number;
     }>
   >([]);
+  const [allHourlyChartData, setAllHourlyChartData] = useState<
+    Array<{
+      day: string;
+      hour: string;
+      gamesPlayed: number;
+      coinIn: number;
+      coinOut: number;
+    }>
+  >([]); // Store original hourly chart data for all machines
   const [hourlyChartLoading, setHourlyChartLoading] = useState(false);
   const itemsPerPage = 10;
   const itemsPerBatch = 50;
@@ -369,6 +380,7 @@ export default function MetersTab() {
         // Update hourly chart data if provided
         if (response.data.hourlyChartData) {
           setHourlyChartData(response.data.hourlyChartData);
+          setAllHourlyChartData(response.data.hourlyChartData); // Store original data for when search is cleared
         }
         setHourlyChartLoading(false);
 
@@ -476,8 +488,102 @@ export default function MetersTab() {
 
   // Filter and paginate data
   const filteredMetersData = useMemo(() => {
-    return filterMetersData(allMetersData, searchTerm);
-  }, [allMetersData, searchTerm, filterMetersData]);
+    return filterMetersData(allMetersData, debouncedSearchTerm);
+  }, [allMetersData, debouncedSearchTerm, filterMetersData]);
+
+  // Fetch hourly chart data for filtered machines when search changes
+  useEffect(() => {
+    if (!selectedLocations.length || !allHourlyChartData.length) {
+      return;
+    }
+
+    const fetchFilteredHourlyData = async () => {
+      if (!debouncedSearchTerm.trim()) {
+        // No search - use all hourly chart data
+        setHourlyChartData(allHourlyChartData);
+        return;
+      }
+
+      // Get machine document IDs from filtered data
+      const filteredMachineIds = filteredMetersData
+        .map(item => {
+          const itemRecord = item as Record<string, unknown>;
+          return itemRecord.machineDocumentId as string;
+        })
+        .filter((id): id is string => !!id);
+
+      if (filteredMachineIds.length === 0) {
+        // No machines match search - show empty chart
+        setHourlyChartData([]);
+        return;
+      }
+
+      try {
+        setHourlyChartLoading(true);
+        const params = new URLSearchParams({
+          locations: selectedLocations.join(','),
+          timePeriod: activeMetricsFilter,
+          includeHourlyData: 'true',
+          hourlyDataMachineIds: filteredMachineIds.join(','),
+        });
+
+        // Add custom dates if needed
+        if (activeMetricsFilter === 'Custom' && customDateRange) {
+          params.append(
+            'startDate',
+            customDateRange.startDate.toISOString().split('T')[0]
+          );
+          params.append(
+            'endDate',
+            customDateRange.endDate.toISOString().split('T')[0]
+          );
+        }
+
+        // Add licensee filter if selected
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
+        }
+
+        // Add currency parameter
+        if (displayCurrency) {
+          params.append('currency', displayCurrency);
+        }
+
+        const response = await axios.get<{
+          hourlyChartData?: Array<{
+            day: string;
+            hour: string;
+            gamesPlayed: number;
+            coinIn: number;
+            coinOut: number;
+          }>;
+        }>(`/api/reports/meters?${params}`);
+
+        if (response.data.hourlyChartData) {
+          setHourlyChartData(response.data.hourlyChartData);
+        } else {
+          setHourlyChartData([]);
+        }
+      } catch (error) {
+        console.error('Error fetching filtered hourly chart data:', error);
+        // On error, fall back to all data
+        setHourlyChartData(allHourlyChartData);
+      } finally {
+        setHourlyChartLoading(false);
+      }
+    };
+
+    fetchFilteredHourlyData();
+  }, [
+    debouncedSearchTerm,
+    filteredMetersData,
+    selectedLocations,
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    displayCurrency,
+    allHourlyChartData,
+  ]);
 
   // Get items for current page from filtered data
   const paginatedMetersData = useMemo(() => {
@@ -766,25 +872,6 @@ export default function MetersTab() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Search bar for table - Always visible */}
-            <div className="mb-4">
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by Serial Number, Custom Name, or Location..."
-                  value={searchTerm}
-                  onChange={e => handleSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <p className="mt-2 text-sm text-gray-600">
-                Showing {paginatedMetersData.length} of{' '}
-                {filteredMetersData.length} records
-                {searchTerm && ` (filtered by "${searchTerm}")`}
-              </p>
-            </div>
-
             {!hasData ? (
               <div className="p-8 text-center">
                 <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-400" />
@@ -808,6 +895,25 @@ export default function MetersTab() {
                     />
                   </div>
                 )}
+
+                {/* Search bar for table - Right above the table/mobile cards */}
+                <div className="mb-4">
+                  <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search by Serial Number, Custom Name, or Location..."
+                      value={searchTerm}
+                      onChange={e => handleSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Showing {paginatedMetersData.length} of{' '}
+                    {filteredMetersData.length} records
+                    {debouncedSearchTerm && ` (filtered by "${debouncedSearchTerm}")`}
+                  </p>
+                </div>
 
                 {/* Desktop Table View */}
                 <div className="hidden overflow-x-auto md:block">

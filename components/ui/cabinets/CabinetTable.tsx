@@ -167,7 +167,7 @@ export default function CabinetTable({
                         title="Click to view location details"
                         disabled={!cab.locationId}
                       >
-                        {cab.locationName || '(No Location)'}
+                      {cab.locationName || '(No Location)'}
                       </button>
                       {cab.locationId && (
                         <button

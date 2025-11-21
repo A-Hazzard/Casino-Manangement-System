@@ -1,16 +1,16 @@
 'use client';
 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type HourlyChartData = {
   day: string;
@@ -80,7 +80,8 @@ export function MetersHourlyCharts({
   }));
 
   // Calculate interval for X-axis labels - show more labels for 24 hours
-  const xAxisInterval = chartData.length <= 24 ? 1 : Math.floor(chartData.length / 12);
+  const xAxisInterval =
+    chartData.length <= 24 ? 1 : Math.floor(chartData.length / 12);
 
   // Format time for display (e.g., "Mar-03 10:00")
   const formatTimeLabel = (timeStr: string) => {
@@ -226,4 +227,3 @@ export function MetersHourlyCharts({
     </div>
   );
 }
-

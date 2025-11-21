@@ -1,66 +1,100 @@
+/**
+ * Meters Report API Route
+ *
+ * This route handles fetching meter report data for machines across selected locations.
+ * It supports:
+ * - Gaming day offset calculations per location
+ * - Getting the last meter document per machine (not summing)
+ * - Hourly chart data aggregation
+ * - Currency conversion for multi-licensee views
+ * - Search and pagination
+ *
+ * @module app/api/reports/meters/route
+ */
+
 import {
   getUserAccessibleLicenseesFromToken,
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
+import {
+  calculateGamingDayRanges,
+  determineLocationList,
+  fetchLocationData,
+  fetchMachinesData,
+  filterMeterDataBySearch,
+  getHourlyChartData,
+  getLastMeterPerMachine,
+  paginateMeterData,
+  parseMetersReportParams,
+  transformMeterData,
+  type ParsedMetersReportParams,
+} from '@/app/api/lib/helpers/metersReport';
+import {
+  applyCurrencyConversion,
+  buildCurrencyMaps,
+} from '@/app/api/lib/helpers/metersReportCurrency';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { TimePeriod } from '@/app/api/lib/types';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
-  getLicenseeCurrency,
-} from '@/lib/helpers/rates';
-import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
-import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Create an empty response for users with no accessible locations
+ */
+function createEmptyResponse(
+  params: ParsedMetersReportParams,
+  queryStartDate: Date,
+  queryEndDate: Date
+) {
+  return NextResponse.json({
+    data: [],
+    totalCount: 0,
+    totalPages: 0,
+    currentPage: params.page,
+    limit: params.limit,
+    locations: [],
+    dateRange: { start: queryStartDate, end: queryEndDate },
+    timePeriod: params.timePeriod,
+    currency: params.displayCurrency,
+    converted: false,
+    pagination: {
+      page: params.page,
+      limit: params.limit,
+      totalCount: 0,
+      totalPages: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
+    },
+  });
+}
+
+/**
+ * Main GET handler for meters report
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Authenticate user and check permissions
+ * 3. Determine accessible locations
+ * 4. Fetch machines and location data
+ * 5. Calculate gaming day ranges
+ * 6. Aggregate last meter per machine
+ * 7. Optionally aggregate hourly chart data
+ * 8. Transform and filter data
+ * 9. Apply currency conversion if needed
+ * 10. Paginate and return results
+ */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
-    const locations = searchParams.get('locations');
-    const timePeriod =
-      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const customStartDate = searchParams.get('startDate');
-    const customEndDate = searchParams.get('endDate');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const search = searchParams.get('search') || '';
-    const licencee = searchParams.get('licencee');
+    const params = parseMetersReportParams(searchParams);
 
-    // Determine display currency:
-    // - If currency param is provided, use it (for "All Licensees" mode)
-    // - If viewing a specific licensee, use that licensee's native currency
-    // - Otherwise default to USD
-    let displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || undefined;
-
-    if (!displayCurrency && licencee && licencee !== 'all') {
-      // Use the licensee's native currency when viewing a specific licensee
-      displayCurrency = getLicenseeCurrency(licencee);
-    }
-
-    displayCurrency = displayCurrency || 'USD';
-
-    if (!locations) {
-      return NextResponse.json(
-        { error: 'Locations parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate custom date parameters if timePeriod is Custom
-    if (timePeriod === 'Custom') {
-      if (!customStartDate || !customEndDate) {
-        return NextResponse.json(
-          { error: 'Custom date range requires both startDate and endDate' },
-          { status: 400 }
-        );
-      }
-    }
-
+    // ============================================================================
+    // STEP 2: Connect to database and authenticate user
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -69,7 +103,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get user for role-based access control
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -79,7 +112,9 @@ export async function GET(req: NextRequest) {
     const isAdminOrDev =
       userRoles.includes('admin') || userRoles.includes('developer');
 
-    // Get user's accessible licensees and location permissions for filtering
+    // ============================================================================
+    // STEP 3: Get user permissions and determine accessible locations
+    // ============================================================================
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     const userLocationPermissions =
       (
@@ -88,124 +123,39 @@ export async function GET(req: NextRequest) {
         }
       )?.['gaming-locations']?.resources || [];
 
-    // Get allowed location IDs based on user role and permissions
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
-      licencee || undefined,
+      params.licencee || undefined,
       userLocationPermissions,
       userRoles
     );
 
-    // Parse locations (comma-separated) from request
-    const requestedLocationList = locations
-      .split(',')
-      .map(loc => loc.trim())
-      .filter(loc => loc !== 'all' && loc !== '');
-
-    // For location admin, enforce their assigned locations only
+    // Determine if user is a location admin
     const normalizedRoles = userRoles.map(role =>
       typeof role === 'string' ? role.toLowerCase() : role
     );
     const isLocationAdmin = normalizedRoles.includes('location admin');
 
-    // Determine final location list to use
-    let locationList: string[] = [];
-    if (isLocationAdmin) {
-      // Location admin: only use their assigned locations (ignore request parameter)
-      if (allowedLocationIds === 'all') {
-        locationList = [];
-      } else {
-        locationList = allowedLocationIds;
-      }
-    } else if (requestedLocationList.length > 0) {
-      // Other roles: use requested locations, but filter by allowed locations
-      if (allowedLocationIds === 'all') {
-        locationList = requestedLocationList;
-      } else {
-        // Intersect requested locations with allowed locations
-        locationList = requestedLocationList.filter(loc =>
-          allowedLocationIds.includes(loc)
-        );
-      }
-    } else if (allowedLocationIds !== 'all') {
-      // No locations requested, use all allowed locations
-      locationList = allowedLocationIds;
-    }
+    // Determine final location list to query
+    const locationList = determineLocationList(
+      params.requestedLocationList,
+      allowedLocationIds,
+      isLocationAdmin
+    );
 
-    // Build query filter for machines
-    const machineMatchStage: Record<string, unknown> = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    };
-
-    // Add location filter if specific locations are selected
-    if (locationList.length > 0) {
-      machineMatchStage.gamingLocation = { $in: locationList };
-    } else if (
+    // Return empty response if user has no accessible locations
+    if (
       allowedLocationIds !== 'all' &&
-      allowedLocationIds.length === 0
+      allowedLocationIds.length === 0 &&
+      locationList.length === 0
     ) {
-      // User has no accessible locations, return empty result
-      return NextResponse.json({
-        data: [],
-        totalCount: 0,
-        totalPages: 0,
-        currentPage: page,
-        limit,
-        locations: [],
-        dateRange: { start: new Date(), end: new Date() },
-        timePeriod,
-        currency: displayCurrency,
-        converted: false,
-        pagination: {
-          page,
-          limit,
-          totalCount: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-        },
-      });
+      const now = new Date();
+      return createEmptyResponse(params, now, now);
     }
 
-    // Get machines data for the selected locations
-    let machinesData = await db
-      .collection('machines')
-      .find(machineMatchStage)
-      .project({
-        _id: 1,
-        serialNumber: 1,
-        custom: 1, // Get entire custom object to access custom.name
-        gamingLocation: 1,
-        sasMeters: 1,
-        lastActivity: 1,
-      })
-      .sort({ lastActivity: -1 })
-      .toArray();
-
-    // Filter by licensee if provided
-    if (licencee && licencee !== 'all') {
-      const licenseeLocations = await db
-        .collection('gaminglocations')
-        .find({ 'rel.licencee': licencee })
-        .project({ _id: 1 })
-        .toArray();
-
-      const licenseeLocationIds = licenseeLocations.map(loc =>
-        loc._id.toString()
-      );
-
-      machinesData = machinesData.filter(machine =>
-        licenseeLocationIds.includes(
-          (machine as unknown as { gamingLocation: string }).gamingLocation
-        )
-      );
-    }
-
-    // Get all gaming locations for name resolution and gaming day offset
-    // Use locationList if we have specific locations, otherwise use allowedLocationIds
+    // ============================================================================
+    // STEP 4: Fetch location data and calculate gaming day ranges
+    // ============================================================================
     const locationsToQuery =
       locationList.length > 0
         ? locationList
@@ -213,518 +163,270 @@ export async function GET(req: NextRequest) {
           ? []
           : allowedLocationIds;
 
-    const locationsData = await db
-      .collection('gaminglocations')
-      .find(
-        {
-          _id: { $in: locationsToQuery as never[] },
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
-          ],
-        } as never,
-        {
-          projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 },
-        }
-      )
-      .toArray();
+    const locationsData = await fetchLocationData(db, locationsToQuery);
 
-    // Create maps for quick location name lookup
-    const locationMap = new Map();
-    locationsData.forEach((loc: Record<string, unknown>) => {
-      locationMap.set((loc._id as string).toString(), loc.name as string);
+    // Create location name map for quick lookup
+    const locationMap = new Map<string, string>();
+    locationsData.forEach(loc => {
+      locationMap.set(loc._id, loc.name);
     });
 
-    // Calculate gaming day ranges for all selected locations
-    const locationsListForGamingDay = locationsData.map(loc => ({
-      _id: String(loc._id),
-      gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM
-    }));
+    // Calculate gaming day ranges for all locations
+    const { queryStartDate, queryEndDate } = calculateGamingDayRanges(
+      locationsData,
+      params.timePeriod,
+      params.customStartDate,
+      params.customEndDate
+    );
 
-    // Parse custom dates if provided
-    let customStart: Date | undefined;
-    let customEnd: Date | undefined;
-    if (timePeriod === 'Custom' && customStartDate && customEndDate) {
-      customStart = new Date(customStartDate + 'T00:00:00.000Z');
-      customEnd = new Date(customEndDate + 'T00:00:00.000Z');
+    // ============================================================================
+    // STEP 5: Fetch machines data
+    // ============================================================================
+    const machinesData = await fetchMachinesData(
+      db,
+      locationList,
+      params.licencee
+    );
+
+    if (machinesData.length === 0) {
+      return createEmptyResponse(params, queryStartDate, queryEndDate);
     }
 
-    const gamingDayRanges = getGamingDayRangesForLocations(
-      locationsListForGamingDay,
-      timePeriod,
-      customStart,
-      customEnd
+    const machineIds = machinesData.map(m => m._id);
+
+    // ============================================================================
+    // STEP 6: Get last meter document per machine
+    // ============================================================================
+    /**
+     * CRITICAL: We get the LAST meter document for each machine, not a sum.
+     * The aggregation sorts by readAt descending and uses $first to get
+     * the latest document's absolute values (drop, coinIn, coinOut, etc.).
+     * These are cumulative totals from the meter, representing the final
+     * state at the end of the gaming day period.
+     */
+    const metersMap = await getLastMeterPerMachine(
+      db,
+      machineIds,
+      queryStartDate,
+      queryEndDate
     );
 
-    // Get the earliest start and latest end across all locations
-    const rangesArray = Array.from(gamingDayRanges.values());
-    const queryStartDate = new Date(
-      Math.min(...rangesArray.map(r => r.rangeStart.getTime()))
-    );
-    const queryEndDate = new Date(
-      Math.max(...rangesArray.map(r => r.rangeEnd.getTime()))
-    );
+    // Debug logging for specific machine
+    if (machineIds.includes('08408bfd3a0edc031f495867')) {
+      const debugMeter = metersMap.get('08408bfd3a0edc031f495867');
+      console.warn('🔍 [METERS API DEBUG] Machine 08408bfd3a0edc031f495867:', {
+        coinIn: debugMeter?.coinIn,
+        totalWonCredits: debugMeter?.totalWonCredits,
+        drop: debugMeter?.drop,
+        totalCancelledCredits: debugMeter?.totalCancelledCredits,
+        jackpot: debugMeter?.jackpot,
+        gamesPlayed: debugMeter?.gamesPlayed,
+        queryStartDate: queryStartDate.toISOString(),
+        queryEndDate: queryEndDate.toISOString(),
+      });
+    }
 
-    console.warn('🔍 METERS API - Date Range:', {
-      timePeriod,
-      queryStartDate: queryStartDate.toISOString(),
-      queryEndDate: queryEndDate.toISOString(),
-    });
-
-    // Get the LAST meter document for each machine within the gaming day range
-    // This captures the absolute values at the end of the gaming day period
-    // For Nov 18 with gameDayOffset=8: queries Nov 18 8AM to Nov 19 7:59:59.999AM
-    const machineIds = machinesData.map(m => (m._id as string).toString());
-
-    // Check if hourly chart data is requested
-    const includeHourlyData = searchParams.get('includeHourlyData') === 'true';
+    // ============================================================================
+    // STEP 7: Optionally aggregate hourly chart data
+    // ============================================================================
+    /**
+     * Hourly chart data uses movement fields (deltas) and sums them by hour.
+     * This is different from the main meter aggregation which uses absolute values.
+     *
+     * If hourlyDataMachineIds is provided, only aggregate data for those specific machines.
+     * Otherwise, aggregate data for all machines in the selected locations.
+     */
     let hourlyChartData = null;
+    if (params.includeHourlyData && locationList.length > 0) {
+      const machineIdsForHourlyData =
+        params.hourlyDataMachineIds && params.hourlyDataMachineIds.length > 0
+          ? params.hourlyDataMachineIds
+          : machineIds;
 
-    if (includeHourlyData && locationList.length > 0) {
-      // Aggregate meters by hour for chart visualization
-      // Use movement fields (deltas) and sum them by hour
-      const hourlyAggregation = await db
-        .collection('meters')
-        .aggregate([
-          {
-            $match: {
-              machine: { $in: machineIds },
-              readAt: { $gte: queryStartDate, $lte: queryEndDate },
-            },
-          },
-          {
-            $project: {
-              machine: 1,
-              readAt: 1,
-              'movement.gamesPlayed': 1,
-              'movement.coinIn': 1,
-              'movement.coinOut': 1,
-              // Also use top-level fields as fallback
-              gamesPlayed: 1,
-              coinIn: 1,
-              coinOut: 1,
-            },
-          },
-          {
-            $addFields: {
-              hour: {
-                $dateToString: {
-                  format: '%H:00',
-                  date: '$readAt',
-                },
-              },
-              day: {
-                $dateToString: {
-                  format: '%Y-%m-%d',
-                  date: '$readAt',
-                },
-              },
-              gamesPlayedValue: {
-                $ifNull: ['$movement.gamesPlayed', '$gamesPlayed', 0],
-              },
-              coinInValue: {
-                $ifNull: ['$movement.coinIn', '$coinIn', 0],
-              },
-              coinOutValue: {
-                $ifNull: ['$movement.coinOut', '$coinOut', 0],
-              },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                day: '$day',
-                hour: '$hour',
-              },
-              gamesPlayed: { $sum: '$gamesPlayedValue' },
-              coinIn: { $sum: '$coinInValue' },
-              coinOut: { $sum: '$coinOutValue' },
-            },
-          },
-          {
-            $sort: {
-              '_id.day': 1,
-              '_id.hour': 1,
-            },
-          },
-        ])
-        .toArray();
-
-      hourlyChartData = hourlyAggregation.map(
-        (item: Record<string, unknown>) => ({
-          day: (item._id as Record<string, unknown>).day,
-          hour: (item._id as Record<string, unknown>).hour,
-          gamesPlayed: item.gamesPlayed || 0,
-          coinIn: item.coinIn || 0,
-          coinOut: item.coinOut || 0,
-        })
+      hourlyChartData = await getHourlyChartData(
+        db,
+        machineIdsForHourlyData,
+        queryStartDate,
+        queryEndDate
       );
     }
 
-    const metersAggregation = await db
-      .collection('meters')
-      .aggregate([
-        {
-          $match: {
-            machine: { $in: machineIds },
-            readAt: { $gte: queryStartDate, $lte: queryEndDate },
-          },
-        },
-        // Sort by readAt descending to get the latest meter first
-        {
-          $sort: { readAt: -1 },
-        },
-        // Group by machine and take the first (latest) document's absolute values
-        {
-          $group: {
-            _id: '$machine',
-            // Use top-level absolute values from the last meter document
-            drop: { $first: { $ifNull: ['$drop', 0] } },
-            totalCancelledCredits: {
-              $first: { $ifNull: ['$totalCancelledCredits', 0] },
-            },
-            totalHandPaidCancelledCredits: {
-              $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
-            },
-            coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
-            coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
-            totalWonCredits: {
-              $first: { $ifNull: ['$totalWonCredits', 0] },
-            },
-            gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
-            jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
-            lastReadAt: { $first: '$readAt' },
-          },
-        },
-      ])
-      .toArray();
-
-    // Create a map for meter data lookup
-    const metersMap = new Map();
-    metersAggregation.forEach((meter: Record<string, unknown>) => {
-      metersMap.set(meter._id, meter);
-    });
-
-    // Transform data for the table
-    let transformedData = machinesData.map(
-      (machine: Record<string, unknown>) => {
-        const locationName = machine.gamingLocation
-          ? locationMap.get(machine.gamingLocation.toString()) ||
-            'Unknown Location'
-          : 'Unknown Location';
-
-        // Machine ID display
-        // Check if serialNumber is blank or whitespace-only
-        const serialNumber = machine.serialNumber?.toString().trim() || '';
-        const hasValidSerialNumber = serialNumber.length > 0;
-
-        // Get custom.name value from the custom object
-        const customName =
-          ((machine.custom as Record<string, unknown>)?.name as string)
-            ?.toString()
-            .trim() || '';
-
-        // Display logic: if custom.name and serialNumber are different, show custom.name (serialNumber)
-        // Otherwise, use serialNumber if available, otherwise fall back to custom.name
-        let machineId = '';
-        if (customName && hasValidSerialNumber && customName !== serialNumber) {
-          machineId = `${customName} (${serialNumber})`;
-        } else if (hasValidSerialNumber) {
-          machineId = serialNumber;
-        } else if (customName) {
-          machineId = customName;
-        } else {
-          // Final fallback
-          machineId = `Machine ${(machine._id as string).toString().slice(-6)}`;
-        }
-
-        // Debug logging for the specific machine
-        const machineIdStr =
-          (machine._id as { toString?: () => string })?.toString?.() ||
-          String(machine._id);
-        if (machineIdStr === '477493327262a58cb084f19d') {
-          console.warn('🔍 DEBUG Machine 477493327262a58cb084f19d:', {
-            serialNumber: `"${serialNumber}"`,
-            hasValidSerialNumber,
-            customName: `"${customName}"`,
-            machineKeys: Object.keys(machine),
-            customObject: machine.custom,
-            customObjectType: typeof machine.custom,
-            finalMachineId: machineId,
-            rawMachine: JSON.stringify(machine, null, 2),
-          });
-        }
-
-        const machineDocumentId = (machine._id as string).toString();
-
-        // Validate meter values
-        const validateMeter = (value: unknown): number => {
-          const num = Number(value) || 0;
-          return num >= 0 ? num : 0;
-        };
-
-        // Use aggregated meter data (always use meters collection for consistency)
-        const meterData = metersMap.get(machineDocumentId) || {};
-
-        const metersIn = validateMeter(meterData.coinIn);
-        const metersOut = validateMeter(meterData.totalWonCredits);
-        const jackpot = validateMeter(meterData.jackpot);
-        const billIn = validateMeter(meterData.drop);
-        const totalCancelledCredits = validateMeter(
-          meterData.totalCancelledCredits
-        );
-        const handPaidCredits = validateMeter(
-          meterData.totalHandPaidCancelledCredits
-        );
-        const gamesPlayed = validateMeter(meterData.gamesPlayed);
-
-        // Calculate voucher out (net cancelled credits)
-        const voucherOut = validateMeter(
-          totalCancelledCredits - handPaidCredits
-        );
-
-        return {
-          machineId: machineId,
-          metersIn: metersIn,
-          metersOut: metersOut,
-          jackpot: jackpot,
-          billIn: billIn,
-          voucherOut: voucherOut,
-          attPaidCredits: handPaidCredits,
-          gamesPlayed: gamesPlayed,
-          location: locationName,
-          locationId: machine.gamingLocation?.toString() || '',
-          createdAt: meterData.lastReadAt || machine.lastActivity,
-          machineDocumentId: machineDocumentId,
-          // Include raw fields for export logic
-          customName: customName || undefined,
-          serialNumber: hasValidSerialNumber ? serialNumber : undefined,
-        };
-      }
+    // ============================================================================
+    // STEP 8: Transform machine and meter data into report format
+    // ============================================================================
+    let transformedData = transformMeterData(
+      machinesData,
+      metersMap,
+      locationMap
     );
 
-    // Apply search filter if provided - search by machineId, location, serialNumber, and custom.name
-    if (search) {
-      const searchLower = search.toLowerCase();
-      transformedData = transformedData.filter(
-        (item: Record<string, unknown>) => {
-          // Get the original machine data for additional search fields
-          const machineData = machinesData.find(
-            (m: Record<string, unknown>) =>
-              (m._id as string).toString() ===
-              (item as Record<string, unknown>).machineDocumentId
-          );
-
-          const serialNumber = machineData?.serialNumber || '';
-          // Get custom.name value from the custom object
-          const customName =
-            ((machineData?.custom as Record<string, unknown>)?.name as string)
-              ?.toString()
-              .trim() || '';
-
-          return (
-            (item.machineId as string).toLowerCase().includes(searchLower) ||
-            (item.location as string).toLowerCase().includes(searchLower) ||
-            serialNumber.toLowerCase().includes(searchLower) ||
-            (customName as string).toLowerCase().includes(searchLower)
-          );
-        }
-      );
+    // Debug logging for specific machine after transformation
+    const debugTransformed = transformedData.find(
+      item => item.machineDocumentId === '08408bfd3a0edc031f495867'
+    );
+    if (debugTransformed) {
+      console.warn('🔍 [METERS API DEBUG] After transformation:', {
+        machineId: debugTransformed.machineId,
+        metersIn: debugTransformed.metersIn,
+        metersOut: debugTransformed.metersOut,
+        billIn: debugTransformed.billIn,
+        voucherOut: debugTransformed.voucherOut,
+        jackpot: debugTransformed.jackpot,
+        gamesPlayed: debugTransformed.gamesPlayed,
+      });
     }
 
-    // Calculate pagination
-    const totalCount = transformedData.length;
-    const totalPages = Math.ceil(totalCount / limit);
-    const skip = (page - 1) * limit;
+    // ============================================================================
+    // STEP 9: Apply search filter if provided
+    // ============================================================================
+    transformedData = filterMeterDataBySearch(
+      transformedData,
+      machinesData,
+      params.search
+    );
 
-    // Apply pagination
-    const paginatedData = transformedData.slice(skip, skip + limit);
+    // ============================================================================
+    // STEP 10: Paginate data
+    // ============================================================================
+    const { paginatedData, totalCount, totalPages } = paginateMeterData(
+      transformedData,
+      params.page,
+      params.limit
+    );
+
+    // ============================================================================
+    // STEP 11: Apply currency conversion if needed
+    // ============================================================================
+    /**
+     * Currency conversion is ONLY applied when:
+     * 1. User is Admin/Developer
+     * 2. "All Licensees" is selected (params.licencee is null, undefined, or "all")
+     * 3. A display currency is explicitly selected (currency param is provided)
+     *
+     * When viewing a specific licensee, NO conversion should happen - values should
+     * be displayed in that licensee's native currency.
+     */
+    let convertedData = paginatedData;
+    // Currency conversion should ONLY happen when:
+    // 1. User is Admin/Developer
+    // 2. "All Licensees" is EXPLICITLY selected (licencee parameter must be "all")
+    // 3. Currency parameter is explicitly provided in the request
+    //
+    // IMPORTANT: The frontend only sends licencee parameter when it's NOT "all".
+    // So if licencee is missing, we're NOT viewing "all licensees" mode.
+    // Only convert when licencee is explicitly "all".
+    const licenceeParam = searchParams.get('licencee');
+    const currencyParamProvided = searchParams.get('currency') !== null;
+
+    // Only convert when explicitly viewing "all licensees" mode
+    const shouldConvert =
+      isAdminOrDev && licenceeParam === 'all' && currencyParamProvided;
+
+    if (shouldConvert) {
+      const { locationDetailsMap, licenseeMap } = await buildCurrencyMaps(
+        db,
+        locationsData
+      );
+
+      convertedData = applyCurrencyConversion(
+        paginatedData,
+        locationDetailsMap,
+        licenseeMap,
+        params.displayCurrency
+      );
+
+      // Debug logging after currency conversion
+      const debugConverted = convertedData.find(
+        item => item.machineDocumentId === '08408bfd3a0edc031f495867'
+      );
+      if (debugConverted) {
+        console.warn('🔍 [METERS API DEBUG] After currency conversion:', {
+          machineId: debugConverted.machineId,
+          metersIn: debugConverted.metersIn,
+          metersOut: debugConverted.metersOut,
+          billIn: debugConverted.billIn,
+          voucherOut: debugConverted.voucherOut,
+          jackpot: debugConverted.jackpot,
+          displayCurrency: params.displayCurrency,
+        });
+      }
+    } else {
+      // Debug logging when conversion is skipped
+      const debugSkipped = paginatedData.find(
+        item => item.machineDocumentId === '08408bfd3a0edc031f495867'
+      );
+      if (debugSkipped) {
+        console.warn('🔍 [METERS API DEBUG] Currency conversion SKIPPED:', {
+          machineId: debugSkipped.machineId,
+          metersIn: debugSkipped.metersIn,
+          metersOut: debugSkipped.metersOut,
+          billIn: debugSkipped.billIn,
+          voucherOut: debugSkipped.voucherOut,
+          jackpot: debugSkipped.jackpot,
+          isAdminOrDev,
+          licencee: params.licencee,
+          licenceeParam,
+          displayCurrency: params.displayCurrency,
+          currencyParamProvided,
+          shouldConvert,
+        });
+      }
+    }
+
+    // ============================================================================
+    // STEP 12: Build and return response
+    // ============================================================================
+    const actualLocationIds = locationsData.map(loc => loc._id);
+    const responseLocationList =
+      locationList.length > 0 ? locationList : actualLocationIds;
 
     const duration = Date.now() - startTime;
     console.warn(
       `Meters report completed successfully in ${duration}ms - ${totalCount} machines`
     );
 
-    // Apply currency conversion if needed (proper multi-currency pattern)
-    // Currency conversion ONLY for Admin/Developer viewing "All Licensees"
-    let convertedData = paginatedData;
+    // Convert Date objects to ISO strings for JSON serialization
+    const serializedData = convertedData.map(item => ({
+      ...item,
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : new Date().toISOString(),
+    }));
 
-    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
-      console.warn(
-        '🔍 REPORTS METERS - Applying multi-currency conversion for All Licensee mode'
-      );
-
-      // Fetch licensee mappings
-      const allLicensees = await db
-        .collection('licencees')
-        .find({}, { projection: { _id: 1, name: 1, country: 1 } })
-        .toArray();
-
-      const licenseeMap = new Map();
-      allLicensees.forEach((lic: Record<string, unknown>) => {
-        licenseeMap.set(lic.name, lic.country);
-      });
-
-      // Fetch country names from country IDs
-      const countryIds = locationsData
-        .map((loc: Record<string, unknown>) => loc.country)
-        .filter((id): id is string => !!id);
-
-      const countries = await db
-        .collection('countries')
-        .find({ _id: { $in: countryIds as never[] } } as never, {
-          projection: { _id: 1, name: 1 },
-        })
-        .toArray();
-
-      const countryNameMap = new Map();
-      countries.forEach((country: Record<string, unknown>) => {
-        countryNameMap.set(String(country._id), country.name as string);
-      });
-
-      // Get location details for currency determination
-      const locationDetailsMap = new Map();
-      locationsData.forEach((loc: Record<string, unknown>) => {
-        const countryId = loc.country as string;
-        const countryName = countryId ? countryNameMap.get(countryId) : null;
-
-        locationDetailsMap.set(String(loc._id), {
-          licensee: (loc.rel as Record<string, unknown>)?.licencee || null,
-          country: countryName || null,
-        });
-      });
-
-      // Convert each machine's financial data
-      convertedData = paginatedData.map(item => {
-        const itemAsRecord = item as unknown as Record<string, unknown>;
-        const locationId = String(itemAsRecord.locationId || '');
-        const locationDetails = locationDetailsMap.get(locationId);
-
-        // Determine native currency for this machine
-        let nativeCurrency: CurrencyCode = 'USD';
-        if (locationDetails) {
-          if (locationDetails.licensee) {
-            const licenseeCountry = licenseeMap.get(locationDetails.licensee);
-            if (licenseeCountry) {
-              nativeCurrency = getCountryCurrency(licenseeCountry as string);
-            }
-          } else if (locationDetails.country) {
-            nativeCurrency = getCountryCurrency(
-              locationDetails.country as string
-            );
-          }
-        }
-
-        // Debug logging for first machine
-        if (itemAsRecord.machineId === 'TEST') {
-          console.warn('🔍 METERS CURRENCY DEBUG:', {
-            machineId: itemAsRecord.machineId,
-            locationId,
-            nativeCurrency,
-            displayCurrency,
-            willConvert: nativeCurrency !== displayCurrency,
-            originalBillIn: itemAsRecord.billIn,
-          });
-        }
-
-        const convertedItem = { ...item };
-        const convertedAsRecord = convertedItem as unknown as Record<
-          string,
-          unknown
-        >;
-
-        // Only convert if native currency differs from display currency
-        if (nativeCurrency !== displayCurrency) {
-          // Convert financial fields: native → USD → displayCurrency
-          const financialFields = [
-            'billIn',
-            'metersIn',
-            'metersOut',
-            'jackpot',
-            'voucherOut',
-            'attPaidCredits',
-          ];
-
-          financialFields.forEach(field => {
-            if (typeof itemAsRecord[field] === 'number') {
-              // Step 1: Convert from native currency to USD
-              const usdValue = convertToUSD(
-                itemAsRecord[field] as number,
-                nativeCurrency
-              );
-              // Step 2: Convert from USD to display currency
-              convertedAsRecord[field] = convertFromUSD(
-                usdValue,
-                displayCurrency
-              );
-            }
-          });
-        }
-
-        return convertedItem;
-      });
-    }
-
-    // Get actual location IDs used in the query for response
-    const actualLocationIds = locationsData.map(loc => String(loc._id));
-    const responseLocationList =
-      locationList.length > 0 ? locationList : actualLocationIds;
-
-    const response: {
-      data: unknown[];
-      totalCount: number;
-      totalPages: number;
-      currentPage: number;
-      limit: number;
-      locations: string[];
-      dateRange: { start: Date; end: Date };
-      timePeriod: string;
-      currency: string;
-      converted: boolean;
-      pagination: {
-        page: number;
-        limit: number;
-        totalCount: number;
-        totalPages: number;
-        hasNextPage: boolean;
-        hasPrevPage: boolean;
-      };
-      hourlyChartData?: unknown;
-    } = {
-      data: convertedData,
+    const response = {
+      data: serializedData,
       totalCount,
       totalPages,
-      currentPage: page,
-      limit,
+      currentPage: params.page,
+      limit: params.limit,
       locations: responseLocationList,
       dateRange: { start: queryStartDate, end: queryEndDate },
-      timePeriod,
-      currency: displayCurrency,
-      converted: isAdminOrDev && shouldApplyCurrencyConversion(licencee),
+      timePeriod: params.timePeriod,
+      currency: params.displayCurrency,
+      converted: shouldConvert,
       pagination: {
-        page,
-        limit,
+        page: params.page,
+        limit: params.limit,
         totalCount,
         totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
+        hasNextPage: params.page < totalPages,
+        hasPrevPage: params.page > 1,
       },
+      ...(hourlyChartData && { hourlyChartData }),
     };
-
-    if (hourlyChartData) {
-      response.hourlyChartData = hourlyChartData;
-    }
 
     return NextResponse.json(response);
   } catch (err) {
     const duration = Date.now() - startTime;
-    console.error(
-      ` Meters report failed after ${duration}ms:`,
-      err instanceof Error ? err.message : err
-    );
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Server Error' },
-      { status: 500 }
-    );
+    const errorMessage = err instanceof Error ? err.message : 'Server Error';
+
+    console.error(`Meters report failed after ${duration}ms:`, errorMessage);
+
+    // Handle validation errors with 400 status
+    if (err instanceof Error && err.message.includes('required')) {
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

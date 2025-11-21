@@ -140,27 +140,34 @@ export function getGamingDayRangeForPeriod(
       // 🔧 FIX: If current time is before gaming day start hour, use YESTERDAY
       // Example: If it's 2 AM and gaming day starts at 8 AM, we're still in yesterday's gaming day
       const currentHour = nowLocal.getUTCHours();
-      const todayOrYesterday = currentHour < gameDayStartHour 
-        ? new Date(today.getTime() - 24 * 60 * 60 * 1000) // Use yesterday
-        : today; // Use today
-      return getGamingDayRange(todayOrYesterday, gameDayStartHour, timezoneOffset);
+      const todayOrYesterday =
+        currentHour < gameDayStartHour
+          ? new Date(today.getTime() - 24 * 60 * 60 * 1000) // Use yesterday
+          : today; // Use today
+      return getGamingDayRange(
+        todayOrYesterday,
+        gameDayStartHour,
+        timezoneOffset
+      );
 
     case 'Yesterday':
       // 🔧 FIX: Yesterday's gaming day should be relative to current gaming day
       // If it's 2 AM and we're in yesterday's gaming day, "Yesterday" = day before yesterday
       const currentHour2 = nowLocal.getUTCHours();
-      const yesterdayBase = currentHour2 < gameDayStartHour 
-        ? new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
-        : new Date(today.getTime() - 24 * 60 * 60 * 1000); // 1 day ago
+      const yesterdayBase =
+        currentHour2 < gameDayStartHour
+          ? new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+          : new Date(today.getTime() - 24 * 60 * 60 * 1000); // 1 day ago
       return getGamingDayRange(yesterdayBase, gameDayStartHour, timezoneOffset);
 
     case 'last7days':
     case '7d':
       // 🔧 FIX: Base calculation on current gaming day
       const currentHour7d = nowLocal.getUTCHours();
-      const today7d = currentHour7d < gameDayStartHour 
-        ? new Date(today.getTime() - 24 * 60 * 60 * 1000) 
-        : today;
+      const today7d =
+        currentHour7d < gameDayStartHour
+          ? new Date(today.getTime() - 24 * 60 * 60 * 1000)
+          : today;
       const sevenDaysAgo = new Date(today7d);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // -6 because today is day 1
       return getGamingDayRangeMultiDay(
@@ -174,9 +181,10 @@ export function getGamingDayRangeForPeriod(
     case '30d':
       // 🔧 FIX: Base calculation on current gaming day
       const currentHour30d = nowLocal.getUTCHours();
-      const today30d = currentHour30d < gameDayStartHour 
-        ? new Date(today.getTime() - 24 * 60 * 60 * 1000) 
-        : today;
+      const today30d =
+        currentHour30d < gameDayStartHour
+          ? new Date(today.getTime() - 24 * 60 * 60 * 1000)
+          : today;
       const thirtyDaysAgo = new Date(today30d);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 because today is day 1
       return getGamingDayRangeMultiDay(
@@ -194,10 +202,10 @@ export function getGamingDayRangeForPeriod(
       }
 
       // For custom dates, apply gaming day offset
-      // User selects: Oct 31 to Oct 31
-      // Means: Oct 31 gaming day start (e.g., 8 AM) to Nov 1 gaming day start (e.g., 8 AM)
-      // If user selects: Sep 1 to Sep 30
-      // Means: Sep 1 gaming day start (e.g., 8 AM) to Oct 1 gaming day start (e.g., 8 AM)
+      // User selects: Oct 31 to Oct 31 (same day)
+      // Means: Oct 31 gaming day start (e.g., 11 AM) to Nov 1 gaming day start (e.g., 11 AM) exclusive
+      // If user selects: Sep 1 to Sep 30 (range)
+      // Means: Sep 1 gaming day start (e.g., 11 AM) to Oct 1 gaming day start (e.g., 11 AM) exclusive
 
       const startGamingDay = getGamingDayRange(
         customStartDate,
@@ -205,19 +213,49 @@ export function getGamingDayRangeForPeriod(
         timezoneOffset
       );
 
-      // For end date, we want to include the FULL gaming day, so we get the next gaming day start
-      const endDateNextDay = new Date(customEndDate);
-      endDateNextDay.setDate(endDateNextDay.getDate() + 1);
-      const endGamingDay = getGamingDayRange(
-        endDateNextDay,
-        gameDayStartHour,
-        timezoneOffset
-      );
+      // Check if start and end dates are the same day, or if endDate is startDate + 1 day
+      // (Some date pickers set endDate to startDate + 1 day when selecting a single day)
+      const startDateStr = customStartDate.toISOString().split('T')[0];
+      const endDateStr = customEndDate.toISOString().split('T')[0];
+      const isSameDay = startDateStr === endDateStr;
 
-      return {
-        rangeStart: startGamingDay.rangeStart,
-        rangeEnd: endGamingDay.rangeStart, // Use start of next gaming day to include full last day
-      };
+      // Check if endDate is exactly 1 day after startDate (single day selection)
+      const startDateOnly = new Date(startDateStr + 'T00:00:00.000Z');
+      const endDateOnly = new Date(endDateStr + 'T00:00:00.000Z');
+      const daysDiff = Math.floor(
+        (endDateOnly.getTime() - startDateOnly.getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+      const isSingleDaySelection = isSameDay || daysDiff === 1;
+
+      if (isSingleDaySelection) {
+        // Single day selection: Only include that day's gaming day
+        // Gaming day for Nov 16: Nov 16 11:00 AM to Nov 17 10:59:59.999 AM (inclusive)
+        const endGamingDay = getGamingDayRange(
+          customStartDate, // Use startDate for single day selection
+          gameDayStartHour,
+          timezoneOffset
+        );
+        return {
+          rangeStart: startGamingDay.rangeStart,
+          rangeEnd: endGamingDay.rangeEnd, // End of the selected day's gaming day (Nov 17 10:59:59.999 AM)
+        };
+      } else {
+        // Date range: Include all gaming days from start to end (inclusive)
+        // For end date, we want to include the FULL gaming day, so we get the next gaming day start
+        const endDateNextDay = new Date(customEndDate);
+        endDateNextDay.setDate(endDateNextDay.getDate() + 1);
+        const endGamingDay = getGamingDayRange(
+          endDateNextDay,
+          gameDayStartHour,
+          timezoneOffset
+        );
+
+        return {
+          rangeStart: startGamingDay.rangeStart,
+          rangeEnd: endGamingDay.rangeStart, // Use start of next gaming day to include full last day
+        };
+      }
 
     default:
       // Fallback to standard day boundaries for unknown periods

@@ -142,8 +142,8 @@ export default function CabinetCard(props: CabinetCardProps) {
             </>
           ) : (
             <p className="text-sm font-medium text-gray-900">
-              {props.locationName || 'No Location'}
-            </p>
+          {props.locationName || 'No Location'}
+        </p>
           )}
         </div>
       </div>

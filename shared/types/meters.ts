@@ -9,7 +9,9 @@ export type MetersReportData = {
   attPaidCredits: number;
   gamesPlayed: number;
   location: string;
+  locationId: string;
   createdAt: string;
+  machineDocumentId: string; // MongoDB document ID for the machine
   // Optional fields for export logic
   customName?: string;
   serialNumber?: string;
