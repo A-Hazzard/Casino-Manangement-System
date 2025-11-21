@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Image from "next/image";
 import {
   Table,
@@ -58,7 +58,18 @@ export default function CollectionReportTable({
   const isAdminUser = user?.roles ? hasAdminAccess(user.roles) : false;
 
   // Check if user can edit/delete reports (admin, evo admin, or manager)
-  const canEditDelete = user?.roles ? hasManagerAccess(user.roles) : false;
+  // Check if user can edit/delete reports
+  // Collectors and technicians cannot edit/delete - they can only create
+  const canEditDelete = useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors and technicians cannot edit/delete
+    if (userRoles.includes('collector') || userRoles.includes('technician')) {
+      return false;
+    }
+    // Only manager-level access and above can edit/delete
+    return hasManagerAccess(user.roles);
+  }, [user]);
 
   return (
     <div className="hidden lg:block overflow-x-auto bg-white shadow w-full min-w-0">

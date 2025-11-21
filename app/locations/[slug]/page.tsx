@@ -79,6 +79,21 @@ export default function LocationPage() {
     user?.roles?.some(role => role === 'admin' || role === 'developer')
   );
 
+  // Check if user can create/edit machines
+  // Technicians can create/edit machines, collectors cannot
+  const canManageMachines = useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors cannot create/edit machines
+    if (userRoles.includes('collector')) {
+      return false;
+    }
+    // Technicians, managers, admins, developers, and location admins can manage machines
+    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(
+      role => userRoles.includes(role)
+    );
+  }, [user]);
+
   // State for tracking date filter initialization
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
 
@@ -788,10 +803,10 @@ export default function LocationPage() {
                   className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
                 />
               </button>
-              {/* Create icon */}
+              {/* Create icon - Hidden for collectors */}
               {loading || cabinetsLoading ? (
                 <div className="h-4 w-4 flex-shrink-0" />
-              ) : (
+              ) : canManageMachines ? (
                 <button
                   onClick={() => openCabinetModal(locationId)}
                   disabled={refreshing}
@@ -800,7 +815,7 @@ export default function LocationPage() {
                 >
                   <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -852,7 +867,7 @@ export default function LocationPage() {
               </button>
               {loading || cabinetsLoading ? (
                 <ActionButtonSkeleton width="w-36" showIcon={false} />
-              ) : (
+              ) : canManageMachines ? (
                 <Button
                   variant="default"
                   className="bg-button text-white"
@@ -862,7 +877,7 @@ export default function LocationPage() {
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Create Machine
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

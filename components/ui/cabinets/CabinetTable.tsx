@@ -25,6 +25,8 @@ type CabinetTableProps = DataTableProps<Cabinet> & {
   showLocation?: boolean;
   showStatus?: boolean;
   showMetrics?: boolean;
+  canEditMachines?: boolean; // If false, hide edit button
+  canDeleteMachines?: boolean; // If false, hide delete button
 };
 import { ClockIcon, Cross1Icon, MobileIcon } from '@radix-ui/react-icons';
 import { IMAGES } from '@/lib/constants/images';
@@ -38,6 +40,8 @@ export default function CabinetTable({
   onPageChange: _onPageChange,
   onEdit,
   onDelete,
+  canEditMachines = true, // Default to true for backward compatibility
+  canDeleteMachines = true, // Default to true for backward compatibility
 }: CabinetTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const router = useRouter();
@@ -49,11 +53,35 @@ export default function CabinetTable({
 
   // Copy to clipboard function
   const copyToClipboard = async (text: string, label: string) => {
+    if (!text || text.trim() === '' || text === 'N/A') {
+      toast.error(`No ${label} value to copy`);
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(text.trim());
       toast.success(`${label} copied to clipboard`);
     } catch {
-      toast.error(`Failed to copy ${label}`);
+      // Fallback for older browsers or when clipboard API is not available
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text.trim();
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          toast.success(`${label} copied to clipboard`);
+        } else {
+          throw new Error('execCommand failed');
+        }
+      } catch (fallbackError) {
+        console.error('Failed to copy to clipboard:', fallbackError);
+        toast.error(`Failed to copy ${label}. Please try again.`);
+      }
     }
   };
 
@@ -249,40 +277,44 @@ export default function CabinetTable({
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={e => {
-                        e.stopPropagation();
-                        onEdit?.(cab);
-                      }}
-                      className="h-8 w-8 p-1 hover:bg-accent"
-                      title="Edit"
-                    >
-                      <Image
-                        src={IMAGES.editIcon}
-                        alt="Edit"
-                        width={16}
-                        height={16}
-                        className="h-4 w-4"
-                      />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={e => {
-                        e.stopPropagation();
-                        onDelete?.(cab);
-                      }}
-                      className="h-8 w-8 p-1 hover:bg-accent"
-                      title="Delete"
-                    >
-                      <Image
-                        src={IMAGES.deleteIcon}
-                        alt="Delete"
-                        width={16}
-                        height={16}
-                        className="h-4 w-4"
-                      />
-                    </Button>
+                    {canEditMachines && (
+                      <Button
+                        variant="ghost"
+                        onClick={e => {
+                          e.stopPropagation();
+                          onEdit?.(cab);
+                        }}
+                        className="h-8 w-8 p-1 hover:bg-accent"
+                        title="Edit"
+                      >
+                        <Image
+                          src={IMAGES.editIcon}
+                          alt="Edit"
+                          width={16}
+                          height={16}
+                          className="h-4 w-4"
+                        />
+                      </Button>
+                    )}
+                    {canDeleteMachines && (
+                      <Button
+                        variant="ghost"
+                        onClick={e => {
+                          e.stopPropagation();
+                          onDelete?.(cab);
+                        }}
+                        className="h-8 w-8 p-1 hover:bg-accent"
+                        title="Delete"
+                      >
+                        <Image
+                          src={IMAGES.deleteIcon}
+                          alt="Delete"
+                          width={16}
+                          height={16}
+                          className="h-4 w-4"
+                        />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

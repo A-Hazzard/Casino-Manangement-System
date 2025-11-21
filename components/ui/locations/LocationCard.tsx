@@ -12,10 +12,12 @@ export default function LocationCard({
   location,
   onLocationClick,
   onEdit,
+  canManageLocations = true, // Default to true for backward compatibility
 }: {
   location: LocationCardData['location'];
   onLocationClick: LocationCardData['onLocationClick'];
   onEdit: LocationCardData['onEdit'];
+  canManageLocations?: boolean;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -147,15 +149,17 @@ export default function LocationCard({
           <Eye className="h-3.5 w-3.5" />
           <span>View</span>
         </Button>
-        <Button
-          onClick={() => onEdit(location)}
-          variant="outline"
-          size="sm"
-          className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          <span>Edit</span>
-        </Button>
+        {canManageLocations && (
+          <Button
+            onClick={() => onEdit(location)}
+            variant="outline"
+            size="sm"
+            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
+          </Button>
+        )}
       </div>
     </div>
   );

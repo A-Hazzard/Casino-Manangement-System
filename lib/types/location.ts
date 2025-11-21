@@ -247,6 +247,7 @@ export type LocationCardData = {
 };
 
 export type LocationTableProps = {
+  canManageLocations?: boolean; // If false, hide edit/delete buttons
   locations: AggregatedLocation[];
   onSort: (column: LocationSortOption) => void;
   sortOption: LocationSortOption;

@@ -2169,7 +2169,7 @@ export default function NewCollectionModal({
         }}
       >
         <DialogContent
-          className="flex h-[calc(100vh-2rem)] max-w-6xl flex-col bg-container p-0 md:h-[95vh] lg:h-[90vh] lg:max-w-7xl"
+          className="flex h-[calc(100vh-2rem)] max-w-6xl flex-col bg-container p-0 md:h-[95vh] xl:h-[90vh] xl:max-w-7xl"
           onInteractOutside={e => e.preventDefault()}
         >
           <DialogHeader className="p-4 pb-0 md:p-6">
@@ -2182,9 +2182,9 @@ export default function NewCollectionModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-0 flex-grow flex-col overflow-y-auto lg:flex-row">
+          <div className="flex min-h-0 flex-grow flex-col overflow-y-auto xl:flex-row">
             {/* Mobile: Full width, Desktop: 1/5 width */}
-            <div className="flex w-full flex-col space-y-3 overflow-y-auto border-b border-gray-300 p-3 md:p-4 lg:w-1/5 lg:border-b-0 lg:border-r">
+            <div className="flex w-full flex-col space-y-3 overflow-y-auto border-b border-gray-300 p-3 md:p-4 xl:w-1/5 xl:border-b-0 xl:border-r">
               <div
                 className={
                   isProcessing ||
@@ -2356,7 +2356,7 @@ export default function NewCollectionModal({
             </div>
 
             {/* Mobile: Full width, Desktop: 3/5 width (60%) */}
-            <div className="flex w-full flex-col space-y-3 overflow-y-auto p-3 md:p-4 lg:w-3/5">
+            <div className="flex w-full flex-col space-y-3 overflow-y-auto p-3 md:p-4 xl:w-3/5">
               {(selectedMachineId && machineForDataEntry) ||
               collectedMachineEntries.length > 0 ? (
                 <>
@@ -3047,7 +3047,7 @@ export default function NewCollectionModal({
             </div>
 
             {/* Mobile: Full width, Desktop: 1/4 width */}
-            <div className="flex min-h-0 w-full flex-col border-t border-gray-300 bg-gray-50 lg:w-1/5 lg:border-l lg:border-t-0">
+            <div className="flex min-h-0 w-full flex-col border-t border-gray-300 bg-gray-50 xl:w-1/5 xl:border-l xl:border-t-0">
               <div className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 p-3 pb-2 md:p-4">
                 <h3 className="text-lg font-semibold text-gray-700">
                   Collected Machines ({collectedMachineEntries.length})

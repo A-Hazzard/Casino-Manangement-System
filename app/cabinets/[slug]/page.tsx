@@ -5,7 +5,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
 import { IMAGES } from '@/lib/constants/images';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import {
   Cross2Icon,
   Pencil2Icon,
 } from '@radix-ui/react-icons';
+import { ExternalLink, Copy } from 'lucide-react';
 import { AnimatePresence, motion, Variants } from 'framer-motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 // GSAP import removed - animations were causing performance issues
@@ -87,6 +88,35 @@ function CabinetDetailPageContent() {
       ['technician', 'admin', 'developer'].includes(role)
     );
 
+  // Check if user can edit/delete machines
+  // Technicians can edit but not delete, collectors cannot edit or delete
+  const canEditMachines = useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors cannot edit machines
+    if (userRoles.includes('collector')) {
+      return false;
+    }
+    // Technicians, managers, admins, developers, and location admins can edit
+    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(
+      role => userRoles.includes(role)
+    );
+  }, [user]);
+
+  // Note: canDeleteMachines is not currently used on this page but kept for future use
+  // const canDeleteMachines = useMemo(() => {
+  //   if (!user || !user.roles) return false;
+  //   const userRoles = user.roles || [];
+  //   // Collectors and technicians cannot delete machines
+  //   if (userRoles.includes('collector') || userRoles.includes('technician')) {
+  //     return false;
+  //   }
+  //   // Only managers, admins, developers, and location admins can delete
+  //   return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+  //     userRoles.includes(role)
+  //   );
+  // }, [user]);
+
   const {
     selectedLicencee,
     setSelectedLicencee,
@@ -105,6 +135,40 @@ function CabinetDetailPageContent() {
   }, [activeMetricsFilter, dateFilterInitialized]);
 
   const { openEditModal } = useCabinetActionsStore();
+
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string) => {
+    if (!text || text.trim() === '' || text === 'N/A') {
+      toast.error(`No ${label} value to copy`);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text.trim());
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      // Fallback for older browsers or when clipboard API is not available
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text.trim();
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          toast.success(`${label} copied to clipboard`);
+        } else {
+          throw new Error('execCommand failed');
+        }
+      } catch (fallbackError) {
+        console.error('Failed to copy to clipboard:', fallbackError);
+        toast.error(`Failed to copy ${label}. Please try again.`);
+      }
+    }
+  };
 
   // Custom hooks for data management
   const {
@@ -635,7 +699,18 @@ function CabinetDetailPageContent() {
                     height={32}
                     className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
                   />
-                  Name: {cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1'}
+                  <span>Name: {cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1'}</span>
+                  <button
+                    onClick={() => {
+                      const cabinetName = cabinet ? getSerialNumberIdentifier(cabinet) : 'GMID1';
+                      copyToClipboard(cabinetName, 'Cabinet Name');
+                    }}
+                    className="ml-1 rounded p-1 transition-colors hover:bg-gray-100"
+                    title="Copy cabinet name to clipboard"
+                  >
+                    <Copy className="h-4 w-4 text-gray-500 hover:text-blue-600" />
+                  </button>
+                  {canEditMachines && (
                   <motion.button
                     className="ml-2 rounded-full p-2 transition-colors hover:bg-gray-100"
                     whileHover={{ scale: 1.1 }}
@@ -648,6 +723,7 @@ function CabinetDetailPageContent() {
                   >
                     <Pencil2Icon className="h-5 w-5 text-button" />
                   </motion.button>
+                  )}
                 </h1>
                 {/* Show deleted status if cabinet has deletedAt field and it's greater than year 2020 */}
                 {cabinet?.deletedAt &&
@@ -669,7 +745,7 @@ function CabinetDetailPageContent() {
                 <p className="mt-1 text-grayHighlight">
                   Game Type: {cabinet?.gameType || 'None'}
                 </p>
-                <p className="mt-1">
+                <p className="mt-1 flex items-center gap-2">
                   <span className="text-button">
                     {locationName === 'Location Not Found' ? (
                       <span className="text-orange-600">
@@ -680,9 +756,31 @@ function CabinetDetailPageContent() {
                         No Location Assigned
                       </span>
                     ) : (
-                      locationName || 'Unknown Location'
+                      <button
+                        onClick={() => {
+                          if (cabinet?.gamingLocation) {
+                            router.push(`/locations/${cabinet.gamingLocation}`);
+                          }
+                        }}
+                        className="hover:text-blue-600 hover:underline cursor-pointer"
+                        disabled={!cabinet?.gamingLocation}
+                        title="Click to view location details"
+                      >
+                        {locationName || 'Unknown Location'}
+                      </button>
                     )}
                   </span>
+                  {cabinet?.gamingLocation && locationName !== 'Location Not Found' && locationName !== 'No Location Assigned' && (
+                    <button
+                      onClick={() => {
+                        router.push(`/locations/${cabinet.gamingLocation}`);
+                      }}
+                      className="flex-shrink-0"
+                      title="View location details"
+                    >
+                      <ExternalLink className="h-4 w-4 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110" />
+                    </button>
+                  )}
                   <span className="text-grayHighlight">
                     ,{' '}
                     {selectedLicencee === 'TTG'
@@ -764,7 +862,7 @@ function CabinetDetailPageContent() {
                 <p className="mt-1 text-grayHighlight">
                   Game Type: {cabinet?.gameType || 'None'}
                 </p>
-                <p className="mt-1">
+                <p className="mt-1 flex items-center gap-2">
                   <span className="text-button">
                     {locationName === 'Location Not Found' ? (
                       <span className="text-orange-600">
@@ -775,9 +873,31 @@ function CabinetDetailPageContent() {
                         No Location Assigned
                       </span>
                     ) : (
-                      locationName || 'Unknown Location'
+                      <button
+                        onClick={() => {
+                          if (cabinet?.gamingLocation) {
+                            router.push(`/locations/${cabinet.gamingLocation}`);
+                          }
+                        }}
+                        className="hover:text-blue-600 hover:underline cursor-pointer"
+                        disabled={!cabinet?.gamingLocation}
+                        title="Click to view location details"
+                      >
+                        {locationName || 'Unknown Location'}
+                      </button>
                     )}
                   </span>
+                  {cabinet?.gamingLocation && locationName !== 'Location Not Found' && locationName !== 'No Location Assigned' && (
+                    <button
+                      onClick={() => {
+                        router.push(`/locations/${cabinet.gamingLocation}`);
+                      }}
+                      className="flex-shrink-0"
+                      title="View location details"
+                    >
+                      <ExternalLink className="h-4 w-4 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110" />
+                    </button>
+                  )}
                   <span className="text-grayHighlight">
                     ,{' '}
                     {selectedLicencee === 'TTG'
@@ -929,9 +1049,23 @@ function CabinetDetailPageContent() {
                   <div>
                     <p className="text-xs text-grayHighlight sm:text-sm">
                       <span className="font-medium">SMIB ID:</span>{' '}
+                      <span className="flex items-center gap-1">
                       {cabinet?.relayId ||
                         cabinet?.smibBoard ||
                         'No Value Provided'}
+                        {(cabinet?.relayId || cabinet?.smibBoard) && (
+                          <button
+                            onClick={() => {
+                              const smibId = cabinet?.relayId || cabinet?.smibBoard || '';
+                              copyToClipboard(smibId, 'SMIB ID');
+                            }}
+                            className="rounded p-0.5 transition-colors hover:bg-gray-100"
+                            title="Copy SMIB ID to clipboard"
+                          >
+                            <Copy className="h-3 w-3 text-gray-500 hover:text-blue-600" />
+                          </button>
+                        )}
+                      </span>
                     </p>
                   </div>
                   <div className="sm:text-right">

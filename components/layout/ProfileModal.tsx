@@ -1,31 +1,31 @@
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import MultiSelectDropdown, {
+  type MultiSelectOption,
+} from '@/components/ui/common/MultiSelectDropdown';
 import CircleCropModal from '@/components/ui/image/CircleCropModal';
 import { Skeleton } from '@/components/ui/skeleton';
+import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import { fetchCountries } from '@/lib/helpers/countries';
-import type { Country } from '@/lib/types/country';
 import { useUserStore } from '@/lib/store/userStore';
 import type { User } from '@/lib/types/administration';
+import type { Country } from '@/lib/types/country';
+import type { Licensee } from '@/lib/types/licensee';
 import {
   detectChanges,
   filterMeaningfulChanges,
   getChangesSummary,
 } from '@/lib/utils/changeDetection';
 import {
-  validatePasswordStrength,
   getPasswordStrengthLabel,
+  isValidDateInput,
+  validateAlphabeticField,
   validateNameField,
   validateOptionalGender,
-  validateAlphabeticField,
-  isValidDateInput,
+  validatePasswordStrength,
 } from '@/lib/utils/validation';
-import { fetchLicensees } from '@/lib/helpers/clientLicensees';
-import type { Licensee } from '@/lib/types/licensee';
-import MultiSelectDropdown, {
-  type MultiSelectOption,
-} from '@/components/ui/common/MultiSelectDropdown';
 import cameraIcon from '@/public/cameraIcon.svg';
 import defaultAvatar from '@/public/defaultAvatar.svg';
-import { Checkbox } from '@/components/ui/checkbox';
 import * as Dialog from '@radix-ui/react-dialog';
 import axios from 'axios';
 import { Pencil, X } from 'lucide-react';
@@ -78,7 +78,9 @@ export default function ProfileModal({
     Array<{ _id: string; name: string; licenseeId?: string }>
   >([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
-  const [missingLocationNames, setMissingLocationNames] = useState<Record<string, string>>({});
+  const [missingLocationNames, setMissingLocationNames] = useState<
+    Record<string, string>
+  >({});
 
   // Licensee/Location assignment state
   const [selectedLicenseeIds, setSelectedLicenseeIds] = useState<string[]>([]);
@@ -270,10 +272,15 @@ export default function ProfileModal({
       setLicenseesLoading(true);
       try {
         const result = await fetchLicensees();
-        const licenseesData = Array.isArray(result.licensees) ? result.licensees : [];
+        const licenseesData = Array.isArray(result.licensees)
+          ? result.licensees
+          : [];
         console.log('[ProfileModal] Fetched licensees:', licenseesData);
         console.log('[ProfileModal] Licensees count:', licenseesData.length);
-        console.log('[ProfileModal] Licensee IDs:', licenseesData.map(l => ({ id: String(l._id), name: l.name })));
+        console.log(
+          '[ProfileModal] Licensee IDs:',
+          licenseesData.map(l => ({ id: String(l._id), name: l.name }))
+        );
         setLicensees(licenseesData);
       } catch (error) {
         console.error('[ProfileModal] Failed to fetch licensees:', error);
@@ -301,7 +308,8 @@ export default function ProfileModal({
         };
 
         const response = await axios.get('/api/locations?minimal=1');
-        const rawLocations: RawLocationResponse[] = response.data?.locations || [];
+        const rawLocations: RawLocationResponse[] =
+          response.data?.locations || [];
         const locationsData = rawLocations.map(location => {
           const relLicencee = location.rel?.licencee;
           let derivedLicenseeId: string | undefined;
@@ -340,30 +348,33 @@ export default function ProfileModal({
   // Fetch missing location names by ID
   useEffect(() => {
     const fetchMissingLocations = async () => {
-      if (!userData?.resourcePermissions?.['gaming-locations']?.resources) return;
+      if (!userData?.resourcePermissions?.['gaming-locations']?.resources)
+        return;
       if (locationsLoading) return; // Don't fetch if locations are still loading
-      
-      const locationIds = userData.resourcePermissions['gaming-locations'].resources;
-      const missingIds = locationIds.filter(
-        id => {
-          const normalizedId = String(id);
-          return !locations.find(l => String(l._id) === normalizedId);
-        }
-      );
-      
+
+      const locationIds =
+        userData.resourcePermissions['gaming-locations'].resources;
+      const missingIds = locationIds.filter(id => {
+        const normalizedId = String(id);
+        return !locations.find(l => String(l._id) === normalizedId);
+      });
+
       if (missingIds.length === 0) return;
-      
+
       // Check which ones we haven't fetched yet
       const idsToFetch = missingIds.filter(
         id => !missingLocationNames[String(id)]
       );
-      
+
       if (idsToFetch.length === 0) return;
-      
-      console.log('[ProfileModal] Fetching missing location names for IDs:', idsToFetch);
-      
+
+      console.log(
+        '[ProfileModal] Fetching missing location names for IDs:',
+        idsToFetch
+      );
+
       // Fetch each missing location by ID
-      const fetchPromises = idsToFetch.map(async (locationId) => {
+      const fetchPromises = idsToFetch.map(async locationId => {
         try {
           const normalizedId = String(locationId);
           const response = await axios.get(`/api/locations/${normalizedId}`);
@@ -373,26 +384,29 @@ export default function ProfileModal({
           }
           return { id: normalizedId, name: `Unknown Location` };
         } catch (error) {
-          console.error(`[ProfileModal] Failed to fetch location ${locationId}:`, error);
+          console.error(
+            `[ProfileModal] Failed to fetch location ${locationId}:`,
+            error
+          );
           return { id: String(locationId), name: `Unknown (${locationId})` };
         }
       });
-      
+
       const results = await Promise.all(fetchPromises);
       const namesMap: Record<string, string> = {};
       results.forEach(result => {
         namesMap[result.id] = result.name;
       });
-      
+
       setMissingLocationNames(prev => ({ ...prev, ...namesMap }));
     };
-    
+
     if (open && userData && !locationsLoading && locations.length >= 0) {
       // Wait a bit for locations to finish loading, then fetch missing ones
       const timer = setTimeout(() => {
         void fetchMissingLocations();
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
     return undefined;
@@ -441,7 +455,9 @@ export default function ProfileModal({
     }
 
     const userLocations =
-      userData.resourcePermissions?.['gaming-locations']?.resources?.map(normalize) || [];
+      userData.resourcePermissions?.['gaming-locations']?.resources?.map(
+        normalize
+      ) || [];
     if (userLocations.length > 0) {
       setSelectedLocationIds(userLocations);
       setAllLocationsSelected(false);
@@ -480,7 +496,9 @@ export default function ProfileModal({
       return [];
     }
     return locations.filter(location =>
-      location.licenseeId ? selectedLicenseeIds.includes(location.licenseeId) : true
+      location.licenseeId
+        ? selectedLicenseeIds.includes(location.licenseeId)
+        : true
     );
   }, [allLicenseesSelected, locations, selectedLicenseeIds]);
 
@@ -797,8 +815,12 @@ export default function ProfileModal({
       };
     }
 
-    const normalizedSelectedLicensees = selectedLicenseeIds.map(id => String(id));
-    const normalizedSelectedLocations = selectedLocationIds.map(id => String(id));
+    const normalizedSelectedLicensees = selectedLicenseeIds.map(id =>
+      String(id)
+    );
+    const normalizedSelectedLocations = selectedLocationIds.map(id =>
+      String(id)
+    );
     const canEditAssignments =
       authUser?.roles?.some(role =>
         ['admin', 'developer'].includes(role.toLowerCase())
@@ -841,10 +863,10 @@ export default function ProfileModal({
         },
       },
     };
-    
+
     let changes: ReturnType<typeof detectChanges> = [];
     let meaningfulChanges: ReturnType<typeof filterMeaningfulChanges> = [];
-    
+
     try {
       // Detect changes by comparing ONLY editable fields
       changes = detectChanges(originalData, formDataComparison);
@@ -859,22 +881,30 @@ export default function ProfileModal({
     const hasPasswordChange = !!(
       passwordData.newPassword && passwordData.confirmPassword
     );
-    
+
     const originalLicenseeIds =
       (userData.rel?.licencee || []).map(value => String(value)) || [];
     const licenseeIdsChanged =
       originalLicenseeIds.length !== normalizedSelectedLicensees.length ||
-      !originalLicenseeIds.every(id => normalizedSelectedLicensees.includes(id)) ||
-      !normalizedSelectedLicensees.every(id => originalLicenseeIds.includes(id));
+      !originalLicenseeIds.every(id =>
+        normalizedSelectedLicensees.includes(id)
+      ) ||
+      !normalizedSelectedLicensees.every(id =>
+        originalLicenseeIds.includes(id)
+      );
 
     const originalLocationIds =
-      userData.resourcePermissions?.['gaming-locations']?.resources?.map(value =>
-        String(value)
+      userData.resourcePermissions?.['gaming-locations']?.resources?.map(
+        value => String(value)
       ) || [];
     const locationIdsChanged =
       originalLocationIds.length !== normalizedSelectedLocations.length ||
-      !originalLocationIds.every(id => normalizedSelectedLocations.includes(id)) ||
-      !normalizedSelectedLocations.every(id => originalLocationIds.includes(id));
+      !originalLocationIds.every(id =>
+        normalizedSelectedLocations.includes(id)
+      ) ||
+      !normalizedSelectedLocations.every(id =>
+        originalLocationIds.includes(id)
+      );
 
     if (licenseeIdsChanged) {
       meaningfulChanges.push({
@@ -903,11 +933,11 @@ export default function ProfileModal({
     const updatePayload: Record<string, unknown> = { _id: userData._id };
     meaningfulChanges.forEach(change => {
       const fieldPath = change.path; // Use full path for nested fields
-      
+
       // Handle nested fields
       if (fieldPath.includes('.')) {
         const [parent, child] = fieldPath.split('.');
-        
+
         // Special handling for objects that must be sent whole
         if (parent === 'profile') {
           updatePayload.profile = formData;
@@ -915,7 +945,8 @@ export default function ProfileModal({
           if (!updatePayload[parent]) {
             updatePayload[parent] = {};
           }
-          (updatePayload[parent] as Record<string, unknown>)[child] = change.newValue;
+          (updatePayload[parent] as Record<string, unknown>)[child] =
+            change.newValue;
         }
       } else {
         if (fieldPath === 'profilePicture') {
@@ -937,20 +968,25 @@ export default function ProfileModal({
     }
 
     // Check if admin/evo admin is changing their own permission-related fields
-    const isAdminOrEvoAdmin = userData.roles?.some(role => 
-      role.toLowerCase() === 'admin' || role.toLowerCase() === 'developer'
+    const isAdminOrEvoAdmin = userData.roles?.some(
+      role =>
+        role.toLowerCase() === 'admin' || role.toLowerCase() === 'developer'
     );
-    
+
     if (isAdminOrEvoAdmin) {
       const permissionFieldsChanged = meaningfulChanges.some(change => {
         const fieldPath = change.path;
-        return fieldPath === 'roles' || 
-               fieldPath.startsWith('resourcePermissions') || 
-               fieldPath.startsWith('rel');
+        return (
+          fieldPath === 'roles' ||
+          fieldPath.startsWith('resourcePermissions') ||
+          fieldPath.startsWith('rel')
+        );
       });
-      
+
       if (permissionFieldsChanged) {
-        console.log('[ProfileModal] 🔄 Admin/Developer changing own permissions - incrementing sessionVersion');
+        console.log(
+          '[ProfileModal] 🔄 Admin/Developer changing own permissions - incrementing sessionVersion'
+        );
         updatePayload.$inc = { sessionVersion: 1 };
       }
     }
@@ -970,7 +1006,7 @@ export default function ProfileModal({
         console.error('Error generating changes summary:', error);
         changesSummary = 'Profile updated';
       }
-      
+
       await logActivity(
         'update',
         'user',
@@ -987,14 +1023,14 @@ export default function ProfileModal({
       );
 
       toast.success(`Profile updated successfully: ${changesSummary}`);
-      
+
       // Reset password fields after successful save
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
-      
+
       // Emit a browser event so the sidebar can update immediately
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
@@ -1010,17 +1046,17 @@ export default function ProfileModal({
       onClose();
     } catch (error) {
       let errorMessage = 'Failed to update profile.';
-      
+
       if (axios.isAxiosError(error)) {
         // Extract error message from API response
         if (error.response?.data) {
           const responseData = error.response.data;
           // Try to get the error message from various possible locations
-          errorMessage = 
-            responseData.message || 
-            responseData.error || 
+          errorMessage =
+            responseData.message ||
+            responseData.error ||
             (typeof responseData === 'string' ? responseData : errorMessage);
-          
+
           // If message is generic, try to get more specific error
           if (errorMessage === 'Update failed' && responseData.error) {
             errorMessage = responseData.error;
@@ -1031,7 +1067,7 @@ export default function ProfileModal({
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorMessage);
       if (process.env.NODE_ENV === 'development') {
         console.error('Profile update error:', error);
@@ -1440,7 +1476,8 @@ export default function ProfileModal({
                             </label>
                             {licensees.length === 0 && (
                               <p className="text-sm text-gray-500">
-                                No licensees available. Please add licensees first.
+                                No licensees available. Please add licensees
+                                first.
                               </p>
                             )}
                             {!allLicenseesSelected && licensees.length > 0 && (
@@ -1464,43 +1501,53 @@ export default function ProfileModal({
                           <p className="p-2">
                             {licenseesLoading ? (
                               <Skeleton className="inline-block h-5 w-32" />
-                            ) : userData?.rel?.licencee && userData.rel.licencee.length > 0
-                              ? (() => {
-                                  const licenseeNames = userData.rel.licencee
+                            ) : userData?.rel?.licencee &&
+                              userData.rel.licencee.length > 0 ? (
+                              (() => {
+                                const licenseeNames = userData.rel.licencee
                                   .map(licenseeId => {
-                                      const normalizedId = String(licenseeId);
+                                    const normalizedId = String(licenseeId);
                                     const match = licensees.find(
-                                        licensee => String(licensee._id) === normalizedId
+                                      licensee =>
+                                        String(licensee._id) === normalizedId
                                     );
-                                      return match?.name || null;
-                                    })
-                                    .filter((name): name is string => name !== null);
-                                  
-                                  if (licenseeNames.length === 0) {
-                                    // If no matches found, show IDs as fallback
-                                    return userData.rel.licencee
-                                      .map(id => `Unknown (${id})`)
-                                      .join(', ');
-                                  }
-                                  
-                                  // Show matched names, and any unmatched IDs
-                                  const unmatchedIds = userData.rel.licencee.filter(id => {
+                                    return match?.name || null;
+                                  })
+                                  .filter(
+                                    (name): name is string => name !== null
+                                  );
+
+                                if (licenseeNames.length === 0) {
+                                  // If no matches found, show IDs as fallback
+                                  return userData.rel.licencee
+                                    .map(id => `Unknown (${id})`)
+                                    .join(', ');
+                                }
+
+                                // Show matched names, and any unmatched IDs
+                                const unmatchedIds =
+                                  userData.rel.licencee.filter(id => {
                                     const normalizedId = String(id);
                                     return !licensees.some(
-                                      licensee => String(licensee._id) === normalizedId
+                                      licensee =>
+                                        String(licensee._id) === normalizedId
                                     );
                                   });
-                                  
-                                  const result = [...licenseeNames];
-                                  if (unmatchedIds.length > 0) {
-                                    result.push(...unmatchedIds.map(id => `Unknown (${id})`));
-                                  }
-                                  
-                                  return result.join(', ');
-                                })()
-                              : isPrivilegedEditor
-                                ? 'All Licensees (Admin)'
-                                : 'None'}
+
+                                const result = [...licenseeNames];
+                                if (unmatchedIds.length > 0) {
+                                  result.push(
+                                    ...unmatchedIds.map(id => `Unknown (${id})`)
+                                  );
+                                }
+
+                                return result.join(', ');
+                              })()
+                            ) : isPrivilegedEditor ? (
+                              'All Licensees (Admin)'
+                            ) : (
+                              'None'
+                            )}
                           </p>
                         )}
                       </div>
@@ -1510,13 +1557,15 @@ export default function ProfileModal({
                         <label className="mb-1 block text-sm font-medium text-gray-700">
                           Assigned Locations
                         </label>
-                        {locationsLoading || (licenseesLoading && !locations.length) ? (
+                        {locationsLoading ||
+                        (licenseesLoading && !locations.length) ? (
                           <div className="p-2">
                             <Skeleton className="h-5 w-32" />
                           </div>
                         ) : isEditMode && isPrivilegedEditor ? (
                           <div className="space-y-3 rounded-md border border-border bg-white p-3">
-                            {allLicenseesSelected || selectedLicenseeIds.length > 0 ? (
+                            {allLicenseesSelected ||
+                            selectedLicenseeIds.length > 0 ? (
                               <>
                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                   <Checkbox
@@ -1547,68 +1596,150 @@ export default function ProfileModal({
                                     disabled={availableLocations.length === 0}
                                   />
                                 )}
-                                {allLocationsSelected && availableLocations.length > 0 && (
-                                  <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-                                    All {availableLocations.length} available locations selected
-                                  </div>
-                                )}
+                                {allLocationsSelected &&
+                                  availableLocations.length > 0 && (
+                                    <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                                      All {availableLocations.length} available
+                                      locations selected
+                                    </div>
+                                  )}
                               </>
                             ) : (
                               <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-                                Select at least one licensee to assign locations.
+                                Select at least one licensee to assign
+                                locations.
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="p-2">
+                          <div className="w-full">
                             {(() => {
                               const locationPermissions =
-                                userData?.resourcePermissions?.['gaming-locations']?.resources || [];
+                                userData?.resourcePermissions?.[
+                                  'gaming-locations'
+                                ]?.resources || [];
 
                               const userRolesLower =
-                                userData?.roles?.map(role => role.toLowerCase()) || [];
-                              const isManager = userRolesLower.includes('manager');
+                                userData?.roles?.map(role =>
+                                  role.toLowerCase()
+                                ) || [];
+                              const isManager =
+                                userRolesLower.includes('manager');
                               const isAdminOrDev =
                                 userRolesLower.includes('admin') ||
                                 userRolesLower.includes('developer');
 
-                              if (isAdminOrDev && locationPermissions.length === 0) {
-                                return 'All Locations (Admin)';
+                              if (
+                                isAdminOrDev &&
+                                locationPermissions.length === 0
+                              ) {
+                                return (
+                                  <div className="text-center text-gray-700">
+                                    All Locations (Admin)
+                                  </div>
+                                );
                               }
 
-                              if (isManager && locationPermissions.length === 0) {
-                                return 'All Locations for assigned licensees (Manager)';
+                              if (
+                                isManager &&
+                                locationPermissions.length === 0
+                              ) {
+                                return (
+                                  <div className="text-center text-gray-700">
+                                    All Locations for assigned licensees
+                                    (Manager)
+                                  </div>
+                                );
                               }
 
                               if (locationPermissions.length === 0) {
-                                return 'No locations assigned';
+                                return (
+                                  <div className="text-center text-gray-700">
+                                    No locations assigned
+                                  </div>
+                                );
                               }
 
                               // Only show skeleton if we're still loading locations
                               if (locationsLoading) {
-                                return <Skeleton className="inline-block h-5 w-48" />;
+                                return (
+                                  <Skeleton className="inline-block h-5 w-48" />
+                                );
                               }
 
-                              // If we have missing locations, show them as "Unknown" instead of skeleton
-                              // The useEffect will fetch their names in the background
-
-                              const locationNames = locationPermissions
+                              // Display locations in a table format with licensee information
+                              const locationData = locationPermissions
                                 .map(locationId => {
                                   const normalizedId = String(locationId);
                                   const location = locations.find(
                                     loc => String(loc._id) === normalizedId
                                   );
-                                  if (location) {
-                                    return location.name;
-                                  }
-                                  if (missingLocationNames[normalizedId]) {
-                                    return missingLocationNames[normalizedId];
-                                  }
-                                  return `Unknown (${normalizedId})`;
-                                })
-                                .join(', ');
 
-                              return locationNames || 'No locations found';
+                                  if (!location) {
+                                    // Try to get from missingLocationNames
+                                    const locationName =
+                                      missingLocationNames[normalizedId] ||
+                                      `Unknown (${normalizedId})`;
+                                    return {
+                                      locationName,
+                                      licenseeName: 'Unknown',
+                                    };
+                                  }
+
+                                  const licensee = location.licenseeId
+                                    ? licensees.find(
+                                        l =>
+                                          String(l._id) ===
+                                          String(location.licenseeId)
+                                      )
+                                    : null;
+
+                                  return {
+                                    locationName: location.name || 'Unknown',
+                                    licenseeName: licensee?.name || 'Unknown',
+                                  };
+                                })
+                                .filter(item => item !== null);
+
+                              if (locationData.length === 0) {
+                                return (
+                                  <div className="text-center text-gray-700">
+                                    No locations found
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full border-collapse border border-gray-300">
+                                    <thead>
+                                      <tr className="bg-gray-100">
+                                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
+                                          Location
+                                        </th>
+                                        <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
+                                          Licensee
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {locationData.map((item, index) => (
+                                        <tr
+                                          key={index}
+                                          className="hover:bg-gray-50"
+                                        >
+                                          <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                                            {item.locationName}
+                                          </td>
+                                          <td className="border border-gray-300 px-4 py-2 text-gray-700">
+                                            {item.licenseeName}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              );
                             })()}
                           </div>
                         )}
@@ -2043,7 +2174,8 @@ export default function ProfileModal({
                         </div>
                       </div>
                       <p className="mt-2 text-xs text-gray-500">
-                        * To change your password, fill in all three fields. Leave all fields empty to keep your current password.
+                        * To change your password, fill in all three fields.
+                        Leave all fields empty to keep your current password.
                       </p>
                     </div>
                   )}

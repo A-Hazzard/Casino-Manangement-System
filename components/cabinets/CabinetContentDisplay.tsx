@@ -17,7 +17,7 @@ import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import type { GamingMachine as Machine } from '@/shared/types/entities';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import PaginationControls from '@/components/ui/PaginationControls';
 
@@ -66,6 +66,34 @@ export const CabinetContentDisplay = ({
   const user = useUserStore(state => state.user);
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
+
+  // Check if user can edit/delete machines
+  // Technicians can edit but not delete, collectors cannot edit or delete
+  const canEditMachines = useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors cannot edit machines
+    if (userRoles.includes('collector')) {
+      return false;
+    }
+    // Technicians, managers, admins, developers, and location admins can edit
+    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(
+      role => userRoles.includes(role)
+    );
+  }, [user]);
+
+  const canDeleteMachines = useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors and technicians cannot delete machines
+    if (userRoles.includes('collector') || userRoles.includes('technician')) {
+      return false;
+    }
+    // Only managers, admins, developers, and location admins can delete
+    return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+      userRoles.includes(role)
+    );
+  }, [user]);
   
   // Get user's assigned licensees for better empty state message
   const [licenseeNames, setLicenseeNames] = useState<string[]>([]);
@@ -221,6 +249,8 @@ export const CabinetContentDisplay = ({
           onPageChange={onPageChange}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          canEditMachines={canEditMachines}
+          canDeleteMachines={canDeleteMachines}
         />
       </div>
 
@@ -255,6 +285,8 @@ export const CabinetContentDisplay = ({
                 installedGame={machine.installedGame || machine.game || ''}
                 onEdit={() => handleEdit(machine)}
                 onDelete={() => handleDelete(machine)}
+                canEditMachines={canEditMachines}
+                canDeleteMachines={canDeleteMachines}
               />
             ))}
           </ClientOnly>

@@ -1,13 +1,28 @@
+import { CustomSelect } from '@/components/ui/custom-select';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+
+const ROLE_OPTIONS = [
+  { label: 'All Roles', value: 'all' },
+  { label: 'Developer', value: 'developer' },
+  { label: 'Administrator', value: 'admin' },
+  { label: 'Manager', value: 'manager' },
+  { label: 'Location Admin', value: 'location admin' },
+  { label: 'Technician', value: 'technician' },
+  { label: 'Collector', value: 'collector' },
+];
 
 type SearchFilterBarProps = {
   searchValue: string;
   setSearchValue: (value: string) => void;
+  selectedRole: string;
+  setSelectedRole: (value: string) => void;
 };
 
 export default function SearchFilterBar({
   searchValue,
   setSearchValue,
+  selectedRole,
+  setSelectedRole,
 }: SearchFilterBarProps) {
   // Responsive Search and Filter Layout
   return (
@@ -25,6 +40,15 @@ export default function SearchFilterBar({
             <span className="flex cursor-pointer items-center border-l border-gray-300 bg-white px-2 text-gray-400 transition-colors hover:text-gray-600">
               <MagnifyingGlassIcon className="h-4 w-4 md:h-5 md:w-5" />
             </span>
+          </div>
+          <div className="w-full sm:w-auto">
+            <CustomSelect
+              options={ROLE_OPTIONS}
+              value={selectedRole}
+              onValueChange={setSelectedRole}
+              placeholder="All Roles"
+              className="h-11 min-w-[150px] rounded-md bg-white shadow-sm"
+            />
           </div>
         </div>
       </div>

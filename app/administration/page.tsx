@@ -162,6 +162,13 @@ function AdministrationPageContent() {
   const [searchValue, setSearchValue] = useState('');
   // Debounced search value for backend search
   const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
+  // Role filter state
+  const [selectedRole, setSelectedRole] = useState<string>('all');
+
+  // Reset page when role filter changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [selectedRole]);
   // Track if we're using backend search results
   const [usingBackendSearch, setUsingBackendSearch] = useState(false);
   // Store pagination metadata from API (used for search results)
@@ -633,17 +640,30 @@ function AdministrationPageContent() {
     );
   }, [user?.roles]);
 
-  // Get items for current page from the current batch
+  // Apply role filter to all users first (before pagination)
+  const roleFilteredUsers = useMemo(() => {
+    if (selectedRole === 'all') {
+      return allUsers;
+    }
+    return allUsers.filter(user => {
+      const userRoles = user.roles || [];
+      return userRoles.some(role => 
+        typeof role === 'string' && role.toLowerCase() === selectedRole.toLowerCase()
+      );
+    });
+  }, [allUsers, selectedRole]);
+
+  // Get items for current page from the role-filtered users
   const paginatedUsers = useMemo(() => {
     // Calculate position within current batch (0-4 for pages 0-4, 0-4 for pages 5-9, etc.)
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
 
-    return allUsers.slice(startIndex, endIndex);
-  }, [allUsers, currentPage, itemsPerPage, pagesPerBatch]);
+    return roleFilteredUsers.slice(startIndex, endIndex);
+  }, [roleFilteredUsers, currentPage, itemsPerPage, pagesPerBatch]);
 
-  // Calculate total pages based on all loaded batches or search results
+  // Calculate total pages based on role-filtered users or search results
   const totalPages = useMemo(() => {
     // When using backend search, use pagination metadata from API
     if (usingBackendSearch && paginationMetadata) {
@@ -652,14 +672,14 @@ function AdministrationPageContent() {
         : 1;
     }
 
-    // Otherwise, calculate total pages from all loaded batches
-    const totalItems = allUsers.length;
+    // Otherwise, calculate total pages from role-filtered users
+    const totalItems = roleFilteredUsers.length;
     const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
 
     // If we have items, return the calculated pages (based on all loaded data)
     // This will dynamically increase as more batches are loaded
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [allUsers.length, itemsPerPage, usingBackendSearch, paginationMetadata]);
+  }, [roleFilteredUsers.length, itemsPerPage, usingBackendSearch, paginationMetadata]);
 
   const processedUsers = useMemo(() => {
     // When using backend search, backend already filters, so we only need to sort and filter test users
@@ -1704,6 +1724,8 @@ function AdministrationPageContent() {
         <SearchFilterBar
           searchValue={searchValue}
           setSearchValue={setSearchValue}
+          selectedRole={selectedRole}
+          setSelectedRole={setSelectedRole}
         />
         <div className="block md:block xl:hidden">
           {isSearching ? (

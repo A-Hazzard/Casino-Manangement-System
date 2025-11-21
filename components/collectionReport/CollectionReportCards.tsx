@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Image from "next/image";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
 import { useRouter } from "next/navigation";
@@ -39,8 +39,18 @@ export default function CollectionReportCards({
   // Check if user has admin access to see issue highlights
   const isAdminUser = user?.roles ? hasAdminAccess(user.roles) : false;
 
-  // Check if user can edit/delete reports (admin, evo admin, or manager)
-  const canEditDelete = user?.roles ? hasManagerAccess(user.roles) : false;
+  // Check if user can edit/delete reports
+  // Collectors and technicians cannot edit/delete - they can only create
+  const canEditDelete = useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors and technicians cannot edit/delete
+    if (userRoles.includes('collector') || userRoles.includes('technician')) {
+      return false;
+    }
+    // Only manager-level access and above can edit/delete
+    return hasManagerAccess(user.roles);
+  }, [user]);
   return (
     <div
       className={`flex flex-col mt-4 px-2 md:px-4 gap-4 w-full min-w-0 ${

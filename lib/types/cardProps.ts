@@ -23,6 +23,8 @@ export type CabinetCardProps = {
   custom?: { name?: string };
   onEdit?: (cabinet: CabinetCardProps) => void;
   onDelete?: (cabinet: CabinetCardProps) => void;
+  canEditMachines?: boolean; // If false, hide edit button
+  canDeleteMachines?: boolean; // If false, hide delete button
 };
 
 /**

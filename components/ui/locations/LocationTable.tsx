@@ -26,6 +26,7 @@ const LocationTable: React.FC<LocationTableProps> = ({
   onLocationClick,
   onAction,
   formatCurrency,
+  canManageLocations = true, // Default to true for backward compatibility
 }) => {
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -164,42 +165,46 @@ const LocationTable: React.FC<LocationTableProps> = ({
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={e => {
-                          e.stopPropagation();
-                          onAction('edit', loc);
-                        }}
-                        className="h-8 w-8 p-1 hover:bg-accent"
-                        title="Edit"
-                      >
-                        <Image
-                          src={editIcon}
-                          alt="Edit"
-                          width={16}
-                          height={16}
-                          className="h-4 w-4"
-                        />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={e => {
-                          e.stopPropagation();
-                          onAction('delete', loc);
-                        }}
-                        className="h-8 w-8 p-1 hover:bg-accent"
-                        title="Delete"
-                      >
-                        <Image
-                          src={deleteIcon}
-                          alt="Delete"
-                          width={16}
-                          height={16}
-                          className="h-4 w-4"
-                        />
-                      </Button>
+                      {canManageLocations && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={e => {
+                              e.stopPropagation();
+                              onAction('edit', loc);
+                            }}
+                            className="h-8 w-8 p-1 hover:bg-accent"
+                            title="Edit"
+                          >
+                            <Image
+                              src={editIcon}
+                              alt="Edit"
+                              width={16}
+                              height={16}
+                              className="h-4 w-4"
+                            />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={e => {
+                              e.stopPropagation();
+                              onAction('delete', loc);
+                            }}
+                            className="h-8 w-8 p-1 hover:bg-accent"
+                            title="Delete"
+                          >
+                            <Image
+                              src={deleteIcon}
+                              alt="Delete"
+                              width={16}
+                              height={16}
+                              className="h-4 w-4"
+                            />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

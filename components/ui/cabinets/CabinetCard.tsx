@@ -197,24 +197,28 @@ export default function CabinetCard(props: CabinetCardProps) {
           <Eye className="h-3.5 w-3.5" />
           <span>View</span>
         </Button>
-        <Button
-          onClick={() => props.onEdit?.(props)}
-          variant="outline"
-          size="sm"
-          className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          <span>Edit</span>
-        </Button>
-        <Button
-          onClick={() => props.onDelete?.(props)}
-          variant="outline"
-          size="sm"
-          className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span>Delete</span>
-        </Button>
+        {props.canEditMachines !== false && (
+          <Button
+            onClick={() => props.onEdit?.(props)}
+            variant="outline"
+            size="sm"
+            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
+          </Button>
+        )}
+        {props.canDeleteMachines !== false && (
+          <Button
+            onClick={() => props.onDelete?.(props)}
+            variant="outline"
+            size="sm"
+            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete</span>
+          </Button>
+        )}
       </div>
     </div>
   );

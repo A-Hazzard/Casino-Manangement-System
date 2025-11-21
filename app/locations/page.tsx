@@ -146,6 +146,28 @@ function LocationsPageContent() {
     );
   }, [user?.roles]);
 
+  // Note: isCollector is not currently used but kept for future use
+  // const isCollector = useMemo(() => {
+  //   const userRoles = user?.roles || [];
+  //   return userRoles.some(
+  //     role => typeof role === 'string' && role.toLowerCase() === 'collector'
+  //   );
+  // }, [user?.roles]);
+
+  // Only managers, admins, developers, and location admins can create/edit/delete locations
+  // Collectors and technicians cannot manage locations
+  const canManageLocations = useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Exclude collectors and technicians
+    if (userRoles.includes('collector') || userRoles.includes('technician')) {
+      return false;
+    }
+    return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+      userRoles.includes(role)
+    );
+  }, [user]);
+
   // Use accumulated locations for pagination (or filtered data for search)
   const locationsForPagination = searchTerm.trim()
     ? locationData
@@ -335,8 +357,8 @@ function LocationsPageContent() {
                 className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
               />
             </button>
-            {/* Mobile: Create icon */}
-            {!isLoading && (
+            {/* Mobile: Create icon - Hidden for collectors */}
+            {!isLoading && canManageLocations && (
               <button
                 onClick={openNewLocationModal}
                 disabled={isLoading}
@@ -362,7 +384,7 @@ function LocationsPageContent() {
             </button>
             {isLoading ? (
               <ActionButtonSkeleton width="w-36" showIcon={true} />
-            ) : (
+            ) : canManageLocations ? (
               <Button
                 onClick={openNewLocationModal}
                 className="flex-shrink-0 items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive"
@@ -372,7 +394,7 @@ function LocationsPageContent() {
                 </div>
                 <span>New Location</span>
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -662,6 +684,7 @@ function LocationsPageContent() {
                           location={location}
                           onLocationClick={handleLocationClick}
                           onEdit={() => openEditModal(location)}
+                          canManageLocations={canManageLocations}
                         />
                       ))
                     ) : (
@@ -684,6 +707,7 @@ function LocationsPageContent() {
                   onLocationClick={handleLocationClick}
                   onAction={handleTableAction}
                   formatCurrency={formatCurrency}
+                  canManageLocations={canManageLocations}
                 />
               </div>
             </>

@@ -1,29 +1,37 @@
-import React from 'react';
-import Image from 'next/image';
-import { formatCurrency } from '@/lib/utils';
-import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
-import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import CabinetTable from '@/components/ui/cabinets/CabinetTable';
+import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
+import type { CabinetSortOption } from '@/lib/hooks/data';
+import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import { useUserStore } from '@/lib/store/userStore';
+import type { CabinetGridProps } from '@/lib/types/components';
+import type { ExtendedCabinetDetail } from '@/lib/types/pages';
+import { formatCurrency } from '@/lib/utils';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import type { CabinetSortOption } from '@/lib/hooks/data';
-import type { ExtendedCabinetDetail } from '@/lib/types/pages';
-import type { CabinetGridProps } from '@/lib/types/components';
-import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
-import CabinetTable from '@/components/ui/cabinets/CabinetTable';
-import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 import gsap from 'gsap';
+import { Copy, Eye, Pencil, Trash2 } from 'lucide-react';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import Image from 'next/image';
+import React from 'react';
+import { toast } from 'sonner';
 
 function CabinetCardMobile({
   cabinet,
   router,
   onEdit,
   onDelete,
+  canEditMachines = true,
+  canDeleteMachines = true,
+  copyToClipboard,
 }: {
   cabinet: ExtendedCabinetDetail;
   router: AppRouterInstance;
   onEdit: (cabinet: ExtendedCabinetDetail) => void;
   onDelete: (cabinet: ExtendedCabinetDetail) => void;
+  canEditMachines?: boolean;
+  canDeleteMachines?: boolean;
+  copyToClipboard: (text: string, label: string) => void;
 }) {
   const statusRef = React.useRef<HTMLSpanElement>(null);
   React.useEffect(() => {
@@ -66,9 +74,37 @@ function CabinetCardMobile({
       <p className="mb-1 text-sm text-gray-600">
         Game: {cabinet.game || cabinet.installedGame || 'Unknown'}
       </p>
-      <p className="mb-1 text-sm text-gray-600">
-        SMIB: {cabinet.smibBoard || cabinet.smbId || 'N/A'}
-      </p>
+      <div className="mb-1 flex items-center gap-1.5">
+        <span className="text-sm text-gray-600">SMIB:</span>
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            const smibId =
+              cabinet.relayId || cabinet.smibBoard || cabinet.smbId;
+            if (smibId) {
+              copyToClipboard(smibId, 'SMIB');
+            }
+          }}
+          className={`flex items-center gap-1 whitespace-normal break-words text-sm ${
+            cabinet.relayId || cabinet.smibBoard || cabinet.smbId
+              ? 'cursor-pointer text-gray-600 hover:text-blue-600 hover:underline'
+              : 'text-gray-400'
+          }`}
+          title={
+            cabinet.relayId || cabinet.smibBoard || cabinet.smbId
+              ? 'Click to copy SMIB'
+              : 'No SMIB'
+          }
+          disabled={!cabinet.relayId && !cabinet.smibBoard && !cabinet.smbId}
+        >
+          <span>
+            {cabinet.relayId || cabinet.smibBoard || cabinet.smbId || 'N/A'}
+          </span>
+          {(cabinet.relayId || cabinet.smibBoard || cabinet.smbId) && (
+            <Copy className="h-3 w-3 flex-shrink-0" />
+          )}
+        </button>
+      </div>
       <div className="mt-2 border-t border-gray-200 pt-2">
         <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Money In:</span>
@@ -102,29 +138,33 @@ function CabinetCardMobile({
           onClick={() => router.push(`/cabinets/${cabinet._id}`)}
           variant="outline"
           size="sm"
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs"
+          className="flex flex-1 items-center justify-center gap-1.5 text-xs"
         >
           <Eye className="h-3.5 w-3.5" />
           <span>View</span>
         </Button>
-        <Button
-          onClick={() => onEdit(cabinet)}
-          variant="outline"
-          size="sm"
-          className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          <span>Edit</span>
-        </Button>
-        <Button
-          onClick={() => onDelete(cabinet)}
-          variant="outline"
-          size="sm"
-          className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span>Delete</span>
-        </Button>
+        {canEditMachines && (
+          <Button
+            onClick={() => onEdit(cabinet)}
+            variant="outline"
+            size="sm"
+            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
+          </Button>
+        )}
+        {canDeleteMachines && (
+          <Button
+            onClick={() => onDelete(cabinet)}
+            variant="outline"
+            size="sm"
+            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete</span>
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -143,6 +183,73 @@ export default function CabinetGrid({
 
   // Use cabinet actions store for modal management
   const { openEditModal, openDeleteModal } = useCabinetActionsStore();
+  const user = useUserStore(state => state.user);
+
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string) => {
+    if (!text || text.trim() === '' || text === 'N/A') {
+      toast.error(`No ${label} value to copy`);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text.trim());
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      // Fallback for older browsers or when clipboard API is not available
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text.trim();
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          toast.success(`${label} copied to clipboard`);
+        } else {
+          throw new Error('execCommand failed');
+        }
+      } catch (fallbackError) {
+        console.error('Failed to copy to clipboard:', fallbackError);
+        toast.error(`Failed to copy ${label}. Please try again.`);
+      }
+    }
+  };
+
+  // Check if user can edit/delete machines
+  // Technicians can edit but not delete, collectors cannot edit or delete
+  const canEditMachines = React.useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors cannot edit machines
+    if (userRoles.includes('collector')) {
+      return false;
+    }
+    // Technicians, managers, admins, developers, and location admins can edit
+    return [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+    ].some(role => userRoles.includes(role));
+  }, [user]);
+
+  const canDeleteMachines = React.useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors and technicians cannot delete machines
+    if (userRoles.includes('collector') || userRoles.includes('technician')) {
+      return false;
+    }
+    // Only managers, admins, developers, and location admins can delete
+    return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+      userRoles.includes(role)
+    );
+  }, [user]);
 
   const handleColumnSort = (column: CabinetSortOption) => {
     if (sortOption === column) {
@@ -171,6 +278,10 @@ export default function CabinetGrid({
             .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
             .map(cabinet => ({
               ...(cabinet as Cabinet),
+              smbId: (cabinet.relayId ||
+                cabinet.smbId ||
+                cabinet.smibBoard ||
+                '') as string,
               onEdit: () => handleEdit(cabinet),
               onDelete: () => handleDelete(cabinet),
             }))}
@@ -181,6 +292,8 @@ export default function CabinetGrid({
           onPageChange={() => {}}
           onEdit={cabinet => handleEdit(cabinet as ExtendedCabinetDetail)}
           onDelete={cabinet => handleDelete(cabinet as ExtendedCabinetDetail)}
+          canEditMachines={canEditMachines}
+          canDeleteMachines={canDeleteMachines}
         />
       </div>
 
@@ -196,6 +309,9 @@ export default function CabinetGrid({
                 router={router}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                canEditMachines={canEditMachines}
+                canDeleteMachines={canDeleteMachines}
+                copyToClipboard={copyToClipboard}
               />
             ))}
         </div>

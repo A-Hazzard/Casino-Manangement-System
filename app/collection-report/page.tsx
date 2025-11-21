@@ -284,7 +284,8 @@ function CollectionReportContent() {
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
 
   // Helper function to determine if mobile or desktop modal should be shown
-  const isMobileSize = () => window.innerWidth < 1024;
+  // Use xl: breakpoint (1280px) so tablets in vertical view use mobile layout
+  const isMobileSize = () => window.innerWidth < 1280;
 
   // Handle modal switching based on window size
   const handleModalResize = useCallback(() => {
@@ -871,14 +872,21 @@ function CollectionReportContent() {
     sortDirection,
   ]);
 
-  // Check if user has permission to edit reports
-  // Only collectors, location collectors, managers, admins, and developers can edit
+  // Check if user has permission to edit/delete reports
+  // Only managers, admins, and developers can edit/delete
+  // Collectors and technicians can only CREATE reports, not edit or delete
   const isDeveloper = useMemo(() => {
     return user?.roles?.includes('developer') ?? false;
   }, [user?.roles]);
 
   const canUserEdit = useMemo(() => {
     if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    // Collectors and technicians cannot edit/delete - they can only create
+    if (userRoles.includes('collector') || userRoles.includes('technician')) {
+      return false;
+    }
+    // Only manager-level access and above can edit/delete
     return hasManagerAccess(user.roles);
   }, [user]);
 
