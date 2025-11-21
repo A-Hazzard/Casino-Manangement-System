@@ -1,8 +1,3 @@
-import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
@@ -10,6 +5,13 @@ import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { Document } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  assertLicenseeScope,
+  assertPageAccess,
+  buildApiAuthContext,
+  handleApiError,
+  resolveAllowedLocations,
+} from '@/lib/utils/apiAuth';
 
 /**
  * Gets overall dashboard totals (Money In, Money Out, Gross) across ALL locations
@@ -18,6 +20,22 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   try {
+    const searchParams = req.nextUrl.searchParams;
+    const timePeriod = searchParams.get('timePeriod');
+    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
+    const licencee =
+      searchParams.get('licensee') || searchParams.get('licencee');
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
+
+    const auth = await buildApiAuthContext();
+    assertPageAccess(auth.roles, 'dashboard');
+    assertLicenseeScope(licencee, auth.accessibleLicensees);
+
+    const userAccessibleLicensees = auth.accessibleLicensees;
+    const userRoles = auth.roles;
+    const userLocationPermissions = auth.locationPermissions;
+
     const db = await connectDB();
     if (!db) {
       console.error('Database connection not established');
@@ -27,43 +45,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const searchParams = req.nextUrl.searchParams;
-    const timePeriod = searchParams.get('timePeriod');
-    // Support both 'licensee' and 'licencee' spelling for backwards compatibility
-    const licencee =
-      searchParams.get('licensee') || searchParams.get('licencee');
-    const displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || 'USD';
-
-    // Get user's accessible licensees, roles, and location permissions from JWT token for access control
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-
-    // Get user's roles and location permissions
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions =
-      (
-        userPayload?.resourcePermissions as {
-          'gaming-locations'?: { resources?: string[] };
-        }
-      )?.['gaming-locations']?.resources || [];
-
     // Only proceed if timePeriod is provided
     if (!timePeriod) {
       return NextResponse.json(
         { error: 'timePeriod parameter is required' },
         { status: 400 }
       );
-    }
-
-    // Validate licensee access if specific licensee requested
-    if (licencee && licencee !== 'all' && userAccessibleLicensees !== 'all') {
-      if (!userAccessibleLicensees.includes(licencee)) {
-        return NextResponse.json(
-          { error: 'Unauthorized: You do not have access to this licensee' },
-          { status: 403 }
-        );
-      }
     }
 
     // Parse custom dates if provided
@@ -716,12 +703,7 @@ export async function GET(req: NextRequest) {
       } else {
         // No licensee filter - process all locations with their individual gaming day offsets
         // But still respect user's location permissions, licensee access, and roles
-        const allowedLocationIds = await getUserLocationFilter(
-          userAccessibleLicensees,
-          undefined,
-          userLocationPermissions,
-          userRoles
-        );
+        const allowedLocationIds = await resolveAllowedLocations(auth);
 
         const locationQuery: Record<string, unknown> = {
           $or: [
@@ -895,6 +877,10 @@ export async function GET(req: NextRequest) {
       converted: shouldApplyCurrencyConversion(licencee),
     });
   } catch (error) {
+    const handled = handleApiError(error);
+    if (handled) {
+      return handled;
+    }
     console.error('Error in dashboard totals API:', error);
 
     // Handle specific MongoDB connection errors

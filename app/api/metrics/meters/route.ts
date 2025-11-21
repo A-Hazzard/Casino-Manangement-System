@@ -9,12 +9,14 @@ import {
   getCountryCurrency,
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
-import {
-  getUserAccessibleLicenseesFromToken,
-  getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { ObjectId } from 'mongodb';
+import {
+  assertAnyPageAccess,
+  assertLicenseeScope,
+  buildApiAuthContext,
+  handleApiError,
+  resolveAllowedLocations,
+} from '@/lib/utils/apiAuth';
 
 /**
  * Retrieves **meter trend data** for gaming locations based on a specified **time period** or a **Custom date range**.
@@ -47,14 +49,6 @@ import { ObjectId } from 'mongodb';
  */
 export async function GET(req: NextRequest) {
   try {
-    const db = await connectDB();
-    if (!db) {
-      console.error('Database connection not established');
-      return NextResponse.json(
-        { error: 'Database connection not established' },
-        { status: 500 }
-      );
-    }
     const params = Object.fromEntries(req.nextUrl.searchParams.entries());
 
     const { startDate, endDate } = params;
@@ -66,6 +60,23 @@ export async function GET(req: NextRequest) {
     const displayCurrency =
       (params.currency as CurrencyCode | undefined) || 'USD';
 
+    const auth = await buildApiAuthContext();
+    assertAnyPageAccess(auth.roles, ['dashboard', 'collection-report', 'reports']);
+    assertLicenseeScope(licencee, auth.accessibleLicensees);
+
+    const accessibleLicensees = auth.accessibleLicensees;
+    const userRoles = auth.roles;
+    const userLocationPermissions = auth.locationPermissions;
+
+    const db = await connectDB();
+    if (!db) {
+      console.error('Database connection not established');
+      return NextResponse.json(
+        { error: 'Database connection not established' },
+        { status: 500 }
+      );
+    }
+
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       return NextResponse.json(
@@ -74,24 +85,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Determine user access and roles for conversion rules
-    const accessibleLicensees = await getUserAccessibleLicenseesFromToken();
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
     const isAdminOrDev =
       userRoles.includes('admin') || userRoles.includes('developer');
     const shouldConvert =
       isAdminOrDev && shouldApplyCurrencyConversion(licencee || 'all');
-
-    // Validate specific licensee access if provided
-    if (licencee && accessibleLicensees !== 'all') {
-      if (!accessibleLicensees.includes(licencee)) {
-        return NextResponse.json(
-          { error: 'Unauthorized: You do not have access to this licensee' },
-          { status: 403 }
-        );
-      }
-    }
 
     // Ensure type safety for timePeriod and licencee
     const apiParams: ParamsType = {
@@ -143,50 +140,40 @@ export async function GET(req: NextRequest) {
       })
       .toArray();
 
-    const userLocationPermissions =
-      (userPayload?.resourcePermissions as {
-        'gaming-locations'?: { resources?: string[] };
-      })?.['gaming-locations']?.resources || [];
-
     const isManager = userRoles.includes('manager');
     const isAdmin =
       accessibleLicensees === 'all' ||
       userRoles.includes('admin') ||
       userRoles.includes('developer');
 
-    if (licencee) {
-      if (!isAdmin && !isManager) {
-        if (userLocationPermissions.length === 0) {
-          return NextResponse.json([]);
+      if (licencee) {
+        if (!isAdmin && !isManager) {
+          if (userLocationPermissions.length === 0) {
+            return NextResponse.json([]);
+          }
+          const permissionSet = new Set(
+            userLocationPermissions.map(id => id.toString())
+          );
+          locations = locations.filter(location =>
+            permissionSet.has(location._id.toString())
+          );
         }
-        const permissionSet = new Set(
-          userLocationPermissions.map(id => id.toString())
-        );
-        locations = locations.filter(location =>
-          permissionSet.has(location._id.toString())
-        );
-      }
-    } else {
-      const allowedLocationIds = await getUserLocationFilter(
-        accessibleLicensees,
-        undefined,
-        userLocationPermissions,
-        userRoles
-      );
-
-      if (allowedLocationIds === 'all') {
-        // no filtering
-      } else if (allowedLocationIds.length === 0) {
-        return NextResponse.json([]);
       } else {
-        const allowedSet = new Set(
-          allowedLocationIds.map(id => id.toString())
-        );
-        locations = locations.filter(location =>
-          allowedSet.has(location._id.toString())
-        );
+        const allowedLocationIds = await resolveAllowedLocations(auth);
+
+        if (allowedLocationIds === 'all') {
+          // no filtering
+        } else if (allowedLocationIds.length === 0) {
+          return NextResponse.json([]);
+        } else {
+          const allowedSet = new Set(
+            allowedLocationIds.map(id => id.toString())
+          );
+          locations = locations.filter(location =>
+            allowedSet.has(location._id.toString())
+          );
+        }
       }
-    }
 
     if (locations.length === 0) {
       return NextResponse.json([]);
@@ -580,6 +567,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(aggregatedMetrics);
   } catch (error) {
+    const handled = handleApiError(error);
+    if (handled) {
+      return handled;
+    }
     console.error('Error in metrics API:', error);
 
     // Handle specific MongoDB connection errors
