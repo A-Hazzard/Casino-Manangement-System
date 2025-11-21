@@ -17,15 +17,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
 import PaginationControls from '@/components/ui/PaginationControls';
 import { MetersTabSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useReportsStore } from '@/lib/store/reportsStore';
 import { useUserStore } from '@/lib/store/userStore';
 import {
   exportMetersReportExcel,
   exportMetersReportPDF,
 } from '@/lib/utils/export';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import { useDebounce } from '@/lib/utils/hooks';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import type {
   MetersReportData,
@@ -43,10 +46,8 @@ import {
   RefreshCw,
   Search,
 } from 'lucide-react';
-import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useDebounce } from '@/lib/utils/hooks';
 
 export default function MetersTab() {
   const [allMetersData, setAllMetersData] = useState<MetersReportData[]>([]); // Store all fetched data (batches)
@@ -91,6 +92,7 @@ export default function MetersTab() {
     customDateRange,
     displayCurrency,
   } = useDashBoardStore();
+  const { setLoading: setReportsLoading } = useReportsStore();
   const { user } = useUserStore();
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
@@ -269,7 +271,7 @@ export default function MetersTab() {
             {
               locationIds,
               locationNames: mappedLocations.map(
-            (loc: { id: string; name: string; sasEnabled: boolean }) =>
+                (loc: { id: string; name: string; sasEnabled: boolean }) =>
                   loc.name
               ),
             }
@@ -318,65 +320,68 @@ export default function MetersTab() {
   // Fetch meters data - batch-based pagination
   const fetchMetersData = useCallback(
     async (batch: number = 1) => {
-    if (selectedLocations.length === 0) {
-      setAllMetersData([]);
-      setHasData(false);
+      if (selectedLocations.length === 0) {
+        setAllMetersData([]);
+        setHasData(false);
         setLoadedBatches(new Set());
         setCurrentPage(0);
-      return;
-    }
+        return;
+      }
 
-    setLoading(true);
-    setError(null);
+      setLoading(true);
+      setReportsLoading(true); // Set reports store loading state
+      setError(null);
 
-    try {
-      const params = new URLSearchParams({
-        locations: selectedLocations.join(','),
-        timePeriod: activeMetricsFilter,
+      try {
+        const params = new URLSearchParams({
+          locations: selectedLocations.join(','),
+          timePeriod: activeMetricsFilter,
           page: batch.toString(),
           limit: itemsPerBatch.toString(),
-      });
+        });
 
-      // Add custom dates if needed (in YYYY-MM-DD format)
-      if (activeMetricsFilter === 'Custom' && customDateRange) {
-        params.append(
-          'startDate',
-          customDateRange.startDate.toISOString().split('T')[0]
-        );
-        params.append(
-          'endDate',
-          customDateRange.endDate.toISOString().split('T')[0]
-        );
-      }
+        // Add custom dates if needed (in YYYY-MM-DD format)
+        if (activeMetricsFilter === 'Custom' && customDateRange) {
+          params.append(
+            'startDate',
+            customDateRange.startDate.toISOString().split('T')[0]
+          );
+          params.append(
+            'endDate',
+            customDateRange.endDate.toISOString().split('T')[0]
+          );
+        }
 
-      // Add licensee filter if selected
-      if (selectedLicencee && selectedLicencee !== 'all') {
-        params.append('licencee', selectedLicencee);
-      }
+        // Add licensee filter if selected
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
+        }
 
-      // Add currency parameter
-      if (displayCurrency) {
-        params.append('currency', displayCurrency);
-      }
+        // Add currency parameter
+        if (displayCurrency) {
+          params.append('currency', displayCurrency);
+        }
 
-      // Add includeHourlyData parameter when location is selected
-      if (selectedLocations.length > 0) {
-        params.append('includeHourlyData', 'true');
-        setHourlyChartLoading(true);
-      }
+        // Add includeHourlyData parameter when location is selected
+        if (selectedLocations.length > 0) {
+          params.append('includeHourlyData', 'true');
+          setHourlyChartLoading(true);
+        }
 
-      const response = await axios.get<MetersReportResponse & {
-        hourlyChartData?: Array<{
-          day: string;
-          hour: string;
-          gamesPlayed: number;
-          coinIn: number;
-          coinOut: number;
-        }>;
-      }>(`/api/reports/meters?${params}`);
+        const response = await axios.get<
+          MetersReportResponse & {
+            hourlyChartData?: Array<{
+              day: string;
+              hour: string;
+              gamesPlayed: number;
+              coinIn: number;
+              coinOut: number;
+            }>;
+          }
+        >(`/api/reports/meters?${params}`);
 
         const newMetersData = response.data.data || [];
-        
+
         // Update hourly chart data if provided
         if (response.data.hourlyChartData) {
           setHourlyChartData(response.data.hourlyChartData);
@@ -400,34 +405,36 @@ export default function MetersTab() {
           );
           return [...prev, ...uniqueNewMeters];
         });
-    } catch (err: unknown) {
-      console.error('Error fetching meters data:', err);
-      const errorMessage =
-        (
+      } catch (err: unknown) {
+        console.error('Error fetching meters data:', err);
+        const errorMessage =
           (
-            (err as Record<string, unknown>)?.response as Record<
-              string,
-              unknown
-            >
-          )?.data as Record<string, unknown>
-        )?.error ||
-        (err as Error)?.message ||
-        'Failed to load meters data';
-      setError(errorMessage as string);
-      toast.error(errorMessage as string, {
-        duration: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
+            (
+              (err as Record<string, unknown>)?.response as Record<
+                string,
+                unknown
+              >
+            )?.data as Record<string, unknown>
+          )?.error ||
+          (err as Error)?.message ||
+          'Failed to load meters data';
+        setError(errorMessage as string);
+        toast.error(errorMessage as string, {
+          duration: 3000,
+        });
+      } finally {
+        setLoading(false);
+        setReportsLoading(false); // Clear reports store loading state
+      }
     },
     [
-    selectedLocations,
-    activeMetricsFilter,
-    customDateRange,
-    selectedLicencee,
-    displayCurrency,
+      selectedLocations,
+      activeMetricsFilter,
+      customDateRange,
+      selectedLicencee,
+      displayCurrency,
       itemsPerBatch,
+      setReportsLoading,
     ]
   );
 
@@ -527,6 +534,7 @@ export default function MetersTab() {
 
       try {
         setHourlyChartLoading(true);
+        setReportsLoading(true); // Set reports store loading state
         const params = new URLSearchParams({
           locations: selectedLocations.join(','),
           timePeriod: activeMetricsFilter,
@@ -577,6 +585,7 @@ export default function MetersTab() {
         setHourlyChartData(allHourlyChartData);
       } finally {
         setHourlyChartLoading(false);
+        setReportsLoading(false); // Clear reports store loading state
       }
     };
 
@@ -590,6 +599,7 @@ export default function MetersTab() {
     selectedLicencee,
     displayCurrency,
     allHourlyChartData,
+    setReportsLoading,
   ]);
 
   // Get items for current page from filtered data
@@ -654,8 +664,10 @@ export default function MetersTab() {
       // If custom.name has a value, only export custom.name (not serialNumber)
       const exportData = allData.map(item => {
         const itemRecord = item as Record<string, unknown>;
-        const customName = (itemRecord.customName as string)?.trim() || undefined;
-        const serialNumber = (itemRecord.serialNumber as string)?.trim() || undefined;
+        const customName =
+          (itemRecord.customName as string)?.trim() || undefined;
+        const serialNumber =
+          (itemRecord.serialNumber as string)?.trim() || undefined;
         const origSerialNumber = itemRecord.origSerialNumber as
           | string
           | undefined;
@@ -685,7 +697,7 @@ export default function MetersTab() {
       } else {
         exportMetersReportExcel(exportData, metadata);
       }
-      
+
       toast.success(
         `Successfully exported ${allData.length} records to ${format.toUpperCase()}`,
         { duration: 3000 }
@@ -918,7 +930,8 @@ export default function MetersTab() {
                   <p className="mt-2 text-sm text-gray-600">
                     Showing {paginatedMetersData.length} of{' '}
                     {filteredMetersData.length} records
-                    {debouncedSearchTerm && ` (filtered by "${debouncedSearchTerm}")`}
+                    {debouncedSearchTerm &&
+                      ` (filtered by "${debouncedSearchTerm}")`}
                   </p>
                 </div>
 
@@ -1127,7 +1140,7 @@ export default function MetersTab() {
                     currentPage={currentPage}
                     totalPages={totalPages}
                     setCurrentPage={setCurrentPage}
-                          />
+                  />
                 )}
               </>
             )}

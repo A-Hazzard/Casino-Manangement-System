@@ -249,11 +249,20 @@ When using custom date range:
 
 - Data grouped by hour (hourly format)
 - Time format: "HH:00" (e.g., "10:00", "14:00")
+- Only includes hours with actual data (no zero padding)
 
 **Multi-Day Custom Range:**
 
 - Data grouped by day (daily format)
 - Date format: "YYYY-MM-DD" (e.g., "2025-01-15")
+
+**Hourly Chart Features:**
+
+- Mobile-responsive design with horizontal scrolling for long time ranges
+- Reduced label frequency on mobile devices
+- Touch-friendly interactions with larger touch targets
+- Charts automatically filter to match table search results
+- Responsive height and margin adjustments for mobile vs desktop
 
 ## Financial Calculations
 
@@ -362,7 +371,10 @@ type MetersReportParams = {
   page?: number;                  // Pagination page number (default: 1)
   limit?: number;                 // Items per page (default: 10, max: 10)
   search?: string;                // Search term for machine ID, location name, serial number, or custom name
-  licencee?: string;              // Filter by licensee ID
+  licencee?: string;              // Filter by licensee ID (triggers location refetch)
+  includeHourlyData?: boolean;    // Include hourly chart data in response
+  hourlyDataMachineIds?: string;  // Comma-separated machine IDs for filtered hourly chart data
+  currency?: string;              // Display currency code (USD, TTD, GYD, BBD)
 }
 ````
 
@@ -916,7 +928,15 @@ metersSchema.index({ machine: 1, createdAt: -1 });
 ### Frontend Components
 
 - **MetersTab**: `components/reports/tabs/MetersTab.tsx`
+  - Refetches locations when licensee filter changes
+  - Supports debounced search with chart synchronization
 - **LocationMultiSelect**: Location selection component
+  - Scrollable selected locations list (max 30 visible)
+  - Vertical scrolling for large location selections
+- **MetersHourlyCharts**: `components/ui/MetersHourlyCharts.tsx`
+  - Mobile-responsive hourly charts with horizontal scrolling
+  - Responsive label formatting and touch-friendly interactions
+  - Charts automatically filter based on search term
 - **Pagination**: Server-side pagination controls
 
 ## Monitoring & Logging
@@ -967,6 +987,22 @@ console.error('❌ Meters Report API Error:', {
 
 ---
 
-**Last Updated**: October 29, 2025  
-**Version**: 1.0  
+**Last Updated**: November 20, 2025  
+**Version**: 1.1  
 **Maintained By**: Evolution One CMS Development Team
+
+## Recent Updates (November 20, 2025)
+
+### UI/UX Improvements
+
+- **Licensee Filter Refetching**: MetersTab now automatically refetches locations when licensee filter changes
+- **Mobile Chart Optimization**:
+  - Horizontal scrolling for charts with many data points
+  - Reduced label frequency on mobile devices
+  - Touch-friendly interactions with larger touch targets
+  - Responsive height and margin adjustments
+- **Scrollable Location Lists**:
+  - LocationMultiSelect and MultiSelectDropdown now show max 30 visible locations
+  - Vertical scrolling for large location selections
+  - Improved UX for users with many location assignments
+- **Chart-Table Synchronization**: Hourly charts automatically filter to match table search results

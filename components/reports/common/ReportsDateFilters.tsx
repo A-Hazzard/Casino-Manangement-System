@@ -60,8 +60,9 @@ export default function ReportsDateFilters() {
 
   const timeFilterButtons = getTimeFilterButtons();
 
-  // Check if any loading state is active
-  const isLoading = loadingChartData || loadingTopPerforming || refreshing;
+  // Check if any loading state is active (dashboard store + reports store)
+  const { isLoading: reportsLoading } = useReportsStore();
+  const isLoading = loadingChartData || loadingTopPerforming || refreshing || reportsLoading;
 
   /**
    * Apply custom date range to both stores

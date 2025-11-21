@@ -215,7 +215,7 @@ export default function MachinesTab() {
   };
 
   // Store and filter states
-  const { selectedDateRange } = useReportsStore();
+  const { selectedDateRange, setLoading } = useReportsStore();
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const licenseeName =
@@ -339,6 +339,7 @@ export default function MachinesTab() {
     async (page: number = 1, search: string = '') => {
       try {
         setOverviewLoading(true);
+        setLoading(true); // Set reports store loading state
         setError(null);
 
         const params: Record<string, string> = {
@@ -398,6 +399,7 @@ export default function MachinesTab() {
         });
       } finally {
         setOverviewLoading(false);
+        setLoading(false); // Clear reports store loading state
       }
     },
     [
@@ -409,12 +411,14 @@ export default function MachinesTab() {
       activeMetricsFilter,
       displayCurrency,
       overviewItemsPerBatch,
+      setLoading,
     ]
   );
 
   // Fetch all machines for performance analysis (loads on tab switch)
   const fetchAllMachines = useCallback(async () => {
     try {
+      setLoading(true); // Set reports store loading state
       const params: Record<string, string> = {
         type: 'all',
         timePeriod: activeMetricsFilter || 'Today',
@@ -461,6 +465,7 @@ export default function MachinesTab() {
         duration: 3000,
       });
     } finally {
+      setLoading(false); // Clear reports store loading state
     }
   }, [
     selectedLicencee,
@@ -471,12 +476,14 @@ export default function MachinesTab() {
     evaluationSelectedLocation,
     activeMetricsFilter,
     displayCurrency,
+    setLoading,
   ]);
 
   // Fetch offline machines (batch-based, loads on tab switch)
   const fetchOfflineMachines = useCallback(async (batch: number = 1) => {
     try {
       setOfflineLoading(true);
+      setLoading(true); // Set reports store loading state
       const params: Record<string, string> = {
         type: 'offline',
         timePeriod: activeMetricsFilter || 'Today',
@@ -528,6 +535,7 @@ export default function MachinesTab() {
       });
     } finally {
       setOfflineLoading(false);
+      setLoading(false); // Clear reports store loading state
     }
   }, [
     selectedLicencee,
@@ -536,6 +544,7 @@ export default function MachinesTab() {
     offlineSelectedLocation,
     activeMetricsFilter,
     offlineItemsPerBatch,
+    setLoading,
   ]);
 
   // Handle search with backend fallback for overview tab
@@ -1117,9 +1126,9 @@ export default function MachinesTab() {
       // Set loading states for all tabs
       setStatsLoading(true);
       setOverviewLoading(true);
-
       setOfflineLoading(true);
       setEvaluationLoading(true);
+      setLoading(true); // Set reports store loading state
 
       try {
         // 1. Load stats first (fastest) - show immediately when ready
@@ -1137,12 +1146,14 @@ export default function MachinesTab() {
         await fetchAllMachines();
         setEvaluationLoading(false);
         setOfflineLoading(false);
+        setLoading(false); // Clear reports store loading state
       } catch (error) {
         // Clear all loading states on error
         setStatsLoading(false);
         setOverviewLoading(false);
         setOfflineLoading(false);
         setEvaluationLoading(false);
+        setLoading(false); // Clear reports store loading state
         throw error;
       }
     };
@@ -1156,6 +1167,7 @@ export default function MachinesTab() {
     fetchOverviewMachines,
     fetchLocationsData,
     fetchAllMachines,
+    setLoading,
   ]);
 
   // Show loading state for current tab when licensee changes

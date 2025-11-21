@@ -7,9 +7,10 @@
 - [Report Types](#report-types)
 - [Current Implementation](#current-implementation)
 - [Business Logic and Calculations](#business-logic-and-calculations)
+  - [Locations Tab Table Structure](#521-location-overview-table-structure)
+  - [Locations Tab Export Functionality](#522-locations-tab-export-functionality)
 - [Data Flow and Processing](#data-flow-and-processing)
 - [Technical Architecture](#technical-architecture)
-- [Export Functionality](#export-functionality)
 - [Performance Considerations](#performance-considerations)
 - [Future Enhancements](#future-enhancements)
 
@@ -18,8 +19,8 @@
 This document outlines the core functional requirements for the Reports Module within the Evolution One Casino Management System. The module provides comprehensive reporting capabilities for financial monitoring, machine performance analysis, customer data insights, and operational oversight across all casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 6th, 2025  
-**Version:** 2.0.0
+**Last Updated:** December 2024  
+**Version:** 2.1.0
 
 ### Purpose
 
@@ -110,12 +111,13 @@ Each report listed below should support the ability to:
 
 ### 4.3. Export Implementation Details
 
-• **Data Source**: Direct API calls to `/api/analytics/reports` endpoint
-• **Export Formats**: CSV and Excel (XLSX) with proper file naming
-• **Data Scope**: Exports all data matching current filters (date range, licensee, report type)
-• **File Naming**: Automatic naming with report type and date (e.g., `locations-report-2025-01-20.csv`)
+• **Data Source**: Direct API calls to `/api/reports/locations` endpoint (Locations Tab) and other report-specific endpoints
+• **Export Formats**: PDF and Excel (XLSX) with proper file naming
+• **Data Scope**: Exports all data matching current filters (date range, licensee, report type, selected locations)
+• **File Naming**: Automatic naming with report type and date (e.g., `Location Overview Report - Today - 2025-01-20`)
 • **Error Handling**: Comprehensive error handling with user feedback via toast notifications
-• **Performance**: Optimized for large datasets with progress indicators
+• **Performance**: Optimized for large datasets with loading state management
+• **Detailed Documentation**: See [Locations Tab Export Functionality](#522-locations-tab-export-functionality) for comprehensive export details
 
 ### 4.4. Technical Architecture
 
@@ -162,6 +164,102 @@ Each report listed below should support the ability to:
 - **Hourly Revenue Patterns**: Revenue distribution throughout the day
 - **Peak Performance Times**: Identification of highest revenue periods
 - **Trend Analysis**: Revenue growth or decline over time periods
+
+#### 5.2.1. Location Overview Table Structure
+
+The Locations Tab (`/reports?section=locations`) displays a comprehensive table showing location performance metrics. The table structure is as follows:
+
+**Table Columns:**
+
+1. **Location Name** - The name of the gaming location
+2. **Total Machines** - Total number of machines at the location (including offline)
+3. **Online Machines** - Number of machines currently online (active within last 3 minutes)
+4. **Drop** - Total money in (physical cash inserted) across all machines at the location
+   - Formula: `Σ(movement.drop)` for all machines at location
+   - Also referred to as "Money In"
+5. **Cancelled Credits** - Total money out (credits paid to players) across all machines
+   - Formula: `Σ(movement.totalCancelledCredits)` for all machines at location
+   - Also referred to as "Money Out"
+6. **Gross Revenue** - Net revenue after payouts
+   - Formula: `Drop - Cancelled Credits`
+   - Color-coded in green for visual emphasis
+7. **Hold %** - Hold percentage indicating profitability
+   - Formula: `(Gross Revenue / Drop) × 100`
+   - Color-coded based on performance:
+     - Green: ≥ 10% (excellent)
+     - Yellow: 5-9.99% (good)
+     - Red: < 5% (needs attention)
+
+**Table Features:**
+
+- **Pagination**: Displays 10 locations per page with pagination controls
+- **Summary Metrics**: Shows totals row at the bottom of exported reports
+- **Currency Support**: Displays amounts in selected currency (USD, TTD, GYD, BBD) with proper formatting
+- **Responsive Design**: Adapts to mobile and desktop viewports
+- **Data Source**: Fetches from `/api/reports/locations` endpoint with licensee and date filtering
+
+**Location Filtering:**
+
+- **Licensee Filter**: Filters locations by selected licensee (or shows all if "All Licensees" selected)
+- **Date Range Filter**: Filters financial metrics by selected time period (Today, Yesterday, 7d, 30d, Custom)
+- **Location Selection**: Users can select specific locations for detailed analysis in other tabs
+- **Auto-Display**: When no specific locations are selected, all accessible locations are displayed
+
+#### 5.2.2. Locations Tab Export Functionality
+
+The Locations Tab provides three distinct export functions, each supporting PDF and Excel formats:
+
+**1. Location Overview Export** (`handleExportLocationOverview`)
+
+- **Scope**: Exports the main Location Overview table data
+- **Data Included**:
+  - All location rows with: Location Name, Total Machines, Online Machines, Drop, Cancelled Credits, Gross Revenue, Hold %
+  - Summary totals row with aggregated metrics
+  - Metadata: Report title, date range, generation timestamp, total location count
+- **Export Formats**: PDF and Excel (XLSX)
+- **File Naming**: `Location Overview Report - [Date Range] - [Timestamp]`
+- **Summary Section**: Includes:
+  - Total Gross Revenue
+  - Total Drop
+  - Total Cancelled Credits
+  - Online Machines count (X/Y format)
+  - Overall Hold Percentage
+
+**2. SAS Evaluation Export** (`handleExportSASEvaluation`)
+
+- **Scope**: Exports SAS evaluation data for selected locations
+- **Data Source**: Uses helper function `handleExportSASEvaluationHelper` from `lib/helpers/reportsPage`
+- **Location Selection**: Exports only locations selected in the SAS Evaluation tab
+- **Export Formats**: PDF and Excel (XLSX)
+- **Use Case**: Variance analysis between SAS system data and meter readings
+
+**3. Revenue Analysis Export** (`handleExportRevenueAnalysis`)
+
+- **Scope**: Exports revenue analysis data for selected locations
+- **Data Included**:
+  - Location performance metrics
+  - Revenue trends and patterns
+  - Financial breakdowns
+- **Location Selection**: Exports only locations selected in the Revenue Analysis tab
+- **Export Formats**: PDF and Excel (XLSX)
+- **Use Case**: Detailed revenue analysis and trend reporting
+
+**Export Implementation Details:**
+
+- **Data Processing**: All exports use the `ExtendedLegacyExportData` type from `lib/utils/exportUtils`
+- **Currency Formatting**: Exports respect the selected display currency and format amounts accordingly
+- **Error Handling**: Comprehensive error handling with user-friendly toast notifications
+- **Loading States**: Export buttons are disabled during data fetching to prevent duplicate exports
+- **Data Freshness**: Exports use current filter state (date range, licensee, selected locations) to ensure data accuracy
+
+**Export Button Behavior:**
+
+- **Location**: Export dropdown menu in the header of each tab section
+- **Disabled State**: Buttons are disabled when:
+  - No location data is available
+  - Data is currently loading
+  - No locations are selected (for SAS Evaluation and Revenue Analysis exports)
+- **User Feedback**: Success/error toast notifications after export completion
 
 ### 5.3. Machines Tab Calculations
 

@@ -148,4 +148,419 @@ const utcDate = trinidadTimeToUtc(userSelectedDate);
 
 ---
 
-**Last Updated:** October 20th, 2025
+## API Route Structure & Organization
+
+**CRITICAL**: All API routes must follow a clear, step-by-step structure with proper commenting and helper function extraction.
+
+### File Structure Requirements
+
+1. **File-Level Documentation** (Required):
+
+   ```typescript
+   /**
+    * [Route Name] API Route
+    *
+    * This route handles [brief description of what the route does].
+    * It supports:
+    * - Feature 1
+    * - Feature 2
+    * - Feature 3
+    *
+    * @module app/api/[path]/route
+    */
+   ```
+
+2. **Import Organization**:
+   - Group imports logically: helpers, types, utilities, Next.js
+   - Import helper functions from `app/api/lib/helpers/`
+   - Import types from appropriate type files
+   - Keep imports at the top, organized by source
+
+3. **Helper Functions in Route File**:
+   - Only include small, route-specific utility functions (e.g., `createEmptyResponse`)
+   - All business logic must be extracted to helper files
+   - Helper functions should be pure and testable
+
+4. **Main Handler Structure**:
+
+   ```typescript
+   /**
+    * Main [GET/POST/etc] handler for [route name]
+    *
+    * Flow:
+    * 1. Step 1 description
+    * 2. Step 2 description
+    * 3. Step 3 description
+    * ...
+    */
+   export async function GET(req: NextRequest) {
+     const startTime = Date.now(); // Performance tracking
+
+     try {
+       // ============================================================================
+       // STEP 1: [Clear step description]
+       // ============================================================================
+       // Implementation here
+
+       // ============================================================================
+       // STEP 2: [Clear step description]
+       // ============================================================================
+       // Implementation here
+
+       // ... continue with numbered steps
+
+       return NextResponse.json(response);
+     } catch (err) {
+       // Error handling with proper status codes
+       const errorMessage = err instanceof Error ? err.message : 'Server Error';
+       return NextResponse.json({ error: errorMessage }, { status: 500 });
+     }
+   }
+   ```
+
+### Step-by-Step Commenting Standards
+
+- **Use visual separators**: `// ============================================================================`
+- **Number each step**: `// STEP 1:`, `// STEP 2:`, etc.
+- **Clear step descriptions**: Each step should have a concise, descriptive comment
+- **Group related operations**: Multiple related operations can be in one step
+- **Document complex logic**: Add inline comments for non-obvious business logic
+
+### Helper Function Extraction
+
+**Extract to `app/api/lib/helpers/` when:**
+
+- Function is longer than 20-30 lines
+- Function contains complex business logic
+- Function is reusable across multiple routes
+- Function performs database operations
+- Function contains data transformation logic
+
+**Keep in route file when:**
+
+- Function is route-specific and very small (< 10 lines)
+- Function is a simple response builder
+- Function is only used once in the route
+
+### File Length Guidelines
+
+- **Maximum route file length**: ~400-500 lines
+- **If route exceeds limit**: Extract more helper functions
+- **Helper files**: Can be longer but should be organized by functionality
+- **Each helper file**: Should focus on a single domain (e.g., `metersReport.ts`)
+
+### Error Handling
+
+- Always use try/catch blocks
+- Return appropriate HTTP status codes (400, 401, 403, 404, 500)
+- Provide meaningful error messages
+- Log errors for debugging (use `console.error` or logger)
+- Track performance with `startTime` for slow operations
+
+### Performance Tracking
+
+- Track execution time for routes that may be slow
+- Log performance metrics: `console.warn(\`Route completed in ${duration}ms\`)`
+- Use this to identify optimization opportunities
+
+**Reference Example:**
+
+- `app/api/reports/meters/route.ts` - Exemplary API route structure
+
+---
+
+## Page.tsx Structure & Organization
+
+**CRITICAL**: All `page.tsx` files must be lean and delegate logic to helpers and components.
+
+### File Structure Requirements
+
+1. **File-Level Documentation** (Required):
+
+   ```typescript
+   /**
+    * [Page Name] Page
+    * [Brief description of the page]
+    *
+    * Features:
+    * - Feature 1
+    * - Feature 2
+    * - Feature 3
+    */
+   ```
+
+2. **Page Component Structure**:
+
+   ```typescript
+   export default function PageName() {
+     return (
+       <ProtectedRoute requiredPage="page-name">
+         <PageErrorBoundary>
+           <PageContent />
+         </PageErrorBoundary>
+       </ProtectedRoute>
+     );
+   }
+   ```
+
+3. **Content Component** (if needed):
+   - Extract to separate component if page logic is complex
+   - Keep page.tsx as thin wrapper
+   - Content component handles all state and data fetching
+
+### Logic Extraction Rules
+
+**Extract to `lib/helpers/` when:**
+
+- Data fetching logic (API calls)
+- Complex state management
+- Business logic calculations
+- Data transformation
+- Filter/search logic
+
+**Extract to Custom Hooks when:**
+
+- Reusable stateful logic
+- Multiple related state variables
+- Complex useEffect dependencies
+- Data fetching with caching
+
+**Extract to Components when:**
+
+- Reusable UI patterns
+- Complex rendering logic
+- Form handling
+- Table/list rendering
+
+### File Length Guidelines
+
+- **Maximum page.tsx length**: ~100-150 lines (wrapper only)
+- **Maximum content component length**: ~300-400 lines
+- **If component exceeds limit**: Extract sub-components or custom hooks
+- **Complex pages**: Break into multiple smaller components
+
+### Commenting Standards
+
+- Use section comments for major areas:
+
+  ```typescript
+  // ============================================================================
+  // Data Fetching & State Management
+  // ============================================================================
+
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
+
+  // ============================================================================
+  // Render Logic
+  // ============================================================================
+  ```
+
+**Reference Examples:**
+
+- `app/page.tsx` - Lean page wrapper
+- `app/reports/page.tsx` - Simple page structure
+
+---
+
+## Component Structure & Organization
+
+**CRITICAL**: Components must be focused, readable, and properly organized.
+
+### Component Structure
+
+1. **Component Documentation**:
+
+   ```typescript
+   /**
+    * [Component Name] Component
+    * [Brief description of component purpose]
+    *
+    * @param props - Component props with clear type definitions
+    */
+   ```
+
+2. **Component Organization**:
+
+   ```typescript
+   export default function ComponentName(props: ComponentProps) {
+     // ============================================================================
+     // Hooks & State
+     // ============================================================================
+     const [state, setState] = useState();
+     const data = useCustomHook();
+
+     // ============================================================================
+     // Computed Values & Memoization
+     // ============================================================================
+     const computedValue = useMemo(() => {
+       // Expensive computation
+     }, [dependencies]);
+
+     // ============================================================================
+     // Event Handlers
+     // ============================================================================
+     const handleAction = useCallback(() => {
+       // Handler logic
+     }, [dependencies]);
+
+     // ============================================================================
+     // Effects
+     // ============================================================================
+     useEffect(() => {
+       // Effect logic
+     }, [dependencies]);
+
+     // ============================================================================
+     // Render
+     // ============================================================================
+     return (
+       // JSX
+     );
+   }
+   ```
+
+### File Length Guidelines
+
+- **Maximum component length**: ~400-500 lines
+- **If component exceeds limit**: Extract sub-components or custom hooks
+- **Complex components**: Break into smaller, focused components
+- **Each component**: Should have a single, clear responsibility
+
+### Commenting Standards
+
+- Use section comments to organize component code
+- Document complex logic with inline comments
+- Explain non-obvious business rules
+- Remove redundant comments that restate code
+
+### Component Extraction Rules
+
+**Extract sub-component when:**
+
+- Component has multiple distinct sections
+- Section is reusable elsewhere
+- Section has its own state/logic
+- Component is becoming hard to read
+
+**Extract custom hook when:**
+
+- Logic is reusable across components
+- Multiple related state variables
+- Complex data fetching logic
+- Complex effect dependencies
+
+**Reference Examples:**
+
+- `components/reports/tabs/LocationsTab.tsx` - Well-organized component (though long, properly structured)
+
+---
+
+## Commenting & Documentation Standards
+
+### File-Level Comments
+
+**Required for:**
+
+- All API routes
+- All page.tsx files
+- Complex components (>200 lines)
+- Helper files with multiple functions
+
+**Format:**
+
+```typescript
+/**
+ * [Name] [Type]
+ *
+ * [Brief description of purpose]
+ *
+ * Features/Supports:
+ * - Feature 1
+ * - Feature 2
+ *
+ * @module [path] (for routes/helpers)
+ */
+```
+
+### Function-Level Comments
+
+**Required for:**
+
+- All exported functions
+- Complex functions (>20 lines)
+- Functions with non-obvious logic
+- Helper functions in `app/api/lib/helpers/`
+
+**Format:**
+
+```typescript
+/**
+ * [Function name] - [Brief description]
+ *
+ * [Detailed description if needed]
+ *
+ * @param param1 - Description
+ * @param param2 - Description
+ * @returns Description of return value
+ */
+```
+
+### Step-by-Step Comments
+
+**Use for:**
+
+- API route handlers (numbered steps)
+- Complex algorithms
+- Multi-step processes
+- Data transformation pipelines
+
+**Format:**
+
+```typescript
+// ============================================================================
+// STEP 1: [Clear step description]
+// ============================================================================
+// Implementation
+
+// ============================================================================
+// STEP 2: [Clear step description]
+// ============================================================================
+// Implementation
+```
+
+### Section Comments
+
+**Use for:**
+
+- Organizing component code
+- Grouping related functionality
+- Separating concerns in long files
+
+**Format:**
+
+```typescript
+// ============================================================================
+// [Section Name]
+// ============================================================================
+```
+
+### Inline Comments
+
+**Use for:**
+
+- Non-obvious business logic
+- Workarounds or temporary solutions
+- Complex calculations
+- Important edge cases
+
+**Avoid:**
+
+- Comments that restate code
+- Obvious comments
+- Outdated comments
+
+---
+
+**Last Updated:** December 2024

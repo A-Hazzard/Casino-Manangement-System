@@ -1,8 +1,10 @@
 {"locations":[]}---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: true
+
 ---
+
 # Senior Software Engineering Rules for Next.js Projects
 
 This document provides strict engineering guidelines to ensure code quality, maintainability, and security for Next.js projects.  
@@ -27,6 +29,7 @@ All contributors should adhere to the following rules, which are enforced throug
 - **Handle type conflicts properly** - When accessing properties that may not exist in a type, use proper fallback logic (e.g., `property || fallbackValue`).
 
 **Shared Types Structure:**
+
 - `shared/types/database.ts` - Database-related types
 - `shared/types/entities.ts` - Core entity types
 - `shared/types/api.ts` - API request/response types
@@ -35,7 +38,8 @@ All contributors should adhere to the following rules, which are enforced throug
 - `shared/types/analytics.ts` - Analytics and dashboard types
 - `shared/types/index.ts` - Central export point for all shared types
 
-**References:**  
+**References:**
+
 - `shared/types/` - Shared types across frontend and backend
 - `types/` - Application-wide types
 - `lib/types/` - Component or library-specific types
@@ -50,7 +54,8 @@ All contributors should adhere to the following rules, which are enforced throug
 - Follow the established code style in the existing files for consistency.
 - Use ESLint's auto-fix feature when possible: `pnpm lint --fix`.
 
-**Reference:**  
+**Reference:**
+
 - `eslint.config.mjs` - ESLint configuration
 
 ---
@@ -67,6 +72,7 @@ All contributors should adhere to the following rules, which are enforced throug
 - **Create reusable UI components** in `components/ui/` for common patterns (e.g., `FinancialMetricsCards`). This folder is commonly for library components so only create components if the library doesn't have.
 
 **Folder Structure Best Practices:**
+
 - **Shared code** → `shared/` (types, utilities, constants)
 - **Frontend-specific** → `lib/` (helpers, utils, contexts, types)
 - **Backend-specific** → `app/api/` (routes, models, helpers)
@@ -74,13 +80,308 @@ All contributors should adhere to the following rules, which are enforced throug
 - **UI Components** → `components/ui/` (reusable UI components)
 - **Feature modules** → `lib/[feature]/` (e.g., `lib/chat/`, `lib/auth/`)
 
-**References:**  
+**References:**
+
 - `shared/` - Shared code (types, utilities, constants)
 - `lib/helpers/` - API-related logic and helpers
 - `lib/utils/` - Shared utilities
 - `components/` - UI components and pages
 - `components/ui/` - Reusable UI components
 - `app/` - Next.js app directory structure
+
+---
+
+## 4.1. API Route Structure - CRITICAL REQUIREMENTS
+
+**MANDATORY**: All API routes must follow this exact structure pattern.
+
+### File Structure Template
+
+```typescript
+/**
+ * [Route Name] API Route
+ *
+ * This route handles [brief description].
+ * It supports:
+ * - Feature 1
+ * - Feature 2
+ *
+ * @module app/api/[path]/route
+ */
+
+// Imports organized by source
+import { helper1, helper2 } from '@/app/api/lib/helpers/[feature]';
+import { type Type1, type Type2 } from '@/app/api/lib/types';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * [Small utility function if route-specific]
+ */
+function createEmptyResponse(...) {
+  // Small helper functions can stay in route file
+}
+
+/**
+ * Main GET handler for [route name]
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Authenticate user and check permissions
+ * 3. [Step 3 description]
+ * 4. [Step 4 description]
+ * ...
+ */
+export async function GET(req: NextRequest) {
+  const startTime = Date.now(); // Performance tracking
+
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
+    const { searchParams } = new URL(req.url);
+    const params = parseParams(searchParams);
+
+    // ============================================================================
+    // STEP 2: Connect to database and authenticate user
+    // ============================================================================
+    const db = await connectDB();
+    const user = await getUserFromServer();
+
+    // ============================================================================
+    // STEP 3: [Next step description]
+    // ============================================================================
+    // Implementation
+
+    // Continue with numbered steps...
+
+    return NextResponse.json(response);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Server Error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
+}
+```
+
+### Requirements
+
+1. **File-Level JSDoc**: Must describe route purpose and features
+2. **Step-by-Step Comments**: Use `// ============================================================================` separators
+3. **Numbered Steps**: Each major operation must be a numbered step
+4. **Flow Documentation**: Document the flow in function JSDoc before implementation
+5. **Helper Extraction**: Extract complex logic to `app/api/lib/helpers/[feature].ts`
+6. **Performance Tracking**: Track execution time for potentially slow operations
+7. **Error Handling**: Proper try/catch with appropriate HTTP status codes
+
+### Helper Function Extraction Rules
+
+**Extract to `app/api/lib/helpers/` when:**
+
+- Function is longer than 20-30 lines
+- Function contains complex business logic
+- Function is reusable across multiple routes
+- Function performs database operations
+- Function contains data transformation logic
+
+**Keep in route file when:**
+
+- Function is route-specific and very small (< 10 lines)
+- Function is a simple response builder
+- Function is only used once in the route
+
+### File Length Guidelines
+
+- **Maximum route file length**: ~400-500 lines
+- **If route exceeds limit**: Extract more helper functions
+- **Helper files**: Can be longer but should be organized by functionality
+
+**Reference Example:**
+
+- `app/api/reports/meters/route.ts` - Exemplary API route structure
+
+---
+
+## 4.2. Page.tsx Structure - CRITICAL REQUIREMENTS
+
+**MANDATORY**: All `page.tsx` files must be lean wrappers that delegate to components.
+
+### File Structure Template
+
+```typescript
+/**
+ * [Page Name] Page
+ * [Brief description of the page]
+ *
+ * Features:
+ * - Feature 1
+ * - Feature 2
+ */
+export default function PageName() {
+  return (
+    <ProtectedRoute requiredPage="page-name">
+      <PageErrorBoundary>
+        <PageContent />
+      </PageErrorBoundary>
+    </ProtectedRoute>
+  );
+}
+
+/**
+ * [Page Name] Content Component
+ * Handles all state management and data fetching for the page
+ */
+function PageContent() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
+  const [state, setState] = useState();
+
+  // ============================================================================
+  // Data Fetching
+  // ============================================================================
+  useEffect(() => {
+    // Data fetching logic
+  }, [dependencies]);
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  return (
+    <PageLayout>
+      {/* Page content */}
+    </PageLayout>
+  );
+}
+```
+
+### Requirements
+
+1. **File-Level JSDoc**: Must describe page purpose and features
+2. **Thin Wrapper**: Page component should only handle routing/authentication
+3. **Content Component**: Extract complex logic to separate component
+4. **Helper Extraction**: Extract data fetching to `lib/helpers/`
+5. **Custom Hooks**: Extract reusable stateful logic to custom hooks
+6. **Section Comments**: Use section comments to organize code
+
+### Logic Extraction Rules
+
+**Extract to `lib/helpers/` when:**
+
+- Data fetching logic (API calls)
+- Complex state management
+- Business logic calculations
+- Data transformation
+- Filter/search logic
+
+**Extract to Custom Hooks when:**
+
+- Reusable stateful logic
+- Multiple related state variables
+- Complex useEffect dependencies
+- Data fetching with caching
+
+**Extract to Components when:**
+
+- Reusable UI patterns
+- Complex rendering logic
+- Form handling
+- Table/list rendering
+
+### File Length Guidelines
+
+- **Maximum page.tsx length**: ~100-150 lines (wrapper only)
+- **Maximum content component length**: ~300-400 lines
+- **If component exceeds limit**: Extract sub-components or custom hooks
+
+**Reference Examples:**
+
+- `app/page.tsx` - Lean page wrapper
+- `app/reports/page.tsx` - Simple page structure
+
+---
+
+## 4.3. Component Structure - CRITICAL REQUIREMENTS
+
+**MANDATORY**: Components must be organized with clear sections and proper commenting.
+
+### Component Structure Template
+
+```typescript
+/**
+ * [Component Name] Component
+ * [Brief description of component purpose]
+ *
+ * @param props - Component props with clear type definitions
+ */
+export default function ComponentName(props: ComponentProps) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
+  const [state, setState] = useState();
+  const data = useCustomHook();
+
+  // ============================================================================
+  // Computed Values & Memoization
+  // ============================================================================
+  const computedValue = useMemo(() => {
+    // Expensive computation
+  }, [dependencies]);
+
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
+  const handleAction = useCallback(() => {
+    // Handler logic
+  }, [dependencies]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+  useEffect(() => {
+    // Effect logic
+  }, [dependencies]);
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  return (
+    // JSX
+  );
+}
+```
+
+### Requirements
+
+1. **Component Documentation**: JSDoc comment describing purpose
+2. **Section Organization**: Use section comments to organize code
+3. **Logical Grouping**: Group related hooks, handlers, and effects
+4. **Memoization**: Use `useMemo` and `useCallback` appropriately
+5. **Extract When Needed**: Break into smaller components if too long
+
+### File Length Guidelines
+
+- **Maximum component length**: ~400-500 lines
+- **If component exceeds limit**: Extract sub-components or custom hooks
+- **Complex components**: Break into smaller, focused components
+
+### Component Extraction Rules
+
+**Extract sub-component when:**
+
+- Component has multiple distinct sections
+- Section is reusable elsewhere
+- Section has its own state/logic
+- Component is becoming hard to read
+
+**Extract custom hook when:**
+
+- Logic is reusable across components
+- Multiple related state variables
+- Complex data fetching logic
+- Complex effect dependencies
+
+**Reference Examples:**
+
+- `components/reports/tabs/LocationsTab.tsx` - Well-organized component structure
 
 ---
 
@@ -95,6 +396,87 @@ All contributors should adhere to the following rules, which are enforced throug
 - Document complex business logic with clear explanations.
 - Update comments when code changes.
 
+### 5.1. File-Level Documentation
+
+**Required for:**
+
+- All API routes
+- All page.tsx files
+- Complex components (>200 lines)
+- Helper files with multiple functions
+
+**Format:**
+
+```typescript
+/**
+ * [Name] [Type]
+ *
+ * [Brief description of purpose]
+ *
+ * Features/Supports:
+ * - Feature 1
+ * - Feature 2
+ *
+ * @module [path] (for routes/helpers)
+ */
+```
+
+### 5.2. Step-by-Step Comments (API Routes)
+
+**MANDATORY for all API route handlers:**
+
+- Use visual separators: `// ============================================================================`
+- Number each step: `// STEP 1:`, `// STEP 2:`, etc.
+- Clear step descriptions for each major operation
+- Document the flow in function JSDoc before implementation
+
+**Example:**
+
+```typescript
+/**
+ * Main GET handler for [route name]
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Authenticate user and check permissions
+ * 3. Determine accessible locations
+ * 4. Fetch data
+ * 5. Transform and return results
+ */
+export async function GET(req: NextRequest) {
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
+    const params = parseParams(searchParams);
+
+    // ============================================================================
+    // STEP 2: Authenticate user and check permissions
+    // ============================================================================
+    const user = await getUserFromServer();
+    // ... etc
+  }
+}
+```
+
+### 5.3. Section Comments (Components & Pages)
+
+**Use for organizing code sections:**
+
+```typescript
+// ============================================================================
+// Hooks & State
+// ============================================================================
+
+// ============================================================================
+// Event Handlers
+// ============================================================================
+
+// ============================================================================
+// Render Logic
+// ============================================================================
+```
+
 ---
 
 ## 6. Security & Authentication/Authorization
@@ -106,7 +488,8 @@ All contributors should adhere to the following rules, which are enforced throug
 - Use middleware for route protection where necessary.
 - Store JWT tokens in secure HTTP-only cookies with proper expiration.
 
-**References:**  
+**References:**
+
 - `middleware.ts` - Next.js middleware for route protection
 - `app/api/lib/helpers/auth.ts` - Authentication helpers
 
@@ -138,12 +521,14 @@ All contributors should adhere to the following rules, which are enforced throug
 ### **Skeleton Loader Requirements:**
 
 #### **1. Content-Specific Skeletons:**
+
 - **Each page must have its own skeleton** that matches the exact layout of the real content
 - **Each tab/section must have its own skeleton** that represents the specific content structure
 - **Skeleton must include all visual elements**: headers, cards, tables, buttons, forms, charts, etc.
 - **Skeleton must match responsive behavior**: desktop table view, mobile card view, etc.
 
 #### **2. Visual Accuracy:**
+
 - **Exact dimensions and spacing** as the real content
 - **Proper visual hierarchy** with headers, descriptions, and content areas
 - **All interactive elements** represented (buttons, inputs, dropdowns, etc.)
@@ -151,6 +536,7 @@ All contributors should adhere to the following rules, which are enforced throug
 - **Pagination controls** represented in skeleton form
 
 #### **3. Implementation Standards:**
+
 - **Use Shadcn Skeleton component** for all skeleton elements
 - **Create dedicated skeleton files** in `components/ui/skeletons/`
 - **Name skeletons specifically**: `PageNameSkeleton`, `TabNameSkeleton`, `SectionNameSkeleton`
@@ -158,12 +544,14 @@ All contributors should adhere to the following rules, which are enforced throug
 - **NO generic `MainContentSkeleton` or similar** - each must be content-specific
 
 #### **4. File Organization:**
+
 - **Skeleton files**: `components/ui/skeletons/[PageName]Skeletons.tsx`
-- **Export specific skeletons**: `export const PageNameSkeleton = () => (...)` 
+- **Export specific skeletons**: `export const PageNameSkeleton = () => (...)`
 - **Import in components**: `import { PageNameSkeleton } from "@/components/ui/skeletons/[PageName]Skeletons"`
 - **Use in loading states**: `{loading ? <PageNameSkeleton /> : <ActualContent />}`
 
 #### **5. Examples of PROPER Implementation:**
+
 ```typescript
 // ✅ CORRECT - Specific skeleton for Machines Overview tab
 export const MachinesOverviewSkeleton = () => (
@@ -202,6 +590,7 @@ export const GenericSkeleton = () => (
 ```
 
 #### **6. Enforcement Rules:**
+
 - **Code reviews MUST verify** skeleton loaders match content layout
 - **NO text-based loading states** allowed ("Loading...", "Loading Data", etc.)
 - **NO generic spinners** for content areas
@@ -209,6 +598,7 @@ export const GenericSkeleton = () => (
 - **Skeleton must be visible** during data fetching, not hidden behind sidebars
 
 #### **7. Common Violations to AVOID:**
+
 - ❌ Using `MainContentSkeleton` for different content types
 - ❌ Generic "Loading..." text instead of skeleton
 - ❌ Spinner in content area instead of skeleton
@@ -217,6 +607,7 @@ export const GenericSkeleton = () => (
 - ❌ Same skeleton used for different pages/tabs
 
 **References:**
+
 - `components/ui/skeletons/` - All skeleton components
 - `components/ui/skeletons/ReportsSkeletons.tsx` - Example of proper implementation
 
@@ -303,6 +694,7 @@ export const GenericSkeleton = () => (
   - **Handle missing properties gracefully** with fallback values and proper type guards
 
 **References:**
+
 - `app/api/` - API route handlers
 - `shared/types/` - Shared type definitions
 - `app/api/lib/models/` - Database models
