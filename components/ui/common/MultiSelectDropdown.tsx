@@ -110,24 +110,28 @@ export default function MultiSelectDropdown({
 
       {/* Selected Items Badges (shown below dropdown) */}
       {selectedOptions.length > 0 && selectedOptions.length < options.length && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {selectedOptions.map(option => (
-            <span
-              key={option.id}
-              className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800"
-            >
-              {option.label}
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={(e) => handleRemove(option.id, e)}
-                  className="hover:text-blue-900"
+        <div className="mt-2">
+          <div className="max-h-[320px] overflow-y-auto rounded-md border border-gray-200 bg-gray-50 p-2">
+            <div className="flex flex-wrap gap-1">
+              {selectedOptions.map(option => (
+                <span
+                  key={option.id}
+                  className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800"
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </span>
-          ))}
+                  {option.label}
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemove(option.id, e)}
+                      className="hover:text-blue-900"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

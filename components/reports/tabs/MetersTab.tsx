@@ -431,13 +431,20 @@ export default function MetersTab() {
     ]
   );
 
-  // Initialize locations once
+  // Initialize locations once on mount
   useEffect(() => {
     if (!locationsInitialized.current) {
       void fetchLocations();
       locationsInitialized.current = true;
     }
   }, [fetchLocations]);
+
+  // Refetch locations when licensee changes
+  useEffect(() => {
+    if (locationsInitialized.current) {
+      void fetchLocations();
+    }
+  }, [selectedLicencee, fetchLocations]);
 
   // Load initial batch on mount and when filters change
   useEffect(() => {

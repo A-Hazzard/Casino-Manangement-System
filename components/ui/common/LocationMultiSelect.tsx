@@ -212,20 +212,24 @@ export default function LocationMultiSelect({
 
       {/* Selected items display */}
       {selectedOptions.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {selectedOptions.map(option => (
-            <Badge
-              key={option.id}
-              variant="secondary"
-              className="flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200"
-            >
-              <span className="max-w-32 truncate">{option.name}</span>
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => handleToggleLocation(option.id)}
-              />
-            </Badge>
-          ))}
+        <div className="mt-2">
+          <div className="max-h-[320px] overflow-y-auto rounded-md border border-gray-200 bg-gray-50 p-2">
+            <div className="flex flex-wrap gap-1">
+              {selectedOptions.map(option => (
+                <Badge
+                  key={option.id}
+                  variant="secondary"
+                  className="flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200"
+                >
+                  <span className="max-w-32 truncate">{option.name}</span>
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => handleToggleLocation(option.id)}
+                  />
+                </Badge>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
