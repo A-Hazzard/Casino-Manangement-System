@@ -2,6 +2,12 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { getTopPerformingMetrics } from '@/app/api/lib/helpers/top-performing';
 import { TimePeriod } from '@/app/api/lib/types';
+import {
+  assertLicenseeScope,
+  assertPageAccess,
+  buildApiAuthContext,
+  handleApiError,
+} from '@/lib/utils/apiAuth';
 
 type ActiveTab = 'locations' | 'Cabinets';
 
@@ -17,6 +23,9 @@ type ActiveTab = 'locations' | 'Cabinets';
  */
 export async function GET(req: NextRequest) {
   try {
+    const auth = await buildApiAuthContext();
+    assertPageAccess(auth.roles, 'dashboard');
+
     const db = await connectDB();
     if (!db) {
       console.error('Database connection failed');
@@ -35,10 +44,31 @@ export async function GET(req: NextRequest) {
     // Support both 'licensee' and 'licencee' spelling for backwards compatibility
     const licensee = searchParams.get('licensee') || searchParams.get('licencee');
 
-    const data = await getTopPerformingMetrics(db, activeTab, timePeriod, licensee || undefined);
+    assertLicenseeScope(licensee, auth.accessibleLicensees);
+
+    if (!licensee && auth.accessibleLicensees !== 'all') {
+      return NextResponse.json(
+        {
+          error: 'A licensee parameter is required for your role',
+          code: 'LICENSEE_REQUIRED',
+        },
+        { status: 403 }
+      );
+    }
+
+    const data = await getTopPerformingMetrics(
+      db,
+      activeTab,
+      timePeriod,
+      licensee || undefined
+    );
 
     return NextResponse.json({ activeTab, timePeriod, data });
   } catch (error) {
+    const handled = handleApiError(error);
+    if (handled) {
+      return handled;
+    }
     console.error('Error in top-performing API:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },

@@ -3,16 +3,18 @@ import { Licencee } from '../models/licencee';
 import UserModel from '../models/user';
 import { getUserFromServer } from './users';
 
+type ServerUserPayload = Awaited<ReturnType<typeof getUserFromServer>>;
+
 /**
  * Gets the licensees a user can access from JWT token
  * - Returns 'all' for admin/developer
  * - Returns array of licensee IDs for non-admins
  */
-export async function getUserAccessibleLicenseesFromToken(): Promise<
-  string[] | 'all'
-> {
+export async function getUserAccessibleLicenseesFromToken(
+  userPayloadOverride?: ServerUserPayload
+): Promise<string[] | 'all'> {
   try {
-    const userPayload = await getUserFromServer();
+    const userPayload = userPayloadOverride ?? (await getUserFromServer());
 
     if (!userPayload) {
       return [];

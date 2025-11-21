@@ -10,7 +10,12 @@ import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { Countries } from '@/app/api/lib/models/countries';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { getUserFromServer } from '../lib/helpers/users';
-import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import {
+  assertAnyPageAccess,
+  buildApiAuthContext,
+  handleApiError,
+  resolveAllowedLocations,
+} from '@/lib/utils/apiAuth';
 
 export async function GET(request: Request) {
   const context = apiLogger.createContext(
@@ -22,6 +27,15 @@ export async function GET(request: Request) {
   try {
     await connectDB();
 
+    const auth = await buildApiAuthContext();
+    assertAnyPageAccess(auth.roles, [
+      'dashboard',
+      'locations',
+      'machines',
+      'collection-report',
+      'reports',
+    ]);
+
     // Get query parameters
     const { searchParams } = new URL(request.url);
     // Support both 'licensee' and 'licencee' spelling for backwards compatibility
@@ -32,14 +46,9 @@ export async function GET(request: Request) {
       searchParams.get('forceAll') === 'true' ||
       searchParams.get('forceAll') === '1';
 
-    // Get user's accessible licensees, roles, and location permissions from JWT token
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-    
-    // Get user's roles and location permissions
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions = 
-      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
+    const userAccessibleLicensees = auth.accessibleLicensees;
+    const userRoles = auth.roles;
+    const userLocationPermissions = auth.locationPermissions;
 
     // Build base query filter
     const deletionFilter = {
@@ -56,18 +65,18 @@ export async function GET(request: Request) {
 
     // Apply location filtering based on licensee + location permissions
     if (
-      (showAll && userAccessibleLicensees === 'all' && userLocationPermissions.length === 0) ||
+      (showAll &&
+        userAccessibleLicensees === 'all' &&
+        userLocationPermissions.length === 0) ||
       (forceAll && isAdminOrDeveloper)
     ) {
       // Admin with no restrictions requesting all locations - no filter needed
       queryFilter = deletionFilter;
     } else {
       // Apply intersection of licensee access + location permissions (respecting roles)
-      const allowedLocationIds = await getUserLocationFilter(
-        userAccessibleLicensees,
-        licencee || undefined,
-        userLocationPermissions,
-        userRoles
+      const allowedLocationIds = await resolveAllowedLocations(
+        auth,
+        licencee || undefined
       );
 
       if (allowedLocationIds !== 'all') {
@@ -116,10 +125,22 @@ export async function GET(request: Request) {
     );
     return NextResponse.json({ locations: locationsWithLicenseeId }, { status: 200 });
   } catch (error) {
+    const handled = handleApiError(error);
+    if (handled) {
+      apiLogger.logError(
+        context,
+        'Failed to fetch locations',
+        error instanceof Error ? error.message : 'API_ERROR'
+      );
+      return handled;
+    }
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     apiLogger.logError(context, 'Failed to fetch locations', errorMessage);
-    return NextResponse.json({ success: false, message: errorMessage });
+    return NextResponse.json(
+      { success: false, message: errorMessage },
+      { status: 500 }
+    );
   }
 }
 
