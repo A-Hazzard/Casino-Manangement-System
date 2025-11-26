@@ -28,7 +28,7 @@ import { formatDate } from '@/lib/utils/formatting';
 import { calculateMachineMovement } from '@/lib/utils/frontendMovementCalculation';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 import { getUserDisplayName } from '@/lib/utils/userDisplay';
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -468,8 +468,7 @@ export default function MobileCollectionModal({
     }
 
     // Validation is now handled inline in the form components
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [modalState.selectedMachineData, modalState.formData.metersIn, modalState.formData.metersOut]);
 
   // Debounced validation on input changes (3 seconds)
   const debouncedValidateMeterInputs = useDebouncedCallback(
@@ -716,8 +715,14 @@ export default function MobileCollectionModal({
       console.error('Error adding/updating machine in list:', error);
 
       // Handle validation errors from backend
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const axiosError = error as any;
+      const axiosError = error as AxiosError<{
+        error: string;
+        details: string;
+        expectedPrevIn: number;
+        expectedPrevOut: number;
+        actualPrevIn: number;
+        actualPrevOut: number;
+      }>;
       if (
         axiosError.response?.status === 400 &&
         axiosError.response?.data?.error === 'Invalid previous meter values'
@@ -1301,8 +1306,7 @@ export default function MobileCollectionModal({
       }
       // If we have collected machines in create mode, keep panels as-is
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [show]); // Removed collectedMachines.length dependency to prevent override after adding machine
+  }, [show, setModalState, collectedMachines]);
 
   if (!show) return null;
 

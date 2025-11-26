@@ -1,5 +1,19 @@
+/**
+ * IP Location Utilities
+ *
+ * Utility functions for getting location information from IP addresses.
+ *
+ * Features:
+ * - IP geolocation using multiple services
+ * - Fallback service support
+ * - Location coordinate extraction
+ */
+
 import { LocationCoordinates } from '@/lib/types/maps';
 
+// ============================================================================
+// Location Detection Functions
+// ============================================================================
 /**
  * Get user location from IP address as fallback
  * @returns Promise<LocationCoordinates | null>

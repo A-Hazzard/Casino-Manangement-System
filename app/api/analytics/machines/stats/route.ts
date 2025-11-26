@@ -1,30 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+/**
+ * Machine Statistics API Route
+ *
+ * This route handles fetching machine statistics with role-based access control.
+ * It supports:
+ * - Filtering by licensee
+ * - Role-based location filtering
+ * - Machine counts (total, online, SAS)
+ * - Financial metrics (drop, cancelled credits, gross)
+ *
+ * @module app/api/analytics/machines/stats/route
+ */
+
+import { getMachineStatsForAnalytics } from '@/app/api/lib/helpers/analytics';
+import {
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
+} from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching machine statistics
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Authenticate user and get accessible locations
+ * 4. Validate location access
+ * 5. Fetch machine statistics
+ * 6. Return machine statistics
+ */
 export async function GET(request: NextRequest) {
-  try {
-    await connectDB();
-    const { searchParams } = new URL(request.url);
-    // Support both 'licensee' and 'licencee'
-    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+  const startTime = Date.now();
 
-    // Make licensee optional - if not provided or "all", we'll get stats for all machines
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
+    const { searchParams } = new URL(request.url);
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licencee');
     const effectiveLicensee =
       licensee && licensee.toLowerCase() !== 'all' ? licensee : null;
 
-    const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    await connectDB();
 
-    // Build match stage for machines
-    const machineMatchStage: Record<string, unknown> = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    };
-
-    // Derive allowed locations based on user, roles, and optional selected licensee
+    // ============================================================================
+    // STEP 3: Authenticate user and get accessible locations
+    // ============================================================================
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
@@ -42,9 +69,14 @@ export async function GET(request: NextRequest) {
       userRoles
     );
 
+    // ============================================================================
+    // STEP 4: Validate location access
+    // ============================================================================
     if (allowedLocationIds !== 'all') {
-      // If user has no allowed locations, return zero stats early
-      if (!Array.isArray(allowedLocationIds) || allowedLocationIds.length === 0) {
+      if (
+        !Array.isArray(allowedLocationIds) ||
+        allowedLocationIds.length === 0
+      ) {
         const zeroStats = {
           totalDrop: 0,
           totalCancelledCredits: 0,
@@ -60,93 +92,33 @@ export async function GET(request: NextRequest) {
           offlineMachines: 0,
         });
       }
-      machineMatchStage.gamingLocation = { $in: allowedLocationIds };
     }
 
-    // Use a simpler approach - count machines directly
-    const db = await connectDB();
-    if (!db) {
-      return NextResponse.json(
-        { error: 'DB connection failed' },
-        { status: 500 }
-      );
+    // ============================================================================
+    // STEP 5: Fetch machine statistics
+    // ============================================================================
+    const result = await getMachineStatsForAnalytics(allowedLocationIds);
+
+    // ============================================================================
+    // STEP 6: Return machine statistics
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Analytics Machines Stats GET API] Completed in ${duration}ms`);
     }
-
-    // Count totals and online in parallel - only count machines with lastActivity
-    const [totalMachines, onlineMachines] = await Promise.all([
-      db.collection('machines').countDocuments({
-        ...machineMatchStage,
-        lastActivity: { $exists: true }, // Only count machines with lastActivity field
-      }),
-      db.collection('machines').countDocuments({
-        ...machineMatchStage,
-        lastActivity: { $gte: onlineThreshold }, // This already filters for existing lastActivity
-      }),
-    ]);
-
-    // Count SAS machines
-    const sasMachines = await db.collection('machines').countDocuments({
-      ...machineMatchStage,
-      isSasMachine: true,
-    });
-
-    // Get financial totals (this might be empty if no financial data exists)
-    const financialTotals = await db
-      .collection('machines')
-      .aggregate([
-        { $match: machineMatchStage },
-        {
-          $group: {
-            _id: null,
-            totalDrop: { $sum: { $ifNull: ['$sasMeters.drop', 0] } },
-            totalCancelledCredits: {
-              $sum: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-            },
-            totalGross: {
-              $sum: {
-                $subtract: [
-                  { $ifNull: ['$sasMeters.drop', 0] },
-                  { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-                ],
-              },
-            },
-          },
-        },
-      ])
-      .toArray();
-
-    const financials = financialTotals[0] || {
-      totalDrop: 0,
-      totalCancelledCredits: 0,
-      totalGross: 0,
-    };
-
-    const stats = {
-      totalDrop: financials.totalDrop,
-      totalCancelledCredits: financials.totalCancelledCredits,
-      totalGross: financials.totalGross,
-      totalMachines,
-      onlineMachines,
-      sasMachines,
-    };
-
-    // console.log("🔍 Machine stats API - Licensee:", effectiveLicensee);
-    // console.log("🔍 Machine stats API - Total machines:", totalMachines);
-    // console.log("🔍 Machine stats API - Online machines:", onlineMachines);
-    // console.log("🔍 Machine stats API - SAS machines:", sasMachines);
-
-    return NextResponse.json({
-      stats,
-      totalMachines: stats.totalMachines,
-      onlineMachines: stats.onlineMachines,
-      offlineMachines: stats.totalMachines - stats.onlineMachines,
-    });
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching machine stats:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch machine stats';
+    console.error(
+      `[Machine Stats GET API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         message: 'Failed to fetch machine stats',
-        error: (error as Error).message,
+        error: errorMessage,
       },
       { status: 500 }
     );

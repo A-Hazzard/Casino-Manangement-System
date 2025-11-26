@@ -1,5 +1,24 @@
+/**
+ * Collection Report Detail Page Helper Functions
+ *
+ * Provides helper functions for the collection report detail page, including animations,
+ * calculations, sorting, and pagination. It handles location totals, SAS metrics aggregation,
+ * and machine metrics display for detailed collection report views.
+ *
+ * Features:
+ * - Applies GSAP animations for desktop tab transitions.
+ * - Calculates location totals and SAS metrics from collections.
+ * - Sorts collections by SAS drop amount.
+ * - Handles pagination for machine metrics display.
+ * - Generates machine metrics content data for tables.
+ */
+
 import { gsap } from 'gsap';
 import type { CollectionDocument } from '@/lib/types/collections';
+
+// ============================================================================
+// Animation Utilities
+// ============================================================================
 
 /**
  * Applies GSAP animation for desktop tab transitions
@@ -17,6 +36,10 @@ export function animateDesktopTabTransition(
   }
 }
 
+// ============================================================================
+// Location Total Calculations
+// ============================================================================
+
 /**
  * Calculates the total location value from collections
  * @param collections - Array of collection documents
@@ -31,6 +54,10 @@ export function calculateLocationTotal(
     return total + gross;
   }, 0);
 }
+
+// ============================================================================
+// SAS Metrics Calculations
+// ============================================================================
 
 /**
  * Calculates SAS metrics totals from collections
@@ -55,6 +82,10 @@ export function calculateSasMetricsTotals(collections: CollectionDocument[]) {
   };
 }
 
+// ============================================================================
+// Collection Sorting Operations
+// ============================================================================
+
 /**
  * Sorts collections by SAS drop amount in descending order
  * @param collections - Array of collection documents
@@ -68,6 +99,10 @@ export function sortCollectionsBySasDrop(
     (a, b) => (b.sasMeters?.drop || 0) - (a.sasMeters?.drop || 0)
   );
 }
+
+// ============================================================================
+// Pagination Utilities
+// ============================================================================
 
 /**
  * Calculates pagination for machine metrics
@@ -94,6 +129,10 @@ export function calculateMachinePagination(
     currentItems,
   };
 }
+
+// ============================================================================
+// Machine Metrics Data Generation
+// ============================================================================
 
 /**
  * Generates machine metrics content data
@@ -193,6 +232,10 @@ export function generateMachineMetricsData(
     hasData: metricsData.length > 0,
   };
 }
+
+// ============================================================================
+// SAS Time Formatting Utilities
+// ============================================================================
 
 // Helper function to format SAS time
 function formatSasTime(timeString: string): string {

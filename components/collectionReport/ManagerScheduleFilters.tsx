@@ -1,3 +1,26 @@
+/**
+ * Manager Schedule Filters Component
+ * Filter bar for manager schedules with location, collector, and status filters.
+ *
+ * Features:
+ * - Location selection dropdown
+ * - Collector selection dropdown
+ * - Status selection dropdown
+ * - Reset filters button
+ * - Loading states
+ * - Responsive design
+ *
+ * @param locations - Available locations list
+ * @param collectors - Available collectors list
+ * @param selectedLocation - Currently selected location
+ * @param onLocationChange - Callback when location changes
+ * @param selectedCollector - Currently selected collector
+ * @param onCollectorChange - Callback when collector changes
+ * @param selectedStatus - Currently selected status
+ * @param onStatusChange - Callback when status changes
+ * @param onReset - Callback to reset all filters
+ * @param loading - Whether data is loading
+ */
 import React from 'react';
 import type { LocationSelectItem } from '@/lib/types/location';
 

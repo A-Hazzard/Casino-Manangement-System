@@ -1,8 +1,19 @@
 /**
- * Location utilities for map centering and geolocation
+ * Location Utilities
+ *
+ * Utility functions for map centering and geolocation.
+ *
+ * Features:
+ * - Region center coordinates
+ * - Map centering utilities
+ * - Geolocation fallbacks
  */
+
 import axios from 'axios';
 
+// ============================================================================
+// Constants
+// ============================================================================
 // Default coordinates for different regions (fallback if geolocation fails)
 const REGION_CENTERS: Record<string, [number, number]> = {
   // North America

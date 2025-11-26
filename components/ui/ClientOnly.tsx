@@ -9,11 +9,22 @@ type ClientOnlyProps = {
 };
 
 /**
- * ClientOnly component that only renders its children on the client side.
- * This prevents hydration mismatches caused by browser extensions like Dark Reader
- * that modify the DOM after server-side rendering.
+ * Client Only Component
+ * Component that only renders its children on the client side.
+ *
+ * Features:
+ * - Prevents hydration mismatches
+ * - Useful for browser extensions that modify DOM (e.g., Dark Reader)
+ * - Fallback rendering during SSR
+ * - Mount state tracking
+ *
+ * @param children - Content to render on client side
+ * @param fallback - Fallback content to render during SSR
  */
 export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {

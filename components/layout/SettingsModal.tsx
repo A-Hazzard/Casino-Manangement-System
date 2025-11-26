@@ -1,3 +1,24 @@
+/**
+ * Settings Modal Component
+ * Comprehensive application settings management modal with multiple categories.
+ *
+ * Features:
+ * - Notifications settings (desktop, mobile, email preferences)
+ * - Display settings (theme, date format, language, time zone)
+ * - Regional settings (currency, measurement units)
+ * - Privacy settings (data collection, analytics tracking)
+ * - Security settings (2FA, session timeout, login history)
+ * - System settings (performance, debug mode, logging)
+ * - Backup & restore (auto-backup, export/import settings)
+ * - Integrations (API keys, webhooks, third-party services)
+ * - Tabbed interface for organized settings
+ * - Real-time settings synchronization with Zustand store
+ * - Settings validation and error handling
+ * - Import/export functionality
+ * - Reset to defaults option
+ *
+ * Large component (~900 lines) providing complete application configuration.
+ */
 'use client';
 
 import { useState } from 'react';

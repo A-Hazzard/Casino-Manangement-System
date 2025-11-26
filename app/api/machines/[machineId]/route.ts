@@ -1,3 +1,21 @@
+/**
+ * Machine Detail API Route
+ *
+ * This route handles fetching a single machine by ID with financial metrics.
+ * It supports:
+ * - Time period filtering (today, week, month, custom dates)
+ * - Currency conversion (Admin/Developer only)
+ * - Location-based access control
+ * - Gaming day offset calculations
+ * - Meter data aggregation
+ * - Returns both active and soft-deleted machines
+ *
+ * @module app/api/machines/[machineId]/route
+ */
+
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
@@ -8,21 +26,34 @@ import {
 } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
+import type { MachineDocument } from '@/lib/types/mongo';
 import { NextRequest, NextResponse } from 'next/server';
-import { checkUserLocationAccess } from '../../lib/helpers/licenseeFilter';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { connectDB } from '../../lib/middleware/db';
 
 /**
- * GET /api/machines/[machineId]
- * Get a single machine by ID with transformed fields and financial metrics
- * Returns both active and soft-deleted machines
+ * Main GET handler for fetching a single machine by ID
+ *
+ * Flow:
+ * 1. Parse route parameters and query parameters
+ * 2. Validate timePeriod or date range parameters
+ * 3. Connect to database
+ * 4. Fetch machine by ID
+ * 5. Check user access to machine's location
+ * 6. Fetch location details and gameDayOffset
+ * 7. Calculate gaming day range
+ * 8. Aggregate meter data for the time period
+ * 9. Apply currency conversion if needed
+ * 10. Transform and return machine data
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ machineId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters and query parameters
+    // ============================================================================
     const { machineId } = await params;
     const { searchParams } = new URL(request.url);
     const timePeriod = searchParams.get('timePeriod');
@@ -31,14 +62,9 @@ export async function GET(
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
-    console.warn('[DEBUG] API received parameters:', {
-      machineId,
-      timePeriod,
-      startDateParam,
-      endDateParam,
-      displayCurrency,
-    });
-
+    // ============================================================================
+    // STEP 2: Validate timePeriod or date range parameters
+    // ============================================================================
     // Only proceed if timePeriod or custom date range is provided
     if (!timePeriod && !startDateParam && !endDateParam) {
       return NextResponse.json(
@@ -47,13 +73,49 @@ export async function GET(
       );
     }
 
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 4: Fetch machine by ID
+    // ============================================================================
     // Fetch machine with all necessary fields - INCLUDING soft-deleted ones
-    const machine = await Machine.findOne({
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    // Handle both String _id (from schema) and ObjectId _id (legacy data)
+    // Since aggregation endpoint converts _id to string, but DB might have ObjectId,
+    // we need to try both formats
+    let machine: MachineDocument | null = null;
+    
+    // First try as string (schema says String type)
+    machine = (await Machine.findOne({
       _id: machineId,
       // Removed: deletedAt: { $exists: false } because i want deleted docs,
-    });
+    }).lean()) as MachineDocument | null;
+
+    // If not found and ID looks like ObjectId hex string, try as ObjectId
+    if (!machine && machineId.length === 24 && /^[0-9a-fA-F]{24}$/.test(machineId)) {
+      try {
+        const { default: mongoose } = await import('mongoose');
+        const objectId = new mongoose.Types.ObjectId(machineId);
+        // Use native MongoDB query to bypass schema type enforcement
+        const db = mongoose.connection.db;
+        if (db) {
+          const machinesCollection = db.collection('machines');
+          const machineDoc = await machinesCollection.findOne({
+            _id: objectId,
+          });
+          if (machineDoc) {
+            // Convert to Mongoose document format
+            machine = machineDoc as MachineDocument;
+          }
+        }
+      } catch (objectIdError) {
+        // Invalid ObjectId format or DB error, continue with 404
+        console.warn(`[Machines API GET] Failed to query as ObjectId:`, objectIdError);
+      }
+    }
 
     if (!machine) {
       return NextResponse.json(
@@ -62,7 +124,9 @@ export async function GET(
       );
     }
 
-    // Fetch location details including gameDayOffset if machine has a gamingLocation
+    // ============================================================================
+    // STEP 5: Fetch location details and gameDayOffset
+    // ============================================================================
     let locationName = 'No Location Assigned';
     let gameDayOffset = 0;
     if (machine.gamingLocation) {
@@ -105,7 +169,9 @@ export async function GET(
       }
     }
 
-    // Calculate gaming day range for this machine's location
+    // ============================================================================
+    // STEP 7: Calculate gaming day range
+    // ============================================================================
     let startDate: Date | undefined;
     let endDate: Date | undefined;
 
@@ -140,13 +206,9 @@ export async function GET(
       endDate = gamingDayRange.rangeEnd;
     }
 
-    // Fetch financial metrics from meters collection using aggregation for date filtering
-    console.warn('[DEBUG] Querying meters with date range:', {
-      timePeriod,
-      startDate: startDate?.toISOString(),
-      endDate: endDate?.toISOString(),
-    });
-
+    // ============================================================================
+    // STEP 8: Aggregate meter data for the time period
+    // ============================================================================
     // Use aggregation to sum deltas (movement.* fields contain deltas, not cumulative values)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pipeline: any[] = [];
@@ -199,22 +261,11 @@ export async function GET(
     const gamesWon = metrics.gamesWon || 0;
     const handPaidCancelledCredits = metrics.handPaidCancelledCredits || 0;
 
-    console.warn('[DEBUG] Found meters:', metrics.meterCount);
-
     const gross = moneyIn - moneyOut;
 
-    console.warn('[DEBUG] Calculated metrics:', {
-      moneyIn,
-      moneyOut,
-      jackpot,
-      coinIn,
-      coinOut,
-      gamesPlayed,
-      gamesWon,
-      handPaidCancelledCredits,
-      gross,
-    });
-
+    // ============================================================================
+    // STEP 9: Apply currency conversion if needed
+    // ============================================================================
     // Currency conversion logic (similar to aggregation endpoint)
     let finalMoneyIn = moneyIn;
     let finalMoneyOut = moneyOut;
@@ -309,6 +360,9 @@ export async function GET(
       }
     }
 
+    // ============================================================================
+    // STEP 10: Transform and return machine data
+    // ============================================================================
     // Get serialNumber with fallback to custom.name
     const serialNumber = (machine.serialNumber as string)?.trim() || '';
     const customName =
@@ -398,27 +452,46 @@ export async function GET(
       orig: machine.orig || {},
     };
 
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Machines API GET] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       data: transformedMachine,
     });
   } catch (error) {
-    console.error(' Error fetching machine:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch machine';
+    console.error(
+      `[Machines API GET] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch machine' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
+/**
+ * POST handler - Not allowed for this route
+ */
 export function POST() {
   return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
 
+/**
+ * PUT handler - Not allowed for this route
+ */
 export function PUT() {
   return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
 
+/**
+ * DELETE handler - Not allowed for this route
+ */
 export function DELETE() {
   return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }

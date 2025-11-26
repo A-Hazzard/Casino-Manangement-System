@@ -1,3 +1,17 @@
+/**
+ * Location Selector Component
+ * Component for selecting multiple locations for reports.
+ *
+ * Features:
+ * - Multi-location selection
+ * - Location cards display
+ * - Location information (name, address, SAS enabled status)
+ * - Selection management
+ * - Responsive card layout
+ *
+ * @param onLocationSelect - Callback when locations are selected
+ * @param selectedLocations - Array of selected location IDs
+ */
 'use client';
 
 import {
@@ -11,6 +25,10 @@ import { Button } from '@/components/ui/button';
 import { Monitor } from 'lucide-react';
 import type { LocationSelectorProps } from '@/lib/types/components';
 import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type Location = {
   _id: string;

@@ -1,3 +1,20 @@
+/**
+ * API With Retry Hook
+ * Custom hook for making API calls with automatic retry logic and exponential backoff.
+ *
+ * Features:
+ * - Automatic retry with exponential backoff for failed requests
+ * - Configurable max retries, base delay, and timeout
+ * - Request cancellation support with AbortController
+ * - Error classification and retry eligibility detection
+ * - Callbacks for error handling and retry notifications
+ * - Request timeout handling
+ * - Loading state and retry count tracking
+ *
+ * @param apiFunction - The API function to execute
+ * @param options - Configuration options for retry behavior
+ * @returns Hook state and methods (data, error, loading, retryCount, execute, reset)
+ */
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
@@ -9,15 +26,10 @@ import type {
   UseApiWithRetryReturn,
 } from '@/lib/types/apiHooks';
 
-// Types moved to lib/types/apiHooks.ts
+// ============================================================================
+// Hook
+// ============================================================================
 
-/**
- * Custom hook for making API calls with automatic retry logic
- *
- * @param apiFunction - The API function to execute
- * @param options - Configuration options for retry behavior
- * @returns Hook state and methods
- */
 export function useApiWithRetry<T>(
   apiFunction: (...args: unknown[]) => Promise<AxiosResponse<T>>,
   options: UseApiWithRetryOptions = {}
@@ -30,6 +42,9 @@ export function useApiWithRetry<T>(
     onRetry,
   } = options;
 
+  // ============================================================================
+  // State
+  // ============================================================================
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,6 +52,9 @@ export function useApiWithRetry<T>(
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // ============================================================================
+  // Methods
+  // ============================================================================
   const execute = useCallback(
     async (...args: unknown[]): Promise<T | null> => {
       // Cancel previous request if still running
@@ -131,6 +149,9 @@ export function useApiWithRetry<T>(
     setRetryCount(0);
   }, []);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     data,
     error,

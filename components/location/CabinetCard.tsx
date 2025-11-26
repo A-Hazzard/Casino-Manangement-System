@@ -1,9 +1,31 @@
+/**
+ * Cabinet Card Component
+ * Card component for displaying cabinet information in location views.
+ *
+ * Features:
+ * - Cabinet information display (asset number, serial number)
+ * - Online/offline status indicator
+ * - Financial metrics (Gross, Net, Drop, Win)
+ * - Currency formatting
+ * - View button for navigation
+ * - Selection state highlighting
+ * - Framer Motion animations
+ * - Hover effects
+ *
+ * @param cabinet - Cabinet/GamingMachine object
+ * @param onClick - Callback when card is clicked
+ * @param isSelected - Whether the card is currently selected
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils/formatting';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import { Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+// ============================================================================
+// Types & Animation Variants
+// ============================================================================
 
 type ExtendedCabinetCardProps = {
   cabinet: CabinetDetail;

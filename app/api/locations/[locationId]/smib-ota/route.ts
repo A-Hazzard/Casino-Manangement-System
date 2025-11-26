@@ -1,25 +1,55 @@
+/**
+ * Location SMIB OTA Update API Route
+ *
+ * This route handles triggering OTA firmware updates for all SMIBs at a specific location.
+ * It supports:
+ * - OTA firmware updates for multiple SMIBs
+ * - Firmware file preparation and URL generation
+ * - Parallel batch processing
+ * - Activity logging
+ *
+ * @module app/api/locations/[locationId]/smib-ota/route
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { Machine } from '@/app/api/lib/models/machines';
-import { mqttService } from '@/lib/services/mqttService';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../../lib/helpers/users';
-import { connectDB } from '../../../lib/middleware/db';
 
 /**
- * POST /api/locations/[locationId]/smib-ota
- * Trigger OTA firmware update for all SMIBs at a specific location
- * Uses relayIds from frontend (MQTT discovery), downloads firmware to /public/firmwares/
- * Processes in parallel batches of 10 for efficiency
+ * Main POST handler for triggering OTA updates
+ *
+ * Flow:
+ * 1. Parse route parameters and request body
+ * 2. Validate relayIds and firmwareId
+ * 3. Connect to database
+ * 4. Prepare firmware file and get URL
+ * 5. Build firmware URL from request headers
+ * 6. Process OTA updates in batches
+ * 7. Update machine firmwareUpdatedAt timestamps
+ * 8. Log activity
+ * 9. Return results
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ locationId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters and request body
+    // ============================================================================
     const { locationId } = await params;
     const { relayIds, firmwareId } = await request.json();
+
+    // ============================================================================
+    // STEP 2: Validate relayIds and firmwareId
+    // ============================================================================
 
     if (!relayIds || relayIds.length === 0) {
       return NextResponse.json(
@@ -35,13 +65,14 @@ export async function POST(
       );
     }
 
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
     await connectDB();
 
-    console.log(
-      `🔧 [LOCATION OTA] Initiating OTA for ${relayIds.length} SMIBs at location ${locationId}`
-    );
-
-    // Step 1: Download firmware to /public/firmwares/
+    // ============================================================================
+    // STEP 4: Prepare firmware file and get URL
+    // ============================================================================
     const serveResponse = await axios.get(
       `${request.headers.get('origin') || 'http://localhost:3000'}/api/firmwares/${firmwareId}/serve`
     );
@@ -55,7 +86,9 @@ export async function POST(
 
     const { fileName } = serveResponse.data;
 
-    // Step 2: Build full firmware URL from request headers
+    // ============================================================================
+    // STEP 5: Build firmware URL from request headers
+    // ============================================================================
     let host = request.headers.get('host');
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
 
@@ -68,26 +101,16 @@ export async function POST(
         const networkIp = process.env.NETWORK_IP;
         if (networkIp) {
           host = `${networkIp}:3000`;
-        } else {
-          console.warn(
-            '⚠️ [LOCATION OTA] Using localhost - SMIBs may not be able to reach this URL!'
-          );
-          console.warn(
-            '⚠️ [LOCATION OTA] Set NETWORK_IP in .env to your local IP (e.g., NETWORK_IP=192.168.1.100)'
-          );
         }
       }
     }
 
     const baseUrl = `${protocol}://${host}`;
-    // Send /firmwares/ URL to SMIB (Next.js static file serving)
     const firmwareBinUrl = `${baseUrl}/firmwares/`;
-    // const firmwareBinUrl = `${baseUrl}/firmwares/${fileName}`;
 
-    console.log(`📡 [LOCATION OTA] Firmware Binary URL: ${firmwareBinUrl}`);
-    console.log(`📡 [LOCATION OTA] Each SMIB will append: ?&relayId=<SMIB-ID>`);
-
-    // Remove duplicates
+    // ============================================================================
+    // STEP 6: Process OTA updates in batches
+    // ============================================================================
     const uniqueRelayIds = Array.from(new Set(relayIds)) as string[];
 
     const results = {
@@ -114,7 +137,9 @@ export async function POST(
 
             results.successful++;
 
-            // Update firmwareUpdatedAt for this SMIB
+            // ============================================================================
+            // STEP 7: Update machine firmwareUpdatedAt timestamps
+            // ============================================================================
             await Machine.updateOne(
               { $or: [{ relayId }, { smibBoard: relayId }] },
               { $set: { 'smibConfig.ota.firmwareUpdatedAt': new Date() } }
@@ -130,7 +155,9 @@ export async function POST(
       );
     }
 
-    // Log activity with proper user information and changes
+    // ============================================================================
+    // STEP 8: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     const clientIP = getClientIP(request);
 
@@ -176,26 +203,31 @@ export async function POST(
         });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
-        // Don't fail the request if logging fails, but ensure we always log
-        console.warn(
-          '⚠️ Activity logging failed but continuing with OTA update'
-        );
       }
-    } else {
-      console.error('❌ No authenticated user found for activity logging');
-      // Still proceed with the OTA update but log the error
-      console.warn('⚠️ Proceeding with OTA update without activity logging');
     }
 
+    // ============================================================================
+    // STEP 9: Return results
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Location SMIB OTA API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: results.failed === 0,
       message: `OTA update commands sent to ${results.successful} SMIBs${results.failed > 0 ? ` (${results.failed} failed)` : ''}`,
       results,
     });
   } catch (error) {
-    console.error('❌ Error in location SMIB OTA endpoint:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Location SMIB OTA API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

@@ -1,3 +1,11 @@
+/**
+ * Cabinet Info Skeleton Component
+ * Loading skeleton for cabinet information section.
+ *
+ * Features:
+ * - Matches CabinetInfoHeader layout structure
+ * - Header and grid layout skeletons
+ */
 import React from 'react';
 
 export const CabinetInfoSkeleton = () => (

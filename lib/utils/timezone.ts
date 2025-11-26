@@ -3,14 +3,26 @@
  *
  * This utility handles conversion between UTC and Trinidad local time.
  * Trinidad is UTC-4 year-round (no daylight saving time).
+ *
+ * Features:
+ * - UTC <-> Trinidad time conversion
+ * - Current Trinidad time helpers
+ * - Object date field conversion
+ * - Response data conversion helpers
  */
 
+// ============================================================================
+// Constants
+// ============================================================================
 export const TRINIDAD_TIMEZONE_OFFSET = -4; // UTC-4
 
+// ============================================================================
+// Conversion Functions
+// ============================================================================
 /**
- * Converts UTC time to Trinidad local time (UTC-4)
- * @param utcDate - Date in UTC
- * @returns Date adjusted to Trinidad local time
+ * Converts UTC time to Trinidad local time (UTC-4).
+ * @param utcDate - Date in UTC.
+ * @returns Date adjusted to Trinidad local time.
  */
 export function utcToTrinidadTime(utcDate: Date): Date {
   const trinidadTime = new Date(utcDate);
@@ -19,9 +31,9 @@ export function utcToTrinidadTime(utcDate: Date): Date {
 }
 
 /**
- * Converts Trinidad local time to UTC
- * @param trinidadDate - Date in Trinidad local time
- * @returns Date adjusted to UTC
+ * Converts Trinidad local time to UTC.
+ * @param trinidadDate - Date in Trinidad local time.
+ * @returns Date adjusted to UTC.
  */
 export function trinidadTimeToUtc(trinidadDate: Date): Date {
   const utcTime = new Date(trinidadDate);
@@ -30,18 +42,18 @@ export function trinidadTimeToUtc(trinidadDate: Date): Date {
 }
 
 /**
- * Gets current Trinidad local time
- * @returns Current date/time in Trinidad timezone
+ * Gets current Trinidad local time.
+ * @returns Current date/time in Trinidad timezone.
  */
 export function getCurrentTrinidadTime(): Date {
   return utcToTrinidadTime(new Date());
 }
 
 /**
- * Formats a UTC date as Trinidad local time string
- * @param utcDate - Date in UTC
- * @param options - Intl.DateTimeFormatOptions
- * @returns Formatted date string in Trinidad time
+ * Formats a UTC date as Trinidad local time string.
+ * @param utcDate - Date in UTC.
+ * @param options - Intl.DateTimeFormatOptions.
+ * @returns Formatted date string in Trinidad time.
  */
 export function formatTrinidadTime(
   utcDate: Date,
@@ -64,11 +76,14 @@ export function formatTrinidadTime(
   });
 }
 
+// ============================================================================
+// Object Conversion Functions
+// ============================================================================
 /**
- * Converts all date fields in an object from UTC to Trinidad time
- * @param obj - Object containing date fields
- * @param dateFields - Array of field names that contain dates
- * @returns Object with date fields converted to Trinidad time
+ * Converts all date fields in an object from UTC to Trinidad time.
+ * @param obj - Object containing date fields.
+ * @param dateFields - Array of field names that contain dates.
+ * @returns Object with date fields converted to Trinidad time.
  */
 export function convertObjectDatesToTrinidadTime<
   T extends Record<string, unknown>,

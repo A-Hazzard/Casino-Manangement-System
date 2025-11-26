@@ -1,7 +1,20 @@
+/**
+ * No Licensee Assigned Component
+ * Alert component displayed when user has no licensee assigned.
+ *
+ * Features:
+ * - Warning alert styling
+ * - Informative message
+ * - Contact information guidance
+ * - Centered layout
+ */
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export function NoLicenseeAssigned() {
+  // ============================================================================
+  // Render - Alert
+  // ============================================================================
   return (
     <div className="flex items-center justify-center min-h-[400px] p-6">
       <Alert className="max-w-2xl border-orange-200 bg-orange-50">

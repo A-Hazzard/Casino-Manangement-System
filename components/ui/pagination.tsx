@@ -1,6 +1,21 @@
+/**
+ * Pagination Components
+ * Reusable pagination component for navigating through pages.
+ *
+ * Features:
+ * - Pagination container with navigation role
+ * - PaginationContent, PaginationItem, PaginationLink
+ * - PaginationPrevious, PaginationNext, PaginationEllipsis
+ * - Active state styling
+ * - Accessible navigation
+ */
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import type { PaginationLinkProps } from '@/lib/types/components';
+
+// ============================================================================
+// Pagination Components
+// ============================================================================
 
 const Pagination = ({ className, ...props }: React.ComponentProps<'nav'>) => (
   <nav

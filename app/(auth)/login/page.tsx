@@ -1,3 +1,18 @@
+/**
+ * Login Page
+ *
+ * User authentication page with login form and profile validation.
+ *
+ * Features:
+ * - User login with identifier and password
+ * - Remember me functionality
+ * - Password update modal for expired passwords
+ * - Profile validation modal for incomplete profiles
+ * - Role-based redirect after login
+ * - Error handling and user feedback
+ * - Responsive design
+ */
+
 'use client';
 
 import LoginForm from '@/components/auth/LoginForm';
@@ -32,13 +47,27 @@ type ProfileUpdateResult = {
 import EOSLogo from '/public/EOS_Logo.png';
 import SlotMachineImage from '/public/slotMachine.png';
 
+// ============================================================================
+// Page Components
+// ============================================================================
+/**
+ * Login Page Content Component
+ * Handles all state management and authentication logic for the login page
+ */
 function LoginPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const { setUser, clearUser } = useUserStore();
   const { setLastLoginPassword, clearLastLoginPassword } =
     useAuthSessionStore();
+
+  // ============================================================================
+  // State Management
+  // ============================================================================
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -76,6 +105,9 @@ function LoginPageContent() {
     });
   const [profileUpdating, setProfileUpdating] = useState(false);
 
+  // ============================================================================
+  // Effects - Initialization
+  // ============================================================================
   useEffect(() => {
     // Check for URL parameters (logout success, errors, etc.)
     const logoutParam = searchParams.get('logout');
@@ -594,6 +626,9 @@ function LoginPageContent() {
     }
   };
 
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
   // Only show skeleton during initial auth check, not during component mount
   // This prevents the annoying flicker where form -> skeleton -> form
   if (authLoading) {
@@ -604,6 +639,9 @@ function LoginPageContent() {
     );
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <LiquidGradient />
@@ -685,6 +723,10 @@ function LoginPageContent() {
   );
 }
 
+/**
+ * Login Page Component
+ * Thin wrapper that handles Suspense for loading state
+ */
 export default function LoginPage() {
   return (
     <Suspense fallback={<LoginPageSkeleton />}>

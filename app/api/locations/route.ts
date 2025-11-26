@@ -1,18 +1,48 @@
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Locations API Route
+ *
+ * This route handles CRUD operations for gaming locations.
+ * It supports:
+ * - Fetching locations with role-based access control
+ * - Creating new locations
+ * - Updating existing locations
+ * - Soft deleting locations
+ * - Licensee filtering
+ * - Location permission filtering
+ * - Minimal projection for performance
+ *
+ * @module app/api/locations/route
+ */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
+} from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { Countries } from '@/app/api/lib/models/countries';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { apiLogger } from '@/app/api/lib/utils/logger';
 import { UpdateLocationData } from '@/lib/types/location';
-import { generateMongoId } from '@/lib/utils/id';
-
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { Countries } from '@/app/api/lib/models/countries';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { getUserFromServer } from '../lib/helpers/users';
-import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { generateMongoId } from '@/lib/utils/id';
+import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching locations
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters (licensee, minimal, showAll, forceAll)
+ * 3. Get user's accessible licensees and permissions
+ * 4. Build query filter based on access control
+ * 5. Fetch locations with optional minimal projection
+ * 6. Add licenseeId field for frontend filtering
+ * 7. Return locations
+ */
 export async function GET(request: Request) {
+  const startTime = Date.now();
   const context = apiLogger.createContext(
     request as NextRequest,
     '/api/locations'
@@ -20,9 +50,14 @@ export async function GET(request: Request) {
   apiLogger.startLogging();
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Get query parameters
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     // Support both 'licensee' and 'licencee' spelling for backwards compatibility
     const licencee = searchParams.get('licensee') || searchParams.get('licencee');
@@ -32,16 +67,20 @@ export async function GET(request: Request) {
       searchParams.get('forceAll') === 'true' ||
       searchParams.get('forceAll') === '1';
 
-    // Get user's accessible licensees, roles, and location permissions from JWT token
+    // ============================================================================
+    // STEP 3: Get user's accessible licensees and permissions
+    // ============================================================================
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-    
-    // Get user's roles and location permissions
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions = 
-      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
+    const userLocationPermissions =
+      (userPayload?.resourcePermissions as {
+        'gaming-locations'?: { resources?: string[] };
+      })?.['gaming-locations']?.resources || [];
 
-    // Build base query filter
+    // ============================================================================
+    // STEP 4: Build query filter based on access control
+    // ============================================================================
     const deletionFilter = {
       $or: [
         { deletedAt: null },
@@ -56,7 +95,9 @@ export async function GET(request: Request) {
 
     // Apply location filtering based on licensee + location permissions
     if (
-      (showAll && userAccessibleLicensees === 'all' && userLocationPermissions.length === 0) ||
+      (showAll &&
+        userAccessibleLicensees === 'all' &&
+        userLocationPermissions.length === 0) ||
       (forceAll && isAdminOrDeveloper)
     ) {
       // Admin with no restrictions requesting all locations - no filter needed
@@ -82,7 +123,9 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fetch locations. If minimal is requested, project minimal fields only.
+    // ============================================================================
+    // STEP 5: Fetch locations with optional minimal projection
+    // ============================================================================
     const projection = minimal
       ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1 }
       : undefined;
@@ -90,7 +133,9 @@ export async function GET(request: Request) {
       .sort({ name: 1 })
       .lean();
 
-    // Add licenseeId field for each location (for frontend filtering)
+    // ============================================================================
+    // STEP 6: Add licenseeId field for frontend filtering
+    // ============================================================================
     const locationsWithLicenseeId = locations.map(loc => {
       const licenceeRaw = loc.rel?.licencee;
       let licenseeId: string | null = null;
@@ -110,22 +155,59 @@ export async function GET(request: Request) {
       };
     });
 
+    // ============================================================================
+    // STEP 7: Return locations
+    // ============================================================================
+    const duration = Date.now() - startTime;
     apiLogger.logSuccess(
       context,
-      `Successfully fetched ${locations.length} locations (minimal: ${minimal}, showAll: ${showAll})`
+      `Successfully fetched ${locations.length} locations (minimal: ${minimal}, showAll: ${showAll}) in ${duration}ms`
     );
-    return NextResponse.json({ locations: locationsWithLicenseeId }, { status: 200 });
+    return NextResponse.json(
+      { locations: locationsWithLicenseeId },
+      { status: 200 }
+    );
   } catch (error) {
+    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
-    apiLogger.logError(context, 'Failed to fetch locations', errorMessage);
-    return NextResponse.json({ success: false, message: errorMessage });
+    apiLogger.logError(
+      context,
+      `Failed to fetch locations after ${duration}ms`,
+      errorMessage
+    );
+    return NextResponse.json(
+      { success: false, message: errorMessage },
+      { status: 500 }
+    );
   }
 }
 
+/**
+ * Main POST handler for creating a new location
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request body
+ * 3. Validate required fields and business rules
+ * 4. Verify country exists if provided
+ * 5. Create new location document
+ * 6. Save location to database
+ * 7. Log activity
+ * 8. Return created location
+ */
 export async function POST(request: Request) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
     const body = await request.json();
 
     const {
@@ -140,7 +222,9 @@ export async function POST(request: Request) {
       billValidatorOptions,
     } = body;
 
-    // Validate required fields
+    // ============================================================================
+    // STEP 3: Validate required fields and business rules
+    // ============================================================================
     if (!name) {
       return NextResponse.json(
         { success: false, message: 'Location name is required' },
@@ -177,9 +261,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // If a country ID is provided, verify it exists (country is optional)
+    // ============================================================================
+    // STEP 4: Verify country exists if provided
+    // ============================================================================
     if (country && typeof country === 'string' && country.trim().length > 0) {
-      const countryDoc = await Countries.findById(country).lean();
+      // CRITICAL: Use findOne with _id instead of findById (repo rule)
+      const countryDoc = await Countries.findOne({ _id: country }).lean();
       if (!countryDoc) {
         return NextResponse.json(
           { success: false, message: 'Invalid country ID' },
@@ -188,7 +275,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create new location with proper MongoDB ObjectId-style hex string
+    // ============================================================================
+    // STEP 5: Create new location document
+    // ============================================================================
     const locationId = await generateMongoId();
     const newLocation = new GamingLocations({
       _id: locationId,
@@ -229,10 +318,14 @@ export async function POST(request: Request) {
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
 
-    // Save the new location
+    // ============================================================================
+    // STEP 6: Save location to database
+    // ============================================================================
     await newLocation.save();
 
-    // Log activity
+    // ============================================================================
+    // STEP 7: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -298,14 +391,22 @@ export async function POST(request: Request) {
       }
     }
 
+    // ============================================================================
+    // STEP 8: Return created location
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Locations API POST] Completed in ${duration}ms`);
+    }
     return NextResponse.json(
       { success: true, location: newLocation },
       { status: 201 }
     );
   } catch (error) {
+    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
-    console.error('API Error in POST /api/locations:', errorMessage);
+    console.error(`[Locations API POST] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
@@ -313,9 +414,31 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * Main PUT handler for updating an existing location
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request body
+ * 3. Find location by ID
+ * 4. Validate update fields and business rules
+ * 5. Verify country exists if provided
+ * 6. Build update data object
+ * 7. Update location in database
+ * 8. Return update result
+ */
 export async function PUT(request: Request) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
     const body = await request.json();
 
     const {
@@ -338,26 +461,30 @@ export async function PUT(request: Request) {
       );
     }
 
-    try {
-      // Find the location by ID (not by name) and ensure it's not deleted
-      const location = await GamingLocations.findOne({
-        _id: locationName,
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      });
+    // ============================================================================
+    // STEP 3: Find location by ID
+    // ============================================================================
+    const location = await GamingLocations.findOne({
+      _id: locationName,
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2020-01-01') } },
+      ],
+    });
 
-      if (!location) {
-        return NextResponse.json(
-          { success: false, message: 'Location not found' },
-          { status: 404 }
-        );
-      }
+    if (!location) {
+      return NextResponse.json(
+        { success: false, message: 'Location not found' },
+        { status: 404 }
+      );
+    }
 
-      const locationId = location._id.toString();
+    const locationId = location._id.toString();
 
-      // Backend validations mirroring frontend for provided fields
+    // ============================================================================
+    // STEP 4: Validate update fields and business rules
+    // ============================================================================
+    // Backend validations mirroring frontend for provided fields
       if (name !== undefined && typeof name !== 'string') {
         return NextResponse.json(
           { success: false, message: 'Location name must be a string' },
@@ -396,19 +523,24 @@ export async function PUT(request: Request) {
         );
       }
 
-      // Verify country exists when updating (country is optional)
-      if (country && typeof country === 'string' && country.trim().length > 0) {
-        const countryDoc = await Countries.findById(country).lean();
-        if (!countryDoc) {
-          return NextResponse.json(
-            { success: false, message: 'Invalid country ID' },
-            { status: 400 }
-          );
-        }
+    // ============================================================================
+    // STEP 5: Verify country exists if provided
+    // ============================================================================
+    if (country && typeof country === 'string' && country.trim().length > 0) {
+      // CRITICAL: Use findOne with _id instead of findById (repo rule)
+      const countryDoc = await Countries.findOne({ _id: country }).lean();
+      if (!countryDoc) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid country ID' },
+          { status: 400 }
+        );
       }
+    }
 
-      // Create update data object with only the fields that are present in the request
-      const updateData: UpdateLocationData = {};
+    // ============================================================================
+    // STEP 6: Build update data object
+    // ============================================================================
+    const updateData: UpdateLocationData = {};
 
       // Only include fields that are present in the request
       if (name) updateData.name = name;
@@ -462,40 +594,44 @@ export async function PUT(request: Request) {
         ) as UpdateLocationData['billValidatorOptions'];
       }
 
-      // Always update the updatedAt timestamp
-      updateData.updatedAt = new Date();
+    // Always update the updatedAt timestamp
+    updateData.updatedAt = new Date();
 
-      // Update the location
-      const result = await GamingLocations.updateOne(
-        { _id: locationId },
-        { $set: updateData }
-      );
+    // ============================================================================
+    // STEP 7: Update location in database
+    // ============================================================================
+    const result = await GamingLocations.updateOne(
+      { _id: locationId },
+      { $set: updateData }
+    );
 
-      if (result.modifiedCount === 0) {
-        return NextResponse.json(
-          { success: false, message: 'No changes were made to the location' },
-          { status: 400 }
-        );
-      }
-
+    if (result.modifiedCount === 0) {
       return NextResponse.json(
-        {
-          success: true,
-          message: 'Location updated successfully',
-          locationId,
-        },
-        { status: 200 }
-      );
-    } catch (dbError) {
-      console.error('Database error:', dbError);
-      return NextResponse.json(
-        { success: false, message: 'Database operation failed' },
-        { status: 500 }
+        { success: false, message: 'No changes were made to the location' },
+        { status: 400 }
       );
     }
+
+    // ============================================================================
+    // STEP 8: Return update result
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Locations API PUT] Completed in ${duration}ms`);
+    }
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Location updated successfully',
+        locationId,
+      },
+      { status: 200 }
+    );
   } catch (error) {
+    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
+    console.error(`[Locations API PUT] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
@@ -503,9 +639,29 @@ export async function PUT(request: Request) {
   }
 }
 
+/**
+ * Main DELETE handler for soft deleting a location
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse location ID from query parameters
+ * 3. Find location to delete
+ * 4. Perform soft delete
+ * 5. Log activity
+ * 6. Return deletion result
+ */
 export async function DELETE(request: Request) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse location ID from query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -516,8 +672,11 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Get location data before deletion for logging
-    const locationToDelete = await GamingLocations.findById(id);
+    // ============================================================================
+    // STEP 3: Find location to delete
+    // ============================================================================
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const locationToDelete = await GamingLocations.findOne({ _id: id });
     if (!locationToDelete) {
       return NextResponse.json(
         { success: false, message: 'Location not found' },
@@ -525,14 +684,19 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Soft delete by setting deletedAt
-    await GamingLocations.findByIdAndUpdate(
-      id,
+    // ============================================================================
+    // STEP 4: Perform soft delete
+    // ============================================================================
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    await GamingLocations.findOneAndUpdate(
+      { _id: id },
       { deletedAt: new Date() },
       { new: true }
     );
 
-    // Log activity
+    // ============================================================================
+    // STEP 5: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -601,14 +765,22 @@ export async function DELETE(request: Request) {
       }
     }
 
+    // ============================================================================
+    // STEP 6: Return deletion result
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Locations API DELETE] Completed in ${duration}ms`);
+    }
     return NextResponse.json(
       { success: true, message: 'Location deleted successfully' },
       { status: 200 }
     );
   } catch (error) {
+    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
-    console.error('API Error in DELETE /api/locations:', errorMessage);
+    console.error(`[Locations API DELETE] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }

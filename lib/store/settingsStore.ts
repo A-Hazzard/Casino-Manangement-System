@@ -1,3 +1,21 @@
+/**
+ * Settings Store
+ * Zustand store for managing comprehensive user settings and preferences.
+ *
+ * Features:
+ * - Manages notification, display, regional, privacy, security, system, backup, and integration settings
+ * - Provides category-specific settings update actions
+ * - Tracks loading state, errors, and unsaved changes
+ * - Offers theme management (light/dark/system) and font size controls
+ * - Includes currency, date, time, and number formatting helpers
+ * - Manages notification preferences with bulk enable/disable
+ * - Handles security settings (2FA, IP whitelist)
+ * - Controls system settings (auto-refresh, auto-save intervals)
+ * - Persists settings to localStorage with SSR-safe fallbacks
+ * - Supports settings reset by category or full reset
+ *
+ * @returns Zustand hook for accessing and updating user settings state.
+ */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
@@ -13,6 +31,10 @@ import type {
   IntegrationSettings,
 } from '@/lib/types/settings';
 import { DEFAULT_SETTINGS } from '@/lib/types/settings';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type SettingsState = {
   // Settings data
@@ -72,6 +94,10 @@ type SettingsState = {
   toggleAutoSave: () => void;
   setAutoSaveInterval: (seconds: number) => void;
 };
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 // Helper function to format currency based on user settings
 const formatCurrencyHelper = (
@@ -144,6 +170,10 @@ const formatNumberHelper = (number: number, format: string): string => {
       return number.toLocaleString('en-US');
   }
 };
+
+// ============================================================================
+// Store Creation
+// ============================================================================
 
 const createStore = () => {
   return create<SettingsState>()(

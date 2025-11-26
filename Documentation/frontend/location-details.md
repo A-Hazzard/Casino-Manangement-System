@@ -19,7 +19,7 @@
 The Location Details page provides comprehensive information about gaming locations, including cabinet management, metrics, and detailed analytics. The main locations page offers location listing with advanced filtering capabilities.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated**: October 29th, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.1.0
 **Status**: ✅ Fully Functional - All Issues Resolved
 
@@ -35,7 +35,7 @@ The Location Details page provides comprehensive information about gaming locati
 
 The Location Details page (`app/locations/[slug]/details/page.tsx`) provides comprehensive information about gaming locations, including cabinet management, metrics, and detailed analytics. The main locations page (`app/locations/page.tsx`) offers location listing with advanced filtering capabilities.
 
-**Last Updated:** December 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.2.0
 
 ## Recent Updates (December 2025)
@@ -257,6 +257,100 @@ lib/types/
 2. **Network Tab**: Verify API call success and response format
 3. **React DevTools**: Inspect component state and props
 4. **TypeScript**: Ensure type definitions match implementation
+
+## Financial Calculations Analysis
+
+### How Location Details Page Calculates Money In, Money Out, and Gross
+
+The Location Details page uses the **Location Details API** (`/api/locations/[locationId]`) to fetch financial metrics for cabinets at a specific location. The calculation process:
+
+1. **API Call**: Location Details page calls `/api/locations/[locationId]` with time period query parameter
+2. **Backend Processing** (in `app/api/locations/[locationId]/route.ts`):
+   - Fetches the specific location and validates user access
+   - Gets all machines at that location from `machines` collection
+   - Calculates gaming day range based on location's `gameDayOffset`
+   - Uses MongoDB aggregation pipeline with `$lookup` to join meters data
+   - Aggregates meter data per machine within the gaming day range
+3. **Response**: Returns array of cabinets (machines) with `moneyIn`, `moneyOut`, and `gross` per cabinet
+
+#### **Cabinet Money In (Drop) ✅**
+
+- **Data Source**: `meters` collection, `movement.drop` field
+- **Backend Implementation**:
+  ```javascript
+  // Aggregation pipeline in /api/locations/[locationId]/route.ts
+  {
+    $lookup: {
+      from: 'meters',
+      let: { machineId: '$machines._id' },
+      pipeline: [
+        {
+          $match: {
+            $expr: { $eq: ['$machine', '$$machineId'] },
+            readAt: {
+              $gte: gamingDayRange.rangeStart,
+              $lte: gamingDayRange.rangeEnd,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            moneyIn: { $sum: '$movement.drop' },
+            moneyOut: { $sum: '$movement.totalCancelledCredits' },
+          },
+        },
+      ],
+      as: 'metersData',
+    },
+  }
+  ```
+- **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
+- **Business Context**: Total physical cash inserted into each individual cabinet at the location
+- **Aggregation**: 
+  - For each machine at the location, queries all meters where `machine` field matches machine ID
+  - Filters meters by `readAt` timestamp within location's gaming day range
+  - Sums all `movement.drop` values from matching meters per machine
+
+#### **Cabinet Money Out (Total Cancelled Credits) ✅**
+
+- **Data Source**: `meters` collection, `movement.totalCancelledCredits` field
+- **Backend Implementation**: Same aggregation pipeline as Money In, groups `movement.totalCancelledCredits`
+- **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
+- **Business Context**: Total credits paid out from each individual cabinet
+- **Aggregation**: Sums all `movement.totalCancelledCredits` values per machine
+
+#### **Cabinet Gross Revenue ✅**
+
+- **Backend Implementation**:
+  ```javascript
+  {
+    $addFields: {
+      gross: { $subtract: ['$moneyIn', '$moneyOut'] },
+    },
+  }
+  ```
+- **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
+- **Mathematical Formula**: 
+  - Per Cabinet: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` for that machine
+  - Location Total: Sum of all cabinet gross values (calculated in frontend using `calculateCabinetFinancialTotals`)
+- **Frontend Calculation** (in `lib/utils/financial.ts`):
+  ```javascript
+  export function calculateCabinetFinancialTotals(cabinets: Cabinet[]): FinancialTotals {
+    return cabinets.reduce((acc, cabinet) => ({
+      moneyIn: acc.moneyIn + (cabinet.moneyIn || 0),
+      moneyOut: acc.moneyOut + (cabinet.moneyOut || 0),
+      gross: acc.gross + (cabinet.gross || cabinet.moneyIn - cabinet.moneyOut),
+    }), { moneyIn: 0, moneyOut: 0, gross: 0 });
+  }
+  ```
+
+#### **Key Differences from Locations Page**
+
+- **Granularity**: Location Details shows per-cabinet metrics, Locations page shows per-location totals
+- **API Endpoint**: Uses `/api/locations/[locationId]` instead of `/api/locationAggregation`
+- **Aggregation Method**: Uses `$lookup` in aggregation pipeline instead of separate queries per location
+- **Frontend Aggregation**: Location Details page calculates location totals by summing cabinet values in frontend
 
 ## Conclusion
 

@@ -18,6 +18,10 @@ export function useAdministrationData({
   selectedLicencee,
   activeSection,
 }: UseAdministrationDataProps): UseAdministrationDataReturn {
+  // ============================================================================
+  // State
+  // ============================================================================
+
   // Data states
   const [users, setUsers] = useState<User[]>([]);
   const [licensees] = useState<Licensee[]>([]);
@@ -30,6 +34,10 @@ export function useAdministrationData({
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+
+  // ============================================================================
+  // Data Fetching
+  // ============================================================================
 
   // Fetch users data
   const fetchUsersData = useCallback(async () => {
@@ -72,6 +80,10 @@ export function useAdministrationData({
     }
   }, []);
 
+  // ============================================================================
+  // Refresh Methods
+  // ============================================================================
+
   // Refresh methods
   const refreshUsers = useCallback(async () => {
     await fetchUsersData();
@@ -89,6 +101,10 @@ export function useAdministrationData({
     await Promise.all([fetchUsersData(), fetchActivityLogsData()]);
   }, [fetchUsersData, fetchActivityLogsData]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Load data based on active section
   useEffect(() => {
     if (activeSection === 'users') {
@@ -100,6 +116,9 @@ export function useAdministrationData({
     }
   }, [activeSection, fetchUsersData, fetchActivityLogsData]);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     users,
     licensees,

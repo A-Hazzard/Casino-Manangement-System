@@ -1,3 +1,23 @@
+/**
+ * Member Details Modal Component
+ * Modal for displaying and editing member details.
+ *
+ * Features:
+ * - Member information display
+ * - Edit mode with form fields
+ * - Member profile editing
+ * - Address and contact information management
+ * - Save and cancel functionality
+ * - GSAP animations
+ * - Toast notifications
+ * - Navigation to member details page
+ *
+ * Large component (~482 lines) handling member details display and editing.
+ *
+ * @param isOpen - Whether the modal is visible
+ * @param member - Member object to display/edit
+ * @param onClose - Callback to close the modal
+ */
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';

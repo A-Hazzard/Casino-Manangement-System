@@ -1,29 +1,51 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Locations Search API Route
+ *
+ * This route handles searching locations with financial metrics.
+ * It supports:
+ * - Location name search
+ * - Licensee filtering
+ * - Time period filtering
+ * - Financial metrics aggregation (money in, money out, gross)
+ * - Machine statistics (total, online)
+ *
+ * @module app/api/locations/search/route
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
 import {
   LocationResponse,
-  MetricsMatchStage,
   MeterMatchStage,
   Metric,
 } from '@/lib/types/location';
+import { NextRequest, NextResponse } from 'next/server';
 
-// Main search endpoint for dashboard location search
+/**
+ * Main GET handler for searching locations
+ *
+ * Flow:
+ * 1. Parse query parameters (licensee, timePeriod, search, dates)
+ * 2. Build location match filter
+ * 3. Connect to database
+ * 4. Build metrics aggregation pipeline
+ * 5. Fetch location data with machine statistics
+ * 6. Combine location and metrics data
+ * 7. Return search results
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse query parameters
+    // ============================================================================
     const searchParams = new URL(request.url).searchParams;
     const licencee = searchParams.get('licencee') ?? '';
-    const timePeriod = searchParams.get('timePeriod') ?? 'today';
-
-    // Fix: Allow capital or lowercase for time period case
-    const timePeriodNormalized = timePeriod.toLowerCase();
-
-    const metricsMatch: MetricsMatchStage = {};
-    if (licencee) metricsMatch['rel.licencee'] = licencee;
-    if (timePeriodNormalized) metricsMatch['timePeriod'] = timePeriodNormalized;
-
     const search = searchParams.get('search')?.trim() || '';
 
-    // Build location matching
+    // ============================================================================
+    // STEP 2: Build location match filter
+    // ============================================================================
     const locationMatch: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
@@ -36,6 +58,9 @@ export async function GET(request: NextRequest) {
     }
     if (licencee) locationMatch['rel.licencee'] = licencee;
 
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -44,6 +69,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Build metrics aggregation pipeline
+    // ============================================================================
     const { searchParams: searchParamsFromRequest } = new URL(request.url);
     const startDate = new Date(
       searchParamsFromRequest.get('startDate') ??
@@ -53,7 +81,6 @@ export async function GET(request: NextRequest) {
       searchParamsFromRequest.get('endDate') ?? Date.now()
     );
 
-    // Build metrics aggregation
     const matchStage: MeterMatchStage = {
       readAt: { $gte: startDate, $lte: endDate },
     };
@@ -61,6 +88,9 @@ export async function GET(request: NextRequest) {
       matchStage['rel.licencee'] = licencee;
     }
 
+    // ============================================================================
+    // STEP 5: Fetch location data with machine statistics
+    // ============================================================================
     const metrics = await db
       .collection('meters')
       .aggregate<Metric>([
@@ -83,6 +113,9 @@ export async function GET(request: NextRequest) {
       metrics.map((m: Metric) => [m._id, m])
     );
 
+    // ============================================================================
+    // STEP 6: Combine location and metrics data
+    // ============================================================================
     const locations = await db
       .collection('gaminglocations')
       .aggregate<LocationResponse>([
@@ -167,6 +200,9 @@ export async function GET(request: NextRequest) {
       ])
       .toArray();
 
+    // ============================================================================
+    // STEP 7: Return search results
+    // ============================================================================
     const response = locations.map((loc: LocationResponse) => {
       const metric: Metric | undefined = metricsMap.get(loc._id);
       return {
@@ -187,11 +223,18 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    const duration = Date.now() - startTime;
+    if (duration > 2000) {
+      console.warn(`[Locations Search API] Completed in ${duration}ms`);
+    }
+
     return NextResponse.json(response);
   } catch (error) {
-    console.error('🔥 Search Metrics API Error:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error(`[Locations Search API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: errorMessage },
       { status: 500 }
     );
   }

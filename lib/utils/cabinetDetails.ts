@@ -1,13 +1,32 @@
+/**
+ * Cabinet Details Utilities
+ *
+ * Utility functions for cabinet detail page operations.
+ *
+ * Features:
+ * - Debounce function for API calls
+ * - Cabinet online status checking
+ * - Time period filter options
+ */
+
 import { GamingMachine } from '@/shared/types/entities';
 import { TimePeriod } from '../types/api';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
 type ExtendedCabinetDetail = GamingMachine & {
   lastCommunication?: string | Date;
 };
 
-// DebounceFunction is a generic function type for debounce utilities
+/**
+ * DebounceFunction is a generic function type for debounce utilities
+ */
 type DebounceFunction = (...args: unknown[]) => unknown;
 
+// ============================================================================
+// Debounce Functions
+// ============================================================================
 /**
  * Creates a debounced version of a function
  * @param func - The function to debounce
@@ -29,6 +48,9 @@ export function debounce<T extends DebounceFunction>(
   };
 }
 
+// ============================================================================
+// Cabinet Status Functions
+// ============================================================================
 /**
  * Determines if a cabinet is online based on last communication time
  * @param cabinet - The cabinet to check
@@ -49,6 +71,9 @@ export function isCabinetOnline(
   return diff < oneHour;
 }
 
+// ============================================================================
+// Filter Functions
+// ============================================================================
 /**
  * Returns valid time period filters for cabinet metrics
  * @returns Array of time period filter options

@@ -1,6 +1,23 @@
+/**
+ * Collection Modal Store
+ * Zustand store for managing collection report modal state and data.
+ *
+ * Features:
+ * - Tracks selected location, machines, and collection time
+ * - Manages financial data (taxes, advance, variance, corrections)
+ * - Handles available and collected machines for the report
+ * - Provides actions to add, remove, and update collected machines
+ * - SSR-safe with dummy state for server rendering
+ *
+ * @returns Zustand hook for accessing and updating collection modal state.
+ */
 import { create } from 'zustand';
 import type { CollectionDocument } from '@/lib/types/collections';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type CollectionModalState = {
   // Location state
@@ -58,6 +75,10 @@ type CollectionModalState = {
   resetState: () => void;
 };
 
+// ============================================================================
+// Constants
+// ============================================================================
+
 const initialFinancials = {
   taxes: '0',
   advance: '0',
@@ -71,7 +92,37 @@ const initialFinancials = {
   reasonForShortagePayment: '',
 };
 
-export const useCollectionModalStore = create<CollectionModalState>(set => ({
+// ============================================================================
+// Store Creation
+// ============================================================================
+
+// Define a no-op version for SSR
+const dummyState: CollectionModalState = {
+  selectedLocationId: undefined,
+  selectedLocationName: '',
+  lockedLocationId: undefined,
+  availableMachines: [],
+  collectedMachines: [],
+  selectedMachineId: undefined,
+  selectedMachineData: null,
+  collectionTime: new Date(),
+  financials: initialFinancials,
+  setSelectedLocation: () => {},
+  setLockedLocation: () => {},
+  setAvailableMachines: () => {},
+  setCollectedMachines: () => {},
+  addCollectedMachine: () => {},
+  removeCollectedMachine: () => {},
+  updateCollectedMachine: () => {},
+  setSelectedMachineId: () => {},
+  setSelectedMachineData: () => {},
+  setCollectionTime: () => {},
+  setFinancials: () => {},
+  resetState: () => {},
+};
+
+const createStore = () => {
+  return create<CollectionModalState>(set => ({
   // Initial state
   selectedLocationId: undefined,
   selectedLocationName: '',
@@ -136,4 +187,20 @@ export const useCollectionModalStore = create<CollectionModalState>(set => ({
       collectionTime: new Date(),
       financials: initialFinancials,
     }),
-}));
+  }));
+};
+
+// Create the store conditionally
+let storeInstance: ReturnType<typeof createStore> | null = null;
+
+// Helper to ensure we use the same instance
+const getClientStore = () => {
+  if (!storeInstance) {
+    storeInstance = createStore();
+  }
+  return storeInstance;
+};
+
+// Use this store only on client side
+export const useCollectionModalStore =
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

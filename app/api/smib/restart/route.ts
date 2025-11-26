@@ -1,20 +1,63 @@
+/**
+ * SMIB Restart API Route
+ *
+ * This route handles restarting a single SMIB device.
+ * It supports:
+ * - Restarting SMIB by relayId
+ * - Finding machine by relayId
+ * - Sending restart command via MQTT
+ * - Activity logging
+ *
+ * @module app/api/smib/restart/route
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
-import { mqttService } from '@/lib/services/mqttService';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { connectDB } from '../../lib/middleware/db';
 
 /**
- * POST /api/smib/restart
- * Restart a single SMIB device
+ * Main POST handler for restarting a SMIB device
+ *
+ * Flow:
+ * 1. Parse request body
+ * 2. Validate relayId
+ * 3. Connect to database
+ * 4. Find machine by relayId
+ * 5. Send restart command via MQTT
+ * 6. Log activity
+ * 7. Return success response
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
+    const { relayId } = await request.json();
+
+    // ============================================================================
+    // STEP 2: Validate relayId
+    // ============================================================================
+    if (!relayId) {
+      return NextResponse.json(
+        { success: false, error: 'RelayId is required' },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
     await connectDB();
 
-    const { relayId } = await request.json();
+    // ============================================================================
+    // STEP 4: Find machine by relayId
+    // ============================================================================
 
     if (!relayId) {
       return NextResponse.json(
@@ -23,7 +66,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the machine with this relayId
     const machine = await Machine.findOne({
       $or: [{ relayId }, { smibBoard: relayId }],
     });
@@ -35,11 +77,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send restart command via MQTT
+    // ============================================================================
+    // STEP 5: Send restart command via MQTT
+    // ============================================================================
     try {
       await mqttService.restartSmib(relayId);
-    } catch (mqttError) {
-      console.error('❌ Failed to send SMIB restart command:', mqttError);
+    } catch {
       return NextResponse.json(
         {
           success: false,
@@ -49,7 +92,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
+    // ============================================================================
+    // STEP 6: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     const clientIP = getClientIP(request);
 
@@ -76,15 +121,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 7: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[SMIB Restart API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       message: 'Restart command sent successfully',
       relayId,
     });
   } catch (error) {
-    console.error('❌ Error in SMIB restart endpoint:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[SMIB Restart API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

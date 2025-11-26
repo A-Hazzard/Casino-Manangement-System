@@ -1,3 +1,19 @@
+/**
+ * Edit Country Modal Component
+ * Modal for editing existing countries with ISO codes.
+ *
+ * Features:
+ * - Country name editing
+ * - Alpha-2 code editing
+ * - Alpha-3 code editing
+ * - ISO numeric code editing
+ * - Form validation
+ * - Pre-populated form fields
+ *
+ * @param isOpen - Whether the modal is visible
+ * @param country - Country object to edit
+ * @param onClose - Callback to close the modal
+ */
 'use client';
 
 import { useState, useEffect } from 'react';

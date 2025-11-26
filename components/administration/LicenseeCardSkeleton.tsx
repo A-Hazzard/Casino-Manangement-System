@@ -1,8 +1,21 @@
+/**
+ * Licensee Card Skeleton Component
+ * Loading skeleton for licensee cards on mobile view.
+ *
+ * Features:
+ * - Matches LicenseeCard layout structure
+ * - 5 skeleton cards
+ * - Header, content, and action button skeletons
+ * - Responsive design
+ */
 'use client';
 
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LicenseeCardSkeleton() {
+  // ============================================================================
+  // Render - Card Skeleton
+  // ============================================================================
   return (
     <div className="mt-6 space-y-4">
       {Array.from({ length: 5 }).map((_, idx) => (

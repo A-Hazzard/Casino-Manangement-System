@@ -1,3 +1,11 @@
+/**
+ * SMIB Config Skeleton Component
+ * Loading skeleton for SMIB configuration section.
+ *
+ * Features:
+ * - Matches SmibConfiguration layout structure
+ * - Header and grid layout skeletons
+ */
 import React from 'react';
 
 export const SmibConfigSkeleton = () => (

@@ -9,6 +9,22 @@ import {
 } from '@/shared/types/entities';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+type SSEMessage = {
+  type:
+    | 'connected'
+    | 'callback_ready'
+    | 'heartbeat'
+    | 'keepalive'
+    | 'config_update'
+    | 'error';
+  relayId?: string;
+  timestamp?: string;
+  message?: string;
+  component?: string;
+  data?: Record<string, unknown>;
+  error?: string;
+};
+
 type MqttConfigData = {
   smibId: string;
   networkSSID: string;
@@ -98,6 +114,8 @@ type UseSmibConfigurationReturn = {
   fetchMqttConfig: (cabinetId: string) => Promise<void>;
   connectToConfigStream: (relayId: string) => void;
   disconnectFromConfigStream: () => void;
+  subscribeToMessages: (callback: (message: SSEMessage) => void) => () => void;
+  isSSEConnected: boolean;
   requestLiveConfig: (relayId: string, component: string) => Promise<void>;
   publishConfigUpdate: (relayId: string, config: object) => Promise<void>;
   updateNetworkConfig: (
@@ -156,6 +174,9 @@ type UseSmibConfigurationReturn = {
 };
 
 export function useSmibConfiguration(): UseSmibConfigurationReturn {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [smibConfigExpanded, setSmibConfigExpanded] = useState(false);
   const [communicationMode, setCommunicationMode] =
     useState<string>('No Value Provided');
@@ -183,17 +204,13 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
   }, [hasReceivedRealSmibData]);
   const [isManuallyFetching, setIsManuallyFetching] = useState(false);
   const [hasConfigBeenFetched, setHasConfigBeenFetched] = useState(false);
-  const [_mqttConfig, setMqttConfig] = useState<{
-    mqttSecure: number;
-    mqttQOS: number;
-    mqttURI: string;
-    mqttSubTopic: string;
-    mqttPubTopic: string;
-    mqttCfgTopic: string;
-    mqttIdleTimeS: number;
-  } | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const currentRelayIdRef = useRef<string | null>(null);
+  // Message subscribers - allows multiple components to listen to SSE messages
+  const messageSubscribersRef = useRef<Set<(message: SSEMessage) => void>>(
+    new Set()
+  );
+  const [isSSEConnected, setIsSSEConnected] = useState(false);
 
   const [formData, setFormData] = useState({
     communicationMode: 'No Value Provided',
@@ -617,9 +634,21 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
       `🔗 [HOOK] connectToConfigStream called with relayId: ${relayId}`
     );
 
+    // 🔧 FIX: Only close existing EventSource if relayId is different
+    // This prevents unregistering callbacks when the same relayId is requested multiple times
     if (eventSourceRef.current) {
-      console.warn(`🔗 [HOOK] Closing existing EventSource`);
+      const currentRelayId = currentRelayIdRef.current;
+      if (currentRelayId === relayId) {
+        console.warn(
+          `🔗 [HOOK] EventSource already exists for relayId ${relayId}, reusing connection`
+        );
+        return; // Already connected to this relayId, don't recreate
+      }
+      console.warn(
+        `🔗 [HOOK] Closing existing EventSource (switching from ${currentRelayId} to ${relayId})`
+      );
       eventSourceRef.current.close();
+      eventSourceRef.current = null;
     }
 
     currentRelayIdRef.current = relayId;
@@ -628,28 +657,34 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     // This prevents the bug where dropdown shows "Online" but detail shows "Offline"
     (async () => {
       try {
-        console.log(`🔍 [SMIB FIX] Fetching initial status for relay ${relayId}`);
+        console.log(
+          `🔍 [SMIB FIX] Fetching initial status for relay ${relayId}`
+        );
         const response = await fetch('/api/mqtt/discover-smibs');
         const data = await response.json();
-        
+
         if (data.smibs && Array.isArray(data.smibs)) {
           const smib = data.smibs.find(
             (s: { relayId: string; online?: boolean }) => s.relayId === relayId
           );
           if (smib) {
             const brokerStatus = Boolean(smib.online);
-            console.log(`✅ [SMIB FIX] Broker reports ${relayId} as ${brokerStatus ? 'ONLINE' : 'OFFLINE'}`);
-            
+            console.log(
+              `✅ [SMIB FIX] Broker reports ${relayId} as ${brokerStatus ? 'ONLINE' : 'OFFLINE'}`
+            );
+
             // Set initial connection status based on broker status
             // This will be updated later by config responses and heartbeat monitoring
             setIsConnectedToMqtt(brokerStatus);
-            
+
             // Update heartbeat ref so monitoring doesn't immediately mark it offline
             if (brokerStatus) {
               lastHeartbeatRef.current = Date.now();
             }
           } else {
-            console.warn(`⚠️ [SMIB FIX] SMIB ${relayId} not found in broker list`);
+            console.warn(
+              `⚠️ [SMIB FIX] SMIB ${relayId} not found in broker list`
+            );
           }
         }
       } catch (error) {
@@ -659,34 +694,37 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     })();
 
     const sseUrl = `/api/mqtt/config/subscribe?relayId=${relayId}`;
-    console.warn(`🔗 [HOOK] Creating EventSource with URL: ${sseUrl}`);
 
     const eventSource = new EventSource(sseUrl);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      console.warn(
-        `✅ [HOOK] EventSource connection opened for relayId: ${relayId}`
-      );
       // Don't set isConnectedToMqtt(true) here - wait for actual SMIB data
     };
 
     eventSource.onmessage = event => {
-      console.warn(`📨 [HOOK] EventSource message received:`, event.data);
-      console.warn(`📨 [HOOK] Current isConnectedToMqtt:`, isConnectedToMqtt);
-
       // Update heartbeat for ANY message received (including ping/heartbeat)
       lastHeartbeatRef.current = Date.now();
 
       try {
         const message = JSON.parse(event.data);
-        console.warn(`📨 [HOOK] Parsed message type:`, message.type);
+
+        // Notify all subscribers of the message
+        messageSubscribersRef.current.forEach(callback => {
+          try {
+            callback(message);
+          } catch (error) {
+            console.error('Error in message subscriber callback:', error);
+          }
+        });
+
+        // Handle callback_ready message - SSE is ready for meter requests
+        if (message.type === 'callback_ready') {
+          setIsSSEConnected(true);
+        }
 
         // Handle heartbeat/keepalive messages
         if (message.type === 'heartbeat' || message.type === 'keepalive') {
-          console.warn(
-            `💓 [HOOK] SSE Heartbeat received (server keepalive, not SMIB data)`
-          );
           // Heartbeats are from the SSE server, not the SMIB device
           // Don't set isConnectedToMqtt here - only actual SMIB responses should do that
           // The heartbeat just keeps the SSE connection alive
@@ -696,25 +734,20 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         if (message.type === 'config_update' && message.data) {
           // Update form data with live MQTT data
           const configData = message.data;
-          console.warn(`🔍 [HOOK] Received config_update message:`, message);
-          console.warn(`🔍 [HOOK] Config data:`, configData);
 
           // ANY message from SMIB indicates it's alive (rsp, err, exp, etc.)
           // If we previously had real data and went offline, mark as back online
           if (!isConnectedToMqtt && hasReceivedRealSmibData) {
-            console.warn(`✅ [HOOK] SMIB reconnected (${configData.typ} message detected)`);
             setIsConnectedToMqtt(true);
           }
 
           // For non-config messages (rsp, err, exp), just update heartbeat and return
           if (!configData || !configData.comp) {
-            console.warn(`🔍 [HOOK] Received ${configData.typ || 'unknown'} message - updating heartbeat only`);
             return;
           }
 
           // Skip processing if this is just a connection message without actual data
           if (message.type === 'connected' || message.type === 'ping') {
-            console.warn(`🔍 [HOOK] Skipping connection/ping message`);
             return;
           }
 
@@ -823,7 +856,6 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
                 `🔍 [HOOK] Updating mqttConfig with:`,
                 newMqttConfig
               );
-              setMqttConfig(newMqttConfig);
             } else {
               console.warn(
                 `🔍 [HOOK] Skipping MQTT update - no actual data from SMIB (SMIB likely disconnected)`
@@ -925,8 +957,20 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
       console.error('❌ [HOOK] EventSource error:', error);
       setIsConnectedToMqtt(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setFormData, setIsConnectedToMqtt, setHasReceivedRealSmibData, setCommunicationMode, setIsSSEConnected, lastHeartbeatRef, messageSubscribersRef, hasReceivedRealSmibData, isConnectedToMqtt]);
+
+  // Subscribe to SSE messages - allows multiple components to listen
+  const subscribeToMessages = useCallback(
+    (callback: (message: SSEMessage) => void) => {
+      messageSubscribersRef.current.add(callback);
+
+      // Return unsubscribe function
+      return () => {
+        messageSubscribersRef.current.delete(callback);
+      };
+    },
+    []
+  );
 
   // Disconnect from SSE stream
   const disconnectFromConfigStream = useCallback(() => {
@@ -935,6 +979,7 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
       eventSourceRef.current = null;
     }
     currentRelayIdRef.current = null;
+    setIsSSEConnected(false);
     setIsConnectedToMqtt(false);
     setHasReceivedRealSmibData(false);
   }, []);
@@ -1184,7 +1229,7 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     const scheduleNextPoll = () => {
       // Random interval between 5-10 seconds
       const randomInterval = Math.floor(Math.random() * 5000) + 5000;
-      
+
       return setTimeout(async () => {
         const relayId = currentRelayIdRef.current;
         if (!relayId) return;
@@ -1197,10 +1242,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
             requestLiveConfig(relayId, 'coms'),
           ]);
         } catch (error) {
-         console.error('❌ [HOOK] Error requesting live config:', error);
-         setIsConnectedToMqtt(false);
-         setHasReceivedRealSmibData(false);
-         return;
+          console.error('❌ [HOOK] Error requesting live config:', error);
+          setIsConnectedToMqtt(false);
+          setHasReceivedRealSmibData(false);
+          return;
         }
 
         // Schedule next poll
@@ -1255,10 +1300,13 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     };
   }, [isConnectedToMqtt, hasReceivedRealSmibData]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount only - don't disconnect on re-renders
   useEffect(() => {
     return () => {
-      disconnectFromConfigStream();
+      // Only disconnect when component actually unmounts
+      if (eventSourceRef.current) {
+        disconnectFromConfigStream();
+      }
       if (heartbeatCheckIntervalRef.current) {
         clearInterval(heartbeatCheckIntervalRef.current);
         heartbeatCheckIntervalRef.current = null;
@@ -1289,6 +1337,8 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     fetchMqttConfig,
     connectToConfigStream,
     disconnectFromConfigStream,
+    subscribeToMessages,
+    isSSEConnected,
     requestLiveConfig,
     publishConfigUpdate,
     updateNetworkConfig,

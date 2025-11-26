@@ -1,3 +1,28 @@
+/**
+ * Edit Collection Modal Component
+ * Comprehensive modal for editing existing collection reports with machine data.
+ *
+ * Features:
+ * - Location selection
+ * - Collection time/date editing
+ * - Machine data editing (meters in/out, previous meters)
+ * - Movement calculations
+ * - SAS time override functionality
+ * - Machine validation
+ * - Collection report updates
+ * - Machine collection history updates
+ * - Debounced search and validation
+ * - Loading states and skeletons
+ * - Toast notifications
+ * - Tooltips for guidance
+ *
+ * Very large component (~2815 lines) handling complete collection report editing workflow.
+ *
+ * @param open - Whether the modal is visible
+ * @param reportId - ID of the collection report to edit
+ * @param onClose - Callback to close the modal
+ * @param onSuccess - Callback when collection is successfully updated
+ */
 'use client';
 
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
@@ -218,6 +243,44 @@ export default function EditCollectionModal({
   const [hasSetCollectionTimeFromReport, setHasSetCollectionTimeFromReport] =
     useState(false);
 
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
+  const machineForDataEntry = useMemo(() => {
+    // First, try to find in the machines of selected location
+    let found = machinesOfSelectedLocation.find(
+      m => String(m._id) === selectedMachineId
+    );
+
+    // If not found and we have a selectedMachineId, try to find in collected machines
+    if (!found && selectedMachineId) {
+      const collectedEntry = collectedMachineEntries.find(
+        entry => entry.machineId === selectedMachineId
+      );
+
+      if (collectedEntry) {
+        // Create a mock machine object from the collected entry for display purposes
+        found = {
+          _id: collectedEntry.machineId as string, // Type assertion for mock object
+          name:
+            collectedEntry.machineCustomName ||
+            collectedEntry.serialNumber ||
+            collectedEntry.machineId,
+          serialNumber: collectedEntry.serialNumber || collectedEntry.machineId,
+          collectionMeters: {
+            metersIn: collectedEntry.prevIn || 0,
+            metersOut: collectedEntry.prevOut || 0,
+          },
+        } as (typeof machinesOfSelectedLocation)[0]; // Type assertion since we're creating a mock object
+      }
+    }
+
+    return found;
+  }, [machinesOfSelectedLocation, selectedMachineId, collectedMachineEntries]);
+
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   // Custom close handler that checks for changes - MOVED HERE to be after all state declarations
   const handleClose = useCallback(() => {
     // Check if there are unsaved edits
@@ -275,7 +338,6 @@ export default function EditCollectionModal({
     }
     onClose();
     return true; // Indicate that close was allowed
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     hasChanges,
     onRefresh,
@@ -286,8 +348,9 @@ export default function EditCollectionModal({
     currentMetersIn,
     currentMetersOut,
     currentMachineNotes,
-    machinesOfSelectedLocation,
-    collectedMachineEntries,
+    machineForDataEntry?.name,
+    machineForDataEntry?.serialNumber,
+    setShowUnsavedChangesWarning,
   ]);
 
   // Update collection time when location changes (only if not already set from report data)
@@ -424,38 +487,6 @@ export default function EditCollectionModal({
     // Always sort alphabetically and numerically
     return sortMachinesAlphabetically(result);
   }, [machinesOfSelectedLocation, machineSearchTerm, sortMachinesAlphabetically]);
-
-  const machineForDataEntry = useMemo(() => {
-    // First, try to find in the machines of selected location
-    let found = machinesOfSelectedLocation.find(
-      m => String(m._id) === selectedMachineId
-    );
-
-    // If not found and we have a selectedMachineId, try to find in collected machines
-    if (!found && selectedMachineId) {
-      const collectedEntry = collectedMachineEntries.find(
-        entry => entry.machineId === selectedMachineId
-      );
-
-      if (collectedEntry) {
-        // Create a mock machine object from the collected entry for display purposes
-        found = {
-          _id: collectedEntry.machineId as string, // Type assertion for mock object
-          name:
-            collectedEntry.machineCustomName ||
-            collectedEntry.serialNumber ||
-            collectedEntry.machineId,
-          serialNumber: collectedEntry.serialNumber || collectedEntry.machineId,
-          collectionMeters: {
-            metersIn: collectedEntry.prevIn || 0,
-            metersOut: collectedEntry.prevOut || 0,
-          },
-        } as (typeof machinesOfSelectedLocation)[0]; // Type assertion since we're creating a mock object
-      }
-    }
-
-    return found;
-  }, [machinesOfSelectedLocation, selectedMachineId, collectedMachineEntries]);
 
   // Function to handle clicks on disabled input fields
   const handleDisabledFieldClick = useCallback(() => {

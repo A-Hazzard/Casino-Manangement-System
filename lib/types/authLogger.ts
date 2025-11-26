@@ -1,3 +1,10 @@
+/**
+ * Auth Logger Types
+ * Types for authentication logging and audit trails.
+ *
+ * Tracks authentication events including login attempts, token operations,
+ * and security-related actions with IP addresses and user agents.
+ */
 export type AuthLogEntry = {
   action: string;
   userId?: string;

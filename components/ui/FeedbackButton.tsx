@@ -1,3 +1,14 @@
+/**
+ * Feedback Button Component
+ * Floating feedback button that opens feedback form modal.
+ *
+ * Features:
+ * - Fixed position floating button
+ * - Framer Motion animations
+ * - Feedback form modal integration
+ * - Hover and tap animations
+ * - Accessible button
+ */
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -7,6 +18,9 @@ import { MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 
 export default function FeedbackButton() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
 
   return (

@@ -1,3 +1,18 @@
+/**
+ * Dashboard Visualization Helper Functions
+ *
+ * Provides helper functions for dashboard visualization, including chart rendering,
+ * data loading, and refresh functionality. It handles all operations related to
+ * displaying dashboard charts, maps, and visualizations.
+ *
+ * Features:
+ * - Renders customized labels for pie chart visualizations.
+ * - Loads gaming locations data with geo-coordinates validation.
+ * - Fetches top-performing data based on active tab and filter.
+ * - Handles complete dashboard refresh functionality.
+ * - Creates time filter button configurations.
+ */
+
 import {
   dashboardData,
   DashboardTotals,
@@ -12,6 +27,10 @@ import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
 import getAllGamingLocations from '@/lib/helpers/locations';
 import { TimePeriod } from '@/shared/types/common';
 import { fetchMetricsData } from '@/lib/helpers/dashboard';
+
+// ============================================================================
+// Chart Rendering Functions
+// ============================================================================
 
 /**
  * Renders a customized label for pie chart visualization
@@ -36,6 +55,10 @@ export const renderCustomizedLabel = (props: CustomizedLabelProps) => {
   );
 };
 
+// ============================================================================
+// Data Loading Functions
+// ============================================================================
+
 /**
  * Fetches and sets gaming locations data
  */
@@ -59,6 +82,10 @@ export const loadGamingLocations = async (
   });
   setGamingLocations(validLocations);
 };
+
+// ============================================================================
+// Dashboard Refresh Functions
+// ============================================================================
 
 /**
  * Fetches top performing data based on active tab and filter
@@ -132,6 +159,10 @@ export const handleDashboardRefresh = async (
     setLoadingTopPerforming(false);
   }
 };
+
+// ============================================================================
+// Filter Configuration Functions
+// ============================================================================
 
 /**
  * Creates time filter buttons configuration

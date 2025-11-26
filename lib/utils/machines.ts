@@ -1,7 +1,17 @@
 /**
- * Online/offline helpers for machines
+ * Machine Utilities
+ *
+ * Utility functions for machine status and display operations.
+ *
+ * Features:
+ * - Online/offline status checking
+ * - Machine display ID extraction
+ * - Activity threshold handling
  */
 
+// ============================================================================
+// Machine Status Functions
+// ============================================================================
 /**
  * Returns true if the given lastActivity is within the threshold window.
  * Missing lastActivity is treated as offline.
@@ -26,6 +36,9 @@ export function isMachineOffline(
   return !isMachineOnline(lastActivity, thresholdMs);
 }
 
+// ============================================================================
+// Machine Display ID Functions
+// ============================================================================
 /**
  * Returns a display identifier for a machine, prioritizing fields in order:
  * 1) serialNumber

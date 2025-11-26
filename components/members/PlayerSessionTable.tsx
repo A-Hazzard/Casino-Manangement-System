@@ -1,12 +1,39 @@
+/**
+ * Player Session Table Component
+ * Table component for displaying member gaming sessions with sorting and filtering.
+ *
+ * Features:
+ * - Session data display (time, length, money in/out, jackpot, won/loss, points, games played)
+ * - Sortable columns
+ * - Expandable session details
+ * - Navigation to session details
+ * - Currency formatting
+ * - Date/time formatting
+ * - Responsive design
+ *
+ * Large component (~579 lines) handling session display and management.
+ *
+ * @param sessions - Array of member sessions
+ * @param sortOption - Current sort option
+ * @param onSortChange - Callback when sort changes
+ */
 'use client';
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { MemberSession } from '@/shared/types/entities';
 import { formatCurrency } from '@/lib/utils/formatters';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+} from '@/lib/utils/financialColors';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import Link from 'next/link';
 import { ActivityIcon, ChevronUp, ChevronDown } from 'lucide-react';
+
+// ============================================================================
+// Helper Functions & Types
+// ============================================================================
 
 // Custom format function for login time to show date and time on separate lines
 const formatLoginTime = (
@@ -136,7 +163,7 @@ const SessionCard = ({ session }: { session: MemberSession }) => {
       <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
         <div className="flex items-center justify-between">
           <span className="font-medium text-gray-600">Money In</span>
-          <span className="break-all text-right font-semibold">
+          <span className={`break-all text-right font-semibold ${getMoneyInColorClass(session.moneyIn)}`}>
             {shouldShowCurrency()
               ? formatAmount(session.moneyIn || 0)
               : formatCurrency(session.moneyIn || 0)}
@@ -144,7 +171,7 @@ const SessionCard = ({ session }: { session: MemberSession }) => {
         </div>
         <div className="flex items-center justify-between">
           <span className="font-medium text-gray-600">Money Out</span>
-          <span className="break-all text-right font-semibold">
+          <span className={`break-all text-right font-semibold ${getMoneyOutColorClass(session.moneyOut, session.moneyIn)}`}>
             {shouldShowCurrency()
               ? formatAmount(session.moneyOut || 0)
               : formatCurrency(session.moneyOut || 0)}
@@ -334,13 +361,21 @@ export default function PlayerSessionTable({
       case 'Session Length':
         return session.sessionLength || 'N/A';
       case 'Money In':
-        return shouldShowCurrency()
-          ? formatAmount(session.moneyIn || 0)
-          : formatCurrency(session.moneyIn || 0);
+        return (
+          <span className={getMoneyInColorClass(session.moneyIn)}>
+            {shouldShowCurrency()
+              ? formatAmount(session.moneyIn || 0)
+              : formatCurrency(session.moneyIn || 0)}
+          </span>
+        );
       case 'Money Out':
-        return shouldShowCurrency()
-          ? formatAmount(session.moneyOut || 0)
-          : formatCurrency(session.moneyOut || 0);
+        return (
+          <span className={getMoneyOutColorClass(session.moneyOut, session.moneyIn)}>
+            {shouldShowCurrency()
+              ? formatAmount(session.moneyOut || 0)
+              : formatCurrency(session.moneyOut || 0)}
+          </span>
+        );
       case 'Jackpot':
         return shouldShowCurrency()
           ? formatAmount(session.jackpot || 0)

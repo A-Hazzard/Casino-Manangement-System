@@ -1,3 +1,10 @@
+/**
+ * Dashboard Types
+ * Types for dashboard filters, time periods, and date ranges.
+ *
+ * Used by useDashboardFilters hook to manage metrics filters,
+ * pie chart filters, and custom date range selections.
+ */
 import type { TimePeriod, dateRange } from '@/lib/types';
 
 export type UseDashboardFiltersProps = {

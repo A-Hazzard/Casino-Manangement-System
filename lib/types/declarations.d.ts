@@ -1,3 +1,13 @@
+/**
+ * Type Declarations
+ * TypeScript module declarations for custom hooks and components.
+ *
+ * Provides type definitions for:
+ * - useCabinetDetails hook
+ * - AccountingDetails component
+ * Ensures proper TypeScript support across the application.
+ */
+
 // Allow TypeScript to recognize our hook
 declare module '@/lib/hooks/useCabinetDetails' {
   import { GamingMachine as CabinetDetail } from '@/shared/types/entities';

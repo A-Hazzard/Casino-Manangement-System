@@ -1,8 +1,24 @@
+/**
+ * Metrics Utilities
+ *
+ * Utility functions for dashboard metrics and filter handling.
+ *
+ * Features:
+ * - Filter change handling
+ * - Metrics data fetching
+ * - Currency formatting
+ * - Collection document calculations (SAS Gross, Variation)
+ * - SAS time formatting
+ */
+
 import { getMetrics } from '@/lib/helpers/metrics';
 import { ActiveFilters, dashboardData } from '../types';
 import { TimePeriod } from '@shared/types';
 import type { CollectionDocument } from '@/lib/types/collections';
 
+// ============================================================================
+// Filter Handling Functions
+// ============================================================================
 /**
  * Handles a change in the active dashboard filter.
  *
@@ -39,6 +55,9 @@ export async function handleFilterChange(
   setShowDatePicker(filterKey === 'Custom');
 }
 
+// ============================================================================
+// Metrics Fetching Functions
+// ============================================================================
 /**
  * Fetches new metrics data based on selected filter.
  */
@@ -101,6 +120,9 @@ export async function switchFilter(
   }
 }
 
+// ============================================================================
+// Formatting Functions
+// ============================================================================
 /**
  * Formats a given number as a localized USD currency string with smart decimal handling.
  *
@@ -154,6 +176,9 @@ export function formatNumberWithCurrency(
   }).format(value);
 }
 
+// ============================================================================
+// Collection Calculation Functions
+// ============================================================================
 /**
  * Calculates the SAS Gross for a collection document.
  * @param col - The collection document.
@@ -182,6 +207,9 @@ export function calculateVariation(col: CollectionDocument): number | string {
   return (col.movement.gross || 0) - calculateSasGross(col);
 }
 
+// ============================================================================
+// SAS Time Formatting Functions
+// ============================================================================
 /**
  * Formats the SAS Times for a collection document.
  * @param col - The collection document.

@@ -1,9 +1,17 @@
 /**
  * Collection Time Utility Functions
  *
- * Handles calculation of default collection times based on location's gameDayOffset
+ * Handles calculation of default collection times based on location's gameDayOffset.
+ *
+ * Features:
+ * - Default collection time calculation
+ * - Game day offset handling
+ * - Time zone considerations
  */
 
+// ============================================================================
+// Collection Time Calculation
+// ============================================================================
 /**
  * Calculate the default collection time for a new collection
  *

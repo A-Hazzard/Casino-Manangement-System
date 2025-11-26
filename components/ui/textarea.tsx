@@ -1,3 +1,14 @@
+/**
+ * Textarea Component
+ * Reusable textarea component for multi-line text input.
+ *
+ * Features:
+ * - Consistent styling
+ * - Focus states
+ * - Disabled states
+ * - Responsive text sizing
+ * - Minimum height for better UX
+ */
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';

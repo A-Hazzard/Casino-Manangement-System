@@ -1,3 +1,28 @@
+/**
+ * Add User Modal Component
+ * Comprehensive modal for creating new users with full profile and permissions.
+ *
+ * Features:
+ * - User profile creation (name, email, username, password, DOB, gender, address, ID)
+ * - Profile picture upload with cropping
+ * - Role assignment with permission-based restrictions
+ * - Licensee and location permissions management
+ * - Gaming location access control
+ * - Form validation with real-time error messages
+ * - Password strength validation
+ * - Role-based field visibility (developer/admin/manager restrictions)
+ * - Multi-select dropdowns for permissions
+ * - GSAP animations for modal entrance/exit
+ * - Toast notifications for success/error
+ *
+ * Large component (~1490 lines) handling complete user creation workflow.
+ *
+ * @param open - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ * @param onSave - Callback when user is successfully created
+ * @param formState - Current form state
+ * @param setFormState - Callback to update form state
+ */
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -34,6 +59,10 @@ import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import RolePermissionsDialog from './RolePermissionsDialog';
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const ALL_ROLE_OPTIONS = [
   { label: 'Developer', value: 'developer' },
@@ -243,8 +272,7 @@ export default function AddUserModal({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]); // Only depend on 'open' - fetch once when modal opens
+  }, [open, setFormState, formState, setAllLicenseesSelected, setLicensees, setIsLoadingAssignments, isManager, currentUserLicenseeIds, isLocationAdmin]);
 
   // Load locations based on selected licensees
   useEffect(() => {

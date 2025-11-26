@@ -1,7 +1,7 @@
 # Collection Report Variation Troubleshooting Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 5, 2025
+**Last Updated:** November 22, 2025
 
 ## What is Variation?
 
@@ -255,7 +255,7 @@ Variation naturally approaches zero as:
 ### Key API Endpoints:
 
 - `POST /api/collection-report/[reportId]/sync-meters` - Recalculate SAS data
-- `POST /api/collection-reports/fix-report` - Comprehensive fix
+- `POST /api/collection-reports/fix-report` - Comprehensive fix (requires authentication, but not admin/developer roles)
 - `GET /api/collection-report/[reportId]/check-sas-times` - Check for issues
 
 ## Need More Help?

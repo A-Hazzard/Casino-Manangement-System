@@ -1,3 +1,24 @@
+/**
+ * Edit Licensee Modal Component
+ * Modal for editing existing licensees with country and date information.
+ *
+ * Features:
+ * - Licensee name and description editing
+ * - Country selection
+ * - Start date and expiry date pickers
+ * - Date formatting utilities
+ * - Form validation
+ * - GSAP animations
+ * - Loading states for countries
+ *
+ * @param open - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ * @param onSave - Callback when licensee is updated
+ * @param formState - Current form state with previous dates
+ * @param setFormState - Callback to update form state
+ * @param countries - Available countries list
+ * @param countriesLoading - Whether countries are loading
+ */
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { DateTimePicker } from '@/components/ui/date-time-picker';

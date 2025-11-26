@@ -1,3 +1,18 @@
+/**
+ * Activity Log Modal Helper Functions
+ *
+ * Provides helper functions for displaying and managing activity logs in modal dialogs.
+ * It handles activity grouping, formatting, filtering, and animation for activity log
+ * modals used throughout the application.
+ *
+ * Features:
+ * - Groups activities by date with smart labeling (Today, Yesterday, etc.).
+ * - Generates human-readable descriptions and appropriate icons for activity types.
+ * - Fetches activity logs with filtering by type, date range, and entity.
+ * - Applies GSAP animations to activity modals.
+ * - Provides filter button configurations and activity type options.
+ */
+
 import { gsap } from 'gsap';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -11,6 +26,10 @@ import type {
 
 // Re-export frontend-specific types for convenience
 export type { ActivityGroup, ProcessedActivityEntry };
+
+// ============================================================================
+// Activity Icon and Styling
+// ============================================================================
 
 /**
  * Gets appropriate icon and background color for activity action type
@@ -38,6 +57,10 @@ export function getActionIcon(actionType: string, entityType?: string) {
       return { icon: 'Settings', bg: 'bg-gray-500' };
   }
 }
+
+// ============================================================================
+// Activity Description Generation
+// ============================================================================
 
 /**
  * Generates human-readable description for activity log entry
@@ -82,6 +105,10 @@ export function generateActivityDescription(
       return `${actorEmail} performed ${log.actionType} action on ${entityName}`;
   }
 }
+
+// ============================================================================
+// Activity Grouping and Processing
+// ============================================================================
 
 /**
  * Groups activities by date with smart date labeling
@@ -140,6 +167,10 @@ export function groupActivitiesByDate(
   }));
 }
 
+// ============================================================================
+// Modal Animation
+// ============================================================================
+
 /**
  * Applies GSAP animation to activity modal
  * @param modalRef - React ref to modal element
@@ -157,6 +188,10 @@ export function animateActivityModal(
     );
   }
 }
+
+// ============================================================================
+// Activity Log Fetching
+// ============================================================================
 
 /**
  * Fetches activity logs with filters
@@ -217,6 +252,10 @@ export async function fetchActivityLogs(params: {
     };
   }
 }
+
+// ============================================================================
+// Filter Configuration
+// ============================================================================
 
 /**
  * Creates filter button configuration

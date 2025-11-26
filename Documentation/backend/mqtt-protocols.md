@@ -1,7 +1,7 @@
 # MQTT Protocol Implementation & Developer Flow Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 26th, 2025
+**Last Updated:** November 22, 2025
 
 ## Overview
 
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
 #### MQTT Service Implementation
 
-**File:** `lib/services/mqttService.ts`
+**File:** `app/api/lib/services/mqttService.ts`
 
 ```typescript
 class MqttService {

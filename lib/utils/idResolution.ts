@@ -1,12 +1,26 @@
 /**
- * Utility functions for resolving IDs to meaningful names in activity logs
+ * ID Resolution Utilities
+ *
+ * Utility functions for resolving IDs to meaningful names in activity logs.
+ *
+ * Features:
+ * - ObjectId detection
+ * - ID to name resolution
+ * - Caching for performance
+ * - Country ID resolution
  */
 
 import axios from 'axios';
 
+// ============================================================================
+// Cache
+// ============================================================================
 // Cache for resolved IDs
 const idCache: Map<string, string> = new Map();
 
+// ============================================================================
+// ObjectId Detection
+// ============================================================================
 /**
  * Checks if a value looks like a MongoDB ObjectId (24 character hex string)
  */
@@ -16,6 +30,9 @@ export function isObjectId(value: unknown): boolean {
   return /^[0-9a-fA-F]{24}$/.test(value);
 }
 
+// ============================================================================
+// ID Resolution Functions
+// ============================================================================
 /**
  * Resolves a country ID to its name
  */

@@ -1,3 +1,19 @@
+/**
+ * Protected Route Component
+ * Wrapper component that protects pages requiring authentication and authorization.
+ *
+ * Features:
+ * - Authenticates user before allowing access
+ * - Checks admin access requirements
+ * - Validates page-specific permissions
+ * - Redirects to login if unauthenticated
+ * - Shows NoRoleAssigned message for users without roles
+ * - Supports both local and database permission checks
+ *
+ * @param children - Child components to render if authorized
+ * @param requireAdminAccess - Whether admin/developer role is required
+ * @param requiredPage - Specific page permission required
+ */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -22,11 +38,17 @@ export default function ProtectedRoute({
   requireAdminAccess = false,
   requiredPage,
 }: ProtectedRouteProps) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [hasWaitedForRoles, setHasWaitedForRoles] = useState(false);
 
+  // ============================================================================
+  // Effects - Authentication & Authorization Check
+  // ============================================================================
   useEffect(() => {
     // Wait for auth to fully load
     if (isLoading) return;
@@ -135,6 +157,10 @@ export default function ProtectedRoute({
     requiredPage,
     hasWaitedForRoles,
   ]);
+
+  // ============================================================================
+  // Render - Loading, No Role, or Protected Content
+  // ============================================================================
 
   // Show loading while checking authentication
   if (isLoading || isChecking) {

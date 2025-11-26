@@ -1,8 +1,13 @@
-{"locations":[]}---
-description:
+---
+description: Senior Software Engineering Rules for Next.js Projects - Strict engineering guidelines for code quality, maintainability, and security
 globs:
+  - '**/*.ts'
+  - '**/*.tsx'
+  - '**/*.js'
+  - '**/*.jsx'
+  - '**/next.config.*'
+  - '**/package.json'
 alwaysApply: true
-
 ---
 
 # Senior Software Engineering Rules for Next.js Projects

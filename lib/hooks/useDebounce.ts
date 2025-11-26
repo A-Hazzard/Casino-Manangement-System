@@ -7,8 +7,14 @@ import { useEffect, useState, useRef, useCallback } from 'react';
  * @returns The debounced value
  */
 export function useDebounce<T>(value: T, delay: number): T {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedValue(value);
@@ -32,8 +38,15 @@ export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
   delay: number
 ): T {
+  // ============================================================================
+  // Refs
+  // ============================================================================
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const callbackRef = useRef(callback);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Update callback ref when callback changes
   useEffect(() => {

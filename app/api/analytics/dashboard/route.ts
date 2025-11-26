@@ -1,13 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Analytics Dashboard API Route
+ *
+ * This route handles fetching dashboard analytics data for a specific licensee.
+ * It supports:
+ * - Filtering by licensee
+ * - Aggregating financial and machine statistics
+ * - Currency conversion
+ *
+ * @module app/api/analytics/dashboard/route
+ */
+
+import { getDashboardAnalytics } from '@/app/api/lib/helpers/analytics';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching dashboard analytics
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Fetch dashboard analytics data
+ * 4. Apply currency conversion if needed
+ * 5. Return dashboard analytics
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
-    await connectDB();
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get('licensee');
     const displayCurrency =
@@ -20,85 +46,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const globalStatsPipeline = [
-      // Stage 1: Join machines with gaming locations to get location details
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'gamingLocation',
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
-      },
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    await connectDB();
 
-      // Stage 2: Flatten the location details array (each machine now has location info)
-      {
-        $unwind: '$locationDetails',
-      },
+    // ============================================================================
+    // STEP 3: Fetch dashboard analytics data
+    // ============================================================================
+    const globalStats = await getDashboardAnalytics(licensee);
 
-      // Stage 3: Filter machines by licensee to get only relevant machines
-      {
-        $match: {
-          'locationDetails.rel.licencee': licensee,
-        },
-      },
-
-      // Stage 4: Aggregate financial and machine statistics across all machines
-      {
-        $group: {
-          _id: null,
-          totalDrop: { $sum: { $ifNull: ['$sasMeters.drop', 0] } },
-          totalCancelledCredits: {
-            $sum: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-          },
-          totalGross: {
-            $sum: {
-              $subtract: [
-                { $ifNull: ['$sasMeters.drop', 0] },
-                { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-              ],
-            },
-          },
-          totalMachines: { $sum: 1 },
-          onlineMachines: {
-            $sum: {
-              $cond: [{ $eq: ['$assetStatus', 'active'] }, 1, 0],
-            },
-          },
-          sasMachines: {
-            $sum: {
-              $cond: ['$isSasMachine', 1, 0],
-            },
-          },
-        },
-      },
-
-      // Stage 5: Remove the _id field from final output
-      {
-        $project: {
-          _id: 0,
-        },
-      },
-    ];
-
-    const statsResult = await Machine.aggregate(globalStatsPipeline);
-    const globalStats = statsResult[0] || {
-      totalDrop: 0,
-      totalCancelledCredits: 0,
-      totalGross: 0,
-      totalMachines: 0,
-      onlineMachines: 0,
-      sasMachines: 0,
-    };
-
-    // Apply currency conversion if needed
+    // ============================================================================
+    // STEP 4: Apply currency conversion if needed
+    // ============================================================================
     let convertedStats = globalStats;
 
     if (shouldApplyCurrencyConversion(licensee)) {
-      console.warn(
-        '🔍 ANALYTICS DASHBOARD - Applying currency conversion for All Licensee mode'
-      );
-      // Convert financial fields from USD to display currency
       const financialFields = [
         'totalDrop',
         'totalCancelledCredits',
@@ -107,26 +70,42 @@ export async function GET(request: NextRequest) {
       convertedStats = { ...globalStats };
 
       financialFields.forEach(field => {
-        if (typeof globalStats[field] === 'number') {
+        const value = (globalStats as Record<string, unknown>)[field];
+        if (typeof value === 'number') {
           (convertedStats as Record<string, unknown>)[field] = convertFromUSD(
-            globalStats[field],
+            value,
             displayCurrency
           );
         }
       });
     }
 
+    // ============================================================================
+    // STEP 5: Return dashboard analytics
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Analytics Dashboard GET API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       globalStats: convertedStats,
       currency: displayCurrency,
       converted: shouldApplyCurrencyConversion(licensee),
     });
   } catch (error) {
-    console.error('Error fetching dashboard analytics:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch dashboard analytics';
+    console.error(
+      `[Analytics Dashboard GET API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         message: 'Failed to fetch dashboard analytics',
-        error: (error as Error).message,
+        error: errorMessage,
       },
       { status: 500 }
     );

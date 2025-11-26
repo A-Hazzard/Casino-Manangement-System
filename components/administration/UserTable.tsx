@@ -1,3 +1,21 @@
+/**
+ * User Table Component
+ * Desktop table view for displaying users with sorting and actions.
+ *
+ * Features:
+ * - Sortable columns (name, username, email, enabled, login count, last login, session)
+ * - User profile pictures with fallback avatars
+ * - Role badges display
+ * - Edit and delete actions
+ * - Responsive design (hidden on mobile, shown on desktop)
+ * - Status indicators (enabled/disabled)
+ *
+ * @param users - Array of user objects to display
+ * @param sortConfig - Current sort configuration
+ * @param requestSort - Callback to request column sort
+ * @param onEdit - Callback when edit button is clicked
+ * @param onDelete - Callback when delete button is clicked
+ */
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

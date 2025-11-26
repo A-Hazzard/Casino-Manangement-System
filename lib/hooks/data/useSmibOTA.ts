@@ -15,9 +15,16 @@ type Firmware = {
  * Hook for managing SMIB OTA firmware updates
  */
 export function useSmibOTA(onUpdateComplete?: () => void) {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [isUpdating, setIsUpdating] = useState(false);
   const [firmwares, setFirmwares] = useState<Firmware[]>([]);
   const [isLoadingFirmwares, setIsLoadingFirmwares] = useState(false);
+
+  // ============================================================================
+  // Methods
+  // ============================================================================
 
   /**
    * Fetch available firmware versions
@@ -117,6 +124,9 @@ export function useSmibOTA(onUpdateComplete?: () => void) {
     }
   };
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     isUpdating,
     firmwares,

@@ -1,9 +1,18 @@
+/**
+ * No Data Message Component
+ * Component for displaying a message when no data is available.
+ *
+ * Features:
+ * - Centered message display
+ * - Customizable message text
+ * - Consistent styling
+ *
+ * @param message - Message text to display
+ * @param className - Additional CSS classes
+ */
 import React from 'react';
 import type { NoDataMessageProps } from '@/lib/types/components';
 
-/**
- * Displays a message when no data is available
- */
 const NoDataMessage: React.FC<NoDataMessageProps> = ({
   message = 'No data available.',
   className,

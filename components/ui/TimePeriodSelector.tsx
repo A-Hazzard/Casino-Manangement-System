@@ -1,3 +1,14 @@
+/**
+ * Time Period Selector Component
+ * Mobile-only time period selector dropdown for dashboard metrics.
+ *
+ * Features:
+ * - Time period selection dropdown
+ * - Integration with dashboard store
+ * - Loading and refreshing state handling
+ * - Mobile-only display (hidden on desktop)
+ * - Disabled state during loading
+ */
 'use client';
 
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -5,6 +16,9 @@ import { getTimeFilterButtons } from '@/lib/helpers/dashboard';
 import type { TimePeriod } from '@shared/types';
 
 export function TimePeriodSelector() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const {
     activeMetricsFilter,
     setActiveMetricsFilter,

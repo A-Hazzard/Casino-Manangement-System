@@ -1,8 +1,29 @@
+/**
+ * Player Totals Card Component
+ * Card component displaying aggregated player statistics and totals.
+ *
+ * Features:
+ * - Expandable/collapsible totals section
+ * - Total won/loss calculation
+ * - Total bet calculation
+ * - Total games played
+ * - Currency formatting
+ * - Color-coded won/loss display
+ * - Stat cards for individual metrics
+ *
+ * @param member - Member/CasinoMember object with sessions
+ * @param showTotals - Whether totals section is expanded
+ * @param handleToggleTotals - Callback to toggle totals visibility
+ */
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+
+// ============================================================================
+// Types & Helper Components
+// ============================================================================
 
 type PlayerTotalsCardProps = {
   member: Member;

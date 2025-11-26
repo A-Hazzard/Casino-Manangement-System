@@ -1,3 +1,21 @@
+/**
+ * Administration Navigation Component
+ * Tab navigation component for administration page with role-based access control.
+ *
+ * Features:
+ * - Tab-based navigation (Users, Licensees, Activity Logs, Feedback)
+ * - Role-based tab filtering (only shows accessible tabs)
+ * - Active tab highlighting
+ * - Responsive design (desktop and mobile)
+ * - Smooth animations with Framer Motion
+ * - Loading state support
+ * - Permission checks for each tab
+ *
+ * @param tabs - Array of administration tabs to display
+ * @param activeSection - Currently active section ID
+ * @param onChange - Callback when tab changes
+ * @param isLoading - Whether navigation is in loading state
+ */
 'use client';
 
 import { motion } from 'framer-motion';
@@ -22,9 +40,15 @@ export default function AdministrationNavigation({
   onChange,
   isLoading = false,
 }: Props) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const { user } = useUserStore();
   const userRoles = user?.roles || [];
 
+  // ============================================================================
+  // Computed Values - Filtered Tabs
+  // ============================================================================
   // Filter tabs based on user permissions
   const accessibleTabs = tabs.filter(tab => {
     switch (tab.id) {
@@ -41,6 +65,9 @@ export default function AdministrationNavigation({
     }
   });
 
+  // ============================================================================
+  // Render - Navigation Tabs
+  // ============================================================================
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop - md: and above */}

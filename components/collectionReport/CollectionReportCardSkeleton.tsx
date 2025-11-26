@@ -1,3 +1,16 @@
+/**
+ * Collection Report Card Skeleton Component
+ * Loading skeleton for collection report cards on mobile view.
+ *
+ * Features:
+ * - Matches CollectionReportCards layout structure
+ * - Configurable count and grid layout
+ * - Header, content, and button skeletons
+ * - Responsive design (mobile only)
+ *
+ * @param gridLayout - Whether to use grid layout
+ * @param count - Number of skeleton cards to display
+ */
 import React from 'react';
 
 type CollectionReportCardSkeletonProps = {

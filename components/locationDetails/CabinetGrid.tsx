@@ -1,3 +1,29 @@
+/**
+ * Cabinet Grid Component
+ * Grid/table component for displaying cabinets in location details with filtering and actions.
+ *
+ * Features:
+ * - Desktop table view and mobile card view
+ * - Cabinet information display
+ * - Online/offline status indicators
+ * - Financial metrics display
+ * - Edit, delete, and view actions
+ * - Copy to clipboard functionality
+ * - Search and filter capabilities
+ * - Sorting functionality
+ * - Pagination
+ * - GSAP animations for status indicators
+ * - Role-based action permissions
+ *
+ * Large component (~342 lines) handling cabinet display and management in location details.
+ *
+ * @param cabinets - Array of cabinet details
+ * @param loading - Whether data is loading
+ * @param onEdit - Callback when edit is clicked
+ * @param onDelete - Callback when delete is clicked
+ * @param sortOption - Current sort option
+ * @param onSortChange - Callback when sort changes
+ */
 import { Button } from '@/components/ui/button';
 import CabinetTable from '@/components/ui/cabinets/CabinetTable';
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
@@ -7,6 +33,11 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { CabinetGridProps } from '@/lib/types/components';
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
 import { formatCurrency } from '@/lib/utils';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import gsap from 'gsap';
@@ -15,6 +46,10 @@ import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.
 import Image from 'next/image';
 import React from 'react';
 import { toast } from 'sonner';
+
+// ============================================================================
+// Helper Components
+// ============================================================================
 
 function CabinetCardMobile({
   cabinet,
@@ -110,7 +145,7 @@ function CabinetCardMobile({
           <span className="text-xs text-gray-500">Money In:</span>
           <CurrencyValueWithOverflow
             value={cabinet.moneyIn || 0}
-            className="text-xs font-medium"
+            className={`text-xs font-medium ${getMoneyInColorClass(cabinet.moneyIn)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>
@@ -118,7 +153,7 @@ function CabinetCardMobile({
           <span className="text-xs text-gray-500">Money Out:</span>
           <CurrencyValueWithOverflow
             value={cabinet.moneyOut || 0}
-            className="text-xs font-medium"
+            className={`text-xs font-medium ${getMoneyOutColorClass(cabinet.moneyOut, cabinet.moneyIn)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>
@@ -126,7 +161,7 @@ function CabinetCardMobile({
           <span className="text-xs text-gray-500">Gross:</span>
           <CurrencyValueWithOverflow
             value={cabinet.gross || 0}
-            className="text-xs font-medium"
+            className={`text-xs font-medium ${getGrossColorClass(cabinet.gross)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>
@@ -144,26 +179,26 @@ function CabinetCardMobile({
           <span>View</span>
         </Button>
         {canEditMachines && (
-          <Button
-            onClick={() => onEdit(cabinet)}
-            variant="outline"
-            size="sm"
+        <Button
+          onClick={() => onEdit(cabinet)}
+          variant="outline"
+          size="sm"
             className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span>Edit</span>
-          </Button>
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          <span>Edit</span>
+        </Button>
         )}
         {canDeleteMachines && (
-          <Button
-            onClick={() => onDelete(cabinet)}
-            variant="outline"
-            size="sm"
+        <Button
+          onClick={() => onDelete(cabinet)}
+          variant="outline"
+          size="sm"
             className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
-          </Button>
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>Delete</span>
+        </Button>
         )}
       </div>
     </div>

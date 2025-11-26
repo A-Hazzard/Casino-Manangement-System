@@ -1,3 +1,19 @@
+/**
+ * User Card Component
+ * Mobile-friendly card view for displaying user information.
+ *
+ * Features:
+ * - User profile picture with fallback avatar
+ * - Role badges display
+ * - User details (username, email, enabled status, login count, last login)
+ * - Edit and delete action buttons
+ * - Responsive design (shown on mobile, hidden on desktop)
+ * - Status indicators
+ *
+ * @param user - User object to display
+ * @param onEdit - Callback when edit button is clicked
+ * @param onDelete - Callback when delete button is clicked
+ */
 import Image from 'next/image';
 import type { User } from '@/lib/types/administration';
 import defaultAvatar from '@/public/defaultAvatar.svg';
@@ -11,6 +27,9 @@ type UserCardProps = {
 };
 
 export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
+  // ============================================================================
+  // Render - User Card
+  // ============================================================================
   return (
     <div className="overflow-hidden rounded-lg bg-white shadow-md">
       <div className="flex items-center gap-2 bg-blue-500 p-3 text-white">

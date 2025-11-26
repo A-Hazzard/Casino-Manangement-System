@@ -1,3 +1,21 @@
+/**
+ * SMIB Configuration Component
+ * Component for managing SMIB (Smart Machine Interface Board) configuration.
+ *
+ * Features:
+ * - Expandable/collapsible configuration section
+ * - Communication mode selection (Ethernet/WiFi)
+ * - Network settings (SSID, password, channel)
+ * - Advanced settings
+ * - Firmware update functionality
+ * - Machine control buttons (restart, OTA, etc.)
+ * - Configuration save/load
+ * - Error handling
+ * - Toast notifications
+ * - Framer Motion animations
+ *
+ * @param cabinet - Cabinet object with SMIB configuration
+ */
 import {
   configContentVariants,
   itemVariants,

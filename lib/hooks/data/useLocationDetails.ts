@@ -55,7 +55,9 @@ export const useLocationDetails = ({
   activeMetricsFilter,
   customDateRange,
 }: UseLocationDetailsProps): UseLocationDetailsReturn => {
-  // State management
+  // ============================================================================
+  // State
+  // ============================================================================
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
   const [allLocations, setAllLocations] = useState<
@@ -71,6 +73,10 @@ export const useLocationDetails = ({
     hasNextPage: false,
     hasPrevPage: false,
   });
+
+  // ============================================================================
+  // Methods
+  // ============================================================================
 
   // Load location details with proper error handling and logging
   const loadLocationDetails = useCallback(async () => {
@@ -187,6 +193,10 @@ export const useLocationDetails = ({
     toast.success('Location details refreshed successfully');
   }, [loadLocationDetails, loadCabinets, loadAllLocations, locationSlug]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Effect hooks for data loading
   useEffect(() => {
     if (locationSlug) {
@@ -196,6 +206,9 @@ export const useLocationDetails = ({
     }
   }, [locationSlug, loadLocationDetails, loadCabinets, loadAllLocations]);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     // Data states
     locationInfo,

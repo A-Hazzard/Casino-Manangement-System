@@ -1,4 +1,21 @@
+/**
+ * Machines Helper Functions
+ *
+ * Provides helper functions for fetching machine statistics, including online,
+ * offline, and total machine counts. It supports optional licensee filtering
+ * to get statistics for specific licensees.
+ *
+ * Features:
+ * - Fetches machine statistics (online, offline, total counts).
+ * - Supports optional licensee filtering.
+ * - Handles errors gracefully with default values.
+ */
+
 import axios from 'axios';
+
+// ============================================================================
+// Machine Statistics
+// ============================================================================
 
 type MachineStats = {
   onlineMachines: number;

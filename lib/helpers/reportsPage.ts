@@ -1,6 +1,20 @@
 /**
- * Reports page helper functions for managing dashboard interactions and data handling
+ * Reports Page Helper Functions
+ *
+ * Provides helper functions for the reports page, including location selection,
+ * data refresh, time filtering, dashboard data loading, export functionality,
+ * and machine data sorting. It handles all operations related to the reports
+ * dashboard and its various tabs.
+ *
+ * Features:
+ * - Handles location selection from dashboard map and locations tab.
+ * - Manages dashboard data refresh.
+ * - Creates time filter button configurations.
+ * - Loads dashboard data from MongoDB (placeholder implementation).
+ * - Exports SAS evaluation and machine meters reports to PDF/Excel.
+ * - Handles machine data sorting and evaluation data sorting.
  */
+
 import type {
   RealTimeMetrics,
   MachineEvaluationData,
@@ -18,6 +32,10 @@ type MachineSortConfig = {
   direction: 'asc' | 'desc';
 };
 
+// ============================================================================
+// Location Selection Handlers
+// ============================================================================
+
 /**
  * Handles location selection from dashboard map
  * @param locationIds - Array of selected location IDs
@@ -30,6 +48,10 @@ export function handleLocationSelect(locationIds: string[]) {
     console.warn(`Primary selected location: ${locationIds[0]}`);
   }
 }
+
+// ============================================================================
+// Dashboard Data Management
+// ============================================================================
 
 /**
  * Handles refresh action for dashboard data
@@ -83,6 +105,10 @@ export function loadDashboardData(
   // For now, just set loading to false
   setLoading(false);
 }
+
+// ============================================================================
+// Export Functions
+// ============================================================================
 
 /**
  * Handles location selection for locations tab
@@ -219,6 +245,10 @@ export async function handleExportSASEvaluation(
     toast.error('Failed to export SAS evaluation report');
   }
 }
+
+// ============================================================================
+// Sorting Functions
+// ============================================================================
 
 /**
  * Handles sorting for machine data

@@ -1,7 +1,7 @@
 # Locations Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 2024  
+**Last Updated:** November 22, 2025  
 **Version:** 2.3.0
 
 ## Recent Updates (December 2024)
@@ -156,17 +156,32 @@ The Locations page provides comprehensive casino location management, including 
   - `components/ui/MachineStatusWidget.tsx` - Machine status indicators
   - `components/dashboard/DashboardDateFilters.tsx` - Date filtering
   - `components/ui/CabinetTableSkeleton.tsx` - Cabinet loading skeleton
+  - `components/ui/FinancialMetricsCards.tsx` - Financial totals display
+  - `components/ui/FloatingRefreshButton.tsx` - Scroll-triggered refresh button
+  - `components/ui/NoLicenseeAssigned.tsx` - Message for users without licensees
+  - `components/ui/errors/PageErrorBoundary.tsx` - Error boundary wrapper
+  - `components/ui/errors/NetworkError.tsx` - Network error display
 
 ### State Management
 
-- **Global Store:** `lib/store/dashboardStore.ts` - Licensee and filter state
+- **Global Store:** `lib/store/dashboardStore.ts` - Zustand store for licensee and filter state
+  - **Store Hook:** `useDashBoardStore` (note: capital B in "Board")
+  - **Key Properties:** `selectedLicencee`, `activeMetricsFilter`, `customDateRange`
 - **Location Actions Store:** `lib/store/locationActionsStore.ts` - Location CRUD operations
+- **Custom Hooks:**
+  - `useLocationData()` - Manages location data fetching, search, and batching
+  - `useLocationMachineStats()` - Fetches machine statistics for locations
+  - `useLocationModals()` - Manages modal state (new, edit, delete)
+  - `useLocationSorting()` - Handles sorting and pagination logic
+  - `useGlobalErrorHandler()` - Provides error handling with retry logic
 - **Local State:** React `useState` hooks for UI state
 - **Key State Properties:**
   - `locationData` - Location data array
-  - `loading` - Loading state
+  - `loading`, `searchLoading` - Loading states
   - `searchTerm`, `sortOrder`, `sortOption` - Search and sort states
   - `currentPage` - Pagination state
+  - `accumulatedLocations` - Batched location data for pagination
+  - `loadedBatches` - Tracks which batches have been loaded
   - Modal states for various operations
 
 ### Data Flow
@@ -200,9 +215,11 @@ The Locations page provides comprehensive casino location management, including 
 
 #### Location Aggregation Endpoints
 
-- **GET `/api/locationAggregation`** - Fetches aggregated location data
-  - Parameters: `timePeriod`, `licensee`, `filters`
-  - Returns: Array of aggregated location objects with metrics
+- **GET `/api/reports/locations`** - Fetches aggregated location data with financial metrics
+  - Parameters: `timePeriod`, `licencee`, `startDate`, `endDate`, `page`, `limit`, `search`, `filters`
+  - Returns: `{ data: AggregatedLocation[], totalCount: number }`
+  - Supports batching (50 items per batch) for performance
+  - Includes search functionality with debouncing
 
 #### Cabinet Management Endpoints
 
@@ -454,41 +471,97 @@ The locations page essentially **gives you a bird's-eye view of your entire casi
 
 **Current Implementation Analysis:**
 
+#### **How Locations Page Calculates Money In, Money Out, and Gross**
+
+The Locations page uses the **Location Aggregation API** (`/api/locationAggregation`) which is the same API used by the Dashboard. The calculation process:
+
+1. **API Call**: Locations page calls `/api/locationAggregation` with time period and optional licensee filter
+2. **Backend Processing** (in `app/api/lib/helpers/locationAggregation.ts`):
+   - Fetches all accessible locations (respects user permissions and licensee filter)
+   - For each location:
+     - Gets all machines at that location from `machines` collection
+     - Calculates gaming day range based on location's `gameDayOffset`
+     - Queries `meters` collection for all meter readings matching:
+       - Machine IDs for machines at this location
+       - `readAt` timestamp within the gaming day range
+     - Aggregates meter data using MongoDB aggregation pipeline
+3. **Response**: Returns array of locations with `moneyIn`, `moneyOut`, and `gross` per location
+
 #### **Location Money In (Drop) ✅**
 
-- **Current Implementation**:
+- **Data Source**: `meters` collection, `movement.drop` field
+- **Backend Implementation** (in `app/api/lib/helpers/locationAggregation.ts`):
   ```javascript
-  moneyIn: {
-    $sum: '$movement.drop';
-  }
+  // Step 1: Get all machines for location
+  const machinesForLocation = await db.collection('machines').find({
+    gamingLocation: locationIdStr,
+    $or: [
+      { deletedAt: null },
+      { deletedAt: { $lt: new Date('2020-01-01') } },
+    ],
+  });
+  
+  // Step 2: Aggregate meters for all machines at location
+  const metersAggregation = await db.collection('meters').aggregate([
+    {
+      $match: {
+        machine: { $in: machineIds }, // All machine IDs for this location
+        readAt: {
+          $gte: gamingDayRange.rangeStart,
+          $lte: gamingDayRange.rangeEnd,
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+      },
+    },
+  ]);
+  
+  // Step 3: Extract result
+  moneyIn: meterMetrics.totalDrop
   ```
 - **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
 - **Business Context**: Total physical cash inserted across all machines at location
-- **Aggregation**: Sums across all machines at location within date range
+- **Aggregation**: 
+  - Queries all meters where `machine` field matches any machine ID at the location
+  - Filters meters by `readAt` timestamp within location's gaming day range
+  - Sums all `movement.drop` values from matching meters
+- **Gaming Day Consideration**: Each location's `gameDayOffset` determines the date range for meter queries
 
 #### **Location Money Out (Total Cancelled Credits) ✅**
 
-- **Current Implementation**:
+- **Data Source**: `meters` collection, `movement.totalCancelledCredits` field
+- **Backend Implementation**:
   ```javascript
-  moneyOut: {
-    $sum: '$movement.totalCancelledCredits';
+  {
+    $group: {
+      _id: null,
+      totalMoneyOut: {
+        $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+      },
+    },
   }
   ```
 - **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
 - **Business Context**: Total credits paid out to players at location (vouchers + hand-paid)
-- **Aggregation**: Sums across all machines at location within date range
+- **Aggregation**: 
+  - Same meter query as Money In (same machines, same date range)
+  - Sums all `movement.totalCancelledCredits` values from matching meters
 
 #### **Location Gross Revenue ✅**
 
-- **Current Implementation**:
+- **Backend Implementation**:
   ```javascript
-  gross: {
-    $subtract: ['$moneyIn', '$moneyOut'];
-  }
-  // Where: moneyIn = Σ(movement.drop), moneyOut = Σ(movement.totalCancelledCredits)
+  gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut
   ```
 - **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
-- **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` per location
+- **Mathematical Formula**: 
+  - `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` 
+  - Where the sum is across all meters for all machines at the location within the gaming day range
+- **Calculation**: Performed in backend after aggregating meters, then returned to frontend
 
 #### **Machine Count Calculations ✅**
 

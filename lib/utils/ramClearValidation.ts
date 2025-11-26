@@ -4,10 +4,18 @@
  * Handles validation logic for machine meter rollover scenarios
  * where meters reset to zero after reaching maximum value.
  *
- * @author Aaron Hazzard - Senior Software Engineer
- * @lastUpdated October 23rd, 2025
+ * Features:
+ * - Validates meter values for RAM Clear and normal scenarios
+ * - Produces warnings and errors for suspicious values
+ * - Supports both coin and meter based RAM Clear inputs
+ *
+ * Author: Aaron Hazzard - Senior Software Engineer
+ * Last Updated: October 23rd, 2025
  */
 
+// ============================================================================
+// Types
+// ============================================================================
 export type RamClearValidationResult = {
   isValid: boolean;
   warnings: string[];
@@ -26,11 +34,14 @@ export type RamClearValidationParams = {
   ramClearMetersOut?: number;
 };
 
+// ============================================================================
+// Validation Functions
+// ============================================================================
 /**
- * Validates meter values based on RAM Clear status
+ * Validates meter values based on RAM Clear status.
  *
- * @param params - Validation parameters
- * @returns Validation result with warnings and errors
+ * @param params - Validation parameters.
+ * @returns Validation result with warnings and errors.
  */
 export function validateRamClearMeters(
   params: RamClearValidationParams

@@ -1,7 +1,7 @@
 # Cabinet Details Page Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 5, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.2.0
 
 ## Quick Search Guide
@@ -344,10 +344,37 @@ The Cabinet Details page (`app/cabinets/[slug]/page.tsx`) provides comprehensive
 
 ### **SMIB Configuration Section**
 - **Expandable Panel**: Click to reveal detailed configuration
+- **Connection Status**: Shows SMIB online/offline status (only after "Get SMIB Configuration" is clicked)
+- **SMIB ID Display**: Shows relay ID or smibBoard identifier with copy functionality
 - **Communication Mode**: SAS, non-SAS, or IGT protocols
 - **Firmware Version**: Current SMIB firmware running
-- **Network Settings**: WiFi configuration and MQTT settings
-- **Machine Control**: Restart, lock/unlock functionality
+- **Network/WiFi Configuration**: 
+  - Network Name (SSID)
+  - Password
+  - Channel (1-11)
+  - Last configured timestamp
+  - Edit mode for updating settings
+- **COMS Configuration**:
+  - Communication Address
+  - Polling Rate (ms)
+  - RTE (Real-time Events) - Enabled/Disabled
+  - GPC (Game Protocol Configuration)
+  - Last configured timestamp
+  - Edit mode for updating settings
+- **MQTT Configuration**:
+  - MQTT Public Topic
+  - MQTT Config Topic
+  - MQTT URI (broker address with credentials)
+  - QOS Level (0, 1, or 2)
+  - Idle Timeout (seconds)
+  - Last configured timestamp
+  - Edit mode for updating settings
+- **SMIB Operations & Management**:
+  - **Restart Section**: Restart SMIB device with countdown and auto-refresh
+  - **Meter Data Section**: Request meter data and reset meters (non-SAS only)
+  - **OTA Update Section**: Initiate firmware updates with version selection
+- **Real-time Updates**: Live configuration updates via SSE/MQTT when SMIB is online
+- **Offline Support**: Saves configurations to database when SMIB is offline
 
 ### **Metrics Tabs**
 - **Range Metrics**: Time-based financial performance
@@ -430,6 +457,42 @@ Collection {
 ### What is SMIB?
 
 SMIB (Slot Machine Interface Board) is the communication interface between the slot machine and the casino management system. It handles all data communication, machine control, network connectivity, and real-time updates through MQTT protocol.
+
+### SMIB Configuration on Cabinet Details Page
+
+The SMIB Configuration section on the cabinet details page provides comprehensive management of SMIB device settings. It includes:
+
+**Components Used**:
+- `useSmibConfiguration()` hook - Manages SSE connection and configuration state
+- `RestartSection` - SMIB restart operations
+- `MeterDataSection` - Meter data requests and resets
+- `OTAUpdateSection` - Firmware update management
+
+**Key Features**:
+- **Manual Connection**: User must click "Get SMIB Configuration" button to establish SSE connection
+- **Permission-Based Access**: Only Developer, Admin, and Technician roles can access SMIB configuration
+- **Section-Based Editing**: Edit Network, COMS, or MQTT sections independently
+- **Live Updates**: Real-time configuration updates when SMIB is online
+- **Database Fallback**: Configurations saved to database when SMIB is offline
+- **Automatic Refresh**: Data refreshes after operations (restart, OTA update) It handles all data communication, machine control, network connectivity, and real-time updates through MQTT protocol.
+
+### SMIB Configuration on Cabinet Details Page
+
+The SMIB Configuration section on the cabinet details page provides comprehensive management of SMIB device settings. It includes:
+
+**Components Used**:
+- `useSmibConfiguration()` hook - Manages SSE connection and configuration state
+- `RestartSection` - SMIB restart operations
+- `MeterDataSection` - Meter data requests and resets
+- `OTAUpdateSection` - Firmware update management
+
+**Key Features**:
+- **Manual Connection**: User must click "Get SMIB Configuration" button to establish SSE connection
+- **Permission-Based Access**: Only Developer, Admin, and Technician roles can access SMIB configuration
+- **Section-Based Editing**: Edit Network, COMS, or MQTT sections independently
+- **Live Updates**: Real-time configuration updates when SMIB is online
+- **Database Fallback**: Configurations saved to database when SMIB is offline
+- **Automatic Refresh**: Data refreshes after operations (restart, OTA update)
 
 ### SMIB Configuration Management
 

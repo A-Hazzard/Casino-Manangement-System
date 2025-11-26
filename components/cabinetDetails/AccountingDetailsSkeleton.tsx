@@ -1,3 +1,11 @@
+/**
+ * Accounting Details Skeleton Component
+ * Loading skeleton for accounting details section.
+ *
+ * Features:
+ * - Matches AccountingDetails layout structure
+ * - Header, metrics grid, and content area skeletons
+ */
 import React from 'react';
 
 export const AccountingDetailsSkeleton = () => (

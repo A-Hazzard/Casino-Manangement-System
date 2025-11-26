@@ -16,12 +16,13 @@ export async function sendEmail(
   to: string,
   subject: string,
   text: string,
-  html: string
+  html: string,
+  from?: string
 ) {
   try {
     const msg = {
       to,
-      from: process.env.EMAIL_FROM || '', // Your verified sender email in SendGrid
+      from: from || process.env.EMAIL_FROM || process.env.EMAIL_USER || '', // Use provided from, or fallback to env vars
       subject,
       text,
       html,

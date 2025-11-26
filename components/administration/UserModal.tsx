@@ -1,3 +1,28 @@
+/**
+ * User Modal Component
+ * Comprehensive modal for editing existing users with full profile and permissions.
+ *
+ * Features:
+ * - User profile editing (name, email, username, password, DOB, gender, address, ID)
+ * - Profile picture upload with cropping
+ * - Role assignment with permission-based restrictions
+ * - Licensee and location permissions management
+ * - Gaming location access control
+ * - Form validation with real-time error messages
+ * - Password strength validation
+ * - Change detection and unsaved changes warning
+ * - Role-based field visibility
+ * - Multi-select dropdowns for permissions
+ * - GSAP animations for modal entrance/exit
+ * - Toast notifications for success/error
+ *
+ * Large component (~2274 lines) handling complete user editing workflow.
+ *
+ * @param open - Whether the modal is visible
+ * @param user - User object to edit
+ * @param onClose - Callback to close the modal
+ * @param onSave - Callback when user is successfully updated
+ */
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { MultiSelectOption } from '@/components/ui/common/MultiSelectDropdown';
@@ -32,6 +57,10 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import RolePermissionsDialog from './RolePermissionsDialog';
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const ROLE_OPTIONS = [
   { label: 'Developer', value: 'developer' },
@@ -489,8 +518,7 @@ export default function UserModal({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isLocationAdmin, currentUserLicenseeIds]); // Only depend on 'open' - fetch once when modal opens
+  }, [open, isLocationAdmin, currentUserLicenseeIds, setLicensees, setSelectedLicenseeIds, setAllLicenseesSelected, isManager, selectedLicenseeIds.length]);
 
   // Load countries
   useEffect(() => {

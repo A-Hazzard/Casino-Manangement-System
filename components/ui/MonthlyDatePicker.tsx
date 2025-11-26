@@ -23,12 +23,22 @@ type MonthlyDatePickerProps = {
 
 /**
  * Monthly Date Picker Component
+ * Date range picker that constrains selection to full months only.
  *
- * Constrains date selection to full months only (month/year picker)
- * Automatically sets the range to cover the entire selected month
+ * Features:
+ * - Month/year selection (full months only)
+ * - Automatically sets range to cover entire selected month
+ * - "Set Last Month" quick action
+ * - Go and Cancel buttons
+ * - Date formatting
+ * - Disabled state support
  *
- * Author: Aaron Hazzard - Senior Software Engineer
- * Last Updated: October 23rd, 2025
+ * @param value - Currently selected date range
+ * @param onChange - Callback to update date range
+ * @param onGo - Callback when "Go" button is clicked
+ * @param onCancel - Callback when "Cancel" button is clicked
+ * @param onSetLastMonth - Callback when "Set Last Month" is clicked
+ * @param disabled - Whether the picker is disabled
  */
 export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
   value,

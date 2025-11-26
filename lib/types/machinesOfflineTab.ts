@@ -1,3 +1,10 @@
+/**
+ * Machines Offline Tab Types
+ * Types for machines offline tab component.
+ *
+ * Defines props for offline machines tab including data, locations,
+ * pagination, sorting, and CRUD action handlers.
+ */
 import type { MachineData as SharedMachineData } from '@/shared/types/machines';
 
 // Use the shared MachineData type for consistency

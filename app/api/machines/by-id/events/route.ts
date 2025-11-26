@@ -1,11 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
+/**
+ * Machine Events API Route
+ *
+ * This route handles fetching machine events by machine ID.
+ * It supports:
+ * - Event type filtering
+ * - Event description filtering
+ * - Game name filtering
+ * - Time period filtering (today, yesterday, 7d, 30d, custom dates)
+ * - Pagination
+ * - Alternative machine identifier matching
+ *
+ * @module app/api/machines/by-id/events/route
+ */
+
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { Machine } from '@/app/api/lib/models/machines';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching machine events
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters
+ * 3. Validate machine ID parameter
+ * 4. Build base query with filters
+ * 5. Calculate date range if time period provided
+ * 6. Query events with pagination
+ * 7. Try alternative machine identifiers if no events found
+ * 8. Get total count for pagination
+ * 9. Return events with pagination metadata
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
 
     const { searchParams } = new URL(request.url);
     const machineId = searchParams.get('id');
@@ -22,6 +60,9 @@ export async function GET(request: NextRequest) {
         ? Math.min(requestedLimit, 20)
         : 20;
 
+    // ============================================================================
+    // STEP 3: Validate machine ID parameter
+    // ============================================================================
     if (!machineId) {
       return NextResponse.json(
         { error: 'Machine ID is required' },
@@ -29,6 +70,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Build base query with filters
+    // ============================================================================
     // Build the base query with machine ID
     const baseQuery: Record<string, unknown> = { machine: machineId };
 
@@ -45,6 +89,9 @@ export async function GET(request: NextRequest) {
       baseQuery['gameName'] = { $regex: game, $options: 'i' } as unknown;
     }
 
+    // ============================================================================
+    // STEP 5: Calculate date range if time period provided
+    // ============================================================================
     // Apply date filtering if provided
     let dateFilterStart: Date | null = null;
     let dateFilterEnd: Date | null = null;
@@ -101,6 +148,9 @@ export async function GET(request: NextRequest) {
       } as unknown;
     }
 
+    // ============================================================================
+    // STEP 6: Query events with pagination
+    // ============================================================================
     // Try to find events with the base query
     let events = await MachineEvent.find(baseQuery)
       .sort({ date: -1 })
@@ -108,6 +158,9 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
+    // ============================================================================
+    // STEP 7: Try alternative machine identifiers if no events found
+    // ============================================================================
     // If no events found with direct machine ID, try alternative matching
     if (events.length === 0) {
       // Get machine document for alternative identifiers
@@ -144,6 +197,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 8: Get total count for pagination
+    // ============================================================================
     // Get total count for pagination
     let totalEvents = events.length;
     if (events.length > 0) {
@@ -154,6 +210,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 9: Return events with pagination metadata
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Machines By ID Events API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       events,
       pagination: {
@@ -165,10 +228,13 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching machine events:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Machine Events API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

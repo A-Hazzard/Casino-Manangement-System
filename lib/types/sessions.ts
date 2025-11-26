@@ -1,3 +1,13 @@
+/**
+ * Sessions Types
+ * Types for gaming session data and machine events.
+ *
+ * Includes types for:
+ * - Session details (games played, points, handle, wins)
+ * - Pagination data for session lists
+ * - Machine events with sequences and log levels
+ * - Filter data for event types, events, and games
+ */
 export type Session = {
   _id: string;
   sessionId?: string;

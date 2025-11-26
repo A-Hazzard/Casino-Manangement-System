@@ -3,7 +3,7 @@
  * Extracts complex data fetching logic from the Locations page
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useDebounce } from '@/lib/utils/hooks';
 import {
   fetchAggregatedLocationsData,
@@ -44,6 +44,8 @@ export function useLocationData({
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastFetchRef = useRef<number>(0);
+  const selectedFiltersRef = useRef(selectedFilters);
+  const selectedFiltersKeyRef = useRef<string>('');
 
   // Get display currency from store
   const { displayCurrency } = useDashBoardStore();
@@ -51,32 +53,51 @@ export function useLocationData({
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  // Fetch a specific batch of locations
-  const fetchBatch = useCallback(async (page: number = 1, limit: number = 50) => {
-    const filterString = selectedFilters.length
-      ? selectedFilters.join(',')
-      : '';
+  // Memoize selectedFilters to avoid recreating fetchBatch
+  const selectedFiltersKey = useMemo(() => {
+    return JSON.stringify([...selectedFilters].sort());
+  }, [selectedFilters]);
+  
+  // Update ref when selectedFilters actually changes
+  useEffect(() => {
+    if (selectedFiltersKeyRef.current !== selectedFiltersKey) {
+      selectedFiltersKeyRef.current = selectedFiltersKey;
+      selectedFiltersRef.current = [...selectedFilters];
+    }
+  }, [selectedFiltersKey, selectedFilters]);
 
-    let dateRangeForFetch = undefined;
+  // Memoize date range to avoid recreating callback
+  const dateRangeForFetch = useMemo(() => {
     const effectiveFilter = activeMetricsFilter || 'Today';
-
     if (
       effectiveFilter === 'Custom' &&
       customDateRange?.startDate &&
       customDateRange?.endDate
     ) {
-      dateRangeForFetch = {
+      return {
         from: customDateRange.startDate,
         to: customDateRange.endDate,
       };
     }
+    return undefined;
+  }, [
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
 
+  // Fetch a specific batch of locations
+  const fetchBatch = useCallback(async (page: number = 1, limit: number = 50) => {
     const effectiveLicencee = selectedLicencee || '';
+    // Use current filter string from ref to avoid dependency on array
+    const currentFilterString = selectedFiltersRef.current.length 
+      ? selectedFiltersRef.current.join(',') 
+      : '';
 
     return await fetchAggregatedLocationsData(
       (activeMetricsFilter || 'Today') as TimePeriod,
       effectiveLicencee,
-      filterString,
+      currentFilterString,
       dateRangeForFetch,
       displayCurrency,
       page,
@@ -85,9 +106,9 @@ export function useLocationData({
   }, [
     selectedLicencee,
     activeMetricsFilter,
-    selectedFilters,
-    customDateRange,
+    dateRangeForFetch,
     displayCurrency,
+    // Note: selectedFiltersKey is intentionally excluded - we use ref to avoid recreation
   ]);
 
   // Optimized data fetching with better error handling
@@ -135,11 +156,6 @@ export function useLocationData({
     selectedLicencee,
   ]);
 
-  // Fetch data when dependencies change
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
   // Refresh data when user returns to the page
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -148,6 +164,7 @@ export function useLocationData({
         if (timeSinceLastFetch < 0 || timeSinceLastFetch < 60000) {
           return;
         }
+        // Use fetchData directly since it's stable
         setTimeout(() => {
           fetchData();
         }, 100);

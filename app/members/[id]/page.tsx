@@ -1,3 +1,17 @@
+/**
+ * Member Details Page
+ *
+ * Displays detailed information about a specific member including sessions and statistics.
+ *
+ * Features:
+ * - Member information display
+ * - Session listing with filtering and sorting
+ * - Financial totals card
+ * - Pagination
+ * - Export functionality
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -35,21 +49,38 @@ type SortOption =
   | 'coinIn'
   | 'coinOut';
 
+/**
+ * Member Details Page Content Component
+ * Handles all state management and data fetching for the member details page
+ */
 function MemberDetailsPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const params = useParams();
+  const memberId = params.id as string;
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+
+  // ============================================================================
+  // State Management
+  // ============================================================================
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTotals, setShowTotals] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const [filter, setFilter] = useState<FilterType>('session');
   const [sortOption, setSortOption] = useState<SortOption>('time');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // ============================================================================
+  // Refs
+  // ============================================================================
   const isInitialMount = useRef(true);
 
-  const memberId = params.id as string;
-
+  // ============================================================================
+  // Effects - Data Fetching
+  // ============================================================================
   useEffect(() => {
     const fetchMemberData = async () => {
       try {
@@ -91,6 +122,9 @@ function MemberDetailsPageContent() {
     }
   }, [memberId]);
 
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   const handleToggleTotals = () => {
     setShowTotals(!showTotals);
   };
@@ -218,6 +252,9 @@ function MemberDetailsPageContent() {
     }
   };
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   const renderContent = () => {
     if (loading) {
       return (
@@ -334,6 +371,9 @@ function MemberDetailsPageContent() {
     );
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <PageLayout
@@ -350,6 +390,10 @@ function MemberDetailsPageContent() {
   );
 }
 
+/**
+ * Member Details Page Component
+ * Thin wrapper that handles routing and authentication
+ */
 export default function MemberDetailsPage() {
   return (
     <ProtectedRoute requiredPage="member-details">

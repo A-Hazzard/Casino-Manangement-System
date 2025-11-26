@@ -704,7 +704,7 @@ The complete SMIB (Slot Machine Interface Board) management system has been impl
 - **Logout Success Message**: Logout now properly redirects to login page with "Logout Successful" message instead of "Session Expired"
   - Logout button redirects to `/login?logout=success`
   - Login page parses URL parameters and displays appropriate success/error messages
-- **Session Version Management**: 
+- **Session Version Management**:
   - `sessionVersion` incremented ONLY when permissions change (licensees, locations, roles)
   - NOT incremented on login - allows multiple concurrent sessions
   - Profile updates that change critical fields (username, email, name, password) increment `sessionVersion` to force re-authentication
@@ -1122,11 +1122,81 @@ Native Currency (TTD $20)
 
 This context file provides a comprehensive overview of the Evolution One Casino Management System. Use this as reference when working on any part of the system to maintain consistency and understand the broader context of your changes.
 
-**Last Major Update:** December 2025 - Session Management Fix (Multi-Device Support), Machine Status Widgets, Currency Auto-Set for Single-Licensee Users
+**Last Major Update:** December 2025 - Frontend Refactoring Complete, Infinite Loop Fixes, ESLint Compliance, Session Management Fix (Multi-Device Support), Machine Status Widgets, Currency Auto-Set for Single-Licensee Users
+
+### Recent Updates (December 2025)
+
+#### Frontend Refactoring & Code Quality Improvements ✅ (December 2025)
+
+**Last Updated:** December 2025
+
+**Comprehensive Frontend Refactoring:**
+
+- **All Stores Refactored (16 files)**: Complete refactoring of all Zustand stores in `lib/store/` with:
+  - File-level JSDoc documentation
+  - Section comments for code organization
+  - SSR-safe patterns for Next.js compatibility
+  - Proper TypeScript types (no `any`, prefer `type` over `interface`)
+- **All Hooks Refactored (60 files)**: Complete refactoring of all custom hooks in `lib/hooks/` with:
+  - File-level JSDoc documentation
+  - Section comments (Hooks & State, Computed Values, Event Handlers, Effects, Render)
+  - Proper dependency arrays for all `useEffect`, `useMemo`, and `useCallback` hooks
+- **All Types Refactored (50 files)**: Complete refactoring of all type files in `lib/types/` with comprehensive file-level JSDoc documentation
+- **All Constants Refactored (7 files)**: Complete refactoring of all constant files in `lib/constants/` with comprehensive file-level JSDoc documentation
+- **All Components Refactored**: Complete refactoring of all component files with:
+  - File-level JSDoc documentation
+  - Section comments for code organization
+  - Proper component structure following engineering guidelines
+
+**Infinite Loop Fixes:**
+
+- **Fixed Maximum Update Depth Exceeded Error**: Resolved infinite loop issues in `app/locations/page.tsx` and `lib/hooks/data/useLocationData.ts`
+  - Root Cause: Refs being updated in `useEffect` hooks that depended on functions being recreated
+  - Solution: Removed refs, called functions directly with proper dependency arrays
+  - Stabilized `selectedFilters` array dependency using refs and memoization
+  - Fixed `customDateRange` object dependency by using timestamp comparisons
+  - Improved `locationData` change detection to prevent unnecessary state updates
+- **Fixed Ref Update Loops**: Eliminated ref update cycles that caused infinite re-renders
+- **Stabilized Dependencies**: All `useCallback` and `useMemo` hooks now have stable, properly memoized dependencies
+
+**ESLint Compliance:**
+
+- **Zero ESLint Warnings**: All `react-hooks/exhaustive-deps` warnings resolved
+- **No `eslint-disable` Comments**: All ESLint violations fixed properly (no ignored errors)
+- **Complex Expression Fixes**: Extracted complex expressions from dependency arrays to separate variables
+- **Missing Dependency Fixes**: Added all missing dependencies to `useEffect`, `useMemo`, and `useCallback` hooks
+- **Unnecessary Dependency Removals**: Removed unnecessary dependencies that caused warnings
+
+**Key Fixes Applied:**
+
+- Extracted `customDateRange?.startDate?.getTime()` and `customDateRange?.endDate?.getTime()` to separate variables (`startDateTimestamp`, `endDateTimestamp`) to avoid complex expressions in dependency arrays
+- Fixed `selectedFilters` array dependency by using refs (`selectedFiltersRef`) and memoized keys (`selectedFiltersKey`) to prevent unnecessary function recreations
+- Removed forward references (refs initialized before functions defined) - refs now initialized as `null` with proper types
+- Fixed `dateRangeForFetch` memoization with proper dependencies including both timestamps and date objects
+- Added missing dependencies to all hook dependency arrays (e.g., `machineForDataEntry?.name`, `machineForDataEntry?.serialNumber`)
+- Removed `selectedFiltersKey` from `fetchBatch` dependencies (using ref instead to avoid recreation)
+- Fixed `dateRangeKey` unnecessary dependency warning by removing it from `effectiveDateRange` dependencies
+
+**Files Modified:**
+
+- `app/locations/page.tsx` - Fixed infinite loop, extracted complex expressions
+- `lib/hooks/data/useLocationData.ts` - Fixed infinite loop, stabilized dependencies
+- `app/page.tsx` - Fixed complex expressions in dependency arrays
+- `components/collectionReport/EditCollectionModal.tsx` - Added missing dependencies
+- All component files - Added file-level JSDoc and section comments
+- All hook files - Added file-level JSDoc and section comments
+- All store files - Added file-level JSDoc and SSR-safe patterns
+- All type files - Added comprehensive JSDoc documentation
+
+**Documentation:**
+
+- `Documentation/frontend/FRONTEND_REFACTORING_TRACKER.md` - Complete tracking of all refactoring progress
+- All files now follow engineering guidelines from `Documentation/ENGINEERING_GUIDELINES.md` and `Documentation/frontend/FRONTEND_GUIDELINES.md`
 
 ### Recent Updates (December 2025)
 
 #### Session Management Fix ✅
+
 - **Issue Fixed**: Users logging in on one device/tab were logging out other devices
 - **Root Cause**: `sessionVersion` was being incremented on every login, invalidating other sessions
 - **Solution**: `sessionVersion` now only increments when permissions change (licensees, locations, roles), NOT on login
@@ -1134,6 +1204,7 @@ This context file provides a comprehensive overview of the Evolution One Casino 
 - **Files Modified**: `app/api/lib/helpers/auth.ts`
 
 #### Machine Status Widgets ✅
+
 - **Locations Page**: Added machine status widget showing online/total format (e.g., "37/40 Online")
 - **Cabinets Page**: Added machine status widget on Cabinets tab
 - **Location Details Page**: Added machine status widget alongside date filters
@@ -1141,6 +1212,7 @@ This context file provides a comprehensive overview of the Evolution One Casino 
 - **Removed**: Redundant "Total Machines" count badges (now handled by widget)
 
 #### Currency Auto-Set for Single-Licensee Users ✅
+
 - **Issue Fixed**: Single-licensee users (e.g., Barbados) sometimes seeing USD instead of native currency (BBD)
 - **Root Cause**: localStorage containing USD from previous admin session
 - **Solution**: Auto-set logic in `CurrencyContext` automatically sets currency to licensee's native currency

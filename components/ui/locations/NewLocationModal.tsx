@@ -525,8 +525,8 @@ export default function NewLocationModal({
               onChange={e => handleSelectChange('dayStartTime', e.target.value)}
               className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
             >
-              {timeOptions.map(option => (
-                <option key={option.value} value={option.value}>
+              {timeOptions.map((option, index) => (
+                <option key={`${option.value}-${index}`} value={option.value}>
                   {option.label}
                 </option>
               ))}

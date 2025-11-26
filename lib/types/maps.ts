@@ -1,4 +1,14 @@
-// Map-related types for location picker functionality
+/**
+ * Maps Types
+ * Types for map functionality and location picker components.
+ *
+ * Includes types for:
+ * - Location coordinates (lat/lng)
+ * - Selected locations with address details
+ * - Map types (street/satellite)
+ * - Place suggestions with local/remote data
+ * - Location picker map props and modals
+ */
 
 export type LocationCoordinates = {
   lat: number;

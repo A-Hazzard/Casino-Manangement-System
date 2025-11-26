@@ -1,3 +1,16 @@
+/**
+ * Games Performance Chart Component
+ * Bar chart component displaying games performance metrics.
+ *
+ * Features:
+ * - Games performance data visualization
+ * - Multiple metrics (Floor Positions %, Handle %, Win %, Drop %, Cancelled Credits %, Gross %)
+ * - Recharts bar chart
+ * - Responsive design
+ * - Empty state handling
+ *
+ * @param data - Array of games performance data
+ */
 'use client';
 
 import {

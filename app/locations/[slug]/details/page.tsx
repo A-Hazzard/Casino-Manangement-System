@@ -1,6 +1,19 @@
+/**
+ * Location Details Page
+ *
+ * Displays detailed information about a specific location including metrics and cabinets.
+ *
+ * Features:
+ * - Location information display
+ * - Financial metrics summary
+ * - Cabinet listing with filtering and sorting
+ * - Accounting details
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
@@ -31,6 +44,7 @@ import CabinetTable from '@/components/ui/cabinets/CabinetTable';
 import CabinetCard from '@/components/ui/cabinets/CabinetCard';
 import { TimePeriod } from '@/lib/types/api';
 import RefreshButton from '@/components/ui/RefreshButton';
+import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import type { LocationInfo, ExtendedCabinetDetail } from '@/lib/types/pages';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { fetchLocationDetailsById } from '@/lib/helpers/locations';
@@ -50,7 +64,14 @@ type CabinetSortOption =
 import { mapToCabinetProps } from '@/lib/utils/cabinet';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
 
+/**
+ * Location Details Page Component
+ * Handles all state management and data fetching for the location details page
+ */
 export default function LocationDetailsPage() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
@@ -64,36 +85,42 @@ export default function LocationDetailsPage() {
 
   const { formatAmount, shouldShowCurrency, displayCurrency } =
     useCurrencyFormat();
+  const { openEditModal, openDeleteModal } = useCabinetActionsStore();
 
+  // ============================================================================
+  // State Management
+  // ============================================================================
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [cabinets, setCabinets] = useState<ExtendedCabinetDetail[]>([]);
+  const [allCabinets, setAllCabinets] = useState<ExtendedCabinetDetail[]>([]); // Store all cabinets for totals calculation
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCabinets, setFilteredCabinets] = useState<
     ExtendedCabinetDetail[]
   >([]);
   const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 10;
-
-  // Sorting state
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
-  // Cabinet actions store
-  const { openEditModal, openDeleteModal } = useCabinetActionsStore();
-
-  // State for AccountingDetails
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
     useState('Range Metrics');
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [selectedCabinet, setSelectedCabinet] =
     useState<ExtendedCabinetDetail | null>(null);
-
-  // Add refresh state
   const [refreshing, setRefreshing] = useState(false);
-
-  // Floating refresh button state
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
 
+  // Calculate financial totals from all cabinets (not just paginated ones)
+  const locationFinancialTotals = useMemo(() => {
+    return calculateCabinetFinancialTotals(allCabinets);
+  }, [allCabinets]);
+
+  // ============================================================================
+  // Constants
+  // ============================================================================
+  const itemsPerPage = 10;
+
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   // Handle cabinet updates
   const handleCabinetUpdated = () => {
     // Refresh the data when a cabinet is updated
@@ -206,6 +233,7 @@ export default function LocationDetailsPage() {
 
         if (location) setLocationInfo(location);
         setCabinets(cabinets);
+        setAllCabinets(cabinets); // Store all cabinets for totals calculation
         setFilteredCabinets(cabinets);
         setSelectedCabinet(cabinets[0] || null);
       } catch (error) {
@@ -253,6 +281,7 @@ export default function LocationDetailsPage() {
 
       if (location) setLocationInfo(location);
       setCabinets(cabinets);
+      setAllCabinets(cabinets); // Store all cabinets for totals calculation
       setFilteredCabinets(cabinets);
       setSelectedCabinet(cabinets[0] || null);
     } catch (error) {
@@ -354,6 +383,9 @@ export default function LocationDetailsPage() {
     }
   }, [searchTerm, cabinets]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <EditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
@@ -453,30 +485,30 @@ export default function LocationDetailsPage() {
                     <p className="text-sm text-gray-500">Money In</p>
                     <p
                       className={`text-lg font-semibold ${getFinancialColorClass(
-                        locationInfo.moneyIn
+                        locationFinancialTotals?.moneyIn || 0
                       )}`}
                     >
                       {shouldShowCurrency()
                         ? formatAmount(
-                            locationInfo.moneyIn || 0,
+                            locationFinancialTotals?.moneyIn || 0,
                             displayCurrency
                           )
-                        : formatCurrency(locationInfo.moneyIn || 0)}
+                        : formatCurrency(locationFinancialTotals?.moneyIn || 0)}
                     </p>
                   </div>
                   <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-sm text-gray-500">Money Out</p>
                     <p
                       className={`text-lg font-semibold ${getFinancialColorClass(
-                        locationInfo.moneyOut
+                        locationFinancialTotals?.moneyOut || 0
                       )}`}
                     >
                       {shouldShowCurrency()
                         ? formatAmount(
-                            locationInfo.moneyOut || 0,
+                            locationFinancialTotals?.moneyOut || 0,
                             displayCurrency
                           )
-                        : formatCurrency(locationInfo.moneyOut || 0)}
+                        : formatCurrency(locationFinancialTotals?.moneyOut || 0)}
                     </p>
                   </div>
                 </div>
@@ -489,11 +521,11 @@ export default function LocationDetailsPage() {
                     <p className="text-sm text-gray-500">Gross</p>
                     <p
                       className={`text-lg font-semibold ${getFinancialColorClass(
-                        locationInfo.gross
+                        locationFinancialTotals?.gross || 0
                       )}`}
                     >
                       <CurrencyValueWithOverflow
-                        value={locationInfo.gross || 0}
+                        value={locationFinancialTotals?.gross || 0}
                         formatCurrencyFn={formatCurrency}
                       />
                     </p>

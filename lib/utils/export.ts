@@ -1,3 +1,15 @@
+/**
+ * Export Utility Functions
+ *
+ * Utility functions for exporting data to PDF and Excel formats.
+ *
+ * Features:
+ * - PDF export with styling and logos
+ * - Excel export functionality
+ * - Monthly report exports
+ * - Image handling for PDFs
+ */
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -8,6 +20,9 @@ import type {
 } from '@/lib/types/componentProps';
 import axios from 'axios';
 
+// ============================================================================
+// Image Helper Functions
+// ============================================================================
 /**
  * Loads an image from a URL and returns a base64 data URL.
  * @param url - The image URL (relative to public/).
@@ -76,6 +91,9 @@ export async function exportMonthlyReportPDF(
   doc.save('monthly_report.pdf');
 }
 
+// ============================================================================
+// Excel Export Functions
+// ============================================================================
 /**
  * Exports the monthly report summary and details as an Excel file, matching the PDF structure.
  * @param summary - The summary data for the report.
@@ -115,6 +133,9 @@ export function exportMonthlyReportExcel(
   );
 }
 
+// ============================================================================
+// Meters Report Export Functions
+// ============================================================================
 /**
  * Exports the meters report as a styled PDF file, with logo at the top.
  * @param data - The meters report data array.

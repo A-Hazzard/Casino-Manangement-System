@@ -1,3 +1,14 @@
+/**
+ * Collection History Skeleton Component
+ * Loading skeleton for collection history table/cards.
+ *
+ * Features:
+ * - Matches CollectionHistoryTable layout structure
+ * - Desktop table skeleton (10 rows)
+ * - Mobile cards skeleton (5 cards)
+ * - Pagination skeleton
+ * - Responsive design
+ */
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {

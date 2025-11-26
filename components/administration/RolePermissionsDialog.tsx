@@ -1,3 +1,19 @@
+/**
+ * Role Permissions Dialog Component
+ * Dialog showing which pages a role has access to.
+ *
+ * Features:
+ * - Displays accessible pages for a given role
+ * - Page name mapping
+ * - Permission checking
+ * - Info icon and styling
+ * - Scrollable content for long lists
+ *
+ * @param open - Whether the dialog is visible
+ * @param onClose - Callback to close the dialog
+ * @param role - Role value to check permissions for
+ * @param roleLabel - Human-readable role label
+ */
 'use client';
 
 import {
@@ -16,6 +32,10 @@ type RolePermissionsDialogProps = {
   role: string;
   roleLabel: string;
 };
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const PAGE_DISPLAY_NAMES: Record<PageName, string> = {
   dashboard: 'Dashboard',
@@ -36,11 +56,17 @@ export default function RolePermissionsDialog({
   role,
   roleLabel,
 }: RolePermissionsDialogProps) {
+  // ============================================================================
+  // Computed Values - Accessible Pages
+  // ============================================================================
   // Get all pages this role has access to
   const accessiblePages = Object.keys(PAGE_DISPLAY_NAMES).filter(
     (page) => hasPageAccess([role], page as PageName)
   ) as PageName[];
 
+  // ============================================================================
+  // Render - Permissions Dialog
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">

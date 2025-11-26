@@ -1,6 +1,19 @@
+/**
+ * Collection Report Table Skeleton Component
+ * Loading skeleton for collection report table on desktop view.
+ *
+ * Features:
+ * - Matches CollectionReportTable layout structure
+ * - 8 skeleton rows
+ * - 9 columns (Collector, Location, Gross, Machines, Collected, Uncollected, Location Revenue, Time, Details)
+ * - Responsive design (desktop only)
+ */
 import React from 'react';
 
 export default function CollectionReportTableSkeleton() {
+  // ============================================================================
+  // Render - Table Skeleton
+  // ============================================================================
   return (
     <div className="hidden w-full min-w-0 overflow-x-auto bg-white shadow lg:block">
       <table className="w-full min-w-0 text-left text-sm">

@@ -1,3 +1,19 @@
+/**
+ * Pagination Controls Component
+ * Pagination controls with first, previous, next, last, and direct page input.
+ *
+ * Features:
+ * - First, previous, next, last page buttons
+ * - Direct page number input
+ * - Page count display
+ * - Responsive design (mobile and desktop)
+ * - Disabled states for boundary pages
+ * - Accessible navigation
+ *
+ * @param currentPage - Current page index (0-based)
+ * @param totalPages - Total number of pages
+ * @param setCurrentPage - Callback to change current page
+ */
 import { Button } from '@/components/ui/button';
 import {
   DoubleArrowLeftIcon,

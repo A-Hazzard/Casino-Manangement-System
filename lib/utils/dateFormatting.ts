@@ -1,5 +1,21 @@
+/**
+ * Date Formatting Utilities
+ *
+ * Utility functions for formatting dates, times, and related objects.
+ *
+ * Features:
+ * - Date formatting with various formats
+ * - Profile object formatting
+ * - Resource permissions formatting
+ * - Full date formatting with weekday and ordinal
+ * - ISO date parsing and validation
+ */
+
 import { format, isValid, parseISO } from 'date-fns';
 
+// ============================================================================
+// Object Formatting Functions
+// ============================================================================
 /**
  * Formats a profile object with nested address and identification
  * @param profile - The profile object to format
@@ -72,6 +88,9 @@ function formatResourcePermissionsObject(
   return 'No permissions';
 }
 
+// ============================================================================
+// Date Formatting Functions
+// ============================================================================
 /**
  * Formats a date for display, handling various input types
  * @param date - Date object, string, or undefined

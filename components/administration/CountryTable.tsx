@@ -1,3 +1,17 @@
+/**
+ * Country Table Component
+ * Desktop table view for displaying countries.
+ *
+ * Features:
+ * - Country information display (name, alpha-2, alpha-3, ISO numeric, created date)
+ * - Edit and delete actions
+ * - Responsive design (desktop only)
+ * - Date formatting
+ *
+ * @param countries - Array of country objects
+ * @param onEdit - Callback when edit is clicked
+ * @param onDelete - Callback when delete is clicked
+ */
 import type { Country } from '@/lib/types/country';
 import Image from 'next/image';
 import editIcon from '@/public/editIcon.svg';

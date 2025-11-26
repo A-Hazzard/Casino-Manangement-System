@@ -59,6 +59,10 @@ type UseAdministrationModalsReturn = {
 };
 
 export function useAdministrationModals(): UseAdministrationModalsReturn {
+  // ============================================================================
+  // State
+  // ============================================================================
+
   // User modal states
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isAddUserDetailsModalOpen, setIsAddUserDetailsModalOpen] =
@@ -89,6 +93,10 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
   );
   const [selectedActivityLog, setSelectedActivityLog] =
     useState<ActivityLogData | null>(null);
+
+  // ============================================================================
+  // Modal Actions
+  // ============================================================================
 
   // User modal actions
   const openUserModal = useCallback((user?: UserData) => {
@@ -200,6 +208,9 @@ export function useAdministrationModals(): UseAdministrationModalsReturn {
     setIsPaymentHistoryModalOpen(false);
   }, []);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     // User modals
     isUserModalOpen,

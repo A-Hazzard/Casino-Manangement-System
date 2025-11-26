@@ -279,6 +279,20 @@ export async function getAllUsers() {
 }
 
 /**
+ * Retrieves deleted users from 2025 and later
+ * This is used when filtering for deleted users
+ */
+export async function getDeletedUsers() {
+  const year2025Start = new Date('2025-01-01T00:00:00.000Z');
+  return await UserModel.find(
+    {
+      deletedAt: { $gte: year2025Start },
+    },
+    '-password'
+  ).lean();
+}
+
+/**
  * Retrieves a user by ID from database
  * Note: _id is stored as String in the schema, not ObjectId
  */

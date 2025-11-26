@@ -1,20 +1,34 @@
 /**
- * User data cache utility to prevent excessive API calls
- * Provides a centralized way to cache user data with TTL
+ * User Data Cache Utilities
+ *
+ * User data cache utility to prevent excessive API calls and provide
+ * a centralized way to cache user data with TTL.
+ *
+ * Features:
+ * - In-memory user data cache with TTL
+ * - Singleton cache instance
+ * - In-flight request de-duplication
+ * - Typed cache keys for common user data
  */
 
+// ============================================================================
+// Types
+// ============================================================================
 type CachedUserData = {
   data: unknown;
   timestamp: number;
   ttl: number; // Time to live in milliseconds
 };
 
+// ============================================================================
+// UserCache Class
+// ============================================================================
 class UserCache {
   private cache = new Map<string, CachedUserData>();
   private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 
   /**
-   * Get cached user data
+   * Get cached user data.
    */
   get(key: string): unknown | null {
     const cached = this.cache.get(key);
@@ -31,7 +45,7 @@ class UserCache {
   }
 
   /**
-   * Set cached user data
+   * Set cached user data.
    */
   set(key: string, data: unknown, ttl: number = this.DEFAULT_TTL): void {
     this.cache.set(key, {
@@ -42,28 +56,28 @@ class UserCache {
   }
 
   /**
-   * Clear specific cache entry
+   * Clear specific cache entry.
    */
   clear(key: string): void {
     this.cache.delete(key);
   }
 
   /**
-   * Clear all cache entries
+   * Clear all cache entries.
    */
   clearAll(): void {
     this.cache.clear();
   }
 
   /**
-   * Check if cache entry exists and is valid
+   * Check if cache entry exists and is valid.
    */
   has(key: string): boolean {
     return this.get(key) !== null;
   }
 
   /**
-   * Get cache statistics
+   * Get cache statistics.
    */
   getStats(): { size: number; keys: string[] } {
     return {

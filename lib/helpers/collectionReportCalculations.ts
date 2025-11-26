@@ -1,8 +1,25 @@
+/**
+ * Collection Report Calculations Helper Functions
+ *
+ * Provides helper functions for calculating financial totals for collection reports,
+ * including drop, cancelled credits, gross, and SAS gross metrics. It aggregates
+ * values from machine collections and meters data to provide comprehensive report totals.
+ *
+ * Features:
+ * - Calculates total drop and cancelled credits from machine collections.
+ * - Calculates total gross (drop - cancelled credits).
+ * - Calculates total SAS gross from meters collection movement data.
+ */
+
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import type { CollectionReportMachineEntry } from '@/lib/types/collections';
 import type { GamingMachine as MachineType } from '@/shared/types/entities';
+
+// ============================================================================
+// Collection Report Total Calculations
+// ============================================================================
 
 /**
  * Calculates totalDrop, totalCancelled, totalGross, and totalSasGross for a collection report.

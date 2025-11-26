@@ -1,3 +1,10 @@
+/**
+ * Activity Log Types
+ * Types for activity logging system including actors, entities, and changes.
+ *
+ * Supports both new and legacy activity log formats for backward compatibility.
+ * Used for tracking user actions, resource changes, and audit trails.
+ */
 export type ActivityLogActor = {
   id: string;
   email: string;

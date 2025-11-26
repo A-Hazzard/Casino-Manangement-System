@@ -1,7 +1,23 @@
+/**
+ * API Client Utility
+ *
+ * Enhanced axios instance with automatic error handling, retry logic, and interceptors.
+ *
+ * Features:
+ * - Automatic error classification and handling
+ * - Request/response interceptors
+ * - Retry logic with exponential backoff
+ * - Error notifications for connection issues
+ * - Type-safe API methods
+ */
+
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { classifyError, type ApiError } from './errorHandling';
 import { showErrorNotification } from './errorNotifications';
 
+// ============================================================================
+// Axios Instance Configuration
+// ============================================================================
 /**
  * Enhanced axios instance with error handling
  */
@@ -11,6 +27,9 @@ const apiClient = axios.create({
   },
 });
 
+// ============================================================================
+// Request Interceptor
+// ============================================================================
 /**
  * Request interceptor to add common headers
  */
@@ -24,6 +43,9 @@ apiClient.interceptors.request.use(
   }
 );
 
+// ============================================================================
+// Response Interceptor
+// ============================================================================
 /**
  * Response interceptor to handle errors globally
  */
@@ -47,10 +69,16 @@ apiClient.interceptors.response.use(
   }
 );
 
+// ============================================================================
+// API Client Class
+// ============================================================================
 /**
  * Enhanced API methods with retry logic
  */
 export class ApiClient {
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
   private static async withRetry<T>(
     apiCall: () => Promise<AxiosResponse<T>>,
     maxRetries: number = 3,
@@ -79,6 +107,9 @@ export class ApiClient {
     throw lastError!;
   }
 
+  /**
+   * Check if an error is retryable
+   */
   private static isRetryableError(error: ApiError): boolean {
     return !!(
       error.isTimeoutError ||
@@ -91,10 +122,19 @@ export class ApiClient {
     );
   }
 
+  // ============================================================================
+  // Public API Methods
+  // ============================================================================
+  /**
+   * GET request with retry logic
+   */
   static async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return this.withRetry(() => apiClient.get<T>(url, config));
   }
 
+  /**
+   * POST request with retry logic
+   */
   static async post<T>(
     url: string,
     data?: unknown,
@@ -103,6 +143,9 @@ export class ApiClient {
     return this.withRetry(() => apiClient.post<T>(url, data, config));
   }
 
+  /**
+   * PUT request with retry logic
+   */
   static async put<T>(
     url: string,
     data?: unknown,
@@ -111,6 +154,9 @@ export class ApiClient {
     return this.withRetry(() => apiClient.put<T>(url, data, config));
   }
 
+  /**
+   * PATCH request with retry logic
+   */
   static async patch<T>(
     url: string,
     data?: unknown,
@@ -119,6 +165,9 @@ export class ApiClient {
     return this.withRetry(() => apiClient.patch<T>(url, data, config));
   }
 
+  /**
+   * DELETE request with retry logic
+   */
   static async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return this.withRetry(() => apiClient.delete<T>(url, config));
   }

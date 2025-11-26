@@ -1,4 +1,20 @@
 /**
+ * Currency Formatting Utilities
+ *
+ * Utility functions for formatting currency values with smart decimal handling.
+ *
+ * Features:
+ * - Default USD formatting with smart decimal handling
+ * - Custom currency code support
+ * - Locale-specific formatting
+ * - Plain number formatting with custom symbols
+ * - Legacy format function for backwards compatibility
+ */
+
+// ============================================================================
+// Default Currency Formatting
+// ============================================================================
+/**
  * Format currency using default USD formatting with smart decimal handling
  * For user-specific currency formatting, use the formatCurrency method from the settings store
  */
@@ -18,6 +34,9 @@ export function formatCurrency(value: number | null | undefined): string {
   });
 }
 
+// ============================================================================
+// Legacy Formatting
+// ============================================================================
 /**
  * Legacy format function for backwards compatibility
  * @deprecated Use formatCurrency instead
@@ -28,6 +47,9 @@ export default function formatCurrencyLegacy(
   return (value ?? 0).toLocaleString();
 }
 
+// ============================================================================
+// Custom Currency Formatting
+// ============================================================================
 /**
  * Format currency with specific currency code (bypasses user settings)
  */
@@ -73,6 +95,9 @@ export function formatCurrencyWithLocale(
   });
 }
 
+// ============================================================================
+// Plain Number Formatting
+// ============================================================================
 /**
  * Format currency as a plain number with currency symbol
  */

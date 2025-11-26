@@ -1,3 +1,25 @@
+/**
+ * Bill Validator Date Filter Component
+ * Advanced date filter component for bill validator data with time range and denomination filters.
+ *
+ * Features:
+ * - Preset time period filters (Today, Yesterday, Last 7 Days, Last 30 Days, All Time, Custom)
+ * - Custom date range picker
+ * - Time range selection (start and end times)
+ * - Denomination filtering
+ * - Date range, time period, time range, and denomination change callbacks
+ * - Disabled state support
+ *
+ * Large component (~330 lines) handling bill validator filtering.
+ *
+ * @param onDateRangeChange - Callback when custom date range changes
+ * @param onTimePeriodChange - Callback when time period filter changes
+ * @param onTimeRangeChange - Callback when time range changes
+ * @param onDenominationChange - Callback when denomination filter changes
+ * @param denomination - Currently selected denomination
+ * @param uniqueDenominations - Available denominations list
+ * @param disabled - Whether controls are disabled
+ */
 'use client';
 
 import React, { useState } from 'react';

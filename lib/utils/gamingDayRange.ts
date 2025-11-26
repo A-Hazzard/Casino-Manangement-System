@@ -5,16 +5,28 @@
  * gameDayOffset setting. Gaming days don't follow standard calendar days - they start
  * at a specific hour (e.g., 9AM) and run until the same hour the next day.
  *
+ * Features:
+ * - Gaming day range calculation
+ * - Timezone offset handling for different licensees
+ * - Support for custom game day offsets
+ * - Date range calculations for time periods
+ *
  * Example: If gameDayOffset is 9 (9AM start):
  * - "Today" becomes: 9AM today to 9AM tomorrow (Trinidad time)
  * - "Last 7 days" becomes: 9AM 7 days ago to 9AM tomorrow (Trinidad time)
  */
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
 export type GamingDayRange = {
   rangeStart: Date;
   rangeEnd: Date;
 };
 
+// ============================================================================
+// Timezone Functions
+// ============================================================================
 /**
  * Get UTC offset for a licensee
  * @param licenseeName - The licensee name (e.g., "TTG", "Cabana", "Barbados")

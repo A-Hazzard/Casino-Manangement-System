@@ -18,6 +18,10 @@ export async function fetchCollectionReportById(
   }
 }
 
+// ============================================================================
+// Collections Data Fetching
+// ============================================================================
+
 /**
  * Fetch collections by location report ID
  */
@@ -32,6 +36,10 @@ export async function fetchCollectionsByLocationReportId(
     return [];
   }
 }
+
+// ============================================================================
+// Meter Synchronization Operations
+// ============================================================================
 
 /**
  * Sync meters for a collection report
@@ -50,6 +58,10 @@ export async function syncMetersForReport(reportId: string): Promise<void> {
     throw error;
   }
 }
+
+// ============================================================================
+// SAS Time Fixing Operations
+// ============================================================================
 
 /**
  * Fix SAS times and recalculate metrics for all collections in a report

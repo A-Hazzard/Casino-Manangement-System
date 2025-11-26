@@ -91,8 +91,9 @@ export default function MetersTab() {
     activeMetricsFilter,
     customDateRange,
     displayCurrency,
+    setActiveMetricsFilter,
   } = useDashBoardStore();
-  const { setLoading: setReportsLoading } = useReportsStore();
+  const { setLoading: setReportsLoading, activeView } = useReportsStore();
   const { user } = useUserStore();
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
@@ -438,6 +439,13 @@ export default function MetersTab() {
     ]
   );
 
+  // Ensure meters tab defaults to "Today" and never uses "All Time"
+  useEffect(() => {
+    if (activeView === 'meters' && activeMetricsFilter === 'All Time') {
+      setActiveMetricsFilter('Today');
+    }
+  }, [activeView, activeMetricsFilter, setActiveMetricsFilter]);
+
   // Initialize locations once on mount
   useEffect(() => {
     if (!locationsInitialized.current) {
@@ -461,12 +469,15 @@ export default function MetersTab() {
       setCurrentPage(0);
       fetchMetersData(1);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedLocations,
     activeMetricsFilter,
     customDateRange,
     selectedLicencee,
+    setAllMetersData,
+    setLoadedBatches,
+    setCurrentPage,
+    fetchMetersData,
     displayCurrency,
   ]);
 

@@ -1,6 +1,17 @@
+/**
+ * Player Header Skeleton Component
+ * Loading skeleton for player header component.
+ *
+ * Features:
+ * - Matches PlayerHeader layout structure
+ * - Avatar and name/occupation skeletons
+ */
 import React from 'react';
 
 export default function PlayerHeaderSkeleton() {
+  // ============================================================================
+  // Render - Skeleton
+  // ============================================================================
   return (
     <div className="my-8 flex items-center">
       <div className="mr-6 h-20 w-20 animate-pulse rounded-full bg-gray-200"></div>

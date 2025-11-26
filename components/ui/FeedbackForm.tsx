@@ -1,3 +1,22 @@
+/**
+ * Feedback Form Component
+ * Modal form for submitting user feedback with validation and profanity filtering.
+ *
+ * Features:
+ * - Feedback category selection
+ * - Email input (optional for logged-in users)
+ * - Description textarea
+ * - Profanity filtering
+ * - Form validation
+ * - Success/error states
+ * - Toast notifications
+ * - Framer Motion animations
+ *
+ * Large component (~414 lines) handling feedback submission workflow.
+ *
+ * @param isOpen - Whether the form modal is visible
+ * @param onClose - Callback to close the form
+ */
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -25,6 +44,10 @@ import { toast } from 'sonner';
 import profaneWords from 'profane-words';
 import { ADDITIONAL_BAD_WORDS } from '@/lib/constants/badWords';
 import { useUserStore } from '@/lib/store/userStore';
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const FEEDBACK_CATEGORIES = [
   { value: 'bug', label: '🐛 Bug Report' },

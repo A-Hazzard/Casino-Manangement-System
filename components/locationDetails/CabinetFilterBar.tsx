@@ -1,3 +1,22 @@
+/**
+ * Cabinet Filter Bar Component
+ * Filter bar for searching and filtering cabinets in location details.
+ *
+ * Features:
+ * - Search input for cabinet serial numbers
+ * - Filter buttons (All, Online, Offline)
+ * - Real-time filtering
+ * - Pagination reset on filter change
+ * - Responsive design
+ *
+ * @param searchTerm - Current search term
+ * @param setSearchTerm - Callback to update search term
+ * @param activeFilter - Currently active filter (all, online, offline)
+ * @param setActiveFilter - Callback to change active filter
+ * @param cabinets - Array of all cabinets
+ * @param setFilteredCabinets - Callback to update filtered cabinets
+ * @param setCurrentPage - Callback to reset pagination
+ */
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';

@@ -1,14 +1,25 @@
 /**
- * Smart number formatting utilities that hide unnecessary decimal places
+ * Smart Number Formatting Utilities
+ *
+ * Utility functions that hide unnecessary decimal places
  * while preserving meaningful decimal values.
+ *
+ * Features:
+ * - Smart decimal handling for numbers
+ * - Currency, percentage, and large number formatting
+ * - File size formatting
  */
 
+// ============================================================================
+// Core Formatting Functions
+// ============================================================================
 /**
  * Formats a number with smart decimal handling.
  * Hides .00 decimals but shows .01 and above.
- * @param value - The number to format
- * @param options - Formatting options
- * @returns Formatted number string
+ *
+ * @param value - The number to format.
+ * @param options - Formatting options.
+ * @returns Formatted number string.
  */
 export function formatSmartNumber(
   value: number,
@@ -48,11 +59,14 @@ export function formatSmartNumber(
   return new Intl.NumberFormat('en-US', formatOptions).format(value);
 }
 
+// ============================================================================
+// Currency & Percentage Helpers
+// ============================================================================
 /**
  * Formats a number as currency with smart decimal handling.
- * @param value - The number to format
- * @param currency - The currency code (default: USD)
- * @returns Formatted currency string
+ * @param value - The number to format.
+ * @param currency - The currency code (default: USD).
+ * @returns Formatted currency string.
  */
 export function formatSmartCurrency(
   value: number,
@@ -63,9 +77,9 @@ export function formatSmartCurrency(
 
 /**
  * Formats a number as percentage with smart decimal handling.
- * @param value - The number to format (should be between 0-1 for percentage)
- * @param decimals - Number of decimal places (default: 1)
- * @returns Formatted percentage string
+ * @param value - The number to format (should be between 0-1 for percentage).
+ * @param decimals - Number of decimal places (default: 1).
+ * @returns Formatted percentage string.
  */
 export function formatSmartPercentage(
   value: number,
@@ -77,9 +91,9 @@ export function formatSmartPercentage(
 
 /**
  * Formats a number with smart decimal handling for display.
- * @param value - The number to format
- * @param decimals - Number of decimal places (default: 2)
- * @returns Formatted number string
+ * @param value - The number to format.
+ * @param decimals - Number of decimal places (default: 2).
+ * @returns Formatted number string.
  */
 export function formatSmartDecimal(
   value: number,
@@ -88,10 +102,13 @@ export function formatSmartDecimal(
   return formatSmartNumber(value, { decimals });
 }
 
+// ============================================================================
+// Large Number & File Size Formatting
+// ============================================================================
 /**
  * Formats a large number with appropriate suffixes (K, M, B) and smart decimals.
- * @param value - The number to format
- * @returns Formatted number string
+ * @param value - The number to format.
+ * @returns Formatted number string.
  */
 export function formatSmartLargeNumber(value: number): string {
   if (value >= 1_000_000_000) {
@@ -111,8 +128,8 @@ export function formatSmartLargeNumber(value: number): string {
 
 /**
  * Formats a file size with appropriate units and smart decimals.
- * @param bytes - The file size in bytes
- * @returns Formatted file size string
+ * @param bytes - The file size in bytes.
+ * @returns Formatted file size string.
  */
 export function formatSmartFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024 * 1024) {

@@ -1,3 +1,14 @@
+/**
+ * Report Builder Constants
+ * Configuration for custom report builder functionality.
+ *
+ * Includes:
+ * - Available report fields by category (Location, Machine, Member, Financial, Time)
+ * - Report field categories with icons and descriptions
+ * - Report types configuration (locations, machines, members, financial)
+ * - Default report configurations
+ * Used by report builder components to construct custom reports.
+ */
 import { ReportField, ReportFieldCategory } from '@/lib/types';
 import { ReportType } from '@/lib/types/reports';
 

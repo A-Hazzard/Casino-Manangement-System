@@ -1,9 +1,33 @@
+/**
+ * Collection Report Cards Component
+ * Mobile-friendly card view for displaying collection reports.
+ *
+ * Features:
+ * - Collection report data display
+ * - Grid or single column layout
+ * - Issue indicators for reports with problems
+ * - Edit and delete actions (role-based)
+ * - Navigation to report details
+ * - Currency formatting
+ * - Status badges
+ * - Responsive design (mobile only)
+ *
+ * @param data - Array of collection report rows
+ * @param gridLayout - Whether to use grid layout
+ * @param reportIssues - Issues data for reports
+ * @param onEdit - Callback when edit is clicked
+ * @param onDelete - Callback when delete is clicked
+ * @param editableReportIds - Set of report IDs that can be edited
+ */
 import React, { useMemo } from "react";
 import Image from "next/image";
 import type { CollectionReportRow } from "@/lib/types/componentProps";
 import { useRouter } from "next/navigation";
 import { Edit3, Trash2, AlertTriangle } from "lucide-react";
 import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
+import {
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { useUserStore } from "@/lib/store/userStore";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,7 +136,7 @@ export default function CollectionReportCards({
                   <span className="text-gray-700 font-medium text-sm">
                     Gross
                   </span>
-                  <span className="font-semibold text-sm">
+                  <span className={`font-semibold text-sm ${getGrossColorClass(typeof row?.gross === 'string' ? parseFloat(row.gross) || 0 : row?.gross || 0)}`}>
                     {row?.gross || 0}
                   </span>
                 </div>

@@ -1,7 +1,24 @@
+/**
+ * Users API Route
+ *
+ * This route handles user management operations including fetching, creating, updating, and deleting users.
+ * It supports:
+ * - Role-based access control (Admin, Manager, Location Admin)
+ * - Licensee-based filtering
+ * - Location permission filtering
+ * - Search functionality (username, email, _id, or all)
+ * - Pagination
+ * - User creation with validation
+ * - User updates with permission checks
+ *
+ * @module app/api/users/route
+ */
+
 import {
   createUser as createUserHelper,
   deleteUser as deleteUserHelper,
   getAllUsers,
+  getDeletedUsers,
   getUserFromServer,
   updateUser as updateUserHelper,
 } from '@/app/api/lib/helpers/users';
@@ -11,14 +28,36 @@ import { validateEmail } from '@/app/api/lib/utils/validation';
 import { validatePasswordStrength } from '@/lib/utils/validation';
 import { NextRequest } from 'next/server';
 
+/**
+ * Main GET handler for fetching users
+ *
+ * Flow:
+ * 1. Initialize API logging
+ * 2. Connect to database
+ * 3. Parse query parameters (licensee, search, searchMode, status, pagination)
+ * 4. Get current user and permissions
+ * 5. Fetch users from database (based on status filter)
+ * 6. Apply role-based filtering (Manager, Location Admin)
+ * 7. Apply status filtering (Active, Disabled, Deleted)
+ * 8. Apply licensee filtering
+ * 9. Apply search filtering
+ * 10. Apply pagination
+ * 11. Return paginated user list
+ */
 export async function GET(request: NextRequest): Promise<Response> {
+  const startTime = Date.now();
   const context = apiLogger.createContext(request, '/api/users');
   apiLogger.startLogging();
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Ensure getAllUsers function is available
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     if (!getAllUsers) {
       console.error('getAllUsers function is not available');
       return new Response(
@@ -26,12 +65,16 @@ export async function GET(request: NextRequest): Promise<Response> {
         { status: 500 }
       );
     }
+
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get('licensee');
     const search = searchParams.get('search');
     const searchMode = searchParams.get('searchMode') || 'username'; // 'username', 'email', '_id', or 'all'
+    const status = searchParams.get('status') || 'all'; // 'all', 'active', 'disabled', 'deleted'
 
-    // Get current user to check permissions
+    // ============================================================================
+    // STEP 3: Get current user and permissions
+    // ============================================================================
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const currentUserLicensees =
@@ -61,17 +104,35 @@ export async function GET(request: NextRequest): Promise<Response> {
     const isLocationAdmin =
       currentUserRoles.includes('location admin') && !isAdmin && !isManager;
 
-    const users = await getAllUsers();
-    
+    // ============================================================================
+    // STEP 4: Fetch users from database based on status filter
+    // ============================================================================
+    let users;
+    if (status === 'deleted') {
+      // For deleted status, query deleted users from 2025 and later
+      users = await getDeletedUsers();
+    } else {
+      // For all, active, or disabled, use getAllUsers (which excludes deleted)
+      users = await getAllUsers();
+    }
+
     if (process.env.NODE_ENV === 'development') {
       console.warn('[USERS API] getAllUsers result:', {
         totalUsers: users.length,
         usernames: users.slice(0, 10).map(u => u.username),
-        hasAaronTest: users.some(u => u.username === 'aaronTest' || u.emailAddress === 'aaronsploit@gmail.com'),
-        aaronUser: users.find(u => u.username === 'aaronTest' || u.emailAddress === 'aaronsploit@gmail.com'),
+        hasAaronTest: users.some(
+          u =>
+            u.username === 'aaronTest' ||
+            u.emailAddress === 'aaronsploit@gmail.com'
+        ),
+        aaronUser: users.find(
+          u =>
+            u.username === 'aaronTest' ||
+            u.emailAddress === 'aaronsploit@gmail.com'
+        ),
       });
     }
-    
+
     let result = users.map(user => {
       // Convert resourcePermissions from Mongoose Map to plain object if needed
       let resourcePermissions = user.resourcePermissions;
@@ -110,7 +171,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       };
     });
 
-    // Filter users based on requesting user's role
+    // ============================================================================
+    // STEP 5: Apply role-based filtering (Manager, Location Admin)
+    // ============================================================================
     if (isManager && !isAdmin) {
       // Managers can only see users with same licensees
       const beforeManagerFilter = result.length;
@@ -121,10 +184,13 @@ export async function GET(request: NextRequest): Promise<Response> {
         const hasCommonLicensee = userLicensees.some(userLic =>
           currentUserLicensees.includes(userLic)
         );
-        
+
         // Debug logging for aaronTest user
-        if (process.env.NODE_ENV === 'development' && 
-            (user.username === 'aaronTest' || user.email === 'aaronsploit@gmail.com')) {
+        if (
+          process.env.NODE_ENV === 'development' &&
+          (user.username === 'aaronTest' ||
+            user.email === 'aaronsploit@gmail.com')
+        ) {
           console.warn('[USERS API] Manager filter check for aaronTest:', {
             username: user.username,
             email: user.email,
@@ -133,10 +199,10 @@ export async function GET(request: NextRequest): Promise<Response> {
             hasCommonLicensee,
           });
         }
-        
+
         return hasCommonLicensee;
       });
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.warn('[USERS API] Manager filter result:', {
           beforeFilter: beforeManagerFilter,
@@ -336,7 +402,23 @@ export async function GET(request: NextRequest): Promise<Response> {
       });
     }
 
-    // Filter by licensee if provided (additional filter on top of role-based filtering)
+    // ============================================================================
+    // STEP 5.5: Apply status filtering (Active, Disabled, Deleted)
+    // ============================================================================
+    if (status !== 'all') {
+      if (status === 'active') {
+        // Active: isEnabled === true and not deleted (already filtered by getAllUsers)
+        result = result.filter(user => user.enabled === true);
+      } else if (status === 'disabled') {
+        // Disabled: isEnabled === false and not deleted (already filtered by getAllUsers)
+        result = result.filter(user => user.enabled === false);
+      }
+      // For 'deleted' status, users are already filtered by getDeletedUsers query above
+    }
+
+    // ============================================================================
+    // STEP 6: Apply licensee filtering
+    // ============================================================================
     if (licensee && licensee !== 'all') {
       result = result.filter(user => {
         const userLicensees =
@@ -345,7 +427,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       });
     }
 
-    // Filter by search term if provided (before pagination to search all users)
+    // ============================================================================
+    // STEP 7: Apply search filtering
+    // ============================================================================
     if (search && search.trim()) {
       const lowerSearchValue = search.toLowerCase().trim();
       const beforeSearchCount = result.length;
@@ -355,15 +439,17 @@ export async function GET(request: NextRequest): Promise<Response> {
           const username = (user.username || '').toLowerCase();
           const email = (user.email || '').toLowerCase();
           const userId = String(user._id || '').toLowerCase();
-          const matches = (
+          const matches =
             username.includes(lowerSearchValue) ||
             email.includes(lowerSearchValue) ||
-            userId.includes(lowerSearchValue)
-          );
-          
+            userId.includes(lowerSearchValue);
+
           // Debug logging for specific search terms
-          if (process.env.NODE_ENV === 'development' && 
-              (lowerSearchValue.includes('aaron') || lowerSearchValue.includes('aaronsploit'))) {
+          if (
+            process.env.NODE_ENV === 'development' &&
+            (lowerSearchValue.includes('aaron') ||
+              lowerSearchValue.includes('aaronsploit'))
+          ) {
             console.warn('[USERS API] Search match check:', {
               searchTerm: lowerSearchValue,
               username,
@@ -374,7 +460,7 @@ export async function GET(request: NextRequest): Promise<Response> {
               userEmail: user.email,
             });
           }
-          
+
           return matches;
         } else if (searchMode === 'username') {
           const username = user.username || '';
@@ -389,7 +475,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         }
         return false;
       });
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.warn('[USERS API] Search filter:', {
           searchTerm: lowerSearchValue,
@@ -401,17 +487,24 @@ export async function GET(request: NextRequest): Promise<Response> {
       }
     }
 
-    // Pagination parameters
+    // ============================================================================
+    // STEP 8: Apply pagination
+    // ============================================================================
     const page = parseInt(searchParams.get('page') || '1');
     const requestedLimit = parseInt(searchParams.get('limit') || '50');
     const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
     const skip = (page - 1) * limit;
 
-    // Get total count before pagination
     const totalCount = result.length;
-
-    // Apply pagination
     const paginatedUsers = result.slice(skip, skip + limit);
+
+    // ============================================================================
+    // STEP 9: Return paginated user list
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 2000) {
+      console.warn(`[Users API] GET completed in ${duration}ms`);
+    }
 
     apiLogger.logSuccess(
       context,
@@ -429,15 +522,17 @@ export async function GET(request: NextRequest): Promise<Response> {
         },
       }),
       {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       }
     );
   } catch (error) {
+    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[Users API] GET error after ${duration}ms:`, errorMessage);
     apiLogger.logError(context, 'Failed to fetch users', errorMessage);
     return new Response(
       JSON.stringify({ success: false, message: 'Failed to fetch users' }),
@@ -446,15 +541,201 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 }
 
-export async function PUT(request: NextRequest): Promise<Response> {
+/**
+ * Main POST handler for creating a new user
+ *
+ * Flow:
+ * 1. Initialize API logging
+ * 2. Connect to database
+ * 3. Parse request body
+ * 4. Validate required fields (username, email, password)
+ * 5. Validate email format
+ * 6. Validate password strength
+ * 7. Create user via helper function
+ * 8. Return created user data
+ */
+export async function POST(request: NextRequest): Promise<Response> {
+  const startTime = Date.now();
   const context = apiLogger.createContext(request, '/api/users');
   apiLogger.startLogging();
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse request body
+    // ============================================================================
+    const body = await request.json();
+    const {
+      username,
+      emailAddress,
+      password,
+      roles = [],
+      profile = {},
+      isEnabled = true,
+      profilePicture = null,
+      resourcePermissions = {},
+      rel,
+    } = body;
+
+    // ============================================================================
+    // STEP 3: Validate required fields
+    // ============================================================================
+    if (!username || typeof username !== 'string') {
+      apiLogger.logError(
+        context,
+        'User creation failed',
+        'Username is required'
+      );
+      return new Response(
+        JSON.stringify({ success: false, message: 'Username is required' }),
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 4: Validate email format
+    // ============================================================================
+    if (!emailAddress || !validateEmail(emailAddress)) {
+      apiLogger.logError(
+        context,
+        'User creation failed',
+        'Valid email is required'
+      );
+      return new Response(
+        JSON.stringify({ success: false, message: 'Valid email is required' }),
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 5: Validate password strength
+    // ============================================================================
+    if (!password) {
+      apiLogger.logError(
+        context,
+        'User creation failed',
+        'Password is required'
+      );
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Password is required',
+        }),
+        { status: 400 }
+      );
+    }
+
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      apiLogger.logError(
+        context,
+        'User creation failed',
+        `Password requirements not met: ${passwordValidation.feedback.join(
+          ', '
+        )}`
+      );
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `Password requirements not met: ${passwordValidation.feedback.join(
+            ', '
+          )}`,
+        }),
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 6: Create user via helper function
+    // ============================================================================
+    const userWithoutPassword = await createUserHelper(
+      {
+        username,
+        emailAddress,
+        password,
+        roles,
+        profile,
+        isEnabled,
+        profilePicture,
+        resourcePermissions,
+        rel,
+      },
+      request
+    );
+
+    // ============================================================================
+    // STEP 7: Return created user data
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Users API] POST completed in ${duration}ms`);
+    }
+
+    apiLogger.logSuccess(
+      context,
+      `Successfully created user ${username} with email ${emailAddress}`
+    );
+    return new Response(
+      JSON.stringify({ success: true, user: userWithoutPassword }),
+      { status: 201 }
+    );
+  } catch (err: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[Users API] POST error after ${duration}ms:`, errorMsg);
+    apiLogger.logError(context, 'User creation failed', errorMsg);
+
+    const isConflictError =
+      errorMsg === 'Username already exists' ||
+      errorMsg === 'Email already exists' ||
+      errorMsg === 'Username and email already exist';
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: isConflictError ? errorMsg : 'User creation failed',
+        error: errorMsg,
+      }),
+      { status: isConflictError ? 409 : 500 }
+    );
+  }
+}
+
+/**
+ * Main PUT handler for updating a user
+ *
+ * Flow:
+ * 1. Initialize API logging
+ * 2. Connect to database
+ * 3. Parse request body
+ * 4. Validate user ID
+ * 5. Update user via helper function
+ * 6. Return updated user data
+ */
+export async function PUT(request: NextRequest): Promise<Response> {
+  const startTime = Date.now();
+  const context = apiLogger.createContext(request, '/api/users');
+  apiLogger.startLogging();
+
+  try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse request body
+    // ============================================================================
     const body = await request.json();
     const { _id, ...updateFields } = body;
 
+    // ============================================================================
+    // STEP 3: Validate user ID
+    // ============================================================================
     if (!_id) {
       apiLogger.logError(context, 'User update failed', 'User ID is required');
       return new Response(
@@ -463,21 +744,33 @@ export async function PUT(request: NextRequest): Promise<Response> {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Update user via helper function
+    // ============================================================================
     const updatedUser = await updateUserHelper(_id, updateFields, request);
+
+    // ============================================================================
+    // STEP 5: Return updated user data
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Users API] PUT completed in ${duration}ms`);
+    }
+
     apiLogger.logSuccess(context, `Successfully updated user ${_id}`);
     return new Response(JSON.stringify({ success: true, user: updatedUser }), {
       status: 200,
     });
   } catch (err: unknown) {
+    const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[Users API] PUT error after ${duration}ms:`, errorMsg);
     apiLogger.logError(context, 'User update failed', errorMsg);
 
-    // Check if it's a conflict error (username/email already exists)
     const isConflictError =
       errorMsg === 'Username already exists' ||
       errorMsg === 'Email already exists';
 
-    // Check if it's a validation error (should return specific message)
     const isValidationError =
       errorMsg.includes('cannot be empty') ||
       errorMsg.includes('is required') ||
@@ -507,15 +800,37 @@ export async function PUT(request: NextRequest): Promise<Response> {
   }
 }
 
+/**
+ * Main DELETE handler for deleting a user
+ *
+ * Flow:
+ * 1. Initialize API logging
+ * 2. Connect to database
+ * 3. Parse request body
+ * 4. Validate user ID
+ * 5. Delete user via helper function
+ * 6. Return success response
+ */
 export async function DELETE(request: NextRequest): Promise<Response> {
+  const startTime = Date.now();
   const context = apiLogger.createContext(request, '/api/users');
   apiLogger.startLogging();
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse request body
+    // ============================================================================
     const body = await request.json();
     const { _id } = body;
 
+    // ============================================================================
+    // STEP 3: Validate user ID
+    // ============================================================================
     if (!_id) {
       apiLogger.logError(
         context,
@@ -528,11 +843,25 @@ export async function DELETE(request: NextRequest): Promise<Response> {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Delete user via helper function
+    // ============================================================================
     await deleteUserHelper(_id, request);
+
+    // ============================================================================
+    // STEP 5: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Users API] DELETE completed in ${duration}ms`);
+    }
+
     apiLogger.logSuccess(context, `Successfully deleted user ${_id}`);
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err: unknown) {
+    const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[Users API] DELETE error after ${duration}ms:`, errorMsg);
     apiLogger.logError(context, 'User deletion failed', errorMsg);
     return new Response(
       JSON.stringify({
@@ -541,127 +870,6 @@ export async function DELETE(request: NextRequest): Promise<Response> {
         error: errorMsg,
       }),
       { status: errorMsg === 'User not found' ? 404 : 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest): Promise<Response> {
-  const context = apiLogger.createContext(request, '/api/users');
-  apiLogger.startLogging();
-
-  try {
-    await connectDB();
-    const body = await request.json();
-    const {
-      username,
-      emailAddress,
-      password,
-      roles = [],
-      profile = {},
-      isEnabled = true,
-      profilePicture = null,
-      resourcePermissions = {},
-      rel,
-    } = body;
-
-    if (!username || typeof username !== 'string') {
-      apiLogger.logError(
-        context,
-        'User creation failed',
-        'Username is required'
-      );
-      return new Response(
-        JSON.stringify({ success: false, message: 'Username is required' }),
-        { status: 400 }
-      );
-    }
-    if (!emailAddress || !validateEmail(emailAddress)) {
-      apiLogger.logError(
-        context,
-        'User creation failed',
-        'Valid email is required'
-      );
-      return new Response(
-        JSON.stringify({ success: false, message: 'Valid email is required' }),
-        { status: 400 }
-      );
-    }
-    if (!password) {
-      apiLogger.logError(
-        context,
-        'User creation failed',
-        'Password is required'
-      );
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Password is required',
-        }),
-        { status: 400 }
-      );
-    }
-
-    // Enhanced password validation
-    const passwordValidation = validatePasswordStrength(password);
-    if (!passwordValidation.isValid) {
-      apiLogger.logError(
-        context,
-        'User creation failed',
-        `Password requirements not met: ${passwordValidation.feedback.join(
-          ', '
-        )}`
-      );
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: `Password requirements not met: ${passwordValidation.feedback.join(
-            ', '
-          )}`,
-        }),
-        { status: 400 }
-      );
-    }
-
-    const userWithoutPassword = await createUserHelper(
-      {
-        username,
-        emailAddress,
-        password,
-        roles,
-        profile,
-        isEnabled,
-        profilePicture,
-        resourcePermissions,
-        rel,
-      },
-      request
-    );
-
-    apiLogger.logSuccess(
-      context,
-      `Successfully created user ${username} with email ${emailAddress}`
-    );
-    return new Response(
-      JSON.stringify({ success: true, user: userWithoutPassword }),
-      { status: 201 }
-    );
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    apiLogger.logError(context, 'User creation failed', errorMsg);
-
-    // Check if it's a conflict error (username/email already exists)
-    const isConflictError =
-      errorMsg === 'Username already exists' ||
-      errorMsg === 'Email already exists' ||
-      errorMsg === 'Username and email already exist';
-
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: isConflictError ? errorMsg : 'User creation failed',
-        error: errorMsg,
-      }),
-      { status: isConflictError ? 409 : 500 }
     );
   }
 }

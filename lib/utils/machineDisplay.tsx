@@ -1,9 +1,19 @@
 /**
- * Utility functions for displaying machine information
+ * Machine Display Utilities
+ *
+ * Utility functions for formatting and displaying machine information.
+ *
+ * Features:
+ * - Machine display name formatting
+ * - Serial number and custom name handling
+ * - Game information display
  */
 
 import React from 'react';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
 /**
  * Generic machine type that covers different machine objects
  */
@@ -18,6 +28,9 @@ type MachineLike = {
   machineCustomName?: string;
 };
 
+// ============================================================================
+// Machine Display Formatting Functions
+// ============================================================================
 /**
  * Formats machine display name with serial number and game information
  * Format: SerialNumber (custom.name, game) or variations based on available data

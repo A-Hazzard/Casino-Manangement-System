@@ -1,4 +1,14 @@
-// API-specific user types
+/**
+ * Users Types (API)
+ * API-specific user types for user documents and authentication.
+ *
+ * Includes types for:
+ * - Current user (authenticated user data)
+ * - User documents with profile, roles, and permissions
+ * - User documents with password for authentication
+ * - Original user type with extended profile information
+ * Used by API routes and backend user management.
+ */
 export type CurrentUser = {
   _id: string;
   emailAddress: string;

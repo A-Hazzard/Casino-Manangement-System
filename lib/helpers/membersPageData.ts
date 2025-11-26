@@ -1,6 +1,24 @@
+/**
+ * Members Page Data Helper Functions
+ *
+ * Provides helper functions for fetching and managing member data for the members page,
+ * including CRUD operations, search functionality, and pagination. It handles all
+ * operations related to casino members through the API.
+ *
+ * Features:
+ * - Fetches members with pagination, filtering, and sorting.
+ * - Fetches a single member by ID.
+ * - Creates, updates, and deletes members.
+ * - Searches members by search term with optional licensee filtering.
+ */
+
 import axios from 'axios';
 import type { CasinoMember as Member } from '@/shared/types/entities';
 // Activity logging removed - handled via API calls
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
 export type MembersQueryOptions = {
   page?: number;
@@ -21,6 +39,10 @@ export type MembersQueryResult = {
     hasPrevPage: boolean;
   };
 };
+
+// ============================================================================
+// Member Data Fetching
+// ============================================================================
 
 /**
  * Fetch members with pagination and filtering
@@ -82,6 +104,10 @@ export async function fetchMembersData(
     };
   }
 }
+
+// ============================================================================
+// Member CRUD Operations
+// ============================================================================
 
 /**
  * Fetch member by ID
@@ -146,6 +172,10 @@ export async function deleteMember(memberId: string): Promise<void> {
     throw error;
   }
 }
+
+// ============================================================================
+// Member Search
+// ============================================================================
 
 /**
  * Search members

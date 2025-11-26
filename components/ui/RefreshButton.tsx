@@ -1,10 +1,36 @@
+/**
+ * Sync Button & Refresh Button Components
+ * Button components for syncing/refreshing data with loading states.
+ *
+ * Features:
+ * - SyncButton with sync/refresh variants
+ * - RefreshButton wrapper
+ * - Loading/syncing state with spinner
+ * - Icon-only or with label option
+ * - Disabled state during sync
+ * - Accessible labels
+ *
+ * @param onClick - Callback when button is clicked
+ * @param isSyncing - Whether sync/refresh is in progress
+ * @param label - Button label text
+ * @param iconOnly - Whether to show only icon
+ * @param variant - Button variant (sync or refresh)
+ */
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React from 'react';
 import type { SyncButtonProps as BaseSyncButtonProps } from '@/lib/types/components';
 
+// ============================================================================
+// Types
+// ============================================================================
+
 type Props = Omit<ButtonProps, keyof BaseSyncButtonProps> & BaseSyncButtonProps;
+
+// ============================================================================
+// Components
+// ============================================================================
 
 export const SyncButton = ({
   onClick,

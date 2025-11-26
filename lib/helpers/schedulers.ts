@@ -1,5 +1,21 @@
+/**
+ * Schedulers Helper Functions
+ *
+ * Provides helper functions for fetching scheduler data with various filtering options.
+ * Schedulers manage collection schedules for collectors and locations.
+ *
+ * Features:
+ * - Fetches all scheduler data with optional licensee filtering.
+ * - Fetches schedulers with multiple filter options (licensee, location, collector, status, date range).
+ * - Handles errors gracefully with empty array fallback.
+ */
+
 import type { SchedulerData } from '../types/api';
 import axios from 'axios';
+
+// ============================================================================
+// Scheduler Data Fetching
+// ============================================================================
 
 /**
  * Fetches all scheduler data

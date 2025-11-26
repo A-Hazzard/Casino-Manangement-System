@@ -1,14 +1,47 @@
+/**
+ * Admin Auth Metrics API Route
+ *
+ * This route provides authentication metrics for admin dashboard, including:
+ * - Total logins count
+ * - Successful logins count
+ * - Failed logins count
+ * - Active sessions count
+ * - Locked accounts count
+ * - Suspicious activities count
+ *
+ * Supports:
+ * - Time range filtering (1h, 24h, 7d, 30d)
+ * - Admin/developer access control
+ *
+ * @module app/api/admin/auth/metrics/route
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthMetrics } from '@/app/api/lib/helpers/adminAuthMetrics';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { ActivityLog } from '@/app/api/lib/models/activityLog';
-import User from '@/app/api/lib/models/user';
 
+/**
+ * Main GET handler for fetching authentication metrics
+ *
+ * Flow:
+ * 1. Connect to database and authenticate user
+ * 2. Parse query parameters (timeRange)
+ * 3. Fetch authentication metrics
+ * 4. Return metrics data
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Check authentication and authorization
+    // ============================================================================
+    // STEP 2: Authenticate user and check permissions
+    // ============================================================================
     const user = await getUserFromServer();
     if (!user) {
       return NextResponse.json(
@@ -17,76 +50,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
-    const timeRange = searchParams.get('timeRange') || '24h';
+    const timeRange = (searchParams.get('timeRange') as '1h' | '24h' | '7d' | '30d') || '24h';
 
-    // Calculate date range for filtering
-    const now = new Date();
-    let startDate: Date;
+    // ============================================================================
+    // STEP 4: Fetch authentication metrics
+    // ============================================================================
+    const metrics = await getAuthMetrics(timeRange);
 
-    switch (timeRange) {
-      case '1h':
-        startDate = new Date(now.getTime() - 60 * 60 * 1000);
-        break;
-      case '7d':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case '24h':
-      default:
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-    }
-
-    // Query actual data using ActivityLog model
-    const totalLogins = await ActivityLog.countDocuments({
-      action: { $in: ['create', 'update', 'delete', 'view', 'download'] },
-      timestamp: { $gte: startDate },
-    });
-
-    const successfulLogins = await ActivityLog.countDocuments({
-      action: 'create',
-      resource: 'user',
-      timestamp: { $gte: startDate },
-    });
-
-    const failedLogins = await ActivityLog.countDocuments({
-      action: 'update',
-      resource: 'user',
-      details: { $regex: 'failed', $options: 'i' },
-      timestamp: { $gte: startDate },
-    });
-
-    const suspiciousActivities = await ActivityLog.countDocuments({
-      details: { $regex: 'suspicious|security|breach', $options: 'i' },
-      timestamp: { $gte: startDate },
-    });
-
-    // Get locked accounts count
-    const lockedAccounts = await User.countDocuments({
-      isLocked: true,
-      lockedUntil: { $gt: new Date() },
-    });
-
-    // Get active sessions count (approximate based on recent activity)
-    const activeSessions = await ActivityLog.countDocuments({
-      timestamp: { $gte: new Date(now.getTime() - 30 * 60 * 1000) }, // Last 30 minutes
-    });
-
-    const metrics = {
-      totalLogins,
-      successfulLogins,
-      failedLogins,
-      activeSessions,
-      lockedAccounts,
-      suspiciousActivities,
-    };
+    // ============================================================================
+    // STEP 5: Return metrics data
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Admin Auth Metrics GET API] Fetched metrics for ${timeRange} after ${duration}ms.`
+    );
 
     return NextResponse.json(metrics);
-  } catch (error) {
-    console.error('Failed to fetch auth metrics:', error);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Admin Auth Metrics GET API] Error after ${duration}ms:`,
+      errorMessage
+    );
+
     return NextResponse.json(
       { error: 'Failed to fetch authentication metrics' },
       { status: 500 }

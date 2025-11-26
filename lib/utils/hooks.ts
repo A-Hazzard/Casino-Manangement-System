@@ -1,9 +1,18 @@
 /**
- * Custom hooks utilities for common functionality
+ * Custom Hooks Utilities
+ *
+ * Utility hooks for common React functionality.
+ *
+ * Features:
+ * - Debounce hook for search optimization
+ * - Value debouncing with configurable delay
  */
 
 import { useState, useEffect } from 'react';
 
+// ============================================================================
+// Debounce Hook
+// ============================================================================
 /**
  * Debounce hook for search optimization
  * @param value - The value to debounce

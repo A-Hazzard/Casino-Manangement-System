@@ -1,3 +1,18 @@
+/**
+ * Collection Report Page Data Helper Functions
+ *
+ * Provides helper functions for fetching and processing collection report page data,
+ * including collection reports, monthly reports, and scheduler data. It handles
+ * time period mapping, date range filtering, and data transformation for the
+ * collection reports page.
+ *
+ * Features:
+ * - Maps frontend time period values to backend API format.
+ * - Fetches collection reports with licensee and date range filtering.
+ * - Fetches monthly reports with summary and details.
+ * - Fetches collector schedules and scheduler data.
+ */
+
 import axios from 'axios';
 import type { CollectionReportRow } from '@/lib/types/componentProps';
 import type {
@@ -9,6 +24,10 @@ import type { CollectorSchedule } from '@/lib/types/components';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 
 import { DateRange as RDPDateRange } from 'react-day-picker';
+
+// ============================================================================
+// Time Period Mapping
+// ============================================================================
 
 /**
  * Maps frontend time period values to backend API time period values
@@ -27,6 +46,10 @@ export const mapTimePeriodForAPI = (frontendTimePeriod: string): string => {
       return frontendTimePeriod;
   }
 };
+
+// ============================================================================
+// Collection Reports Data Fetching
+// ============================================================================
 
 /**
  * Fetch collection reports data by licencee
@@ -100,6 +123,10 @@ export async function fetchCollectionReportsData(
   }
 }
 
+// ============================================================================
+// Monthly Report Data Fetching
+// ============================================================================
+
 /**
  * Fetch monthly report data
  */
@@ -142,6 +169,10 @@ export async function fetchMonthlyReportData(
     };
   }
 }
+
+// ============================================================================
+// Scheduler Data Fetching
+// ============================================================================
 
 /**
  * Fetch manager schedule data

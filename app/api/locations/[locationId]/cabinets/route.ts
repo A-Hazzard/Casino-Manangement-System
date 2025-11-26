@@ -1,42 +1,72 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../../lib/middleware/db';
+/**
+ * Location Cabinets API Route
+ *
+ * This route handles creating new machines/cabinets for a specific location.
+ * It supports:
+ * - Creating new machines with all required fields
+ * - Setting default values for machine configuration
+ * - Validating location exists before creating machine
+ * - Handling collection settings from request
+ *
+ * @module app/api/locations/[locationId]/cabinets/route
+ */
+
 import { Machine } from '@/app/api/lib/models/machines';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import type { GamingMachine } from '@/shared/types/entities';
-type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
+import { generateMongoId } from '@/lib/utils/id';
+import { NextRequest, NextResponse } from 'next/server';
+
+type NewMachineData = Omit<
+  GamingMachine,
+  '_id' | 'createdAt' | 'updatedAt'
+> & {
   collectionSettings?: {
     lastCollectionTime?: string;
     lastMetersIn?: string;
     lastMetersOut?: string;
   };
 };
-import { generateMongoId } from '@/lib/utils/id';
 
 /**
- * POST /api/locations/[locationId]/cabinets
- * Create a new machine/cabinet for a specific location
+ * Main POST handler for creating a new cabinet/machine
+ *
+ * Flow:
+ * 1. Extract locationId from URL path
+ * 2. Connect to database
+ * 3. Verify location exists and is not deleted
+ * 4. Parse request body
+ * 5. Generate machine ID
+ * 6. Create machine document with all required fields
+ * 7. Save machine to database
+ * 8. Return created machine
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
-    // Extract locationId from URL path
+    // ============================================================================
+    // STEP 1: Extract locationId from URL path
+    // ============================================================================
     const url = request.nextUrl;
     const locationId = url.pathname.split('/')[3]; // Extracts ID from /api/locations/[locationId]/cabinets
 
-    console.warn(`POST request to create cabinet for location: ${locationId}`);
-
-    // Location ID validation removed - _id is stored as String, not ObjectId
-
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     const db = await connectDB();
 
     if (!db) {
-      console.error('Failed to connect to the database');
       return NextResponse.json(
         { success: false, error: 'Failed to connect to the database' },
         { status: 500 }
       );
     }
 
-    // Verify location exists and is not deleted
+    // ============================================================================
+    // STEP 3: Verify location exists and is not deleted
+    // ============================================================================
     const location = await GamingLocations.findOne({
       _id: locationId,
       $or: [
@@ -45,21 +75,29 @@ export async function POST(request: NextRequest) {
       ],
     });
     if (!location) {
-      console.warn(`Location not found or deleted with ID: ${locationId}`);
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
         { status: 404 }
       );
     }
 
-    // Parse the request data
+    // ============================================================================
+    // STEP 4: Parse request body
+    // ============================================================================
     const data = (await request.json()) as NewMachineData;
 
     // Ensure we're using the location ID from the URL
     data.gamingLocation = locationId;
 
+    // ============================================================================
+    // STEP 5: Generate machine ID
+    // ============================================================================
     // Generate a proper MongoDB ObjectId-style hex string for the machine
     const machineId = await generateMongoId();
+
+    // ============================================================================
+    // STEP 6: Create machine document with all required fields
+    // ============================================================================
 
     // Create the new machine
     const newMachine = new Machine({
@@ -67,7 +105,7 @@ export async function POST(request: NextRequest) {
       serialNumber: data.serialNumber,
       game: data.game,
       gameType: data.gameType || 'slot', // Default to "slot" if not provided
-      isCronosMachine: data.isCronosMachine,
+      isCronosMachine: data.isCronosMachine || false,
       // Handle isCronosMachine vs isSasMachine logic
       isSasMachine: data.isCronosMachine ? false : true, // If Cronos, not SAS. If not given, default to SAS
       loggedIn: false, // Default to not logged in
@@ -128,7 +166,7 @@ export async function POST(request: NextRequest) {
       origSerialNumber: '',
       machineId: '',
       gamingBoard: '',
-      manuf: '',
+      manuf: data.manufacturer || '',
       smibBoard: data.smibBoard,
       smibVersion: { firmware: '', version: '' },
       smibConfig: {
@@ -190,7 +228,7 @@ export async function POST(request: NextRequest) {
       },
       operationsWhileIdle: { extendedMeters: new Date() },
       collectionMetersHistory: [],
-      manufacturer: '',
+      manufacturer: data.manufacturer || '',
       gameNumber: '',
       protocols: [],
       numberOfEnabledGames: 0,
@@ -217,17 +255,32 @@ export async function POST(request: NextRequest) {
       collectorDenomination: 1, // Collection Report Multiplier as specified in prompt
     });
 
+    // ============================================================================
+    // STEP 7: Save machine to database
+    // ============================================================================
     await newMachine.save();
-    // console.log(`Cabinet created successfully with ID: ${newMachine._id}`);
 
+    // ============================================================================
+    // STEP 8: Return created machine
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Location Cabinets API POST] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       data: newMachine,
     });
   } catch (error) {
-    console.error('Error creating cabinet:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to create cabinet';
+    console.error(
+      `[Location Cabinets API POST] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to create cabinet' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

@@ -18,7 +18,7 @@
 The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, activity logging, and feedback management.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.4.0
 
 ### File Information
@@ -129,12 +129,18 @@ The Administration page provides comprehensive user and licensee management for 
 
 ### State Management
 
+- **Global Store:** `lib/store/dashboardStore.ts` - Zustand store for licensee state
+  - **Store Hook:** `useDashBoardStore` (note: capital B in "Board")
+  - **Key Properties:** `selectedLicencee`, `setSelectedLicencee`
+- **User Store:** `lib/store/userStore.ts` - Zustand store for current user data
+- **Custom Hooks:**
+  - `useAdministrationNavigation()` - Manages active section state (users/licensees/activity/feedback)
 - **Local State:** React `useState` hooks for complex form and UI state
 - **Key State Properties:**
   - `allUsers`, `allLicensees` - Data arrays
   - `isLoading`, `isLicenseesLoading` - Loading states
   - `currentPage` - Pagination state
-  - `activeSection` - Current section (users/licensees)
+  - `activeSection` - Current section (users/licensees/activity/feedback)
   - `searchValue`, `searchMode` - Search and filter states
   - `sortConfig` - Table sorting configuration
   - Modal states for various operations

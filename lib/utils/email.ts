@@ -1,8 +1,26 @@
+/**
+ * Email Utility Functions
+ *
+ * Utility functions for sending emails via SendGrid.
+ *
+ * Features:
+ * - SendGrid integration
+ * - HTML and plain text email support
+ * - Error handling
+ * - Environment-based configuration
+ */
+
 import sgMail from '@sendgrid/mail';
 
+// ============================================================================
+// SendGrid Configuration
+// ============================================================================
 // Set the API key from environment variables
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 
+// ============================================================================
+// Email Functions
+// ============================================================================
 /**
  * Sends an email using SendGrid.
  *

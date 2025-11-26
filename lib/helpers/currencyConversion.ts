@@ -1,6 +1,16 @@
 /**
- * Currency conversion helper functions for API responses
- * Only applies when "All Licensee" is selected
+ * Currency Conversion Helper Functions
+ *
+ * Provides helper functions for converting financial data between different currencies
+ * based on licensee settings. Currency conversion only applies when "All Licensee" is selected
+ * and the licensee uses a currency other than USD.
+ *
+ * Features:
+ * - Converts single financial data objects and arrays to a specified display currency.
+ * - Handles meter data with nested movement and viewingAccountDenomination objects.
+ * - Converts aggregated financial data (sums, totals, averages).
+ * - Converts dashboard totals data.
+ * - Adds currency metadata to API responses for frontend display.
  */
 
 import type {
@@ -15,6 +25,10 @@ import {
   getLicenseeCurrency,
   getExchangeRates,
 } from './rates';
+
+// ============================================================================
+// Financial Data Conversion
+// ============================================================================
 
 /**
  * Convert a single financial data object

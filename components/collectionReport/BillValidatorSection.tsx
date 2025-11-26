@@ -1,3 +1,28 @@
+/**
+ * Bill Validator Section Component
+ * Component for displaying and collecting bill validator data with time period filtering.
+ *
+ * Features:
+ * - Bill validator data display (v1 and v2 support)
+ * - Denomination breakdown
+ * - Time period filtering (Today, Yesterday, 7d, 30d, All Time, Custom)
+ * - Bill collection form
+ * - Total amount and quantity calculations
+ * - Unknown bills tracking
+ * - Current balance display
+ * - Tab-based interface (View/Collect)
+ * - Currency formatting
+ *
+ * Large component (~557 lines) handling bill validator data display and collection.
+ *
+ * @param machineId - Machine ID to fetch bill validator data for
+ * @param billValidator - Bill validator data object
+ * @param billMeters - Flexible bill meters data
+ * @param timePeriod - Current time period filter
+ * @param onTimePeriodChange - Callback to change time period
+ * @param onCollect - Callback when bill collection is submitted
+ * @param isCollecting - Whether collection is in progress
+ */
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -15,6 +40,10 @@ import {
   BillValidatorSummary,
 } from '@/shared/types/billValidator';
 import type { BillValidatorData as DatabaseBillValidatorData } from '@/shared/types/database';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 // Flexible bill meters type that can handle both cabinet and bill validator data
 type FlexibleBillMetersData = {

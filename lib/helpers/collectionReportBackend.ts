@@ -1,8 +1,27 @@
+/**
+ * Collection Report Backend Helper Functions
+ *
+ * Provides backend-only helper functions for fetching and processing collection reports
+ * with machine counts and financial metrics. It handles licensee filtering, date range
+ * filtering, and enrichment of collection report data with calculated values from
+ * actual collections.
+ *
+ * Features:
+ * - Fetches all collection reports with licensee and date range filtering.
+ * - Enriches reports with machine counts (collected vs total machines).
+ * - Calculates financial metrics from actual collections (gross, SAS gross, variation).
+ * - Formats numbers with smart decimal handling.
+ */
+
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { CollectionReportRow } from '@/lib/types/componentProps';
 import { PipelineStage } from 'mongoose';
+
+// ============================================================================
+// Number Formatting Utilities
+// ============================================================================
 
 /**
  * Formats a number with smart decimal handling
@@ -14,6 +33,10 @@ const formatSmartDecimal = (value: number): string => {
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
   return value.toFixed(hasSignificantDecimals ? 2 : 0);
 };
+
+// ============================================================================
+// Collection Report Fetching
+// ============================================================================
 
 /**
  * Backend-only function to fetch all collection reports with machine counts

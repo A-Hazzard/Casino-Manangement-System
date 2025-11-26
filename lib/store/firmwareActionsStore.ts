@@ -1,7 +1,15 @@
+/**
+ * Firmware Actions Store
+ * Zustand store for managing firmware actions (delete/download modals).
+ *
+ * Features:
+ * - Tracks selected firmware and modal open/close state
+ * - Provides actions to open/close delete and download modals
+ * - SSR-safe with dummy state for server rendering
+ *
+ * @returns Zustand hook for accessing and updating firmware actions state.
+ */
 import { create } from 'zustand';
-
-// This is a store for firmware actions (delete modal)
-
 import type { FirmwareActionsState } from '@/lib/types/store';
 
 // Re-export frontend-specific types for convenience

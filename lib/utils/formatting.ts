@@ -1,4 +1,18 @@
 /**
+ * Formatting Utilities
+ *
+ * Utility functions for formatting currency, numbers, and dates.
+ *
+ * Features:
+ * - Currency formatting with smart decimals
+ * - Number formatting with commas
+ * - Date formatting
+ */
+
+// ============================================================================
+// Currency Formatting
+// ============================================================================
+/**
  * Formats a number as currency with smart decimal handling.
  * Hides .00 decimals but shows .01 and above.
  */
@@ -20,6 +34,9 @@ export function formatCurrency(value: number): string {
   });
 }
 
+// ============================================================================
+// Number Formatting
+// ============================================================================
 /**
  * Formats a number with smart decimal handling and commas.
  * Hides .00 decimals but shows .01 and above.
@@ -40,6 +57,9 @@ export function formatNumber(value: number): string {
   });
 }
 
+// ============================================================================
+// Date Formatting
+// ============================================================================
 /**
  * Format a date string to readable format
  */

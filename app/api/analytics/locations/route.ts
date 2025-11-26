@@ -1,13 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
-import { PipelineStage } from 'mongoose';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import { convertFromUSD } from '@/lib/helpers/rates';
-import type { CurrencyCode } from '@/shared/types/currency';
+/**
+ * Analytics Locations API Route
+ *
+ * This route handles fetching top performing locations analytics data.
+ * It supports:
+ * - Filtering by licensee
+ * - Aggregating machine statistics per location
+ * - Financial metrics calculation (drop, cancelled credits, gross)
+ * - Currency conversion for multi-licensee views
+ * - Top 5 locations by performance
+ *
+ * @module app/api/analytics/locations/route
+ */
 
+import { getTopLocationsAnalytics } from '@/app/api/lib/helpers/analytics';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for fetching top locations analytics
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request parameters (licensee, currency)
+ * 3. Execute the core top locations fetching logic via `getTopLocationsAnalytics` helper
+ * 4. Return top locations analytics data
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -15,6 +40,10 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // ============================================================================
+    // STEP 2: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get('licensee');
     const displayCurrency =
@@ -27,221 +56,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const locationsPipeline: PipelineStage[] = [
-      // Stage 1: Join machines with gaming locations to get location details
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'gamingLocation',
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
-      },
-
-      // Stage 2: Flatten the location details array (each machine now has location info)
-      {
-        $unwind: '$locationDetails',
-      },
-
-      // Stage 3: Filter machines by licensee to get only relevant locations
-      {
-        $match: {
-          'locationDetails.rel.licencee': licensee,
-        },
-      },
-
-      // Stage 4: Group by location to aggregate machine statistics
-      {
-        $group: {
-          _id: '$gamingLocation',
-          machineCount: { $sum: 1 },
-          onlineMachines: {
-            $sum: {
-              $cond: [{ $eq: ['$assetStatus', 'active'] }, 1, 0],
-            },
-          },
-          sasMachines: {
-            $sum: {
-              $cond: ['$isSasMachine', 1, 0],
-            },
-          },
-          locationInfo: { $first: '$locationDetails' },
-        },
-      },
-
-      // Stage 5: Sort by gross revenue (highest performers first)
-      { $sort: { gross: -1 } },
-
-      // Stage 6: Limit to top 5 performing locations
-      { $limit: 5 },
-
-      // Stage 7: Project final structure with location details and coordinates
-      {
-        $project: {
-          _id: 0,
-          id: '$_id',
-          name: '$locationInfo.name',
-          totalDrop: '$totalDrop',
-          cancelledCredits: '$cancelledCredits',
-          gross: '$gross',
-          machineCount: '$machineCount',
-          onlineMachines: '$onlineMachines',
-          sasMachines: '$sasMachines',
-          coordinates: {
-            $cond: {
-              if: {
-                $and: [
-                  { $ifNull: ['$locationInfo.geoCoords.latitude', false] },
-                  { $ifNull: ['$locationInfo.geoCoords.longitude', false] },
-                ],
-              },
-              then: [
-                '$locationInfo.geoCoords.longitude',
-                '$locationInfo.geoCoords.latitude',
-              ],
-              else: null,
-            },
-          },
-          // Mock trend data for now
-          trend: { $cond: [{ $gte: ['$gross', 10000] }, 'up', 'down'] },
-          trendPercentage: { $abs: { $multiply: [{ $rand: {} }, 10] } },
-        },
-      },
-    ];
-
-    const topLocations = await Machine.aggregate(locationsPipeline);
-
-    // Get financial metrics for each location using meters collection
-    let topLocationsWithMetrics = await Promise.all(
-      topLocations.map(async location => {
-        const locationId = location._id.toString();
-
-        // Get financial metrics from meters collection
-        const metersAggregation = await db
-          .collection('meters')
-          .aggregate([
-            // Stage 1: Filter meter records by location
-            {
-              $match: {
-                location: locationId,
-              },
-            },
-
-            // Stage 2: Aggregate financial metrics for this location
-            {
-              $group: {
-                _id: null,
-                totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-                totalCancelledCredits: {
-                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-                },
-              },
-            },
-          ])
-          .toArray();
-
-        const financialMetrics = metersAggregation[0] || {
-          totalDrop: 0,
-          totalCancelledCredits: 0,
-        };
-        const gross =
-          financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
-
-        return {
-          id: locationId,
-          name: location.locationInfo.name,
-          totalDrop: financialMetrics.totalDrop,
-          cancelledCredits: financialMetrics.totalCancelledCredits,
-          gross: gross,
-          machineCount: location.machineCount,
-          onlineMachines: location.onlineMachines,
-          sasMachines: location.sasMachines,
-          rel: location.locationInfo.rel, // Include for currency conversion
-          country: location.locationInfo.country, // Include for currency conversion
-          coordinates:
-            location.locationInfo.geoCoords?.latitude &&
-            location.locationInfo.geoCoords?.longitude
-              ? [
-                  location.locationInfo.geoCoords.longitude,
-                  location.locationInfo.geoCoords.latitude,
-                ]
-              : null,
-          trend: gross >= 10000 ? 'up' : 'down',
-          trendPercentage: Math.abs(Math.random() * 10),
-        };
-      })
+    // ============================================================================
+    // STEP 3: Execute the core top locations fetching logic via helper
+    // ============================================================================
+    const locationsData = await getTopLocationsAnalytics(
+      db,
+      licensee,
+      displayCurrency
     );
 
-    // Apply currency conversion if needed
-    if (shouldApplyCurrencyConversion(licensee)) {
-      // Get currency mappings for multi-licensee conversion
-      const { convertToUSD, getCountryCurrency } = await import('@/lib/helpers/rates');
-      
-      const licenseesData = await db
-        .collection('licencees')
-        .find(
-          {
-            $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
-          },
-          { projection: { _id: 1, name: 1 } }
-        )
-        .toArray();
-
-      const licenseeIdToName = new Map<string, string>();
-      licenseesData.forEach(lic => {
-        licenseeIdToName.set(lic._id.toString(), lic.name);
-      });
-
-      const countriesData = await db.collection('countries').find({}).toArray();
-      const countryIdToName = new Map<string, string>();
-      countriesData.forEach(country => {
-        countryIdToName.set(country._id.toString(), country.name);
-      });
-
-      // Convert each location's financial data from native currency
-      topLocationsWithMetrics = topLocationsWithMetrics.map(location => {
-        // Determine native currency
-        const licenseeId = location.rel?.licencee;
-        let nativeCurrency: string = 'USD';
-
-        if (licenseeId) {
-          const licenseeName = licenseeIdToName.get(licenseeId.toString());
-          nativeCurrency = licenseeName || 'USD';
-        } else if (location.country) {
-          const countryName = countryIdToName.get(location.country.toString());
-          nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
-        }
-
-        // Convert from native currency to display currency
-        const totalDropUSD = convertToUSD(location.totalDrop, nativeCurrency);
-        const grossUSD = convertToUSD(location.gross, nativeCurrency);
-        const cancelledCreditsUSD = convertToUSD(
-          location.cancelledCredits || 0,
-          nativeCurrency
-        );
-
-        return {
-          ...location,
-          totalDrop: convertFromUSD(totalDropUSD, displayCurrency),
-          cancelledCredits: convertFromUSD(cancelledCreditsUSD, displayCurrency),
-          gross: convertFromUSD(grossUSD, displayCurrency),
-        };
-      });
+    // ============================================================================
+    // STEP 4: Return top locations analytics data
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Analytics Locations GET API] Completed in ${duration}ms`);
     }
 
-    const convertedLocations = topLocationsWithMetrics;
-
-    return NextResponse.json({
-      topLocations: convertedLocations,
-      currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licensee),
-    });
-  } catch (error) {
-    console.error('Error fetching location analytics:', error);
+    return NextResponse.json(locationsData);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Analytics Locations GET API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         message: 'Failed to fetch location analytics',
-        error: (error as Error).message,
+        error: errorMessage,
       },
       { status: 500 }
     );

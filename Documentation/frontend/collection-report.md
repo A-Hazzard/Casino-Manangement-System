@@ -1,7 +1,7 @@
 # Collection Report System - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 11, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.5.0
 
 ## Overview
@@ -862,3 +862,100 @@ useEffect(() => {
 - Implement loading states with skeleton loaders
 - Use responsive design principles
 - Ensure accessibility compliance
+
+## Financial Calculations Analysis
+
+### How Monthly Report Calculates Money In, Money Out, and Gross
+
+The Monthly Report tab calculates financial metrics by aggregating data from the `collectionreports` collection. Unlike other pages that query the `meters` collection directly, the Monthly Report uses pre-calculated totals stored in collection reports.
+
+#### **Monthly Report Summary (Totals) ✅**
+
+- **Data Source**: `collectionreports` collection, pre-calculated fields
+- **Backend Implementation** (in `lib/helpers/collectionReport.ts`):
+  ```javascript
+  // getMonthlyCollectionReportSummary function
+  {
+    $match: {
+      timestamp: { $gte: startDate, $lte: endDate },
+      locationName: { $regex: new RegExp(`^${locationName}$`, 'i') }, // Case-insensitive
+    },
+  },
+  {
+    $group: {
+      _id: null,
+      drop: { $sum: '$totalDrop' },
+      cancelledCredits: { $sum: '$totalCancelled' },
+      gross: { $sum: '$totalGross' },
+      sasGross: { $sum: '$totalSasGross' },
+    },
+  }
+  ```
+- **Financial Guide**: Uses `totalDrop`, `totalCancelled`, `totalGross` from collection reports ✅ **MATCHES**
+- **Business Context**: Aggregates totals from all collection reports within date range
+- **Aggregation**: 
+  - Queries `collectionreports` collection filtered by date range and optional location name
+  - Sums `totalDrop`, `totalCancelled`, `totalGross`, and `totalSasGross` fields
+  - Case-insensitive location name matching using regex
+
+#### **Monthly Report By Location (Details) ✅**
+
+- **Data Source**: `collectionreports` collection, grouped by location
+- **Backend Implementation**:
+  ```javascript
+  // getMonthlyCollectionReportByLocation function
+  {
+    $match: {
+      timestamp: { $gte: startDate, $lte: endDate },
+      locationName: { $regex: new RegExp(`^${locationName}$`, 'i') }, // Case-insensitive
+    },
+  },
+  {
+    $group: {
+      _id: '$locationName',
+      drop: { $sum: '$totalDrop' },
+      cancelledCredits: { $sum: '$totalCancelled' },
+      gross: { $sum: '$totalGross' },
+      sasGross: { $sum: '$totalSasGross' },
+    },
+  }
+  ```
+- **Financial Guide**: Uses `totalDrop`, `totalCancelled`, `totalGross` from collection reports ✅ **MATCHES**
+- **Business Context**: Shows per-location totals aggregated from collection reports
+- **Aggregation**: 
+  - Groups collection reports by `locationName`
+  - Sums `totalDrop`, `totalCancelled`, `totalGross`, and `totalSasGross` per location
+  - Case-insensitive location name matching
+
+#### **Key Differences from Other Pages**
+
+- **Data Source**: Uses `collectionreports` collection instead of `meters` collection
+- **Pre-calculated Values**: Uses `totalDrop`, `totalCancelled`, `totalGross` fields that are calculated when collection reports are created
+- **Location Filtering**: Supports case-insensitive location name filtering using regex
+- **Licensee Filtering**: When licensee filter is provided, uses `$lookup` to join with `gaminglocations` collection:
+  ```javascript
+  {
+    $lookup: {
+      from: 'gaminglocations',
+      localField: 'location',
+      foreignField: '_id',
+      as: 'locationDetails',
+    },
+  },
+  { $unwind: '$locationDetails' },
+  {
+    $match: {
+      'locationDetails.rel.licencee': licencee,
+    },
+  }
+  ```
+
+#### **Collection Report Fields**
+
+The `collectionreports` collection stores:
+- `totalDrop`: Sum of `movement.drop` from meters for the collection period
+- `totalCancelled`: Sum of `movement.totalCancelledCredits` from meters for the collection period
+- `totalGross`: `totalDrop - totalCancelled` (calculated when report is created)
+- `totalSasGross`: SAS-specific gross calculation (if applicable)
+
+**Note**: These values are calculated and stored when collection reports are finalized, not calculated on-the-fly from meters like other pages.

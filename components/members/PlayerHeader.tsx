@@ -1,3 +1,15 @@
+/**
+ * Player Header Component
+ * Header component displaying player/member name and basic information.
+ *
+ * Features:
+ * - Member name display (full name or member ID)
+ * - Occupation display
+ * - User icon avatar
+ * - Simple header layout
+ *
+ * @param member - Member/CasinoMember object
+ */
 import React from 'react';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import { User } from 'lucide-react';

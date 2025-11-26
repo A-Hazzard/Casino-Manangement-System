@@ -1,3 +1,18 @@
+/**
+ * Location Machines Page
+ *
+ * Displays all machines/cabinets for a specific location with filtering and management.
+ *
+ * Features:
+ * - Machine listing with card (mobile) and table (desktop) views
+ * - Search and filter capabilities
+ * - Financial metrics overview
+ * - Machine status widget
+ * - Create, edit, and delete machines (role-based)
+ * - Pagination
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import PageLayout from '@/components/layout/PageLayout';
@@ -62,7 +77,14 @@ type CabinetSortOption =
   | 'serialNumber'
   | 'lastOnline';
 
+/**
+ * Location Machines Page Component
+ * Handles all state management and data fetching for the location machines page
+ */
 export default function LocationPage() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const params = useParams();
   const router = useRouter();
   const locationId = params.slug as string;
@@ -75,6 +97,15 @@ export default function LocationPage() {
   } = useDashBoardStore();
 
   const user = useUserStore(state => state.user);
+
+  // ============================================================================
+  // State Management
+  // ============================================================================
+  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
+
+  // ============================================================================
+  // Computed Values - Permissions
+  // ============================================================================
   const isAdminUser = Boolean(
     user?.roles?.some(role => role === 'admin' || role === 'developer')
   );
@@ -94,50 +125,45 @@ export default function LocationPage() {
     );
   }, [user]);
 
-  // State for tracking date filter initialization
-  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
-
-  // Detect when date filter is properly initialized
-  useEffect(() => {
-    if (activeMetricsFilter && !dateFilterInitialized) {
-      setDateFilterInitialized(true);
-    }
-  }, [activeMetricsFilter, dateFilterInitialized]);
-
   const [filteredCabinets, setFilteredCabinets] = useState<Cabinet[]>([]);
   const [loading, setLoading] = useState(true);
   const [cabinetsLoading, setCabinetsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  // Debounce search term to reduce API calls
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [locationName, setLocationName] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<
     'All' | 'Online' | 'Offline'
   >('All');
   const [selectedGameType, setSelectedGameType] = useState<string>('all');
-
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
   const [accumulatedCabinets, setAccumulatedCabinets] = useState<Cabinet[]>([]);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
-
-  const tableRef = useRef<HTMLDivElement>(null);
-
   const [locations, setLocations] = useState<{ id: string; name: string }[]>(
     []
   );
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
-
-  // Add back error state
   const [error, setError] = useState<string | null>(null);
-
-  // Add refresh state
   const [refreshing, setRefreshing] = useState(false);
+
+  // ============================================================================
+  // Refs
+  // ============================================================================
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  // ============================================================================
+  // Constants
+  // ============================================================================
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
+  // Debounce search term to reduce API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Calculate financial totals from cabinet data
   const financialTotals = calculateCabinetFinancialTotals(allCabinets);
@@ -170,6 +196,19 @@ export default function LocationPage() {
     [pagesPerBatch]
   );
 
+  // ============================================================================
+  // Effects - Initialization
+  // ============================================================================
+  // Detect when date filter is properly initialized
+  useEffect(() => {
+    if (activeMetricsFilter && !dateFilterInitialized) {
+      setDateFilterInitialized(true);
+    }
+  }, [activeMetricsFilter, dateFilterInitialized]);
+
+  // ============================================================================
+  // Effects - Data Fetching
+  // ============================================================================
   // Fetch new batch when crossing batch boundary
   useEffect(() => {
     if (loading || cabinetsLoading || !activeMetricsFilter) return;
@@ -733,6 +772,9 @@ export default function LocationPage() {
   );
   const showLocationSelect = locationSelectOptions.length > 1;
 
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
   // Show "No Licensee Assigned" message for non-admin users without licensees
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
   if (showNoLicenseeMessage) {
@@ -754,6 +796,9 @@ export default function LocationPage() {
     );
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <PageLayout

@@ -1,3 +1,16 @@
+/**
+ * Map Loader Component
+ * Loading skeleton component for map preview.
+ *
+ * Features:
+ * - Map loading skeleton
+ * - Search bar skeleton
+ * - Legend skeleton
+ * - Card layout
+ *
+ * @param title - Map title
+ * @param description - Map description
+ */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin } from 'lucide-react';

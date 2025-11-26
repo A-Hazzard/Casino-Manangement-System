@@ -1,14 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { MachineEvent } from '@/app/api/lib/models/machineEvents';
+/**
+ * Member Machine Events API Route
+ *
+ * This route handles fetching machine events for a specific member and machine.
+ * It supports:
+ * - Filtering by event type, event description, and game
+ * - Pagination
+ * - Optimized queries with indexing considerations
+ * - Unique filter values for frontend dropdowns
+ *
+ * @module app/api/members/[id]/sessions/[machineId]/events/route
+ */
 
+import { MachineEvent } from '@/app/api/lib/models/machineEvents';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for fetching member machine events
+ *
+ * Flow:
+ * 1. Parse route parameters and query parameters
+ * 2. Connect to database
+ * 3. Build query with filters
+ * 4. Fetch events with pagination
+ * 5. Get total count for pagination
+ * 6. Get unique filter values using aggregation
+ * 7. Return paginated events with filter options
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; machineId: string }> }
 ) {
-  try {
-    await connectDB();
+  const startTime = Date.now();
 
+  try {
+    // ============================================================================
+    // STEP 1: Parse route parameters and query parameters
+    // ============================================================================
     const { machineId } = await params;
 
     const { searchParams } = new URL(request.url);
@@ -18,7 +46,14 @@ export async function GET(
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    // Build optimized query with indexing considerations
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 3: Build query with filters
+    // ============================================================================
     const query: Record<string, unknown> = { machine: machineId };
 
     if (eventType) {
@@ -33,10 +68,11 @@ export async function GET(
       query.gameName = { $regex: game, $options: 'i' };
     }
 
-    // Calculate skip for pagination
+    // ============================================================================
+    // STEP 4: Fetch events with pagination
+    // ============================================================================
     const skip = (page - 1) * limit;
 
-    // Optimized query with projection to reduce data transfer
     const events = await MachineEvent.find(query)
       .select({
         _id: 1,
@@ -54,10 +90,14 @@ export async function GET(
       .limit(limit)
       .lean();
 
-    // Get total count for pagination with optimized query
+    // ============================================================================
+    // STEP 5: Get total count for pagination
+    // ============================================================================
     const totalEvents = await MachineEvent.countDocuments(query);
 
-    // Get unique values for filters with optimized aggregation
+    // ============================================================================
+    // STEP 6: Get unique filter values using aggregation
+    // ============================================================================
     const filterPipeline = [
       { $match: { machine: machineId } },
       {
@@ -89,7 +129,14 @@ export async function GET(
     const uniqueEvents = filterResults[0]?.events || [];
     const uniqueGames = filterResults[0]?.games || [];
 
-    const response = {
+    // ============================================================================
+    // STEP 7: Return paginated events with filter options
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Member Sessions Events API] Completed in ${duration}ms`);
+    }
+    return NextResponse.json({
       success: true,
       data: {
         events,
@@ -106,13 +153,17 @@ export async function GET(
           games: uniqueGames.sort(),
         },
       },
-    };
-
-    return NextResponse.json(response);
+    });
   } catch (error) {
-    console.error('Error fetching machine events:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch machine events';
+    console.error(
+      `[Member Machine Events API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch machine events' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

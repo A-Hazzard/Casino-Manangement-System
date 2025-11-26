@@ -1,3 +1,16 @@
+/**
+ * Country Details Modal Component
+ * Read-only modal for displaying country details.
+ *
+ * Features:
+ * - Country information display (name, alpha-2, alpha-3, ISO numeric)
+ * - Read-only view
+ * - Simple modal UI
+ *
+ * @param isOpen - Whether the modal is visible
+ * @param country - Country object to display
+ * @param onClose - Callback to close the modal
+ */
 import type { CountryDetailsModalProps } from '@/lib/types/components';
 
 export default function CountryDetailsModal({

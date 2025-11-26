@@ -1,3 +1,13 @@
+/**
+ * Monthly Report Date Buttons Component
+ * Date filter buttons for monthly reports with preset and custom date range options.
+ *
+ * Features:
+ * - "Last Month" preset button
+ * - Custom date range picker
+ * - "Go" button to apply date range
+ * - Responsive design
+ */
 import React, { useState } from 'react';
 import {
   DateRangePicker,
@@ -5,6 +15,9 @@ import {
 } from '@/components/ui/dateRangePicker';
 
 export default function MonthlyReportDateButtons() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const [range, setRange] = useState<RDPDateRange | undefined>(undefined);
 
   return (

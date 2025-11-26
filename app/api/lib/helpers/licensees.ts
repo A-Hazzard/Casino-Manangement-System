@@ -361,14 +361,16 @@ export async function updateLicensee(
  */
 export async function deleteLicensee(_id: string, request: NextRequest) {
   const currentUser = await getUserFromServer();
-  const licenseeToDelete = await Licencee.findById(_id);
+  // CRITICAL: Use findOne with _id instead of findById (repo rule)
+  const licenseeToDelete = await Licencee.findOne({ _id });
 
   if (!licenseeToDelete) {
     throw new Error('Licensee not found');
   }
 
-  const deleted = await Licencee.findByIdAndUpdate(
-    _id,
+  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+  const deleted = await Licencee.findOneAndUpdate(
+    { _id },
     { deletedAt: new Date() },
     { new: true }
   );

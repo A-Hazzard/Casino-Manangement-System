@@ -1,8 +1,21 @@
+/**
+ * Licensee Table Skeleton Component
+ * Loading skeleton for licensee table on desktop view.
+ *
+ * Features:
+ * - Matches LicenseeTable layout structure
+ * - 8 skeleton rows
+ * - 5 columns (NAME, COUNTRY, STATUS, EXPIRY DATE, ACTIONS)
+ * - Responsive design
+ */
 'use client';
 
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function LicenseeTableSkeleton() {
+  // ============================================================================
+  // Render - Table Skeleton
+  // ============================================================================
   return (
     <div className="mt-6 overflow-x-auto">
       <table className="min-w-full rounded-lg bg-white shadow-md">

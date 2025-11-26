@@ -1,4 +1,15 @@
-// API-specific analytics types for Evolution1 CMS
+/**
+ * Analytics Types
+ * API-specific analytics types for Evolution1 CMS dashboard and reporting.
+ *
+ * Includes types for:
+ * - Aggregated metrics (handle, win, hold percentages)
+ * - Location and machine performance metrics
+ * - Dashboard metrics responses
+ * - Logistics and report generation
+ * - Time series data and comparisons
+ * - Machine contribution analysis
+ */
 
 // Define missing types locally
 export type AggregatedMetrics = {

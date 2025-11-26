@@ -1,5 +1,25 @@
+/**
+ * Analytics Tab Helper Functions
+ *
+ * Provides helper functions for the analytics tab, including data generation for
+ * charts, performance metrics, anomaly detection, and export functionality.
+ * It handles chart configuration, formatting, and visualization utilities for
+ * the advanced analytics dashboard.
+ *
+ * Features:
+ * - Generates predictive forecast data for time series charts.
+ * - Creates performance radar chart data with current, target, and benchmark metrics.
+ * - Generates anomaly detection data with severity levels.
+ * - Handles analytics report export to various formats.
+ * - Provides chart configuration and formatting utilities.
+ */
+
 import { exportData } from '@/lib/utils/exportUtils';
 import { toast } from 'sonner';
+
+// ============================================================================
+// Forecast Data Generation
+// ============================================================================
 
 /**
  * Generates sample predictive forecast data for analytics charts
@@ -59,6 +79,10 @@ export const generatePerformanceData = () => [
   },
 ];
 
+// ============================================================================
+// Anomaly Detection Data Generation
+// ============================================================================
+
 /**
  * Generates anomaly detection data
  */
@@ -85,6 +109,10 @@ export const generateAnomalyData = () => [
     description: 'Slight increase in off-peak hours',
   },
 ];
+
+// ============================================================================
+// Trend Data Generation
+// ============================================================================
 
 /**
  * Generates monthly trend data
@@ -126,6 +154,10 @@ export const generateHeatmapData = () => {
   }
   return data;
 };
+
+// ============================================================================
+// Export Functionality
+// ============================================================================
 
 /**
  * Handles analytics report export functionality
@@ -204,6 +236,10 @@ export const handleAnalyticsExport = async (
   }
 };
 
+// ============================================================================
+// Timeframe Management
+// ============================================================================
+
 /**
  * Handles timeframe change with data refresh simulation
  */
@@ -217,6 +253,10 @@ export const handleTimeframeChange = (
   setIsLoading(true);
   setTimeout(() => setIsLoading(false), 1000);
 };
+
+// ============================================================================
+// Performance Styling Utilities
+// ============================================================================
 
 /**
  * Gets performance color class based on performance level
@@ -238,6 +278,10 @@ export function getPerformanceBackground(performance: number): string {
   return 'bg-red-500';
 }
 
+// ============================================================================
+// Severity Styling Utilities
+// ============================================================================
+
 /**
  * Gets severity color class for anomaly detection
  */
@@ -254,6 +298,10 @@ export function getSeverityColor(severity: string): string {
   }
 }
 
+// ============================================================================
+// Chart Formatting Utilities
+// ============================================================================
+
 /**
  * Formats date for display in charts
  */
@@ -267,6 +315,10 @@ export function formatChartDate(dateString: string): string {
 export function formatChartCurrency(value: number): string {
   return `$${value.toLocaleString()}`;
 }
+
+// ============================================================================
+// Chart Configuration
+// ============================================================================
 
 /**
  * Chart configuration objects
@@ -306,8 +358,12 @@ export const performanceLegend = [
   { label: 'Excellent (80-100%)', color: 'bg-green-500' },
   { label: 'Good (60-79%)', color: 'bg-yellow-500' },
   { label: 'Fair (40-59%)', color: 'bg-orange-500' },
-  { label: 'Poor (0-39%)', color: 'bg-red-500' },
+  { label: 'Poor (0-39%)', color: 'bg-red-500'   },
 ];
+
+// ============================================================================
+// Chart Configuration Utilities
+// ============================================================================
 
 /**
  * Chart configuration utilities

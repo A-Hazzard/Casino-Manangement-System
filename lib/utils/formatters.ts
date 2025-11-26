@@ -1,4 +1,18 @@
 /**
+ * Formatter Utilities
+ *
+ * Utility functions for formatting currency, numbers, and large values.
+ *
+ * Features:
+ * - Currency formatting with smart decimals
+ * - Large number formatting (K, M, B suffixes)
+ * - Number formatting with commas
+ */
+
+// ============================================================================
+// Currency Formatting
+// ============================================================================
+/**
  * Format currency values for display with smart decimal handling.
  * @param value - The numeric value to format.
  * @returns Formatted currency string (e.g., $1,234 or $1,234.56).
@@ -21,6 +35,9 @@ export const formatCurrency = (value: number | null | undefined): string => {
   }).format(value);
 };
 
+// ============================================================================
+// Number Formatting
+// ============================================================================
 /**
  * Format large numbers with appropriate suffixes (K, M, B) and smart decimals.
  * @param value - The numeric value to format.

@@ -1,7 +1,23 @@
 /**
- * Formats a phone number into a readable format
- * @param phoneNumber - The phone number to format
- * @returns Formatted phone number or original if invalid
+ * Phone Number Formatting Utilities
+ *
+ * Utility functions for formatting and validating phone numbers for display.
+ *
+ * Features:
+ * - Cleans non-digit characters
+ * - Formats based on common phone number lengths
+ * - Basic validity checking (length-based)
+ */
+
+// ============================================================================
+// Formatting Functions
+// ============================================================================
+/**
+ * Formats a phone number into a readable format.
+ * Cleans non-digit characters and applies common formatting patterns.
+ *
+ * @param phoneNumber - The phone number to format.
+ * @returns Formatted phone number or "N/A" / cleaned digits if invalid.
  */
 export function formatPhoneNumber(
   phoneNumber: string | null | undefined
@@ -36,10 +52,14 @@ export function formatPhoneNumber(
   }
 }
 
+// ============================================================================
+// Validation Functions
+// ============================================================================
 /**
- * Validates if a phone number is in a valid format
- * @param phoneNumber - The phone number to validate
- * @returns True if valid, false otherwise
+ * Validates if a phone number is in a valid format.
+ *
+ * @param phoneNumber - The phone number to validate.
+ * @returns True if valid, false otherwise.
  */
 export function isValidPhoneNumber(
   phoneNumber: string | null | undefined

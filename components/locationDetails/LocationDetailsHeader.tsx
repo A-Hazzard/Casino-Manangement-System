@@ -1,8 +1,21 @@
 /**
  * Location Details Header Component
- * Handles the header section with location information and navigation
+ * Header section displaying location information, status, and action buttons.
+ *
+ * Features:
+ * - Location name and identifier display
+ * - Online/offline status indicators
+ * - Expandable location information section
+ * - Edit and refresh action buttons
+ * - Back navigation button
+ * - Framer Motion animations
+ * - Responsive design
+ *
+ * @param locationInfo - Extended location information object
+ * @param loading - Whether data is loading
+ * @param onRefresh - Callback when refresh button is clicked
+ * @param onBack - Callback when back button is clicked
  */
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

@@ -130,8 +130,7 @@ export default function MembersListTab() {
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     fetchMembers(1, searchTerm, sortOption, sortOrder);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, sortOption, sortOrder]);
+  }, [searchTerm, sortOption, sortOrder, setAllMembers, setLoadedBatches, setCurrentPage, fetchMembers]);
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {

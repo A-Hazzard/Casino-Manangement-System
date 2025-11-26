@@ -12,23 +12,50 @@ import {
 import { useSmibMeters } from '@/lib/hooks/data/useSmibMeters';
 import { parseSasPyd } from '@/lib/utils/sas/parsePyd';
 import { AlertTriangle, BarChart3, RefreshCw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+type SSEMessage = {
+  type:
+    | 'connected'
+    | 'callback_ready'
+    | 'heartbeat'
+    | 'keepalive'
+    | 'config_update'
+    | 'error';
+  relayId?: string;
+  timestamp?: string;
+  message?: string;
+  component?: string;
+  data?: Record<string, unknown>;
+  error?: string;
+};
 
 type MeterDataSectionProps = {
   relayId: string | null;
   isOnline: boolean;
+  smibConfig?: {
+    subscribeToMessages: (
+      callback: (message: SSEMessage) => void
+    ) => () => void;
+    isSSEConnected: boolean;
+  };
 };
 
-export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
+export function MeterDataSection({
+  relayId,
+  isOnline,
+  smibConfig,
+}: MeterDataSectionProps) {
   const { isRequestingMeters, requestMeters } = useSmibMeters();
 
   const [isLoading, setIsLoading] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
-  const [lastMetersSignature, setLastMetersSignature] = useState<string | null>(
+  const [_lastMetersSignature, setLastMetersSignature] = useState<string | null>(
     null
   );
   const [selectedNvsAction, setSelectedNvsAction] = useState<string>('');
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [isSSEConnected, setIsSSEConnected] = useState(false);
   const [liveMeters, setLiveMeters] = useState<{
     totalCoinCredits?: number;
     totalCoinOut?: number;
@@ -43,11 +70,30 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
     lastAt?: string;
     error?: string;
   } | null>(null);
-  const sseRef = useRef<EventSource | null>(null);
   const requestTimeoutRef = useRef<number | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
 
   const handleRequestMeters = async () => {
-    if (!relayId) return;
+    if (!relayId) {
+      return;
+    }
+
+    // Use smibConfig's SSE connection status if provided, otherwise use internal state
+    const sseConnected = smibConfig
+      ? smibConfig.isSSEConnected
+      : isSSEConnected;
+
+    // Prevent request if SSE not connected
+    if (!sseConnected) {
+      setRequestMessage('Please wait for MQTT connection to establish...');
+      return;
+    }
+
+    // Prevent duplicate requests
+    if (isLoading || isRequestingMeters) {
+      return;
+    }
+
     // Clear previous meters immediately and show loading
     setLiveMeters(null);
     setRequestMessage(null);
@@ -66,19 +112,11 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
   };
 
   const handleNvsAction = async () => {
-    console.log('🔵 handleNvsAction called', {
-      relayId,
-      selectedNvsAction,
-      isOnline,
-    });
-
     if (!relayId || !selectedNvsAction) {
-      console.log('⚠️ Missing relayId or selectedNvsAction');
       return;
     }
 
     if (!isOnline) {
-      console.log('⚠️ SMIB is offline');
       setRequestMessage('SMIB is offline. Cannot execute NVS action.');
       return;
     }
@@ -87,11 +125,6 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
     setRequestMessage(null);
 
     try {
-      console.log('📡 Sending NVS action request:', {
-        relayId,
-        action: selectedNvsAction,
-      });
-
       const response = await fetch('/api/smib/nvs-action', {
         method: 'POST',
         headers: {
@@ -103,9 +136,7 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
         }),
       });
 
-      console.log('📡 Response status:', response.status);
       const data = await response.json();
-      console.log('📡 Response data:', data);
 
       if (response.ok && data.success) {
         setRequestMessage(
@@ -123,21 +154,15 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
     }
   };
 
-  // Connect to SSE to capture 'rsp' with pyd and parse meters
-  useEffect(() => {
-    if (!relayId) return;
-
-    if (sseRef.current) {
-      sseRef.current.close();
-      sseRef.current = null;
-    }
-
-    const es = new EventSource(`/api/mqtt/config/subscribe?relayId=${relayId}`);
-    sseRef.current = es;
-
-    es.onmessage = ev => {
+  // Message handler for processing SSE messages
+  const handleSSEMessage = useCallback(
+    (msg: SSEMessage) => {
       try {
-        const msg = JSON.parse(ev.data);
+        // Mark as ready when callback is actually registered
+        if (msg.type === 'callback_ready') {
+          setIsSSEConnected(true);
+          return;
+        }
 
         if (msg?.type === 'config_update' && msg?.data) {
           const data = msg.data as Record<string, unknown>;
@@ -145,62 +170,44 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
           const pyd = data.pyd as string | undefined;
           const sta = data.sta as string | undefined;
 
-          console.log('📨 SSE message received:', { typ, sta, pyd });
-
           // Handle NVS action responses (srsp)
           if (typ === 'srsp' && sta === '162') {
-            console.log('✅ NVS action response received:', pyd);
-            
             // Check for success/failure responses
-            if (pyd === 'E10101') {
-              console.log('✅ NVS action succeeded (E10101)');
+            if (pyd === 'E10101' || pyd?.startsWith('E10101')) {
               setRequestMessage('NVS action completed successfully');
               setIsProcessingAction(false);
-            } else if (pyd === 'E10100') {
-              console.log('❌ NVS action failed (E10100)');
+            } else if (pyd === 'E10100' || pyd?.startsWith('E10100')) {
               setRequestMessage('NVS action failed');
               setIsProcessingAction(false);
-            } else if (pyd?.startsWith('E101')) {
-              // Check if this is a success response with extra data
-              // E101004AA5 might mean: E10100 = command, 4AA5 = checksum/status
-              const statusCode = pyd.substring(0, 6); // Extract E10100 or E10101
-              console.log('📋 NVS action response code:', statusCode, 'Full pyd:', pyd);
-              
-              if (statusCode === 'E10100') {
-                console.log('❌ NVS action failed (from extended response)');
-                setRequestMessage('NVS action failed');
-                setIsProcessingAction(false);
-              } else if (statusCode === 'E10101') {
-                console.log('✅ NVS action succeeded (from extended response)');
-                setRequestMessage('NVS action completed successfully');
-                setIsProcessingAction(false);
-              } else {
-                console.log('📋 NVS action acknowledged with code:', statusCode);
-              }
-            } else {
-              // Other acknowledgment responses
-              console.log('📋 NVS action acknowledged (unknown format):', pyd);
             }
           }
 
           // Handle exception/completion messages (exp)
-          if (typ === 'exp') {
-            console.log('📋 Exception message received:', pyd);
-            if (pyd === '00') {
-              console.log('✅ NVS action completed successfully');
-            }
-          }
-
-          // Handle error messages
-          if (typ === 'err') {
-            console.log('❌ Error message received:', pyd);
+          if (typ === 'exp' && pyd === '00') {
+            setRequestMessage('NVS action completed successfully');
+            setIsProcessingAction(false);
           }
 
           // Handle meter responses (rsp)
           if (typ === 'rsp' && pyd && typeof pyd === 'string') {
+            // Check for error response before parsing
+            if (pyd === '-1' || pyd.trim() === '-1') {
+              setLiveMeters({
+                error: 'SMIB returned error: -1 (Unable to read meters)',
+                lastAt: new Date().toISOString(),
+              });
+              setRequestMessage('SMIB error: Unable to read meters');
+              setIsLoading(false);
+              if (requestTimeoutRef.current) {
+                window.clearTimeout(requestTimeoutRef.current);
+                requestTimeoutRef.current = null;
+              }
+              return;
+            }
+
             const parsed = parseSasPyd(pyd);
 
-            // Handle error case (e.g., pyd: "-1")
+            // Handle error case from parser
             if (parsed.error) {
               setLiveMeters({
                 error: parsed.error,
@@ -231,12 +238,14 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
             } as typeof liveMeters;
 
             const signature = JSON.stringify({ ...next, lastAt: undefined });
-            if (lastMetersSignature && signature === lastMetersSignature) {
+            setLastMetersSignature(prev => {
+              if (prev && signature === prev) {
               setRequestMessage('No new SAS meters detected');
             } else {
               setRequestMessage(null);
-              setLastMetersSignature(signature);
             }
+              return signature;
+            });
             setLiveMeters(next);
             setIsLoading(false);
             if (requestTimeoutRef.current) {
@@ -248,13 +257,87 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
       } catch {
         // ignore malformed
       }
+    },
+    []
+  );
+
+  // Subscribe to SSE messages - either from shared connection or create our own
+  useEffect(() => {
+    console.log(
+      `🔗 [MeterDataSection] useEffect triggered, relayId: ${relayId}, hasSmibConfig: ${!!smibConfig}`
+    );
+
+    if (!relayId) {
+      console.warn(
+        `⚠️ [MeterDataSection] No relayId provided, skipping SSE connection`
+      );
+      return;
+    }
+
+    // If smibConfig is provided, use the shared SSE connection
+    if (smibConfig) {
+      console.log(
+        `📡 [MeterDataSection] Using shared SSE connection from smibConfig`
+      );
+      const unsubscribe = smibConfig.subscribeToMessages(handleSSEMessage);
+      return () => {
+        unsubscribe();
+        if (requestTimeoutRef.current) {
+          window.clearTimeout(requestTimeoutRef.current);
+          requestTimeoutRef.current = null;
+        }
+      };
+    }
+
+    // Otherwise, create our own SSE connection
+    console.log(
+      `🔗 [MeterDataSection] Creating own SSE connection for relayId: ${relayId}`
+    );
+    setIsSSEConnected(false);
+
+    if (sseRef.current) {
+      console.log(`🔄 [MeterDataSection] Closing existing SSE connection`);
+      sseRef.current.close();
+      sseRef.current = null;
+    }
+
+    const es = new EventSource(
+      `/api/mqtt/config/subscribe?relayId=${relayId}`
+    );
+    sseRef.current = es;
+
+    es.onopen = () => {
+      console.log(
+        `✅ [MeterDataSection] SSE connection opened for relayId: ${relayId}`
+      );
     };
 
-    es.onerror = () => {
-      // Best-effort; ignore
+    es.onerror = error => {
+      console.error(
+        `❌ [MeterDataSection] SSE connection error for relayId ${relayId}:`,
+        error
+      );
+      setIsSSEConnected(false);
+    };
+
+    es.onmessage = ev => {
+      try {
+        const msg = JSON.parse(ev.data) as SSEMessage;
+        if (msg.type === 'callback_ready') {
+          console.log(
+            `✅ [MeterDataSection] Callback ready received for relayId: ${relayId}`
+          );
+        }
+        handleSSEMessage(msg);
+      } catch {
+        // ignore malformed
+      }
     };
 
     return () => {
+      console.log(
+        `🧹 [MeterDataSection] Cleaning up SSE connection for relayId: ${relayId}`
+      );
       if (sseRef.current) {
         sseRef.current.close();
         sseRef.current = null;
@@ -264,7 +347,7 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
         requestTimeoutRef.current = null;
       }
     };
-  }, [relayId, lastMetersSignature]);
+  }, [relayId, smibConfig, handleSSEMessage]);
 
   return (
     <>
@@ -358,7 +441,11 @@ export function MeterDataSection({ relayId, isOnline }: MeterDataSectionProps) {
           <div className="flex flex-wrap items-center gap-3">
             <Button
               onClick={handleRequestMeters}
-              disabled={!relayId || isRequestingMeters}
+              disabled={
+                !relayId ||
+                (smibConfig ? !smibConfig.isSSEConnected : !isSSEConnected) ||
+                isRequestingMeters
+              }
               className="bg-blue-600 hover:bg-blue-700"
             >
               {isRequestingMeters ? (

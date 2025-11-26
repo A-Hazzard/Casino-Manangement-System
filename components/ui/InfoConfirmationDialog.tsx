@@ -1,3 +1,25 @@
+/**
+ * Info Confirmation Dialog Component
+ * Modal dialog for informational confirmations with GSAP animations.
+ *
+ * Features:
+ * - Info dialog with title and message
+ * - Confirm and cancel buttons
+ * - Info icon display
+ * - Loading state support
+ * - GSAP animations
+ * - Customizable button text
+ * - Close button
+ *
+ * @param isOpen - Whether the dialog is visible
+ * @param onClose - Callback to close the dialog
+ * @param onConfirm - Callback when confirm is clicked
+ * @param title - Dialog title
+ * @param message - Dialog message
+ * @param confirmText - Text for confirm button
+ * @param cancelText - Text for cancel button
+ * @param isLoading - Whether action is in progress
+ */
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -5,6 +27,10 @@ import { gsap } from 'gsap';
 import { Button } from '@/components/ui/button';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { InfoCircledIcon } from '@radix-ui/react-icons';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type InfoConfirmationDialogProps = {
   isOpen: boolean;

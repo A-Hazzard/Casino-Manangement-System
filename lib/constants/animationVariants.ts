@@ -1,3 +1,13 @@
+/**
+ * Animation Variants Constants
+ * Typed animation variants for Framer Motion animations.
+ *
+ * Includes:
+ * - Config content variants for expanding/collapsing panels
+ * - Container variants for staggered child animations
+ * - Item variants for list/grid item animations
+ * Used with Framer Motion's Variants type for type-safe animations.
+ */
 import { Variants } from 'framer-motion';
 
 /**

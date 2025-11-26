@@ -1,3 +1,17 @@
+/**
+ * Status Icon Component
+ * Icon component for displaying online/offline status.
+ *
+ * Features:
+ * - Online/offline status indicator
+ * - Size variants (sm, md, lg)
+ * - Color-coded status
+ * - Accessible labels
+ *
+ * @param isOnline - Whether status is online
+ * @param size - Icon size (sm, md, lg)
+ * @param className - Additional CSS classes
+ */
 'use client';
 
 import { Circle } from 'lucide-react';

@@ -1,20 +1,55 @@
+/**
+ * Members API Route
+ *
+ * This route handles CRUD operations for gaming members.
+ * It supports:
+ * - Fetching members with filtering, searching, and pagination
+ * - Creating new members
+ * - Financial metrics aggregation
+ * - Currency conversion
+ * - Location filtering
+ * - Win/loss filtering
+ *
+ * @module app/api/members/route
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
   applyCurrencyConversionToMetrics,
   getCurrencyFromQuery,
   shouldApplyCurrencyConversion,
 } from '@/app/api/lib/helpers/currencyHelper';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../lib/helpers/users';
 
+/**
+ * Main GET handler for fetching members
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters (search, pagination, filters)
+ * 3. Build query filters
+ * 4. Build aggregation pipeline
+ * 5. Execute aggregation with pagination
+ * 6. Apply currency conversion if needed
+ * 7. Return paginated member list
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     // Get query parameters for filtering and pagination
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
@@ -37,6 +72,9 @@ export async function GET(request: NextRequest) {
     const displayCurrency = getCurrencyFromQuery(searchParams);
     const licencee = searchParams.get('licencee') || null;
 
+    // ============================================================================
+    // STEP 3: Build query filters
+    // ============================================================================
     // Build optimized query
     const query: Record<string, unknown> = {};
 
@@ -86,6 +124,9 @@ export async function GET(request: NextRequest) {
       sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
     }
 
+    // ============================================================================
+    // STEP 4: Build aggregation pipeline
+    // ============================================================================
     // Use aggregation pipeline to get members with location names and win/loss data
     const pipeline: Record<string, unknown>[] = [];
 
@@ -104,8 +145,18 @@ export async function GET(request: NextRequest) {
               $expr: {
                 $or: [
                   { $eq: ['$_id', '$$memberLocation'] },
-                  { $eq: [{ $toString: '$_id' }, { $toString: '$$memberLocation' }] },
-                  { $eq: ['$_id', { $toObjectId: { $ifNull: ['$$memberLocation', ''] } }] },
+                  {
+                    $eq: [
+                      { $toString: '$_id' },
+                      { $toString: '$$memberLocation' },
+                    ],
+                  },
+                  {
+                    $eq: [
+                      '$_id',
+                      { $toObjectId: { $ifNull: ['$$memberLocation', ''] } },
+                    ],
+                  },
                 ],
               },
             },
@@ -244,6 +295,9 @@ export async function GET(request: NextRequest) {
     // Stage 8: Sort results by specified criteria
     pipeline.push({ $sort: sort });
 
+    // ============================================================================
+    // STEP 5: Execute aggregation with pagination
+    // ============================================================================
     // Stage 9: Get total count for pagination (reuse pipeline without pagination)
     const countPipeline = [
       ...pipeline,
@@ -263,19 +317,9 @@ export async function GET(request: NextRequest) {
       pipeline as unknown as PipelineStage[]
     );
 
-    // Debug: Log some sample member info if needed
-    if (members.length > 0 && process.env.NODE_ENV === 'development') {
-      console.warn(
-        'Sample member info:',
-        members.slice(0, 2).map(m => ({
-          memberId: m._id,
-          name: `${m.profile?.firstName} ${m.profile?.lastName}`,
-          locationName: m.locationName,
-          winLoss: m.winLoss,
-        }))
-      );
-    }
-
+    // ============================================================================
+    // STEP 6: Apply currency conversion if needed
+    // ============================================================================
     // Apply currency conversion if needed
     const convertedMembers = await applyCurrencyConversionToMetrics(
       members,
@@ -283,6 +327,9 @@ export async function GET(request: NextRequest) {
       displayCurrency
     );
 
+    // ============================================================================
+    // STEP 7: Return paginated member list
+    // ============================================================================
     const response = {
       success: true,
       data: {
@@ -299,23 +346,50 @@ export async function GET(request: NextRequest) {
       converted: shouldApplyCurrencyConversion(licencee),
     };
 
+    const duration = Date.now() - startTime;
+    if (duration > 2000) {
+      console.warn(`[Members API GET] Completed in ${duration}ms`);
+    }
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error fetching members:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(`[Members API GET] Error after ${duration}ms:`, errorMessage);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
+/**
+ * Main POST handler for creating a new member
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request body
+ * 3. Validate required fields
+ * 4. Check if username already exists
+ * 5. Create new member document
+ * 6. Save member to database
+ * 7. Log activity
+ * 8. Return created member
+ */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
     const body = await request.json();
 
-    // Validate required fields
+    // ============================================================================
+    // STEP 3: Validate required fields
+    // ============================================================================
     if (!body.profile?.firstName || !body.profile?.lastName || !body.username) {
       return NextResponse.json(
         { error: 'First name, last name, and username are required' },
@@ -323,7 +397,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username already exists
+    // ============================================================================
+    // STEP 4: Check if username already exists
+    // ============================================================================
     const existingMember = await Member.findOne({ username: body.username });
     if (existingMember) {
       return NextResponse.json(
@@ -332,7 +408,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new member
+    // ============================================================================
+    // STEP 5: Create new member document
+    // ============================================================================
     const newMember = new Member({
       _id: body.username, // Use username as ID
       profile: {
@@ -359,9 +437,14 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     });
 
+    // ============================================================================
+    // STEP 6: Save member to database
+    // ============================================================================
     await newMember.save();
 
-    // Log activity
+    // ============================================================================
+    // STEP 7: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -414,12 +497,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 8: Return created member
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Members API POST] Completed in ${duration}ms`);
+    }
     return NextResponse.json(newMember, { status: 201 });
   } catch (error) {
-    console.error('Error creating member:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(`[Members API POST] Error after ${duration}ms:`, errorMessage);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

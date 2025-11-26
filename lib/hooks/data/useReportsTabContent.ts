@@ -15,6 +15,10 @@ export function useReportsTabContent({
   animations,
   tabComponents,
 }: UseReportsTabContentProps): UseReportsTabContentReturn {
+  // ============================================================================
+  // Methods
+  // ============================================================================
+
   // Get animation props for current tab
   const getTabAnimationProps = useCallback((): TabAnimationProps => {
     return {
@@ -39,6 +43,9 @@ export function useReportsTabContent({
     return tabComponents[activeView] || tabComponents.locations;
   }, [activeView, tabComponents]);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     getTabAnimationProps,
     isTabTransitioning,

@@ -1,13 +1,35 @@
-import { NextResponse, NextRequest } from 'next/server';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { connectDB } from '../../lib/middleware/db';
-import { TransformedCabinet } from '@/lib/types/mongo';
-import { TimePeriod } from '../../lib/types';
-import mongoose from 'mongoose';
-import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import { checkUserLocationAccess } from '../../lib/helpers/licenseeFilter';
+/**
+ * Location Detail API Route
+ *
+ * This route handles fetching machines for a specific location.
+ * It supports:
+ * - Basic location details (no query params)
+ * - Machine listing with financial metrics
+ * - Time period filtering
+ * - Search functionality
+ * - Pagination
+ * - Gaming day offset calculations
+ * - Location-based access control
+ *
+ * @module app/api/locations/[locationId]/route
+ */
 
-// Helper function to safely convert an ID to ObjectId if possible
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { TimePeriod } from '@/app/api/lib/types';
+import { TransformedCabinet } from '@/lib/types/mongo';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import { convertToUSD, convertFromUSD, getLicenseeCurrency, getCountryCurrency } from '@/lib/helpers/rates';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import mongoose from 'mongoose';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Helper function to safely convert an ID to ObjectId if possible
+ */
 function safeObjectId(id: string): string | mongoose.Types.ObjectId {
   if (!id) return id;
   try {
@@ -20,31 +42,56 @@ function safeObjectId(id: string): string | mongoose.Types.ObjectId {
   return id;
 }
 
+/**
+ * Main GET handler for fetching location details and machines
+ *
+ * Flow:
+ * 1. Extract locationId from URL
+ * 2. Check if basic location details requested (no query params)
+ * 3. Connect to database
+ * 4. Check user access to location
+ * 5. Parse query parameters
+ * 6. Validate timePeriod parameter
+ * 7. Calculate gaming day range
+ * 8. Build aggregation pipeline
+ * 9. Execute aggregation with pagination
+ * 10. Transform and return results
+ */
 export async function GET(request: NextRequest) {
-  const perfStart = Date.now();
-  
+  const startTime = Date.now();
+
   try {
-    // Extract locationId from the URL
+    // ============================================================================
+    // STEP 1: Extract locationId from URL
+    // ============================================================================
     const url = request.nextUrl;
     const locationId = url.pathname.split('/')[3];
 
-    // Check if this is a request for basic location details (no query params)
+    // ============================================================================
+    // STEP 2: Check if basic location details requested (no query params)
+    // ============================================================================
     const hasQueryParams = url.searchParams.toString().length > 0;
 
     if (!hasQueryParams) {
       // Return basic location details for edit modal
       await connectDB();
-      
-      // Check if user has access to this location
+
+      // ============================================================================
+      // STEP 4: Check user access to location
+      // ============================================================================
       const hasAccess = await checkUserLocationAccess(locationId);
       if (!hasAccess) {
         return NextResponse.json(
-          { success: false, message: 'Unauthorized: You do not have access to this location' },
+          {
+            success: false,
+            message: 'Unauthorized: You do not have access to this location',
+          },
           { status: 403 }
         );
       }
 
-      const location = await GamingLocations.findById(locationId);
+      // CRITICAL: Use findOne with _id instead of findById (repo rule)
+      const location = await GamingLocations.findOne({ _id: locationId });
 
       if (!location) {
         return NextResponse.json(
@@ -59,7 +106,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Connect to the database
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -68,13 +117,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get query parameters
+    // ============================================================================
+    // STEP 5: Parse query parameters
+    // ============================================================================
     const licencee = url.searchParams.get('licencee');
     const searchTerm = url.searchParams.get('search');
     const timePeriod = url.searchParams.get('timePeriod') as TimePeriod;
     const customStartDate = url.searchParams.get('startDate');
     const customEndDate = url.searchParams.get('endDate');
-    
+    const displayCurrency = (url.searchParams.get('currency') as CurrencyCode) || 'USD';
+
     // Pagination parameters
     // When searching, limit may be undefined to fetch all results
     const limitParam = url.searchParams.get('limit');
@@ -82,11 +134,25 @@ export async function GET(request: NextRequest) {
     const page = parseInt(url.searchParams.get('page') || '1');
     const skip = limit ? (page - 1) * limit : 0;
 
+    // ============================================================================
+    // STEP 6: Validate timePeriod parameter
+    // ============================================================================
     // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       return NextResponse.json(
         { error: 'timePeriod parameter is required' },
         { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 4: Check user access to location
+    // ============================================================================
+    const hasAccess = await checkUserLocationAccess(locationId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Unauthorized: You do not have access to this location' },
+        { status: 403 }
       );
     }
 
@@ -98,19 +164,12 @@ export async function GET(request: NextRequest) {
     if (timePeriod === 'Custom' && customStartDate && customEndDate) {
       timePeriodForGamingDay = 'Custom';
       // Parse dates - gaming day offset will be applied by getGamingDayRangeForPeriod
-      customStartDateForGamingDay = new Date(customStartDate + 'T00:00:00.000Z');
+      customStartDateForGamingDay = new Date(
+        customStartDate + 'T00:00:00.000Z'
+      );
       customEndDateForGamingDay = new Date(customEndDate + 'T00:00:00.000Z');
     } else {
       timePeriodForGamingDay = timePeriod;
-    }
-
-    // Check if user has access to this location
-    const hasAccess = await checkUserLocationAccess(locationId);
-    if (!hasAccess) {
-      return NextResponse.json(
-        { error: 'Unauthorized: You do not have access to this location' },
-        { status: 403 }
-      );
     }
 
     // Convert locationId to ObjectId for proper matching
@@ -139,6 +198,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 7: Calculate gaming day range
+    // ============================================================================
     // Calculate gaming day range for this location
     // Always use gaming day offset logic (including for custom dates)
     const gameDayOffset = locationCheck.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
@@ -149,6 +211,9 @@ export async function GET(request: NextRequest) {
       customEndDateForGamingDay
     );
 
+    // ============================================================================
+    // STEP 8: Build aggregation pipeline
+    // ============================================================================
     // Build aggregation pipeline based on your MongoDB compass query
     const aggregationPipeline: Record<string, unknown>[] = [
       // Match the specific location (similar to your $match: { name: "Big Shot" })
@@ -183,14 +248,14 @@ export async function GET(request: NextRequest) {
             { 'machines.smibBoard': { $regex: searchTerm, $options: 'i' } },
             { 'machines.custom.name': { $regex: searchTerm, $options: 'i' } },
             // Search by _id (case-insensitive partial match)
-            { 
-              $expr: { 
-                $regexMatch: { 
-                  input: { $toString: '$machines._id' }, 
-                  regex: searchTerm, 
-                  options: 'i' 
-                } 
-              } 
+            {
+              $expr: {
+                $regexMatch: {
+                  input: { $toString: '$machines._id' },
+                  regex: searchTerm,
+                  options: 'i',
+                },
+              },
             },
           ],
         },
@@ -243,15 +308,31 @@ export async function GET(request: NextRequest) {
         locationName: '$name',
         assetNumber: {
           $ifNull: [
-            { $cond: [{ $eq: [{ $trim: { input: '$machines.serialNumber' } }, ''] }, null, '$machines.serialNumber'] },
-            '$machines.custom.name'
-          ]
+            {
+              $cond: [
+                {
+                  $eq: [{ $trim: { input: '$machines.serialNumber' } }, ''],
+                },
+                null,
+                '$machines.serialNumber',
+              ],
+            },
+            '$machines.custom.name',
+          ],
         },
         serialNumber: {
           $ifNull: [
-            { $cond: [{ $eq: [{ $trim: { input: '$machines.serialNumber' } }, ''] }, null, '$machines.serialNumber'] },
-            '$machines.custom.name'
-          ]
+            {
+              $cond: [
+                {
+                  $eq: [{ $trim: { input: '$machines.serialNumber' } }, ''],
+                },
+                null,
+                '$machines.serialNumber',
+              ],
+            },
+            '$machines.custom.name',
+          ],
         },
         relayId: '$machines.relayId',
         smibBoard: '$machines.smibBoard',
@@ -315,6 +396,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // ============================================================================
+    // STEP 9: Execute aggregation with pagination
+    // ============================================================================
     // First, get total count for pagination metadata
     const countPipeline = [...aggregationPipeline, { $count: 'total' }];
     const countResult = await db
@@ -343,44 +427,108 @@ export async function GET(request: NextRequest) {
       })
       .toArray();
 
+    // ============================================================================
+    // STEP 10: Transform and return results
+    // ============================================================================
+    // Get location info for currency conversion
+    // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
+    const location = await db
+      .collection('gaminglocations')
+      .findOne({ _id: locationId } as Record<string, unknown>, { projection: { 'rel.licencee': 1, country: 1 } });
+
+    // Get licensee and country info for currency conversion
+    let nativeCurrency: CurrencyCode = 'USD';
+    if (location) {
+      const locationLicenseeId = location.rel?.licencee as string | undefined;
+      if (!locationLicenseeId) {
+        // Unassigned locations - determine currency from country
+        const countryId = location.country as string | undefined;
+        if (countryId) {
+          // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
+          const country = await db
+            .collection('countries')
+            .findOne({ _id: countryId } as Record<string, unknown>, { projection: { name: 1 } });
+          if (country?.name) {
+            nativeCurrency = getCountryCurrency(country.name);
+          }
+        }
+      } else {
+        // Get licensee's native currency
+        // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
+        const licensee = await db
+          .collection('licencees')
+          .findOne({ _id: locationLicenseeId } as Record<string, unknown>, { projection: { name: 1 } });
+        if (licensee?.name) {
+          nativeCurrency = getLicenseeCurrency(licensee.name);
+        }
+      }
+    }
+
+    // Check if currency conversion should be applied
+    const currentUser = await getUserFromServer();
+    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    const isAdminOrDev =
+      currentUserRoles.includes('admin') ||
+      currentUserRoles.includes('developer');
+    const shouldConvert =
+      isAdminOrDev && shouldApplyCurrencyConversion(licencee || undefined);
+
     // Transform the results to ensure proper data types
     const transformedCabinets: TransformedCabinet[] = cabinetsWithMeters.map(
-      (cabinet: Record<string, unknown>) => ({
-        _id: cabinet._id?.toString() || '',
-        locationId: cabinet.locationId?.toString() || '',
-        locationName: (cabinet.locationName as string) || '',
-        assetNumber: (cabinet.assetNumber as string) || '',
-        serialNumber: (cabinet.serialNumber as string) || '',
-        relayId: (cabinet.relayId as string) || '',
-        smibBoard: (cabinet.smibBoard as string) || '',
-        smbId: (cabinet.smbId as string) || '',
-        lastActivity: (cabinet.lastActivity as Date) || null,
-        lastOnline: (cabinet.lastOnline as Date) || null,
-        game: (cabinet.game as string) || '',
-        installedGame: (cabinet.installedGame as string) || '',
-        cabinetType: (cabinet.cabinetType as string) || '',
-        assetStatus: (cabinet.assetStatus as string) || '',
-        status: (cabinet.status as string) || '',
-        gameType: (cabinet.gameType as string) || '',
-        isCronosMachine: cabinet.isCronosMachine || false,
-        // Ensure all numeric fields are properly typed
-        moneyIn: Number(cabinet.moneyIn) || 0,
-        moneyOut: Number(cabinet.moneyOut) || 0,
-        jackpot: Number(cabinet.jackpot) || 0,
-        gross: Number(cabinet.gross) || 0,
-        gamesPlayed: Number(cabinet.gamesPlayed) || 0,
-        gamesWon: Number(cabinet.gamesWon) || 0,
-        cancelledCredits: Number(cabinet.cancelledCredits) || 0,
-        sasMeters: (cabinet.sasMeters as Record<string, unknown>) || null,
-        online: Boolean(cabinet.online),
-        // Add any missing fields that might be expected
-        metersData: null, // This was in the original structure
-      })
+      (cabinet: Record<string, unknown>) => {
+        let moneyIn = Number(cabinet.moneyIn) || 0;
+        let moneyOut = Number(cabinet.moneyOut) || 0;
+        let gross = Number(cabinet.gross) || 0;
+        let jackpot = Number(cabinet.jackpot) || 0;
+
+        // Apply currency conversion if needed
+        if (shouldConvert && nativeCurrency !== displayCurrency) {
+          const moneyInUSD = convertToUSD(moneyIn, nativeCurrency);
+          const moneyOutUSD = convertToUSD(moneyOut, nativeCurrency);
+          const grossUSD = convertToUSD(gross, nativeCurrency);
+          const jackpotUSD = convertToUSD(jackpot, nativeCurrency);
+
+          moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
+          moneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
+          gross = convertFromUSD(grossUSD, displayCurrency);
+          jackpot = convertFromUSD(jackpotUSD, displayCurrency);
+        }
+
+        return {
+          _id: cabinet._id?.toString() || '',
+          locationId: cabinet.locationId?.toString() || '',
+          locationName: (cabinet.locationName as string) || '',
+          assetNumber: (cabinet.assetNumber as string) || '',
+          serialNumber: (cabinet.serialNumber as string) || '',
+          relayId: (cabinet.relayId as string) || '',
+          smibBoard: (cabinet.smibBoard as string) || '',
+          smbId: (cabinet.smbId as string) || '',
+          lastActivity: (cabinet.lastActivity as Date) || null,
+          lastOnline: (cabinet.lastOnline as Date) || null,
+          game: (cabinet.game as string) || '',
+          installedGame: (cabinet.installedGame as string) || '',
+          cabinetType: (cabinet.cabinetType as string) || '',
+          assetStatus: (cabinet.assetStatus as string) || '',
+          status: (cabinet.status as string) || '',
+          gameType: (cabinet.gameType as string) || '',
+          isCronosMachine: cabinet.isCronosMachine || false,
+          // Ensure all numeric fields are properly typed (with currency conversion applied)
+          moneyIn,
+          moneyOut,
+          jackpot,
+          gross,
+          gamesPlayed: Number(cabinet.gamesPlayed) || 0,
+          gamesWon: Number(cabinet.gamesWon) || 0,
+          cancelledCredits: moneyOut, // Use converted moneyOut
+          sasMeters: (cabinet.sasMeters as Record<string, unknown>) || null,
+          online: Boolean(cabinet.online),
+          // Add any missing fields that might be expected
+          metersData: null, // This was in the original structure
+        };
+      }
     );
 
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
-    const totalTime = Date.now() - perfStart;
-    console.log(`⚡ /api/locations/${locationId} - ${totalTime}ms | ${transformedCabinets.length}/${totalCount} machines | ${timePeriod}${searchTerm ? ` | search: ${searchTerm}` : ''}`);
 
     return NextResponse.json({
       success: true,
@@ -395,10 +543,16 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error processing location cabinets request:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch location cabinets data' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch location cabinets data';
+    console.error(
+      `[Locations API GET] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

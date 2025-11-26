@@ -3,7 +3,7 @@
  * Handles loading, filtering, and error states for cabinet operations
  */
 
-import { fetchCabinetLocations, fetchCabinets } from '@/lib/helpers/cabinets';
+import { fetchCabinetLocations, fetchCabinets, fetchCabinetTotals } from '@/lib/helpers/cabinets';
 import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
@@ -31,11 +31,13 @@ type UseCabinetDataReturn = {
   locations: { _id: string; name: string }[];
   gameTypes: string[];
   financialTotals: ReturnType<typeof calculateCabinetFinancialTotals>;
+  metricsTotals: { moneyIn: number; moneyOut: number; gross: number } | null;
   totalCount: number;
 
   // Loading states
   initialLoading: boolean;
   loading: boolean;
+  metricsTotalsLoading: boolean;
   error: string | null;
 
   // Actions
@@ -76,10 +78,23 @@ export const useCabinetData = ({
   const [gameTypes, setGameTypes] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
 
-  // PERFORMANCE OPTIMIZATION: Memoize financial totals calculation
+  // Separate state for metrics totals (from dedicated API call)
+  const [metricsTotals, setMetricsTotals] = useState<{
+    moneyIn: number;
+    moneyOut: number;
+    gross: number;
+  } | null>(null);
+  const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
+
+  // PERFORMANCE OPTIMIZATION: Memoize financial totals calculation (for backward compatibility)
+  // Note: This is now only used for table display, metrics cards use metricsTotals from API
   const financialTotals = useMemo(() => {
+    // If we have API totals, use those; otherwise fall back to calculated totals
+    if (metricsTotals) {
+      return metricsTotals;
+    }
     return calculateCabinetFinancialTotals(allCabinets);
-  }, [allCabinets]);
+  }, [allCabinets, metricsTotals]);
 
   // Load locations for filter dropdown
   const loadLocations = useCallback(async () => {
@@ -298,6 +313,23 @@ export const useCabinetData = ({
           setTotalCount(0);
           setError('Invalid data format received from server');
         }
+
+        // Fetch metrics totals separately (for metrics cards) - always fetch all machines totals
+        setMetricsTotalsLoading(true);
+        try {
+          const totals = await fetchCabinetTotals(
+            activeMetricsFilter,
+            customDateRange,
+            selectedLicencee,
+            displayCurrency
+          );
+          setMetricsTotals(totals);
+        } catch (error) {
+          console.error('Failed to fetch cabinet metrics totals:', error);
+          setMetricsTotals(null);
+        } finally {
+          setMetricsTotalsLoading(false);
+        }
       } catch (error) {
         console.error('Error fetching cabinet data:', error);
         setAllCabinets([]);
@@ -337,11 +369,13 @@ export const useCabinetData = ({
     locations,
     gameTypes,
     financialTotals,
+    metricsTotals,
     totalCount,
 
     // Loading states
     initialLoading,
     loading,
+    metricsTotalsLoading,
     error,
 
     // Actions

@@ -1,3 +1,17 @@
+/**
+ * Manager Schedule Cards Component
+ * Mobile-friendly card view for displaying manager schedules.
+ *
+ * Features:
+ * - Manager schedule data display
+ * - Status badges
+ * - Loading states
+ * - Empty state handling
+ * - Responsive design (mobile only)
+ *
+ * @param data - Array of scheduler table rows
+ * @param loading - Whether data is loading
+ */
 import React from 'react';
 import type { SchedulerTableRow } from '@/lib/types/componentProps';
 

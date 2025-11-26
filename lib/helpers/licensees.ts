@@ -1,7 +1,27 @@
+/**
+ * Licensee Management Helper Functions
+ *
+ * Provides helper functions for managing licensee data, including CRUD operations
+ * and data formatting for frontend consumption. It handles licensee creation, updates,
+ * soft deletion, and ensures consistent data formatting with proper isPaid status calculation.
+ *
+ * Features:
+ * - Formats licensee data for frontend consumption with proper isPaid status.
+ * - Retrieves all licensees from the database with filtering.
+ * - Creates new licensees with unique license keys and activity logging.
+ * - Updates existing licensees with change tracking (prevStartDate, prevExpiryDate).
+ * - Soft deletes licensees with activity logging.
+ * - Fetches licensees for frontend consumption.
+ */
+
 import { NextRequest } from 'next/server';
 import { Licencee } from '../../app/api/lib/models/licencee';
 import { generateUniqueLicenseKey } from '../utils/licenseKey';
 import { generateMongoId } from '@/lib/utils/id';
+
+// ============================================================================
+// Licensee Data Formatting
+// ============================================================================
 
 /**
  * Formats licensees data for frontend consumption, ensuring isPaid status is always defined
@@ -26,6 +46,10 @@ export function formatLicenseesForResponse(
     };
   });
 }
+
+// ============================================================================
+// Licensee Data Retrieval
+// ============================================================================
 
 /**
  * Retrieves all licensees from database
@@ -56,6 +80,10 @@ export async function getAllLicensees() {
     .sort({ name: 1 })
     .lean();
 }
+
+// ============================================================================
+// Licensee CRUD Operations
+// ============================================================================
 
 /**
  * Creates a new licensee with activity logging
@@ -207,14 +235,16 @@ export async function updateLicensee(
  * Soft deletes a licensee with activity logging
  */
 export async function deleteLicensee(_id: string, _request: NextRequest) {
-  const licenseeToDelete = await Licencee.findById(_id);
+  // CRITICAL: Use findOne with _id instead of findById (repo rule)
+  const licenseeToDelete = await Licencee.findOne({ _id });
 
   if (!licenseeToDelete) {
     throw new Error('Licensee not found');
   }
 
-  const deleted = await Licencee.findByIdAndUpdate(
-    _id,
+  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+  const deleted = await Licencee.findOneAndUpdate(
+    { _id },
     { deletedAt: new Date() },
     { new: true }
   );

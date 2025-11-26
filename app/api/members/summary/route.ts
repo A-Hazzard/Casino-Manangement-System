@@ -1,15 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Member } from '@/app/api/lib/models/members';
+/**
+ * Members Summary API Route
+ *
+ * This route handles fetching members summary with filtering and pagination.
+ * It supports:
+ * - Licensee-based filtering
+ * - Location filtering
+ * - Date filtering (yesterday, week, month, custom)
+ * - Search functionality
+ * - Pagination
+ * - Financial metrics calculation (win/loss, gross revenue)
+ *
+ * @module app/api/members/summary/route
+ */
+
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Member } from '@/app/api/lib/models/members';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching members summary
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters
+ * 3. Build date filter conditions
+ * 4. Handle licensee filtering through location lookup
+ * 5. Add location and search filters
+ * 6. Get total count for pagination
+ * 7. Aggregate member data with financial metrics
+ * 8. Calculate summary statistics
+ * 9. Return paginated results with summary
+ */
 export async function GET(request: NextRequest) {
-  try {
-    // console.log("API - Members Summary - Starting request");
-    await connectDB();
-    // console.log("API - Members Summary - Connected to DB");
+  const startTime = Date.now();
 
-    // Get query parameters for filtering
+  try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
+
     const { searchParams } = new URL(request.url);
     const licencee = searchParams.get('licencee') || '';
     const dateFilter = searchParams.get('dateFilter') || 'all';
@@ -22,7 +57,9 @@ export async function GET(request: NextRequest) {
     const filterBy = searchParams.get('filterBy') || 'createdAt';
     const skip = (page - 1) * limit;
 
-    // Build match conditions - start with basic conditions
+    // ============================================================================
+    // STEP 3: Build date filter conditions
+    // ============================================================================
     const matchConditions: Record<string, unknown> = {};
 
     // Add date filter only if not "all"
@@ -64,7 +101,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Handle licencee filtering through the relationship chain
+    // ============================================================================
+    // STEP 4: Handle licensee filtering through location lookup
+    // ============================================================================
     if (licencee && licencee !== 'All Licensees' && licencee !== 'all') {
       // console.log("API - Members Summary - Filtering by licencee:", licencee);
 
@@ -146,7 +185,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Add search filter
+    // ============================================================================
+    // STEP 5: Add location and search filters
+    // ============================================================================
     if (searchTerm) {
       matchConditions.$or = [
         { 'profile.firstName': { $regex: searchTerm, $options: 'i' } },
@@ -156,12 +197,14 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // console.log("API - Members Summary - Match conditions:", matchConditions);
-
-    // Get total count for pagination
+    // ============================================================================
+    // STEP 6: Get total count for pagination
+    // ============================================================================
     const totalCount = await Member.countDocuments(matchConditions);
 
-    // Aggregate member data with pagination and win/loss calculations
+    // ============================================================================
+    // STEP 7: Aggregate member data with financial metrics
+    // ============================================================================
     const memberSummary = await Member.aggregate([
       { $match: matchConditions },
       {
@@ -293,7 +336,9 @@ export async function GET(request: NextRequest) {
       { $limit: limit },
     ]);
 
-    // Calculate summary statistics
+    // ============================================================================
+    // STEP 8: Calculate summary statistics
+    // ============================================================================
     const summaryStats = {
       totalMembers: totalCount,
       totalLocations: new Set(
@@ -306,12 +351,18 @@ export async function GET(request: NextRequest) {
       }).length,
     };
 
-    // Calculate pagination info
+    // ============================================================================
+    // STEP 9: Return paginated results with summary
+    // ============================================================================
     const totalPages = Math.ceil(totalCount / limit);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
-    const response = {
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Members Summary API] Completed in ${duration}ms`);
+    }
+    return NextResponse.json({
       success: true,
       data: {
         members: memberSummary,
@@ -325,15 +376,15 @@ export async function GET(request: NextRequest) {
           limit,
         },
       },
-    };
-
-    // console.log("API - Members Summary - Response:", response);
-    return NextResponse.json(response);
+    });
   } catch (error) {
-    console.error('Error fetching members summary:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Members Summary API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

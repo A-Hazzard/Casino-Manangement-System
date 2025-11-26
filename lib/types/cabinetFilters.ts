@@ -1,3 +1,10 @@
+/**
+ * Cabinet Filters Types
+ * Types for cabinet filtering functionality.
+ *
+ * Used by useCabinetFilters hook to manage search, location,
+ * game type, and status filters for cabinet listings.
+ */
 export type UseCabinetFiltersProps = {
   onFiltersChange?: (
     searchTerm: string,

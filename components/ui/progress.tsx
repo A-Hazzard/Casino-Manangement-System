@@ -1,3 +1,13 @@
+/**
+ * Progress Component
+ * Reusable progress bar component using Radix UI primitives.
+ *
+ * Features:
+ * - Animated progress indicator
+ * - Value-based progress display
+ * - Smooth transitions
+ * - Accessible implementation
+ */
 'use client';
 
 import * as React from 'react';

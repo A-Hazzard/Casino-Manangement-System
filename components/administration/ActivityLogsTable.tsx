@@ -1,3 +1,23 @@
+/**
+ * Activity Logs Table Component
+ * Comprehensive table component for displaying and managing activity logs.
+ *
+ * Features:
+ * - Activity log display (table on desktop, cards on mobile)
+ * - Search functionality with multiple modes (username, email, description, ID)
+ * - Date range filtering
+ * - Pagination with batch loading
+ * - Sorting capabilities
+ * - Copy to clipboard functionality
+ * - Activity log card integration
+ * - Activity log description dialog
+ * - Loading states and skeletons
+ * - Responsive design
+ *
+ * Large component (~746 lines) handling complete activity log management.
+ *
+ * @param className - Optional CSS classes
+ */
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';

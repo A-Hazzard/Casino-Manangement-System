@@ -1,34 +1,70 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../../../lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Collections } from '@/app/api/lib/models/collections';
-import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+/**
+ * Location Cabinet Detail API Route
+ *
+ * This route handles CRUD operations for a specific cabinet/machine within a location.
+ * It supports:
+ * - Fetching cabinet details
+ * - Updating cabinet information
+ * - Partially updating cabinet (PATCH for collection settings)
+ * - Deleting cabinets (soft delete)
+ * - Location-based access control
+ *
+ * @module app/api/locations/[locationId]/cabinets/[cabinetId]/route
+ */
 
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Collections } from '@/app/api/lib/models/collections';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * GET /api/locations/[locationId]/cabinets/[cabinetId]
- * Get a specific cabinet by ID within a location
+ * Main GET handler for fetching a specific cabinet
+ *
+ * Flow:
+ * 1. Parse route parameters
+ * 2. Connect to database
+ * 3. Check user access to location
+ * 4. Verify location exists
+ * 5. Fetch cabinet from database
+ * 6. Return cabinet data
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters
+    // ============================================================================
     const { locationId, cabinetId } = await params;
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Check if user has access to this location
+    // ============================================================================
+    // STEP 3: Check user access to location
+    // ============================================================================
+
     const hasAccess = await checkUserLocationAccess(locationId);
     if (!hasAccess) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized: You do not have access to this location' },
+        {
+          success: false,
+          error: 'Unauthorized: You do not have access to this location',
+        },
         { status: 403 }
       );
     }
 
-    // Verify location exists and is not deleted
+    // ============================================================================
+    // STEP 4: Verify location exists
+    // ============================================================================
     const location = await GamingLocations.findOne({
       _id: locationId,
       $or: [
@@ -43,7 +79,9 @@ export async function GET(
       );
     }
 
-    // Fetch the specific cabinet
+    // ============================================================================
+    // STEP 5: Fetch cabinet from database
+    // ============================================================================
     const cabinet = await Machine.findOne({
       _id: cabinetId,
       gamingLocation: locationId,
@@ -60,27 +98,48 @@ export async function GET(
       );
     }
 
+    // ============================================================================
+    // STEP 6: Return cabinet data
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: cabinet,
     });
   } catch (error) {
-    console.error('Error fetching cabinet:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch cabinet';
+    console.error(
+      `[Location Cabinet API GET] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch cabinet' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
 /**
- * PUT /api/locations/[locationId]/cabinets/[cabinetId]
- * Update a specific cabinet by ID within a location
+ * PUT handler for updating a cabinet
+ *
+ * Flow:
+ * 1. Parse route parameters and request body
+ * 2. Connect to database
+ * 3. Check user access to location
+ * 4. Verify location exists
+ * 5. Get original cabinet data
+ * 6. Build update fields from request data
+ * 7. Update cabinet in database
+ * 8. Update related collections if serial number or game changed
+ * 9. Return updated cabinet
  */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
     const { locationId, cabinetId } = await params;
 
@@ -90,7 +149,10 @@ export async function PUT(
     const hasAccess = await checkUserLocationAccess(locationId);
     if (!hasAccess) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized: You do not have access to this location' },
+        {
+          success: false,
+          error: 'Unauthorized: You do not have access to this location',
+        },
         { status: 403 }
       );
     }
@@ -119,7 +181,8 @@ export async function PUT(
     // console.log("gameType in request:", data.gameType);
 
     // Get original cabinet data for change tracking
-    const originalCabinet = await Machine.findById(cabinetId);
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const originalCabinet = await Machine.findOne({ _id: cabinetId });
     if (!originalCabinet) {
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
@@ -127,7 +190,9 @@ export async function PUT(
       );
     }
 
-    // Build update object with only the fields that are provided and not empty
+    // ============================================================================
+    // STEP 6: Build update fields from request data
+    // ============================================================================
     const updateFields: Record<string, unknown> = {
       updatedAt: new Date(),
     };
@@ -212,17 +277,15 @@ export async function PUT(
       data.collectorDenomination !== undefined &&
       data.collectorDenomination !== ''
     ) {
-      updateFields.collectorDenomination = Number(
-        data.collectorDenomination
-      );
+      updateFields.collectorDenomination = Number(data.collectorDenomination);
     }
 
-    // Update the machine with only the fields that were provided
-    // console.log("Update fields being sent to DB:", updateFields);
-    // console.log("gameType in updateFields:", updateFields.gameType);
-
-    const updatedMachine = await Machine.findByIdAndUpdate(
-      cabinetId,
+    // ============================================================================
+    // STEP 7: Update cabinet in database
+    // ============================================================================
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    const updatedMachine = await Machine.findOneAndUpdate(
+      { _id: cabinetId },
       updateFields,
       { new: true, runValidators: true }
     );
@@ -234,7 +297,9 @@ export async function PUT(
       );
     }
 
-    // If serial number was updated, also update it in Collections
+    // ============================================================================
+    // STEP 8: Update related collections if serial number or game changed
+    // ============================================================================
     if (
       data.assetNumber !== undefined &&
       data.assetNumber !== '' &&
@@ -282,58 +347,63 @@ export async function PUT(
       }
     }
 
-    // Activity logging is handled by the frontend to ensure user context is available
-    
-    // Debug logging for troubleshooting
-    console.warn('[CABINET UPDATE API] Update successful:', {
-      locationId,
-      cabinetId,
-      updatedFields: Object.keys(updateFields),
-      serialNumber: updatedMachine.serialNumber,
-    });
-
-    // console.log("Sending response to frontend:", {
-    //   success: true,
-    //   data: updatedMachine,
-    // });
-    // console.log("Response gameType:", updatedMachine?.gameType);
-
+    // ============================================================================
+    // STEP 9: Return updated cabinet
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: updatedMachine,
     });
   } catch (error) {
-    console.error('Error updating cabinet:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to update cabinet';
+    console.error(
+      `[Location Cabinet API PUT] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to update cabinet' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
 /**
- * PATCH /api/locations/[locationId]/cabinets/[cabinetId]
- * Partially update a specific cabinet by ID within a location (for collection settings)
+ * PATCH handler for partially updating a cabinet (collection settings)
+ *
+ * Flow:
+ * 1. Parse route parameters and request body
+ * 2. Connect to database
+ * 3. Check user access to location
+ * 4. Verify location exists
+ * 5. Get original cabinet data
+ * 6. Build update fields for collection settings
+ * 7. Update cabinet in database
+ * 8. Return updated cabinet
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
     const { locationId, cabinetId } = await params;
 
     await connectDB();
 
-    // Check if user has access to this location
     const hasAccess = await checkUserLocationAccess(locationId);
     if (!hasAccess) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized: You do not have access to this location' },
+        {
+          success: false,
+          error: 'Unauthorized: You do not have access to this location',
+        },
         { status: 403 }
       );
     }
 
-    // Verify location exists and is not deleted
     const location = await GamingLocations.findOne({
       _id: locationId,
       $or: [
@@ -348,16 +418,10 @@ export async function PATCH(
       );
     }
 
-    // Parse the request data
     const data = await request.json();
-    // console.log(
-    //   "Received cabinet update request:",
-    //   JSON.stringify(data, null, 2)
-    // );
-    // console.log("gameType in request:", data.gameType);
 
-    // Get original cabinet data for change tracking
-    const originalCabinet = await Machine.findById(cabinetId);
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const originalCabinet = await Machine.findOne({ _id: cabinetId });
     if (!originalCabinet) {
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
@@ -365,7 +429,6 @@ export async function PATCH(
       );
     }
 
-    // Build update object for collection settings
     const updateFields: Record<string, unknown> = {
       updatedAt: new Date(),
     };
@@ -389,9 +452,9 @@ export async function PATCH(
       updateFields.smibVersion = data.smibVersion;
     }
 
-    // Update the machine with only the fields that were provided
-    const updatedMachine = await Machine.findByIdAndUpdate(
-      cabinetId,
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    const updatedMachine = await Machine.findOneAndUpdate(
+      { _id: cabinetId },
       updateFields,
       { new: true, runValidators: true }
     );
@@ -403,52 +466,61 @@ export async function PATCH(
       );
     }
 
-    // Activity logging is handled by the frontend to ensure user context is available
-    
-    // Debug logging for troubleshooting
-    console.warn('[CABINET COLLECTION SETTINGS API] Update successful:', {
-      locationId,
-      cabinetId,
-      updatedFields: Object.keys(updateFields),
-      serialNumber: updatedMachine.serialNumber,
-    });
-
     return NextResponse.json({
       success: true,
       data: updatedMachine,
     });
   } catch (error) {
-    console.error('Error updating cabinet collection settings:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to update cabinet collection settings';
+    console.error(
+      `[Location Cabinet API PATCH] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to update cabinet collection settings' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
 /**
- * DELETE /api/locations/[locationId]/cabinets/[cabinetId]
- * Delete a specific cabinet by ID within a location
+ * DELETE handler for soft-deleting a cabinet
+ *
+ * Flow:
+ * 1. Parse route parameters
+ * 2. Connect to database
+ * 3. Check user access to location
+ * 4. Verify location exists
+ * 5. Get cabinet data before deletion
+ * 6. Soft delete cabinet (set deletedAt)
+ * 7. Return success response
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
     const { locationId, cabinetId } = await params;
 
     await connectDB();
 
-    // Check if user has access to this location
     const hasAccess = await checkUserLocationAccess(locationId);
     if (!hasAccess) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized: You do not have access to this location' },
+        {
+          success: false,
+          error: 'Unauthorized: You do not have access to this location',
+        },
         { status: 403 }
       );
     }
 
-    // Verify location exists and is not deleted
     const location = await GamingLocations.findOne({
       _id: locationId,
       $or: [
@@ -463,8 +535,8 @@ export async function DELETE(
       );
     }
 
-    // Get cabinet data before deletion for logging
-    const cabinetToDelete = await Machine.findById(cabinetId);
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const cabinetToDelete = await Machine.findOne({ _id: cabinetId });
     if (!cabinetToDelete) {
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
@@ -472,9 +544,9 @@ export async function DELETE(
       );
     }
 
-    // Soft delete the machine by setting deletedAt
-    await Machine.findByIdAndUpdate(
-      cabinetId,
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    await Machine.findOneAndUpdate(
+      { _id: cabinetId },
       {
         deletedAt: new Date(),
         updatedAt: new Date(),
@@ -482,24 +554,20 @@ export async function DELETE(
       { new: true }
     );
 
-    // Activity logging is handled by the frontend to ensure user context is available
-    
-    // Debug logging for troubleshooting
-    console.warn('[CABINET DELETE API] Delete successful:', {
-      locationId,
-      cabinetId,
-      serialNumber: cabinetToDelete.serialNumber,
-      locationName: location.name,
-    });
-
     return NextResponse.json({
       success: true,
       message: 'Cabinet deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting cabinet:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to delete cabinet';
+    console.error(
+      `[Location Cabinet API DELETE] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to delete cabinet' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

@@ -1,3 +1,12 @@
+/**
+ * Activity Log Card Skeleton Component
+ * Loading skeleton for activity log cards.
+ *
+ * Features:
+ * - Matches ActivityLogCard layout structure
+ * - Header, user info, description, and action button skeletons
+ * - Responsive design
+ */
 'use client';
 
 import React from 'react';
@@ -5,6 +14,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ActivityLogCardSkeleton: React.FC = () => {
+  // ============================================================================
+  // Render - Card Skeleton
+  // ============================================================================
   return (
     <Card className="w-full">
       <CardContent className="p-4">

@@ -1,5 +1,21 @@
+/**
+ * Cabinet UI Store
+ * Zustand store for managing cabinet-specific UI state and preferences.
+ *
+ * Features:
+ * - Tracks bill validator time period and date range per machine
+ * - Persists UI state to localStorage for seamless experience
+ * - Provides actions to manage bill validator filters per cabinet
+ * - SSR-safe with dummy state for server rendering
+ *
+ * @returns Zustand hook for accessing and updating cabinet UI state.
+ */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
 
@@ -28,10 +44,18 @@ type CabinetUIState = {
   resetBillValidatorState: (machineId: string) => void;
 };
 
+// ============================================================================
+// Constants
+// ============================================================================
+
 const defaultBillValidatorState: BillValidatorState = {
   timePeriod: '7d',
   customDateRange: undefined,
 };
+
+// ============================================================================
+// Store Creation
+// ============================================================================
 
 const createStore = () => {
   return create<CabinetUIState>()(
@@ -103,5 +127,6 @@ const dummyState: CabinetUIState = {
   resetBillValidatorState: () => {},
 };
 
+// Use this store only on client side
 export const useCabinetUIStore =
   typeof window !== 'undefined' ? createStore() : () => dummyState;

@@ -1,3 +1,15 @@
+/**
+ * Dialog Components
+ * Reusable dialog/modal component using Radix UI primitives.
+ *
+ * Features:
+ * - Dialog root, trigger, portal, close components
+ * - DialogOverlay with backdrop blur
+ * - DialogContent with animations
+ * - DialogHeader, DialogTitle, DialogDescription, DialogFooter
+ * - Accessible and keyboard-friendly
+ * - Smooth open/close animations
+ */
 'use client';
 
 import * as React from 'react';
@@ -5,6 +17,10 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Cross2Icon } from '@radix-ui/react-icons';
 
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Dialog Components
+// ============================================================================
 
 const Dialog = DialogPrimitive.Root;
 

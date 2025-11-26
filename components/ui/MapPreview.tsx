@@ -1,3 +1,23 @@
+/**
+ * Map Preview Component
+ * Interactive map component displaying location performance metrics with Leaflet.
+ *
+ * Features:
+ * - Interactive map with markers
+ * - Location performance data display
+ * - Search functionality
+ * - Fullscreen mode
+ * - GSAP animations
+ * - Location popups with metrics
+ * - Licensee filtering
+ * - Dynamic Leaflet imports (SSR disabled)
+ *
+ * Very large component (~795 lines) handling map display and interactions.
+ *
+ * @param locations - Array of location data
+ * @param loading - Whether data is loading
+ * @param onLocationClick - Callback when location is clicked
+ */
 'use client';
 
 import { Badge } from '@/components/ui/badge';

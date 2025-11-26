@@ -1,3 +1,10 @@
+/**
+ * Machines Overview Tab Types
+ * Types for machines overview tab component with comprehensive machine data.
+ *
+ * Defines props for overview tab including machine lists, statistics,
+ * manufacturer/game data, pagination, sorting, and action handlers.
+ */
 import type {
   MachineData as SharedMachineData,
   MachineStats as SharedMachineStats,

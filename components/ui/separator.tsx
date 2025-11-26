@@ -1,3 +1,12 @@
+/**
+ * Separator Component
+ * Reusable separator component for dividing content sections.
+ *
+ * Features:
+ * - Horizontal or vertical orientation
+ * - Decorative option for accessibility
+ * - Consistent styling
+ */
 'use client';
 
 import * as React from 'react';

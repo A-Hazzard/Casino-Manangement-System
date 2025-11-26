@@ -1,7 +1,7 @@
-import { Db, Document } from 'mongodb';
-import { AggregatedLocation, LocationDateRange } from '@/lib/types/location';
 import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
+import { AggregatedLocation, LocationDateRange } from '@/lib/types/location';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { Db, Document } from 'mongodb';
 
 /**
  * Aggregates and returns location metrics, including machine counts and online status, with optional filters.
@@ -27,13 +27,44 @@ export const getLocationsWithMetrics = async (
   selectedLocations?: string,
   timePeriod?: string,
   customStartDate?: Date,
-  customEndDate?: Date
+  customEndDate?: Date,
+  allowedLocationIds?: string[] | 'all'
 ): Promise<{ rows: AggregatedLocation[]; totalCount: number }> => {
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
 
-  // If a licencee is provided, prefetch location ids to constrain downstream queries
-  let licenseeLocationIds: string[] | null = null;
-  if (licencee) {
+  // Build the base pipeline with location matching
+  // Apply user location permissions if provided (takes precedence)
+  const locationIdFilter: { _id?: { $in: string[] } } = {};
+
+  // Debug logging
+  if (allowedLocationIds === 'all') {
+    console.log(
+      '[getLocationsWithMetrics] allowedLocationIds is "all" - no location filtering will be applied'
+    );
+  } else if (allowedLocationIds !== undefined) {
+    console.log(
+      `[getLocationsWithMetrics] allowedLocationIds is array with ${allowedLocationIds.length} locations - filtering will be applied`
+    );
+  } else {
+    console.log(
+      '[getLocationsWithMetrics] allowedLocationIds is undefined - will check licensee filter'
+    );
+  }
+
+  if (allowedLocationIds !== undefined && allowedLocationIds !== 'all') {
+    // User has specific location permissions (from getUserLocationFilter)
+    // This already includes licensee filtering if applicable
+    if (allowedLocationIds.length === 0) {
+      // No accessible locations
+      return {
+        rows: [],
+        totalCount: 0,
+      };
+    }
+    locationIdFilter._id = { $in: allowedLocationIds };
+  } else if (licencee && licencee !== 'all') {
+    // No user location permissions provided, but licensee filter is specified
+    // Prefetch location ids for this licensee
     const locs = await db
       .collection('gaminglocations')
       .find(
@@ -51,10 +82,18 @@ export const getLocationsWithMetrics = async (
         }
       )
       .toArray();
-    licenseeLocationIds = locs.map(l => l._id.toString());
+    const licenseeLocationIds = locs.map(l => l._id.toString());
+    if (licenseeLocationIds.length > 0) {
+      locationIdFilter._id = { $in: licenseeLocationIds };
+    } else {
+      // No locations for this licensee
+      return {
+        rows: [],
+        totalCount: 0,
+      };
+    }
   }
 
-  // Build the base pipeline with location matching
   const basePipeline: Document[] = [
     {
       $match: {
@@ -62,9 +101,7 @@ export const getLocationsWithMetrics = async (
           { deletedAt: null },
           { deletedAt: { $lt: new Date('2020-01-01') } },
         ],
-        ...(licenseeLocationIds && licenseeLocationIds.length > 0
-          ? { _id: { $in: licenseeLocationIds } }
-          : {}),
+        ...locationIdFilter,
       },
     },
   ];
@@ -110,11 +147,13 @@ export const getLocationsWithMetrics = async (
         );
 
         // First get all machines for this location
+        // All _id fields are strings, not ObjectIds
+        const locationIdStr = location._id.toString();
         const machinesForLocation = await db
           .collection('machines')
           .find(
             {
-              gamingLocation: location._id,
+              gamingLocation: locationIdStr, // Use string, not ObjectId
               $or: [
                 { deletedAt: null },
                 { deletedAt: { $lt: new Date('2020-01-01') } },
@@ -124,7 +163,8 @@ export const getLocationsWithMetrics = async (
           )
           .toArray();
 
-        const machineIds = machinesForLocation.map(m => m._id);
+        // Convert machine IDs to strings (meters.machine is stored as String, not ObjectId)
+        const machineIds = machinesForLocation.map(m => m._id.toString());
 
         // Now aggregate meters for all machines in this location using gaming day range
         const metersAggregation = await db
@@ -132,7 +172,7 @@ export const getLocationsWithMetrics = async (
           .aggregate([
             {
               $match: {
-                machine: { $in: machineIds }, // Match by machine IDs, not location
+                machine: { $in: machineIds }, // Match by machine IDs (as strings), not location
                 readAt: {
                   $gte: gamingDayRange.rangeStart,
                   $lte: gamingDayRange.rangeEnd,
@@ -163,7 +203,7 @@ export const getLocationsWithMetrics = async (
           .aggregate([
             {
               $match: {
-                gamingLocation: location._id,
+                gamingLocation: locationIdStr, // Use string, not ObjectId
                 $or: [
                   { deletedAt: null },
                   { deletedAt: { $lt: new Date('2020-01-01') } },

@@ -1,5 +1,19 @@
+/**
+ * Password Utilities
+ *
+ * Utility functions for password hashing and comparison.
+ *
+ * Features:
+ * - Password hashing with bcrypt
+ * - Password comparison
+ * - Secure password handling
+ */
+
 import bcrypt from 'bcryptjs';
 
+// ============================================================================
+// Password Hashing Functions
+// ============================================================================
 /**
  * Hashes a password using bcryptjs.
  * @param password - The plain text password to hash.
@@ -10,6 +24,9 @@ export async function hashPassword(password: string): Promise<string> {
   return await bcrypt.hash(password, saltRounds);
 }
 
+// ============================================================================
+// Password Comparison Functions
+// ============================================================================
 /**
  * Compares a plain text password to a hashed password.
  * @param password - The plain text password.

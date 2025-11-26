@@ -1,7 +1,7 @@
 # Auditing and Logging Standards
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 3, 2025
+**Last Updated:** November 22, 2025
 
 ## Overview
 
@@ -19,29 +19,45 @@ Comprehensive auditing and logging are essential for casino management systems d
 ### Log Format
 
 ```
-[timestamp] [level] (duration) METHOD endpoint: message [context]
+[timestamp] [level] [METHOD endpoint] duration - message [context]
 ```
 
 ### Example Implementation
 
 ```typescript
-import { APILogger } from '@/app/api/lib/utils/logger';
+import { apiLogger } from '@/app/api/lib/utils/logger';
 
 export async function GET(request: NextRequest) {
-  const logger = new APILogger('GET', '/api/users');
+  const context = apiLogger.createContext(request, '/api/users');
+  apiLogger.startLogging();
 
   try {
     const users = await getUsersFromDatabase();
-    logger.success('Users retrieved successfully', { count: users.length });
+    apiLogger.logSuccess(context, 'Users retrieved successfully', { count: users.length });
     return NextResponse.json({ users });
   } catch (error) {
-    logger.error('Failed to retrieve users', { error: error.message });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    apiLogger.logError(context, 'Failed to retrieve users', errorMessage);
     return NextResponse.json(
       { error: 'Failed to retrieve users' },
       { status: 500 }
     );
   }
 }
+```
+
+### Alternative: Using withLogging Decorator
+
+```typescript
+import { withLogging } from '@/app/api/lib/utils/logger';
+
+export const GET = withLogging(
+  async (request: NextRequest) => {
+    const users = await getUsersFromDatabase();
+    return NextResponse.json({ users });
+  },
+  '/api/users'
+);
 ```
 
 ## Activity Logging Requirements
@@ -200,4 +216,4 @@ type APILog = {
 
 ---
 
-**Last Updated:** October 29th, 2025
+**Last Updated:** November 22, 2025

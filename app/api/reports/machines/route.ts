@@ -1,21 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Machines Report API Route
+ *
+ * This route handles fetching machine reports with various filtering options.
+ * It supports:
+ * - Multiple report types (overview, stats, all, offline)
+ * - Time period filtering (today, week, month, custom dates)
+ * - Licensee filtering
+ * - Location filtering
+ * - Online/offline status filtering
+ * - Search functionality
+ * - Currency conversion (Admin/Developer only for "All Licensees")
+ * - Pagination
+ *
+ * @module app/api/reports/machines/route
+ */
+
+import { TimePeriod } from '@/app/api/lib/types';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
-import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { Db, Document } from 'mongodb';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
-// Removed auto-index creation to avoid conflicts and extra latency
+import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching machines report
+ *
+ * Flow:
+ * 1. Parse query parameters (type, timePeriod, licensee, location, search, etc.)
+ * 2. Validate timePeriod parameter
+ * 3. Parse custom dates if provided
+ * 4. Connect to database
+ * 5. Authenticate user and check admin/dev role
+ * 6. Build machine and location match filters
+ * 7. Route to appropriate handler based on type
+ * 8. Return machine report data
+ */
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type'); // 'overview', 'stats', 'all', 'offline'
     const timePeriod = searchParams.get('timePeriod') as TimePeriod;
 
-    // Only proceed if timePeriod is provided - no fallback
+    // ============================================================================
+    // STEP 2: Validate timePeriod parameter
+    // ============================================================================
     if (!timePeriod) {
       return NextResponse.json(
         { error: 'timePeriod parameter is required' },
@@ -24,18 +60,21 @@ export async function GET(req: NextRequest) {
     }
 
     const licencee = searchParams.get('licencee') || undefined;
-    const onlineStatus = searchParams.get('onlineStatus') || 'all'; // New parameter for online/offline filtering
-    const searchTerm = searchParams.get('search'); // Extract search parameter
-    const locationId = searchParams.get('locationId'); // Extract locationId parameter
+    const onlineStatus = searchParams.get('onlineStatus') || 'all';
+    const searchTerm = searchParams.get('search');
+    const locationId = searchParams.get('locationId');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     // Pagination parameters for overview
     const page = parseInt(searchParams.get('page') || '1');
     const requestedLimit = parseInt(searchParams.get('limit') || '10');
-    const limit = Math.min(requestedLimit, 50); // Allow up to 50 items per batch for batch-based pagination
+    const limit = Math.min(requestedLimit, 50);
     const skip = (page - 1) * limit;
 
+    // ============================================================================
+    // STEP 3: Parse custom dates if provided
+    // ============================================================================
     let startDate: Date | undefined, endDate: Date | undefined;
 
     if (timePeriod === 'Custom') {
@@ -76,6 +115,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -84,7 +126,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get user for role-based access control
+    // ============================================================================
+    // STEP 5: Authenticate user and check admin/dev role
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -93,10 +137,9 @@ export async function GET(req: NextRequest) {
     const userRoles = (userPayload?.roles as string[]) || [];
     const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
 
-    // Ensure indexes are created for optimal performance
-    // Do not auto-create indexes on every request
-
-    // Build machine filter for all queries
+    // ============================================================================
+    // STEP 6: Build machine and location match filters
+    // ============================================================================
     const machineMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
@@ -153,7 +196,9 @@ export async function GET(req: NextRequest) {
       locationMatchStage['rel.licencee'] = licencee;
     }
 
-    // Route to appropriate handler based on type
+    // ============================================================================
+    // STEP 7: Route to appropriate handler based on type
+    // ============================================================================
     switch (type) {
       case 'stats':
         return await getMachineStats(
@@ -205,10 +250,12 @@ export async function GET(req: NextRequest) {
           endDate
         );
     }
-  } catch (err) {
-    console.error('Error in reports machines route:', err);
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error(`[Reports Machines API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Server Error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

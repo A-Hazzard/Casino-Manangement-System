@@ -1,3 +1,18 @@
+/**
+ * Machines/Cabinets Page
+ *
+ * Main page for managing machines/cabinets with multiple sections and filtering.
+ *
+ * Features:
+ * - Cabinets section: View, create, edit, and delete cabinets
+ * - Movement Requests section: Manage cabinet movement requests
+ * - SMIB Management section: Manage SMIB devices
+ * - Firmware section: Manage SMIB firmware
+ * - Search and filter capabilities
+ * - Batch-based pagination for performance
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -50,7 +65,14 @@ import { CABINET_TABS_CONFIG } from '@/lib/constants/cabinets';
 import { IMAGES } from '@/lib/constants/images';
 // Removed unused Cabinet type import
 
+/**
+ * Machines/Cabinets Page Content Component
+ * Handles all state management and data fetching for the machines/cabinets page
+ */
 function CabinetsPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const {
     selectedLicencee,
     setSelectedLicencee,
@@ -60,7 +82,9 @@ function CabinetsPageContent() {
 
   const { displayCurrency } = useCurrencyFormat();
 
-  // Custom hooks for cabinet functionality
+  // ============================================================================
+  // Custom Hooks
+  // ============================================================================
   const {
     isNewMovementRequestModalOpen,
     isUploadSmibDataModalOpen,
@@ -79,9 +103,11 @@ function CabinetsPageContent() {
     setSelectedStatus,
   } = useCabinetFilters();
 
-  // Custom hooks for data management
   const user = useUserStore(state => state.user);
 
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   // Check if current user is a developer
   const isDeveloper = useMemo(() => {
     const userRoles = user?.roles || [];
@@ -140,10 +166,16 @@ function CabinetsPageContent() {
 
   const { activeSection, handleSectionChange } = useCabinetNavigation();
 
+  // ============================================================================
+  // State Management
+  // ============================================================================
   const [movementRefreshTrigger, setMovementRefreshTrigger] = useState(0);
   const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
   const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
 
+  // ============================================================================
+  // Computed Values - UI State
+  // ============================================================================
   const showLocationFilter =
     new Set(locations.map(location => String(location._id ?? ''))).size > 1;
 
@@ -182,12 +214,18 @@ function CabinetsPageContent() {
     setSelectedGameType(gameType);
   };
 
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   // Sort change handler
   const handleSortChange = (_option: string, _order: 'asc' | 'desc') => {
     // This will be handled by the useCabinetSorting hook
     // Sort logic is managed by the hook
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Modal Components */}

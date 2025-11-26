@@ -1,8 +1,21 @@
+/**
+ * User Table Skeleton Component
+ * Loading skeleton for user table on desktop view.
+ *
+ * Features:
+ * - Matches UserTable layout structure
+ * - 8 skeleton rows
+ * - 5 columns (NAME, USERNAME, EMAIL ADDRESS, ENABLED, ACTIONS)
+ * - Responsive design
+ */
 'use client';
 
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UserTableSkeleton() {
+  // ============================================================================
+  // Render - Table Skeleton
+  // ============================================================================
   return (
     <div className="mt-6 overflow-x-auto">
       <table className="min-w-full rounded-lg bg-white shadow-md">

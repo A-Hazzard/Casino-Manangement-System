@@ -1,10 +1,24 @@
+/**
+ * Feedback API Route
+ *
+ * This route handles feedback submission and retrieval.
+ * It supports:
+ * - Feedback submission with validation
+ * - User authentication and identification
+ * - Activity logging for feedback creation
+ * - Admin-only feedback retrieval with filtering
+ * - Pagination and sorting
+ *
+ * @module app/api/feedback/route
+ */
+
 import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { FeedbackModel } from '@/app/api/lib/models/feedback';
-import { generateMongoId } from '@/lib/utils/id';
 import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipDetection';
+import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -27,10 +41,31 @@ const feedbackSchema = z.object({
     .max(5000, 'Feedback description cannot exceed 5000 characters'),
 });
 
+/**
+ * Main POST handler for submitting feedback
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request body
+ * 3. Validate email or username requirement
+ * 4. Get logged-in user info if available
+ * 5. Generate feedback ID
+ * 6. Create feedback entry
+ * 7. Log activity for feedback creation
+ * 8. Return success response
+ */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
     const body = await request.json();
     const validationResult = feedbackSchema.safeParse(body);
 
@@ -48,7 +83,9 @@ export async function POST(request: NextRequest) {
     const { email, username, userId, category, description } =
       validationResult.data;
 
-    // Validate that at least email or username is provided
+    // ============================================================================
+    // STEP 3: Validate email or username requirement
+    // ============================================================================
     if (!email && !username) {
       return NextResponse.json(
         {
@@ -59,7 +96,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try to get logged-in user info if userId is provided
+    // ============================================================================
+    // STEP 4: Get logged-in user info if available
+    // ============================================================================
     let loggedInUser = null;
     if (userId) {
       try {
@@ -80,11 +119,16 @@ export async function POST(request: NextRequest) {
       ? String(loggedInUser._id)
       : userId || null;
 
-    // Generate unique ID for feedback
+    // ============================================================================
+    // STEP 5: Generate feedback ID
+    // ============================================================================
     const feedbackId =
       new Date().getTime().toString() +
       Math.random().toString(36).substring(2, 9);
 
+    // ============================================================================
+    // STEP 6: Create feedback entry
+    // ============================================================================
     const feedback = new FeedbackModel({
       _id: feedbackId,
       email: finalEmail.toLowerCase().trim(),
@@ -99,7 +143,130 @@ export async function POST(request: NextRequest) {
 
     await feedback.save();
 
-    // Log activity - user submitted feedback
+    // ============================================================================
+    // STEP 7: Send email notification via SendGrid
+    // ============================================================================
+    try {
+      const { sendEmail } = await import('@/app/api/lib/utils/email');
+      const emailUser = process.env.EMAIL_USER || '';
+      
+      if (emailUser) {
+        const categoryLabels: Record<string, string> = {
+          bug: '🐛 Bug Report',
+          suggestion: '💡 Suggestion',
+          'general-review': '⭐ General Review',
+          'feature-request': '✨ Feature Request',
+          performance: '⚡ Performance Issue',
+          'ui-ux': '🎨 UI/UX Feedback',
+          other: '📝 Other',
+        };
+
+        const categoryLabel = categoryLabels[category] || category;
+        const submitterEmail = finalEmail;
+        const submitterName = finalUsername || finalEmail;
+        const subject = `New Feedback: ${categoryLabel} from ${submitterName}`;
+        
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Feedback Submission</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #ECF0F9;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #ECF0F9; padding: 20px;">
+    <tr>
+      <td align="center" style="padding: 20px 0;">
+        <table role="presentation" style="width: 100%; max-width: 600px; background-color: #FFFFFF; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #5119E9; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+              <h1 style="margin: 0; color: #FFFFFF; font-size: 24px; font-weight: 600;">New Feedback Submission</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 32px 24px;">
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <!-- Category -->
+                <tr>
+                  <td style="padding-bottom: 16px;">
+                    <strong style="color: #707070; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Category</strong>
+                    <p style="margin: 8px 0 0 0; color: #1F2937; font-size: 16px; font-weight: 500;">${categoryLabel}</p>
+                  </td>
+                </tr>
+                
+                <!-- From -->
+                <tr>
+                  <td style="padding-bottom: 16px;">
+                    <strong style="color: #707070; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">From</strong>
+                    <p style="margin: 8px 0 0 0; color: #1F2937; font-size: 16px;">${submitterName}</p>
+                    <p style="margin: 4px 0 0 0; color: #6B7280; font-size: 14px;">${submitterEmail}</p>
+                    ${finalUserId ? `<p style="margin: 4px 0 0 0; color: #6B7280; font-size: 14px;">User ID: ${finalUserId}</p>` : ''}
+                  </td>
+                </tr>
+                
+                <!-- Submitted At -->
+                <tr>
+                  <td style="padding-bottom: 24px;">
+                    <strong style="color: #707070; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Submitted</strong>
+                    <p style="margin: 8px 0 0 0; color: #1F2937; font-size: 16px;">${new Date(feedback.submittedAt).toLocaleString()}</p>
+                  </td>
+                </tr>
+                
+                <!-- Description -->
+                <tr>
+                  <td style="padding-top: 24px; border-top: 2px solid #E5E7EB;">
+                    <strong style="color: #707070; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Description</strong>
+                    <div style="margin-top: 16px; padding: 16px; background-color: #F9FAFB; border-radius: 6px; border-left: 4px solid #5119E9;">
+                      <p style="margin: 0; color: #1F2937; font-size: 15px; line-height: 1.6; white-space: pre-wrap;">${description.trim()}</p>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px; background-color: #F9FAFB; border-radius: 0 0 8px 8px; border-top: 1px solid #E5E7EB; text-align: center;">
+              <p style="margin: 0; color: #6B7280; font-size: 12px;">This is an automated notification from Evolution CMS</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+        `;
+
+        const text = `New Feedback Submission
+
+Category: ${categoryLabel}
+From: ${submitterName}
+Email: ${submitterEmail}
+${finalUserId ? `User ID: ${finalUserId}\n` : ''}Submitted: ${new Date(feedback.submittedAt).toLocaleString()}
+
+Description:
+${description.trim()}
+
+---
+This is an automated notification from Evolution CMS
+        `;
+
+        await sendEmail(emailUser, subject, text, html, submitterEmail);
+      }
+    } catch (emailError) {
+      console.error('Error sending feedback email notification:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    // ============================================================================
+    // STEP 8: Log activity for feedback creation
+    // ============================================================================
     try {
       const ipInfo = getIPInfo(request);
       const formattedIP = formatIPForDisplay(ipInfo);
@@ -146,6 +313,14 @@ export async function POST(request: NextRequest) {
       // Don't fail the request if logging fails
     }
 
+    // ============================================================================
+    // STEP 9: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Feedback API] POST completed in ${duration}ms`);
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -155,22 +330,43 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error submitting feedback:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Failed to submit feedback. Please try again later.';
+    console.error(`[Feedback API] POST error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to submit feedback. Please try again later.',
+        error: errorMessage,
       },
       { status: 500 }
     );
   }
 }
 
+/**
+ * Main GET handler for fetching feedback (Admin only)
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Authenticate user
+ * 3. Check admin/developer role
+ * 4. Parse query parameters (filters, pagination)
+ * 5. Build query filter
+ * 6. Fetch feedback with pagination
+ * 7. Return paginated feedback list
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Check if user is admin or developer
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (!currentUser) {
       return NextResponse.json(
@@ -179,6 +375,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Check admin/developer role
+    // ============================================================================
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
       userRoles.includes('admin') || userRoles.includes('developer');
@@ -190,6 +389,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const emailFilter = searchParams.get('email') || '';
     const categoryFilter = searchParams.get('category') || '';
@@ -234,16 +436,24 @@ export async function GET(request: NextRequest) {
       query.archived = { $ne: true };
     }
 
-    // Get total count for pagination
+    // ============================================================================
+    // STEP 6: Fetch feedback with pagination
+    // ============================================================================
     const totalCount = await FeedbackModel.countDocuments(query);
-
-    // Fetch feedback with pagination
     const feedback = await FeedbackModel.find(query)
       .sort({ submittedAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean()
       .exec();
+
+    // ============================================================================
+    // STEP 7: Return paginated feedback list
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Feedback API] GET completed in ${duration}ms`);
+    }
 
     return NextResponse.json(
       {
@@ -582,7 +792,8 @@ export async function PUT(request: NextRequest) {
     }
 
     // Force re-read to verify persistence
-    const verifiedDoc = await FeedbackModel.findById(_id).lean();
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const verifiedDoc = await FeedbackModel.findOne({ _id }).lean();
     const verifiedData = verifiedDoc as { archived?: boolean };
 
     console.log('💾 VERIFICATION POST-UPDATE:', {
@@ -807,3 +1018,4 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+

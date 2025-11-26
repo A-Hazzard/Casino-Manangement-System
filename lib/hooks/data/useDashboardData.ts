@@ -38,6 +38,10 @@ type UseDashboardDataReturn = {
 export const useDashboardData = ({
   selectedLicencee,
 }: Pick<UseDashboardDataProps, 'selectedLicencee'>): UseDashboardDataReturn => {
+  // ============================================================================
+  // Store State
+  // ============================================================================
+
   // Get store state and actions
   const {
     loadingChartData,

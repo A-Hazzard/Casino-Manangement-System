@@ -1,3 +1,20 @@
+/**
+ * Licencee Select Component
+ * Dropdown select component for choosing a licensee with filtering support.
+ *
+ * Features:
+ * - Licensee selection dropdown
+ * - Licensee data fetching
+ * - User licensee filtering (for non-admin users)
+ * - Loading states
+ * - Disabled state support
+ * - "All Licensees" option
+ *
+ * @param selected - Currently selected licensee ID
+ * @param onChange - Callback when licensee selection changes
+ * @param disabled - Whether the select is disabled
+ * @param userLicenseeIds - Array of licensee IDs user has access to (for filtering)
+ */
 'use client';
 
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';

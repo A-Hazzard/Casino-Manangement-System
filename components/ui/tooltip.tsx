@@ -1,8 +1,23 @@
+/**
+ * Tooltip Components
+ * Reusable tooltip component using Radix UI primitives.
+ *
+ * Features:
+ * - TooltipProvider for global tooltip configuration
+ * - Tooltip root, trigger, content components
+ * - Positional alignment
+ * - Smooth animations
+ * - Accessible implementation
+ */
 'use client';
 
 import * as React from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Tooltip Components
+// ============================================================================
 
 const TooltipProvider = TooltipPrimitive.Provider;
 const Tooltip = TooltipPrimitive.Root;

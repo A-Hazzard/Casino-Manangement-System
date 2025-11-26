@@ -1,6 +1,17 @@
+/**
+ * Player Totals Card Skeleton Component
+ * Loading skeleton for player totals card component.
+ *
+ * Features:
+ * - Matches PlayerTotalsCard layout structure
+ * - Header, stats, and toggle button skeletons
+ */
 import React from 'react';
 
 export default function PlayerTotalsCardSkeleton() {
+  // ============================================================================
+  // Render - Skeleton
+  // ============================================================================
   return (
     <div className="mb-6 rounded-lg bg-white p-4 shadow-md sm:p-6">
       <div className="flex items-center justify-between">

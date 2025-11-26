@@ -35,10 +35,22 @@ import {
 import type { MembersView } from '@/shared/types/entities';
 
 /**
- * Main content component for the members page
- * Handles layout, navigation, and tab rendering
+ * Members Content Component
+ * Main content component for the members page with tab navigation and layout.
+ *
+ * Features:
+ * - Tab-based navigation (Members List, Summary)
+ * - Licensee selection integration
+ * - Tab content rendering with suspense
+ * - Loading skeletons
+ * - Framer Motion animations
+ * - Access control
+ * - Responsive layout
  */
 export default function MembersContent() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   // All authenticated users have access to members

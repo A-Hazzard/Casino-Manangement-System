@@ -1,31 +1,56 @@
+/**
+ * Update Machine Config API Route
+ *
+ * This route handles updating machine SMIB configuration by relayId.
+ * It supports:
+ * - Finding machine by relayId
+ * - Updating SMIB configuration and version
+ * - Activity logging
+ *
+ * @module app/api/mqtt/update-machine-config/route
+ */
+
 import {
-    calculateChanges,
-    logActivity,
+  calculateChanges,
+  logActivity,
 } from '@/app/api/lib/helpers/activityLogger';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Machine } from '@/app/api/lib/models/machines';
+import {
+  buildMachineConfigUpdateFields,
+  findMachineByRelayId,
+  getLocationName,
+  updateMachineConfiguration,
+} from '@/app/api/lib/helpers/machineConfig';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { connectDB } from '../../lib/middleware/db';
 
 /**
- * POST /api/mqtt/update-machine-config
- * Update machine configuration by relayId
- * Used by SMIB Management to update database after MQTT update
+ * Main POST handler for updating machine configuration
+ *
+ * Flow:
+ * 1. Parse and validate request body
+ * 2. Connect to database
+ * 3. Find machine by relayId
+ * 4. Get location for logging
+ * 5. Build update fields
+ * 6. Update machine configuration
+ * 7. Log activity
+ * 8. Return success response
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
-    await connectDB();
-
+    // ============================================================================
+    // STEP 1: Parse and validate request body
+    // ============================================================================
     const body = await request.json();
-    const { relayId, smibConfig, smibVersion } = body;
-
-    console.log('🔧 [UPDATE MACHINE CONFIG] Request:', {
-      relayId,
-      hasSmibConfig: !!smibConfig,
-      hasSmibVersion: !!smibVersion,
-    });
+    const { relayId, smibConfig, smibVersion } = body as {
+      relayId?: string;
+      smibConfig?: Record<string, unknown>;
+      smibVersion?: Record<string, unknown>;
+    };
 
     if (!relayId) {
       return NextResponse.json(
@@ -34,11 +59,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find machine by relayId
-    const machine = await Machine.findOne({
-      $or: [{ relayId }, { smibBoard: relayId }],
-    });
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    await connectDB();
 
+    // ============================================================================
+    // STEP 3: Find machine by relayId
+    // ============================================================================
+    const machine = await findMachineByRelayId(relayId);
     if (!machine) {
       return NextResponse.json(
         { success: false, error: 'Machine not found with this relayId' },
@@ -46,40 +75,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get location for logging
-    const location = machine.gamingLocation
-      ? await GamingLocations.findById(machine.gamingLocation)
-      : null;
-
-    // Store original data for change tracking
-    const originalMachine = machine.toObject();
-
-    // Build update object
-    const updateFields: Record<string, unknown> = {
-      updatedAt: new Date(),
+    // Type assertion for machine document
+    const machineDoc = machine as Awaited<ReturnType<typeof findMachineByRelayId>> & {
+      gamingLocation?: unknown;
+      _id: { toString: () => string };
+      serialNumber?: string;
+      game?: string;
+      smibConfig?: Record<string, unknown>;
+      smibVersion?: Record<string, unknown>;
+      toObject?: () => Record<string, unknown>;
     };
 
-    // Update SMIB configuration if provided
-    if (smibConfig !== undefined) {
-      updateFields.smibConfig = {
-        ...machine.smibConfig,
-        ...smibConfig,
-      };
-    }
+    // ============================================================================
+    // STEP 4: Get location for logging
+    // ============================================================================
+    const locationName = await getLocationName(machineDoc.gamingLocation);
 
-    // Update SMIB version if provided
-    if (smibVersion !== undefined) {
-      updateFields.smibVersion = {
-        ...machine.smibVersion,
-        ...smibVersion,
-      };
-    }
+    // ============================================================================
+    // STEP 5: Build update fields
+    // ============================================================================
+    const originalMachine = machineDoc.toObject 
+      ? machineDoc.toObject() 
+      : JSON.parse(JSON.stringify(machineDoc));
+    const updateFields = buildMachineConfigUpdateFields(
+      machineDoc,
+      smibConfig,
+      smibVersion
+    );
 
-    // Update the machine
-    const updatedMachine = await Machine.findByIdAndUpdate(
-      machine._id,
-      updateFields,
-      { new: true, runValidators: true }
+    // ============================================================================
+    // STEP 6: Update machine configuration
+    // ============================================================================
+    const updatedMachine = await updateMachineConfiguration(
+      machineDoc._id.toString(),
+      updateFields
     );
 
     if (!updatedMachine) {
@@ -89,7 +118,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
+    // ============================================================================
+    // STEP 7: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -98,9 +129,9 @@ export async function POST(request: NextRequest) {
         await logActivity({
           action: 'UPDATE',
           details: `Updated SMIB configuration for machine "${
-            machine.serialNumber || machine.game
+            machineDoc.serialNumber || machineDoc.game || 'Unknown'
           }" (relayId: ${relayId})${
-            location ? ` in location "${location.name}"` : ''
+            locationName ? ` in location "${locationName}"` : ''
           }`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
@@ -109,8 +140,8 @@ export async function POST(request: NextRequest) {
             userEmail: currentUser.emailAddress as string,
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'machine',
-            resourceId: machine._id.toString(),
-            resourceName: machine.serialNumber || machine.game,
+            resourceId: machineDoc._id.toString(),
+            resourceName: machineDoc.serialNumber || machineDoc.game || 'Unknown',
             relayId,
             changes,
             source: 'smib-management-tab',
@@ -121,21 +152,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(
-      `✅ [UPDATE MACHINE CONFIG] Successfully updated machine ${machine._id} via relayId ${relayId}`
-    );
-
+    // ============================================================================
+    // STEP 8: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[MQTT Update Machine Config API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       data: updatedMachine,
-      machineId: updatedMachine._id.toString(),
+      machineId: updatedMachine 
+        ? (updatedMachine as { _id: { toString: () => string } })._id.toString() 
+        : machineDoc._id.toString(),
     });
   } catch (error) {
-    console.error('❌ [UPDATE MACHINE CONFIG] Error:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Update Machine Config API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       },
       { status: 500 }
     );

@@ -1,18 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Meters } from '@/app/api/lib/models/meters';
-import { subDays } from 'date-fns';
-import mongoose, { PipelineStage } from 'mongoose';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import { convertFromUSD } from '@/lib/helpers/rates';
-import type { CurrencyCode } from '@/shared/types/currency';
+/**
+ * Analytics Charts API Route
+ *
+ * This route handles fetching chart data for analytics visualization.
+ * It supports:
+ * - Filtering by licensee
+ * - Time period filtering (last7days, last30days)
+ * - Currency conversion for multi-licensee views
+ * - Daily aggregation of financial metrics (drop, cancelled credits, gross)
+ *
+ * @module app/api/analytics/charts/route
+ */
 
+import { getChartsData } from '@/app/api/lib/helpers/analytics';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for fetching charts data
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request parameters (licensee, period, currency)
+ * 3. Execute the core charts data fetching logic via `getChartsData` helper
+ * 4. Return chart series data with currency information
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get('licensee');
-    const period = searchParams.get('period') ?? 'last30days';
+    const period =
+      (searchParams.get('period') as 'last7days' | 'last30days') ||
+      'last30days';
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
@@ -23,133 +52,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let startDate: Date;
-    const endDate = new Date();
-    const licenseeId = new mongoose.Types.ObjectId(licensee);
+    // ============================================================================
+    // STEP 3: Execute the core charts data fetching logic via helper
+    // ============================================================================
+    const chartsData = await getChartsData(licensee, period, displayCurrency);
 
-    if (period === 'last7days') {
-      startDate = subDays(endDate, 7);
-    } else {
-      startDate = subDays(endDate, 30);
+    // ============================================================================
+    // STEP 4: Return chart series data with currency information
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Analytics Charts GET API] Completed in ${duration}ms`);
     }
 
-    const chartsPipeline: PipelineStage[] = [
-      // Stage 1: Filter meter records by date range
-      {
-        $match: {
-          readAt: { $gte: startDate, $lte: endDate },
-        },
-      },
-
-      // Stage 2: Join meters with machines to get machine details
-      {
-        $lookup: {
-          from: 'machines',
-          localField: 'machine',
-          foreignField: '_id',
-          as: 'machineDetails',
-        },
-      },
-
-      // Stage 3: Flatten the machine details array (each meter now has machine info)
-      {
-        $unwind: '$machineDetails',
-      },
-
-      // Stage 4: Join with gaming locations to get location details
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'machineDetails.gamingLocation',
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
-      },
-
-      // Stage 5: Flatten the location details array (each meter now has location info)
-      {
-        $unwind: '$locationDetails',
-      },
-
-      // Stage 6: Filter by licensee to get only relevant meters
-      {
-        $match: {
-          'locationDetails.licensee': licenseeId,
-        },
-      },
-
-      // Stage 7: Group by date to aggregate daily financial metrics
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$readAt' } },
-          totalDrop: { $sum: { $ifNull: ['$drop', 0] } },
-          cancelledCredits: {
-            $sum: { $ifNull: ['$totalCancelledCredits', 0] },
-          },
-          gross: {
-            $sum: {
-              $subtract: [
-                { $ifNull: ['$drop', 0] },
-                { $ifNull: ['$totalCancelledCredits', 0] },
-              ],
-            },
-          },
-        },
-      },
-
-      // Stage 8: Sort by date for chronological order
-      {
-        $sort: { _id: 1 },
-      },
-
-      // Stage 9: Project final chart data structure
-      {
-        $project: {
-          _id: 0,
-          date: '$_id',
-          totalDrop: '$totalDrop',
-          cancelledCredits: '$cancelledCredits',
-          gross: '$gross',
-        },
-      },
-    ];
-
-    const series = await Meters.aggregate(chartsPipeline);
-
-    // Apply currency conversion if needed
-    let convertedSeries = series;
-
-    if (shouldApplyCurrencyConversion(licensee)) {
-      console.warn(
-        '🔍 ANALYTICS CHARTS - Applying currency conversion for All Licensee mode'
-      );
-      // Convert financial fields from USD to display currency
-      const financialFields = ['totalDrop', 'cancelledCredits', 'gross'];
-      convertedSeries = series.map((item: Record<string, unknown>) => {
-        const convertedItem = { ...item };
-        financialFields.forEach(field => {
-          if (typeof item[field] === 'number') {
-            (convertedItem as Record<string, unknown>)[field] = convertFromUSD(
-              item[field] as number,
-              displayCurrency
-            );
-          }
-        });
-        return convertedItem;
-      });
-    }
-
-    return NextResponse.json({
-      series: convertedSeries,
-      currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licensee),
-    });
-  } catch (error) {
-    console.error('Error fetching chart data:', error);
+    return NextResponse.json(chartsData);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Analytics Charts GET API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         message: 'Failed to fetch chart data',
-        error: (error as Error).message,
+        error: errorMessage,
       },
       { status: 500 }
     );

@@ -1,3 +1,17 @@
+/**
+ * Top Performing Metrics Helper Functions
+ *
+ * Provides helper functions for fetching top-performing locations or machines (Cabinets)
+ * based on total moneyIn (drop). It uses MongoDB aggregation pipelines to calculate
+ * performance metrics and return the top 5 performers.
+ *
+ * Features:
+ * - Fetches top 5 performing locations or machines based on total drop.
+ * - Supports time period filtering (7d, 30d, etc.).
+ * - Uses MongoDB aggregation pipelines for efficient data processing.
+ * - Includes location and machine details via lookups.
+ */
+
 import { Db } from 'mongodb';
 import { getDatesForTimePeriod } from '../utils/dates';
 import {
@@ -7,7 +21,15 @@ import {
   CustomDate,
 } from '@/lib/types/api';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
 type ActiveTab = 'locations' | 'Cabinets';
+
+// ============================================================================
+// Top Performing Metrics Fetching
+// ============================================================================
 
 /**
  * Fetches the top 5 performing locations or Cabinets based on total moneyIn (drop).
@@ -38,6 +60,10 @@ export async function getTopPerformingMetrics(
 
   return db.collection('meters').aggregate(aggregationQuery).toArray();
 }
+
+// ============================================================================
+// Aggregation Pipeline Builders
+// ============================================================================
 
 /**
  * Aggregates meters for the top 5 performing locations.

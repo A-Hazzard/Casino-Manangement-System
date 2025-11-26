@@ -1,3 +1,18 @@
+/**
+ * Locations Page
+ *
+ * Displays and manages gaming locations with filtering, sorting, and pagination.
+ *
+ * Features:
+ * - Location listing with card (mobile) and table (desktop) views
+ * - Search and filter by SMIB status
+ * - Financial metrics overview
+ * - Machine status widget
+ * - Create, edit, and delete locations (role-based)
+ * - Batch loading for performance
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -15,7 +30,7 @@ import { LocationFilter } from '@/lib/types/location';
 import { formatCurrency } from '@/lib/utils/number';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { Plus, PlusCircle, RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import PageLayout from '@/components/layout/PageLayout';
 
@@ -43,12 +58,22 @@ import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import { useUserStore } from '@/lib/store/userStore';
 import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
+import { DashboardTotals } from '@/lib/types';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import { AggregatedLocation } from '@/shared/types/common';
 import Image from 'next/image';
 
+/**
+ * Locations Page Content Component
+ * Handles all state management and data fetching for the locations page
+ */
 function LocationsPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const { handleApiCallWithRetry: _handleApiCallWithRetry } =
     useGlobalErrorHandler();
   const {
@@ -58,20 +83,34 @@ function LocationsPageContent() {
     customDateRange,
   } = useDashBoardStore();
   const user = useUserStore(state => state.user);
-  const licenseeName =
-    getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
-
   const { openEditModal } = useLocationActionsStore();
+  const { displayCurrency } = useCurrencyFormat();
 
+  // ============================================================================
+  // State Management
+  // ============================================================================
   const [selectedFilters, setSelectedFilters] = useState<LocationFilter[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [accumulatedLocations, setAccumulatedLocations] = useState<
+    AggregatedLocation[]
+  >([]);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
+  
+  // Separate state for metrics totals (from dedicated API call)
+  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(null);
+  const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 
-  // Refs for animations
-  const tableRef = useRef<HTMLDivElement>(null);
-  const cardsRef = useRef<HTMLDivElement>(null);
+  // ============================================================================
+  // Constants
+  // ============================================================================
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
 
-  // Custom hooks for data management
+  // ============================================================================
+  // Custom Hooks - Data Management
+  // ============================================================================
   const {
     locationData,
     loading,
@@ -81,62 +120,36 @@ function LocationsPageContent() {
     totalCount,
     fetchBatch,
   } = useLocationData({
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    searchTerm,
-    selectedFilters,
-  });
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      searchTerm,
+      selectedFilters,
+    });
 
-  // Track accumulated locations from multiple batches
-  const [accumulatedLocations, setAccumulatedLocations] = useState<
-    AggregatedLocation[]
-  >([]);
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
+  // ============================================================================
+  // Refs
+  // ============================================================================
+  const tableRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const lastLocationDataRef = useRef<AggregatedLocation[]>([]);
+  const isResettingRef = useRef(false);
+
+  // ============================================================================
+  // Computed Values & Utilities
+  // ============================================================================
+  const licenseeName =
+    getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
   // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
-  const calculateBatchNumber = (page: number) => {
+  const calculateBatchNumber = useCallback((page: number) => {
     return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
-  };
+  }, [itemsPerBatch, itemsPerPage]);
 
-  // Reset to default view when search is cleared (moved after setCurrentPage declaration)
-
-  // Initialize: fetch first batch on mount and when filters change (excluding searchTerm)
-  // Search is handled internally by useLocationData hook with debouncing
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      // Reset accumulated data when filters change
-      setAccumulatedLocations([]);
-      setLoadedBatches(new Set());
-      fetchData(1, itemsPerBatch);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    selectedFilters,
-    // Note: searchTerm is NOT in dependencies - it's handled by useLocationData hook with debouncing
-  ]);
-
-  // Update accumulated locations when new data arrives
-  useEffect(() => {
-    if (locationData.length > 0 && !searchTerm.trim()) {
-      setAccumulatedLocations(prev => {
-        // Merge with existing, avoiding duplicates
-        const existingIds = new Set(prev.map(loc => loc._id));
-        const newLocations = locationData.filter(
-          loc => !existingIds.has(loc._id)
-        );
-        return [...prev, ...newLocations];
-      });
-    } else if (searchTerm.trim()) {
-      // For search, use the data directly
-      setAccumulatedLocations(locationData);
-    }
-  }, [locationData, searchTerm]);
+  // Memoize selectedFilters string to avoid recreating on every render
+  const selectedFiltersKey = useMemo(() => {
+    return JSON.stringify(selectedFilters);
+  }, [selectedFilters]);
 
   // Check if current user is a developer
   const isDeveloper = useMemo(() => {
@@ -146,16 +159,7 @@ function LocationsPageContent() {
     );
   }, [user?.roles]);
 
-  // Note: isCollector is not currently used but kept for future use
-  // const isCollector = useMemo(() => {
-  //   const userRoles = user?.roles || [];
-  //   return userRoles.some(
-  //     role => typeof role === 'string' && role.toLowerCase() === 'collector'
-  //   );
-  // }, [user?.roles]);
-
   // Only managers, admins, developers, and location admins can create/edit/delete locations
-  // Collectors and technicians cannot manage locations
   const canManageLocations = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
@@ -185,7 +189,9 @@ function LocationsPageContent() {
     });
   }, [locationsForPagination, isDeveloper]);
 
-  // Custom hooks for additional functionality
+  // ============================================================================
+  // Custom Hooks - Additional Functionality
+  // ============================================================================
   const { machineStats, machineStatsLoading } = useLocationMachineStats();
 
   const {
@@ -196,18 +202,26 @@ function LocationsPageContent() {
     handleTableAction,
   } = useLocationModals();
 
-  // Use a single currentPage state managed at the page level
-  const [currentPage, setCurrentPage] = useState(0);
-
   const { sortOrder, sortOption, handleColumnSort, totalPages, currentItems } =
     useLocationSorting({
     locationData: filteredLocationData,
     selectedFilters,
-    currentPage, // Pass currentPage from page state
+    currentPage,
     totalCount: searchTerm.trim() ? undefined : totalCount,
     itemsPerPage,
   });
 
+  // Calculate financial totals from location data (for backward compatibility, but metrics cards use metricsTotals)
+  const financialTotals = calculateLocationFinancialTotals(
+    accumulatedLocations.length > 0 ? accumulatedLocations : locationData
+  );
+
+  // Show loading state for search
+  const isLoading = loading || searchLoading;
+
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   // Handler for refresh button
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -215,12 +229,77 @@ function LocationsPageContent() {
     setRefreshing(false);
   };
 
-  // Note: Machine stats and modal state are now managed by custom hooks
+  // ============================================================================
+  // Effects - Data Fetching
+  // ============================================================================
+  // Memoize date range timestamps to avoid complex expressions in dependency array
+  const startDateTimestamp = customDateRange?.startDate?.getTime();
+  const endDateTimestamp = customDateRange?.endDate?.getTime();
 
-  // Calculate financial totals from location data (use accumulated for better totals)
-  const financialTotals = calculateLocationFinancialTotals(
-    accumulatedLocations.length > 0 ? accumulatedLocations : locationData
-  );
+  // Initialize: fetch first batch on mount and when filters change (excluding searchTerm)
+  // Search is handled internally by useLocationData hook with debouncing
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      // Reset accumulated data when filters change
+      isResettingRef.current = true;
+      setAccumulatedLocations([]);
+      setLoadedBatches(new Set());
+      lastLocationDataRef.current = [];
+      fetchData(1, itemsPerBatch);
+      // Reset flag after a short delay to allow state updates to complete
+      setTimeout(() => {
+        isResettingRef.current = false;
+      }, 0);
+    }
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    startDateTimestamp,
+    endDateTimestamp,
+    selectedFiltersKey,
+    searchTerm,
+    itemsPerBatch,
+    fetchData,
+  ]);
+
+  // Update accumulated locations when new data arrives
+  useEffect(() => {
+    // Skip if we're in the middle of resetting
+    if (isResettingRef.current) {
+      return;
+    }
+
+    // Check if locationData actually changed by comparing IDs
+    const currentIds = new Set(locationData.map(loc => loc._id));
+    const lastIds = new Set(lastLocationDataRef.current.map(loc => loc._id));
+    
+    // Check if sets are different
+    const dataChanged = 
+      currentIds.size !== lastIds.size ||
+      Array.from(currentIds).some(id => !lastIds.has(id)) ||
+      Array.from(lastIds).some(id => !currentIds.has(id));
+
+    if (!dataChanged && locationData.length > 0) {
+      return;
+    }
+
+    if (locationData.length > 0 && !searchTerm.trim()) {
+      setAccumulatedLocations(prev => {
+        // Merge with existing, avoiding duplicates
+        const existingIds = new Set(prev.map(loc => loc._id));
+        const newLocations = locationData.filter(
+          loc => !existingIds.has(loc._id)
+        );
+        return [...prev, ...newLocations];
+      });
+    } else if (searchTerm.trim()) {
+      // For search, use the data directly
+      setAccumulatedLocations(locationData);
+    }
+
+    // Update ref with current data
+    lastLocationDataRef.current = locationData;
+  }, [locationData, searchTerm]);
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -229,12 +308,65 @@ function LocationsPageContent() {
     }
   }, [selectedLicencee, setSelectedLicencee]);
 
-  // Note: Machine stats fetching is now handled by useLocationMachineStats hook
-
   // Reset page when search changes
   useEffect(() => {
     setCurrentPage(0);
   }, [searchTerm, selectedFilters, setCurrentPage]);
+
+  // Separate useEffect to fetch metrics totals independently (like dashboard does)
+  // This ensures metrics cards always show totals from all locations, separate from table pagination
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      if (!activeMetricsFilter) {
+        console.log('🔍 [LocationsPage] Skipping metrics fetch - no activeMetricsFilter');
+        return;
+      }
+
+      console.log('🔍 [LocationsPage] Starting metrics totals fetch:', {
+        activeMetricsFilter,
+        selectedLicencee,
+        displayCurrency,
+        customDateRange: customDateRange ? {
+          startDate: customDateRange.startDate?.toISOString(),
+          endDate: customDateRange.endDate?.toISOString()
+        } : null
+      });
+
+      setMetricsTotalsLoading(true);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          fetchDashboardTotals(
+            activeMetricsFilter || 'Today',
+            customDateRange || {
+              startDate: new Date(),
+              endDate: new Date(),
+            },
+            selectedLicencee,
+            totals => {
+              console.log('🔍 [LocationsPage] fetchDashboardTotals callback received:', {
+                totals,
+                moneyIn: totals?.moneyIn,
+                moneyOut: totals?.moneyOut,
+                gross: totals?.gross
+              });
+              setMetricsTotals(totals);
+              console.log('🔍 [LocationsPage] setMetricsTotals called with:', totals);
+              resolve();
+            },
+            displayCurrency
+          ).catch(reject);
+        });
+      } catch (error) {
+        console.error('❌ [LocationsPage] Failed to fetch metrics totals:', error);
+        setMetricsTotals(null);
+      } finally {
+        setMetricsTotalsLoading(false);
+        console.log('🔍 [LocationsPage] Metrics totals fetch completed');
+      }
+    };
+
+    fetchMetrics();
+  }, [activeMetricsFilter, selectedLicencee, customDateRange, displayCurrency]);
 
   // Fetch new batch when crossing batch boundary
   useEffect(() => {
@@ -249,7 +381,11 @@ function LocationsPageContent() {
 
     // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
     if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
-      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      setLoadedBatches(prev => {
+        const newSet = new Set(prev);
+        newSet.add(nextBatch);
+        return newSet;
+      });
       fetchBatch(nextBatch, itemsPerBatch).then(result => {
         if (result.data.length > 0) {
           setAccumulatedLocations(prev => {
@@ -265,7 +401,11 @@ function LocationsPageContent() {
 
     // Also ensure current batch is loaded
     if (!loadedBatches.has(currentBatch)) {
-      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      setLoadedBatches(prev => {
+        const newSet = new Set(prev);
+        newSet.add(currentBatch);
+        return newSet;
+      });
       fetchBatch(currentBatch, itemsPerBatch).then(result => {
         if (result.data.length > 0) {
           setAccumulatedLocations(prev => {
@@ -283,18 +423,15 @@ function LocationsPageContent() {
     searchTerm,
     loading,
     loadedBatches,
-    fetchBatch,
     itemsPerBatch,
     itemsPerPage,
+    calculateBatchNumber,
+    fetchBatch,
   ]);
 
-  // Note: Scroll handling is now managed by custom hooks
-
-  // Note: Pagination and action handlers are now managed by custom hooks
-
-  // Show loading state for search
-  const isLoading = loading || searchLoading;
-
+  // ============================================================================
+  // Effects - UI Animations
+  // ============================================================================
   // Animate when filtered data changes (filtering, sorting, search, pagination)
   useEffect(() => {
     if (!isLoading && currentItems.length > 0) {
@@ -316,12 +453,18 @@ function LocationsPageContent() {
     isLoading,
   ]);
 
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
   // Show "No Licensee Assigned" message for non-admin users without licensees
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
   if (showNoLicenseeMessage) {
     return <NoLicenseeAssigned />;
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <PageLayout
@@ -338,13 +481,13 @@ function LocationsPageContent() {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-lg font-bold text-gray-800 sm:text-2xl md:text-3xl">
               Locations
-              <Image
-                src={IMAGES.locationIcon}
-                alt="Location Icon"
-                width={32}
-                height={32}
+            <Image
+              src={IMAGES.locationIcon}
+              alt="Location Icon"
+              width={32}
+              height={32}
                 className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
-              />
+            />
             </h1>
             {/* Mobile: Refresh icon */}
             <button
@@ -361,7 +504,7 @@ function LocationsPageContent() {
             {!isLoading && canManageLocations && (
               <button
                 onClick={openNewLocationModal}
-                disabled={isLoading}
+              disabled={isLoading}
                 className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
                 aria-label="New Location"
               >
@@ -401,8 +544,8 @@ function LocationsPageContent() {
         {/* Financial Metrics Section: Total financial overview cards */}
         <div className="mt-6">
           <FinancialMetricsCards
-            totals={financialTotals}
-            loading={isLoading}
+            totals={metricsTotals || financialTotals}
+            loading={isLoading || metricsTotalsLoading}
             title="Total for all Locations"
           />
         </div>
@@ -741,6 +884,10 @@ function LocationsPageContent() {
   );
 }
 
+/**
+ * Locations Page Component
+ * Thin wrapper that handles routing and authentication
+ */
 export default function LocationsPage() {
   return (
     <ProtectedRoute requiredPage="locations">

@@ -1,7 +1,30 @@
+/**
+ * Time Filter Buttons Component
+ * Filter buttons for selecting time periods with loading states and throttling.
+ *
+ * Features:
+ * - Time period filter buttons (Today, Yesterday, Last 7 days, 30 days, Custom)
+ * - Active filter highlighting
+ * - Loading states with spinner
+ * - Throttling to prevent rapid filter changes
+ * - Disabled state during loading
+ * - Framer Motion animations
+ *
+ * @param activeMetricsFilter - Currently active time period filter
+ * @param metricsLoading - Whether metrics data is loading
+ * @param isFilterChangeInProgress - Whether filter change is in progress
+ * @param lastFilterChangeTimeRef - Ref to track last filter change time
+ * @param setIsFilterChangeInProgress - Callback to set filter change progress state
+ * @param setActiveMetricsFilter - Callback to change active filter
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { TimePeriod } from '@/lib/types/api';
+
+// ============================================================================
+// Types & Constants
+// ============================================================================
 
 type ExtendedTimeFilterButtonsProps = {
   activeMetricsFilter: TimePeriod;

@@ -1,3 +1,20 @@
+/**
+ * Machine Status Widget Component
+ * Widget component displaying machine online/offline status counts.
+ *
+ * Features:
+ * - Online and offline machine counts
+ * - Total count display (optional)
+ * - Loading states with skeleton
+ * - Responsive design
+ * - Status badges
+ *
+ * @param isLoading - Whether data is loading
+ * @param onlineCount - Number of online machines
+ * @param offlineCount - Number of offline machines
+ * @param totalCount - Total machine count (optional)
+ * @param showTotal - Whether to show total count
+ */
 import React from 'react';
 import Image from 'next/image';
 import cabinetsIcon from '@/public/cabinetsIcon.svg';

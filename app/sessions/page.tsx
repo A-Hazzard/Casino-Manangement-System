@@ -1,3 +1,16 @@
+/**
+ * Sessions Page
+ *
+ * Displays all gaming sessions with filtering, search, and pagination.
+ *
+ * Features:
+ * - Session listing with responsive design
+ * - Search and filtering capabilities
+ * - Date range filtering
+ * - Pagination for large datasets
+ * - Navigation to session events
+ */
+
 'use client';
 
 import { motion } from 'framer-motion';
@@ -41,19 +54,30 @@ import { useState } from 'react';
  * - Navigation to session events
  */
 function SessionsPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
-  // Custom hooks for sessions functionality
+  // ============================================================================
+  // Custom Hooks
+  // ============================================================================
   const { sessions, loading, error, pagination, currentPage, handlePageChange, refreshSessions } =
     useSessions();
   
-  const [refreshing, setRefreshing] = useState(false);
-
   const { searchTerm, sortBy, sortOrder, setSearchTerm, setSortBy, setSortOrder, handleSort } =
     useSessionsFilters();
 
   const { navigateToSessionEvents } = useSessionsNavigation();
 
+  // ============================================================================
+  // State Management
+  // ============================================================================
+  const [refreshing, setRefreshing] = useState(false);
+
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   /**
    * Navigate to session events page
    */
@@ -61,6 +85,9 @@ function SessionsPageContent() {
     navigateToSessionEvents(sessionId, machineId);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <PageLayout
@@ -159,6 +186,10 @@ function SessionsPageContent() {
   );
 }
 
+/**
+ * Sessions Page Component
+ * Thin wrapper that handles routing and authentication
+ */
 export default function SessionsPage() {
   return (
     <ProtectedRoute requiredPage="sessions">

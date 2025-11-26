@@ -163,14 +163,18 @@ export function useSessions() {
     setCurrentPage(0);
     setTotalSessionsFromAPI(0); // Reset API total when filters change
     fetchSessions(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    debouncedSearchTerm, // Use debounced search term
+    debouncedSearchTerm,
     sortBy,
     sortOrder,
     selectedLicencee,
     activeMetricsFilter,
     customDateRange,
+    setAllSessions,
+    setLoadedBatches,
+    setCurrentPage,
+    setTotalSessionsFromAPI,
+    fetchSessions,
   ]);
 
   // Fetch next batch when crossing batch boundaries

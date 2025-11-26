@@ -1,7 +1,21 @@
+/**
+ * Locations Page Utilities
+ *
+ * Utility functions for filtering and sorting locations on the locations page.
+ *
+ * Features:
+ * - Location filtering by SMIB status
+ * - Location sorting
+ * - Pagination utilities
+ */
+
 import React from 'react';
 import type { AggregatedLocation } from '@/lib/types/location';
 import type { LocationFilter, LocationSortOption } from '@/lib/types/location';
 
+// ============================================================================
+// Filtering Functions
+// ============================================================================
 /**
  * Filter locations based on selected filters
  */
@@ -22,6 +36,9 @@ export function filterLocations(
   });
 }
 
+// ============================================================================
+// Sorting Functions
+// ============================================================================
 /**
  * Sort locations based on sort option and order
  */

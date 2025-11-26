@@ -41,11 +41,17 @@ import {
   SummaryCardsSkeleton,
   TopMachinesTableSkeleton,
 } from '@/components/ui/skeletons/ReportsSkeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 // import { formatCurrency } from "@/lib/utils/formatting";
 import LocationMap from '@/components/reports/common/LocationMap';
 import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
 import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from '@/lib/helpers/reportsPage';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
@@ -151,6 +157,10 @@ export default function LocationsTab() {
   const [metricsOverview, setMetricsOverview] =
     useState<LocationMetrics | null>(null);
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
+  
+  // Separate state for metrics totals (from dedicated API call)
+  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(null);
+  const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 
   // Add state for top machines data
   const [topMachinesData, setTopMachinesData] = useState<MachineData[]>([]);
@@ -481,37 +491,12 @@ export default function LocationsTab() {
         let overview: LocationMetrics;
 
         if (currentSelectedLocations.length === 0) {
-          // No locations selected - use dashboard totals API for financial metrics
-          let dashboardTotals: DashboardTotals = {
+          // No locations selected - use dashboard totals for overview
+          const dashboardTotals: DashboardTotals = metricsTotals || {
             moneyIn: 0,
             moneyOut: 0,
             gross: 0,
           };
-          try {
-            // Use Promise to ensure callback completes before proceeding
-            await new Promise<void>((resolve, reject) => {
-              fetchDashboardTotals(
-                activeMetricsFilter || 'Today',
-                customDateRange || {
-                  startDate: new Date(),
-                  endDate: new Date(),
-                },
-                selectedLicencee,
-                totals => {
-                  dashboardTotals = totals || {
-                    moneyIn: 0,
-                    moneyOut: 0,
-                    gross: 0,
-                  };
-                  resolve(); // Resolve after callback sets the value
-                },
-                displayCurrency
-              ).catch(reject);
-            });
-          } catch (error) {
-            console.error('Failed to fetch dashboard totals:', error);
-            // Use default values (already set above)
-          }
 
           // Get machine counts from location data
           const machineCounts = normalizedLocations.reduce(
@@ -832,6 +817,61 @@ export default function LocationsTab() {
     setLoading,
   ]);
 
+  // Separate useEffect to fetch metrics totals independently (like dashboard does)
+  // This ensures metrics cards always show totals from all locations, separate from table pagination
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      if (!activeMetricsFilter) {
+        console.log('🔍 [LocationsTab] Skipping metrics fetch - no activeMetricsFilter');
+        return;
+      }
+
+      console.log('🔍 [LocationsTab] Starting metrics totals fetch:', {
+        activeMetricsFilter,
+        selectedLicencee,
+        displayCurrency,
+        customDateRange: customDateRange ? {
+          startDate: customDateRange.startDate?.toISOString(),
+          endDate: customDateRange.endDate?.toISOString()
+        } : null
+      });
+
+      setMetricsTotalsLoading(true);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          fetchDashboardTotals(
+            activeMetricsFilter || 'Today',
+            customDateRange || {
+              startDate: new Date(),
+              endDate: new Date(),
+            },
+            selectedLicencee,
+            totals => {
+              console.log('🔍 [LocationsTab] fetchDashboardTotals callback received:', {
+                totals,
+                moneyIn: totals?.moneyIn,
+                moneyOut: totals?.moneyOut,
+                gross: totals?.gross
+              });
+              setMetricsTotals(totals);
+              console.log('🔍 [LocationsTab] setMetricsTotals called with:', totals);
+              resolve();
+            },
+            displayCurrency
+          ).catch(reject);
+        });
+      } catch (error) {
+        console.error('❌ [LocationsTab] Failed to fetch metrics totals:', error);
+        setMetricsTotals(null);
+      } finally {
+        setMetricsTotalsLoading(false);
+        console.log('🔍 [LocationsTab] Metrics totals fetch completed');
+      }
+    };
+
+    fetchMetrics();
+  }, [activeMetricsFilter, selectedLicencee, customDateRange, displayCurrency]);
+
   // Consolidated useEffect to handle all data fetching
   useEffect(() => {
     const currentSelectedLocations =
@@ -851,12 +891,16 @@ export default function LocationsTab() {
       setTopMachinesData([]);
       setLocationTrendData(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedLicencee,
     activeTab,
     activeMetricsFilter,
     customDateRange?.startDate,
+    fetchLocationDataAsync,
+    fetchTopMachines,
+    fetchLocationTrendData,
+    setTopMachinesData,
+    setLocationTrendData,
     customDateRange?.endDate,
     selectedSasLocations,
     selectedRevenueLocations,
@@ -869,8 +913,7 @@ export default function LocationsTab() {
     if (initial !== activeTab) {
       setActiveTab(initial);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, activeTab, setActiveTab]);
 
   const handleLocationsTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -1108,13 +1151,13 @@ export default function LocationsTab() {
               : `$${finalTotals.totalGross.toLocaleString()}`,
           },
           {
-            label: 'Total Drop',
+            label: 'Money In',
             value: shouldShowCurrency()
               ? formatAmount(finalTotals.totalDrop)
               : `$${finalTotals.totalDrop.toLocaleString()}`,
           },
           {
-            label: 'Total Cancelled Credits',
+            label: 'Money Out',
             value: shouldShowCurrency()
               ? formatAmount(finalTotals.totalCancelledCredits)
               : `$${finalTotals.totalCancelledCredits.toLocaleString()}`,
@@ -1230,13 +1273,13 @@ export default function LocationsTab() {
               .toString(),
           },
           {
-            label: 'Total Drop',
+            label: 'Money In',
             value: `$${filteredData
               .reduce((sum, loc) => sum + ((loc.moneyIn as number) || 0), 0)
               .toLocaleString()}`,
           },
           {
-            label: 'Total Cancelled Credits',
+            label: 'Money Out',
             value: `$${filteredData
               .reduce((sum, loc) => sum + ((loc.moneyOut as number) || 0), 0)
               .toLocaleString()}`,
@@ -1381,7 +1424,7 @@ export default function LocationsTab() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   <Card>
                     <CardContent className="p-4">
-                      <div className="break-words text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
+                      <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsOverview.totalGross)}`}>
                         {shouldShowCurrency()
                           ? formatAmount(metricsOverview.totalGross)
                           : `$${metricsOverview.totalGross.toLocaleString()}`}
@@ -1393,25 +1436,25 @@ export default function LocationsTab() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="break-words text-lg font-bold text-yellow-600 sm:text-xl lg:text-2xl">
+                      <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsOverview.totalDrop)}`}>
                         {shouldShowCurrency()
                           ? formatAmount(metricsOverview.totalDrop)
                           : `$${metricsOverview.totalDrop.toLocaleString()}`}
                       </div>
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
-                        Total Drop
+                        Money In
                       </p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="break-words text-lg font-bold text-black sm:text-xl lg:text-2xl">
+                      <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsOverview.totalCancelledCredits, metricsOverview.totalDrop)}`}>
                         {shouldShowCurrency()
                           ? formatAmount(metricsOverview.totalCancelledCredits)
                           : `$${metricsOverview.totalCancelledCredits.toLocaleString()}`}
                       </div>
                       <p className="break-words text-xs text-muted-foreground sm:text-sm">
-                        Total Cancelled Credits
+                        Money Out
                       </p>
                     </CardContent>
                   </Card>
@@ -1580,17 +1623,17 @@ export default function LocationsTab() {
                                 <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-500">
                                   {loc.onlineMachines || 0}
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900">
+                                <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getMoneyInColorClass(loc.moneyIn)}`}>
                                   {shouldShowCurrency()
                                     ? formatAmount(loc.moneyIn || 0)
                                     : `$${((loc.moneyIn as number) || 0).toLocaleString()}`}
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900">
+                                <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getMoneyOutColorClass(loc.moneyOut, loc.moneyIn)}`}>
                                   {shouldShowCurrency()
                                     ? formatAmount(loc.moneyOut || 0)
                                     : `$${((loc.moneyOut as number) || 0).toLocaleString()}`}
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-green-600">
+                                <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getGrossColorClass(loc.gross)}`}>
                                   {shouldShowCurrency()
                                     ? formatAmount(loc.gross || 0)
                                     : `$${((loc.gross as number) || 0).toLocaleString()}`}
@@ -1910,61 +1953,79 @@ export default function LocationsTab() {
                       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
                         <Card>
                           <CardContent className="p-4">
-                            <div className="break-words text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
-                              {shouldShowCurrency()
-                                ? formatAmount(
-                                    paginatedLocations.reduce(
-                                      (sum, loc) => sum + (loc.gross || 0),
-                                      0
-                                    )
-                                  )
-                                : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0).toLocaleString()}`}
+                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals?.gross || 0)}`}>
+                              {(() => {
+                                const value = metricsTotals?.gross || 0;
+                                console.log('🔍 [LocationsTab] Rendering Gross card (SAS Evaluation):', {
+                                  metricsTotals,
+                                  value,
+                                  isLoading: metricsTotalsLoading,
+                                  shouldShowCurrency: shouldShowCurrency()
+                                });
+                                return metricsTotalsLoading ? (
+                                  <Skeleton className="h-8 w-24" />
+                                ) : shouldShowCurrency() ? (
+                                  formatAmount(value)
+                                ) : (
+                                  `$${value.toLocaleString()}`
+                                );
+                              })()}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Net Win (Gross)
                             </p>
-                            <p className="text-xs font-medium text-green-600">
-                              (Green - Gross)
+                            <p className="text-xs font-medium text-muted-foreground">
+                              (Green if positive, Red if negative)
                             </p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardContent className="p-4">
-                            <div className="break-words text-lg font-bold text-yellow-600 sm:text-xl lg:text-2xl">
-                              {shouldShowCurrency()
-                                ? formatAmount(
-                                    paginatedLocations.reduce(
-                                      (sum, loc) => sum + (loc.moneyIn || 0),
-                                      0
-                                    )
-                                  )
-                                : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0).toLocaleString()}`}
+                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals?.moneyIn || 0)}`}>
+                              {(() => {
+                                const value = metricsTotals?.moneyIn || 0;
+                                console.log('🔍 [LocationsTab] Rendering MoneyIn card (SAS Evaluation):', {
+                                  metricsTotals,
+                                  value,
+                                  isLoading: metricsTotalsLoading,
+                                  shouldShowCurrency: shouldShowCurrency()
+                                });
+                                return metricsTotalsLoading ? (
+                                  <Skeleton className="h-8 w-24" />
+                                ) : shouldShowCurrency() ? (
+                                  formatAmount(value)
+                                ) : (
+                                  `$${value.toLocaleString()}`
+                                );
+                              })()}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
-                              Total Drop
-                            </p>
-                            <p className="text-xs font-medium text-yellow-600">
-                              (Yellow - Drop)
+                              Money In
                             </p>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardContent className="p-4">
-                            <div className="break-words text-lg font-bold text-black sm:text-xl lg:text-2xl">
-                              {shouldShowCurrency()
-                                ? formatAmount(
-                                    paginatedLocations.reduce(
-                                      (sum, loc) => sum + (loc.moneyOut || 0),
-                                      0
-                                    )
-                                  )
-                                : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0).toLocaleString()}`}
+                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals?.moneyOut || 0, metricsTotals?.moneyIn || 0)}`}>
+                              {(() => {
+                                const value = metricsTotals?.moneyOut || 0;
+                                console.log('🔍 [LocationsTab] Rendering MoneyOut card (SAS Evaluation):', {
+                                  metricsTotals,
+                                  value,
+                                  isLoading: metricsTotalsLoading,
+                                  shouldShowCurrency: shouldShowCurrency()
+                                });
+                                return metricsTotalsLoading ? (
+                                  <Skeleton className="h-8 w-24" />
+                                ) : shouldShowCurrency() ? (
+                                  formatAmount(value)
+                                ) : (
+                                  `$${value.toLocaleString()}`
+                                );
+                              })()}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
-                              Total Cancelled Credits
-                            </p>
-                            <p className="text-xs font-medium text-black">
-                              (Black - Cancelled)
+                              Money Out
                             </p>
                           </CardContent>
                         </Card>
@@ -2608,63 +2669,54 @@ export default function LocationsTab() {
                       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
                         <Card>
                           <CardContent className="p-4">
-                            <div className="break-words text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
-                              {shouldShowCurrency()
-                                ? formatAmount(
-                                    paginatedLocations.reduce(
-                                      (sum, loc) => sum + (loc.gross || 0),
-                                      0
-                                    )
-                                  )
-                                : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.gross || 0), 0).toLocaleString()}`}
+                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals?.gross || 0)}`}>
+                              {metricsTotalsLoading ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
+                                formatAmount(metricsTotals?.gross || 0)
+                              ) : (
+                                `$${(metricsTotals?.gross || 0).toLocaleString()}`
+                              )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
                               Total Net Win (Gross)
                             </p>
-                            <p className="text-xs font-medium text-green-600">
-                              (Green - Gross)
+                            <p className="text-xs font-medium text-muted-foreground">
+                              (Green if positive, Red if negative)
                             </p>
                           </CardContent>
                         </Card>
 
                         <Card>
                           <CardContent className="p-4">
-                            <div className="break-words text-lg font-bold text-yellow-600 sm:text-xl lg:text-2xl">
-                              {shouldShowCurrency()
-                                ? formatAmount(
-                                    paginatedLocations.reduce(
-                                      (sum, loc) => sum + (loc.moneyIn || 0),
-                                      0
-                                    )
-                                  )
-                                : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.moneyIn || 0), 0).toLocaleString()}`}
+                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals?.moneyIn || 0)}`}>
+                              {metricsTotalsLoading ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
+                                formatAmount(metricsTotals?.moneyIn || 0)
+                              ) : (
+                                `$${(metricsTotals?.moneyIn || 0).toLocaleString()}`
+                              )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
-                              Total Drop
-                            </p>
-                            <p className="text-xs font-medium text-yellow-600">
-                              (Yellow - Drop)
+                              Money In
                             </p>
                           </CardContent>
                         </Card>
 
                         <Card>
                           <CardContent className="p-4">
-                            <div className="break-words text-lg font-bold text-black sm:text-xl lg:text-2xl">
-                              {shouldShowCurrency()
-                                ? formatAmount(
-                                    paginatedLocations.reduce(
-                                      (sum, loc) => sum + (loc.moneyOut || 0),
-                                      0
-                                    )
-                                  )
-                                : `$${paginatedLocations.reduce((sum, loc) => sum + (loc.moneyOut || 0), 0).toLocaleString()}`}
+                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals?.moneyOut || 0, metricsTotals?.moneyIn || 0)}`}>
+                              {metricsTotalsLoading ? (
+                                <Skeleton className="h-8 w-24" />
+                              ) : shouldShowCurrency() ? (
+                                formatAmount(metricsTotals?.moneyOut || 0)
+                              ) : (
+                                `$${(metricsTotals?.moneyOut || 0).toLocaleString()}`
+                              )}
                             </div>
                             <p className="break-words text-xs text-muted-foreground sm:text-sm">
-                              Total Cancelled Credits
-                            </p>
-                            <p className="text-xs font-medium text-black">
-                              (Black - Cancelled)
+                              Money Out
                             </p>
                           </CardContent>
                         </Card>

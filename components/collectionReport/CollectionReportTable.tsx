@@ -1,3 +1,26 @@
+/**
+ * Collection Report Table Component
+ * Desktop table view for displaying collection reports with sorting and actions.
+ *
+ * Features:
+ * - Collection report data display
+ * - Sortable columns
+ * - Issue indicators for reports with problems
+ * - Edit and delete actions (role-based)
+ * - Navigation to report details
+ * - Currency formatting
+ * - Status badges
+ * - Responsive design (desktop only)
+ *
+ * @param data - Array of collection report rows
+ * @param reportIssues - Issues data for reports
+ * @param onEdit - Callback when edit is clicked
+ * @param onDelete - Callback when delete is clicked
+ * @param sortField - Current sort field
+ * @param sortDirection - Current sort direction
+ * @param onSort - Callback to request column sort
+ * @param editableReportIds - Set of report IDs that can be edited
+ */
 import React, { useMemo } from "react";
 import Image from "next/image";
 import {
@@ -23,6 +46,9 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useCurrencyFormat } from "@/lib/hooks/useCurrencyFormat";
+import {
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { useUserStore } from "@/lib/store/userStore";
 import { hasAdminAccess, hasManagerAccess } from "@/lib/utils/permissions";
 
@@ -225,7 +251,11 @@ export default function CollectionReportTable({
                   </div>
                 </TableCell>
                 <TableCell centered={false}>{row?.location || "-"}</TableCell>
-                <TableCell centered={true}>{row?.gross || 0}</TableCell>
+                <TableCell centered={true}>
+                  <span className={getGrossColorClass(typeof row?.gross === 'string' ? parseFloat(row.gross) || 0 : row?.gross || 0)}>
+                    {row?.gross || 0}
+                  </span>
+                </TableCell>
                 <TableCell centered={true}>{row?.machines || "0/0"}</TableCell>
                 <TableCell centered={true}>{row?.collected || 0}</TableCell>
                 <TableCell centered={true}>{row?.uncollected || "-"}</TableCell>

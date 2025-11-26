@@ -1,3 +1,21 @@
+/**
+ * User Details Modal Component
+ * Read-only modal for viewing user profile details with optional editing.
+ *
+ * Features:
+ * - User profile display (name, email, phone, address, DOB, ID, notes)
+ * - Profile picture display with upload option
+ * - Read-only view with edit capability
+ * - Form validation for phone number
+ * - GSAP animations for modal entrance/exit
+ * - Toast notifications for success/error
+ * - Skeleton loading states
+ *
+ * @param open - Whether the modal is visible
+ * @param user - User object to display
+ * @param onClose - Callback to close the modal
+ * @param onSave - Callback when user details are saved
+ */
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';

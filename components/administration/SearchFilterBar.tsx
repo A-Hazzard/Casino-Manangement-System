@@ -1,5 +1,28 @@
+/**
+ * Search Filter Bar Component
+ * Search and filter bar for user administration with role and status filtering.
+ *
+ * Features:
+ * - Text search by username, email, or user ID
+ * - Role-based filtering dropdown
+ * - Status-based filtering dropdown (Active, Disabled, Deleted, All)
+ * - Responsive design (mobile and desktop)
+ * - Real-time search filtering
+ * - Custom select component for roles and status
+ *
+ * @param searchValue - Current search input value
+ * @param setSearchValue - Callback to update search value
+ * @param selectedRole - Currently selected role filter
+ * @param setSelectedRole - Callback to update role filter
+ * @param selectedStatus - Currently selected status filter
+ * @param setSelectedStatus - Callback to update status filter
+ */
 import { CustomSelect } from '@/components/ui/custom-select';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const ROLE_OPTIONS = [
   { label: 'All Roles', value: 'all' },
@@ -11,11 +34,20 @@ const ROLE_OPTIONS = [
   { label: 'Collector', value: 'collector' },
 ];
 
+const STATUS_OPTIONS = [
+  { label: 'All Users', value: 'all' },
+  { label: 'Active', value: 'active' },
+  { label: 'Disabled', value: 'disabled' },
+  { label: 'Deleted', value: 'deleted' },
+];
+
 type SearchFilterBarProps = {
   searchValue: string;
   setSearchValue: (value: string) => void;
   selectedRole: string;
   setSelectedRole: (value: string) => void;
+  selectedStatus: string;
+  setSelectedStatus: (value: string) => void;
 };
 
 export default function SearchFilterBar({
@@ -23,8 +55,12 @@ export default function SearchFilterBar({
   setSearchValue,
   selectedRole,
   setSelectedRole,
+  selectedStatus,
+  setSelectedStatus,
 }: SearchFilterBarProps) {
-  // Responsive Search and Filter Layout
+  // ============================================================================
+  // Render - Search and Filter Bar
+  // ============================================================================
   return (
     <div className="mt-6 rounded-t-lg bg-buttonActive p-3 md:p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
@@ -47,6 +83,15 @@ export default function SearchFilterBar({
               value={selectedRole}
               onValueChange={setSelectedRole}
               placeholder="All Roles"
+              className="h-11 min-w-[150px] rounded-md bg-white shadow-sm"
+            />
+          </div>
+          <div className="w-full sm:w-auto">
+            <CustomSelect
+              options={STATUS_OPTIONS}
+              value={selectedStatus}
+              onValueChange={setSelectedStatus}
+              placeholder="All Users"
               className="h-11 min-w-[150px] rounded-md bg-white shadow-sm"
             />
           </div>

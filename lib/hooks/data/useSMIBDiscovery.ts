@@ -18,9 +18,16 @@ type UseSmibDiscoveryReturn = {
 };
 
 export function useSMIBDiscovery(): UseSmibDiscoveryReturn {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [allSmibs, setAllSmibs] = useState<SmibDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ============================================================================
+  // Methods
+  // ============================================================================
 
   /**
    * Fetch all SMIB devices from database
@@ -60,6 +67,10 @@ export function useSMIBDiscovery(): UseSmibDiscoveryReturn {
     await fetchSmibs();
   }, [fetchSmibs]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Initial fetch on mount
   useEffect(() => {
     fetchSmibs();
@@ -68,6 +79,9 @@ export function useSMIBDiscovery(): UseSmibDiscoveryReturn {
   // All SMIBs are available (no online filtering)
   const availableSmibs = allSmibs;
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     allSmibs,
     availableSmibs,

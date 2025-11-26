@@ -1,3 +1,14 @@
+/**
+ * Switch Component
+ * Reusable toggle switch component using Radix UI primitives.
+ *
+ * Features:
+ * - Checked/unchecked states
+ * - Smooth transitions
+ * - Focus states
+ * - Disabled state support
+ * - Accessible implementation
+ */
 'use client';
 
 import * as React from 'react';

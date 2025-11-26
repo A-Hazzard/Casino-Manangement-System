@@ -1,25 +1,55 @@
+/**
+ * Location SMIB Meters API Route
+ *
+ * This route handles requesting meter data from all SMIBs at a specific location.
+ * It supports:
+ * - Requesting meters from multiple SMIBs in parallel batches
+ * - Finding machines by location
+ * - Activity logging
+ *
+ * @module app/api/locations/[locationId]/smib-meters/route
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { Machine } from '@/app/api/lib/models/machines';
-import { mqttService } from '@/lib/services/mqttService';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../../lib/helpers/users';
-import { connectDB } from '../../../lib/middleware/db';
 
 /**
- * POST /api/locations/[locationId]/smib-meters
- * Request meter data from all SMIBs at a specific location
- * Processes in parallel batches of 10 for efficiency
+ * Main POST handler for requesting SMIB meters
+ *
+ * Flow:
+ * 1. Parse route parameters
+ * 2. Connect to database
+ * 3. Find machines at location with SMIBs
+ * 4. Process meter requests in batches
+ * 5. Log activity
+ * 6. Return results
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ locationId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters
+    // ============================================================================
     const { locationId } = await params;
+
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Find all machines at this location with valid relayId or smibBoard
+    // ============================================================================
+    // STEP 3: Find machines at location with SMIBs
+    // ============================================================================
+
     const machines = await Machine.find({
       gamingLocation: locationId,
       deletedAt: null,
@@ -39,6 +69,9 @@ export async function POST(
       );
     }
 
+    // ============================================================================
+    // STEP 4: Process meter requests in batches
+    // ============================================================================
     const results = {
       total: machines.length,
       successful: 0,
@@ -70,7 +103,9 @@ export async function POST(
       );
     }
 
-    // Log activity (optional - don't fail the request if logging fails)
+    // ============================================================================
+    // STEP 5: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser._id && currentUser.emailAddress) {
       const clientIP = getClientIP(request);
@@ -96,19 +131,31 @@ export async function POST(
         });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
-        // Don't fail the request if logging fails - just continue
       }
     }
 
+    // ============================================================================
+    // STEP 6: Return results
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Location SMIB Meters API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: results.failed === 0,
       message: `Meter requests sent to ${results.successful} SMIBs${results.failed > 0 ? ` (${results.failed} failed)` : ''}`,
       results,
     });
   } catch (error) {
-    console.error('❌ Error in location SMIB meters endpoint:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Location SMIB Meters API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

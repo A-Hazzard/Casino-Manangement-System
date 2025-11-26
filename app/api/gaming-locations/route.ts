@@ -1,14 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+/**
+ * Gaming Locations API Route
+ *
+ * This route handles fetching gaming locations filtered by licensee.
+ * It supports:
+ * - Single licensee filtering
+ * - Multiple licensees filtering (comma-separated)
+ * - Deleted location exclusion
+ *
+ * @module app/api/gaming-locations/route
+ */
 
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for fetching gaming locations
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters (licensee, licensees)
+ * 3. Build query filter with deleted location exclusion
+ * 4. Apply licensee filtering
+ * 5. Fetch locations from database
+ * 6. Format locations with licensee ID
+ * 7. Return formatted locations list
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const licensee = searchParams.get('licensee');
     const licensees = searchParams.get('licensees'); // Support multiple licensees (comma-separated)
 
+    // ============================================================================
+    // STEP 3: Build query filter with deleted location exclusion
+    // ============================================================================
     const query: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
@@ -16,6 +52,9 @@ export async function GET(request: NextRequest) {
       ],
     };
 
+    // ============================================================================
+    // STEP 4: Apply licensee filtering
+    // ============================================================================
     // If multiple licensees are provided (comma-separated), filter by all of them
     if (licensees) {
       const licenseeArray = licensees.split(',').map(l => l.trim()).filter(l => l);
@@ -27,6 +66,9 @@ export async function GET(request: NextRequest) {
       query['rel.licencee'] = licensee;
     }
 
+    // ============================================================================
+    // STEP 5: Fetch locations from database
+    // ============================================================================
     const locations = await GamingLocations.find(query, {
       _id: 1,
       name: 1,
@@ -35,6 +77,9 @@ export async function GET(request: NextRequest) {
       .sort({ name: 1 })
       .lean();
 
+    // ============================================================================
+    // STEP 6: Format locations with licensee ID
+    // ============================================================================
     const formattedLocations = locations.map(loc => {
       const licenceeRaw = loc.rel?.licencee;
       let licenseeId: string | null = null;
@@ -56,16 +101,24 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Return in format expected by fetchAllGamingLocations (direct array)
-    // Also support the { success: true, data: [...] } format for backwards compatibility
+    // ============================================================================
+    // STEP 7: Return formatted locations list
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Gaming Locations API] Completed in ${duration}ms`);
+    }
+
     return NextResponse.json(formattedLocations);
   } catch (error) {
-    console.error('Error fetching gaming locations:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch gaming locations';
+    console.error(`[Gaming Locations API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       {
         success: false,
         message: 'Failed to fetch gaming locations',
-        error: (error as Error).message,
+        error: errorMessage,
       },
       { status: 500 }
     );

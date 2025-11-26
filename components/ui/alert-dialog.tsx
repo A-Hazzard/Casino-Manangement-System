@@ -1,3 +1,16 @@
+/**
+ * Alert Dialog Components
+ * Reusable alert dialog component using Radix UI primitives.
+ *
+ * Features:
+ * - AlertDialog root, trigger, portal components
+ * - AlertDialogOverlay with backdrop
+ * - AlertDialogContent with animations
+ * - AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter
+ * - AlertDialogAction and AlertDialogCancel buttons
+ * - Accessible and keyboard-friendly
+ * - Smooth animations
+ */
 'use client';
 
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
@@ -5,6 +18,10 @@ import * as React from 'react';
 
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Alert Dialog Components
+// ============================================================================
 
 const AlertDialog = AlertDialogPrimitive.Root;
 

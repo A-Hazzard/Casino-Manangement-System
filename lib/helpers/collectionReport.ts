@@ -273,7 +273,8 @@ export async function getMonthlyCollectionReportSummary(
     timestamp: { $gte: startDate, $lte: endDate },
   };
   if (locationName) {
-    match.locationName = locationName;
+    // Case-insensitive matching using regex
+    match.locationName = { $regex: new RegExp(`^${locationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') };
   }
 
   let pipeline: PipelineStage[] = [];
@@ -361,7 +362,8 @@ export async function getMonthlyCollectionReportByLocation(
     timestamp: { $gte: startDate, $lte: endDate },
   };
   if (locationName) {
-    match.locationName = locationName;
+    // Case-insensitive matching using regex
+    match.locationName = { $regex: new RegExp(`^${locationName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') };
   }
 
   let pipeline: PipelineStage[] = [];
@@ -473,39 +475,64 @@ export async function getAllLocationNames(): Promise<string[]> {
 }
 
 /**
- * Fetches all unique location names from collection reports via API call.
- * @returns {Promise<string[]>} Array of unique location names.
+ * Fetches locations for monthly report filtered by licensee and user permissions.
+ * @param licensee - Optional licensee filter (supports 'all' or specific licensee)
+ * @returns {Promise<Array<{id: string, name: string}>>} Array of location objects with id and name.
  */
-export async function fetchAllLocationNames(): Promise<string[]> {
+export async function fetchMonthlyReportLocations(
+  licensee?: string
+): Promise<Array<{ id: string; name: string }>> {
   try {
-    const response = await axios.get("/api/collectionReport/locations");
+    const params = new URLSearchParams();
+    if (licensee && licensee !== '') {
+      params.append('licensee', licensee);
+    }
+    const url = `/api/collectionReport/locations${
+      params.toString() ? `?${params.toString()}` : ''
+    }`;
+    const response = await axios.get(url);
     const data: Record<string, unknown> = response.data;
-    if ("locations" in data && Array.isArray(data.locations)) {
-      return data.locations.map((location: unknown) => String(location));
+    if ('locations' in data && Array.isArray(data.locations)) {
+      return data.locations as Array<{ id: string; name: string }>;
     }
     return [];
   } catch (error: unknown) {
     // Handle different types of errors gracefully
     if (axios.isAxiosError(error)) {
-      if (error.code === "ECONNABORTED") {
+      if (error.code === 'ECONNABORTED') {
         console.warn(
-          "⏰ Location names request timed out - returning empty array"
+          '⏰ Location request timed out - returning empty array'
         );
       } else if (error.response?.status === 500) {
         console.warn(
-          "🔧 Server error fetching location names - database may be unavailable"
+          '🔧 Server error fetching locations - database may be unavailable'
         );
       } else if (error.response?.status === 404) {
-        console.warn("📭 Location names endpoint not found");
+        console.warn('📭 Location endpoint not found');
       } else {
         console.warn(
-          "⚠️ Network error fetching location names:",
+          '⚠️ Network error fetching locations:',
           error.message
         );
       }
     } else {
-      console.warn("⚠️ Unexpected error fetching location names:", error);
+      console.warn('⚠️ Unexpected error fetching locations:', error);
     }
+    return [];
+  }
+}
+
+/**
+ * @deprecated Use fetchMonthlyReportLocations instead
+ * Fetches all unique location names from collection reports via API call.
+ * @returns {Promise<string[]>} Array of unique location names.
+ */
+export async function fetchAllLocationNames(): Promise<string[]> {
+  try {
+    const locations = await fetchMonthlyReportLocations();
+    return locations.map(loc => loc.name);
+  } catch (error: unknown) {
+    console.warn('⚠️ Error fetching location names:', error);
     return [];
   }
 }
@@ -577,9 +604,8 @@ export async function createCollectionReport(
           error.response.data
         );
         // Preserve the original error with response data for proper handling
-        const enhancedError = new Error(error.response.data?.error || "Invalid data provided. Please check your inputs.");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (enhancedError as any).response = error.response;
+        const enhancedError = new Error(error.response.data?.error || "Invalid data provided. Please check your inputs.") as Error & { response?: typeof error.response };
+        enhancedError.response = error.response;
         throw enhancedError;
       } else {
         console.warn(

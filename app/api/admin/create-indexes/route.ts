@@ -1,3 +1,15 @@
+/**
+ * Create Indexes Admin API Route
+ *
+ * This route handles creating database indexes for improved query performance.
+ * It supports:
+ * - Creating indexes for all major collections (Machine, GamingLocations, MachineEvent, Meters, Collections, CollectionReport, Member, MachineSession, User)
+ * - Batch index creation with error handling per collection
+ * - Useful for database optimization and performance tuning
+ *
+ * @module app/api/admin/create-indexes/route
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -10,11 +22,27 @@ import { Member } from '@/app/api/lib/models/members';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import UserModel from '@/app/api/lib/models/user';
 
+/**
+ * Main POST handler for creating database indexes
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Create indexes for each collection (with individual error handling)
+ * 3. Return results summary
+ */
 export async function POST(_request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    const results = [];
+    // ============================================================================
+    // STEP 2: Create indexes for each collection
+    // ============================================================================
+    const results: string[] = [];
 
     // Machine indexes
     try {
@@ -116,13 +144,28 @@ export async function POST(_request: NextRequest) {
       results.push(`Users indexes error: ${error}`);
     }
 
+    // ============================================================================
+    // STEP 3: Return results summary
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Admin Create Indexes POST API] Created indexes for all collections after ${duration}ms.`
+    );
+
     return NextResponse.json({
       success: true,
       message: 'Indexes created successfully',
       results,
     });
-  } catch (error) {
-    console.error('Error creating indexes:', error);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Admin Create Indexes POST API] Error after ${duration}ms:`,
+      errorMessage
+    );
+
     return NextResponse.json(
       { success: false, error: 'Failed to create indexes' },
       { status: 500 }
@@ -130,6 +173,12 @@ export async function POST(_request: NextRequest) {
   }
 }
 
+/**
+ * GET handler for checking index creation status
+ *
+ * Flow:
+ * 1. Return informational message about available collections
+ */
 export async function GET() {
   return NextResponse.json({
     message: 'Use POST to create indexes',

@@ -1,3 +1,21 @@
+/**
+ * Password Update Modal Component
+ * Modal for updating user password with strength validation.
+ *
+ * Features:
+ * - Password input with show/hide toggle
+ * - Password strength validation
+ * - Password requirements checklist
+ * - Confirm password field
+ * - Form validation
+ * - Loading states
+ * - Success/error handling
+ *
+ * @param open - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ * @param onUpdate - Callback when password is updated
+ * @param loading - Whether update is in progress
+ */
 'use client';
 
 import { useState } from 'react';
@@ -14,6 +32,10 @@ import {
 } from '@/components/ui/dialog';
 import { CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { validatePasswordStrength } from '@/lib/utils/auth';
+
+// ============================================================================
+// Types & Constants
+// ============================================================================
 
 type PasswordUpdateModalProps = {
   open: boolean;

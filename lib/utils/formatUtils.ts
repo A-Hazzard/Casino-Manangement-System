@@ -1,4 +1,18 @@
 /**
+ * Format Utilities
+ *
+ * Utility functions for formatting currency, percentages, and large numbers.
+ *
+ * Features:
+ * - Currency formatting with smart decimals
+ * - Percentage formatting
+ * - Large number formatting (K, M, B suffixes)
+ */
+
+// ============================================================================
+// Currency Formatting
+// ============================================================================
+/**
  * Format a number as currency with smart decimal handling
  * @param value - The number to format
  * @returns Formatted currency string
@@ -21,6 +35,9 @@ export const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
+// ============================================================================
+// Percentage Formatting
+// ============================================================================
 /**
  * Format a number as percentage with smart decimal handling
  * @param value - The number to format
@@ -39,6 +56,9 @@ export const formatPercentage = (value: number): string => {
   return `${value.toFixed(hasSignificantDecimals ? 2 : 0)}%`;
 };
 
+// ============================================================================
+// Large Number Formatting
+// ============================================================================
 /**
  * Format a large number with appropriate suffixes (K, M, B) and smart decimals
  * @param value - The number to format

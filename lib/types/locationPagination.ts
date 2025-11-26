@@ -1,3 +1,10 @@
+/**
+ * Location Pagination Types
+ * Types for location list pagination functionality.
+ *
+ * Manages pagination state and navigation controls for location
+ * listings with first/last/prev/next page handlers.
+ */
 export type UseLocationPaginationProps = {
   totalPages: number;
   initialPage?: number;

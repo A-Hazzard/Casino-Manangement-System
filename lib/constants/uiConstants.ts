@@ -1,3 +1,15 @@
+/**
+ * UI Constants
+ * Core UI constants including color palettes, time frames, and filter options.
+ *
+ * Includes:
+ * - Color palette for charts and UI elements
+ * - Time frame options (Today, Yesterday, 7d, 30d, Custom)
+ * - Filter value mappings
+ * - Licensee options for filtering
+ * - Mathematical constants (RADIAN for pie charts)
+ * Used throughout the application for consistent UI styling and filtering.
+ */
 import { TimeFrames } from '../types';
 import { licenceeOption } from '../types';
 import { TimePeriod } from '@/shared/types/common';

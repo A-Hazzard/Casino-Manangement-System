@@ -1,3 +1,10 @@
+/**
+ * User Types (Frontend)
+ * Frontend-specific user types for current user data and hooks.
+ *
+ * Used by useCurrentUser hook to manage current user state,
+ * changes tracking, and user data refresh functionality.
+ */
 export type CurrentUserData = {
   id: string;
   username: string;

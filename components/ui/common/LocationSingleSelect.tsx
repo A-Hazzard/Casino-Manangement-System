@@ -1,3 +1,27 @@
+/**
+ * Location Single Select Component
+ * Single-select dropdown component specifically for location selection.
+ *
+ * Features:
+ * - Single location selection
+ * - Search functionality
+ * - SAS badge display
+ * - All locations option
+ * - Click outside to close
+ * - Empty state handling
+ *
+ * @param locations - Array of location options
+ * @param selectedLocation - Currently selected location ID
+ * @param onSelectionChange - Callback when selection changes
+ * @param placeholder - Placeholder text
+ * @param className - Additional CSS classes
+ * @param includeAllOption - Whether to include "All Locations" option
+ * @param allOptionLabel - Label for all option
+ * @param showSasBadge - Whether to show SAS enabled badge
+ * @param dropdownLabel - Label for dropdown
+ * @param searchPlaceholder - Search input placeholder
+ * @param emptyMessage - Message when no locations found
+ */
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -86,23 +110,40 @@ export default function LocationSingleSelect({
   const selectedOption = options.find(option => option.id === selectedLocation);
   const displayText = selectedOption?.name || placeholder;
 
+  // Determine if we should use auto width based on className prop
+  const useAutoWidth = className?.includes('w-auto') || className?.match(/md:w-auto|lg:w-auto|xl:w-auto/);
+  const buttonWidthClass = useAutoWidth ? 'w-auto min-w-fit' : 'w-full';
+  
+  // Calculate the width needed for the longest location name (for dropdown)
+  const longestName = options.reduce((longest, option) => 
+    option.name.length > longest.length ? option.name : longest, 
+    displayText
+  );
+  // Estimate width: ~8-10px per character + padding (60px for icons/padding)
+  const estimatedWidth = Math.max(longestName.length * 9 + 80, 250);
+
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <Button
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full justify-between text-left font-normal"
+        className={`${buttonWidthClass} justify-between text-left font-normal whitespace-nowrap`}
       >
-        <span className="truncate">{displayText}</span>
+        <span>{displayText}</span>
         <ChevronDown
-          className={`h-4 w-4 transition-transform ${
+          className={`h-4 w-4 transition-transform flex-shrink-0 ml-2 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </Button>
 
       {isOpen && (
-        <div className="absolute z-[70] mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+        <div 
+          className={`absolute z-[70] mt-1 max-h-60 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg ${
+            useAutoWidth ? 'min-w-full' : 'w-full'
+          }`}
+          style={useAutoWidth ? { width: `${estimatedWidth}px` } : undefined}
+        >
           {/* Header with search */}
           <div className="border-b border-gray-100 p-2">
             <div className="mb-2 flex items-center justify-between">
@@ -163,7 +204,7 @@ export default function LocationSingleSelect({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 whitespace-nowrap">
                         {option.name}
                       </div>
                       {typeof option.sasEnabled === 'boolean' &&

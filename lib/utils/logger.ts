@@ -1,7 +1,22 @@
+/**
+ * Logger Utilities
+ *
+ * API logging utilities for tracking request performance and errors.
+ *
+ * Features:
+ * - Request duration tracking
+ * - Success/error logging
+ * - Context-aware logging
+ * - Formatted log messages
+ */
+
 import { NextRequest } from 'next/server';
 
 import type { LogContext, LogResult } from '@/lib/types/logger';
 
+// ============================================================================
+// APILogger Class
+// ============================================================================
 class APILogger {
   private startTime: number = 0;
 

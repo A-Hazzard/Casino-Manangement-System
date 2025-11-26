@@ -1,4 +1,23 @@
+/**
+ * Analytics Helper Functions
+ *
+ * Provides helper functions for generating analytics data including top performing
+ * locations, machine statistics, and financial metrics aggregated by licensee.
+ * It uses MongoDB aggregation pipelines to calculate performance metrics from
+ * machines and meters collections.
+ *
+ * Features:
+ * - Retrieves top performing locations for a given licensee with financial metrics.
+ * - Calculates machine statistics including total, online, and SAS machines.
+ * - Aggregates financial metrics (drop, cancelled credits, gross) from meters data.
+ * - Supports date range filtering for financial metrics.
+ */
+
 import { Machine } from '@/app/api/lib/models/machines';
+
+// ============================================================================
+// Top Locations Analytics
+// ============================================================================
 
 /**
  * Get top performing locations for a given licensee
@@ -112,6 +131,10 @@ export async function getTopLocations(
   // Sort by gross and return top 5
   return topLocationsWithMetrics.sort((a, b) => b.gross - a.gross).slice(0, 5);
 }
+
+// ============================================================================
+// Machine Statistics Analytics
+// ============================================================================
 
 /**
  * Get machine statistics for a given licensee

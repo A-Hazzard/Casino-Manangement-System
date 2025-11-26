@@ -1,3 +1,22 @@
+/**
+ * PC Layout Component
+ * Dashboard layout optimized for desktop devices (hidden on mobile).
+ *
+ * Features:
+ * - Date filters with custom date range support
+ * - Machine status widget (online/offline counts)
+ * - Refresh button for data reload
+ * - Financial metrics cards with currency formatting
+ * - Interactive charts (bar/line charts)
+ * - Map preview of gaming locations
+ * - Top performing section with tabs and sorting
+ * - Pie chart visualization
+ * - Skeleton loading states
+ * - No data messages
+ * - Currency conversion support
+ *
+ * @param props - PcLayoutProps including data, loading states, and handlers
+ */
 'use client';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
@@ -14,7 +33,11 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TopPerformingItem } from '@/lib/types';
 import { PcLayoutProps } from '@/lib/types/componentProps';
 import { formatCurrency } from '@/lib/utils/currency';
-import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import axios from 'axios';
 import { RefreshCw } from 'lucide-react';
@@ -23,6 +46,9 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import CustomSelect from '../ui/CustomSelect';
 
 export default function PcLayout(props: PcLayoutProps) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
   const { shouldShowCurrency, displayCurrency } =
@@ -30,6 +56,9 @@ export default function PcLayout(props: PcLayoutProps) {
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
+  // ============================================================================
+  // Helper Functions
+  // ============================================================================
   // Format amount with currency code (BBD) instead of symbol (Bds$)
   const formatAmountWithCode = (amount: number, currency: string) => {
     const hasDecimals = amount % 1 !== 0;
@@ -44,6 +73,9 @@ export default function PcLayout(props: PcLayoutProps) {
     return `${currency} ${formatted}`;
   };
 
+  // ============================================================================
+  // Helper Components
+  // ============================================================================
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">
       <div className="mb-2 text-lg text-gray-500">No Data Available</div>
@@ -51,6 +83,9 @@ export default function PcLayout(props: PcLayoutProps) {
     </div>
   );
 
+  // ============================================================================
+  // State - Location Aggregates
+  // ============================================================================
   // State for aggregated location data
   const [locationAggregates, setLocationAggregates] = useState<
     Record<string, unknown>[]
@@ -116,6 +151,9 @@ export default function PcLayout(props: PcLayoutProps) {
     };
   }, [activeMetricsFilter, customDateRange, selectedLicencee]);
 
+  // ============================================================================
+  // Render - Desktop Dashboard Layout
+  // ============================================================================
   return (
     <div className="hidden md:block">
       <div className="grid grid-cols-5 gap-6">
@@ -173,7 +211,7 @@ export default function PcLayout(props: PcLayoutProps) {
                 <div className="my-2 h-[4px] w-full rounded-full bg-buttonActive"></div>
                 <div className="flex flex-1 items-center justify-center">
                   <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyInColorClass(
                       props.totals?.moneyIn
                     )}`}
                   >
@@ -193,8 +231,9 @@ export default function PcLayout(props: PcLayoutProps) {
                 <div className="my-2 h-[4px] w-full rounded-full bg-lighterBlueHighlight"></div>
                 <div className="flex flex-1 items-center justify-center">
                   <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
-                      props.totals?.moneyOut
+                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyOutColorClass(
+                      props.totals?.moneyOut,
+                      props.totals?.moneyIn
                     )}`}
                   >
                     {props.totals
@@ -213,7 +252,7 @@ export default function PcLayout(props: PcLayoutProps) {
                 <div className="my-2 h-[4px] w-full rounded-full bg-orangeHighlight"></div>
                 <div className="flex flex-1 items-center justify-center">
                   <p
-                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getFinancialColorClass(
+                    className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getGrossColorClass(
                       props.totals?.gross
                     )}`}
                   >

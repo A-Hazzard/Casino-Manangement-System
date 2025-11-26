@@ -1,3 +1,26 @@
+/**
+ * Searchable Single Select Component
+ * Single-select dropdown component with search functionality.
+ *
+ * Features:
+ * - Single option selection
+ * - Search functionality
+ * - Option descriptions
+ * - All option support
+ * - Click outside to close
+ * - Empty state handling
+ *
+ * @param options - Array of selectable options
+ * @param selectedId - Currently selected option ID
+ * @param onSelectionChange - Callback when selection changes
+ * @param placeholder - Placeholder text
+ * @param includeAllOption - Whether to include "All" option
+ * @param allLabel - Label for all option
+ * @param searchPlaceholder - Search input placeholder
+ * @param emptyMessage - Message when no options found
+ * @param className - Additional CSS classes
+ * @param dropdownLabel - Label for dropdown
+ */
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';

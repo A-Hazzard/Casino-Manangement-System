@@ -1,22 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { getUserById, getUserFromServer } from '@/app/api/lib/helpers/users';
+/**
+ * Current User API Route
+ *
+ * This route handles fetching the current authenticated user's data from the database.
+ * It supports:
+ * - JWT token validation and user authentication
+ * - Session version checking for permission changes
+ * - Profile validation and update requirements
+ * - User data hydration with permissions
+ *
+ * @module app/api/auth/current-user/route
+ */
+
 import {
   getInvalidProfileFields,
   hasInvalidProfileFields,
 } from '@/app/api/lib/helpers/profileValidation';
+import { getUserById, getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * GET /api/auth/current-user
- * Fetches the current user's data from the database
- * Used for permission checks and role validation
- * 
- * Also detects if permissions were manually changed in DB (without sessionVersion increment)
- * and invalidates the session by returning 401
+ * Main GET handler for current user
+ *
+ * Flow:
+ * 1. Authenticate user from JWT token
+ * 2. Connect to database
+ * 3. Fetch user data from database
+ * 4. Validate profile fields
+ * 5. Return user data with validation status
  */
 export async function GET(_request: NextRequest) {
+  const startTime = Date.now();
+
   try {
-    // Get user from JWT token (includes permissions from token)
+    // ============================================================================
+    // STEP 1: Authenticate user from JWT token
+    // ============================================================================
     const jwtUser = await getUserFromServer();
     if (!jwtUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,10 +43,14 @@ export async function GET(_request: NextRequest) {
 
     const userId = jwtUser._id as string;
 
-    // Connect to database
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Fetch user from database with all current data
+    // ============================================================================
+    // STEP 3: Fetch user data from database
+    // ============================================================================
     const dbUser = await getUserById(userId);
 
     if (!dbUser) {
@@ -40,9 +63,15 @@ export async function GET(_request: NextRequest) {
     // because getUserFromServer() already validates sessionVersion and hydrates permissions
     // from the database if they're missing from the JWT.
 
+    // ============================================================================
+    // STEP 4: Validate profile fields
+    // ============================================================================
     const { invalidFields, reasons } = getInvalidProfileFields(dbUser as never);
     const requiresProfileUpdate = hasInvalidProfileFields(invalidFields);
 
+    // ============================================================================
+    // STEP 5: Return user data with validation status
+    // ============================================================================
     return NextResponse.json({
       success: true,
       user: {
@@ -62,8 +91,9 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error(' Error fetching current user:', error);
-    console.error(' Error details:', {
+    const duration = Date.now() - startTime;
+    console.error(`[Current User API] Error after ${duration}ms:`, error);
+    console.error('Error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       name: error instanceof Error ? error.name : undefined,

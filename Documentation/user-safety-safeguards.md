@@ -1,7 +1,7 @@
 # User Safety & Safeguards
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 11, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 1.1.0
 
 ## Overview
@@ -255,7 +255,7 @@ User creates 2 collection reports for the same location on the same day (e.g., c
 Previous versions (before Nov 11, 2025) prevented duplicate reports with a 409 Conflict error. This restriction was removed per business requirement to allow multiple collections per day.
 
 **Implementation:**
-- `app/api/collectionReport/route.ts` - Duplicate check removed entirely (lines 512-514 now contain note about removal)
+- `app/api/collectionReport/route.ts` - Duplicate check removed entirely
 
 ---
 
@@ -278,7 +278,7 @@ Admin changes a location's licensee assignment while collectors are actively ent
 // It is NOT incremented on login - this allows multiple concurrent sessions
 
 // When permissions change, sessionVersion increments
-await User.updateOne(
+await User.findOneAndUpdate(
   { _id: userId },
   { 
     $set: { 'rel.licencee': newLicenseeId },
@@ -287,7 +287,7 @@ await User.updateOne(
 );
 
 // On login, sessionVersion is NOT incremented:
-await User.updateOne(
+await User.findOneAndUpdate(
   { _id: userId },
   {
     $set: { lastLoginAt: now },  // Only update login metadata
@@ -533,6 +533,6 @@ The Evolution One CMS follows a **"Prevent, Don't Punish"** philosophy:
 
 ---
 
-**Last Updated:** November 11, 2025  
+**Last Updated:** November 22, 2025  
 **Next Review:** December 2025 (after user feedback)
 

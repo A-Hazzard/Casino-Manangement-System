@@ -1,7 +1,24 @@
+/**
+ * Axios Interceptor Utility
+ *
+ * Sets up axios interceptors to handle authentication errors and database mismatches.
+ *
+ * Features:
+ * - 401 error handling (unauthorized)
+ * - Database mismatch detection and handling
+ * - Session invalidation handling
+ * - Automatic token clearing
+ * - User-friendly error messages
+ * - Redirect to login on authentication failures
+ */
+
 import axios from 'axios';
 import { toast } from 'sonner';
 import { handleDatabaseMismatch } from './databaseMismatch';
 
+// ============================================================================
+// Interceptor Setup
+// ============================================================================
 /**
  * Sets up axios interceptors to handle authentication errors
  */

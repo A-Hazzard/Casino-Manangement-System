@@ -1,3 +1,19 @@
+/**
+ * Activity Log Table Component
+ * Table component for displaying machine activity logs with filtering and time selection.
+ *
+ * Features:
+ * - Machine event log display
+ * - Event type filtering
+ * - Time picker for filtering by time
+ * - Expandable event sequences
+ * - Command and description display
+ * - Date and time formatting
+ * - Success/failure indicators
+ * - MUI date picker integration
+ *
+ * Large component (~624 lines) handling machine activity log display and filtering.
+ */
 import React, { useState, useMemo } from 'react';
 import { CheckIcon, PlusIcon, MinusIcon } from '@radix-ui/react-icons';
 import { Button } from '@/components/ui/button';
@@ -19,6 +35,10 @@ import {
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 export type MachineEvent = {
   _id: string;

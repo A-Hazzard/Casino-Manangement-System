@@ -1,13 +1,48 @@
+/**
+ * Admin Auth Events API Route
+ *
+ * This route provides authentication events for admin dashboard, including:
+ * - Filtering by action, success status, time range
+ * - Searching by email, IP address, or details
+ * - Pagination support
+ *
+ * Supports:
+ * - Time range filtering (1h, 24h, 7d, 30d)
+ * - Action filtering (all, token_refresh, etc.)
+ * - Success status filtering (true, false, all)
+ * - Text search across email, IP, and details
+ * - Pagination (page, limit)
+ * - Admin/developer access control
+ *
+ * @module app/api/admin/auth/events/route
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthEvents } from '@/app/api/lib/helpers/adminAuthEvents';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { ActivityLog } from '@/app/api/lib/models/activityLog';
 
+/**
+ * Main GET handler for fetching authentication events
+ *
+ * Flow:
+ * 1. Connect to database and authenticate user
+ * 2. Parse query parameters (timeRange, action, success, search, page, limit)
+ * 3. Fetch authentication events with filters and pagination
+ * 4. Return events and pagination info
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Check authentication and authorization
+    // ============================================================================
+    // STEP 2: Authenticate user and check permissions
+    // ============================================================================
     const user = await getUserFromServer();
     if (!user) {
       return NextResponse.json(
@@ -16,82 +51,40 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
+    const timeRange = (searchParams.get('timeRange') as '1h' | '24h' | '7d' | '30d') || '24h';
     const action = searchParams.get('action');
     const success = searchParams.get('success');
-    const timeRange = searchParams.get('timeRange') || '24h';
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    // Calculate date range
-    const now = new Date();
-    let startDate: Date;
+    // ============================================================================
+    // STEP 4: Fetch authentication events with filters and pagination
+    // ============================================================================
+    const results = await getAuthEvents(timeRange, action, success, search, page, limit);
 
-    switch (timeRange) {
-      case '1h':
-        startDate = new Date(now.getTime() - 60 * 60 * 1000);
-        break;
-      case '7d':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case '24h':
-      default:
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-    }
+    // ============================================================================
+    // STEP 5: Return events and pagination info
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Admin Auth Events GET API] Fetched ${results.events.length} events (page ${page}/${results.totalPages}) after ${duration}ms.`
+    );
 
-    // Build query filters
-    const filters: Record<string, unknown> = {
-      timestamp: { $gte: startDate },
-    };
+    return NextResponse.json(results);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Admin Auth Events GET API] Error after ${duration}ms:`,
+      errorMessage
+    );
 
-    if (action && action !== 'all') {
-      if (action === 'token_refresh') {
-        filters.action = {
-          $in: ['token_refresh_success', 'token_refresh_failed'],
-        };
-      } else {
-        filters.action = action;
-      }
-    }
-
-    if (success && success !== 'all') {
-      filters.success = success === 'true';
-    }
-
-    if (search) {
-      filters.$or = [
-        { email: { $regex: search, $options: 'i' } },
-        { ipAddress: { $regex: search, $options: 'i' } },
-        { details: { $regex: search, $options: 'i' } },
-      ];
-    }
-
-    // Query actual data using ActivityLog model
-    const skip = (page - 1) * limit;
-
-    const events = await ActivityLog.find(filters)
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(limit)
-      .select('-__v')
-      .lean();
-
-    const total = await ActivityLog.countDocuments(filters);
-
-    return NextResponse.json({
-      events,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    });
-  } catch (error) {
-    console.error('Failed to fetch auth events:', error);
     return NextResponse.json(
       { error: 'Failed to fetch authentication events' },
       { status: 500 }

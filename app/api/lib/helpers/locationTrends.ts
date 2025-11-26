@@ -1,0 +1,543 @@
+/**
+ * Location Trends Helper Functions
+ *
+ * This module contains helper functions for location trends analytics.
+ * It handles aggregation pipelines, currency conversion, and data formatting
+ * for location trend data.
+ *
+ * @module app/api/lib/helpers/locationTrends
+ */
+
+import { getDatesForTimePeriod } from '@/lib/utils/dates';
+import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import { convertFromUSD, convertToUSD, getCountryCurrency } from '@/lib/helpers/rates';
+import type { TimePeriod } from '@/shared/types';
+import type { CurrencyCode } from '@/shared/types/currency';
+import type { PipelineStage } from 'mongoose';
+import type { Db } from 'mongodb';
+
+export type DailyTrendItem = {
+  day: string;
+  time?: string;
+  location: string;
+  handle: number;
+  winLoss: number;
+  jackpot: number;
+  plays: number;
+  drop: number;
+  totalCancelledCredits: number;
+  gross: number;
+};
+
+export type LocationTrendData = {
+  day: string;
+  time?: string;
+  [locationId: string]:
+    | {
+        handle: number;
+        winLoss: number;
+        jackpot: number;
+        plays: number;
+        drop: number;
+        gross: number;
+      }
+    | string
+    | undefined;
+};
+
+/**
+ * Determine if hourly aggregation should be used based on time period
+ */
+function shouldUseHourlyAggregation(
+  timePeriod: TimePeriod,
+  startDate?: Date,
+  endDate?: Date
+): boolean {
+  if (timePeriod === 'Today' || timePeriod === 'Yesterday') {
+    return true;
+  }
+  if (timePeriod === 'Custom' && startDate && endDate) {
+    const diffInMs = endDate.getTime() - startDate.getTime();
+    const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+    return diffInDays <= 1;
+  }
+  return false;
+}
+
+/**
+ * Build aggregation pipeline for location trends
+ */
+function buildLocationTrendsPipeline(
+  targetLocations: string[],
+  queryStartDate: Date,
+  queryEndDate: Date,
+  licencee: string | null,
+  shouldUseHourly: boolean
+): PipelineStage[] {
+  const pipeline: PipelineStage[] = [
+    {
+      $match: {
+        readAt: { $gte: queryStartDate, $lte: queryEndDate },
+        location: { $in: targetLocations },
+      },
+    },
+    {
+      $lookup: {
+        from: 'gaminglocations',
+        localField: 'location',
+        foreignField: '_id',
+        as: 'locationDetails',
+      },
+    },
+    {
+      $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+    },
+  ];
+
+  if (licencee && licencee !== 'all') {
+    pipeline.push({
+      $match: {
+        'locationDetails.rel.licencee': licencee,
+      },
+    } as PipelineStage);
+  }
+
+  const groupId: Record<string, unknown> = {
+    location: '$location',
+    day: {
+      $dateToString: {
+        format: '%Y-%m-%d',
+        date: '$readAt',
+      },
+    },
+  };
+
+  if (shouldUseHourly) {
+    groupId.time = {
+      $dateToString: {
+        format: '%H:00',
+        date: '$readAt',
+      },
+    };
+  }
+
+  pipeline.push(
+    {
+      $group: {
+        _id: groupId,
+        handle: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
+        winLoss: {
+          $sum: {
+            $subtract: [
+              { $ifNull: ['$movement.coinIn', 0] },
+              { $ifNull: ['$movement.coinOut', 0] },
+            ],
+          },
+        },
+        jackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+        plays: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
+        drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+        totalCancelledCredits: {
+          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+        },
+        gross: {
+          $sum: {
+            $subtract: [
+              { $ifNull: ['$movement.drop', 0] },
+              { $ifNull: ['$movement.totalCancelledCredits', 0] },
+            ],
+          },
+        },
+      },
+    } as PipelineStage,
+    { $sort: { '_id.day': 1, '_id.time': 1 } } as PipelineStage,
+    {
+      $project: {
+        _id: 0,
+        day: '$_id.day',
+        time: '$_id.time',
+        location: '$_id.location',
+        handle: 1,
+        winLoss: 1,
+        jackpot: 1,
+        plays: 1,
+        drop: 1,
+        totalCancelledCredits: 1,
+        gross: 1,
+      },
+    } as PipelineStage
+  );
+
+  return pipeline;
+}
+
+/**
+ * Get location currency mappings
+ */
+async function getLocationCurrencies(
+  db: Db,
+  locationsData: Array<{ _id: unknown; rel?: { licencee?: unknown }; country?: unknown }>
+): Promise<Map<string, string>> {
+  const licenseesData = await db
+    .collection('licencees')
+    .find(
+      {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      },
+      { projection: { _id: 1, name: 1 } }
+    )
+    .toArray();
+
+  const licenseeIdToName = new Map<string, string>();
+  licenseesData.forEach(lic => {
+    licenseeIdToName.set(lic._id.toString(), lic.name);
+  });
+
+  const countriesData = await db.collection('countries').find({}).toArray();
+  const countryIdToName = new Map<string, string>();
+  countriesData.forEach(country => {
+    countryIdToName.set(country._id.toString(), country.name);
+  });
+
+  const locationCurrencies = new Map<string, string>();
+  locationsData.forEach(loc => {
+    const locationLicenseeId = loc.rel?.licencee;
+    if (locationLicenseeId) {
+      const licenseeName =
+        licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
+      locationCurrencies.set(String(loc._id), licenseeName);
+    } else {
+      const countryId = loc.country;
+      const countryName = countryId
+        ? countryIdToName.get(countryId.toString())
+        : undefined;
+      const nativeCurrency = countryName
+        ? getCountryCurrency(countryName)
+        : 'USD';
+      locationCurrencies.set(String(loc._id), nativeCurrency);
+    }
+  });
+
+  return locationCurrencies;
+}
+
+/**
+ * Apply currency conversion to daily trend items
+ */
+function convertDailyTrendItems(
+  dailyData: DailyTrendItem[],
+  locationCurrencies: Map<string, string>,
+  displayCurrency: CurrencyCode
+): DailyTrendItem[] {
+  return dailyData.map(item => {
+    const nativeCurrency = locationCurrencies.get(item.location) || 'USD';
+    return {
+      ...item,
+      handle: convertFromUSD(
+        convertToUSD(item.handle, nativeCurrency),
+        displayCurrency
+      ),
+      winLoss: convertFromUSD(
+        convertToUSD(item.winLoss, nativeCurrency),
+        displayCurrency
+      ),
+      jackpot: convertFromUSD(
+        convertToUSD(item.jackpot, nativeCurrency),
+        displayCurrency
+      ),
+      drop: convertFromUSD(
+        convertToUSD(item.drop, nativeCurrency),
+        displayCurrency
+      ),
+      totalCancelledCredits: convertFromUSD(
+        convertToUSD(item.totalCancelledCredits, nativeCurrency),
+        displayCurrency
+      ),
+      gross: convertFromUSD(
+        convertToUSD(item.gross, nativeCurrency),
+        displayCurrency
+      ),
+    };
+  });
+}
+
+/**
+ * Format trends data for hourly aggregation
+ */
+function formatHourlyTrends(
+  convertedData: DailyTrendItem[],
+  targetLocations: string[],
+  dayKey: string
+): LocationTrendData[] {
+  const trends: LocationTrendData[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    const timeKey = `${hour.toString().padStart(2, '0')}:00`;
+    const trendItem: LocationTrendData = {
+      day: dayKey,
+      time: timeKey,
+    };
+
+    targetLocations.forEach(locationId => {
+      const locationData = convertedData.find(
+        item =>
+          item.location === locationId &&
+          item.day === dayKey &&
+          item.time === timeKey
+      );
+      trendItem[locationId] = {
+        handle: locationData?.handle || 0,
+        winLoss: locationData?.winLoss || 0,
+        jackpot: locationData?.jackpot || 0,
+        plays: locationData?.plays || 0,
+        drop: locationData?.drop || 0,
+        gross: locationData?.gross || 0,
+      };
+    });
+
+    trends.push(trendItem);
+  }
+  return trends;
+}
+
+/**
+ * Format trends data for daily aggregation
+ */
+function formatDailyTrends(
+  convertedData: DailyTrendItem[],
+  targetLocations: string[],
+  queryStartDate: Date,
+  queryEndDate: Date
+): LocationTrendData[] {
+  const trends: LocationTrendData[] = [];
+  const current = new Date(queryStartDate);
+  while (current <= queryEndDate) {
+    const dayKey = current.toISOString().split('T')[0];
+    const trendItem: LocationTrendData = {
+      day: dayKey,
+    };
+
+    targetLocations.forEach(locationId => {
+      const locationData = convertedData.find(
+        item => item.location === locationId && item.day === dayKey
+      );
+      trendItem[locationId] = {
+        handle: locationData?.handle || 0,
+        winLoss: locationData?.winLoss || 0,
+        jackpot: locationData?.jackpot || 0,
+        plays: locationData?.plays || 0,
+        drop: locationData?.drop || 0,
+        gross: locationData?.gross || 0,
+      };
+    });
+
+    trends.push(trendItem);
+    current.setDate(current.getDate() + 1);
+  }
+  return trends;
+}
+
+/**
+ * Calculate totals by location
+ */
+function calculateLocationTotals(
+  convertedData: DailyTrendItem[],
+  targetLocations: string[]
+): Record<
+  string,
+  {
+    handle: number;
+    winLoss: number;
+    jackpot: number;
+    plays: number;
+    drop: number;
+    gross: number;
+  }
+> {
+  const totals: Record<
+    string,
+    {
+      handle: number;
+      winLoss: number;
+      jackpot: number;
+      plays: number;
+      drop: number;
+      gross: number;
+    }
+  > = {};
+
+  targetLocations.forEach(locationId => {
+    totals[locationId] = {
+      handle: 0,
+      winLoss: 0,
+      jackpot: 0,
+      plays: 0,
+      drop: 0,
+      gross: 0,
+    };
+  });
+
+  convertedData.forEach(item => {
+    if (totals[item.location]) {
+      totals[item.location].handle += item.handle;
+      totals[item.location].winLoss += item.winLoss;
+      totals[item.location].jackpot += item.jackpot;
+      totals[item.location].plays += item.plays;
+      totals[item.location].drop += item.drop;
+      totals[item.location].gross += item.gross;
+    }
+  });
+
+  return totals;
+}
+
+/**
+ * Get location trends data
+ */
+export async function getLocationTrends(
+  db: Db,
+  locationIds: string,
+  timePeriod: TimePeriod,
+  licencee: string | null,
+  startDateParam: string | null,
+  endDateParam: string | null,
+  displayCurrency: CurrencyCode
+): Promise<{
+  locationIds: string[];
+  timePeriod: TimePeriod;
+  startDate: string;
+  endDate: string;
+  trends: LocationTrendData[];
+  totals: Record<
+    string,
+    {
+      handle: number;
+      winLoss: number;
+      jackpot: number;
+      plays: number;
+      drop: number;
+      gross: number;
+    }
+  >;
+  locations: string[];
+  locationNames: Record<string, string>;
+  currency: CurrencyCode;
+  converted: boolean;
+  isHourly: boolean;
+}> {
+  const targetLocations = locationIds.split(',').map(id => id.trim());
+
+  // Get date range
+  let startDate: Date | undefined, endDate: Date | undefined;
+  if (startDateParam && endDateParam) {
+    startDate = new Date(startDateParam);
+    endDate = new Date(endDateParam);
+  } else {
+    const dateRange = getDatesForTimePeriod(timePeriod);
+    startDate = dateRange.startDate;
+    endDate = dateRange.endDate;
+  }
+
+  if (!startDate || !endDate) {
+    const now = new Date();
+    endDate = now;
+    startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  }
+
+  // Fetch locations to get their gaming day offsets
+  const locationsData = await db
+    .collection('gaminglocations')
+    .find(
+      { _id: { $in: targetLocations } } as never,
+      { projection: { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 } }
+    )
+    .toArray();
+
+  const locationsList = locationsData.map(loc => ({
+    _id: String(loc._id),
+    gameDayOffset: loc.gameDayOffset ?? 8,
+  }));
+
+  const gamingDayRanges = getGamingDayRangesForLocations(
+    locationsList,
+    timePeriod,
+    timePeriod === 'Custom' ? startDate : undefined,
+    timePeriod === 'Custom' ? endDate : undefined
+  );
+
+  const firstLocationRange = gamingDayRanges.get(targetLocations[0]);
+  const queryStartDate = firstLocationRange?.rangeStart || startDate;
+  const queryEndDate = firstLocationRange?.rangeEnd || endDate;
+
+  const shouldUseHourly = shouldUseHourlyAggregation(
+    timePeriod,
+    startDate,
+    endDate
+  );
+
+  // Build and execute pipeline
+  const pipeline = buildLocationTrendsPipeline(
+    targetLocations,
+    queryStartDate,
+    queryEndDate,
+    licencee,
+    shouldUseHourly
+  );
+
+  const dailyData = (await db
+    .collection('meters')
+    .aggregate(pipeline)
+    .toArray()) as DailyTrendItem[];
+
+  // Create location names mapping
+  const locationNames: Record<string, string> = {};
+  locationsData.forEach(loc => {
+    locationNames[String(loc._id)] = loc.name as string;
+  });
+
+  // Apply currency conversion if needed
+  let convertedData = dailyData;
+  if (shouldApplyCurrencyConversion(licencee)) {
+    const locationCurrencies = await getLocationCurrencies(db, locationsData);
+    convertedData = convertDailyTrendItems(
+      dailyData,
+      locationCurrencies,
+      displayCurrency
+    );
+  }
+
+  // Format trends data
+  const trends = shouldUseHourly
+    ? formatHourlyTrends(
+        convertedData,
+        targetLocations,
+        convertedData[0]?.day || new Date().toISOString().split('T')[0]
+      )
+    : formatDailyTrends(
+        convertedData,
+        targetLocations,
+        queryStartDate,
+        queryEndDate
+      );
+
+  // Calculate totals
+  const totals = calculateLocationTotals(convertedData, targetLocations);
+
+  return {
+    locationIds: targetLocations,
+    timePeriod,
+    startDate: queryStartDate.toISOString(),
+    endDate: queryEndDate.toISOString(),
+    trends,
+    totals,
+    locations: targetLocations,
+    locationNames,
+    currency: displayCurrency,
+    converted: shouldApplyCurrencyConversion(licencee),
+    isHourly: shouldUseHourly,
+  };
+}
+

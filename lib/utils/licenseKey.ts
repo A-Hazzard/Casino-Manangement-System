@@ -1,13 +1,31 @@
+/**
+ * License Key Utilities
+ *
+ * Utility functions for generating unique license keys.
+ *
+ * Features:
+ * - License key generation
+ * - Unique key validation
+ * - Database uniqueness checking
+ */
+
 import { Licencee } from '@/app/api/lib/models/licencee';
 
-// Helper function to generate a unique license key
+// ============================================================================
+// License Key Generation Functions
+// ============================================================================
+/**
+ * Generate a unique license key
+ */
 export function generateLicenseKey(): string {
   const timestamp = Date.now().toString(36);
   const randomStr = Math.random().toString(36).substring(2, 8);
   return `LIC-${timestamp}-${randomStr}`.toUpperCase();
 }
 
-// Helper function to ensure unique license key
+/**
+ * Generate a unique license key with database validation
+ */
 export async function generateUniqueLicenseKey(): Promise<string> {
   let licenseKey: string;
   let isUnique = false;

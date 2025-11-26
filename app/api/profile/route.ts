@@ -1,17 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { getUserIdFromServer } from '@/app/api/lib/helpers/users';
-import UserModel from '@/app/api/lib/models/user';
+/**
+ * Profile API Route
+ *
+ * This route handles user profile updates including personal information and password changes.
+ * It supports:
+ * - Profile field validation (username, email, phone, date of birth, etc.)
+ * - Password change with current password verification
+ * - Licensee and location assignment (for admin/developer roles)
+ * - Session version incrementing on permission changes
+ * - Profile validation status checking
+ *
+ * @module app/api/profile/route
+ */
+
 import {
   getInvalidProfileFields,
   hasInvalidProfileFields,
 } from '@/app/api/lib/helpers/profileValidation';
+import { getUserIdFromServer } from '@/app/api/lib/helpers/users';
+import UserModel from '@/app/api/lib/models/user';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import {
   comparePassword,
   hashPassword,
 } from '@/app/api/lib/utils/validation';
 import {
   containsEmailPattern,
+  isValidDateInput,
   normalizePhoneNumber,
   validateEmail,
   validateNameField,
@@ -19,8 +33,8 @@ import {
   validatePasswordStrength,
   validatePhoneNumber,
   validateUsername,
-  isValidDateInput,
 } from '@/lib/utils/validation';
+import { NextRequest, NextResponse } from 'next/server';
 
 type ProfileUpdatePayload = {
   username: string;
@@ -38,10 +52,32 @@ type ProfileUpdatePayload = {
   locationIds?: string[];
 };
 
+/**
+ * Main PUT handler for updating user profile
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Authenticate user and get user ID
+ * 3. Parse and validate request body
+ * 4. Validate all profile fields
+ * 5. Check for duplicate username/email
+ * 6. Verify current password if changing password
+ * 7. Build update operation
+ * 8. Update user in database
+ * 9. Return updated user with validation status
+ */
 export async function PUT(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user and get user ID
+    // ============================================================================
     const userId = await getUserIdFromServer();
     if (!userId) {
       return NextResponse.json(
@@ -50,6 +86,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse and validate request body
+    // ============================================================================
     const body = (await request.json()) as ProfileUpdatePayload;
     const errors: Record<string, string> = {};
 
@@ -65,6 +104,9 @@ export async function PUT(request: NextRequest) {
     const confirmPassword = body.confirmPassword?.trim() || '';
     const currentPassword = body.currentPassword?.trim() || '';
 
+    // ============================================================================
+    // STEP 4: Validate all profile fields
+    // ============================================================================
     if (!validateUsername(username)) {
       errors.username =
         'Username must use letters/numbers and cannot look like an email or phone number.';
@@ -138,7 +180,9 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Fetch user for duplicate checks and password verification
+    // ============================================================================
+    // STEP 5: Fetch user for duplicate checks and password verification
+    // ============================================================================
     const user = await UserModel.findOne({ _id: userId }).select('+password');
     if (!user) {
       return NextResponse.json(
@@ -206,6 +250,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 6: Check for duplicate username/email
+    // ============================================================================
     if (
       username.toLowerCase() !== (user.username || '').toLowerCase() &&
       (await UserModel.findOne({
@@ -240,6 +287,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 7: Verify current password if changing password
+    // ============================================================================
     if (passwordChangeRequested) {
       const matches = await comparePassword(currentPassword, user.password || '');
       if (!matches) {
@@ -254,6 +304,9 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 8: Build update operation
+    // ============================================================================
     const updateSet: Record<string, unknown> = {
       username,
       emailAddress,
@@ -359,6 +412,9 @@ export async function PUT(request: NextRequest) {
       updateOperation.$inc = { sessionVersion: 1 };
     }
 
+    // ============================================================================
+    // STEP 9: Update user in database
+    // ============================================================================
     const updatedUser = await UserModel.findOneAndUpdate(
       { _id: userId },
       updateOperation,
@@ -372,6 +428,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 10: Return updated user with validation status
+    // ============================================================================
     const { invalidFields, reasons } = getInvalidProfileFields(
       updatedUser as never,
       { rawPassword: newPassword || undefined }
@@ -380,6 +439,11 @@ export async function PUT(request: NextRequest) {
 
     const updatedObject = updatedUser.toObject();
     delete updatedObject.password;
+
+    const duration = Date.now() - startTime;
+    if (duration > 2000) {
+      console.warn(`[Profile API] PUT completed in ${duration}ms`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -401,9 +465,11 @@ export async function PUT(request: NextRequest) {
       invalidProfileReasons: reasons,
     });
   } catch (error) {
-    console.error('[profile-update] Error updating profile:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+    console.error(`[Profile API] PUT error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { success: false, message: 'Failed to update profile' },
+      { success: false, message: errorMessage },
       { status: 500 }
     );
   }

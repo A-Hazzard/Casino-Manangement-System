@@ -1,33 +1,64 @@
+/**
+ * MQTT Config Request API Route
+ *
+ * This route handles requesting current configuration from SMIB devices via MQTT.
+ * It supports:
+ * - Validating config request body
+ * - Requesting config from SMIB via MQTT service
+ * - Note: The callback will be handled by the SSE endpoint
+ *
+ * @module app/api/mqtt/config/request/route
+ */
+
+import { validateMQTTConfigRequest } from '@/app/api/lib/helpers/mqtt';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { NextRequest, NextResponse } from 'next/server';
-import { mqttService } from '@/lib/services/mqttService';
 
 /**
- * POST /api/mqtt/config/request
- * Request current configuration from SMIB
+ * Main POST handler for requesting MQTT config
+ *
+ * Flow:
+ * 1. Parse request body
+ * 2. Validate request body
+ * 3. Request config from SMIB via MQTT
+ * 4. Return success response
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const body = await request.json();
-    const { relayId, component } = body;
+    const { relayId, component } = body as {
+      relayId?: string;
+      component?: string;
+    };
 
-    if (!relayId) {
+    // ============================================================================
+    // STEP 2: Validate request body
+    // ============================================================================
+    const validationError = validateMQTTConfigRequest(body);
+    if (validationError) {
       return NextResponse.json(
-        { success: false, error: 'relayId is required' },
+        { success: false, error: validationError },
         { status: 400 }
       );
     }
 
-    if (!component) {
-      return NextResponse.json(
-        { success: false, error: 'component is required' },
-        { status: 400 }
-      );
+    // ============================================================================
+    // STEP 3: Request config from SMIB via MQTT
+    // ============================================================================
+    await mqttService.requestConfig(relayId!, component!);
+
+    // ============================================================================
+    // STEP 4: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[MQTT Config Request API] Completed in ${duration}ms`);
     }
-
-    // Request config from SMIB via MQTT
-    // Note: The callback will be handled by the SSE endpoint
-    await mqttService.requestConfig(relayId, component);
-
     return NextResponse.json({
       success: true,
       message: `Config request sent for ${component} to relayId: ${relayId}`,
@@ -36,11 +67,17 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('❌ [API] Error requesting MQTT config:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[MQTT Config Request API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

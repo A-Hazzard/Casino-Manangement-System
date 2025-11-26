@@ -1,3 +1,18 @@
+/**
+ * Meters Hourly Charts Component
+ * Line chart component displaying hourly meter data (games played, coin in, coin out).
+ *
+ * Features:
+ * - Multiple line charts for different metrics
+ * - Hourly data visualization
+ * - Responsive design
+ * - Mobile viewport detection
+ * - Loading states
+ * - Empty state handling
+ *
+ * @param data - Array of hourly chart data
+ * @param loading - Whether data is loading
+ */
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -112,6 +127,19 @@ export function MetersHourlyCharts({
     }
   };
 
+  // Check if each metric has data
+  const hasGamesPlayedData = useMemo(() => {
+    return chartData.some(item => item.gamesPlayed > 0);
+  }, [chartData]);
+
+  const hasCoinInData = useMemo(() => {
+    return chartData.some(item => item.coinIn > 0);
+  }, [chartData]);
+
+  const hasCoinOutData = useMemo(() => {
+    return chartData.some(item => item.coinOut > 0);
+  }, [chartData]);
+
   // Early returns after all hooks
   if (loading) {
     return (
@@ -142,10 +170,6 @@ export function MetersHourlyCharts({
     );
   }
 
-  if (!data || data.length === 0) {
-    return null;
-  }
-
   // Chart container with horizontal scroll on mobile
   const ChartContainer = ({ children }: { children: React.ReactNode }) => {
     if (isMobile && chartData.length > 8) {
@@ -168,50 +192,59 @@ export function MetersHourlyCharts({
           </CardTitle>
         </CardHeader>
         <CardContent className={isMobile && chartData.length > 8 ? 'p-0' : ''}>
-          <ChartContainer>
-            <ResponsiveContainer
-              width={chartWidth}
-              height={isMobile ? 250 : 300}
-            >
-              <LineChart
-                data={chartData}
-                margin={
-                  isMobile
-                    ? { top: 5, right: 10, left: 0, bottom: 5 }
-                    : { top: 5, right: 30, left: 20, bottom: 60 }
-                }
+          {!hasGamesPlayedData || chartData.length === 0 ? (
+            <div className="flex h-64 flex-col items-center justify-center text-gray-500">
+              <div className="mb-2 text-lg text-gray-500">No Data to Display</div>
+              <div className="text-center text-sm text-gray-400">
+                No games played data available for the selected time period
+              </div>
+            </div>
+          ) : (
+            <ChartContainer>
+              <ResponsiveContainer
+                width={chartWidth}
+                height={isMobile ? 250 : 300}
               >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="time"
-                  tickFormatter={formatTimeLabel}
-                  angle={isMobile ? 0 : -45}
-                  textAnchor={isMobile ? 'middle' : 'end'}
-                  height={isMobile ? 40 : 80}
-                  interval={xAxisInterval}
-                  tick={{ fontSize: isMobile ? 10 : 12 }}
-                />
-                <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
-                <Tooltip
-                  labelFormatter={formatTimeLabel}
-                  formatter={(value: number) => value.toLocaleString()}
-                  contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="gamesPlayed"
-                  stroke="#3b82f6"
-                  strokeWidth={isMobile ? 2.5 : 2}
-                  name="Games Played"
-                  dot={false}
-                  activeDot={{ r: isMobile ? 5 : 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+                <LineChart
+                  data={chartData}
+                  margin={
+                    isMobile
+                      ? { top: 5, right: 10, left: 0, bottom: 5 }
+                      : { top: 5, right: 30, left: 20, bottom: 60 }
+                  }
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="time"
+                    tickFormatter={formatTimeLabel}
+                    angle={isMobile ? 0 : -45}
+                    textAnchor={isMobile ? 'middle' : 'end'}
+                    height={isMobile ? 40 : 80}
+                    interval={xAxisInterval}
+                    tick={{ fontSize: isMobile ? 10 : 12 }}
+                  />
+                  <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                  <Tooltip
+                    labelFormatter={formatTimeLabel}
+                    formatter={(value: number) => value.toLocaleString()}
+                    contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="gamesPlayed"
+                    stroke="#3b82f6"
+                    strokeWidth={isMobile ? 2.5 : 2}
+                    name="Games Played"
+                    dot={false}
+                    activeDot={{ r: isMobile ? 5 : 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          )}
         </CardContent>
       </Card>
 
@@ -227,55 +260,64 @@ export function MetersHourlyCharts({
           <CardContent
             className={isMobile && chartData.length > 8 ? 'p-0' : ''}
           >
-            <ChartContainer>
-              <ResponsiveContainer
-                width={chartWidth}
-                height={isMobile ? 250 : 300}
-              >
-                <LineChart
-                  data={chartData}
-                  margin={
-                    isMobile
-                      ? { top: 5, right: 10, left: 0, bottom: 5 }
-                      : { top: 5, right: 30, left: 20, bottom: 60 }
-                  }
+            {!hasCoinInData || chartData.length === 0 ? (
+              <div className="flex h-64 flex-col items-center justify-center text-gray-500">
+                <div className="mb-2 text-lg text-gray-500">No Data to Display</div>
+                <div className="text-center text-sm text-gray-400">
+                  No coin in data available for the selected time period
+                </div>
+              </div>
+            ) : (
+              <ChartContainer>
+                <ResponsiveContainer
+                  width={chartWidth}
+                  height={isMobile ? 250 : 300}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="time"
-                    tickFormatter={formatTimeLabel}
-                    angle={isMobile ? 0 : -45}
-                    textAnchor={isMobile ? 'middle' : 'end'}
-                    height={isMobile ? 40 : 80}
-                    interval={isMobile ? xAxisInterval : 'preserveStartEnd'}
-                    tick={{ fontSize: isMobile ? 10 : 12 }}
-                  />
-                  <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
-                  <Tooltip
-                    labelFormatter={formatTimeLabel}
-                    formatter={(value: number) =>
-                      value.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
+                  <LineChart
+                    data={chartData}
+                    margin={
+                      isMobile
+                        ? { top: 5, right: 10, left: 0, bottom: 5 }
+                        : { top: 5, right: 30, left: 20, bottom: 60 }
                     }
-                    contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="coinIn"
-                    stroke="#10b981"
-                    strokeWidth={isMobile ? 2.5 : 2}
-                    name="Coin In"
-                    dot={false}
-                    activeDot={{ r: isMobile ? 5 : 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="time"
+                      tickFormatter={formatTimeLabel}
+                      angle={isMobile ? 0 : -45}
+                      textAnchor={isMobile ? 'middle' : 'end'}
+                      height={isMobile ? 40 : 80}
+                      interval={isMobile ? xAxisInterval : 'preserveStartEnd'}
+                      tick={{ fontSize: isMobile ? 10 : 12 }}
+                    />
+                    <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                    <Tooltip
+                      labelFormatter={formatTimeLabel}
+                      formatter={(value: number) =>
+                        value.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      }
+                      contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="coinIn"
+                      stroke="#10b981"
+                      strokeWidth={isMobile ? 2.5 : 2}
+                      name="Coin In"
+                      dot={false}
+                      activeDot={{ r: isMobile ? 5 : 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -289,55 +331,64 @@ export function MetersHourlyCharts({
           <CardContent
             className={isMobile && chartData.length > 8 ? 'p-0' : ''}
           >
-            <ChartContainer>
-              <ResponsiveContainer
-                width={chartWidth}
-                height={isMobile ? 250 : 300}
-              >
-                <LineChart
-                  data={chartData}
-                  margin={
-                    isMobile
-                      ? { top: 5, right: 10, left: 0, bottom: 5 }
-                      : { top: 5, right: 30, left: 20, bottom: 60 }
-                  }
+            {!hasCoinOutData || chartData.length === 0 ? (
+              <div className="flex h-64 flex-col items-center justify-center text-gray-500">
+                <div className="mb-2 text-lg text-gray-500">No Data to Display</div>
+                <div className="text-center text-sm text-gray-400">
+                  No coin out data available for the selected time period
+                </div>
+              </div>
+            ) : (
+              <ChartContainer>
+                <ResponsiveContainer
+                  width={chartWidth}
+                  height={isMobile ? 250 : 300}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="time"
-                    tickFormatter={formatTimeLabel}
-                    angle={isMobile ? 0 : -45}
-                    textAnchor={isMobile ? 'middle' : 'end'}
-                    height={isMobile ? 40 : 80}
-                    interval={isMobile ? xAxisInterval : 'preserveStartEnd'}
-                    tick={{ fontSize: isMobile ? 10 : 12 }}
-                  />
-                  <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
-                  <Tooltip
-                    labelFormatter={formatTimeLabel}
-                    formatter={(value: number) =>
-                      value.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
+                  <LineChart
+                    data={chartData}
+                    margin={
+                      isMobile
+                        ? { top: 5, right: 10, left: 0, bottom: 5 }
+                        : { top: 5, right: 30, left: 20, bottom: 60 }
                     }
-                    contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="coinOut"
-                    stroke="#f59e0b"
-                    strokeWidth={isMobile ? 2.5 : 2}
-                    name="Coin Out"
-                    dot={false}
-                    activeDot={{ r: isMobile ? 5 : 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="time"
+                      tickFormatter={formatTimeLabel}
+                      angle={isMobile ? 0 : -45}
+                      textAnchor={isMobile ? 'middle' : 'end'}
+                      height={isMobile ? 40 : 80}
+                      interval={isMobile ? xAxisInterval : 'preserveStartEnd'}
+                      tick={{ fontSize: isMobile ? 10 : 12 }}
+                    />
+                    <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                    <Tooltip
+                      labelFormatter={formatTimeLabel}
+                      formatter={(value: number) =>
+                        value.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      }
+                      contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="coinOut"
+                      stroke="#f59e0b"
+                      strokeWidth={isMobile ? 2.5 : 2}
+                      name="Coin Out"
+                      dot={false}
+                      activeDot={{ r: isMobile ? 5 : 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
       </div>

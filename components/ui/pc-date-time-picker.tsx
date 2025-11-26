@@ -1,3 +1,21 @@
+/**
+ * PC Date Time Picker Component
+ * Desktop-optimized date-time picker using MUI X Date Pickers.
+ *
+ * Features:
+ * - Date and time selection
+ * - MUI DesktopDateTimePicker integration
+ * - Click outside to close handling
+ * - Date formatting
+ * - Disabled state support
+ * - Localization support
+ *
+ * @param date - Currently selected date-time
+ * @param setDate - Callback to update selected date-time
+ * @param disabled - Whether the picker is disabled
+ * @param placeholder - Placeholder text
+ * @param className - Additional CSS classes
+ */
 'use client';
 
 import { cn } from '@/lib/utils';

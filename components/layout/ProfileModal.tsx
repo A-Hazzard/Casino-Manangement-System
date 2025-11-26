@@ -1,3 +1,26 @@
+/**
+ * Profile Modal Component
+ * Comprehensive user profile editor with image upload, form validation, and change detection.
+ *
+ * Features:
+ * - User profile data editing (name, email, gender, DOB, address, ID, notes)
+ * - Profile picture upload with cropping functionality
+ * - Password change with strength validation
+ * - Licensee and location permissions management
+ * - Gaming location access control
+ * - Form validation with error messages
+ * - Change detection and unsaved changes warning
+ * - Role-based field visibility
+ * - Multi-select dropdowns for permissions
+ * - Real-time password strength indicator
+ * - Skeleton loading states
+ * - Toast notifications for success/error states
+ *
+ * Large component (~2200 lines) handling complete user profile management.
+ *
+ * @param open - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ */
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import MultiSelectDropdown, {
@@ -33,6 +56,10 @@ import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
 async function fetchUserData(userId: string): Promise<User | null> {
   try {
     const response = await axios.get(`/api/users/${userId}`);
@@ -53,6 +80,9 @@ export default function ProfileModal({
   open: boolean;
   onClose: () => void;
 }) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const { user: authUser } = useUserStore();
   const [userData, setUserData] = useState<User | null>(null);
   const [formData, setFormData] = useState<Partial<User['profile']>>({});
@@ -410,8 +440,7 @@ export default function ProfileModal({
       return () => clearTimeout(timer);
     }
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, userData, locations, locationsLoading]);
+  }, [open, userData, locations, locationsLoading, setMissingLocationNames, missingLocationNames]);
 
   // Reset assignment initialization when closing modal
   useEffect(() => {

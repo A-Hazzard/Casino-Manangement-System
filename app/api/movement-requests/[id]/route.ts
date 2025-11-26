@@ -1,43 +1,77 @@
-import { NextRequest } from 'next/server';
-import { MovementRequest } from '@/app/api/lib/models/movementrequests';
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { getClientIP } from '@/lib/utils/ipAddress';
+/**
+ * Movement Request by ID API Route
+ *
+ * This route handles operations for a specific movement request identified by ID.
+ * It supports:
+ * - DELETE: Soft deleting a movement request
+ * - PATCH: Updating a movement request
+ *
+ * @module app/api/movement-requests/[id]/route
+ */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { MovementRequest } from '@/app/api/lib/models/movementrequests';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main DELETE handler for soft deleting a movement request
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Find movement request by ID
+ * 3. Soft delete movement request
+ * 4. Log activity
+ * 5. Return success response
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const { id } = await params;
-  if (!id) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: 'MovementRequest ID is required',
-      }),
-      { status: 400 }
-    );
-  }
+  const startTime = Date.now();
+
   try {
-    // Get movement request data before deletion for logging
-    const movementRequestToDelete = await MovementRequest.findById(id);
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'MovementRequest ID is required',
+        },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 2: Find movement request by ID
+    // ============================================================================
+    const movementRequestToDelete = await MovementRequest.findOne({ _id: id });
     if (!movementRequestToDelete) {
-      return new Response(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: false,
           message: 'MovementRequest not found',
-        }),
+        },
         { status: 404 }
       );
     }
 
-    await MovementRequest.findByIdAndUpdate(
-      id,
+    // ============================================================================
+    // STEP 3: Soft delete movement request
+    // ============================================================================
+    await MovementRequest.findOneAndUpdate(
+      { _id: id },
       { deletedAt: new Date() },
       { new: true }
     );
 
-    // Log activity
+    // ============================================================================
+    // STEP 4: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -72,8 +106,8 @@ export async function DELETE(
         await logActivity({
           action: 'DELETE',
           details: `Deleted movement request for cabinet ${movementRequestToDelete.cabinetIn} from ${movementRequestToDelete.locationFrom} to ${movementRequestToDelete.locationTo}`,
-          userId: currentUser._id as string, // 🔧 FIX: Pass as direct param
-          username: (currentUser.emailAddress || currentUser.username || 'unknown') as string, // 🔧 FIX: Pass as direct param
+          userId: currentUser._id as string,
+          username: (currentUser.emailAddress || currentUser.username || 'unknown') as string,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
@@ -91,61 +125,93 @@ export async function DELETE(
       }
     }
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    // ============================================================================
+    // STEP 5: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Movement Requests [id] API] Completed in ${duration}ms`);
+    }
+    return NextResponse.json({ success: true });
   } catch (err: unknown) {
+    const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    return new Response(
-      JSON.stringify({
+    console.error(
+      `[Movement Request DELETE API] Error after ${duration}ms:`,
+      errorMsg
+    );
+    return NextResponse.json(
+      {
         success: false,
         message: 'Delete failed',
         error: errorMsg,
-      }),
+      },
       { status: 500 }
     );
   }
 }
 
+/**
+ * Main PATCH handler for updating a movement request
+ *
+ * Flow:
+ * 1. Parse and validate request parameters and body
+ * 2. Find original movement request
+ * 3. Update movement request
+ * 4. Log activity
+ * 5. Return updated request
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const { id } = await params;
-  if (!id) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: 'MovementRequest ID is required',
-      }),
-      { status: 400 }
-    );
-  }
-
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: 'Invalid JSON in request body',
-      }),
-      { status: 400 }
-    );
-  }
+  const startTime = Date.now();
 
   try {
-    // Get original movement request data for change tracking
-    const originalMovementRequest = await MovementRequest.findById(id);
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters and body
+    // ============================================================================
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'MovementRequest ID is required',
+        },
+        { status: 400 }
+      );
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Invalid JSON in request body',
+        },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 2: Find original movement request
+    // ============================================================================
+    const originalMovementRequest = await MovementRequest.findOne({ _id: id });
     if (!originalMovementRequest) {
-      return new Response(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: false,
           message: 'MovementRequest not found',
-        }),
+        },
         { status: 404 }
       );
     }
 
+    // ============================================================================
+    // STEP 3: Update movement request
+    // ============================================================================
     const updated = await MovementRequest.findOneAndUpdate(
       {
         _id: id,
@@ -155,13 +221,18 @@ export async function PATCH(
       { new: true }
     );
 
-    // 🔧 FIX: Add activity logging for UPDATE
+    // ============================================================================
+    // STEP 4: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && (currentUser.emailAddress || currentUser.username)) {
       try {
-        // Calculate changes between original and updated
         const updateChanges = Object.keys(body)
-          .filter(key => String(originalMovementRequest[key as keyof typeof originalMovementRequest]) !== String(body[key as keyof typeof body]))
+          .filter(
+            key =>
+              String(originalMovementRequest[key as keyof typeof originalMovementRequest]) !==
+              String(body[key as keyof typeof body])
+          )
           .map(key => ({
             field: key,
             oldValue: originalMovementRequest[key as keyof typeof originalMovementRequest],
@@ -190,22 +261,27 @@ export async function PATCH(
       }
     }
 
-    // Debug logging for troubleshooting
-    console.warn('[MOVEMENT REQUESTS API] Update successful:', {
-      requestId: id,
-      updatedFields: Object.keys(body),
-      cabinetIn: updated?.cabinetIn,
-    });
-
-    return new Response(JSON.stringify(updated), { status: 200 });
+    // ============================================================================
+    // STEP 5: Return updated request
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Movement Requests [id] PATCH API] Completed in ${duration}ms`);
+    }
+    return NextResponse.json(updated);
   } catch (err: unknown) {
+    const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    return new Response(
-      JSON.stringify({
+    console.error(
+      `[Movement Request PATCH API] Error after ${duration}ms:`,
+      errorMsg
+    );
+    return NextResponse.json(
+      {
         success: false,
         message: 'Update failed',
         error: errorMsg,
-      }),
+      },
       { status: 500 }
     );
   }

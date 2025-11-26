@@ -1,3 +1,12 @@
+/**
+ * Skeleton Component
+ * Loading skeleton component for displaying placeholder content.
+ *
+ * Features:
+ * - Animated pulse effect
+ * - Customizable styling
+ * - Used for loading states
+ */
 import { cn } from '@/lib/utils';
 
 function Skeleton({

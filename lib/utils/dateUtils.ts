@@ -1,7 +1,18 @@
 /**
- * Date utility functions for API operations
+ * Date Utility Functions
+ *
+ * Date utility functions for API operations with timezone support.
+ *
+ * Features:
+ * - Date range calculations for time periods
+ * - Trinidad timezone (UTC-4) support
+ * - API-friendly date formatting
+ * - Date range type definitions
  */
 
+// ============================================================================
+// Types
+// ============================================================================
 export type DateRange = {
   startDate: Date;
   endDate: Date;
@@ -12,6 +23,9 @@ export type DateRangeAlt = {
   end: Date;
 };
 
+// ============================================================================
+// Date Range Functions
+// ============================================================================
 /**
  * Gets date range for a given time period with Trinidad timezone support
  * @param timePeriod - Time period string (Today, Yesterday, 7d, 30d, etc.)

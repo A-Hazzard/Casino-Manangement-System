@@ -1,4 +1,10 @@
-// Removed unused imports: TimePeriod, TopPerformingData
+/**
+ * Dashboard Refresh Types
+ * Types for dashboard refresh functionality with currency support.
+ *
+ * Manages dashboard data refresh state including active filters,
+ * date ranges, and currency display preferences.
+ */
 
 export type UseDashboardRefreshProps = {
   selectedLicencee: string;

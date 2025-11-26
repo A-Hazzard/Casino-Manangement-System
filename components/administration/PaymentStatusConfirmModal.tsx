@@ -1,3 +1,22 @@
+/**
+ * Payment Status Confirm Modal Component
+ * Confirmation modal for toggling licensee payment status.
+ *
+ * Features:
+ * - Payment status toggle confirmation
+ * - Current and new status display
+ * - Expiry date calculation (30 days from now)
+ * - Date formatting
+ * - GSAP animations
+ * - Licensee name display
+ *
+ * @param open - Whether the modal is visible
+ * @param currentStatus - Current payment status
+ * @param licenseeName - Name of the licensee
+ * @param currentExpiryDate - Current expiry date
+ * @param onClose - Callback to close the modal
+ * @param onConfirm - Callback when status change is confirmed
+ */
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { Button } from '@/components/ui/button';

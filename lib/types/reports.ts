@@ -1,3 +1,17 @@
+/**
+ * Reports Types
+ * Comprehensive types for report generation, views, and data structures.
+ *
+ * Includes types for:
+ * - Report queries and filters
+ * - Report generation requests
+ * - Dashboard widgets and configurations
+ * - Various report views (dashboard, locations, machines, logistics)
+ * - Financial and performance metrics
+ * - Report scheduling and export
+ * - User preferences and settings
+ * Re-exports shared report types from shared/types/reports.
+ */
 import type {
   ReportsLocationData,
   PaginationInfo,

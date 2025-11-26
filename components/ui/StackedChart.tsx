@@ -1,3 +1,25 @@
+/**
+ * Stacked Chart Component
+ * Stacked bar chart component for displaying location/machine data over time.
+ *
+ * Features:
+ * - Stacked bar chart visualization
+ * - Multiple location/machine support
+ * - Configurable data keys
+ * - Hourly time series
+ * - Recharts bar chart
+ * - Responsive design
+ * - Custom formatters
+ *
+ * @param title - Chart title
+ * @param icon - Icon element
+ * @param data - Array of chart data
+ * @param dataKey - Data key to display
+ * @param machines - Array of machine/location IDs
+ * @param colors - Array of colors
+ * @param formatter - Value formatter function
+ * @param locationNames - Mapping of location IDs to names
+ */
 import React from 'react';
 import {
   BarChart,

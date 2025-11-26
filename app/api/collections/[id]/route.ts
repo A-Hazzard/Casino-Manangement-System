@@ -1,19 +1,77 @@
+/**
+ * Collection by ID API Route
+ *
+ * This route handles updating a specific collection by ID.
+ * It supports:
+ * - Updating collection fields (meters, timestamps, notes, etc.)
+ * - Recalculating movement and SAS metrics when meters change
+ * - Recalculating SAS time ranges when timestamp changes
+ * - Updating machine collectionMetersHistory
+ * - Marking parent CollectionReport as editing when meters change
+ * - Cascading recalculation to related collections
+ *
+ * @module app/api/collections/[id]/route
+ */
+
 import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionRecalculation';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import type { PreviousCollectionMeters } from '@/lib/types/collections';
 import { calculateMovement } from '@/lib/utils/movementCalculation';
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../lib/middleware/db';
 
+/**
+ * Main PATCH handler for updating a collection by ID
+ *
+ * Flow:
+ * 1. Parse route parameters and request body
+ * 2. Validate collection ID
+ * 3. Connect to database
+ * 4. Remove immutable _id field if present
+ * 5. Update collection document
+ * 6. Recalculate movement and SAS metrics if meters/timestamp changed
+ * 7. Update machine collectionMetersHistory if needed
+ * 8. Mark parent CollectionReport as editing if meters changed
+ * 9. Cascade recalculation to related collections if needed
+ * 10. Return updated collection
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters and request body
+    // ============================================================================
     const { id: collectionId } = await params;
     const updateData = await request.json();
+    // ============================================================================
+    // STEP 2: Validate collection ID
+    // ============================================================================
+    if (!collectionId) {
+      return NextResponse.json(
+        { success: false, error: 'Collection ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 4: Remove immutable _id field if present
+    // ============================================================================
+    // Safety check: Remove _id field if present (it's immutable)
+    const { _id, ...safeUpdateData } = updateData as Record<string, unknown>;
+    if ('_id' in updateData) {
+      console.warn('⚠️ API: Removed _id field from update data');
+    }
+
+    // Determine if cascade recalculation is needed
     const shouldCascade =
       updateData.metersIn !== undefined ||
       updateData.metersOut !== undefined ||
@@ -27,32 +85,13 @@ export async function PATCH(
       updateData.ramClearCoinIn !== undefined ||
       updateData.ramClearCoinOut !== undefined;
 
-    // Debug: Log what data we're receiving
-    console.warn('🔍 API RECEIVED UPDATE DATA:', {
-      collectionId,
-      updateDataKeys: Object.keys(updateData),
-      hasIdInUpdateData: '_id' in updateData,
-      updateData: updateData,
-    });
-
-    if (!collectionId) {
-      return NextResponse.json(
-        { success: false, error: 'Collection ID is required' },
-        { status: 400 }
-      );
-    }
-
-    await connectDB();
-
-    // Safety check: Remove _id field if present (it's immutable)
-    const { _id, ...safeUpdateData } = updateData as Record<string, unknown>;
-    if ('_id' in updateData) {
-      console.warn('⚠️ API: Removed _id field from update data');
-    }
-
+    // ============================================================================
+    // STEP 5: Update collection document
+    // ============================================================================
     // Find and update the collection
-    const updatedCollection = await Collections.findByIdAndUpdate(
-      collectionId,
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    const updatedCollection = await Collections.findOneAndUpdate(
+      { _id: collectionId },
       {
         ...safeUpdateData,
         updatedAt: new Date(),
@@ -67,6 +106,10 @@ export async function PATCH(
       );
     }
 
+    // ============================================================================
+    // STEP 6: Recalculate movement and SAS metrics if meters/timestamp changed
+    // ============================================================================
+
     // Recalculate softMeters, movement, and sasMeters if meters or timestamp were updated
     if (
       updateData.metersIn !== undefined ||
@@ -76,6 +119,9 @@ export async function PATCH(
       updateData.ramClearMetersOut !== undefined ||
       updateData.timestamp !== undefined
     ) {
+      // ============================================================================
+      // STEP 6.1: Recalculate movement and softMeters
+      // ============================================================================
       try {
         // Use prevIn/prevOut from the update data if provided, otherwise use the existing collection's values
         // This is critical for edit operations - we need to use the ORIGINAL previous meters, not the machine's current meters
@@ -234,8 +280,9 @@ export async function PATCH(
         }
 
         // Update the collection with all recalculated fields
-        const finalUpdatedCollection = await Collections.findByIdAndUpdate(
-          collectionId,
+        // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+        const finalUpdatedCollection = await Collections.findOneAndUpdate(
+          { _id: collectionId },
           recalculatedData,
           { new: true, runValidators: true }
         );
@@ -254,6 +301,14 @@ export async function PATCH(
           sasTimeRangeRecalculated: updateData.timestamp !== undefined,
         });
 
+        // ============================================================================
+        // STEP 7: Update machine collectionMetersHistory if needed
+        // ============================================================================
+        // (This step is handled later in the code)
+
+        // ============================================================================
+        // STEP 8: Mark parent CollectionReport as editing if meters changed
+        // ============================================================================
         // CRITICAL: Mark parent CollectionReport as isEditing: true when meters are updated
         // This must happen BEFORE returning, otherwise it will be skipped
         if (
@@ -318,6 +373,9 @@ export async function PATCH(
       }
     }
 
+    // ============================================================================
+    // STEP 7: Update machine collectionMetersHistory if needed
+    // ============================================================================
     // Update machine collectionMetersHistory if meters were updated
     if (
       updatedCollection.machineId &&
@@ -325,9 +383,10 @@ export async function PATCH(
     ) {
       try {
         // Get the current machine to access previous meters
-        const currentMachine = await Machine.findById(
-          updatedCollection.machineId
-        ).lean();
+        // CRITICAL: Use findOne with _id instead of findById (repo rule)
+        const currentMachine = await Machine.findOne({
+          _id: updatedCollection.machineId,
+        }).lean();
         if (currentMachine) {
           const currentMachineData = currentMachine as Record<string, unknown>;
           const currentCollectionMeters =
@@ -434,8 +493,9 @@ export async function PATCH(
             // Machine collectionMeters should ONLY be updated when Create Report button is pressed
             // This ensures proper timing and prevents premature meter updates
 
-            await Machine.findByIdAndUpdate(
-              updatedCollection.machineId,
+            // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+            await Machine.findOneAndUpdate(
+              { _id: updatedCollection.machineId },
               { $set: updateData },
               {
                 arrayFilters: [
@@ -481,8 +541,9 @@ export async function PATCH(
             const prevMetersOut = currentCollectionMeters?.metersOut || 0;
 
             // Update existing history entry instead of creating new ones to prevent duplicates
-            const updateResult = await Machine.findByIdAndUpdate(
-              updatedCollection.machineId,
+            // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+            const updateResult = await Machine.findOneAndUpdate(
+              { _id: updatedCollection.machineId },
               {
                 $set: {
                   updatedAt: new Date(),
@@ -614,13 +675,14 @@ export async function PATCH(
     }
 
     // Get the final updated collection (with movement if recalculated)
-    let finalCollection = await Collections.findById(collectionId).lean();
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    let finalCollection = await Collections.findOne({ _id: collectionId }).lean();
     if (shouldCascade && updatedCollection.machineId) {
       try {
         await recalculateMachineCollections(
           String(updatedCollection.machineId)
         );
-        finalCollection = await Collections.findById(collectionId).lean();
+        finalCollection = await Collections.findOne({ _id: collectionId }).lean();
       } catch (recalcError) {
         console.error(
           'Failed to recalculate machine collections:',

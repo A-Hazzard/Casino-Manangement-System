@@ -1,3 +1,18 @@
+/**
+ * Dashboard Page
+ *
+ * Main dashboard page displaying key metrics, charts, and top-performing locations.
+ *
+ * Features:
+ * - Financial metrics overview (totals, charts)
+ * - Top-performing locations
+ * - Gaming locations listing
+ * - Date filtering (Today, Yesterday, Week, Month, All Time, Custom)
+ * - Currency conversion for multi-licensee views
+ * - Responsive design for mobile and desktop
+ * - Real-time data refresh
+ */
+
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -12,7 +27,7 @@ import { PieChartLabelRenderer } from '@/components/ui/PieChartLabelRenderer';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { TimePeriod } from '@/shared/types/common';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {
   fetchMetricsData,
@@ -52,6 +67,9 @@ export default function Home() {
  * Uses Zustand store for state management and responsive layouts
  */
 function DashboardContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const { handleApiCallWithRetry } = useGlobalErrorHandler();
   const { displayCurrency } = useCurrency();
   const user = useUserStore(state => state.user);
@@ -61,6 +79,9 @@ function DashboardContent() {
     handleApiCallWithRetry,
   ]);
 
+  // ============================================================================
+  // State Management (Zustand Store)
+  // ============================================================================
   const {
     loadingChartData,
     setLoadingChartData,
@@ -84,10 +105,17 @@ function DashboardContent() {
     setPieChartSortIsOpen,
   } = useDashBoardStore();
 
+  // ============================================================================
+  // Refs
+  // ============================================================================
   // To compare new totals with previous ones.
   const prevTotals = useRef<DashboardTotals | null>(null);
+  // Track previous fetch parameters to prevent duplicate API calls
+  const prevFetchParams = useRef<string>('');
 
-  // Custom hooks for dashboard functionality
+  // ============================================================================
+  // Custom Hooks
+  // ============================================================================
   const {
     activeMetricsFilter,
     activePieChartFilter,
@@ -111,30 +139,74 @@ function DashboardContent() {
   // Initialize selected licensee on component mount - removed to prevent infinite loop
   // The selectedLicencee is already initialized in the store
 
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   const isAdminUser = Boolean(
     user?.roles?.some(role => role === 'admin' || role === 'developer')
   );
 
+  // Create a stable default date range to avoid creating new objects on every render
+  const defaultDateRange = useMemo(
+    () => ({
+      startDate: new Date(new Date().setHours(0, 0, 0, 0)),
+      endDate: new Date(new Date().setHours(23, 59, 59, 999)),
+    }),
+    []
+  );
+
+  // Create a stable string representation of the date range for dependency comparison
+  // This prevents re-renders when object reference changes but dates are the same
+  const dateRangeKey = useMemo(() => {
+    const range = customDateRange || defaultDateRange;
+    if (!range?.startDate || !range?.endDate) return '';
+    return `${range.startDate.getTime()}-${range.endDate.getTime()}`;
+  }, [customDateRange, defaultDateRange]);
+
+  // Memoize the effective date range - only recalculate when dates actually change
+  const effectiveDateRange = useMemo(() => {
+    return customDateRange || defaultDateRange;
+  }, [customDateRange, defaultDateRange]);
+
+  // ============================================================================
+  // Effects - Data Fetching
+  // ============================================================================
   // Fetch metrics and locations data when filters change
   useEffect(() => {
+    // Skip if no active filter
+    if (!activeMetricsFilter) {
+      return;
+    }
+
+    // Create a unique key for this fetch to prevent duplicate calls
+    const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${dateRangeKey}-${displayCurrency}-${isAdminUser}`;
+
+    // Skip if this exact fetch was already triggered
+    if (prevFetchParams.current === fetchKey) {
+      return;
+    }
+
+    // Update the previous fetch params
+    prevFetchParams.current = fetchKey;
+
     const fetchMetrics = async () => {
       setLoadingChartData(true);
 
-      // Wrap API calls with error handling
-      await stableHandleApiCallWithRetry(
-        () =>
-          loadGamingLocations(setGamingLocations, selectedLicencee, {
-            forceAll: isAdminUser || selectedLicencee === 'all',
-          }),
-        'Dashboard Locations'
-      );
+      try {
+        // Wrap API calls with error handling
+        await stableHandleApiCallWithRetry(
+          () =>
+            loadGamingLocations(setGamingLocations, selectedLicencee, {
+              forceAll: isAdminUser || selectedLicencee === 'all',
+            }),
+          'Dashboard Locations'
+        );
 
-      if (activeMetricsFilter) {
         await stableHandleApiCallWithRetry(
           () =>
             fetchMetricsData(
               activeMetricsFilter as TimePeriod,
-              customDateRange || { startDate: new Date(), endDate: new Date() },
+              effectiveDateRange,
               selectedLicencee,
               setTotals,
               setChartData,
@@ -144,17 +216,21 @@ function DashboardContent() {
             ),
           'Dashboard Metrics'
         );
+      } finally {
+        setLoadingChartData(false);
       }
-
-      setLoadingChartData(false);
     };
+
     fetchMetrics();
+    // Note: We use dateRangeKey (string) instead of effectiveDateRange (object) in dependencies
+    // to prevent re-runs when object reference changes but dates are the same.
+    // Zustand setters are stable and don't need to be in dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeMetricsFilter,
     selectedLicencee,
-    customDateRange,
-    displayCurrency, // ✅ ADDED: Re-fetch when currency changes
+    dateRangeKey, // String key - only changes when actual dates change
+    displayCurrency,
     isAdminUser,
     stableHandleApiCallWithRetry,
   ]);
@@ -162,59 +238,28 @@ function DashboardContent() {
   // Fetch top performing data when tab or filter changes
   useEffect(() => {
     // Fetch top performing data whenever we have a valid filter
-    if (activePieChartFilter) {
-      stableHandleApiCallWithRetry(
-        () =>
-          fetchTopPerformingDataHelper(
-            activeTab,
-            (activePieChartFilter || 'Today') as TimePeriod,
-            (data: TopPerformingData[]) =>
-              setTopPerformingData(data as unknown as TopPerformingData),
-            setLoadingTopPerforming,
-            selectedLicencee // Pass selected licensee for filtering
-          ),
-        'Dashboard Top Performing Data'
-      );
+    if (!activePieChartFilter) {
+      return;
     }
+
+    stableHandleApiCallWithRetry(
+      () =>
+        fetchTopPerformingDataHelper(
+          activeTab,
+          (activePieChartFilter || 'Today') as TimePeriod,
+          (data: TopPerformingData[]) =>
+            setTopPerformingData(data as unknown as TopPerformingData),
+          setLoadingTopPerforming,
+          selectedLicencee // Pass selected licensee for filtering
+        ),
+      'Dashboard Top Performing Data'
+    );
+    // Zustand setters are stable and don't need to be in dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     activePieChartFilter,
     selectedLicencee,
-    stableHandleApiCallWithRetry,
-  ]);
-
-  // Handle custom date range changes separately
-  useEffect(() => {
-    if (activeMetricsFilter && customDateRange) {
-      const fetchCustomMetrics = async () => {
-        setLoadingChartData(true);
-
-        await stableHandleApiCallWithRetry(
-          () =>
-            fetchMetricsData(
-              activeMetricsFilter as TimePeriod,
-              customDateRange,
-              selectedLicencee,
-              setTotals,
-              setChartData,
-              setActiveFilters,
-              setShowDatePicker,
-              displayCurrency
-            ),
-          'Dashboard Custom Metrics'
-        );
-
-        setLoadingChartData(false);
-      };
-      fetchCustomMetrics();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    customDateRange,
-    activeMetricsFilter,
-    selectedLicencee,
-    displayCurrency, // ✅ ADDED: Re-fetch when currency changes
     stableHandleApiCallWithRetry,
   ]);
 
@@ -231,19 +276,26 @@ function DashboardContent() {
     }
   }, [totals]);
 
-  // Note: Scroll handling and refresh functionality are now managed by custom hooks
-
+  // ============================================================================
+  // Event Handlers & Computed Functions
+  // ============================================================================
   // Render function for pie chart labels
   const renderCustomizedLabel = (props: CustomizedLabelProps) => {
     return <PieChartLabelRenderer props={props} />;
   };
 
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
   // Show "No Licensee Assigned" message for non-admin users without licensees
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
   if (showNoLicenseeMessage) {
     return <NoLicenseeAssigned />;
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <PageLayout
       headerProps={{

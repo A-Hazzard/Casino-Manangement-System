@@ -1,7 +1,24 @@
+/**
+ * Sessions Page Utilities
+ *
+ * Utility functions for formatting, filtering, sorting, and paginating
+ * machine session events on the sessions page.
+ *
+ * Features:
+ * - Date formatting for session events
+ * - Event type, log level, and success state color helpers
+ * - Event filtering by type, description, and game
+ * - Date-based sorting
+ * - Generic pagination helper
+ */
+
 import type { MachineEvent } from '@/lib/types/sessions';
 
+// ============================================================================
+// Formatting Functions
+// ============================================================================
 /**
- * Format date for display
+ * Format date for display.
  */
 export function formatDate(dateString: string): string {
   try {
@@ -21,7 +38,7 @@ export function formatDate(dateString: string): string {
 }
 
 /**
- * Get event type color for styling
+ * Get event type color for styling.
  */
 export function getEventTypeColor(eventType: string): string {
   switch (eventType.toLowerCase()) {
@@ -37,7 +54,7 @@ export function getEventTypeColor(eventType: string): string {
 }
 
 /**
- * Get log level color for styling
+ * Get log level color for styling.
  */
 export function getLogLevelColor(logLevel: string): string {
   switch (logLevel) {
@@ -53,14 +70,17 @@ export function getLogLevelColor(logLevel: string): string {
 }
 
 /**
- * Get success/failure color for styling
+ * Get success/failure color for styling.
  */
 export function getSuccessColor(success: boolean): string {
   return success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 }
 
+// ============================================================================
+// Filtering Functions
+// ============================================================================
 /**
- * Filter events based on criteria
+ * Filter events based on criteria.
  */
 export function filterEvents(
   events: MachineEvent[],
@@ -82,8 +102,11 @@ export function filterEvents(
   });
 }
 
+// ============================================================================
+// Sorting Functions
+// ============================================================================
 /**
- * Sort events by date
+ * Sort events by date.
  */
 export function sortEventsByDate(
   events: MachineEvent[],
@@ -97,8 +120,11 @@ export function sortEventsByDate(
   });
 }
 
+// ============================================================================
+// Pagination Functions
+// ============================================================================
 /**
- * Create pagination for events
+ * Create pagination for events.
  */
 export function createEventsPagination<T>(
   data: T[],

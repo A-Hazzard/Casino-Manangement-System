@@ -1,7 +1,7 @@
 # MQTT System Architecture & Implementation Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 27th, 2025
+**Last Updated:** November 22, 2025
 
 ## Overview
 
@@ -192,7 +192,7 @@ await mqttService.publishConfigUpdate(relayId, config);
 
 #### MQTT Service
 
-**File:** `lib/services/mqttService.ts`
+**File:** `app/api/lib/services/mqttService.ts`
 
 **Responsibilities:**
 

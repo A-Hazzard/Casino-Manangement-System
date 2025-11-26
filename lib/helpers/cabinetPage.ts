@@ -1,4 +1,22 @@
+/**
+ * Cabinet Page Helper Functions
+ *
+ * Provides helper functions for the cabinet page, including data loading, filtering,
+ * sorting, and pagination. It handles cabinet location management, search functionality,
+ * and data transformation for cabinet components.
+ *
+ * Features:
+ * - Loads cabinet locations and cabinets data with licensee and time period filtering.
+ * - Filters cabinets by search term and selected location.
+ * - Sorts cabinets by various criteria (asset number, gross, money in, etc.).
+ * - Handles pagination calculations for cabinet lists.
+ * - Maps cabinet data to component-compatible props.
+ */
+
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { fetchCabinetLocations, fetchCabinets } from '@/lib/helpers/cabinets';
+import { TimePeriod } from '@/shared/types/common';
+
 type CabinetSortOption =
   | 'assetNumber'
   | 'locationName'
@@ -16,8 +34,10 @@ type CabinetProps = Partial<Cabinet> & {
   onEdit: () => void;
   onDelete: () => void;
 };
-import { fetchCabinetLocations, fetchCabinets } from '@/lib/helpers/cabinets';
-import { TimePeriod } from '@/shared/types/common';
+
+// ============================================================================
+// Cabinet Location Operations
+// ============================================================================
 
 /**
  * Loads cabinet locations data
@@ -39,6 +59,10 @@ export const loadCabinetLocations = async (
     setLocations([]);
   }
 };
+
+// ============================================================================
+// Cabinet Filtering Operations
+// ============================================================================
 
 /**
  * Filters cabinets based on search term and selected location
@@ -67,6 +91,10 @@ export const filterCabinets = (
 
   return filtered;
 };
+
+// ============================================================================
+// Cabinet Data Loading
+// ============================================================================
 
 /**
  * Loads cabinets data
@@ -97,6 +125,10 @@ export const loadCabinetsData = async (
   return cabinetsData;
 };
 
+// ============================================================================
+// Cabinet Sorting Operations
+// ============================================================================
+
 /**
  * Sorts cabinets based on sort option and order
  */
@@ -112,6 +144,10 @@ export const sortCabinets = (
     return (aValue > bValue ? 1 : -1) * order;
   });
 };
+
+// ============================================================================
+// Cabinet Data Transformation
+// ============================================================================
 
 /**
  * Converts Cabinet to CabinetProps for component compatibility
@@ -154,6 +190,10 @@ export const mapToCabinetProps = (
   };
 };
 
+// ============================================================================
+// Pagination Utilities
+// ============================================================================
+
 /**
  * Handles pagination calculations
  */
@@ -171,6 +211,10 @@ export const getPaginationData = (
   return { paginatedCabinets, totalPages };
 };
 
+// ============================================================================
+// Configuration Utilities
+// ============================================================================
+
 /**
  * Creates sort options configuration
  */
@@ -181,6 +225,10 @@ export const getSortOptions = () => [
   { label: 'Game', value: 'game' as CabinetSortOption },
   { label: 'Last Online', value: 'lastOnline' as CabinetSortOption },
 ];
+
+// ============================================================================
+// Location Change Handlers
+// ============================================================================
 
 /**
  * Handles location change filtering

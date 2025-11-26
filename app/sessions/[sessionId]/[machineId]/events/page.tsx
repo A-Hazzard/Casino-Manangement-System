@@ -1,3 +1,16 @@
+/**
+ * Session Events Page
+ *
+ * Displays detailed event information for a specific session and machine.
+ *
+ * Features:
+ * - Event listing with pagination
+ * - Expandable event details
+ * - Date filtering
+ * - Batch-based pagination for performance
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -15,34 +28,50 @@ import PaginationControls from '@/components/ui/PaginationControls';
 
 import type { MachineEvent } from '@/lib/types/sessions';
 
+/**
+ * Session Events Page Component
+ * Handles all state management and data fetching for the session events page
+ */
 export default function SessionEventsPage() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const params = useParams();
   const router = useRouter();
+  const sessionId = params.sessionId as string;
+  const machineId = params.machineId as string;
+  const { activeMetricsFilter, customDateRange } = useDashBoardStore();
+
+  // ============================================================================
+  // State Management
+  // ============================================================================
   const [allEvents, setAllEvents] = useState<MachineEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [totalEventsFromAPI, setTotalEventsFromAPI] = useState<number>(0);
+  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+  const [selectedLicencee, setSelectedLicencee] = useState('All Licensees');
 
+  // ============================================================================
+  // Constants
+  // ============================================================================
   const itemsPerPage = 10;
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
-  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
-  const [selectedLicencee, setSelectedLicencee] = useState('All Licensees');
-
-  // Get date filtering from dashboard store
-  const { activeMetricsFilter, customDateRange } = useDashBoardStore();
-
-  const sessionId = params.sessionId as string;
-  const machineId = params.machineId as string;
-
+  // ============================================================================
+  // Computed Values & Utilities
+  // ============================================================================
   // Calculate which batch we need based on current page
   const calculateBatchNumber = useCallback((page: number) => {
     return Math.floor(page / pagesPerBatch) + 1;
   }, [pagesPerBatch]);
 
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   const handleFilter = useCallback(() => {
     // Reset to first page when filtering
     setCurrentPage(0);
@@ -161,8 +190,7 @@ export default function SessionEventsPage() {
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     fetchEvents(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, machineId, activeMetricsFilter, customDateRange]);
+  }, [sessionId, machineId, activeMetricsFilter, customDateRange, setAllEvents, setLoadedBatches, setCurrentPage, fetchEvents]);
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
@@ -508,7 +536,9 @@ export default function SessionEventsPage() {
     );
   };
 
-
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <PageLayout

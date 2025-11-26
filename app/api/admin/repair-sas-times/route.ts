@@ -1,7 +1,21 @@
+/**
+ * Repair SAS Times Admin API Route
+ *
+ * This route handles repairing SAS times in collections by:
+ * - Normalizing timestamps to 8AM Trinidad time (12:00 UTC)
+ * - Finding previous collections for correct SAS time windows
+ * - Calculating corrected SAS metrics
+ * - Updating collections and machine timestamps (in commit mode)
+ *
+ * Supports:
+ * - Dry-run mode (preview changes) and commit mode (apply changes)
+ * - Filtering by locationReportId, machineId, or date range
+ *
+ * @module app/api/admin/repair-sas-times/route
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { Collections } from '@/app/api/lib/models/collections';
-import { Machine } from '@/app/api/lib/models/machines';
-import { calculateSasMetrics } from '@/lib/helpers/collectionCreation';
+import { repairSasTimesForCollections } from '@/app/api/lib/helpers/adminRepairSasTimes';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -11,19 +25,27 @@ export const runtime = 'nodejs';
 type RepairMode = 'dry-run' | 'commit';
 
 /**
- * Normalize timestamp to 8AM Trinidad time (12:00 UTC)
- * Trinidad is UTC-4, so 8AM Trinidad = 12:00 UTC
+ * Main POST handler for repairing SAS times
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters (mode, filters)
+ * 3. Build filter from parameters
+ * 4. Execute repair operation
+ * 5. Return repair results
  */
-function normalizeTo8AMTrinidad(date: Date): Date {
-  const normalized = new Date(date);
-  normalized.setUTCHours(12, 0, 0, 0); // 12:00 UTC = 8:00 AM Trinidad
-  return normalized;
-}
-
 export async function POST(req: NextRequest) {
-  await connectDB();
+  const startTime = Date.now();
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const mode = (searchParams.get('mode') as RepairMode) || 'dry-run';
     const locationReportId = searchParams.get('locationReportId') || undefined;
@@ -31,6 +53,9 @@ export async function POST(req: NextRequest) {
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
+    // ============================================================================
+    // STEP 3: Build filter from parameters
+    // ============================================================================
     const filter: Record<string, unknown> = {};
     if (locationReportId) filter.locationReportId = locationReportId;
     if (machineId) filter.machineId = machineId;
@@ -42,128 +67,31 @@ export async function POST(req: NextRequest) {
       filter.timestamp = ts;
     }
 
-    // Fetch target collections and sort chronologically (oldest first)
-    const collections = await Collections.find(filter)
-      .sort({ timestamp: 1 })
-      .lean();
+    // ============================================================================
+    // STEP 4: Execute repair operation
+    // ============================================================================
+    const results = await repairSasTimesForCollections(filter, mode);
 
-    const results: Array<{
-      _id: string;
-      machineId: string;
-      oldStart?: string;
-      oldEnd?: string;
-      newStart: string;
-      newEnd: string;
-      changed: boolean;
-    }> = [];
+    // ============================================================================
+    // STEP 5: Return repair results
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Admin Repair SAS Times POST API] Processed ${results.count} collections, ${results.changed} changed in ${mode} mode after ${duration}ms.`
+    );
 
-    for (const c of collections) {
-      // Normalize current collection timestamp to 8AM Trinidad (12:00 UTC)
-      const normalizedTimestamp = normalizeTo8AMTrinidad(
-        new Date(c.timestamp as Date)
-      );
-      const currentEnd = normalizedTimestamp;
+    return NextResponse.json(results);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Admin Repair SAS Times POST API] Error after ${duration}ms:`,
+      errorMessage
+    );
 
-      // Find previous collection for this machine strictly before current timestamp
-      const previous = await Collections.findOne({
-        machineId: c.machineId,
-        timestamp: { $lt: currentEnd },
-      })
-        .sort({ timestamp: -1 })
-        .lean();
-
-      // Previous collection also normalized to 8AM Trinidad
-      let newStart = previous
-        ? normalizeTo8AMTrinidad(new Date(previous.timestamp as Date))
-        : new Date(currentEnd.getTime() - 24 * 60 * 60 * 1000);
-
-      // Guard inversion
-      if (newStart > currentEnd) {
-        console.warn(`⚠️ Inversion detected for ${c._id}, swapping times`);
-        const tmp = newStart;
-        newStart = new Date(currentEnd.getTime());
-        currentEnd.setTime(tmp.getTime());
-      }
-
-      // Calculate SAS metrics for the corrected window
-      const sas = await calculateSasMetrics(
-        c.machineId as string,
-        newStart,
-        currentEnd
-      );
-
-      const oldStart = (c as { sasMeters?: { sasStartTime?: string } })
-        .sasMeters?.sasStartTime;
-      const oldEnd = (c as { sasMeters?: { sasEndTime?: string } }).sasMeters
-        ?.sasEndTime;
-
-      const changed =
-        !oldStart ||
-        !oldEnd ||
-        oldStart !== sas.sasStartTime ||
-        oldEnd !== sas.sasEndTime;
-
-      results.push({
-        _id: String(c._id),
-        machineId: String(c.machineId),
-        oldStart,
-        oldEnd,
-        newStart: sas.sasStartTime,
-        newEnd: sas.sasEndTime,
-        changed,
-      });
-
-      if (mode === 'commit' && changed) {
-        await Collections.updateOne(
-          { _id: c._id },
-          {
-            $set: {
-              timestamp: normalizedTimestamp, // Normalize collection timestamp to 8AM Trinidad
-              'sasMeters.drop': sas.drop,
-              'sasMeters.totalCancelledCredits': sas.totalCancelledCredits,
-              'sasMeters.gross': sas.gross,
-              'sasMeters.gamesPlayed': sas.gamesPlayed,
-              'sasMeters.jackpot': sas.jackpot,
-              'sasMeters.sasStartTime': sas.sasStartTime,
-              'sasMeters.sasEndTime': sas.sasEndTime,
-            },
-          }
-        );
-
-        // Update machine.previousCollectionTime and collectionTime if this collection is newer
-        const machine = await Machine.findById(c.machineId).lean<{
-          previousCollectionTime?: Date;
-          collectionTime?: Date;
-        }>();
-        if (machine) {
-          const prev = machine.previousCollectionTime
-            ? new Date(machine.previousCollectionTime)
-            : undefined;
-          if (!prev || prev < normalizedTimestamp) {
-            await Machine.updateOne(
-              { _id: c.machineId },
-              {
-                $set: {
-                  previousCollectionTime: normalizedTimestamp,
-                  collectionTime: normalizedTimestamp,
-                },
-              }
-            );
-          }
-        }
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      mode,
-      count: results.length,
-      changed: results.filter(r => r.changed).length,
-      results,
-    });
-  } catch (error) {
     return NextResponse.json(
-      { success: false, error: (error as Error).message },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

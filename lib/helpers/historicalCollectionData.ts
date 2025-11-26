@@ -1,4 +1,21 @@
+/**
+ * Historical Collection Data Helper Functions
+ *
+ * Provides helper functions for retrieving historical collection data, specifically
+ * for determining previous meter readings when working with historical collection reports.
+ * This ensures accurate prevIn/prevOut values when adding machines to historical reports.
+ *
+ * Features:
+ * - Retrieves previous collection meter readings for a machine at a specific point in time.
+ * - Handles cases where no previous collection exists (first collection for a machine).
+ * - Provides error handling and logging for debugging.
+ */
+
 import axios from 'axios';
+
+// ============================================================================
+// Previous Collection Meters Retrieval
+// ============================================================================
 
 /**
  * Get the previous collection meters for a machine at a specific point in time

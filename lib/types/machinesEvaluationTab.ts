@@ -1,3 +1,10 @@
+/**
+ * Machines Evaluation Tab Types
+ * Types for machines evaluation tab component.
+ *
+ * Defines props for evaluation tab including machine data, locations,
+ * loading states, sorting configuration, and action handlers.
+ */
 import type { MachineData as SharedMachineData } from '@/shared/types/machines';
 
 // Use the shared MachineData type for consistency

@@ -1,3 +1,24 @@
+/**
+ * Confirmation Dialog Component
+ * Modal dialog for confirming destructive actions with GSAP animations.
+ *
+ * Features:
+ * - Confirmation dialog with title and message
+ * - Confirm and cancel buttons
+ * - Loading state support
+ * - GSAP animations
+ * - Customizable button text
+ * - Close button
+ *
+ * @param isOpen - Whether the dialog is visible
+ * @param onClose - Callback to close the dialog
+ * @param onConfirm - Callback when confirm is clicked
+ * @param title - Dialog title
+ * @param message - Dialog message
+ * @param confirmText - Text for confirm button
+ * @param cancelText - Text for cancel button
+ * @param isLoading - Whether action is in progress
+ */
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -6,6 +27,11 @@ import { Button } from "@/components/ui/button";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { IMAGES } from "@/lib/constants/images";
+
+// ============================================================================
+// Types
+// ============================================================================
+
 type ConfirmationDialogProps = {
   isOpen: boolean;
   onClose: () => void;

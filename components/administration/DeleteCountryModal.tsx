@@ -1,3 +1,17 @@
+/**
+ * Delete Country Modal Component
+ * Confirmation modal for deleting a country.
+ *
+ * Features:
+ * - Country deletion confirmation
+ * - Warning message
+ * - Country name display
+ *
+ * @param isOpen - Whether the modal is visible
+ * @param country - Country object to delete
+ * @param onClose - Callback to close the modal
+ * @param onDelete - Callback when deletion is confirmed
+ */
 import {
   Dialog,
   DialogContent,

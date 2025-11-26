@@ -1,3 +1,17 @@
+/**
+ * Metrics Tabs Component
+ * Tab navigation for cabinet metrics on mobile view.
+ *
+ * Features:
+ * - Tab navigation (Metrics, Live Metrics, Bill Validator, Configurations)
+ * - Active tab highlighting
+ * - Mobile-only display
+ * - Horizontal scrolling
+ * - Tab switching functionality
+ *
+ * @param activeTab - Currently active tab
+ * @param setActiveTab - Callback to change active tab
+ */
 import React from 'react';
 import { Button } from '@/components/ui/button';
 

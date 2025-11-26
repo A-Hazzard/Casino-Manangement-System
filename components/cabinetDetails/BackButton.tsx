@@ -1,3 +1,17 @@
+/**
+ * Back Button Component
+ * Navigation button to go back to location details page.
+ *
+ * Features:
+ * - Back navigation to location
+ * - Location name display
+ * - Framer Motion animations (when mounted)
+ * - Responsive styling
+ *
+ * @param locationName - Name of the location to navigate back to
+ * @param handleBackToLocation - Callback to navigate back
+ * @param hasMounted - Whether component has mounted (for animations)
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';

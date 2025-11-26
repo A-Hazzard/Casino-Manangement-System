@@ -1,3 +1,21 @@
+/**
+ * Collection Navigation Component
+ * Tab navigation component for collection reports page with role-based access control.
+ *
+ * Features:
+ * - Tab-based navigation (Collection, Monthly, Manager Schedules, Collector Schedules)
+ * - Role-based tab filtering (only shows accessible tabs)
+ * - Active tab highlighting
+ * - Responsive design (desktop and mobile)
+ * - Smooth animations with Framer Motion
+ * - Loading state support
+ * - Permission checks for each tab
+ *
+ * @param tabs - Array of collection tabs to display
+ * @param activeView - Currently active view ID
+ * @param onChange - Callback when tab changes
+ * @param isLoading - Whether navigation is in loading state
+ */
 'use client';
 
 import { motion } from 'framer-motion';

@@ -1,16 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../lib/middleware/db';
+/**
+ * Machine By ID API Route
+ *
+ * This route handles fetching a single machine by ID with specific fields.
+ * It supports:
+ * - Fetching machine by ID query parameter
+ * - Filtering soft-deleted machines
+ * - Returning specific fields (gamingLocation, smibConfig, etc.)
+ *
+ * @module app/api/machines/by-id/route
+ */
+
 import { Machine } from '@/app/api/lib/models/machines';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * GET /api/machines/by-id?id=<machineId>
- * Get a single machine by ID with its gamingLocation field and smibConfig
+ * Main GET handler for fetching a machine by ID
+ *
+ * Flow:
+ * 1. Parse machine ID from query parameters
+ * 2. Validate machine ID parameter
+ * 3. Connect to database
+ * 4. Fetch machine with specific fields
+ * 5. Return machine data
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse machine ID from query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
+    // ============================================================================
+    // STEP 2: Validate machine ID parameter
+    // ============================================================================
     if (!id) {
       return NextResponse.json(
         { success: false, error: 'Machine ID is required' },
@@ -18,9 +44,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Fetch machine with gamingLocation field and smibConfig
+    // ============================================================================
+    // STEP 4: Fetch machine with specific fields
+    // ============================================================================
     const machine = await Machine.findOne({
       _id: id,
       $or: [
@@ -38,27 +69,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 5: Return machine data
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: machine,
     });
   } catch (error) {
-    console.error('Error fetching machine:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch machine';
+    console.error(`[Machines By-ID API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch machine' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
+/**
+ * POST handler - Not allowed for this route
+ */
 export function POST() {
   return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
 
+/**
+ * PUT handler - Not allowed for this route
+ */
 export function PUT() {
   return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
 
+/**
+ * DELETE handler - Not allowed for this route
+ */
 export function DELETE() {
   return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }

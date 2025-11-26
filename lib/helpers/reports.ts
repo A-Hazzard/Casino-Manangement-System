@@ -1,3 +1,19 @@
+/**
+ * Reports Helper Functions
+ *
+ * Provides helper functions for generating report data, including filtering,
+ * data transformation, and report structure creation. It handles the creation
+ * of reportable data from machine and location information.
+ *
+ * Features:
+ * - Applies filters to machine data based on date range, location, and manufacturer.
+ * - Creates reportable rows from machine data with configurable fields.
+ * - Generates complete report data with summary, table data, and chart data.
+ * - Handles metadata generation for reports.
+ *
+ * Note: Currently uses placeholder data. TODO: Replace with actual MongoDB data fetching.
+ */
+
 import {
   GamingMachine,
   CasinoLocation,
@@ -8,6 +24,10 @@ import {
 import { isWithinInterval } from 'date-fns';
 // TODO: Replace with actual MongoDB data fetching
 // const mockData = await fetchAnalyticsDataFromMongoDB();
+
+// ============================================================================
+// Data Filtering
+// ============================================================================
 
 function applyFilters(config: ReportConfig): GamingMachine[] {
   // TODO: Replace with actual MongoDB query
@@ -46,6 +66,10 @@ function applyFilters(config: ReportConfig): GamingMachine[] {
 
   return filteredMachines;
 }
+
+// ============================================================================
+// Data Transformation
+// ============================================================================
 
 function createReportableRow(
   machine: GamingMachine,
@@ -100,6 +124,10 @@ function createReportableRow(
   }
   return row;
 }
+
+// ============================================================================
+// Report Generation
+// ============================================================================
 
 export function generateReportData(config: ReportConfig): ReportData {
   const filteredMachines = applyFilters(config);

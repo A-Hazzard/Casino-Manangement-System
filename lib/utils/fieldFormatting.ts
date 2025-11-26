@@ -1,4 +1,18 @@
 /**
+ * Field Formatting Utilities
+ *
+ * Utility functions for formatting field names and values for display.
+ *
+ * Features:
+ * - Field name formatting for forms and modals
+ * - Human-readable field labels
+ * - Nested field support
+ */
+
+// ============================================================================
+// Field Name Formatting
+// ============================================================================
+/**
  * Formats field names for display in forms and modals
  * @param field - The field name to format
  * @returns Human-readable field name

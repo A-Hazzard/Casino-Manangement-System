@@ -1,3 +1,15 @@
+/**
+ * Error Boundary Component
+ * React error boundary component for catching and handling errors.
+ *
+ * Features:
+ * - Catches React component errors
+ * - Error state management
+ * - Fallback UI rendering
+ * - Error logging
+ * - Refresh page functionality
+ * - Custom fallback support
+ */
 'use client';
 
 import React, { Component, ErrorInfo } from 'react';

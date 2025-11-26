@@ -1,3 +1,18 @@
+/**
+ * Payment History Modal Component
+ * Modal for displaying payment history for a licensee.
+ *
+ * Features:
+ * - Payment history display
+ * - Payment status indicators (completed, overdue, cancelled)
+ * - Payment details (type, date paid, next billing, amount)
+ * - GSAP animations
+ * - Licensee information display
+ *
+ * @param open - Whether the modal is visible
+ * @param licensee - Licensee object to show payment history for
+ * @param onClose - Callback to close the modal
+ */
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { X } from 'lucide-react';

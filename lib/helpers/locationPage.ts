@@ -1,3 +1,20 @@
+/**
+ * Location Page Helper Functions
+ *
+ * Provides helper functions for the location detail page, including cabinet filtering,
+ * sorting, pagination, status filtering, data fetching, and navigation. It handles
+ * all operations related to displaying and managing cabinets for a specific location.
+ *
+ * Features:
+ * - Filters and sorts cabinets based on search term and sort options.
+ * - Handles location dropdown change navigation.
+ * - Provides pagination handlers for cabinet lists.
+ * - Filters cabinets by status (All, Online, Offline).
+ * - Fetches location data including locations, location details, and cabinets.
+ * - Refreshes location data on demand.
+ * - Handles navigation back to locations list.
+ */
+
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 type CabinetSortOption =
   | 'assetNumber'
@@ -18,6 +35,10 @@ import {
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets';
 import { filterAndSortCabinets as filterAndSortCabinetsUtil } from '@/lib/utils/ui';
 
+// ============================================================================
+// Cabinet Filtering and Sorting
+// ============================================================================
+
 /**
  * Handles filtering and sorting of cabinets
  */
@@ -35,6 +56,10 @@ export const applyFiltersAndSort = (
   );
   return filtered;
 };
+
+// ============================================================================
+// Navigation Helpers
+// ============================================================================
 
 /**
  * Handles location dropdown change navigation
@@ -54,6 +79,10 @@ export const handleLocationChange = (
   }
 };
 
+// ============================================================================
+// Pagination Helpers
+// ============================================================================
+
 /**
  * Pagination helper functions
  */
@@ -68,6 +97,10 @@ export const createPaginationHandlers = (
   handleNextPage: (currentPage: number) =>
     currentPage < totalPages - 1 && setCurrentPage(currentPage + 1),
 });
+
+// ============================================================================
+// Status Filtering
+// ============================================================================
 
 /**
  * Handles cabinet status filtering
@@ -92,6 +125,10 @@ export const handleFilterChange = (
     );
   }
 };
+
+// ============================================================================
+// Data Fetching
+// ============================================================================
 
 /**
  * Consolidated data fetching function
@@ -194,6 +231,10 @@ export const refreshLocationData = async (
     );
   }
 };
+
+// ============================================================================
+// Navigation Helpers
+// ============================================================================
 
 /**
  * Navigation helper

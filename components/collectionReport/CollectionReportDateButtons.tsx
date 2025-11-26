@@ -1,3 +1,22 @@
+/**
+ * Collection Report Date Buttons Component
+ * Date filter buttons for collection reports with preset and custom date range options.
+ *
+ * Features:
+ * - Preset date filters (Today, Yesterday, Last 7 Days, Last 30 Days, All Time)
+ * - Custom date range picker
+ * - Responsive design (dropdown on mobile, buttons on desktop)
+ * - "Set Last Month" quick action
+ * - Loading and disabled states
+ *
+ * @param activeFilter - Currently active date filter
+ * @param onFilterChange - Callback when filter changes
+ * @param customDateRange - Current custom date range
+ * @param onCustomDateChange - Callback when custom date range changes
+ * @param onApplyCustomDateRange - Callback to apply custom date range
+ * @param disabled - Whether controls are disabled
+ * @param isLoading - Whether data is loading
+ */
 'use client';
 
 import React, { useState } from 'react';

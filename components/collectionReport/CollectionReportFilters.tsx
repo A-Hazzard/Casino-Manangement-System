@@ -1,3 +1,29 @@
+/**
+ * Collection Report Filters Component
+ * Filter bar for collection reports with location, search, and status filters.
+ *
+ * Features:
+ * - Location selection dropdown
+ * - Search functionality
+ * - Uncollected only filter checkbox
+ * - Status filters
+ * - Clear filters button
+ * - GSAP animations for search state
+ * - Responsive design
+ *
+ * @param locations - Available locations list
+ * @param selectedLocation - Currently selected location
+ * @param onLocationChange - Callback when location changes
+ * @param search - Current search value
+ * @param onSearchChange - Callback when search changes
+ * @param onSearchSubmit - Callback when search is submitted
+ * @param showUncollectedOnly - Whether to show only uncollected reports
+ * @param onShowUncollectedOnlyChange - Callback when uncollected filter changes
+ * @param selectedFilters - Currently selected status filters
+ * @param onFilterChange - Callback when filter changes
+ * @param onClearFilters - Callback to clear all filters
+ * @param isSearching - Whether search is in progress
+ */
 'use client';
 
 import React, { useRef, useEffect } from 'react';
@@ -88,10 +114,10 @@ export default function CollectionReportFilters({
       ref={filterRef}
       className="flex w-full flex-col gap-y-3 border border-gray-200 bg-white p-4 lg:gap-y-4 lg:bg-buttonActive"
     >
-      {/* Top row - Search, Location, and Clear Button (only on lg and above) */}
-      <div className="flex flex-col gap-y-3 md:flex-row md:flex-wrap lg:items-center lg:gap-4">
+      {/* Top row - Search and Location (md: side by side, lg: with Clear Button) */}
+      <div className="flex flex-col gap-y-3 md:flex-row md:items-center md:gap-3 lg:gap-4">
         {/* Search Input */}
-        <div className="relative w-full md:flex-1 md:min-w-[200px] lg:w-[320px] lg:flex-none lg:min-w-[280px]">
+        <div className="relative w-full md:flex-1 md:max-w-[400px] lg:w-[320px] lg:flex-none lg:min-w-[280px]">
           <input
             type="text"
             placeholder="Search Collector or Location..."
@@ -121,7 +147,7 @@ export default function CollectionReportFilters({
             onLocationChange(value);
           }}
           placeholder="Select Location"
-          className="w-full md:flex-1 md:min-w-[200px] lg:w-[240px] lg:flex-none lg:min-w-[200px]"
+          className="w-full md:flex-1 md:max-w-[300px] lg:w-[240px] lg:flex-none lg:min-w-[200px]"
           includeAllOption={true}
         />
 
@@ -173,8 +199,8 @@ export default function CollectionReportFilters({
           </label>
         </div>
 
-        {/* SMIB Filter Checkboxes - Flexible layout */}
-        <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3">
+        {/* SMIB Filter Checkboxes - Better layout for md screens */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="flex items-center space-x-2">
             <Checkbox
               id="smibFilter"
@@ -226,12 +252,12 @@ export default function CollectionReportFilters({
             </label>
           </div>
 
-          {/* Clear Filters Button - flexible positioning on md, full width on mobile */}
-          <div className="flex w-full md:w-auto md:flex-1 md:min-w-[120px] items-center">
+          {/* Clear Filters Button - Better positioning on md */}
+          <div className="flex w-full sm:w-auto sm:ml-auto items-center">
             <Button
               variant="outline"
               onClick={onClearFilters}
-              className="w-full whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+              className="w-full sm:w-auto whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
             >
               Clear Filters
             </Button>

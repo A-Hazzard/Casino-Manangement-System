@@ -1,10 +1,21 @@
 /**
- * Cabinet utility functions for data transformation and mapping
+ * Cabinet Utility Functions
+ *
+ * Utility functions for cabinet data transformation and mapping.
+ *
+ * Features:
+ * - Cabinet data transformation
+ * - Mapping cabinet objects to component props
+ * - Default value handling
+ * - Data normalization
  */
 
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 type CabinetProps = Cabinet;
 
+// ============================================================================
+// Cabinet Mapping Functions
+// ============================================================================
 /**
  * Maps a Cabinet object to CabinetProps for component consumption
  * @param cabinet - Raw cabinet data from API

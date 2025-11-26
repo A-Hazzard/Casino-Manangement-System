@@ -1,3 +1,13 @@
+/**
+ * Checkbox Component
+ * Reusable checkbox component using Radix UI primitives.
+ *
+ * Features:
+ * - Accessible checkbox implementation
+ * - Checked/unchecked states
+ * - Disabled state support
+ * - Focus states
+ */
 'use client';
 
 import * as React from 'react';

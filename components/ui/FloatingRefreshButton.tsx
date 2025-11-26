@@ -1,8 +1,19 @@
 /**
  * Floating Refresh Button Component
- * Displays a floating refresh button that appears on scroll
+ * Floating refresh button that appears on scroll with animations.
+ *
+ * Features:
+ * - Fixed position floating button
+ * - Conditional visibility
+ * - Loading/spinning state
+ * - Framer Motion animations
+ * - Hover and tap animations
+ * - Accessible button
+ *
+ * @param show - Whether the button should be visible
+ * @param refreshing - Whether refresh is in progress
+ * @param onRefresh - Callback when refresh is clicked
  */
-
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
 

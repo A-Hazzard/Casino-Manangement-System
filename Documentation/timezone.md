@@ -1,7 +1,7 @@
 # Timezone Management
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 3, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.0.0
 
 ## Table of Contents
@@ -88,7 +88,7 @@ The Evolution One CMS system implements comprehensive timezone management for Tr
 - Handles both objects and arrays
 - Converts all date fields to Trinidad time
 
-**`createTrinidadTimeDateRange(startDate: Date | string, endDate: Date | string): { $gte: Date; $lte: Date }`**
+**`createTrinidadDateRangeFilter(startDate: Date | string, endDate: Date | string): { $gte: Date; $lte: Date }`**
 
 - Creates MongoDB date range queries in UTC
 - Converts Trinidad time inputs to UTC for database queries
@@ -162,10 +162,10 @@ export async function GET() {
 When querying by date ranges, convert Trinidad time to UTC:
 
 ```typescript
-import { createTrinidadTimeDateRange } from '@/app/api/lib/utils/timezone';
+import { createTrinidadDateRangeFilter } from '@/app/api/lib/utils/timezone';
 
 // Frontend sends Trinidad time, convert to UTC for database query
-const dateRange = createTrinidadTimeDateRange(startDate, endDate);
+const dateRange = createTrinidadDateRangeFilter(startDate, endDate);
 
 const results = await Meters.find({
   readAt: dateRange,
@@ -280,7 +280,7 @@ const frontendRange = {
 };
 
 // Convert to UTC for database query
-const utcRange = createTrinidadTimeDateRange(
+const utcRange = createTrinidadDateRangeFilter(
   frontendRange.startDate,
   frontendRange.endDate
 );
@@ -374,7 +374,7 @@ const convertedDate = safeTimezoneConversion(rawDate) || new Date();
 
 **Issue:** Date range queries returning wrong results
 
-- **Solution:** Use `createTrinidadTimeDateRange` for date range queries
+- **Solution:** Use `createTrinidadDateRangeFilter` for date range queries
 - **Check:** Verify frontend dates are converted to UTC before database queries
 
 **Issue:** Inconsistent date displays
@@ -412,6 +412,6 @@ For timezone-related issues:
 
 ---
 
-**Last Updated**: October 29, 2025  
+**Last Updated**: November 22, 2025  
 **Version**: 1.0  
 **Maintained By**: Evolution One CMS Development Team

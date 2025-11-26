@@ -1,5 +1,24 @@
+/**
+ * Cabinets Page Data Helper Functions
+ *
+ * Provides helper functions for fetching and updating cabinet data from the API.
+ * It handles cabinet retrieval, metrics updates, SMIB configuration management,
+ * meter synchronization, and data refresh operations.
+ *
+ * Features:
+ * - Fetches cabinet details by ID.
+ * - Updates cabinet metrics data for specific time periods.
+ * - Manages SMIB configuration (fetch and update).
+ * - Syncs cabinet meters from SMIB devices.
+ * - Refreshes cabinet data from the database.
+ */
+
 import axios from 'axios';
 import type { GamingMachine as CabinetDetail } from '@/shared/types/entities';
+
+// ============================================================================
+// Cabinet Data Fetching
+// ============================================================================
 
 /**
  * Fetch cabinet by ID
@@ -15,6 +34,10 @@ export async function fetchCabinetById(
     throw error;
   }
 }
+
+// ============================================================================
+// Cabinet Metrics Operations
+// ============================================================================
 
 /**
  * Update cabinet metrics data
@@ -36,6 +59,10 @@ export async function updateCabinetMetricsData(
     throw error;
   }
 }
+
+// ============================================================================
+// SMIB Configuration Operations
+// ============================================================================
 
 /**
  * Fetch cabinet SMIB configuration
@@ -59,6 +86,10 @@ export async function fetchCabinetSmibConfig(
   }
 }
 
+// ============================================================================
+// SMIB Configuration Updates
+// ============================================================================
+
 /**
  * Update cabinet SMIB configuration
  */
@@ -74,6 +105,10 @@ export async function updateCabinetSmibConfig(
   }
 }
 
+// ============================================================================
+// Meter Synchronization
+// ============================================================================
+
 /**
  * Sync cabinet meters
  */
@@ -85,6 +120,10 @@ export async function syncCabinetMeters(cabinetId: string): Promise<void> {
     throw error;
   }
 }
+
+// ============================================================================
+// Data Refresh Operations
+// ============================================================================
 
 /**
  * Refresh cabinet data

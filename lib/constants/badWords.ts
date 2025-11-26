@@ -1,6 +1,10 @@
 /**
- * Additional bad words and slurs to supplement the profane-words library
+ * Bad Words Constants
+ * Additional offensive words and slurs to supplement profanity filtering libraries.
+ *
  * This list includes offensive language, slurs, and inappropriate terms
+ * that should be filtered in user-generated content (usernames, messages, etc.).
+ * Used in combination with the profane-words library for comprehensive content moderation.
  */
 
 export const ADDITIONAL_BAD_WORDS = [

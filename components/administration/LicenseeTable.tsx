@@ -1,3 +1,22 @@
+/**
+ * Licensee Table Component
+ * Desktop table view for displaying licensees with payment status and actions.
+ *
+ * Features:
+ * - Licensee information display (name, country, dates, payment status)
+ * - Payment status indicators
+ * - Action dropdown menu (edit, delete, payment history, toggle payment)
+ * - Payment status toggle functionality
+ * - Date formatting
+ * - Click outside to close dropdown
+ * - Responsive design (desktop only)
+ *
+ * @param licensees - Array of licensee objects
+ * @param onEdit - Callback when edit is clicked
+ * @param onDelete - Callback when delete is clicked
+ * @param onPaymentHistory - Callback when payment history is clicked
+ * @param onTogglePaymentStatus - Callback when payment status is toggled
+ */
 import type { Licensee } from '@/lib/types/licensee';
 import Image from 'next/image';
 import {

@@ -1,3 +1,18 @@
+/**
+ * Collection History Table Component
+ * Table component for displaying cabinet collection history with sorting and navigation.
+ *
+ * Features:
+ * - Collection history display with meters in/out
+ * - Sortable columns
+ * - Navigation to collection report details
+ * - Large number formatting with tooltips
+ * - Responsive design
+ * - Date and time display
+ * - Collection report ID links
+ *
+ * Large component (~648 lines) handling collection history display and navigation.
+ */
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -29,6 +44,10 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useMemo, useState } from 'react';
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 // Helper function to format large numbers compactly (only when needed)
 const formatLargeNumber = (num: number): string => {

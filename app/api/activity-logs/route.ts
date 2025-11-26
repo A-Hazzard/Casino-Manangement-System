@@ -1,24 +1,52 @@
+/**
+ * Activity Logs API Route
+ *
+ * This route handles activity log management including fetching and creating activity logs.
+ * It supports:
+ * - Filtering by user, action, resource, date range
+ * - Search functionality across multiple fields
+ * - Role-based access control (Admin, Manager, Location Admin)
+ * - Pagination and sorting
+ * - Activity log creation with change tracking
+ *
+ * @module app/api/activity-logs/route
+ */
+
 import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
+import User from '@/app/api/lib/models/user';
 import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipDetection';
-import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../lib/helpers/users';
-import { connectDB } from '../lib/middleware/db';
-import { GamingLocations } from '../lib/models/gaminglocations';
-import { Machine } from '../lib/models/machines';
-import User from '../lib/models/user';
-
 import { generateMongoId } from '@/lib/utils/id';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * GET /api/activity-logs
- * Get activity logs with filtering, searching, and pagination
+ * Main GET handler for fetching activity logs
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Validate ActivityLog model availability
+ * 3. Parse query parameters (pagination, filters, search, sort)
+ * 4. Build query filter
+ * 5. Apply role-based filtering (Manager, Location Admin)
+ * 6. Execute query with pagination
+ * 7. Return paginated activity logs
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Ensure ActivityLog model is available
+    // ============================================================================
+    // STEP 2: Validate ActivityLog model availability
+    // ============================================================================
     if (!ActivityLog) {
       console.error('ActivityLog model is not available');
       return NextResponse.json(
@@ -27,6 +55,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
 
     // Pagination parameters
@@ -49,7 +80,9 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'timestamp';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    // Build query filter
+    // ============================================================================
+    // STEP 4: Build query filter
+    // ============================================================================
     const filter: Record<string, unknown> = {};
 
     if (userId) {
@@ -107,7 +140,9 @@ export async function GET(request: NextRequest) {
     const sort: Record<string, 1 | -1> = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-    // Apply role-based filtering
+    // ============================================================================
+    // STEP 5: Apply role-based filtering
+    // ============================================================================
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const currentUserLicensees =
@@ -211,16 +246,25 @@ export async function GET(request: NextRequest) {
       JSON.stringify(filter, null, 2)
     );
 
-    // Execute query with pagination
+    // ============================================================================
+    // STEP 6: Execute query with pagination
+    // ============================================================================
     const [logs, totalCount] = await Promise.all([
       ActivityLog.find(filter).sort(sort).skip(skip).limit(limit).lean(),
       ActivityLog.countDocuments(filter),
     ]);
 
-    // Calculate pagination info
+    // ============================================================================
+    // STEP 7: Return paginated activity logs
+    // ============================================================================
     const totalPages = Math.ceil(totalCount / limit);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
+
+    const duration = Date.now() - startTime;
+    if (duration > 2000) {
+      console.warn(`[Activity Logs API] GET completed in ${duration}ms`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -237,25 +281,46 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching activity logs:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch activity logs';
+    console.error(`[Activity Logs API] GET error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch activity logs' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
 /**
- * POST /api/activity-logs
- * Create a new activity log entry
+ * Main POST handler for creating activity log entry
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse request body
+ * 3. Validate required fields
+ * 4. Calculate changes if previousData/newData provided
+ * 5. Get client IP information
+ * 6. Generate activity log ID
+ * 7. Create activity log entry
+ * 8. Return created activity log
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Parse request body
+    // ============================================================================
     const body = await request.json();
 
-    // Validate required fields
+    // ============================================================================
+    // STEP 3: Validate required fields
+    // ============================================================================
     const { action, resource, resourceId, userId, username, userRole } = body;
 
     if (!action || !resource || !resourceId || !userId || !username) {
@@ -265,20 +330,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate changes if previousData and newData are provided
+    // ============================================================================
+    // STEP 4: Calculate changes if previousData/newData provided
+    // ============================================================================
     let changes = body.changes || [];
     if (body.previousData && body.newData) {
       changes = calculateChanges(body.previousData, body.newData);
     }
 
-    // Get client IP information
+    // ============================================================================
+    // STEP 5: Get client IP information
+    // ============================================================================
     const ipInfo = getIPInfo(request);
     const formattedIP = formatIPForDisplay(ipInfo);
 
-    // Generate a proper MongoDB ObjectId-style hex string for the activity log
+    // ============================================================================
+    // STEP 6: Generate activity log ID
+    // ============================================================================
     const activityLogId = await generateMongoId();
 
-    // Create new activity log
+    // ============================================================================
+    // STEP 7: Create activity log entry
+    // ============================================================================
     const activityLog = new ActivityLog({
       _id: activityLogId,
       timestamp: new Date(),
@@ -304,14 +377,24 @@ export async function POST(request: NextRequest) {
 
     await activityLog.save();
 
+    // ============================================================================
+    // STEP 8: Return created activity log
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Activity Logs API] POST completed in ${duration}ms`);
+    }
+
     return NextResponse.json({
       success: true,
       data: { activityLog },
     });
   } catch (error) {
-    console.error('Error creating activity log:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create activity log';
+    console.error(`[Activity Logs API] POST error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Failed to create activity log' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

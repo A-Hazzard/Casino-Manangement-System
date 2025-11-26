@@ -1,6 +1,23 @@
+/**
+ * Authentication Logger Utility
+ *
+ * Singleton class for logging authentication events and activities.
+ *
+ * Features:
+ * - Singleton pattern for centralized logging
+ * - Authentication event logging
+ * - Login/logout tracking
+ * - Password change tracking
+ * - Session management logging
+ * - Error logging for failed authentication attempts
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import type { AuthLogEntry } from '@/lib/types/authLogger';
 
+// ============================================================================
+// AuthLogger Class
+// ============================================================================
 export class AuthLogger {
   private static instance: AuthLogger;
 

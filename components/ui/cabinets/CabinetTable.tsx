@@ -14,6 +14,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import formatCurrency from '@/lib/utils/currency';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { formatDistanceToNow } from 'date-fns';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import type { DataTableProps } from '@/shared/types/components';
@@ -252,15 +257,23 @@ export default function CabinetTable({
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{formatCurrency(cab.moneyIn)}</TableCell>
-                <TableCell>{formatCurrency(cab.moneyOut)}</TableCell>
+                <TableCell>
+                  <span className={`font-semibold ${getMoneyInColorClass(cab.moneyIn)}`}>
+                    {formatCurrency(cab.moneyIn)}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className={`font-semibold ${getMoneyOutColorClass(cab.moneyOut, cab.moneyIn)}`}>
+                    {formatCurrency(cab.moneyOut)}
+                  </span>
+                </TableCell>
                 <TableCell>
                   <span className="font-semibold">
                     {formatCurrency(cab.jackpot)}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className="font-semibold text-green-600">
+                  <span className={`font-semibold ${getGrossColorClass(cab.gross)}`}>
                     {formatCurrency(cab.gross)}
                   </span>
                 </TableCell>
@@ -278,42 +291,42 @@ export default function CabinetTable({
                       <Eye className="h-4 w-4" />
                     </Button>
                     {canEditMachines && (
-                      <Button
-                        variant="ghost"
-                        onClick={e => {
-                          e.stopPropagation();
-                          onEdit?.(cab);
-                        }}
-                        className="h-8 w-8 p-1 hover:bg-accent"
-                        title="Edit"
-                      >
-                        <Image
-                          src={IMAGES.editIcon}
-                          alt="Edit"
-                          width={16}
-                          height={16}
-                          className="h-4 w-4"
-                        />
-                      </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={e => {
+                        e.stopPropagation();
+                        onEdit?.(cab);
+                      }}
+                      className="h-8 w-8 p-1 hover:bg-accent"
+                      title="Edit"
+                    >
+                      <Image
+                        src={IMAGES.editIcon}
+                        alt="Edit"
+                        width={16}
+                        height={16}
+                        className="h-4 w-4"
+                      />
+                    </Button>
                     )}
                     {canDeleteMachines && (
-                      <Button
-                        variant="ghost"
-                        onClick={e => {
-                          e.stopPropagation();
-                          onDelete?.(cab);
-                        }}
-                        className="h-8 w-8 p-1 hover:bg-accent"
-                        title="Delete"
-                      >
-                        <Image
-                          src={IMAGES.deleteIcon}
-                          alt="Delete"
-                          width={16}
-                          height={16}
-                          className="h-4 w-4"
-                        />
-                      </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={e => {
+                        e.stopPropagation();
+                        onDelete?.(cab);
+                      }}
+                      className="h-8 w-8 p-1 hover:bg-accent"
+                      title="Delete"
+                    >
+                      <Image
+                        src={IMAGES.deleteIcon}
+                        alt="Delete"
+                        width={16}
+                        height={16}
+                        className="h-4 w-4"
+                      />
+                    </Button>
                     )}
                   </div>
                 </TableCell>

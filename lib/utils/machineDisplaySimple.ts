@@ -1,8 +1,17 @@
 /**
- * Simple machine display utility without brackets
- * Fallback hierarchy: serialNumber > custom.name > origSerialNumber > machineId
+ * Simple Machine Display Utilities
+ *
+ * Simple utility functions for displaying machine names without brackets.
+ *
+ * Features:
+ * - Simple machine name extraction
+ * - Fallback hierarchy for missing data
+ * - No formatting/brackets
  */
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
 type MachineLike = {
   serialNumber?: string;
   custom?: { name?: string };
@@ -12,6 +21,9 @@ type MachineLike = {
   _id?: string;
 };
 
+// ============================================================================
+// Machine Display Name Functions
+// ============================================================================
 /**
  * Gets the display name for a machine using fallback hierarchy
  * @param machine - The machine object

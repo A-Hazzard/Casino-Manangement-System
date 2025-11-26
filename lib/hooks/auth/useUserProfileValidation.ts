@@ -2,9 +2,15 @@ import { useState, useEffect } from 'react';
 import { useUserStore } from '@/lib/store/userStore';
 
 export function useUserProfileValidation() {
+  // ============================================================================
+  // State
+  // ============================================================================
   const user = useUserStore(state => state.user);
   const [needsProfileValidation, setNeedsProfileValidation] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (!user) {
       setNeedsProfileValidation(false);

@@ -49,8 +49,7 @@ export function OTAUpdateSection({
 
   useEffect(() => {
     fetchFirmwares();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchFirmwares]);
 
   const handleUpdate = async () => {
     if (!relayId || !selectedFirmwareId) return;

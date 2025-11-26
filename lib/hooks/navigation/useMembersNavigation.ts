@@ -9,6 +9,9 @@ import type { MembersView, MembersTab } from '@/shared/types/entities';
  * Handles URL state management, permission checking, and tab switching
  */
 export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -19,6 +22,10 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
   const [activeTab, setActiveTab] = useState<MembersView>(
     (currentTab as MembersView) || 'members'
   );
+
+  // ============================================================================
+  // Methods
+  // ============================================================================
 
   /**
    * Update URL when tab changes
@@ -37,6 +44,10 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
     },
     [router, pathname, searchParams]
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   /**
    * Update active tab when URL changes
@@ -78,6 +89,9 @@ export function useMembersNavigation(membersTabsConfig: MembersTab[]) {
     [availableTabs, handleTabChange]
   );
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     activeTab,
     availableTabs,

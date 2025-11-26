@@ -1,3 +1,15 @@
+/**
+ * Licensee Search Bar Component
+ * Search bar for filtering licensees by name.
+ *
+ * Features:
+ * - Text search input
+ * - Real-time search filtering
+ * - Responsive design
+ *
+ * @param searchValue - Current search input value
+ * @param setSearchValue - Callback to update search value
+ */
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 
 type LicenseeSearchBarProps = {
@@ -9,6 +21,9 @@ export default function LicenseeSearchBar({
   searchValue,
   setSearchValue,
 }: LicenseeSearchBarProps) {
+  // ============================================================================
+  // Render - Search Bar
+  // ============================================================================
   return (
     <div className="mt-6 flex items-center gap-4 rounded-t-lg bg-buttonActive p-4">
       <div className="flex flex-1 items-center">

@@ -1,6 +1,20 @@
+/**
+ * Firmware Migration Utilities
+ *
+ * Utility functions for migrating firmware records from old schema to new schema.
+ *
+ * Features:
+ * - Firmware schema migration
+ * - Migration status checking
+ * - Old schema to new schema conversion
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Firmware } from '@/app/api/lib/models/firmware';
 
+// ============================================================================
+// Migration Functions
+// ============================================================================
 /**
  * Migration utility to handle existing firmware records with old schema
  * This function should be called once to migrate any existing data
@@ -35,7 +49,8 @@ export async function migrateFirmwareSchema() {
           const oldFile: OldFileType = firmware.file;
 
           // Update with new schema fields
-          await Firmware.findByIdAndUpdate(firmware._id, {
+          // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+          await Firmware.findOneAndUpdate({ _id: firmware._id }, {
             $set: {
               fileName:
                 oldFile.originalname || oldFile.filename || 'unknown.bin',
@@ -49,7 +64,8 @@ export async function migrateFirmwareSchema() {
           // console.log(`Migrated firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
         } else {
           // If missing new fields but no old file object, set defaults
-          await Firmware.findByIdAndUpdate(firmware._id, {
+          // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+          await Firmware.findOneAndUpdate({ _id: firmware._id }, {
             $set: {
               fileName: 'unknown.bin',
               fileSize: 0,
@@ -70,6 +86,9 @@ export async function migrateFirmwareSchema() {
   }
 }
 
+// ============================================================================
+// Migration Status Functions
+// ============================================================================
 /**
  * Check if migration is needed
  */

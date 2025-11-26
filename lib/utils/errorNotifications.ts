@@ -1,6 +1,21 @@
+/**
+ * Error Notification Utilities
+ *
+ * Utility functions for displaying error notifications to users.
+ *
+ * Features:
+ * - Toast notifications for errors
+ * - Context-aware error messages
+ * - Retry functionality
+ * - Success notifications
+ */
+
 import { toast } from 'sonner';
 import { classifyError, getUserFriendlyErrorMessage } from './errorHandling';
 
+// ============================================================================
+// Error Notification Functions
+// ============================================================================
 /**
  * Show error notifications based on error type
  */
@@ -42,6 +57,9 @@ export function showErrorNotification(error: unknown, context?: string) {
   }
 }
 
+// ============================================================================
+// Success Notification Functions
+// ============================================================================
 /**
  * Show success notification for retry attempts
  */

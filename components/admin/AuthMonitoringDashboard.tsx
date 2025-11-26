@@ -1,3 +1,20 @@
+/**
+ * Auth Monitoring Dashboard Component
+ * Admin dashboard for monitoring authentication events and security metrics.
+ *
+ * Features:
+ * - Real-time authentication metrics (logins, sessions, locked accounts)
+ * - Authentication event log with filtering
+ * - Search and filter capabilities
+ * - Export functionality for audit logs
+ * - Security alerts and suspicious activity tracking
+ * - Session management
+ * - User activity monitoring
+ * - IP address tracking
+ * - Success/failure rate analytics
+ *
+ * @returns Authentication monitoring dashboard with metrics and event logs
+ */
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -31,6 +48,11 @@ import {
   Download,
 } from 'lucide-react';
 import axios from 'axios';
+
+// ============================================================================
+// Types
+// ============================================================================
+
 type AuthMetrics = {
   totalLogins: number;
   successfulLogins: number;

@@ -1,3 +1,19 @@
+/**
+ * Collection Report Page
+ *
+ * Main page for managing collection reports with multiple views and filtering.
+ *
+ * Features:
+ * - Collection Reports tab: View, create, edit, and delete collection reports
+ * - Monthly Reports tab: View monthly report summaries and details
+ * - Manager Schedules tab: View and manage manager schedules
+ * - Collector Schedules tab: View and manage collector schedules
+ * - Role-based access control
+ * - Batch-based pagination for performance
+ * - Responsive design for mobile and desktop
+ * - Search and filter capabilities
+ */
+
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -44,7 +60,7 @@ import { hasManagerAccess } from '@/lib/utils/permissions';
 // GSAP will be loaded dynamically in useEffect
 
 import {
-  fetchAllLocationNames,
+  fetchMonthlyReportLocations,
   fetchCollectionReportsByLicencee,
   fetchMonthlyReportSummaryAndDetails,
   getLocationsWithMachines,
@@ -106,13 +122,15 @@ import type { CollectionView } from '@/lib/types/collection';
 import { PlusCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import './animations.css';
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
 /**
- * Main page component for the Collection Report.
- * Handles tab switching, data fetching, and filtering for:
- * - Collection Reports
- * - Monthly Reports
- * - Manager Schedules
- * - Collector Schedules
+ * Map frontend time period to API format
+ * @param frontendTimePeriod - Frontend time period string
+ * @returns API-formatted time period string
  */
 const mapTimePeriodForAPI = (frontendTimePeriod: string): string => {
   switch (frontendTimePeriod) {
@@ -129,6 +147,14 @@ const mapTimePeriodForAPI = (frontendTimePeriod: string): string => {
   }
 };
 
+// ============================================================================
+// Page Components
+// ============================================================================
+
+/**
+ * Collection Report Page Content Component
+ * Wraps the main content in Suspense for loading state
+ */
 function CollectionReportPageContent() {
   return (
     <Suspense fallback={<CollectionReportPageSkeleton />}>
@@ -137,7 +163,14 @@ function CollectionReportPageContent() {
   );
 }
 
+/**
+ * Collection Report Content Component
+ * Handles all state management and data fetching for the collection report page
+ */
 function CollectionReportContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const searchParams = useSearchParams();
   const router = useRouter();
   const { handleError } = useAsyncError();
@@ -149,9 +182,45 @@ function CollectionReportContent() {
   } = useDashBoardStore();
   const user = useUserStore(state => state.user);
 
+  // ============================================================================
+  // State Management
+  // ============================================================================
   // State for dynamically loaded GSAP
   const [gsap, setGsap] = useState<typeof import('gsap').gsap | null>(null);
 
+  // ============================================================================
+  // Refs
+  // ============================================================================
+  const hasInitializedLicensee = useRef(false);
+  const isInitialMount = useRef(true);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const mobileCardsRef = useRef<HTMLDivElement>(null);
+  const desktopTableRef = useRef<HTMLDivElement>(null);
+  const monthlyPaginationRef = useRef<HTMLDivElement>(null);
+
+  // ============================================================================
+  // Constants
+  // ============================================================================
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+
+  // ============================================================================
+  // Custom Hooks
+  // ============================================================================
+  const { pushToUrl } = useCollectionNavigation(COLLECTION_TABS_CONFIG);
+
+  // URL protection for collection report tabs
+  useUrlProtection({
+    page: 'collection-report',
+    allowedTabs: ['collection', 'monthly', 'manager', 'collector'],
+    defaultTab: 'collection',
+    redirectPath: '/unauthorized',
+  });
+
+  // ============================================================================
+  // Effects - Initialization
+  // ============================================================================
   // Load GSAP dynamically
   useEffect(() => {
     import('gsap')
@@ -165,9 +234,6 @@ function CollectionReportContent() {
 
   // Initialize selectedLicencee from user's assigned licensees if not set
   // Only auto-select on initial mount, not when user manually changes to "All Licensees"
-  const hasInitializedLicensee = useRef(false);
-  const isInitialMount = useRef(true);
-
   useEffect(() => {
     // Only auto-select on initial mount (when user is loaded for the first time)
     if (user && isInitialMount.current && !hasInitializedLicensee.current) {
@@ -196,9 +262,6 @@ function CollectionReportContent() {
     }
   }, [user, selectedLicencee, setSelectedLicencee]);
 
-  // Read initial view from URL and sync on change
-  const { pushToUrl } = useCollectionNavigation(COLLECTION_TABS_CONFIG);
-
   // Initialize activeTab from URL on first load
   const [activeTab, setActiveTab] = useState<CollectionView>(() => {
     const section = searchParams?.get('section');
@@ -209,14 +272,37 @@ function CollectionReportContent() {
     return 'collection'; // default
   });
 
-  // URL protection for collection report tabs
-  useUrlProtection({
-    page: 'collection-report',
-    allowedTabs: ['collection', 'monthly', 'manager', 'collector'],
-    defaultTab: 'collection',
-    redirectPath: '/unauthorized',
-  });
+  // ============================================================================
+  // State Management - Collection Reports
+  // ============================================================================
+  const [loading, setLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [allReports, setAllReports] = useState<CollectionReportRow[]>([]);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [currentPage, setCurrentPage] = useState(0); // 0-indexed
+  const [sortField, setSortField] = useState<keyof CollectionReportRow>('time');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [locations, setLocations] = useState<LocationSelectItem[]>([]);
 
+  // ============================================================================
+  // State Management - Modals
+  // ============================================================================
+  const [showMobileCollectionModal, setShowMobileCollectionModal] =
+    useState(false);
+  const [showDesktopCollectionModal, setShowDesktopCollectionModal] =
+    useState(false);
+  const [showMobileEditCollectionModal, setShowMobileEditCollectionModal] =
+    useState(false);
+  const [showDesktopEditCollectionModal, setShowDesktopEditCollectionModal] =
+    useState(false);
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<string | null>(null);
+
+  // ============================================================================
+  // Effects - URL Synchronization
+  // ============================================================================
   // Update URL when tab changes
   const handleTabChangeLocal = useCallback(
     (value: string) => {
@@ -230,16 +316,9 @@ function CollectionReportContent() {
     syncStateWithURL(searchParams, activeTab, setActiveTab);
   }, [searchParams, activeTab]);
 
-  // Refs for animation
-  const contentRef = useRef<HTMLDivElement>(null);
-  const mobileCardsRef = useRef<HTMLDivElement>(null);
-  const desktopTableRef = useRef<HTMLDivElement>(null);
-  const monthlyPaginationRef = useRef<HTMLDivElement>(null);
-
-  // Sorting state
-  const [sortField, setSortField] = useState<keyof CollectionReportRow>('time');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   // Sort handler
   const handleSort = (field: keyof CollectionReportRow) => {
     if (sortField === field) {
@@ -250,43 +329,75 @@ function CollectionReportContent() {
     }
   };
 
-  // Collection report data state
-  const [loading, setLoading] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  // ============================================================================
+  // State Management - Additional Filters & Tabs
+  // ============================================================================
+  const [locationsWithMachines, setLocationsWithMachines] = useState<
+    CollectionReportLocationWithMachines[]
+  >([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
+  const [search, setSearch] = useState<string>('');
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
-  // Batch-based pagination state
-  const [allReports, setAllReports] = useState<CollectionReportRow[]>([]);
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
-  const [currentPage, setCurrentPage] = useState(0); // 0-indexed
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+  // Manager Schedule state
+  const [schedulers, setSchedulers] = useState<SchedulerTableRow[]>([]);
+  const [loadingSchedulers, setLoadingSchedulers] = useState(true);
+  const [selectedSchedulerLocation, setSelectedSchedulerLocation] =
+    useState('all');
+  const [selectedCollector, setSelectedCollector] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [collectors, setCollectors] = useState<string[]>([]);
 
-  // Collection Modal states - separate for mobile and desktop
-  const [showMobileCollectionModal, setShowMobileCollectionModal] =
-    useState(false);
-  const [showDesktopCollectionModal, setShowDesktopCollectionModal] =
-    useState(false);
+  // Collector Schedule state
+  const [collectorSchedules, setCollectorSchedules] = useState<
+    CollectorSchedule[]
+  >([]);
+  const [loadingCollectorSchedules, setLoadingCollectorSchedules] =
+    useState(true);
+  const [selectedCollectorLocation, setSelectedCollectorLocation] =
+    useState('all');
+  const [selectedCollectorFilter, setSelectedCollectorFilter] = useState('all');
+  const [selectedCollectorStatus, setSelectedCollectorStatus] = useState('all');
+  const [collectorsList, setCollectorsList] = useState<string[]>([]);
 
-  // Edit Collection Modal states - separate for mobile and desktop
-  const [showMobileEditCollectionModal, setShowMobileEditCollectionModal] =
-    useState(false);
-  const [showDesktopEditCollectionModal, setShowDesktopEditCollectionModal] =
-    useState(false);
-  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  // Monthly Report state
+  const [monthlySummary, setMonthlySummary] = useState<MonthlyReportSummary>({
+    drop: '-',
+    cancelledCredits: '-',
+    gross: '-',
+    sasGross: '-',
+  });
+  const [monthlyDetails, setMonthlyDetails] = useState<
+    MonthlyReportDetailsRow[]
+  >([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(true);
+  const [monthlyLocation, setMonthlyLocation] = useState<string>('all');
+  const now = new Date();
+  const [monthlyDateRange, setMonthlyDateRange] = useState<RDPDateRange>({
+    from: new Date(now.getFullYear(), now.getMonth(), 1),
+    to: now,
+  });
+  const [pendingRange, setPendingRange] = useState<RDPDateRange>({
+    from: new Date(now.getFullYear(), now.getMonth(), 1),
+    to: now,
+  });
+  const [monthlyLocations, setMonthlyLocations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [monthlyPage, setMonthlyPage] = useState(1);
+  const monthlyItemsPerPage = 10;
 
-  // Delete Confirmation state
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [reportToDelete, setReportToDelete] = useState<string | null>(null);
-
-  // Filter state for collection reports
-  const [locations, setLocations] = useState<LocationSelectItem[]>([]);
-
+  // ============================================================================
+  // Utility Functions
+  // ============================================================================
   // Helper function to determine if mobile or desktop modal should be shown
   // Use xl: breakpoint (1280px) so tablets in vertical view use mobile layout
   const isMobileSize = () => window.innerWidth < 1280;
 
+  // ============================================================================
+  // Event Handlers - Modals
+  // ============================================================================
   // Handle modal switching based on window size
   const handleModalResize = useCallback(() => {
     const isMobile = isMobileSize();
@@ -411,60 +522,9 @@ function CollectionReportContent() {
     checkForUnfinishedEdits();
   }, []); // Empty dependency array - run once on mount
 
-  const [locationsWithMachines, setLocationsWithMachines] = useState<
-    CollectionReportLocationWithMachines[]
-  >([]);
-  const [selectedLocation, setSelectedLocation] = useState<string>('all');
-  const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
-  const [search, setSearch] = useState<string>('');
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
-
-  // Manager Schedule state
-  const [schedulers, setSchedulers] = useState<SchedulerTableRow[]>([]);
-  const [loadingSchedulers, setLoadingSchedulers] = useState(true);
-  const [selectedSchedulerLocation, setSelectedSchedulerLocation] =
-    useState('all');
-  const [selectedCollector, setSelectedCollector] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [collectors, setCollectors] = useState<string[]>([]);
-
-  // Collector Schedule state
-  const [collectorSchedules, setCollectorSchedules] = useState<
-    CollectorSchedule[]
-  >([]);
-  const [loadingCollectorSchedules, setLoadingCollectorSchedules] =
-    useState(true);
-  const [selectedCollectorLocation, setSelectedCollectorLocation] =
-    useState('all');
-  const [selectedCollectorFilter, setSelectedCollectorFilter] = useState('all');
-  const [selectedCollectorStatus, setSelectedCollectorStatus] = useState('all');
-  const [collectorsList, setCollectorsList] = useState<string[]>([]);
-
-  // Monthly Report state
-  const [monthlySummary, setMonthlySummary] = useState<MonthlyReportSummary>({
-    drop: '-',
-    cancelledCredits: '-',
-    gross: '-',
-    sasGross: '-',
-  });
-  const [monthlyDetails, setMonthlyDetails] = useState<
-    MonthlyReportDetailsRow[]
-  >([]);
-  const [monthlyLoading, setMonthlyLoading] = useState(true);
-  const [monthlyLocation, setMonthlyLocation] = useState<string>('all');
-  const now = new Date();
-  const [monthlyDateRange, setMonthlyDateRange] = useState<RDPDateRange>({
-    from: new Date(now.getFullYear(), now.getMonth(), 1),
-    to: now,
-  });
-  const [pendingRange, setPendingRange] = useState<RDPDateRange>({
-    from: new Date(now.getFullYear(), now.getMonth(), 1),
-    to: now,
-  });
-  const [allLocationNames, setAllLocationNames] = useState<string[]>([]);
-  const [monthlyPage, setMonthlyPage] = useState(1);
-  const monthlyItemsPerPage = 10;
-
+  // ============================================================================
+  // Effects - Data Fetching
+  // ============================================================================
   // Fetch all gaming locations for filter dropdown
   useEffect(() => {
     fetchAllGamingLocations(selectedLicencee).then(locs => {
@@ -928,10 +988,19 @@ function CollectionReportContent() {
     if (!monthlyDateRange.from || !monthlyDateRange.to) return;
     setMonthlyLoading(true);
     setMonthlyPage(1);
+    
+    // Convert location ID to name for API call
+    const locationName =
+      monthlyLocation !== 'all'
+        ? monthlyLocations.find(
+            loc => loc.id === monthlyLocation || loc.name === monthlyLocation
+          )?.name || monthlyLocation
+        : undefined;
+    
     fetchMonthlyReportSummaryAndDetails({
       startDate: monthlyDateRange.from,
       endDate: monthlyDateRange.to,
-      locationName: monthlyLocation !== 'all' ? monthlyLocation : undefined,
+      locationName,
       licencee: selectedLicencee,
     })
       .then(({ summary, details }) => {
@@ -963,7 +1032,7 @@ function CollectionReportContent() {
         setMonthlyDetails([]);
         setMonthlyLoading(false);
       });
-  }, [monthlyDateRange, monthlyLocation, selectedLicencee]);
+  }, [monthlyDateRange, monthlyLocation, selectedLicencee, monthlyLocations]);
 
   // Fetch new batch when crossing batch boundary (similar to locations page)
 
@@ -1045,29 +1114,39 @@ function CollectionReportContent() {
     );
   };
 
-  // Fetch all location names and monthly data when monthly tab is active
+  // Fetch locations for monthly report when tab is active or licensee changes
   useEffect(() => {
     if (activeTab === 'monthly') {
-      fetchAllLocationNames()
-        .then((names: string[]) => {
-          setAllLocationNames(names);
+      fetchMonthlyReportLocations(selectedLicencee || undefined)
+        .then((locations: Array<{ id: string; name: string }>) => {
+          setMonthlyLocations(locations);
+          
+          // Check if current location is still valid
+          if (monthlyLocation !== 'all') {
+            const locationExists = locations.some(
+              loc => loc.id === monthlyLocation || loc.name === monthlyLocation
+            );
+            if (!locationExists) {
+              // Current location is not in the new list, reset to 'all'
+              setMonthlyLocation('all');
+            }
+          }
         })
         .catch((error: Error) => {
           if (process.env.NODE_ENV === 'development') {
             console.error('Error fetching locations:', error);
           }
-          setAllLocationNames([]);
+          setMonthlyLocations([]);
         });
-      fetchMonthlyData();
     }
-  }, [activeTab, fetchMonthlyData]);
+  }, [activeTab, selectedLicencee, monthlyLocation]);
 
-  // Refetch monthly data when date range or location changes
+  // Refetch monthly data when date range, location, or licensee changes
   useEffect(() => {
     if (activeTab === 'monthly') {
       fetchMonthlyData();
     }
-  }, [monthlyDateRange, monthlyLocation, activeTab, fetchMonthlyData]);
+  }, [monthlyDateRange, monthlyLocation, selectedLicencee, activeTab, fetchMonthlyData]);
 
   // Set date range to last month for monthly report
   const handleLastMonth = () => {
@@ -1238,16 +1317,16 @@ function CollectionReportContent() {
     setRefreshing(false);
   };
 
-  // Debugging: Log data and filters to diagnose empty UI (development only)
-  // if (process.env.NODE_ENV === "development") {
-  //   console.log("DEBUG: reports", reports);
-  //   console.log("DEBUG: filteredReports", filteredReports);
-  // }
-
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   // Show "No Licensee Assigned" message for non-admin users without licensees
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
   const showLicenseeFilter = shouldShowLicenseeFilter(user);
 
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
   if (showNoLicenseeMessage) {
     return (
       <PageLayout
@@ -1267,6 +1346,9 @@ function CollectionReportContent() {
     );
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <PageLayout
@@ -1460,7 +1542,7 @@ function CollectionReportContent() {
               {activeTab === 'monthly' && (
                 <div className="tab-content-wrapper">
                   <MonthlyDesktopUI
-                    allLocationNames={allLocationNames}
+                    locations={monthlyLocations}
                     monthlyLocation={monthlyLocation}
                     onMonthlyLocationChange={setMonthlyLocation}
                     pendingRange={pendingRange}
@@ -1481,7 +1563,7 @@ function CollectionReportContent() {
                     monthlyLastItemIndex={monthlyPage * monthlyItemsPerPage}
                   />
                   <MonthlyMobileUI
-                    allLocationNames={allLocationNames}
+                    locations={monthlyLocations}
                     monthlyLocation={monthlyLocation}
                     onMonthlyLocationChange={setMonthlyLocation}
                     pendingRange={pendingRange}

@@ -1,3 +1,15 @@
+/**
+ * Licencee Selector Component
+ * Licensee selector dropdown integrated with dashboard store.
+ *
+ * Features:
+ * - Licensee selection dropdown
+ * - Integration with dashboard store
+ * - Licensee data fetching
+ * - Loading states
+ * - Disabled state during chart loading/refreshing
+ * - "All Licensees" option
+ */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -5,6 +17,9 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 
 export function LicenceeSelector() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const {
     selectedLicencee,
     setSelectedLicencee,

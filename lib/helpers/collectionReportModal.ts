@@ -1,3 +1,18 @@
+/**
+ * Collection Report Modal Helper Functions
+ *
+ * Provides helper functions for the collection report modal, including data fetching,
+ * machine collection management, validation, animations, and report creation. It handles
+ * all operations related to creating and managing collection reports through the modal interface.
+ *
+ * Features:
+ * - Fetches in-progress collections for collectors.
+ * - Adds and deletes machine collection entries.
+ * - Validates machine entry data including RAM clear scenarios.
+ * - Applies GSAP animations to modal transitions.
+ * - Handles collection report creation and submission.
+ */
+
 import { gsap } from 'gsap';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -13,6 +28,10 @@ import { validateCollectionReportPayload } from '@/lib/utils/validation';
 import { createCollectionReport } from '@/lib/helpers/collectionReport';
 import { validateRamClearMeters } from '@/lib/utils/ramClearValidation';
 
+// ============================================================================
+// Collection Data Fetching
+// ============================================================================
+
 /**
  * Fetches in-progress collections for a collector
  * @param collector - Collector user ID
@@ -27,6 +46,10 @@ export async function fetchInProgressCollections(
   return res.data;
 }
 
+// ============================================================================
+// Machine Collection Operations
+// ============================================================================
+
 /**
  * Adds a new machine collection entry
  * @param data - Partial collection document data
@@ -39,6 +62,10 @@ export async function addMachineCollection(
   return res.data;
 }
 
+// ============================================================================
+// Machine Collection Deletion
+// ============================================================================
+
 /**
  * Deletes a machine collection entry
  * @param id - Collection document ID
@@ -50,6 +77,10 @@ export async function deleteMachineCollection(
   const res = await axios.delete(`/api/collections?id=${id}`);
   return res.data;
 }
+
+// ============================================================================
+// Modal Animation
+// ============================================================================
 
 /**
  * Applies GSAP animation to modal

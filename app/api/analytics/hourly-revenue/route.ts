@@ -1,18 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Analytics Hourly Revenue API Route
+ *
+ * This route handles fetching hourly revenue data for a specific location.
+ * It supports:
+ * - Filtering by location ID
+ * - Time period filtering (24h, 7d, 30d, Custom)
+ * - Hourly aggregation of revenue, drop, and cancelled credits
+ * - 24-hour array format with zeroes for missing hours
+ *
+ * @module app/api/analytics/hourly-revenue/route
+ */
+
+import { getHourlyRevenue } from '@/app/api/lib/helpers/trends';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 
-type HourlyDataItem = {
-  _id: number;
-  avgRevenue: number;
-  totalRevenue: number;
-  avgDrop: number;
-  totalDrop: number;
-  avgCancelledCredits: number;
-  totalCancelledCredits: number;
-};
-
+/**
+ * Main GET handler for fetching hourly revenue data
+ *
+ * Flow:
+ * 1. Parse and validate request parameters (locationId, timePeriod, startDate, endDate)
+ * 2. Connect to database
+ * 3. Execute the core hourly revenue fetching logic via `getHourlyRevenue` helper
+ * 4. Return hourly revenue data
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const locationId = searchParams.get('locationId');
     const timePeriod = searchParams.get('timePeriod') || '24h';
@@ -26,6 +44,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -34,104 +55,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Calculate date range based on time period
-    let start, end;
-    const now = new Date();
+    // ============================================================================
+    // STEP 3: Execute the core hourly revenue fetching logic via helper
+    // ============================================================================
+    const hourlyRevenue = await getHourlyRevenue(
+      db,
+      locationId,
+      timePeriod,
+      startDate,
+      endDate
+    );
 
-    if (timePeriod === 'Custom' && startDate && endDate) {
-      // Parse custom dates and apply timezone handling
-      // Create dates in Trinidad timezone (UTC-4)
-      const customStartDate = new Date(startDate + 'T00:00:00-04:00');
-      const customEndDate = new Date(endDate + 'T23:59:59-04:00');
-
-      // Convert to UTC for database queries
-      start = new Date(customStartDate.getTime());
-      end = new Date(customEndDate.getTime());
-    } else {
-      switch (timePeriod) {
-        case '24h':
-          start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          end = now;
-          break;
-        case '7d':
-          start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          end = now;
-          break;
-        case '30d':
-          start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          end = now;
-          break;
-        default:
-          start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          end = now;
-      }
+    // ============================================================================
+    // STEP 4: Return hourly revenue data
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Analytics Hourly Revenue GET API] Completed in ${duration}ms`);
     }
 
-    // Aggregate hourly data for the location
-    const pipeline = [
-      // Stage 1: Filter collection reports by location, date range, and exclude deleted records
-      {
-        $match: {
-          location: locationId,
-          readAt: { $gte: start, $lte: end },
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
-          ],
-        },
-      },
-
-      // Stage 2: Group by hour and date to aggregate daily revenue metrics
-      {
-        $group: {
-          _id: {
-            hour: { $hour: '$createdAt' },
-            date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          },
-          revenue: { $sum: '$gross' },
-          drop: { $sum: '$moneyIn' },
-          cancelledCredits: { $sum: '$moneyOut' },
-        },
-      },
-
-      // Stage 3: Group by hour to calculate average and total metrics across all days
-      {
-        $group: {
-          _id: '$_id.hour',
-          avgRevenue: { $avg: '$revenue' },
-          totalRevenue: { $sum: '$revenue' },
-          avgDrop: { $avg: '$drop' },
-          totalDrop: { $sum: '$drop' },
-          avgCancelledCredits: { $avg: '$cancelledCredits' },
-          totalCancelledCredits: { $sum: '$cancelledCredits' },
-        },
-      },
-
-      // Stage 4: Sort by hour for chronological order (0-23)
-      {
-        $sort: { _id: 1 },
-      },
-    ];
-
-    const hourlyData = (await db
-      .collection('collectionReports')
-      .aggregate(pipeline)
-      .toArray()) as HourlyDataItem[];
-
-    // Create a 24-hour array with zeroes for missing hours
-    const hourlyRevenue = Array.from({ length: 24 }, (_, hour) => {
-      const hourData = hourlyData.find((d: HourlyDataItem) => d._id === hour);
-      return {
-        hour,
-        revenue: hourData ? hourData.avgRevenue : 0,
-        drop: hourData ? hourData.avgDrop : 0,
-        cancelledCredits: hourData ? hourData.avgCancelledCredits : 0,
-      };
-    });
-
     return NextResponse.json(hourlyRevenue);
-  } catch (error) {
-    console.error('Error fetching hourly revenue data:', error);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Analytics Hourly Revenue GET API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       { error: 'Failed to fetch hourly revenue data' },
       { status: 500 }

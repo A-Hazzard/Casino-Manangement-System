@@ -6,8 +6,15 @@ import { toast } from 'sonner';
  * Hook for managing SMIB meter operations
  */
 export function useSmibMeters() {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [isRequestingMeters, setIsRequestingMeters] = useState(false);
   const [isResettingMeters, setIsResettingMeters] = useState(false);
+
+  // ============================================================================
+  // Methods
+  // ============================================================================
 
   /**
    * Request meter data from a single SMIB
@@ -92,6 +99,9 @@ export function useSmibMeters() {
     }
   };
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     isRequestingMeters,
     isResettingMeters,

@@ -13,7 +13,14 @@ export function useLocationPagination({
   totalPages,
   initialPage = 0,
 }: UseLocationPaginationProps): UseLocationPaginationReturn {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [currentPage, setCurrentPage] = useState(initialPage);
+
+  // ============================================================================
+  // Methods
+  // ============================================================================
 
   // Navigation handlers
   const handleFirstPage = useCallback(() => {
@@ -44,6 +51,9 @@ export function useLocationPagination({
     setCurrentPage(0);
   }, []);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     currentPage,
     setCurrentPage,

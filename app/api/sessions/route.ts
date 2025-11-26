@@ -1,11 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { MachineSession } from '@/app/api/lib/models/machineSessions';
+/**
+ * Sessions API Route
+ *
+ * This route handles fetching machine sessions with filtering and pagination.
+ * It supports:
+ * - Search functionality (session ID, machine ID, member ID)
+ * - Licensee filtering through machine-location-licensee relationship
+ * - Date filtering (predefined periods or custom date ranges)
+ * - Pagination and sorting
+ * - Aggregation with machine, location, and licensee data
+ *
+ * @module app/api/sessions/route
+ */
 
+import { MachineSession } from '@/app/api/lib/models/machineSessions';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for fetching sessions
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters (pagination, search, sorting, filters)
+ * 3. Build base query with search and date filters
+ * 4. Build aggregation pipeline for count
+ * 5. Build aggregation pipeline for data with lookups
+ * 6. Execute aggregation pipelines
+ * 7. Return paginated sessions
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -17,7 +51,9 @@ export async function GET(request: NextRequest) {
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
-    // Build query
+    // ============================================================================
+    // STEP 3: Build base query with search and date filters
+    // ============================================================================
     const query: Record<string, unknown> = {};
 
     if (search) {
@@ -28,13 +64,8 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Add licencee filtering if provided
-    if (licencee && licencee !== 'All Licensees' && licencee !== 'all') {
-      // We'll filter by licencee through the machine -> location -> licencee relationship
-      // This will be handled in the aggregation pipeline
-    }
-
-    // Add date filtering - support both dateFilter and startDate/endDate
+    // Licensee filtering will be handled in aggregation pipeline
+    // Date filtering - support both dateFilter and startDate/endDate
     if (startDateParam && endDateParam) {
       // Use explicit date range if provided
       query.startTime = {
@@ -100,9 +131,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // console.log("🔍 Sessions API Debug - Query:", query);
-
-    // Get total count for pagination with the same filtering logic
+    // ============================================================================
+    // STEP 4: Build aggregation pipeline for count
+    // ============================================================================
     const countPipeline = [
       // Stage 1: Match sessions based on search and date filters
       { $match: query },
@@ -170,12 +201,15 @@ export async function GET(request: NextRequest) {
       },
     ];
 
+    // ============================================================================
+    // STEP 5: Build aggregation pipeline for data with lookups
+    // ============================================================================
     const countResult = await MachineSession.aggregate(countPipeline);
     const totalSessions = countResult.length > 0 ? countResult[0].total : 0;
 
-    // console.log("🔍 Sessions API Debug - Total sessions count:", totalSessions);
-
-    // Fetch sessions with pagination and populate machine names
+    // ============================================================================
+    // STEP 6: Execute aggregation pipeline for sessions data
+    // ============================================================================
     const sessions = await MachineSession.aggregate([
       // Stage 1: Match sessions based on search and date filters
       { $match: query },
@@ -301,6 +335,14 @@ export async function GET(request: NextRequest) {
       },
     ]);
 
+    // ============================================================================
+    // STEP 7: Return paginated sessions
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 2000) {
+      console.warn(`[Sessions API] Completed in ${duration}ms`);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -315,9 +357,11 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error(' Error fetching sessions:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error(`[Sessions API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

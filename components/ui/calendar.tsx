@@ -1,3 +1,16 @@
+/**
+ * Calendar Component
+ * Reusable calendar component using react-day-picker.
+ *
+ * Features:
+ * - Date selection
+ * - Month navigation
+ * - Range selection support
+ * - Today highlighting
+ * - Outside days display
+ * - Disabled dates support
+ * - Accessible implementation
+ */
 'use client';
 
 import * as React from 'react';

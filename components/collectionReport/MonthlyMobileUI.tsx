@@ -1,13 +1,40 @@
+/**
+ * Monthly Mobile UI Component
+ * Mobile layout wrapper for monthly reports page.
+ *
+ * Features:
+ * - Mobile-only display (hidden on desktop)
+ * - Location selection dropdown
+ * - Date range picker
+ * - Monthly report summary display
+ * - Monthly report details cards
+ * - Export PDF and Excel functionality
+ * - Pagination controls
+ * - Client-side pagination
+ *
+ * @param allLocationNames - Array of all location names
+ * @param monthlyLocation - Currently selected location
+ * @param onMonthlyLocationChange - Callback when location changes
+ * @param pendingRange - Pending date range selection
+ * @param onPendingRangeChange - Callback when date range changes
+ * @param onApplyDateRange - Callback to apply date range
+ * @param onSetLastMonth - Callback to set last month date range
+ * @param monthlySummary - Monthly report summary data
+ * @param monthlyDetails - Monthly report details data
+ * @param monthlyLoading - Whether data is loading
+ */
 import React, { useState } from 'react';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Download, FileText, FileSpreadsheet, ChevronDown, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { MonthlyDatePicker } from '@/components/ui/MonthlyDatePicker';
 
 import type { MonthlyMobileUIProps } from '@/lib/types/componentProps';
@@ -17,10 +44,14 @@ import {
 } from '@/lib/utils/export';
 import PaginationControls from '@/components/ui/PaginationControls';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
 const ITEMS_PER_PAGE = 10;
 
 const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
-  allLocationNames,
+  locations,
   monthlyLocation,
   onMonthlyLocationChange,
   pendingRange,
@@ -31,8 +62,28 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
   monthlyDetails,
   monthlyLoading,
 }) => {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
+
+  // Copy to clipboard function
+  const copyToClipboard = async (text: string, label: string) => {
+    if (!text || text.trim() === '' || text === '-') {
+      toast.error(`No ${label} value to copy`);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text.trim());
+      toast.success(`${label} copied to clipboard`);
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
+  };
+
+  // Find location ID by name
+  const getLocationId = (locationName: string): string | null => {
+    const location = locations.find(loc => loc.name === locationName);
+    return location?.id || null;
+  };
 
   const totalPages = Math.ceil(monthlyDetails.length / ITEMS_PER_PAGE);
   const firstItemIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -47,66 +98,61 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
     setCurrentPage(pageNumber);
   };
 
+  // Handler for export with format selection
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    if (format === 'pdf') {
+      await exportMonthlyReportPDF(monthlySummary, monthlyDetails);
+    } else {
+      exportMonthlyReportExcel(monthlySummary, monthlyDetails);
+    }
+  };
+
   return (
     <div className="w-full px-2 pb-4 sm:px-4 md:hidden">
       <div className="mx-auto max-w-xl space-y-4 rounded-lg bg-white p-3 shadow-lg sm:p-4">
         <div className="grid grid-cols-2 gap-3">
-          <Select
-            value={monthlyLocation}
-            onValueChange={onMonthlyLocationChange}
-          >
-            <SelectTrigger className="truncate rounded-md border border-gray-300 bg-gray-50 px-2.5 py-2 text-xs text-gray-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 sm:text-sm">
-              <SelectValue placeholder="Select Location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              {allLocationNames.map(loc => (
-                <SelectItem
-                  key={loc}
-                  value={loc}
-                  className="text-xs sm:text-sm"
-                >
-                  {loc}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <LocationSingleSelect
+            locations={locations}
+            selectedLocation={monthlyLocation}
+            onSelectionChange={onMonthlyLocationChange}
+            placeholder="Select location..."
+            className="w-full"
+            includeAllOption={true}
+            allOptionLabel="All Locations"
+            showSasBadge={false}
+            dropdownLabel="Select Location"
+            searchPlaceholder="Search locations..."
+            emptyMessage="No locations found"
+          />
 
-          <div className="relative">
-            <Button
-              variant="outline"
-              className="flex items-center justify-center gap-1 truncate rounded-md border border-gray-300 bg-gray-200 px-2.5 py-2 text-xs text-gray-700 hover:bg-gray-300 sm:text-sm"
-              onClick={() => setShowExportDropdown(v => !v)}
-              type="button"
-            >
-              EXPORT <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </Button>
-            {showExportDropdown && (
-              <div className="absolute right-0 z-20 mt-1 w-32 rounded-md border border-gray-200 bg-white shadow-lg">
-                <button
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                  onClick={async () => {
-                    setShowExportDropdown(false);
-                    await exportMonthlyReportPDF(
-                      monthlySummary,
-                      monthlyDetails
-                    );
-                  }}
-                >
-                  Export PDF
-                </button>
-                <button
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                  onClick={() => {
-                    setShowExportDropdown(false);
-                    exportMonthlyReportExcel(monthlySummary, monthlyDetails);
-                  }}
-                >
-                  Export Excel
-                </button>
-              </div>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex items-center justify-center gap-1 truncate rounded-md border border-gray-300 bg-gray-200 px-2.5 py-2 text-xs text-gray-700 hover:bg-gray-300 sm:text-sm"
+              >
+                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                Export
+                <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleExport('pdf')}
+                className="cursor-pointer"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('excel')}
+                className="cursor-pointer"
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export as Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="w-full">
@@ -128,26 +174,31 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
           <div className="space-y-2 rounded-lg bg-blue-500 p-4 text-white shadow-md">
             <h2 className="text-center text-xl font-bold">
               {monthlyLocation !== 'all'
-                ? `${monthlyLocation} - Summary`
-                : 'All Locations Total'}
+                ? `${locations.find(loc => loc.id === monthlyLocation || loc.name === monthlyLocation)?.name || monthlyLocation} - Summary`
+                : `All (${monthlyDetails.length}/${locations.length}) Locations Total`}
             </h2>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1 text-center">
               {[
-                { label: 'DROP', value: monthlySummary.drop },
+                { label: 'DROP', value: monthlySummary.drop, copyLabel: 'Drop' },
                 {
                   label: 'CANCELLED CREDITS',
                   value: monthlySummary.cancelledCredits,
+                  copyLabel: 'Cancelled Credits',
                 },
-                { label: 'GROSS', value: monthlySummary.gross },
-                { label: 'SAS GROSS', value: monthlySummary.sasGross },
+                { label: 'GROSS', value: monthlySummary.gross, copyLabel: 'Gross' },
+                { label: 'SAS GROSS', value: monthlySummary.sasGross, copyLabel: 'SAS Gross' },
               ].map(item => (
                 <div key={item.label}>
                   <div className="text-xs font-semibold uppercase tracking-wider opacity-90">
                     {item.label}
                   </div>
-                  <div className="truncate text-lg font-medium">
+                  <button
+                    onClick={() => copyToClipboard(item.value, item.copyLabel)}
+                    className="truncate text-lg font-medium hover:text-blue-200 hover:underline cursor-pointer"
+                    title="Click to copy"
+                  >
                     {item.value}
-                  </div>
+                  </button>
                 </div>
               ))}
             </div>
@@ -166,44 +217,93 @@ const MonthlyMobileUI: React.FC<MonthlyMobileUIProps> = ({
         ) : currentCardsToDisplay.length === 0 && !monthlyLoading ? null : (
           <>
             <div className="mt-4 space-y-4">
-              {currentCardsToDisplay.map((detail, index) => (
-                <div
-                  key={index}
-                  className="overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
-                >
-                  <div className="text-md truncate rounded-t-lg bg-lighterBlueHighlight px-4 py-3 font-semibold text-white">
-                    Location: {detail.location}
+              {currentCardsToDisplay.map((detail, index) => {
+                const locationId = getLocationId(detail.location);
+                return (
+                  <div
+                    key={index}
+                    className="overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between rounded-t-lg bg-lighterBlueHighlight px-4 py-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                        <span className="text-md font-semibold text-white">Location:</span>
+                        {locationId ? (
+                          <>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                router.push(`/locations/${locationId}`);
+                              }}
+                              className="text-md truncate font-semibold text-white hover:text-blue-200 hover:underline cursor-pointer"
+                              title="Click to view location details"
+                            >
+                              {detail.location}
+                            </button>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                router.push(`/locations/${locationId}`);
+                              }}
+                              className="flex-shrink-0"
+                              title="View location details"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5 text-white hover:text-blue-200 cursor-pointer transition-transform hover:scale-110" />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-md truncate font-semibold text-white">
+                            {detail.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 p-4 text-sm">
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">Drop:</span>
+                        <button
+                          onClick={() => copyToClipboard(detail.drop, 'Drop')}
+                          className="text-right font-semibold hover:text-blue-600 hover:underline cursor-pointer"
+                          title="Click to copy"
+                        >
+                          {detail.drop}
+                        </button>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">Win:</span>
+                        <button
+                          onClick={() => copyToClipboard(detail.win, 'Win')}
+                          className="text-right font-semibold hover:text-blue-600 hover:underline cursor-pointer"
+                          title="Click to copy"
+                        >
+                          {detail.win}
+                        </button>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">Gross:</span>
+                        <button
+                          onClick={() => copyToClipboard(detail.gross, 'Gross')}
+                          className="text-right font-semibold hover:text-blue-600 hover:underline cursor-pointer"
+                          title="Click to copy"
+                        >
+                          {detail.gross}
+                        </button>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">
+                          SAS Gross:
+                        </span>
+                        <button
+                          onClick={() => copyToClipboard(detail.sasGross, 'SAS Gross')}
+                          className="text-right font-semibold hover:text-blue-600 hover:underline cursor-pointer"
+                          title="Click to copy"
+                        >
+                          {detail.sasGross}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2 p-4 text-sm">
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Drop:</span>
-                      <span className="text-right font-semibold">
-                        {detail.drop}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Win:</span>
-                      <span className="text-right font-semibold">
-                        {detail.win}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Gross:</span>
-                      <span className="text-right font-semibold">
-                        {detail.gross}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">
-                        SAS Gross:
-                      </span>
-                      <span className="text-right font-semibold">
-                        {detail.sasGross}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {totalPages > 0 && (

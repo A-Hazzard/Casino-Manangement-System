@@ -1,24 +1,48 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
+/**
+ * Collections by Report API Route
+ *
+ * This route handles fetching all collections for a specific collection report.
+ * It supports:
+ * - Finding collections by locationReportId
+ * - Fallback to finding collections by location name if locationReportId doesn't match
+ * - Handling locationReportId mismatches
+ *
+ * @module app/api/collections/by-report/[reportId]/route
+ */
+
 import { Collections } from '@/app/api/lib/models/collections';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CollectionDocument } from '@/lib/types/collections';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * GET /api/collections/by-report/[reportId]
- * Fetches all collections for a specific collection report
- * This endpoint handles the locationReportId mismatch by:
- * 1. First trying to find collections by locationReportId
- * 2. If none found, finding collections by location name from the report
+ * Main GET handler for fetching collections by report ID
+ *
+ * Flow:
+ * 1. Parse route parameters
+ * 2. Validate report ID
+ * 3. Connect to database
+ * 4. Find collection report
+ * 5. Try to find collections by locationReportId
+ * 6. Fallback to finding collections by location name if needed
+ * 7. Return collections
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ reportId: string }> }
 ) {
-  await connectDB();
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters
+    // ============================================================================
     const { reportId } = await params;
 
+    // ============================================================================
+    // STEP 2: Validate report ID
+    // ============================================================================
     if (!reportId) {
       return NextResponse.json(
         { error: 'Report ID is required' },
@@ -26,7 +50,14 @@ export async function GET(
       );
     }
 
-    // Step 1: Find the collection report to get location information
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 4: Find collection report
+    // ============================================================================
     const collectionReport = await CollectionReport.findOne({
       locationReportId: reportId,
     });
@@ -38,24 +69,37 @@ export async function GET(
       );
     }
 
-    // Step 2: Try to find collections by locationReportId first
+    // ============================================================================
+    // STEP 5: Try to find collections by locationReportId
+    // ============================================================================
     let collections = (await Collections.find({
       locationReportId: reportId,
     }).lean()) as CollectionDocument[];
 
-    // Step 3: If no collections found by locationReportId, try by location name
+    // ============================================================================
+    // STEP 6: Fallback to finding collections by location name if needed
+    // ============================================================================
+    // If no collections found by locationReportId, try by location name
     if (collections.length === 0 && collectionReport.locationName) {
       collections = (await Collections.find({
         location: collectionReport.locationName,
       }).lean()) as CollectionDocument[];
     }
 
+    // ============================================================================
+    // STEP 7: Return collections
+    // ============================================================================
     return NextResponse.json(collections);
   } catch (error) {
-    console.error(' Error fetching collections by report ID:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch collections' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch collections by report ID';
+    console.error(
+      `[Collections by Report API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

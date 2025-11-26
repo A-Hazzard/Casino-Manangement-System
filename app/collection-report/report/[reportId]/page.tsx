@@ -1,3 +1,18 @@
+/**
+ * Collection Report Detail Page
+ *
+ * Displays detailed information about a specific collection report with multiple views.
+ *
+ * Features:
+ * - Machine Metrics tab: View individual machine collection data
+ * - Location Metrics tab: View location-level aggregated metrics
+ * - SAS Metrics Compare tab: Compare SAS times and metrics
+ * - Issue detection and fixing
+ * - Search and filter capabilities
+ * - Pagination
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -44,32 +59,10 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-// Date formatting function for SAS times
-const formatSasTime = (dateString: string) => {
-  // Handle missing/empty dates
-  if (!dateString || dateString === '-' || dateString === '') {
-    return 'No SAS Time';
-  }
-  
-  try {
-    const date = new Date(dateString);
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      return 'No SAS Time';
-    }
-    const options: Intl.DateTimeFormatOptions = {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    };
-    return date.toLocaleDateString('en-US', options);
-  } catch {
-    return 'No SAS Time'; // Better than showing "Invalid Date"
-  }
-};
+// ============================================================================
+// Utility Functions
+// ============================================================================
+import { formatSasTime } from '@/lib/utils/collectionReportDetail';
 
 // Layout components
 
@@ -116,35 +109,35 @@ import { CollectionIssueModal } from '@/components/collectionReport/CollectionIs
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 
+// ============================================================================
+// Page Components
+// ============================================================================
+/**
+ * Collection Report Detail Page Content Component
+ * Handles all state management and data fetching for the collection report detail page
+ */
 function CollectionReportPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
   const user = useUserStore(state => state.user);
-
   const reportId = params.reportId as string;
+
+  // ============================================================================
+  // State Management
+  // ============================================================================
   const [reportData, setReportData] = useState<CollectionReportData | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Initialize activeTab from URL or default to "Machine Metrics"
-  const [activeTab, setActiveTab] = useState<
-    'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare'
-  >(() => {
-    const section = searchParams?.get('section');
-    if (section === 'location') return 'Location Metrics';
-    if (section === 'sas') return 'SAS Metrics Compare';
-    if (section === 'machine') return 'Machine Metrics';
-    return 'Machine Metrics'; // default
-  });
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
-  const ITEMS_PER_PAGE = 10;
   const [machinePage, setMachinePage] = useState(1);
   const [refreshing, _setRefreshing] = useState(false); // setRefreshing unused - Sync Meters disabled
   const [_showFloatingRefresh, _setShowFloatingRefresh] = useState(false); // Unused - Floating refresh disabled
-  // const [showSyncConfirmation, setShowSyncConfirmation] = useState(false); // Sync Meters disabled
   const [showFixReportConfirmation, setShowFixReportConfirmation] =
     useState(false);
   const [isFixingReport, setIsFixingReport] = useState(false);
@@ -155,22 +148,37 @@ function CollectionReportPageContent() {
     string[]
   >([]);
   const [sasTimeIssues, setSasTimeIssues] = useState<CollectionIssue[]>([]);
-  const hasRedirectedRef = useRef(false);
   const [showCollectionIssueModal, setShowCollectionIssueModal] =
     useState(false);
   const [selectedIssue, setSelectedIssue] = useState<CollectionIssue | null>(
     null
   );
-
-  // Track the issue state when auto-fix was last triggered to prevent infinite loops
-  const lastAutoFixIssuesRef = useRef<string>('');
-
-  // Search and sort state
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof MachineMetric>('sasGross');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Initialize activeTab from URL or default to "Machine Metrics"
+  const [activeTab, setActiveTab] = useState<
+    'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare'
+  >(() => {
+    const section = searchParams?.get('section');
+    if (section === 'location') return 'Location Metrics';
+    if (section === 'sas') return 'SAS Metrics Compare';
+    if (section === 'machine') return 'Machine Metrics';
+    return 'Machine Metrics'; // default
+  });
 
+  // ============================================================================
+  // Refs
+  // ============================================================================
+  const hasRedirectedRef = useRef(false);
+  const lastAutoFixIssuesRef = useRef<string>('');
   const tabContentRef = useRef<HTMLDivElement>(null);
+
+  // ============================================================================
+  // Constants
+  // ============================================================================
+  const ITEMS_PER_PAGE = 10;
 
   // Sort handler
   const handleSort = (field: keyof MachineMetric) => {
@@ -183,12 +191,9 @@ function CollectionReportPageContent() {
     setMachinePage(1); // Reset to first page when sorting
   };
 
-  // Use resolved machine data from backend instead of generating from raw collections
-  const metricsData = useMemo(
-    () => reportData?.machineMetrics || [],
-    [reportData?.machineMetrics]
-  );
-
+  // ============================================================================
+  // Utility Functions
+  // ============================================================================
   // Utility function for proper alphabetical and numerical sorting
   const sortMachinesAlphabetically = (machines: MachineMetric[]) => {
     return machines.sort((a, b) => {
@@ -220,14 +225,18 @@ function CollectionReportPageContent() {
     });
   };
 
+  // ============================================================================
+  // Computed Values - Filtered & Sorted Data
+  // ============================================================================
   // Search and sort logic
   const filteredAndSortedData = useMemo(() => {
+    const metricsData = reportData?.machineMetrics || [];
     let filtered = metricsData;
 
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = metricsData.filter(metric => {
+      filtered = metricsData.filter((metric: MachineMetric) => {
         const machineId = (metric.machineId?.toLowerCase() || '');
         const machineIdFromId = (metric.id ? String(metric.id).toLowerCase() : '');
         return (
@@ -268,7 +277,7 @@ function CollectionReportPageContent() {
     }
 
     return sorted;
-  }, [metricsData, searchTerm, sortField, sortDirection]);
+  }, [reportData?.machineMetrics, searchTerm, sortField, sortDirection]);
 
   const machineTotalPages = useMemo(() => {
     const total = Math.ceil(filteredAndSortedData.length / ITEMS_PER_PAGE);
@@ -454,10 +463,7 @@ function CollectionReportPageContent() {
     fetchCollectionsByLocationReportId(reportId)
       .then(setCollections)
       .catch(() => setCollections([]));
-    // Note: checkForSasTimeIssues intentionally omitted to prevent dependency loop
-    // It's called once on initial load above (line 416), which is sufficient
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportId]);
+  }, [reportId, checkForSasTimeIssues, setCollections, setLoading, setError, setReportData]);
 
   // Redirect users to the main collection page to resume unfinished edits
   useEffect(() => {
@@ -547,13 +553,17 @@ function CollectionReportPageContent() {
     }
     // NOTE: lastAutoFixIssuesRef is NEVER reset during page session to prevent infinite loops
     // If user needs to re-run auto-fix, they must refresh the page or use manual "Fix Report" button
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     hasSasTimeIssues,
     hasCollectionHistoryIssues,
     isFixingReport,
     loading,
     reportId,
+    reportData,
+    checkForSasTimeIssues,
+    setReportData,
+    setCollections,
+    setIsFixingReport,
   ]);
 
   // Keep state in sync with URL changes (for browser back/forward)
@@ -703,6 +713,9 @@ function CollectionReportPageContent() {
     }
   };
 
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
   if (loading) {
     return <CollectionReportSkeleton />;
   }
@@ -817,7 +830,7 @@ function CollectionReportPageContent() {
           <h2 className="my-4 text-center text-xl font-bold">
             Machine Metrics
           </h2>
-          {metricsData.some(m => m.ramClear) && (
+          {(reportData?.machineMetrics || []).some((m: MachineMetric) => m.ramClear) && (
             <div className="rounded-md border-l-4 border-orange-500 bg-orange-100 p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -825,7 +838,7 @@ function CollectionReportPageContent() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm font-semibold text-orange-700">
-                    {metricsData.filter(m => m.ramClear).length} machine(s) were
+                    {(reportData?.machineMetrics || []).filter((m: MachineMetric) => m.ramClear).length} machine(s) were
                     ram cleared
                   </p>
                 </div>
@@ -843,7 +856,7 @@ function CollectionReportPageContent() {
             onClear={() => setMachinePage(1)}
             placeholder="Search machines by name or ID..."
             resultCount={filteredAndSortedData.length}
-            totalCount={metricsData.length}
+            totalCount={(reportData?.machineMetrics || []).length}
           />
 
           {paginatedMetricsData.map((metric: MachineMetric) => (
@@ -1006,7 +1019,7 @@ function CollectionReportPageContent() {
           </div>
         </div>
         <div className="hidden lg:block">
-          {metricsData.some(m => m.ramClear) && (
+          {(reportData?.machineMetrics || []).some((m: MachineMetric) => m.ramClear) && (
             <div className="mb-4 rounded-md border-l-4 border-orange-500 bg-orange-100 p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -1014,7 +1027,7 @@ function CollectionReportPageContent() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm font-semibold text-orange-700">
-                    {metricsData.filter(m => m.ramClear).length} machine(s) were
+                    {(reportData?.machineMetrics || []).filter((m: MachineMetric) => m.ramClear).length} machine(s) were
                     ram cleared
                   </p>
                 </div>
@@ -1032,7 +1045,7 @@ function CollectionReportPageContent() {
             onClear={() => setMachinePage(1)}
             placeholder="Search machines by name or ID..."
             resultCount={filteredAndSortedData.length}
-            totalCount={metricsData.length}
+            totalCount={(reportData?.machineMetrics || []).length}
           />
 
           <div className="overflow-x-auto rounded-lg bg-white pb-6 shadow-md">
@@ -1987,6 +2000,9 @@ function CollectionReportPageContent() {
     );
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <PageLayout
       headerProps={{
@@ -2418,6 +2434,10 @@ function CollectionReportPageContent() {
   );
 }
 
+/**
+ * Collection Report Detail Page Component
+ * Thin wrapper that handles routing and authentication
+ */
 export default function CollectionReportPage() {
   return (
     <ProtectedRoute requiredPage="collection-report">

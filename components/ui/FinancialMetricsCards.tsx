@@ -1,3 +1,21 @@
+/**
+ * Financial Metrics Cards Component
+ * Component displaying financial metrics cards (Money In, Money Out, Gross) with currency conversion.
+ *
+ * Features:
+ * - Financial metrics display (Money In, Money Out, Gross)
+ * - Currency conversion support
+ * - Licensee-specific currency resolution
+ * - Loading states with skeleton
+ * - Currency caching
+ * - Responsive card layout
+ *
+ * @param totals - Financial totals object
+ * @param loading - Whether data is loading
+ * @param title - Card title
+ * @param className - Additional CSS classes
+ * @param disableCurrencyConversion - Whether to disable currency conversion
+ */
 'use client';
 
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
@@ -6,6 +24,11 @@ import { fetchLicenseeById } from '@/lib/helpers/clientLicensees';
 import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { useEffect, useState } from 'react';
 
@@ -198,7 +221,7 @@ export default function FinancialMetricsCards({
 
               <div className="space-y-2">
                 <div
-                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.moneyIn || 0).size}`}
+                  className={`font-bold ${getMoneyInColorClass(totals?.moneyIn)} ${formatCurrencyWithScaling(totals?.moneyIn || 0).size}`}
                 >
                   <CurrencyValueWithOverflow
                     value={totals?.moneyIn}
@@ -224,7 +247,7 @@ export default function FinancialMetricsCards({
 
               <div className="space-y-2">
                 <div
-                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.moneyOut || 0).size}`}
+                  className={`font-bold ${getMoneyOutColorClass(totals?.moneyOut, totals?.moneyIn)} ${formatCurrencyWithScaling(totals?.moneyOut || 0).size}`}
                 >
                   <CurrencyValueWithOverflow
                     value={totals?.moneyOut}
@@ -250,7 +273,7 @@ export default function FinancialMetricsCards({
 
               <div className="space-y-2">
                 <div
-                  className={`font-bold text-gray-900 ${formatCurrencyWithScaling(totals?.gross || 0).size}`}
+                  className={`font-bold ${getGrossColorClass(totals?.gross)} ${formatCurrencyWithScaling(totals?.gross || 0).size}`}
                 >
                   <CurrencyValueWithOverflow
                     value={totals?.gross}
@@ -273,7 +296,7 @@ export default function FinancialMetricsCards({
             </p>
             <div className="my-2 h-[4px] w-full rounded-full bg-buttonActive"></div>
             <div className="flex flex-1 items-center justify-center">
-              <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
+              <p className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyInColorClass(totals?.moneyIn)}`}>
                 <CurrencyValueWithOverflow
                   value={totals?.moneyIn}
                   formatCurrencyFn={formatCurrencyAmount}
@@ -290,7 +313,7 @@ export default function FinancialMetricsCards({
             </p>
             <div className="my-2 h-[4px] w-full rounded-full bg-lighterBlueHighlight"></div>
             <div className="flex flex-1 items-center justify-center">
-              <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
+              <p className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyOutColorClass(totals?.moneyOut, totals?.moneyIn)}`}>
                 <CurrencyValueWithOverflow
                   value={totals?.moneyOut}
                   formatCurrencyFn={formatCurrencyAmount}
@@ -307,7 +330,7 @@ export default function FinancialMetricsCards({
             </p>
             <div className="my-2 h-[4px] w-full rounded-full bg-orangeHighlight"></div>
             <div className="flex flex-1 items-center justify-center">
-              <p className="overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl">
+              <p className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getGrossColorClass(totals?.gross)}`}>
                 <CurrencyValueWithOverflow
                   value={totals?.gross}
                   formatCurrencyFn={formatCurrencyAmount}

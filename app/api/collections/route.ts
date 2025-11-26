@@ -1,4 +1,21 @@
+/**
+ * Collections API Route
+ *
+ * This route handles CRUD operations for machine collections.
+ * It supports:
+ * - Fetching collections with filtering, searching, and pagination
+ * - Creating new collections with SAS metrics calculation
+ * - Updating collections with recalculation of metrics
+ * - Deleting collections with machine meter reversion
+ * - Role-based access control
+ * - Location-based filtering
+ * - Activity logging
+ *
+ * @module app/api/collections/route
+ */
+
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -15,11 +32,36 @@ import type {
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../lib/helpers/users';
 
+// Ensure this route is handled by Node.js runtime (not Edge)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+/**
+ * Main GET handler for fetching collections
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters
+ * 3. Get user's accessible licensees and permissions
+ * 4. Determine allowed location IDs
+ * 5. Build filter query
+ * 6. Apply sorting and pagination
+ * 7. Execute query
+ * 8. Return collections
+ */
 export async function GET(req: NextRequest) {
-  await connectDB();
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const locationReportId = searchParams.get('locationReportId');
     const location =
@@ -33,6 +75,9 @@ export async function GET(req: NextRequest) {
     const sortBy = searchParams.get('sortBy');
     const sortOrder = searchParams.get('sortOrder');
 
+    // ============================================================================
+    // STEP 3: Get user's accessible licensees and permissions
+    // ============================================================================
     // SECURITY: Get user's accessible locations to prevent data leakage
     const user = await getUserFromServer();
     if (!user) {
@@ -53,6 +98,9 @@ export async function GET(req: NextRequest) {
     const licensee =
       searchParams.get('licensee') || searchParams.get('licencee');
 
+    // ============================================================================
+    // STEP 4: Determine allowed location IDs
+    // ============================================================================
     // Get allowed locations for this user
     const allowedLocationIds = await getUserLocationFilter(
       isAdmin ? 'all' : userAccessibleLicensees,
@@ -61,9 +109,9 @@ export async function GET(req: NextRequest) {
       userRoles
     );
 
-    console.warn('[COLLECTIONS API] User:', user.username);
-    console.warn('[COLLECTIONS API] Allowed locations:', allowedLocationIds);
-
+    // ============================================================================
+    // STEP 5: Build filter query
+    // ============================================================================
     const filter: Record<string, unknown> = {};
     if (locationReportId) filter.locationReportId = locationReportId;
 
@@ -76,17 +124,12 @@ export async function GET(req: NextRequest) {
         filter.location = location;
       } else {
         // User requested a location they don't have access to
-        console.warn(
-          '[COLLECTIONS API] User does not have access to location:',
-          location
-        );
         return NextResponse.json([]); // Return empty array
       }
     } else {
       // No specific location requested - filter by all accessible locations
       if (allowedLocationIds !== 'all') {
         if (allowedLocationIds.length === 0) {
-          console.warn('[COLLECTIONS API] User has no accessible locations');
           return NextResponse.json([]);
         }
         filter.location = { $in: allowedLocationIds };
@@ -119,11 +162,6 @@ export async function GET(req: NextRequest) {
 
         const locationNames = locations.map(loc => loc.name);
 
-        console.warn(
-          '[COLLECTIONS API] User accessible location names:',
-          locationNames
-        );
-
         if (locationNames.length > 0) {
           filter.location = { $in: locationNames }; // ✅ Filter by location names
         } else {
@@ -132,8 +170,6 @@ export async function GET(req: NextRequest) {
         }
       }
       // If allowedLocationIds === 'all', don't add location filter (admin/developer sees all)
-
-      console.warn('[COLLECTIONS API] Incomplete collections filter:', filter);
     }
 
     // Support querying for collections before a specific timestamp (for historical prevIn/prevOut)
@@ -141,6 +177,9 @@ export async function GET(req: NextRequest) {
       filter.timestamp = { $lt: new Date(beforeTimestamp) };
     }
 
+    // ============================================================================
+    // STEP 6: Apply sorting and pagination
+    // ============================================================================
     // Always include soft-deleted documents in queries (as per user preference)
     let query = Collections.find(filter);
 
@@ -155,39 +194,71 @@ export async function GET(req: NextRequest) {
       query = query.limit(parseInt(limit, 10));
     }
 
+    // ============================================================================
+    // STEP 7: Execute query
+    // ============================================================================
     const collections = (await query.lean()) as CollectionDocument[];
 
-    console.warn('Collections API GET result:', {
-      filter,
-      beforeTimestamp: beforeTimestamp || 'none',
-      sortBy: sortBy || 'none',
-      sortOrder: sortOrder || 'none',
-      limit: limit || 'none',
-      collectionsCount: collections.length,
-      collections: collections.map(c => ({
-        _id: c._id,
-        machineId: c.machineId,
-        timestamp: c.timestamp,
-        metersIn: c.metersIn,
-        metersOut: c.metersOut,
-        locationReportId: c.locationReportId,
-      })),
-    });
-
+    // ============================================================================
+    // STEP 8: Return collections
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Collections GET API] Completed in ${duration}ms`);
+    }
     return NextResponse.json(collections);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch collections' },
-      { status: 500 }
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch collections';
+    console.error(
+      `[Collections API GET] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
+/**
+ * Main POST handler for creating a new collection
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request body
+ * 3. Validate required fields
+ * 4. Get machine details
+ * 5. Extract SAS times from payload
+ * 6. Calculate SAS metrics and movement
+ * 7. Create collection document
+ * 8. Save collection to database
+ * 9. Log activity
+ * 10. Return created collection
+ */
 export async function POST(req: NextRequest) {
-  await connectDB();
+  const startTime = Date.now();
+
+  // Log route access for debugging
+  console.log(
+    '[Collections POST API] Route accessed at:',
+    new Date().toISOString()
+  );
+  console.log('[Collections POST API] Request URL:', req.url);
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
+    await connectDB();
+    console.log('[Collections POST API] Database connected successfully');
+
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
     const payload: CreateCollectionPayload = await req.json();
 
+    // ============================================================================
+    // STEP 3: Validate required fields
+    // ============================================================================
     // Validate required fields
     if (!payload.machineId || !payload.location || !payload.collector) {
       return NextResponse.json(
@@ -203,9 +274,6 @@ export async function POST(req: NextRequest) {
     if (!finalLocationReportId || finalLocationReportId.trim() === '') {
       // Keep it empty - will be set when report is created
       finalLocationReportId = '';
-      console.warn(
-        '🔧 Collection created without locationReportId - will be set when report is created'
-      );
     }
 
     if (
@@ -218,8 +286,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Get machine details
+    // ============================================================================
     // Get machine details for additional fields
-    const machine = await Machine.findById(payload.machineId).lean();
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const machine = await Machine.findOne({ _id: payload.machineId }).lean();
     if (!machine) {
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 });
     }
@@ -227,6 +299,9 @@ export async function POST(req: NextRequest) {
     // Safely access machine properties with type assertion
     const machineData = machine as Record<string, unknown>;
 
+    // ============================================================================
+    // STEP 5: Extract SAS times from payload
+    // ============================================================================
     // Extract SAS times from payload for backend calculation
     const payloadWithSasMeters = payload as CreateCollectionPayload & {
       sasMeters?: { sasStartTime?: string; sasEndTime?: string };
@@ -240,6 +315,9 @@ export async function POST(req: NextRequest) {
       : payload.sasEndTime ||
         (payload.timestamp ? new Date(payload.timestamp) : undefined);
 
+    // ============================================================================
+    // STEP 6: Calculate SAS metrics and movement
+    // ============================================================================
     // Calculate SAS metrics, movement, and update machine
     const {
       sasMeters,
@@ -259,6 +337,10 @@ export async function POST(req: NextRequest) {
     ) {
       finalLocationReportId = calculatedLocationReportId;
     }
+
+    // ============================================================================
+    // STEP 7: Create collection document
+    // ============================================================================
 
     // Create collection document with all calculated fields
     const collectionData = {
@@ -328,17 +410,19 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date(),
     };
 
+    // ============================================================================
+    // STEP 8: Save collection to database
+    // ============================================================================
     // Create the collection
     const created = await Collections.create(collectionData);
 
     // CRITICAL: Do NOT create collection history entries when adding machines to the list
     // Collection history entries should only be created when the user presses "Create Report"
     // This prevents duplicate history entries and ensures proper timing
-    console.warn(
-      '✅ Collection created without history entry - history will be created when report is finalized'
-    );
 
-    // Log activity
+    // ============================================================================
+    // STEP 9: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -374,6 +458,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 10: Return created collection
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Collections POST API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       data: created,
@@ -384,10 +475,16 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error creating collection:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to create collection';
+    console.error(
+      `[Collections API POST] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
-        error: 'Failed to create collection',
+        error: errorMessage,
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
@@ -395,9 +492,33 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Main PATCH handler for updating a collection
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters and request body
+ * 3. Validate collection ID
+ * 4. Get original collection data
+ * 5. Check if meters or timestamp changed
+ * 6. Recalculate prevIn/prevOut and movement if meters changed
+ * 7. Recalculate SAS metrics if timestamp or meters changed
+ * 8. Update collection document
+ * 9. Log activity
+ * 10. Return updated collection
+ */
 export async function PATCH(req: NextRequest) {
-  await connectDB();
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse query parameters and request body
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) {
@@ -406,14 +527,25 @@ export async function PATCH(req: NextRequest) {
 
     const updateData = await req.json();
 
+    // ============================================================================
+    // STEP 3: Validate collection ID
+    // ============================================================================
+    // ============================================================================
+    // STEP 4: Get original collection data
+    // ============================================================================
     // Get original collection data for change tracking
-    const originalCollection = await Collections.findById(id);
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const originalCollection = await Collections.findOne({ _id: id });
     if (!originalCollection) {
       return NextResponse.json(
         { error: 'Collection not found' },
         { status: 404 }
       );
     }
+
+    // ============================================================================
+    // STEP 5: Check if meters or timestamp changed
+    // ============================================================================
 
     // CRITICAL FIX: When editing a collection, we must recalculate prevIn/prevOut and movement
     // If metersIn or metersOut changed, we need to recalculate everything
@@ -434,6 +566,9 @@ export async function PATCH(req: NextRequest) {
       new Date(updateData.timestamp).getTime() !==
         new Date(originalCollection.timestamp).getTime();
 
+    // ============================================================================
+    // STEP 6: Recalculate prevIn/prevOut and movement if meters changed
+    // ============================================================================
     if (metersChanged) {
       console.warn(
         '🔄 Meters changed, recalculating prevIn/prevOut and movement for collection:',
@@ -524,6 +659,9 @@ export async function PATCH(req: NextRequest) {
       console.warn('✅ Recalculated movement:', updateData.movement);
     }
 
+    // ============================================================================
+    // STEP 7: Recalculate SAS metrics if timestamp or meters changed
+    // ============================================================================
     // CRITICAL FIX: When timestamp changes, recalculate SAS times and metrics
     // This ensures "Update All Dates" button properly updates SAS windows
     if (timestampChanged || metersChanged) {
@@ -580,13 +718,19 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const updated = await Collections.findByIdAndUpdate(
-      id,
+    // ============================================================================
+    // STEP 8: Update collection document
+    // ============================================================================
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    const updated = await Collections.findOneAndUpdate(
+      { _id: id },
       { $set: updateData },
       { new: true }
     );
 
-    // Log activity
+    // ============================================================================
+    // STEP 9: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -613,31 +757,85 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 10: Return updated collection
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Collections PATCH API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({ success: true, data: updated });
-  } catch (e) {
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to update collection';
+    console.error(
+      `[Collections API PATCH] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { error: 'Failed to update collection', details: (e as Error)?.message },
+      {
+        error: errorMessage,
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }
 }
 
+/**
+ * Main DELETE handler for deleting a collection
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters
+ * 3. Validate collection ID
+ * 4. Get collection data before deletion
+ * 5. Delete collection document
+ * 6. Revert machine collectionMeters and remove history entry
+ * 7. Log activity
+ * 8. Return success response
+ */
 export async function DELETE(req: NextRequest) {
-  await connectDB();
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) {
       return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     }
 
+    // ============================================================================
+    // STEP 3: Validate collection ID
+    // ============================================================================
+    // ============================================================================
+    // STEP 4: Get collection data before deletion
+    // ============================================================================
     // Get collection data before deletion for logging
-    const collectionToDelete = await Collections.findById(id);
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const collectionToDelete = await Collections.findOne({ _id: id });
     if (!collectionToDelete) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    await Collections.findByIdAndDelete(id);
+    // ============================================================================
+    // STEP 5: Delete collection document
+    // ============================================================================
+    // CRITICAL: Use findOneAndDelete with _id instead of findByIdAndDelete (repo rule)
+    await Collections.findOneAndDelete({ _id: id });
+
+    // ============================================================================
+    // STEP 6: Revert machine collectionMeters and remove history entry
+    // ============================================================================
 
     // Revert machine's collectionMeters and remove collection history entry
     if (collectionToDelete.machineId) {
@@ -676,8 +874,9 @@ export async function DELETE(req: NextRequest) {
           };
         }
 
-        await Machine.findByIdAndUpdate(
-          collectionToDelete.machineId,
+        // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+        await Machine.findOneAndUpdate(
+          { _id: collectionToDelete.machineId },
           updateOperation
         );
 
@@ -696,7 +895,9 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    // Log activity
+    // ============================================================================
+    // STEP 7: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -751,10 +952,27 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 8: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Collections DELETE API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({ success: true });
-  } catch (e) {
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to delete collection';
+    console.error(
+      `[Collections API DELETE] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { error: 'Failed to delete collection', details: (e as Error)?.message },
+      {
+        error: errorMessage,
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }

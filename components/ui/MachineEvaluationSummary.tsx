@@ -1,3 +1,16 @@
+/**
+ * Machine Evaluation Summary Component
+ * Card component displaying machine evaluation summary statistics.
+ *
+ * Features:
+ * - Percentage of top machines display
+ * - Percentage of top machine coin-in display
+ * - Summary text formatting
+ * - Card layout
+ *
+ * @param percOfTopMachines - Percentage of top machines
+ * @param percOfTopMachCoinIn - Percentage of top machine coin-in
+ */
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 

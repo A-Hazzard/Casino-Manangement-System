@@ -1,5 +1,15 @@
 /**
- * MongoDB Query Helpers for Data Verification
+ * MongoDB Query Utilities
+ *
+ * MongoDB query helpers for data verification and testing.
+ *
+ * Features:
+ * - Collection report queries
+ * - Gaming location queries
+ * - Machine queries
+ * - Meter queries
+ * - Monthly report queries
+ * - Query generation helpers
  *
  * These queries can be run in MongoDB Compass or mongo shell to verify data
  *
@@ -7,6 +17,9 @@
  * Last Updated: October 23rd, 2025
  */
 
+// ============================================================================
+// Query Definitions
+// ============================================================================
 export const MONGO_QUERIES = {
   // Collection Reports - Check if data exists and respects date filters
   collectionReports: {
@@ -160,6 +173,9 @@ export const MONGO_QUERIES = {
   },
 };
 
+// ============================================================================
+// Query Generation Functions
+// ============================================================================
 /**
  * Helper function to generate a query for testing
  */
@@ -178,6 +194,9 @@ export function generateQuery(
   return baseQuery as string;
 }
 
+// ============================================================================
+// Verification Queries
+// ============================================================================
 /**
  * Common verification queries
  */

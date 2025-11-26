@@ -1,28 +1,36 @@
+/**
+ * MQTT Configuration API Route
+ *
+ * This route handles fetching MQTT configuration for a specific cabinet.
+ * It supports:
+ * - Extracting MQTT configuration from machine document
+ * - Formatting configuration values for display
+ *
+ * @module app/api/mqtt/config/route
+ */
+
+import { extractMQTTConfig } from '@/app/api/lib/helpers/mqtt';
 import { Machine } from '@/app/api/lib/models/machines';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../lib/middleware/db';
-
-// Helper functions to extract values from MQTT URI
-function extractHostFromUri(uri?: string): string | null {
-  if (!uri) return null;
-  const match = uri.match(/@(.+):/);
-  return match?.[1] || null;
-}
-
-function extractPortFromUri(uri?: string): string | null {
-  if (!uri) return null;
-  const match = uri.match(/:(\d+)/);
-  return match?.[1] || null;
-}
 
 /**
- * GET /api/mqtt/config
- * Fetch MQTT configuration values for a specific cabinet
+ * Main GET handler for fetching MQTT configuration
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Find cabinet by ID
+ * 4. Extract MQTT configuration
+ * 5. Return MQTT configuration
  */
 export async function GET(request: NextRequest) {
-  try {
-    await connectDB();
+  const startTime = Date.now();
 
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const cabinetId = searchParams.get('cabinetId');
 
@@ -33,8 +41,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find the cabinet
-    const cabinet = await Machine.findById(cabinetId);
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 3: Find cabinet by ID
+    // ============================================================================
+    const cabinet = await Machine.findOne({ _id: cabinetId });
     if (!cabinet) {
       return NextResponse.json(
         { success: false, error: 'Cabinet not found' },
@@ -42,91 +57,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Extract MQTT configuration values from cabinet data
-    const mqttConfig = {
-      // SMIB Identification
-      smibId: cabinet.relayId || cabinet.smibBoard || 'No Value Provided',
+    // ============================================================================
+    // STEP 4: Extract MQTT configuration
+    // ============================================================================
+    const mqttConfig = extractMQTTConfig(cabinet);
 
-      // Network Configuration
-      netMode:
-        cabinet.smibConfig?.net?.netMode?.toString() || 'No Value Provided',
-      networkSSID: cabinet.smibConfig?.net?.netStaSSID || 'No Value Provided',
-      networkPassword:
-        cabinet.smibConfig?.net?.netStaPwd || 'No Value Provided',
-      networkChannel:
-        cabinet.smibConfig?.net?.netStaChan?.toString() || 'No Value Provided',
-
-      // Communication Mode
-      communicationMode:
-        cabinet.smibConfig?.coms?.comsMode !== undefined
-          ? cabinet.smibConfig.coms.comsMode === 0
-            ? 'sas'
-            : cabinet.smibConfig.coms.comsMode === 1
-              ? 'non sas'
-              : cabinet.smibConfig.coms.comsMode === 2
-                ? 'IGT'
-                : 'No Value Provided'
-          : 'No Value Provided',
-
-      // COMS Configuration - Individual fields
-      comsMode:
-        cabinet.smibConfig?.coms?.comsMode?.toString() || 'No Value Provided',
-      comsAddr:
-        cabinet.smibConfig?.coms?.comsAddr?.toString() || 'No Value Provided',
-      comsRateMs:
-        cabinet.smibConfig?.coms?.comsRateMs?.toString() || 'No Value Provided',
-      comsRTE:
-        cabinet.smibConfig?.coms?.comsRTE?.toString() || 'No Value Provided',
-      comsGPC:
-        cabinet.smibConfig?.coms?.comsGPC?.toString() || 'No Value Provided',
-
-      // Firmware Version
-      firmwareVersion: cabinet.smibVersion?.firmware || 'No Value Provided',
-
-      // MQTT Configuration - Use machine data from database
-      mqttHost:
-        extractHostFromUri(cabinet.smibConfig?.mqtt?.mqttURI) ||
-        'No Value Provided',
-      mqttPort:
-        extractPortFromUri(cabinet.smibConfig?.mqtt?.mqttURI) ||
-        'No Value Provided',
-      mqttTLS:
-        cabinet.smibConfig?.mqtt?.mqttSecure?.toString() || 'No Value Provided',
-      mqttQOS:
-        cabinet.smibConfig?.mqtt?.mqttQOS?.toString() || 'No Value Provided',
-      mqttIdleTimeout:
-        cabinet.smibConfig?.mqtt?.mqttIdleTimeS?.toString() ||
-        'No Value Provided',
-      mqttUsername:
-        cabinet.smibConfig?.mqtt?.mqttUsername || 'No Value Provided',
-      mqttPassword:
-        cabinet.smibConfig?.mqtt?.mqttPassword || 'No Value Provided',
-
-      // MQTT Topics - Use machine data from database
-      mqttPubTopic:
-        cabinet.smibConfig?.mqtt?.mqttPubTopic || 'No Value Provided',
-      mqttCfgTopic:
-        cabinet.smibConfig?.mqtt?.mqttCfgTopic || 'No Value Provided',
-      mqttSubTopic:
-        cabinet.smibConfig?.mqtt?.mqttSubTopic || 'No Value Provided',
-      mqttURI: cabinet.smibConfig?.mqtt?.mqttURI || 'No Value Provided',
-
-      // Server Topic (from machine data)
-      serverTopic:
-        cabinet.smibConfig?.mqtt?.mqttPubTopic || 'No Value Provided',
-
-      // OTA Configuration
-      otaURL: cabinet.smibConfig?.ota?.otaURL || 'No Value Provided',
-    };
-
+    // ============================================================================
+    // STEP 5: Return MQTT configuration
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[MQTT Config API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       data: mqttConfig,
     });
   } catch (error) {
-    console.error('Error fetching MQTT configuration:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch MQTT configuration';
+    console.error(
+      `[MQTT Config GET API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch MQTT configuration' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

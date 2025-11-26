@@ -14,7 +14,23 @@ interface CurrencyDisplayProps {
 }
 
 /**
- * Component for displaying currency amounts with proper formatting
+ * Currency Display Component
+ * Component for displaying currency amounts with proper formatting and conversion.
+ *
+ * Features:
+ * - Currency amount formatting
+ * - Currency conversion support
+ * - Currency symbol and code display
+ * - Precision control
+ * - Conditional display based on licensee selection
+ * - Tooltip with original amount
+ *
+ * @param amount - Amount to display
+ * @param currency - Currency code (optional, uses default from store)
+ * @param showSymbol - Whether to show currency symbol
+ * @param showCode - Whether to show currency code
+ * @param className - Additional CSS classes
+ * @param precision - Decimal precision
  */
 export function CurrencyDisplay({
   amount,

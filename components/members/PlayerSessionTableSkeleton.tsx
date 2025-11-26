@@ -1,4 +1,19 @@
+/**
+ * Player Session Table Skeleton Component
+ * Loading skeleton for player session table component.
+ *
+ * Features:
+ * - Matches PlayerSessionTable layout structure
+ * - Desktop table skeleton (10 rows, 12 columns)
+ * - Mobile card skeleton (3 cards)
+ * - Pagination skeleton
+ * - Responsive design
+ */
 import React from 'react';
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const TABLE_HEADERS = [
   { label: 'Login Time', sortable: true },

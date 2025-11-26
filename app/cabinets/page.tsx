@@ -1,3 +1,18 @@
+/**
+ * Cabinets Page
+ *
+ * Main page for managing cabinets/machines with multiple sections and filtering.
+ *
+ * Features:
+ * - Cabinets section: View, create, edit, and delete cabinets
+ * - Movement Requests section: Manage cabinet movement requests
+ * - SMIB Management section: Manage SMIB devices
+ * - Firmware section: Manage SMIB firmware
+ * - Search and filter capabilities
+ * - Batch-based pagination for performance
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -53,7 +68,14 @@ import { CABINET_TABS_CONFIG } from '@/lib/constants/cabinets';
 import { IMAGES } from '@/lib/constants/images';
 // Removed unused Cabinet type import
 
+/**
+ * Cabinets Page Content Component
+ * Handles all state management and data fetching for the cabinets page
+ */
 function CabinetsPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const {
     selectedLicencee,
     setSelectedLicencee,
@@ -65,7 +87,9 @@ function CabinetsPageContent() {
 
   const { displayCurrency } = useCurrencyFormat();
 
-  // Custom hooks for cabinet functionality
+  // ============================================================================
+  // Custom Hooks
+  // ============================================================================
   const {
     isNewMovementRequestModalOpen,
     isUploadSmibDataModalOpen,
@@ -85,15 +109,16 @@ function CabinetsPageContent() {
     setSelectedStatus,
   } = useCabinetFilters();
 
-  // Custom hooks for data management
   const {
     allCabinets,
     filteredCabinets,
     locations,
     gameTypes,
     financialTotals,
+    metricsTotals,
     initialLoading,
     loading,
+    metricsTotalsLoading,
     error,
     loadCabinets,
   } = useCabinetData({
@@ -107,11 +132,12 @@ function CabinetsPageContent() {
     displayCurrency,
   });
 
-  const showLocationFilter =
-    new Set(locations.map(location => String(location._id ?? ''))).size > 1;
-
+  // ============================================================================
+  // Constants
+  // ============================================================================
   const itemsPerPage = 10;
   const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
 
   const {
     sortOrder,
@@ -127,17 +153,32 @@ function CabinetsPageContent() {
     itemsPerPage,
   });
 
+  const { activeSection, handleSectionChange } = useCabinetNavigation();
+
+  // ============================================================================
+  // State Management
+  // ============================================================================
+  const [refreshing, setRefreshing] = useState(false);
+  const [movementRefreshTrigger, setMovementRefreshTrigger] = useState(0);
+  const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
+  const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
+  const showLocationFilter =
+    new Set(locations.map(location => String(location._id ?? ''))).size > 1;
+
   // Calculate which batch of 50 items we need (each batch covers 5 pages of 10 items)
   // Page 0-4 = batch 1, Page 5-9 = batch 2, etc.
   const calculateBatchNumber = (page: number) => {
     return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
   };
 
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
-
-  // Track loaded batches to avoid refetching
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
-
+  // ============================================================================
+  // Effects - Data Fetching
+  // ============================================================================
   // Reset to default view when search is cleared (use debounced value to avoid flicker)
   // Note: The actual API call is handled by useCabinetData hook with debouncing
   // This effect only handles UI state reset
@@ -155,7 +196,6 @@ function CabinetsPageContent() {
     // Reset batches when filters change
     setLoadedBatches(new Set([1]));
     loadCabinets(1, itemsPerBatch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedLicencee,
     activeMetricsFilter,
@@ -163,6 +203,9 @@ function CabinetsPageContent() {
     displayCurrency,
     selectedLocation,
     selectedGameType,
+    setLoadedBatches,
+    loadCabinets,
+    itemsPerBatch,
     selectedStatus,
     // Note: searchTerm is NOT in dependencies - it's handled by useCabinetData hook with debouncing
   ]);
@@ -197,13 +240,9 @@ function CabinetsPageContent() {
     loadedBatches,
   ]);
 
-  const { activeSection, handleSectionChange } = useCabinetNavigation();
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [movementRefreshTrigger, setMovementRefreshTrigger] = useState(0);
-  const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
-  const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
-
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   // Context-aware refresh handler based on active section
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -244,6 +283,9 @@ function CabinetsPageContent() {
     // Sort logic is managed by the hook
   };
 
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
   // Show "No Licensee Assigned" message for non-admin users without licensees
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
   if (showNoLicenseeMessage) {
@@ -262,6 +304,9 @@ function CabinetsPageContent() {
     );
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Modal Components */}
@@ -393,8 +438,8 @@ function CabinetsPageContent() {
         {/* Financial Metrics Cards - Only show on cabinets section */}
         {activeSection === 'cabinets' && (
           <FinancialMetricsCards
-            totals={financialTotals}
-            loading={loading}
+            totals={metricsTotals || financialTotals}
+            loading={loading || metricsTotalsLoading}
             title="Total for all Machines"
             className="mb-4 mt-4"
           />
@@ -490,6 +535,10 @@ function CabinetsPageContent() {
   );
 }
 
+/**
+ * Cabinets Page Component
+ * Thin wrapper that handles routing and authentication
+ */
 export default function CabinetsPage() {
   return (
     <ProtectedRoute requiredPage="machines">

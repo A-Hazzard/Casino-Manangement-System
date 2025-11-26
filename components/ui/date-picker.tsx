@@ -1,3 +1,18 @@
+/**
+ * Date Picker Component
+ * Single date picker component with popover calendar.
+ *
+ * Features:
+ * - Single date selection
+ * - Popover calendar interface
+ * - Date formatting
+ * - Disabled state support
+ * - Auto-close on selection
+ *
+ * @param date - Currently selected date
+ * @param setDate - Callback to update selected date
+ * @param disabled - Whether the picker is disabled
+ */
 'use client';
 
 import * as React from 'react';

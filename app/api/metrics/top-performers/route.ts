@@ -1,19 +1,202 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Top Performers Metrics API Route
+ *
+ * This route handles fetching the top performing machine for a specific location.
+ * It supports:
+ * - Filtering by location and time period
+ * - Custom date range support
+ * - Optional filtering by licensee
+ * - Aggregating financial and gaming metrics
+ *
+ * @module app/api/metrics/top-performers/route
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
-import { TimePeriod } from '@/app/api/lib/types';
+import type { TimePeriod } from '@/app/api/lib/types';
+import type { Db } from 'mongodb';
+import type { PipelineStage } from 'mongoose';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(req: NextRequest) {
-  try {
-    const db = await connectDB();
-    if (!db) {
-      console.error('Database connection not established');
-      return NextResponse.json(
-        { error: 'Database connection not established' },
-        { status: 500 }
-      );
+/**
+ * Builds aggregation pipeline for top performer
+ *
+ * @param locationId - Location ID to filter by
+ * @param startDate - Start date
+ * @param endDate - End date
+ * @param licencee - Optional licensee to filter by
+ * @returns Aggregation pipeline stages
+ */
+function buildTopPerformerPipeline(
+  locationId: string,
+  startDate: Date,
+  endDate: Date,
+  licencee?: string | null
+): PipelineStage[] {
+  const pipeline: PipelineStage[] = [
+    {
+      $match: {
+        location: locationId,
+        readAt: { $gte: startDate, $lte: endDate },
+      },
+    },
+    {
+      $lookup: {
+        from: 'machines',
+        localField: 'machine',
+        foreignField: '_id',
+        as: 'machineDetails',
+      },
+    },
+    {
+      $unwind: '$machineDetails',
+    },
+    {
+      $lookup: {
+        from: 'gaminglocations',
+        localField: 'location',
+        foreignField: '_id',
+        as: 'locationDetails',
+      },
+    },
+    {
+      $unwind: '$locationDetails',
+    },
+  ];
+
+  if (licencee) {
+    pipeline.push({
+      $match: {
+        'locationDetails.rel.licencee': licencee,
+      },
+    } as PipelineStage);
+  }
+
+  pipeline.push(
+    {
+      $group: {
+        _id: '$machine',
+        machineName: { $first: '$machineDetails.Custom.name' },
+        serialNumber: { $first: '$machineDetails.serialNumber' },
+        revenue: {
+          $sum: {
+            $subtract: [
+              { $ifNull: ['$movement.drop', 0] },
+              { $ifNull: ['$movement.totalCancelledCredits', 0] },
+            ],
+          },
+        },
+        drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+        cancelledCredits: {
+          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+        },
+        gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
+      },
+    },
+    {
+      $addFields: {
+        holdPercentage: {
+          $cond: [
+            { $gt: ['$drop', 0] },
+            { $multiply: [{ $divide: ['$revenue', '$drop'] }, 100] },
+            0,
+          ],
+        },
+      },
+    },
+    {
+      $sort: { revenue: -1 },
+    },
+    {
+      $limit: 1,
+    },
+    {
+      $project: {
+        _id: 0,
+        machineId: '$_id',
+        machineName: {
+          $cond: [
+            { $ne: ['$machineName', null] },
+            '$machineName',
+            { $concat: ['Machine ', '$serialNumber'] },
+          ],
+        },
+        revenue: '$revenue',
+        holdPercentage: { $round: ['$holdPercentage', 1] },
+        drop: '$drop',
+        cancelledCredits: '$cancelledCredits',
+        gamesPlayed: '$gamesPlayed',
+      },
     }
+  );
 
+  return pipeline;
+}
+
+/**
+ * Fetches top performer for a location
+ *
+ * @param db - Database connection
+ * @param locationId - Location ID to filter by
+ * @param timePeriod - Time period
+ * @param startDateParam - Optional custom start date
+ * @param endDateParam - Optional custom end date
+ * @param licencee - Optional licensee to filter by
+ * @returns Top performer data or null
+ */
+async function getTopPerformer(
+  db: Db,
+  locationId: string,
+  timePeriod: TimePeriod,
+  startDateParam?: string | null,
+  endDateParam?: string | null,
+  licencee?: string | null
+): Promise<unknown | null> {
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+
+  if (startDateParam && endDateParam) {
+    startDate = new Date(startDateParam);
+    endDate = new Date(endDateParam);
+  } else {
+    const dateRange = getDatesForTimePeriod(timePeriod);
+    startDate = dateRange.startDate;
+    endDate = dateRange.endDate;
+
+    if (!startDate || !endDate) {
+      const now = new Date();
+      endDate = now;
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+  }
+
+  const pipeline = buildTopPerformerPipeline(
+    locationId,
+    startDate!,
+    endDate!,
+    licencee
+  );
+
+  const topPerformers = await db.collection('meters').aggregate(pipeline).toArray();
+  return topPerformers[0] || null;
+}
+
+/**
+ * Main GET handler for fetching top performer
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Fetch top performer data
+ * 4. Return top performer
+ */
+export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const locationId = searchParams.get('locationId');
     const timePeriod =
@@ -29,147 +212,49 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get date range - handle both timePeriod and startDate/endDate parameters
-    let startDate: Date | undefined, endDate: Date | undefined;
-
-    if (startDateParam && endDateParam) {
-      // Use provided startDate and endDate
-      startDate = new Date(startDateParam);
-      endDate = new Date(endDateParam);
-    } else {
-      // Use timePeriod to calculate date range
-      const dateRange = getDatesForTimePeriod(timePeriod);
-      startDate = dateRange.startDate;
-      endDate = dateRange.endDate;
-
-      // For All Time, provide reasonable defaults if needed
-      if (!startDate || !endDate) {
-        const now = new Date();
-        endDate = now;
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Default to last 30 days
-      }
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    const db = await connectDB();
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Database connection not established' },
+        { status: 500 }
+      );
     }
 
-    // Build aggregation pipeline for top performing machines
-    const pipeline = [
-      // Match meters for the specific location and time period
-      {
-        $match: {
-          location: locationId,
-          readAt: { $gte: startDate, $lte: endDate },
-        },
-      },
-      // Lookup machine details
-      {
-        $lookup: {
-          from: 'machines',
-          localField: 'machine',
-          foreignField: '_id',
-          as: 'machineDetails',
-        },
-      },
-      {
-        $unwind: '$machineDetails',
-      },
-      // Lookup location details
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'location',
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
-      },
-      {
-        $unwind: '$locationDetails',
-      },
-      // Filter by licencee if provided
-      ...(licencee
-        ? [
-            {
-              $match: {
-                'locationDetails.rel.licencee': licencee,
-              },
-            },
-          ]
-        : []),
-      // Group by machine
-      {
-        $group: {
-          _id: '$machine',
-          machineName: { $first: '$machineDetails.Custom.name' },
-          serialNumber: { $first: '$machineDetails.serialNumber' },
-          revenue: {
-            $sum: {
-              $subtract: [
-                { $ifNull: ['$movement.drop', 0] },
-                { $ifNull: ['$movement.totalCancelledCredits', 0] },
-              ],
-            },
-          },
-          drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          cancelledCredits: {
-            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-          },
-          gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
-        },
-      },
-      // Calculate hold percentage
-      {
-        $addFields: {
-          holdPercentage: {
-            $cond: [
-              { $gt: ['$drop', 0] },
-              { $multiply: [{ $divide: ['$revenue', '$drop'] }, 100] },
-              0,
-            ],
-          },
-        },
-      },
-      // Sort by revenue (descending)
-      {
-        $sort: { revenue: -1 },
-      },
-      // Limit to top 1
-      {
-        $limit: 1,
-      },
-      // Project final format
-      {
-        $project: {
-          _id: 0,
-          machineId: '$_id',
-          machineName: {
-            $cond: [
-              { $ne: ['$machineName', null] },
-              '$machineName',
-              { $concat: ['Machine ', '$serialNumber'] },
-            ],
-          },
-          revenue: '$revenue',
-          holdPercentage: { $round: ['$holdPercentage', 1] },
-          drop: '$drop',
-          cancelledCredits: '$cancelledCredits',
-          gamesPlayed: '$gamesPlayed',
-        },
-      },
-    ];
+    // ============================================================================
+    // STEP 3: Fetch top performer data
+    // ============================================================================
+    const topPerformer = await getTopPerformer(
+      db,
+      locationId,
+      timePeriod,
+      startDateParam,
+      endDateParam,
+      licencee
+    );
 
-    const topPerformers = await db
-      .collection('meters')
-      .aggregate(pipeline)
-      .toArray();
-
+    // ============================================================================
+    // STEP 4: Return top performer
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Top Performers API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       locationId,
       timePeriod,
-      topPerformer: topPerformers[0] || null,
+      topPerformer,
     });
   } catch (error) {
-    console.error('Error fetching top performers:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch top performers' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch top performers';
+    console.error(
+      `[Top Performers Metrics GET API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -1,4 +1,19 @@
+/**
+ * Members Page Utilities
+ *
+ * Utility functions for filtering, sorting, and paginating members on the members page.
+ *
+ * Features:
+ * - Member sorting
+ * - Member filtering
+ * - Pagination utilities
+ */
+
 import type { CasinoMember as Member } from '@/shared/types/entities';
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
 // TODO: Move MemberSortOption to shared types
 type MemberSortOption =
   | 'name'
@@ -14,6 +29,9 @@ type MemberSortOption =
   | 'winLoss'
   | 'lastLogin';
 
+// ============================================================================
+// Sorting Functions
+// ============================================================================
 /**
  * Sort members based on sort option and order
  */

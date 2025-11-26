@@ -1,6 +1,25 @@
+/**
+ * Meters Aggregation Helper Functions
+ *
+ * Provides helper functions for aggregating meter data from MongoDB, including
+ * daily and hourly aggregations, account denomination handling, and location-based
+ * filtering. It handles complex aggregation pipelines for dashboard metrics and charts.
+ *
+ * Features:
+ * - Aggregates meters without considering location sessions.
+ * - Supports daily and hourly aggregation based on time period.
+ * - Handles account denomination calculations.
+ * - Filters by licensee when provided.
+ * - Groups data by day and/or time for chart visualization.
+ */
+
 import { Db } from 'mongodb';
 import { PipelineStage } from 'mongoose';
 import { CustomDate, QueryFilter } from '../../types';
+
+// ============================================================================
+// Meter Field Projection Helpers
+// ============================================================================
 
 /**
  * Returns meter field projections based on whether account denominations are used.
@@ -49,6 +68,10 @@ function getMeterFieldProjections(useAccountDenom: boolean) {
     ? meterFieldProjectionsWithAccountDenom
     : meterFieldProjectionsWithoutAccountDenom;
 }
+
+// ============================================================================
+// Base Aggregation Functions
+// ============================================================================
 
 /**
  * Aggregates meters without considering location sessions.
@@ -150,6 +173,10 @@ export function aggregateMetersWithoutLocationSession(
   ];
 }
 
+// ============================================================================
+// Aggregation Pipeline Builders
+// ============================================================================
+
 /**
  * Creates a simplified aggregation pipeline that matches the totals API logic.
  * This groups by day only (not by location and time) to ensure chart data matches totals.
@@ -226,6 +253,10 @@ function aggregateByDayAndTimeStages(
   ];
 }
 
+// ============================================================================
+// Main Aggregation Entry Point
+// ============================================================================
+
 /**
  * Entry Point for Aggregations. Aggregates metrics for locations over a given timeframe.
  *
@@ -236,6 +267,7 @@ function aggregateByDayAndTimeStages(
  * @param timeframe - The timeframe filter (startDate and endDate).
  * @param useAccountDenom - Boolean flag to use account denominations.
  * @param licencee - (Optional) Licencee ID to filter gaming locations.
+ * @param timePeriod - (Optional) Time period to determine hourly vs daily aggregation.
  * @returns Promise resolving to an array of aggregated trend data.
  */
 export async function getMetricsForLocations(

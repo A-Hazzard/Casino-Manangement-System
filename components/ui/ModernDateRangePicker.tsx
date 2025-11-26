@@ -1,3 +1,24 @@
+/**
+ * Modern Date Range Picker Component
+ * Advanced date range picker with time selection and preset options.
+ *
+ * Features:
+ * - Date range selection (start and end dates)
+ * - Optional time inputs for start and end times
+ * - "Set Last Month" quick action
+ * - Go and Cancel buttons
+ * - Custom time picker component
+ * - Optimized for mobile performance
+ *
+ * Large component (~337 lines) handling date range selection with time support.
+ *
+ * @param value - Currently selected date range
+ * @param onChange - Callback to update date range
+ * @param onGo - Callback when "Go" button is clicked
+ * @param onCancel - Callback when "Cancel" button is clicked
+ * @param onSetLastMonth - Callback when "Set Last Month" is clicked
+ * @param enableTimeInputs - Whether to show time inputs
+ */
 'use client';
 
 import { CustomSelect } from '@/components/ui/custom-select';
@@ -13,6 +34,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
+
+// ============================================================================
+// Types & Helper Components
+// ============================================================================
 
 type ModernDateRangePickerProps = {
   value?: DateRange;

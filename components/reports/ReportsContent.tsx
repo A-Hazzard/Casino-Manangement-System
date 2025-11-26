@@ -41,10 +41,23 @@ import {
 import type { ReportView } from '@/lib/types/reports';
 
 /**
- * Main content component for the reports page
- * Handles layout, navigation, and tab rendering
+ * Reports Content Component
+ * Main content component for the reports page with tab navigation and layout.
+ *
+ * Features:
+ * - Tab-based navigation (Locations, Machines, Meters)
+ * - Licensee selection integration
+ * - Date filters
+ * - Tab content rendering with suspense
+ * - Loading states and overlays
+ * - Access denied states
+ * - Framer Motion animations
+ * - Responsive layout
  */
 export default function ReportsContent() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
 
@@ -148,7 +161,7 @@ export default function ReportsContent() {
           Reports
         </h1>
         <Image
-          src={IMAGES.reportsButtonNoBg}
+          src={IMAGES.details}
           alt="Reports Icon"
           width={32}
           height={32}

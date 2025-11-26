@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** November 11th, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.1.0
 
 ## Recent Performance Optimizations (November 11th, 2025) 🚀
@@ -63,7 +63,7 @@
 - **SAS Evaluation**: `sasEvaluationOnly=true` - Filter for SAS locations only
 - **Financial Data**: Default shows all locations with financial data
 
-**Last Updated:** October 29th, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.0.0
 
 ## Table of Contents
@@ -93,6 +93,56 @@ The Reports API provides comprehensive data aggregation and analytics capabiliti
 ### GET `/api/locationAggregation`
 
 **Purpose**: Aggregates location-level metrics including machine counts, SAS status, and financial data
+
+**How Money In, Money Out, and Gross Are Calculated:**
+
+The Location Aggregation API calculates financial metrics by aggregating meter data from the `meters` collection. The process:
+
+1. **Location Processing**: For each accessible location (filtered by user permissions and licensee):
+   - Fetches all machines at that location from `machines` collection
+   - Calculates gaming day range based on location's `gameDayOffset`
+   - Queries `meters` collection for all meter readings matching:
+     - `machine` field matches any machine ID at the location
+     - `readAt` timestamp within the location's gaming day range
+
+2. **Meter Aggregation** (in `app/api/lib/helpers/locationAggregation.ts`):
+   ```javascript
+   // Aggregate meters for all machines at location
+   const metersAggregation = await db.collection('meters').aggregate([
+     {
+       $match: {
+         machine: { $in: machineIds }, // All machine IDs for this location
+         readAt: {
+           $gte: gamingDayRange.rangeStart,
+           $lte: gamingDayRange.rangeEnd,
+         },
+       },
+     },
+     {
+       $group: {
+         _id: null,
+         totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+         totalMoneyOut: {
+           $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+         },
+       },
+     },
+   ]);
+   
+   // Calculate gross
+   gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut
+   ```
+
+3. **Response**: Returns location objects with:
+   - `moneyIn`: Sum of `movement.drop` from all meters for all machines at location
+   - `moneyOut`: Sum of `movement.totalCancelledCredits` from all meters for all machines at location
+   - `gross`: `moneyIn - moneyOut`
+
+**Key Points:**
+- Uses **sum of deltas** method: Sums all `movement.drop` and `movement.totalCancelledCredits` values from meter readings
+- Respects **gaming day offset** per location when calculating date ranges
+- Filters by **user permissions** and **licensee** before aggregating
+- Processes locations in **parallel** for performance
 
 **Query Parameters:**
 
@@ -439,6 +489,92 @@ switch (timePeriod) {
     break;
 }
 ```
+
+## Machines Aggregation API
+
+### GET `/api/machines/aggregation`
+
+**Purpose**: Aggregates machine-level metrics across accessible locations with filtering
+
+**How Money In, Money Out, and Gross Are Calculated:**
+
+The Machines Aggregation API calculates financial metrics per machine by aggregating meter data. The process:
+
+1. **Location Processing**: 
+   - Fetches all accessible locations (respects user permissions and licensee filter)
+   - Calculates gaming day range for each location based on location's `gameDayOffset`
+   - Gets all machines for accessible locations from `machines` collection
+
+2. **Optimized Aggregation Strategies** (in `app/api/machines/aggregation/route.ts`):
+   
+   **For 7d/30d periods** (Single Aggregation - Faster):
+   ```javascript
+   // Groups machines by location, then aggregates meters per location
+   // Single aggregation query for all machines
+   {
+     $match: {
+       machine: { $in: machineIds }, // All machine IDs for all locations
+       readAt: {
+         $gte: gameDayRange.rangeStart,
+         $lte: gameDayRange.rangeEnd,
+       },
+     },
+   },
+   {
+     $project: {
+       machine: 1,
+       drop: '$movement.drop',
+       totalCancelledCredits: '$movement.totalCancelledCredits',
+     },
+   },
+   {
+     $group: {
+       _id: '$machine',
+       moneyIn: { $sum: '$drop' },
+       moneyOut: { $sum: '$totalCancelledCredits' },
+     },
+   }
+   ```
+   
+   **For Today/Yesterday** (Batch Processing - Optimized):
+   ```javascript
+   // Processes locations in parallel batches of 20
+   // Aggregates meters per location batch
+   {
+     $match: {
+       machine: { $in: machineIds }, // Machine IDs for this location batch
+       readAt: {
+         $gte: gameDayRange.rangeStart,
+         $lte: gameDayRange.rangeEnd,
+       },
+     },
+   },
+   {
+     $group: {
+       _id: '$machine',
+       moneyIn: { $sum: '$movement.drop' },
+       moneyOut: { $sum: '$movement.totalCancelledCredits' },
+     },
+   }
+   ```
+
+3. **Per-Machine Calculation**:
+   ```javascript
+   const moneyIn = metrics.moneyIn || 0;
+   const moneyOut = metrics.moneyOut || 0;
+   const gross = moneyIn - moneyOut;
+   ```
+
+4. **Response**: Returns array of machines with:
+   - `moneyIn`: Sum of `movement.drop` from all meters for that machine
+   - `moneyOut`: Sum of `movement.totalCancelledCredits` from all meters for that machine
+   - `gross`: `moneyIn - moneyOut`
+
+**Key Points:**
+- Uses **sum of deltas** method: Sums all `movement.drop` and `movement.totalCancelledCredits` values per machine
+- Respects **gaming day offset** per location when calculating date ranges
+- **Performance optimized**: Single aggregation for 7d/30d, batch processing for Today/Yesterday
+- Groups by machine ID to get per-machine totals
 
 ## Data Aggregation Pipeline
 

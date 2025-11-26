@@ -1,3 +1,21 @@
+/**
+ * Activity Log Description Dialog Component
+ * Dialog for displaying activity log description with change details.
+ *
+ * Features:
+ * - Activity log description display
+ * - Change tracking with old/new value comparison
+ * - ID resolution to human-readable names
+ * - Date and time formatting
+ * - Field name formatting
+ * - Badge indicators
+ * - Search mode support
+ *
+ * @param isOpen - Whether the dialog is visible
+ * @param log - Activity log entry to display
+ * @param searchMode - Current search mode
+ * @param onClose - Callback to close the dialog
+ */
 'use client';
 
 import React, { useState, useEffect } from 'react';

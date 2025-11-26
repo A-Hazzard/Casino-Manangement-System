@@ -1,3 +1,13 @@
+/**
+ * Skeleton Loader Components
+ * Reusable skeleton components for loading states.
+ *
+ * Features:
+ * - StatCardSkeleton for stat cards
+ * - ChartSkeleton for chart areas
+ * - Configurable count
+ * - Consistent styling
+ */
 export default function StatCardSkeleton({ count = 3 }: { count?: number }) {
   return (
     <>

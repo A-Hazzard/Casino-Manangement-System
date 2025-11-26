@@ -1,7 +1,7 @@
 # Authentication API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 2025
+**Last Updated:** November 22, 2025
 
 ## Quick Search Guide
 
@@ -143,26 +143,36 @@ Authenticates a user and issues an HTTP-only token cookie.
 
 ```json
 {
-  "emailAddress": "user@example.com",
-  "password": "securepassword"
+  "identifier": "user@example.com",
+  "password": "securepassword",
+  "rememberMe": false
 }
 ```
+
+**Note**: `identifier` accepts either email address or username. The backend checks both fields if the identifier looks like an email.
 
 **Response (Success - 200):**
 
 ```json
 {
   "success": true,
-  "message": "Login successful",
-  "user": {
-    "_id": "user_id",
-    "emailAddress": "user@example.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "role": "admin",
-    "permissions": ["read", "write", "admin"]
-  },
-  "token": "jwt_token_string"
+  "data": {
+    "user": {
+      "_id": "user_id",
+      "emailAddress": "user@example.com",
+      "username": "username",
+      "roles": ["admin"],
+      "profile": {
+        "firstName": "John",
+        "lastName": "Doe"
+      }
+    },
+    "token": "jwt_token_string",
+    "refreshToken": "refresh_token_string",
+    "expiresAt": "2025-11-24T12:00:00Z",
+    "requiresPasswordUpdate": false,
+    "requiresProfileUpdate": false
+  }
 }
 ```
 
@@ -171,7 +181,7 @@ Authenticates a user and issues an HTTP-only token cookie.
 ```json
 {
   "success": false,
-  "message": "Invalid email address or password format."
+  "message": "Email/username and password are required."
 }
 ```
 
@@ -221,17 +231,33 @@ Logs out the current user by clearing the authentication token.
 
 ---
 
-### GET /api/auth/token
+### GET /api/auth/current-user
 
-Validates the current user's token and returns user information.
+Fetches the current user's data from the database and validates session.
 
-**Request Body:** None required
+**Request Body:** None required (uses HTTP-only cookie)
 
 **Response (Success - 200):**
 
 ```json
 {
-  "userId": "user_id"
+  "success": true,
+  "data": {
+    "user": {
+      "_id": "user_id",
+      "emailAddress": "user@example.com",
+      "username": "username",
+      "roles": ["admin"],
+      "profile": {
+        "firstName": "John",
+        "lastName": "Doe"
+      }
+    },
+    "requiresProfileUpdate": false,
+    "requiresPasswordUpdate": false,
+    "invalidProfileFields": {},
+    "invalidProfileReasons": {}
+  }
 }
 ```
 
@@ -348,11 +374,11 @@ Manually clears the authentication token (admin function).
 **What it does**: Authenticates a user and issues an HTTP-only token cookie
 **Database Operations**:
 
-- Queries `users` collection by email address
+- Queries `users` collection by identifier (checks both `emailAddress` and `username`)
 - Validates password using bcrypt comparison
-- Updates `lastLogin` timestamp
+- Updates `lastLoginAt` timestamp
 - Resets `failedLoginAttempts` on successful login
-  **Request Fields**: `emailAddress`, `password`
+  **Request Fields**: `identifier` (email or username), `password`, `rememberMe` (optional)
   **Response Fields**: User object with token and success message
   **Used By**: Login page, authentication forms
 
@@ -368,17 +394,20 @@ Manually clears the authentication token (admin function).
   **Response Fields**: Success confirmation message
   **Used By**: Header component, logout functionality
 
-#### GET /api/auth/token
+#### GET /api/auth/current-user
 
-**What it does**: Validates the current user's token and returns user information
+**What it does**: Fetches the current user's data from the database and validates session
 **Database Operations**:
 
-- Extracts JWT token from HTTP-only cookie
+- Extracts JWT token from HTTP-only cookie via `getUserFromServer()`
 - Validates token signature and expiration
-- Returns user ID if valid
+- Fetches user from database with all current data
+- Validates session version to detect permission changes
+- Checks for hard-deleted users, soft-deleted users, and disabled accounts
+- Returns user data with profile validation flags
   **Request Fields**: None required (uses cookie)
-  **Response Fields**: User ID and validation status
-  **Used By**: Global authentication context, protected routes
+  **Response Fields**: User object with `requiresProfileUpdate`, `requiresPasswordUpdate`, `invalidProfileFields`
+  **Used By**: Global authentication context, protected routes, profile validation gate
 
 #### POST /api/auth/forgot-password
 
@@ -409,10 +438,10 @@ Manually clears the authentication token (admin function).
 
 ### Login Error Scenarios
 
-- **Invalid Credentials**: Wrong email or password
+- **Invalid Credentials**: Wrong identifier or password
 - **Account Locked**: Too many failed login attempts
-- **Account Not Found**: Email address doesn't exist
-- **Invalid Format**: Malformed email or password
+- **Account Not Found**: Identifier (email or username) doesn't exist
+- **Invalid Format**: Malformed identifier or password
 
 ### Token Error Scenarios
 
@@ -476,8 +505,15 @@ The authentication system now validates user status on every request:
 ### User Authentication Queries
 
 ```javascript
-// Find user by email
-db.users.findOne({ emailAddress: email });
+// Find user by identifier (checks both emailAddress and username)
+// If identifier looks like email, checks emailAddress first, then username
+// If identifier doesn't look like email, checks username only
+db.users.findOne({ 
+  $or: [
+    { emailAddress: identifier },
+    { username: identifier }
+  ]
+});
 
 // Update last login
 db.users.updateOne(
@@ -599,8 +635,8 @@ type User = {
 ## Authentication Flow
 
 1. **Login Request**: User submits credentials
-2. **Validation**: Email and password format validation
-3. **Database Lookup**: Find user by email
+2. **Validation**: Identifier (email or username) and password format validation
+3. **Database Lookup**: Find user by identifier (checks both emailAddress and username)
 4. **Password Verification**: Compare hashed passwords
 5. **Token Generation**: Create JWT with user claims
 6. **Cookie Setting**: Set HTTP-only cookie with token

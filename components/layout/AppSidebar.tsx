@@ -1,3 +1,25 @@
+/**
+ * App Sidebar Component
+ * Main application sidebar navigation with role-based menu items.
+ *
+ * Features:
+ * - Logo and branding
+ * - Navigation menu with icons
+ * - Role-based link visibility (developer, admin, manager, etc.)
+ * - Active route highlighting
+ * - Collapsible/expandable on desktop
+ * - Slide-in/out on mobile
+ * - User profile section with avatar
+ * - Profile modal integration
+ * - Currency selector
+ * - Logout functionality
+ * - Dynamic user data fetching with caching
+ * - Permission checks for each menu item
+ * - Smooth animations and transitions
+ * - Responsive design
+ *
+ * Large component (~766 lines) managing primary application navigation.
+ */
 'use client';
 
 import ProfileModal from '@/components/layout/ProfileModal';
@@ -37,6 +59,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 const DEFAULT_AVATAR = '/defaultAvatar.svg';
+
+// ============================================================================
+// Types & Constants
+// ============================================================================
 
 type Item = {
   label: string;
@@ -491,43 +517,21 @@ export default function AppSidebar() {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-8 w-full text-sm">
+                  <SelectTrigger className="h-8 w-full text-sm [&>span:first-child]:text-center [&>span:first-child]:absolute [&>span:first-child]:left-0 [&>span:first-child]:right-0 [&>span:first-child]:flex [&>span:first-child]:justify-center">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="z-[100000]">
-                    <SelectItem value="USD">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">$</span>
-                        <span className="text-sm text-gray-600">USD</span>
-                        <span className="text-xs text-gray-500">US Dollar</span>
-                      </div>
+                    <SelectItem value="USD" className="text-center">
+                      $ USD
                     </SelectItem>
-                    <SelectItem value="TTD">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">TT$</span>
-                        <span className="text-sm text-gray-600">TTD</span>
-                        <span className="text-xs text-gray-500">
-                          Trinidad Dollar
-                        </span>
-                      </div>
+                    <SelectItem value="TTD" className="text-center">
+                      TT$ TTD
                     </SelectItem>
-                    <SelectItem value="GYD">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">GY$</span>
-                        <span className="text-sm text-gray-600">GYD</span>
-                        <span className="text-xs text-gray-500">
-                          Guyana Dollar
-                        </span>
-                      </div>
+                    <SelectItem value="GYD" className="text-center">
+                      GY$ GYD
                     </SelectItem>
-                    <SelectItem value="BBD">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Bds$</span>
-                        <span className="text-sm text-gray-600">BBD</span>
-                        <span className="text-xs text-gray-500">
-                          Barbados Dollar
-                        </span>
-                      </div>
+                    <SelectItem value="BBD" className="text-center">
+                      Bds$ BBD
                     </SelectItem>
                   </SelectContent>
                 </Select>

@@ -3,8 +3,8 @@
  * Handles modal visibility and state management for collection reports page
  */
 
-import { useState, useCallback } from 'react';
 import { CollectionReportModalData } from '@/lib/types/hooks';
+import { useCallback, useState } from 'react';
 
 type UseCollectionReportModalsReturn = {
   // Modal states
@@ -34,6 +34,10 @@ type UseCollectionReportModalsReturn = {
 };
 
 export function useCollectionReportModals(): UseCollectionReportModalsReturn {
+  // ============================================================================
+  // State
+  // ============================================================================
+
   // Modal states
   const [isNewCollectionModalOpen, setIsNewCollectionModalOpen] =
     useState(false);
@@ -50,6 +54,10 @@ export function useCollectionReportModals(): UseCollectionReportModalsReturn {
     message: string;
     onConfirm: () => void;
   } | null>(null);
+
+  // ============================================================================
+  // Modal Actions
+  // ============================================================================
 
   // New collection modal actions
   const openNewCollectionModal = useCallback(() => {
@@ -88,6 +96,9 @@ export function useCollectionReportModals(): UseCollectionReportModalsReturn {
     setIsConfirmationDialogOpen(false);
   }, []);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     isNewCollectionModalOpen,
     isEditCollectionModalOpen,

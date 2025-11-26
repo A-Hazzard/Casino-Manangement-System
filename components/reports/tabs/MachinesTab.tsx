@@ -77,7 +77,11 @@ import { Trash2 } from 'lucide-react';
 import PaginationControls from '@/components/ui/PaginationControls';
 
 import StatusIcon from '@/components/ui/common/StatusIcon';
-import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 
 // Sortable table header component
 const SortableHeader = ({
@@ -572,17 +576,20 @@ export default function MachinesTab() {
       setOverviewCurrentPage(0);
       fetchOverviewMachines(1, debouncedSearchTerm);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     selectedLicencee,
     selectedDateRange?.start,
+    setAllOverviewMachines,
+    setOverviewLoadedBatches,
+    setOverviewCurrentPage,
+    fetchOverviewMachines,
+    debouncedSearchTerm,
     selectedDateRange?.end,
     onlineStatusFilter,
     overviewSelectedLocation,
     activeMetricsFilter,
     displayCurrency,
-    debouncedSearchTerm, // Use debounced value instead of searchTerm
   ]);
 
   // Fetch next batch for overview when crossing batch boundaries
@@ -624,7 +631,6 @@ export default function MachinesTab() {
       setOfflineCurrentPage(0);
       fetchOfflineMachines(1);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     selectedLicencee,
@@ -632,6 +638,10 @@ export default function MachinesTab() {
     selectedDateRange?.end,
     offlineSelectedLocation,
     activeMetricsFilter,
+    setAllOfflineMachines,
+    setOfflineLoadedBatches,
+    setOfflineCurrentPage,
+    fetchOfflineMachines,
   ]);
 
   // Fetch next batch for offline when crossing batch boundaries
@@ -1362,8 +1372,7 @@ export default function MachinesTab() {
     if (initial && initial !== activeTab) {
       setActiveTab(initial);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams, activeTab, setActiveTab]);
 
   // Offline machines with duration calculation
   const offlineMachinesWithDuration = useMemo(() => {
@@ -1470,7 +1479,7 @@ export default function MachinesTab() {
             <Card className="min-h-[120px]">
               <CardContent className="flex h-full flex-col justify-center p-4">
                 <div
-                  className={`break-words text-lg font-bold leading-tight sm:text-xl lg:text-2xl ${getFinancialColorClass(
+                  className={`break-words text-lg font-bold leading-tight sm:text-xl lg:text-2xl ${getGrossColorClass(
                     machineStats.totalGross
                   )}`}
                 >
@@ -1486,7 +1495,7 @@ export default function MachinesTab() {
             <Card className="min-h-[120px]">
               <CardContent className="flex h-full flex-col justify-center p-4">
                 <div
-                  className={`break-words text-lg font-bold leading-tight sm:text-xl lg:text-2xl ${getFinancialColorClass(
+                  className={`break-words text-lg font-bold leading-tight sm:text-xl lg:text-2xl ${getMoneyInColorClass(
                     machineStats.totalDrop
                   )}`}
                 >
@@ -1502,8 +1511,9 @@ export default function MachinesTab() {
             <Card className="min-h-[120px]">
               <CardContent className="flex h-full flex-col justify-center p-4">
                 <div
-                  className={`break-words text-lg font-bold leading-tight sm:text-xl lg:text-2xl ${getFinancialColorClass(
-                    machineStats.totalCancelledCredits
+                  className={`break-words text-lg font-bold leading-tight sm:text-xl lg:text-2xl ${getMoneyOutColorClass(
+                    machineStats.totalCancelledCredits,
+                    machineStats.totalDrop
                   )}`}
                 >
                   {shouldShowCurrency()
@@ -1770,12 +1780,12 @@ export default function MachinesTab() {
                                       {machine.machineType || 'slot'}
                                     </Badge>
                                   </td>
-                                  <td className="p-3 text-sm font-medium text-green-600">
+                                  <td className={`p-3 text-sm font-medium ${getGrossColorClass(machine.netWin || 0)}`}>
                                     {shouldShowCurrency()
                                       ? formatAmount(machine.netWin || 0)
                                       : `$${(machine.netWin || 0).toLocaleString()}`}
                                   </td>
-                                  <td className="p-3 text-sm font-medium text-yellow-600">
+                                  <td className={`p-3 text-sm font-medium ${getMoneyInColorClass(machine.drop || 0)}`}>
                                     {shouldShowCurrency()
                                       ? formatAmount(machine.drop || 0)
                                       : `$${(machine.drop || 0).toLocaleString()}`}
@@ -1920,7 +1930,7 @@ export default function MachinesTab() {
                                 Net Win:
                               </span>
                               <span
-                                className={`font-medium ${getFinancialColorClass(
+                                className={`font-medium ${getGrossColorClass(
                                   machine.netWin
                                 )}`}
                               >
@@ -1932,7 +1942,7 @@ export default function MachinesTab() {
                                 Drop:
                               </span>
                               <span
-                                className={`font-medium ${getFinancialColorClass(
+                                className={`font-medium ${getMoneyInColorClass(
                                   machine.drop
                                 )}`}
                               >
@@ -1975,7 +1985,7 @@ export default function MachinesTab() {
                                 Net Win:
                               </span>
                               <p
-                                className={`font-medium ${getFinancialColorClass(
+                                className={`font-medium ${getGrossColorClass(
                                   machine.netWin
                                 )}`}
                               >
@@ -1986,11 +1996,7 @@ export default function MachinesTab() {
                               <span className="text-muted-foreground">
                                 Drop:
                               </span>
-                              <p
-                                className={`font-medium ${getFinancialColorClass(
-                                  machine.drop
-                                )}`}
-                              >
+                              <p className={`font-medium ${getMoneyInColorClass(machine.drop || 0)}`}>
                                 ${(machine.drop || 0).toLocaleString()}
                               </p>
                             </div>
@@ -2383,7 +2389,7 @@ export default function MachinesTab() {
                                 Money In:
                               </span>
                               <span
-                                className={`font-medium ${getFinancialColorClass(
+                                className={`font-medium ${getMoneyInColorClass(
                                   machine.drop || 0
                                 )}`}
                               >
@@ -2395,7 +2401,7 @@ export default function MachinesTab() {
                                 Net Win:
                               </span>
                               <span
-                                className={`font-medium ${getFinancialColorClass(
+                                className={`font-medium ${getGrossColorClass(
                                   machine.netWin
                                 )}`}
                               >
@@ -2458,7 +2464,7 @@ export default function MachinesTab() {
                                 Money In:
                               </span>
                               <p
-                                className={`font-medium ${getFinancialColorClass(
+                                className={`font-medium ${getMoneyInColorClass(
                                   machine.drop || 0
                                 )}`}
                               >
@@ -2470,7 +2476,7 @@ export default function MachinesTab() {
                                 Net Win:
                               </span>
                               <p
-                                className={`font-medium ${getFinancialColorClass(
+                                className={`font-medium ${getGrossColorClass(
                                   machine.netWin
                                 )}`}
                               >

@@ -1,3 +1,15 @@
+/**
+ * Select Components
+ * Reusable select/dropdown component using Radix UI primitives.
+ *
+ * Features:
+ * - Select root, group, value components
+ * - SelectTrigger with chevron icon
+ * - SelectContent with portal
+ * - SelectItem, SelectLabel, SelectSeparator
+ * - Scroll buttons for long lists
+ * - Accessible and keyboard-friendly
+ */
 'use client';
 
 import * as React from 'react';
@@ -9,6 +21,10 @@ import {
 } from '@radix-ui/react-icons';
 
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Select Components
+// ============================================================================
 
 const Select = SelectPrimitive.Root;
 

@@ -1,8 +1,23 @@
+/**
+ * Movement Calculation Utilities
+ *
+ * Utility functions for calculating movement values from meter readings.
+ *
+ * Features:
+ * - Standard movement calculation
+ * - RAM Clear scenario handling
+ * - Gross calculation
+ * - Previous collection meter tracking
+ */
+
 import type {
   MovementCalculation,
   PreviousCollectionMeters,
 } from '@/lib/types/collections';
 
+// ============================================================================
+// Movement Calculation Functions
+// ============================================================================
 /**
  * Calculates movement values based on current and previous meters.
  * Handles both standard and RAM Clear scenarios.

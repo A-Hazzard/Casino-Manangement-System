@@ -1,5 +1,21 @@
+/**
+ * Liquid Gradient Component
+ * Animated liquid gradient background using canvas and blob physics.
+ *
+ * Features:
+ * - Animated blob physics
+ * - Color-based attraction/repulsion
+ * - Canvas-based rendering
+ * - Post-processing blur
+ * - Responsive canvas sizing
+ * - Fixed background positioning
+ */
 import { useRef, useEffect } from 'react';
 import type { Blob, RGBAColor } from '@/lib/types/components';
+
+// ============================================================================
+// Constants & Helper Functions
+// ============================================================================
 
 const BlobConfig = {
   transparency: 0.04, // just a whisper of color

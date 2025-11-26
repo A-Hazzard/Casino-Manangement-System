@@ -4,9 +4,18 @@
  * This utility provides the same movement calculation logic as the backend
  * to ensure consistency between frontend validation and backend creation.
  *
+ * Features:
+ * - Movement calculation matching backend logic
+ * - RAM clear handling
+ * - Previous collection meter tracking
+ * - Gross calculation
+ *
  * Uses the same logic as lib/utils/movementCalculation.ts
  */
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
 export interface MovementCalculation {
   metersIn: number;
   metersOut: number;
@@ -18,6 +27,9 @@ export interface PreviousCollectionMeters {
   metersOut: number;
 }
 
+// ============================================================================
+// Movement Calculation Functions
+// ============================================================================
 /**
  * Calculate movement values using the same logic as the backend calculateMovement function
  * This ensures frontend validation matches backend creation

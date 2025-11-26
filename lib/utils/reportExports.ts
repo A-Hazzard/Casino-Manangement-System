@@ -1,3 +1,17 @@
+/**
+ * Report Export Utilities
+ *
+ * Utility class for exporting various report types to CSV format.
+ *
+ * Features:
+ * - Daily counts report CSV export
+ * - Active customers report CSV export
+ * - Location statistics report CSV export
+ * - Machine performance report CSV export
+ * - Terminal counts report CSV export
+ * - Shared CSV download helper
+ */
+
 import { format } from 'date-fns';
 import type {
   DailyCountsReport,
@@ -7,6 +21,9 @@ import type {
   TerminalCountsReport,
 } from '@/lib/types/reports';
 
+// ============================================================================
+// Report Export Utility Class
+// ============================================================================
 export class ReportExportUtils {
   /**
    * Export Daily Counts Report to CSV

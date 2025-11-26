@@ -1,3 +1,19 @@
+/**
+ * Administration Page
+ *
+ * Main administration page for managing users, licensees, and system settings.
+ *
+ * Features:
+ * - Users section: View, create, edit, and delete users
+ * - Licensees section: View, create, edit, and delete licensees
+ * - Activity Logs section: View system activity logs
+ * - Feedback Management section: Manage user feedback
+ * - Role-based access control
+ * - Search and filter capabilities
+ * - Pagination
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 import DeleteUserModal from '@/components/administration/DeleteUserModal';
 import LicenseeCardSkeleton from '@/components/administration/LicenseeCardSkeleton';
@@ -60,11 +76,24 @@ import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import { hasTabAccess } from '@/lib/utils/permissions';
 import axios from 'axios';
 
+// ============================================================================
+// Page Components
+// ============================================================================
+/**
+ * Administration Page Content Component
+ * Handles all state management and data fetching for the administration page
+ */
 function AdministrationPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
   const { activeSection, handleSectionChange } = useAdministrationNavigation();
 
+  // ============================================================================
+  // Utility Functions
+  // ============================================================================
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = useCallback(() => {
     if (!user) return 'Unknown User';
@@ -98,8 +127,126 @@ function AdministrationPageContent() {
     return 'Unknown User';
   }, [user]);
 
+  // ============================================================================
+  // State Management
+  // ============================================================================
   // Prevent hydration mismatch by rendering content only on client
   const [mounted, setMounted] = useState(false);
+  
+  // Users section state
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allLoadedUsers, setAllLoadedUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [currentPage, setCurrentPage] = useState(0); // 0-indexed
+  const [searchValue, setSearchValue] = useState('');
+  const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
+  const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [usingBackendSearch, setUsingBackendSearch] = useState(false);
+  const [paginationMetadata, setPaginationMetadata] = useState<{
+    total: number;
+    totalPages: number;
+  } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey;
+    direction: 'ascending' | 'descending';
+  } | null>(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedUserToDelete, setSelectedUserToDelete] = useState<User | null>(
+    null
+  );
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [addUserForm, setAddUserForm] = useState<AddUserForm>({
+    roles: [],
+    allowedLocations: [],
+    licenseeIds: [],
+  });
+
+  // Licensees section state
+  const [allLicensees, setAllLicensees] = useState<Licensee[]>([]);
+  const [isLicenseesLoading, setIsLicenseesLoading] = useState(true);
+  const [licenseesLoadedBatches, setLicenseesLoadedBatches] = useState<
+    Set<number>
+  >(new Set([1]));
+  const [licenseesCurrentPage, setLicenseesCurrentPage] = useState(0); // 0-indexed
+  const [isAddLicenseeModalOpen, setIsAddLicenseeModalOpen] = useState(false);
+  const [isEditLicenseeModalOpen, setIsEditLicenseeModalOpen] = useState(false);
+  const [isDeleteLicenseeModalOpen, setIsDeleteLicenseeModalOpen] =
+    useState(false);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [isCountriesLoading, setIsCountriesLoading] = useState<boolean>(true);
+  const [selectedLicensee, setSelectedLicensee] = useState<Licensee | null>(
+    null
+  );
+  const [licenseeForm, setLicenseeForm] = useState<AddLicenseeForm>({});
+  const [licenseeSearchValue, setLicenseeSearchValue] = useState('');
+  const [isPaymentHistoryModalOpen, setIsPaymentHistoryModalOpen] =
+    useState(false);
+  const [selectedLicenseeForPayment, setSelectedLicenseeForPayment] =
+    useState<Licensee | null>(null);
+  const [createdLicensee, setCreatedLicensee] = useState<{
+    name: string;
+    licenseKey: string;
+  } | null>(null);
+  const [isLicenseeSuccessModalOpen, setIsLicenseeSuccessModalOpen] =
+    useState(false);
+  const [isPaymentConfirmModalOpen, setIsPaymentConfirmModalOpen] =
+    useState(false);
+  const [
+    selectedLicenseeForPaymentChange,
+    setSelectedLicenseeForPaymentChange,
+  ] = useState<Licensee | null>(null);
+
+  // Track which sections have been loaded
+  const [loadedSections, setLoadedSections] = useState<
+    Set<AdministrationSection>
+  >(new Set());
+
+  // ============================================================================
+  // Constants
+  // ============================================================================
+  const itemsPerPage = 10;
+  const itemsPerBatch = 50;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+  const licenseesItemsPerPage = 10;
+  const licenseesItemsPerBatch = 50;
+  const licenseesPagesPerBatch = licenseesItemsPerBatch / licenseesItemsPerPage; // 5
+
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
+  const countryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    countries.forEach(country => {
+      map.set(country._id, country.name);
+    });
+    return map;
+  }, [countries]);
+
+  const getCountryNameById = useCallback(
+    (countryId?: string) => {
+      if (!countryId) return '';
+      return countryNameById.get(countryId) || countryId;
+    },
+    [countryNameById]
+  );
+
+  // Calculate which batch corresponds to the current page for licensees
+  const calculateLicenseesBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / licenseesPagesPerBatch) + 1;
+    },
+    [licenseesPagesPerBatch]
+  );
+
+  // ============================================================================
+  // Effects - Initialization
+  // ============================================================================
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -136,7 +283,7 @@ function AdministrationPageContent() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [setCountries, setIsCountriesLoading]);
 
   // Initialize selectedLicencee if not set
   useEffect(() => {
@@ -144,129 +291,6 @@ function AdministrationPageContent() {
       setSelectedLicencee('');
     }
   }, [selectedLicencee, setSelectedLicencee]);
-
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  // Store all loaded users for frontend search
-  const [allLoadedUsers, setAllLoadedUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  // Separate loading state for backend search (doesn't show full skeleton)
-  const [isSearching, setIsSearching] = useState(false);
-
-  // Batch-based pagination state
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
-  const [currentPage, setCurrentPage] = useState(0); // 0-indexed
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
-  const [searchValue, setSearchValue] = useState('');
-  // Debounced search value for backend search
-  const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
-  // Role filter state
-  const [selectedRole, setSelectedRole] = useState<string>('all');
-
-  // Reset page when role filter changes
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [selectedRole]);
-  // Track if we're using backend search results
-  const [usingBackendSearch, setUsingBackendSearch] = useState(false);
-  // Store pagination metadata from API (used for search results)
-  const [paginationMetadata, setPaginationMetadata] = useState<{
-    total: number;
-    totalPages: number;
-  } | null>(null);
-
-  // URL protection for administration tabs - temporarily disabled for debugging
-  // useUrlProtection({
-  //   page: 'administration',
-  //   allowedTabs: ['users', 'licensees', 'activity-logs'],
-  //   defaultTab: 'users',
-  //   redirectPath: '/unauthorized',
-  // });
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey;
-    direction: 'ascending' | 'descending';
-  } | null>(null);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedUserToDelete, setSelectedUserToDelete] = useState<User | null>(
-    null
-  );
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [addUserForm, setAddUserForm] = useState<AddUserForm>({
-    roles: [],
-    allowedLocations: [],
-    licenseeIds: [],
-  });
-  const [allLicensees, setAllLicensees] = useState<Licensee[]>([]);
-  const [isLicenseesLoading, setIsLicenseesLoading] = useState(true);
-
-  // Batch-based pagination state for licensees
-  const [licenseesLoadedBatches, setLicenseesLoadedBatches] = useState<
-    Set<number>
-  >(new Set([1]));
-  const [licenseesCurrentPage, setLicenseesCurrentPage] = useState(0); // 0-indexed
-  const licenseesItemsPerPage = 10;
-  const licenseesItemsPerBatch = 50;
-  const licenseesPagesPerBatch = licenseesItemsPerBatch / licenseesItemsPerPage; // 5
-
-  // Calculate which batch corresponds to the current page for licensees
-  const calculateLicenseesBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / licenseesPagesPerBatch) + 1;
-    },
-    [licenseesPagesPerBatch]
-  );
-  const [isAddLicenseeModalOpen, setIsAddLicenseeModalOpen] = useState(false);
-  const [isEditLicenseeModalOpen, setIsEditLicenseeModalOpen] = useState(false);
-  const [isDeleteLicenseeModalOpen, setIsDeleteLicenseeModalOpen] =
-    useState(false);
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [isCountriesLoading, setIsCountriesLoading] = useState<boolean>(true);
-  const [selectedLicensee, setSelectedLicensee] = useState<Licensee | null>(
-    null
-  );
-  const [licenseeForm, setLicenseeForm] = useState<AddLicenseeForm>({});
-  const [licenseeSearchValue, setLicenseeSearchValue] = useState('');
-  const [isPaymentHistoryModalOpen, setIsPaymentHistoryModalOpen] =
-    useState(false);
-  const [selectedLicenseeForPayment, setSelectedLicenseeForPayment] =
-    useState<Licensee | null>(null);
-  const [createdLicensee, setCreatedLicensee] = useState<{
-    name: string;
-    licenseKey: string;
-  } | null>(null);
-  const [isLicenseeSuccessModalOpen, setIsLicenseeSuccessModalOpen] =
-    useState(false);
-  const [isPaymentConfirmModalOpen, setIsPaymentConfirmModalOpen] =
-    useState(false);
-  const [
-    selectedLicenseeForPaymentChange,
-    setSelectedLicenseeForPaymentChange,
-  ] = useState<Licensee | null>(null);
-
-  const countryNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    countries.forEach(country => {
-      map.set(country._id, country.name);
-    });
-    return map;
-  }, [countries]);
-
-  const getCountryNameById = useCallback(
-    (countryId?: string) => {
-      if (!countryId) return '';
-      return countryNameById.get(countryId) || countryId;
-    },
-    [countryNameById]
-  );
-
-  // Track which sections have been loaded
-  const [loadedSections, setLoadedSections] = useState<
-    Set<AdministrationSection>
-  >(new Set());
 
   // Track tab transition loading state
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
@@ -279,10 +303,12 @@ function AdministrationPageContent() {
     [pagesPerBatch]
   );
 
+  // Reset users data when licensee or status changes
   useEffect(() => {
     if (!mounted) return;
 
     setAllUsers([]);
+    setAllLoadedUsers([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     setLoadedSections(prev => {
@@ -294,7 +320,7 @@ function AdministrationPageContent() {
       updated.delete('users');
       return updated;
     });
-  }, [selectedLicencee, mounted]);
+  }, [selectedLicencee, selectedStatus, mounted, setAllUsers, setAllLoadedUsers, setLoadedBatches, setCurrentPage, setLoadedSections]);
 
   // Debounce search value
   useEffect(() => {
@@ -303,7 +329,7 @@ function AdministrationPageContent() {
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timer);
-  }, [searchValue]);
+  }, [searchValue, setDebouncedSearchValue]);
 
   // Reset backend search state when search is cleared
   useEffect(() => {
@@ -315,7 +341,7 @@ function AdministrationPageContent() {
       setAllUsers(allLoadedUsers);
       setCurrentPage(0);
     }
-  }, [debouncedSearchValue, allLoadedUsers]);
+  }, [debouncedSearchValue, allLoadedUsers, setUsingBackendSearch, setPaginationMetadata, setIsSearching, setAllUsers, setCurrentPage]);
 
   // Frontend search - search through loaded users first
   useEffect(() => {
@@ -357,7 +383,8 @@ function AdministrationPageContent() {
             1,
             itemsPerBatch,
             debouncedSearchValue,
-            'all' // Search all fields
+            'all', // Search all fields
+            selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
           );
           setAllUsers(result.users || []);
           setPaginationMetadata({
@@ -381,7 +408,13 @@ function AdministrationPageContent() {
     allLoadedUsers,
     activeSection,
     selectedLicencee,
+    selectedStatus,
     itemsPerBatch,
+    setAllUsers,
+    setCurrentPage,
+    setIsSearching,
+    setPaginationMetadata,
+    setUsingBackendSearch,
   ]);
 
   // Handle pagination for backend search results
@@ -404,7 +437,8 @@ function AdministrationPageContent() {
           currentPage1Indexed,
           itemsPerBatch,
           debouncedSearchValue,
-          'all' // Search all fields
+          'all', // Search all fields
+          selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
         );
         setAllUsers(result.users || []);
         setPaginationMetadata({
@@ -427,9 +461,13 @@ function AdministrationPageContent() {
     usingBackendSearch,
     debouncedSearchValue,
     selectedLicencee,
+    selectedStatus,
     itemsPerBatch,
     isLoading,
     activeSection,
+    setAllUsers,
+    setIsSearching,
+    setPaginationMetadata,
   ]);
 
   // Load users only when users tab is active and not already loaded (initial batch)
@@ -439,7 +477,14 @@ function AdministrationPageContent() {
         setIsLoading(true);
         try {
           // Use backend search if searchValue is provided
-          const result = await fetchUsers(selectedLicencee, 1, itemsPerBatch);
+          const result = await fetchUsers(
+            selectedLicencee,
+            1,
+            itemsPerBatch,
+            undefined,
+            'username',
+            selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
+          );
           setAllUsers(result.users || []);
           setAllLoadedUsers(result.users || []);
           setLoadedBatches(new Set([1]));
@@ -455,7 +500,7 @@ function AdministrationPageContent() {
       };
       loadUsers();
     }
-  }, [activeSection, selectedLicencee, loadedSections, itemsPerBatch]);
+  }, [activeSection, selectedLicencee, selectedStatus, loadedSections, itemsPerBatch, setAllUsers, setAllLoadedUsers, setIsLoading, setLoadedBatches, setLoadedSections]);
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
@@ -477,7 +522,14 @@ function AdministrationPageContent() {
     // This ensures the next batch is ready when user navigates to page 6
     if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
       setLoadedBatches(prev => new Set([...prev, nextBatch]));
-      fetchUsers(selectedLicencee, nextBatch, itemsPerBatch)
+      fetchUsers(
+        selectedLicencee,
+        nextBatch,
+        itemsPerBatch,
+        undefined,
+        'username',
+        selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
+      )
         .then(result => {
           setAllUsers(prev => {
             // Merge new data, avoiding duplicates
@@ -500,7 +552,14 @@ function AdministrationPageContent() {
     // Also ensure current batch is loaded
     if (!loadedBatches.has(currentBatch)) {
       setLoadedBatches(prev => new Set([...prev, currentBatch]));
-      fetchUsers(selectedLicencee, currentBatch, itemsPerBatch)
+      fetchUsers(
+        selectedLicencee,
+        currentBatch,
+        itemsPerBatch,
+        undefined,
+        'username',
+        selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
+      )
         .then(result => {
           setAllUsers(prev => {
             const existingIds = new Set(prev.map(item => item._id));
@@ -524,11 +583,15 @@ function AdministrationPageContent() {
     activeSection,
     loadedBatches,
     selectedLicencee,
+    selectedStatus,
     itemsPerBatch,
     pagesPerBatch,
     calculateBatchNumber,
     searchValue,
     debouncedSearchValue,
+    setAllUsers,
+    setAllLoadedUsers,
+    setLoadedBatches,
   ]);
 
   // Load licensees only when licensees tab is active and not already loaded (initial batch)
@@ -557,7 +620,7 @@ function AdministrationPageContent() {
       };
       loadLicensees();
     }
-  }, [activeSection, selectedLicencee, loadedSections, licenseesItemsPerBatch]);
+  }, [activeSection, selectedLicencee, loadedSections, licenseesItemsPerBatch, setAllLicensees, setIsLicenseesLoading, setLicenseesCurrentPage, setLicenseesLoadedBatches, setLoadedSections]);
 
   // Fetch next batch for licensees when crossing batch boundaries
   useEffect(() => {
@@ -630,6 +693,8 @@ function AdministrationPageContent() {
     licenseesItemsPerBatch,
     licenseesPagesPerBatch,
     calculateLicenseesBatchNumber,
+    setAllLicensees,
+    setLicenseesLoadedBatches,
   ]);
 
   // Check if current user is a developer
@@ -705,7 +770,7 @@ function AdministrationPageContent() {
     setSortConfig
   );
 
-  const handleEditUser = async (user: User) => {
+  const handleEditUser = useCallback(async (user: User) => {
     // Set loading state and open modal first
     setIsUserModalOpen(true);
     setSelectedUser(null); // Set to null initially to trigger loading state
@@ -726,14 +791,14 @@ function AdministrationPageContent() {
       toast.error('Failed to load user details');
       setIsUserModalOpen(false);
     }
-  };
+  }, [setIsUserModalOpen, setSelectedUser]);
 
-  const handleDeleteUser = (user: User) => {
+  const handleDeleteUser = useCallback((user: User) => {
     setSelectedUserToDelete(user);
     setIsDeleteModalOpen(true);
-  };
+  }, [setSelectedUserToDelete, setIsDeleteModalOpen]);
 
-  const handleSaveUser = async (
+  const handleSaveUser = useCallback(async (
     updated: Partial<User> & {
       password?: string;
       resourcePermissions: ResourcePermissions;
@@ -954,7 +1019,14 @@ function AdministrationPageContent() {
 
       // Refresh users with licensee filter
       setRefreshing(true);
-      const result = await fetchUsers(selectedLicencee, 1, itemsPerBatch);
+      const result = await fetchUsers(
+        selectedLicencee,
+        1,
+        itemsPerBatch,
+        undefined,
+        'username',
+        selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
+      );
       setAllUsers(result.users);
       setLoadedBatches(new Set([1]));
       setCurrentPage(0);
@@ -992,45 +1064,59 @@ function AdministrationPageContent() {
       toast.error(errorMessage);
       // Don't close modal on error - let user try again
     }
-  };
+  }, [selectedUser, user, getUserDisplayName, selectedLicencee, selectedStatus, itemsPerBatch, setRefreshing, setAllUsers, setLoadedBatches, setCurrentPage, setIsUserModalOpen, setSelectedUser]);
 
   // Add User modal handlers
   const openAddUserModal = () => {
     setAddUserForm({ roles: [], allowedLocations: [], licenseeIds: [] });
     setIsAddUserModalOpen(true);
   };
-  const closeAddUserModal = async () => {
+  const closeAddUserModal = useCallback(async () => {
     setIsAddUserModalOpen(false);
     // Refresh users data when modal is closed
     try {
-      const result = await fetchUsers(selectedLicencee, 1, itemsPerBatch);
+      const result = await fetchUsers(
+        selectedLicencee,
+        1,
+        itemsPerBatch,
+        undefined,
+        'username',
+        selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
+      );
       setAllUsers(result.users);
       setLoadedBatches(new Set([1]));
       setCurrentPage(0);
     } catch (error) {
       console.error('Failed to refresh users data:', error);
     }
-  };
-  const handleAddUserFormChange = (data: Partial<AddUserForm>) =>
-    setAddUserForm(prev => ({ ...prev, ...data }));
-  const handleSaveAddUser = async () => {
+  }, [selectedLicencee, itemsPerBatch, selectedStatus, setIsAddUserModalOpen, setAllUsers, setLoadedBatches, setCurrentPage]);
+  const handleAddUserFormChange = useCallback((data: Partial<AddUserForm>) =>
+    setAddUserForm(prev => ({ ...prev, ...data })), [setAddUserForm]);
+  const handleSaveAddUser = useCallback(async () => {
     await administrationUtils.userManagement.createNewUser(
       addUserForm,
       setIsAddUserModalOpen,
       async () => {
-        const result = await fetchUsers(selectedLicencee, 1, itemsPerBatch);
+        const result = await fetchUsers(
+          selectedLicencee,
+          1,
+          itemsPerBatch,
+          undefined,
+          'username',
+          selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
+        );
         setAllUsers(result.users);
         setLoadedBatches(new Set([1]));
         setCurrentPage(0);
       }
     );
-  };
+  }, [addUserForm, selectedLicencee, selectedStatus, itemsPerBatch, setIsAddUserModalOpen, setAllUsers, setLoadedBatches, setCurrentPage]);
 
   const handleOpenAddLicensee = () => {
     setLicenseeForm({});
     setIsAddLicenseeModalOpen(true);
   };
-  const handleSaveAddLicensee = async () => {
+  const handleSaveAddLicensee = useCallback(async () => {
     if (!licenseeForm.name || !licenseeForm.country) {
       toast.error('Name and country are required');
       return;
@@ -1134,8 +1220,8 @@ function AdministrationPageContent() {
           'Failed to add licensee'
       );
     }
-  };
-  const handleOpenEditLicensee = (licensee: Licensee) => {
+  }, [licenseeForm, user, getUserDisplayName, getCountryNameById, licenseesItemsPerBatch, setCreatedLicensee, setIsLicenseeSuccessModalOpen, setIsAddLicenseeModalOpen, setLicenseeForm, setIsLicenseesLoading, setAllLicensees, setLicenseesLoadedBatches, setLicenseesCurrentPage]);
+  const handleOpenEditLicensee = useCallback((licensee: Licensee) => {
     setSelectedLicensee(licensee);
     setLicenseeForm({
       _id: licensee._id,
@@ -1154,8 +1240,8 @@ function AdministrationPageContent() {
         : undefined,
     });
     setIsEditLicenseeModalOpen(true);
-  };
-  const handleSaveEditLicensee = async () => {
+  }, [setSelectedLicensee, setLicenseeForm, setIsEditLicenseeModalOpen]);
+  const handleSaveEditLicensee = useCallback(async () => {
     try {
       if (!selectedLicensee) return;
 
@@ -1271,12 +1357,12 @@ function AdministrationPageContent() {
       );
       // Don't close modal on error - let user try again
     }
-  };
-  const handleOpenDeleteLicensee = (licensee: Licensee) => {
+  }, [selectedLicensee, licenseeForm, user, getUserDisplayName, licenseesItemsPerBatch, setIsEditLicenseeModalOpen, setSelectedLicensee, setLicenseeForm, setIsLicenseesLoading, setAllLicensees, setLicenseesLoadedBatches, setLicenseesCurrentPage]);
+  const handleOpenDeleteLicensee = useCallback((licensee: Licensee) => {
     setSelectedLicensee(licensee);
     setIsDeleteLicenseeModalOpen(true);
-  };
-  const handleDeleteLicensee = async () => {
+  }, [setSelectedLicensee, setIsDeleteLicenseeModalOpen]);
+  const handleDeleteLicensee = useCallback(async () => {
     if (!selectedLicensee) return;
 
     const licenseeData = { ...selectedLicensee };
@@ -1352,7 +1438,7 @@ function AdministrationPageContent() {
           'Failed to delete licensee'
       );
     }
-  };
+  }, [selectedLicensee, user, getUserDisplayName, getCountryNameById, licenseesItemsPerBatch, setIsDeleteLicenseeModalOpen, setSelectedLicensee, setIsLicenseesLoading, setAllLicensees, setLicenseesLoadedBatches, setLicenseesCurrentPage]);
 
   const licenseesWithCountryNames = useMemo(() => {
     // Safety check: ensure allLicensees is always an array
@@ -1378,17 +1464,17 @@ function AdministrationPageContent() {
     );
   }, [licenseesWithCountryNames, licenseeSearchValue]);
 
-  const handlePaymentHistory = (licensee: Licensee) => {
+  const handlePaymentHistory = useCallback((licensee: Licensee) => {
     setSelectedLicenseeForPayment(licensee);
     setIsPaymentHistoryModalOpen(true);
-  };
+  }, [setSelectedLicenseeForPayment, setIsPaymentHistoryModalOpen]);
 
-  const handleTogglePaymentStatus = (licensee: Licensee) => {
+  const handleTogglePaymentStatus = useCallback((licensee: Licensee) => {
     setSelectedLicenseeForPaymentChange(licensee);
     setIsPaymentConfirmModalOpen(true);
-  };
+  }, [setSelectedLicenseeForPaymentChange, setIsPaymentConfirmModalOpen]);
 
-  const handleConfirmPaymentStatusChange = async () => {
+  const handleConfirmPaymentStatusChange = useCallback(async () => {
     if (!selectedLicenseeForPaymentChange) return;
 
     try {
@@ -1479,7 +1565,7 @@ function AdministrationPageContent() {
       }
       toast.error('Failed to update payment status');
     }
-  };
+  }, [selectedLicenseeForPaymentChange, user, getUserDisplayName, licenseesItemsPerBatch, setIsPaymentConfirmModalOpen, setSelectedLicenseeForPaymentChange, setIsLicenseesLoading, setAllLicensees, setLicenseesLoadedBatches, setLicenseesCurrentPage]);
 
   const renderSectionContent = useCallback(() => {
     const userRoles = user?.roles || [];
@@ -1726,6 +1812,8 @@ function AdministrationPageContent() {
           setSearchValue={setSearchValue}
           selectedRole={selectedRole}
           setSelectedRole={setSelectedRole}
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
         />
         <div className="block md:block xl:hidden">
           {isSearching ? (
@@ -1800,7 +1888,10 @@ function AdministrationPageContent() {
               const result = await fetchUsers(
                 selectedLicencee,
                 1,
-                itemsPerBatch
+                itemsPerBatch,
+                undefined,
+                'username',
+                selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
               );
               setAllUsers(result.users);
               setLoadedBatches(new Set([1]));
@@ -1861,7 +1952,10 @@ function AdministrationPageContent() {
               const result = await fetchUsers(
                 selectedLicencee,
                 1,
-                itemsPerBatch
+                itemsPerBatch,
+                undefined,
+                'username',
+                selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
               );
               setAllUsers(result.users);
               setLoadedBatches(new Set([1]));
@@ -1886,7 +1980,6 @@ function AdministrationPageContent() {
         />
       </>
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeSection,
     isLicenseesLoading,
@@ -1895,7 +1988,6 @@ function AdministrationPageContent() {
     processedUsers,
     sortConfig,
     licenseeSearchValue,
-    allUsers,
     searchValue,
     handleOpenEditLicensee,
     handleOpenDeleteLicensee,
@@ -1919,11 +2011,63 @@ function AdministrationPageContent() {
     selectedLicensee,
     selectedLicenseeForPayment,
     selectedLicenseeForPaymentChange,
-    fetchLicensees,
-    fetchUsers,
+    addUserForm,
+    closeAddUserModal,
+    countries,
+    createdLicensee,
+    currentPage,
+    getUserDisplayName,
+    handleAddUserFormChange,
+    handleSaveAddUser,
+    handleSaveUser,
+    isAddUserModalOpen,
+    isCountriesLoading,
+    isDeleteModalOpen,
+    isSearching,
+    isUserModalOpen,
+    selectedLicencee,
+    selectedRole,
+    selectedStatus,
+    selectedUser,
+    selectedUserToDelete,
+    setAllLicensees,
+    setAllUsers,
+    setCreatedLicensee,
+    setCurrentPage,
+    setIsAddLicenseeModalOpen,
+    setIsDeleteLicenseeModalOpen,
+    setIsDeleteModalOpen,
+    setIsEditLicenseeModalOpen,
+    setIsLicenseeSuccessModalOpen,
+    setIsPaymentConfirmModalOpen,
+    setIsPaymentHistoryModalOpen,
+    setIsUserModalOpen,
+    setLicenseeSearchValue,
+    setLicenseesCurrentPage,
+    setLicenseesLoadedBatches,
+    setLoadedBatches,
+    setSearchValue,
+    setSelectedLicenseeForPayment,
+    setSelectedLicenseeForPaymentChange,
+    setSelectedRole,
+    setSelectedStatus,
+    setSelectedUser,
+    setSelectedUserToDelete,
+    totalPages,
+    user?._id,
+    user?.roles,
+    licenseesItemsPerBatch,
+    itemsPerBatch,
   ]);
 
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
   if (!mounted) return null;
+
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <PageLayout
       mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"
@@ -1949,14 +2093,20 @@ function AdministrationPageContent() {
             onClick={async () => {
               setRefreshing(true);
               if (activeSection === 'users') {
+                setIsLoading(true);
                 const result = await fetchUsers(
                   selectedLicencee,
                   1,
-                  itemsPerBatch
+                  itemsPerBatch,
+                  undefined,
+                  'username',
+                  selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
                 );
                 setAllUsers(result.users);
+                setAllLoadedUsers(result.users);
                 setLoadedBatches(new Set([1]));
                 setCurrentPage(0);
+                setIsLoading(false);
               } else if (activeSection === 'licensees') {
                 const result = await fetchLicensees(1, licenseesItemsPerBatch);
                 setAllLicensees(
@@ -1988,14 +2138,20 @@ function AdministrationPageContent() {
             onClick={async () => {
               setRefreshing(true);
               if (activeSection === 'users') {
+                setIsLoading(true);
                 const result = await fetchUsers(
                   selectedLicencee,
                   1,
-                  itemsPerBatch
+                  itemsPerBatch,
+                  undefined,
+                  'username',
+                  selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
                 );
                 setAllUsers(result.users);
+                setAllLoadedUsers(result.users);
                 setLoadedBatches(new Set([1]));
                 setCurrentPage(0);
+                setIsLoading(false);
               } else if (activeSection === 'licensees') {
                 const result = await fetchLicensees(1, licenseesItemsPerBatch);
                 setAllLicensees(
@@ -2094,6 +2250,10 @@ function AdministrationPageContent() {
   );
 }
 
+/**
+ * Administration Page Component
+ * Thin wrapper that handles routing and authentication
+ */
 export default function AdministrationPage() {
   return (
     <ProtectedRoute requiredPage="administration">

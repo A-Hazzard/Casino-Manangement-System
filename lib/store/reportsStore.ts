@@ -1,3 +1,23 @@
+/**
+ * Reports Store
+ * Zustand store for managing comprehensive reporting features and analytics.
+ *
+ * Features:
+ * - Manages report views and navigation state
+ * - Tracks user permissions and access control
+ * - Handles dashboard widgets and real-time metrics
+ * - Manages report configuration and generated report data
+ * - Stores customer, voucher, and compliance metrics
+ * - Tracks performance comparisons across entities
+ * - Manages scheduled reports and user preferences
+ * - Handles report generation status and progress
+ * - Provides filter management (date ranges, locations, machines)
+ * - Controls UI state (sidebar, fullscreen, refresh intervals)
+ * - Includes data refresh actions for different report sections
+ * - SSR-safe with dummy state for server rendering
+ *
+ * @returns Zustand hook for accessing and updating reports state.
+ */
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type {
@@ -14,6 +34,10 @@ import type {
   ReportGenerationStatus,
   PerformanceComparison,
 } from '@/lib/types/reports';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type ReportsState = {
   // Current view and navigation
@@ -145,6 +169,10 @@ type ReportsActions = {
   refreshComplianceData: () => Promise<void>;
 };
 
+// ============================================================================
+// Constants
+// ============================================================================
+
 const initialState: ReportsState = {
   // Current view and navigation
   activeView: 'meters',
@@ -196,10 +224,62 @@ const initialState: ReportsState = {
   isMachineComparisonModalOpen: false,
 };
 
-export const useReportsStore = create<ReportsState & ReportsActions>()(
-  devtools(
-    (set, get) => ({
-      ...initialState,
+// ============================================================================
+// Store Creation
+// ============================================================================
+
+// Define a no-op version for SSR
+const dummyState: ReportsState & ReportsActions = {
+  ...initialState,
+  setActiveView: () => {},
+  setLoading: () => {},
+  setError: () => {},
+  updateDashboardWidgets: () => {},
+  updateRealTimeMetrics: () => {},
+  addDashboardWidget: () => {},
+  removeDashboardWidget: () => {},
+  reorderDashboardWidgets: () => {},
+  setReportConfig: () => {},
+  updateReportConfig: () => {},
+  clearReportConfig: () => {},
+  setReportData: () => {},
+  updateCustomerMetrics: () => {},
+  updateVoucherMetrics: () => {},
+  updateComplianceMetrics: () => {},
+  updatePerformanceComparisons: () => {},
+  addPerformanceComparison: () => {},
+  updateScheduledReports: () => {},
+  addScheduledReport: () => {},
+  updateScheduledReport: () => {},
+  deleteScheduledReport: () => {},
+  updateUserPreferences: () => {},
+  updateGenerationStatus: () => {},
+  clearGenerationStatus: () => {},
+  setDateRange: () => {},
+  setSelectedLocations: () => {},
+  setSelectedMachines: () => {},
+  addSelectedLocation: () => {},
+  removeSelectedLocation: () => {},
+  addSelectedMachine: () => {},
+  removeSelectedMachine: () => {},
+  clearAllFilters: () => {},
+  toggleSidebar: () => {},
+  setSidebarCollapsed: () => {},
+  toggleFullscreen: () => {},
+  setRefreshInterval: () => {},
+  setIsMachineComparisonModalOpen: () => {},
+  refreshAllData: async () => {},
+  refreshDashboard: async () => {},
+  refreshCustomerData: async () => {},
+  refreshVoucherData: async () => {},
+  refreshComplianceData: async () => {},
+};
+
+const createStore = () => {
+  return create<ReportsState & ReportsActions>()(
+    devtools(
+      (set, get) => ({
+        ...initialState,
 
       // Navigation actions
       setActiveView: view => set({ activeView: view }),
@@ -365,8 +445,24 @@ export const useReportsStore = create<ReportsState & ReportsActions>()(
         // Implementation would fetch compliance data from API
       },
     }),
-    {
-      name: 'reports-store',
-    }
-  )
-);
+      {
+        name: 'reports-store',
+      }
+    )
+  );
+};
+
+// Create the store conditionally
+let storeInstance: ReturnType<typeof createStore> | null = null;
+
+// Helper to ensure we use the same instance
+const getClientStore = () => {
+  if (!storeInstance) {
+    storeInstance = createStore();
+  }
+  return storeInstance;
+};
+
+// Use this store only on client side
+export const useReportsStore =
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

@@ -1,3 +1,12 @@
+/**
+ * Reports Constants
+ * Configuration for reports page tabs and navigation.
+ *
+ * Includes:
+ * - Reports tabs configuration (meters, locations, machines, logistics)
+ * - Tab icons, descriptions, and permission requirements
+ * Used by reports page components for consistent tab navigation.
+ */
 import type { ReportTab } from '@/lib/types';
 
 /**

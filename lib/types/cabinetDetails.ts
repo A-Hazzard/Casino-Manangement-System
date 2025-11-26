@@ -1,9 +1,15 @@
+/**
+ * Cabinet Details Types
+ * Types for cabinet details page functionality including metrics, filters, and sorting.
+ *
+ * Includes types for:
+ * - Metrics time filtering (day, week, month, year, custom)
+ * - Bill validator data and statistics
+ * - Cabinet sorting options and filters
+ * - Cabinet details display data
+ */
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { GamingMachine } from '@/shared/types/entities';
-
-/**
- * Types for cabinet details functionality
- */
 
 export type MetricsTimeFilter = {
   type: 'day' | 'week' | 'month' | 'year' | 'custom';

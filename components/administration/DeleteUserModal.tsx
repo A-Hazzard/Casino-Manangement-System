@@ -1,3 +1,20 @@
+/**
+ * Delete User Modal Component
+ * Confirmation modal for deleting a user with warning message.
+ *
+ * Features:
+ * - User deletion confirmation dialog
+ * - Warning message about permanent deletion
+ * - Loading state during deletion
+ * - GSAP animations for modal entrance/exit
+ * - User information display
+ * - Desktop and mobile responsive design
+ *
+ * @param open - Whether the modal is visible
+ * @param user - User object to delete
+ * @param onClose - Callback to close the modal
+ * @param onDelete - Callback when user is confirmed for deletion
+ */
 import { Button } from '@/components/ui/button';
 import type { DeleteUserModalProps } from '@/lib/types/administration';
 import gsap from 'gsap';

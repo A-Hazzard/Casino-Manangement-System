@@ -1,3 +1,16 @@
+/**
+ * Date Range Indicator Component
+ * Component for displaying the currently active date range filter.
+ *
+ * Features:
+ * - Displays active time period filter
+ * - Custom date range formatting
+ * - Time information display (when applicable)
+ * - Integration with dashboard store
+ * - Date formatting
+ *
+ * @param className - Additional CSS classes
+ */
 'use client';
 
 import React from 'react';

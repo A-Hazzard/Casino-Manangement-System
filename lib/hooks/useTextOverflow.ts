@@ -10,8 +10,14 @@ export function useTextOverflow(
   value: string,
   containerRef: RefObject<HTMLElement | null>
 ): boolean {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [isOverflowing, setIsOverflowing] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (!containerRef.current || !value) {
       setIsOverflowing(false);

@@ -1,8 +1,22 @@
+/**
+ * Database Utility Functions
+ *
+ * Utility functions for database operations and metric calculations.
+ *
+ * Features:
+ * - Meter data fetching
+ * - Metrics calculation from meter data
+ * - Database connection handling
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { dashboardData } from '@/lib/types';
 import type { MeterData } from '@shared/types';
 import { Meters as MeterModel } from '@/app/api/lib/models/meters';
 
+// ============================================================================
+// Database Query Functions
+// ============================================================================
 /**
  * Fetches all meter records from the database as plain JavaScript objects.
  *
@@ -29,6 +43,9 @@ export async function getAllMeters(): Promise<MeterData[]> {
   }
 }
 
+// ============================================================================
+// Metrics Calculation Functions
+// ============================================================================
 /**
  * Calculates the summary metrics from a list of meters.
  *

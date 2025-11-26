@@ -1,6 +1,23 @@
+/**
+ * Collection Report Utilities
+ *
+ * Utility functions for filtering, sorting, and paginating collection reports.
+ *
+ * Features:
+ * - Collection report filtering
+ * - Location-based filtering
+ * - Search functionality
+ * - Uncollected filter
+ * - Pagination calculations
+ * - Sorting utilities
+ */
+
 import type { CollectionReportRow } from '@/lib/types/componentProps';
 import type { LocationSelectItem } from '@/lib/types/location';
 
+// ============================================================================
+// Filtering Functions
+// ============================================================================
 /**
  * Filter collection reports based on location, search term, and uncollected filter
  */
@@ -46,6 +63,9 @@ export function filterCollectionReports(
   });
 }
 
+// ============================================================================
+// Pagination Functions
+// ============================================================================
 /**
  * Calculate pagination for collection reports
  */
@@ -72,6 +92,9 @@ export function calculatePagination<T>(
   };
 }
 
+// ============================================================================
+// Date Range Functions
+// ============================================================================
 /**
  * Set date range to last month for monthly report
  */
@@ -126,6 +149,9 @@ export function createPaginationHandlers(
   };
 }
 
+// ============================================================================
+// Formatting Functions
+// ============================================================================
 /**
  * Format currency for display
  */

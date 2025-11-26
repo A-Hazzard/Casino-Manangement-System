@@ -12,6 +12,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { LocationTableProps } from '@/lib/types/location';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { Eye } from 'lucide-react';
 
 import React from 'react';
@@ -144,10 +149,18 @@ const LocationTable: React.FC<LocationTableProps> = ({
                       })()}
                     </div>
                   </TableCell>
-                  <TableCell>{formatCurrency(loc.moneyIn || 0)}</TableCell>
-                  <TableCell>{formatCurrency(loc.moneyOut || 0)}</TableCell>
                   <TableCell>
-                    <span className="font-semibold text-green-600">
+                    <span className={`font-semibold ${getMoneyInColorClass(loc.moneyIn)}`}>
+                      {formatCurrency(loc.moneyIn || 0)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`font-semibold ${getMoneyOutColorClass(loc.moneyOut, loc.moneyIn)}`}>
+                      {formatCurrency(loc.moneyOut || 0)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`font-semibold ${getGrossColorClass(loc.gross)}`}>
                       {formatCurrency(loc.gross || 0)}
                     </span>
                   </TableCell>

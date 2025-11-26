@@ -15,6 +15,10 @@ export function useMembersTabContent({
   animations,
   tabComponents,
 }: UseMembersTabContentProps): UseMembersTabContentReturn {
+  // ============================================================================
+  // Methods
+  // ============================================================================
+
   // Get animation props for current tab
   const getTabAnimationProps = useCallback((): TabAnimationProps => {
     return {
@@ -39,6 +43,9 @@ export function useMembersTabContent({
     return tabComponents[activeTab];
   }, [activeTab, tabComponents]);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     getTabAnimationProps,
     isTabTransitioning,

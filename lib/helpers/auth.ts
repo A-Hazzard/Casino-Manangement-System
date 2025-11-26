@@ -1,3 +1,16 @@
+/**
+ * Authentication Helper Functions
+ *
+ * Provides helper functions for user authentication, including credential validation,
+ * JWT token generation, and password reset email functionality. It handles both
+ * email and username-based authentication and integrates with the JWT signing system.
+ *
+ * Features:
+ * - Validates user credentials (email or username) and generates JWT tokens.
+ * - Sends password reset emails with short-lived tokens.
+ * - Supports database context in JWT payloads for multi-tenant systems.
+ */
+
 import { SignJWT } from 'jose';
 import { getUserByEmail, getUserByUsername } from './users';
 import { sendEmail } from '../../lib/utils/email';
@@ -5,6 +18,10 @@ import type { UserAuthPayload } from '@/shared/types';
 import { comparePassword } from '../utils/password';
 import type { AuthResult } from '@/shared/types';
 import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
+
+// ============================================================================
+// User Authentication
+// ============================================================================
 
 /**
  * Validates user credentials and generates a JWT token on success.
@@ -58,6 +75,10 @@ export async function authenticateUser(
 
   return { success: true, token, user: userPayload };
 }
+
+// ============================================================================
+// Password Reset
+// ============================================================================
 
 /**
  * Sends a password reset email with a short-lived token.

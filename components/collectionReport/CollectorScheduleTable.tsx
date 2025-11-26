@@ -1,3 +1,18 @@
+/**
+ * Collector Schedule Table Component
+ * Desktop table view for displaying collector schedules.
+ *
+ * Features:
+ * - Collector schedule data display
+ * - Status badges
+ * - Date formatting
+ * - Loading states
+ * - Empty state handling
+ * - Responsive design (desktop only)
+ *
+ * @param data - Array of collector schedule rows
+ * @param loading - Whether data is loading
+ */
 import React from 'react';
 import {
   Table,

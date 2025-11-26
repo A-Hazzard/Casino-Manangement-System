@@ -1,3 +1,18 @@
+/**
+ * Date Range Picker Component
+ * Date range picker component with popover calendar and error boundary.
+ *
+ * Features:
+ * - Date range selection (start and end dates)
+ * - Popover calendar interface
+ * - Date formatting
+ * - Error boundary for error handling
+ * - Disabled state support
+ *
+ * @param value - Currently selected date range
+ * @param onChange - Callback to update selected date range
+ * @param disabled - Whether the picker is disabled
+ */
 import * as React from 'react';
 import { format } from 'date-fns';
 import {
@@ -14,6 +29,10 @@ import {
 import { Button } from '@/components/ui/button'; // Assuming you have shadcn/ui button
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils'; // For conditional class names
+
+// ============================================================================
+// Error Boundary
+// ============================================================================
 
 // Simple Error Boundary for DayPicker
 class ErrorBoundary extends React.Component<

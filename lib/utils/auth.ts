@@ -1,3 +1,16 @@
+/**
+ * Authentication Utilities
+ *
+ * JWT token generation, verification, and session management utilities.
+ *
+ * Features:
+ * - JWT access token generation and verification
+ * - Refresh token generation and verification
+ * - Session data management
+ * - Environment configuration helpers
+ * - Token expiration handling
+ */
+
 import type {
   JwtPayload,
   RefreshTokenPayload,
@@ -5,7 +18,12 @@ import type {
 } from '@/shared/types/auth';
 import { SignJWT, jwtVerify } from 'jose';
 
-// Environment configuration
+// ============================================================================
+// Environment Configuration
+// ============================================================================
+/**
+ * Get JWT secret from environment variables
+ */
 export function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -14,6 +32,9 @@ export function getJwtSecret(): string {
   return secret;
 }
 
+/**
+ * Get refresh token secret from environment variables
+ */
 export function getRefreshTokenSecret(): string {
   const secret = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
   if (!secret) {
@@ -34,7 +55,12 @@ export function getCurrentDbConnectionString(): string {
   return mongoUri;
 }
 
-// Token generation and verification
+// ============================================================================
+// Token Generation
+// ============================================================================
+/**
+ * Generate JWT access token
+ */
 export async function generateAccessToken(
   payload: Omit<JwtPayload, 'iat' | 'exp' | 'jti'>
 ): Promise<string> {
@@ -61,6 +87,9 @@ export async function generateAccessToken(
     .sign(new TextEncoder().encode(secret));
 }
 
+/**
+ * Generate refresh token
+ */
 export async function generateRefreshToken(
   userId: string,
   sessionId: string
@@ -82,6 +111,12 @@ export async function generateRefreshToken(
     .sign(new TextEncoder().encode(secret));
 }
 
+// ============================================================================
+// Token Verification
+// ============================================================================
+/**
+ * Verify access token
+ */
 export async function verifyAccessToken(
   token: string
 ): Promise<JwtPayload | null> {
@@ -98,6 +133,9 @@ export async function verifyAccessToken(
   }
 }
 
+/**
+ * Verify refresh token
+ */
 export async function verifyRefreshToken(
   token: string
 ): Promise<RefreshTokenPayload | null> {
@@ -114,7 +152,14 @@ export async function verifyRefreshToken(
   }
 }
 
-// Session management
+// Note: verifyAccessToken and verifyRefreshToken are already defined above
+
+// ============================================================================
+// Session Management
+// ============================================================================
+/**
+ * Create session data object
+ */
 export function createSessionData(
   userId: string,
   ipAddress: string,

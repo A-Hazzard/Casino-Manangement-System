@@ -6,6 +6,11 @@ import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow
 import { Database, MapPin, Eye, Pencil } from 'lucide-react';
 import { LocationCardData } from '@/lib/types/location';
 import formatCurrency from '@/lib/utils/currency';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { toast } from 'sonner';
 
 export default function LocationCard({
@@ -98,7 +103,7 @@ export default function LocationCard({
           <span className="font-medium">Money In</span>
           <CurrencyValueWithOverflow
             value={location.moneyIn ?? 0}
-            className="break-words text-right font-semibold text-foreground"
+            className={`break-words text-right font-semibold ${getMoneyInColorClass(location.moneyIn)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>
@@ -106,7 +111,7 @@ export default function LocationCard({
           <span className="font-medium">Money Out</span>
           <CurrencyValueWithOverflow
             value={location.moneyOut ?? 0}
-            className="break-words text-right font-semibold text-foreground"
+            className={`break-words text-right font-semibold ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>
@@ -116,9 +121,7 @@ export default function LocationCard({
         <span className="font-medium">Gross</span>
         <CurrencyValueWithOverflow
           value={location.gross ?? 0}
-          className={`break-words text-right font-semibold ${
-            (location.gross ?? 0) < 0 ? 'text-destructive' : 'text-button'
-          }`}
+          className={`break-words text-right font-semibold ${getGrossColorClass(location.gross)}`}
           formatCurrencyFn={formatCurrency}
         />
       </div>

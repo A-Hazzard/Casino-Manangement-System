@@ -1,5 +1,20 @@
+/**
+ * Date Utilities
+ *
+ * Utility functions for calculating date ranges based on time periods.
+ *
+ * Features:
+ * - Time period to date range conversion
+ * - UTC date calculations
+ * - Support for Today, Yesterday, 7d, 30d, All Time periods
+ * - Timezone-aware date handling
+ */
+
 import { CustomDate, TimePeriod } from '@/shared/types/common';
 
+// ============================================================================
+// Date Range Calculation
+// ============================================================================
 /**
  * Calculates the start and end dates for a specified time period based on a given timezone.
  * Uses timezone-aware date calculations for Trinidad time (UTC-4).

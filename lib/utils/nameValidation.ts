@@ -1,4 +1,18 @@
 /**
+ * Name Validation Utilities
+ *
+ * Utility functions for validating names and providing user-friendly error messages.
+ *
+ * Features:
+ * - Name character validation
+ * - User-friendly error messages
+ * - Regex-based validation
+ */
+
+// ============================================================================
+// Name Validation Functions
+// ============================================================================
+/**
  * Validates that a name contains only valid characters
  * @param name - The name to validate
  * @returns true if the name is valid, false otherwise

@@ -1,3 +1,18 @@
+/**
+ * Date Range Filter Component
+ * Date range picker component with popover calendar and apply/cancel buttons.
+ *
+ * Features:
+ * - Date range selection
+ * - Popover calendar interface
+ * - Apply and cancel buttons
+ * - Date formatting
+ * - Local state management
+ *
+ * @param dateRange - Current date range
+ * @param onApply - Callback when date range is applied
+ * @param className - Additional CSS classes
+ */
 'use client';
 
 import React, { useState, useEffect } from 'react';

@@ -1,3 +1,22 @@
+/**
+ * Profile Validation Gate Component
+ * Provider component that enforces profile validation and updates.
+ *
+ * Features:
+ * - Automatically evaluates user profile for invalid/missing fields
+ * - Shows ProfileValidationModal when profile needs updates
+ * - Handles profile update API calls
+ * - Validates password strength
+ * - Tracks licensee and location dependencies
+ * - Forces logout after successful profile update (sessionVersion increment)
+ * - Prevents modal reopening after successful update
+ * - Shows success/error toasts
+ * - Redirects to login after profile update
+ *
+ * This component acts as a gate that blocks access until profile is valid.
+ *
+ * @returns ProfileValidationModal when profile needs updates, null otherwise
+ */
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -18,6 +37,10 @@ import type {
   ProfileValidationModalData,
 } from '@/lib/types/profileValidation';
 
+// ============================================================================
+// Types & Constants
+// ============================================================================
+
 type ProfileUpdateResult = {
   success: boolean;
   invalidFields?: InvalidProfileFields;
@@ -30,6 +53,9 @@ const EMPTY_FIELDS: InvalidProfileFields = {};
 const EMPTY_REASONS: ProfileValidationReasons = {};
 
 export default function ProfileValidationGate() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const router = useRouter();
   const { user, setUser, clearUser } = useUserStore();
   const { refetch } = useCurrentUserQuery();
@@ -60,11 +86,17 @@ export default function ProfileValidationGate() {
   // Track if we just successfully updated to prevent re-evaluation
   const justUpdatedRef = useRef(false);
 
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   const hasInvalidFields = useMemo(() => {
     if (!invalidFields) return false;
     return Object.values(invalidFields).some(Boolean);
   }, [invalidFields]);
 
+  // ============================================================================
+  // Effects - Profile Validation Evaluation
+  // ============================================================================
   useEffect(() => {
     let cancelled = false;
 
@@ -185,7 +217,6 @@ export default function ProfileValidationGate() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     user?.username,
     user?.requiresProfileUpdate,
@@ -195,8 +226,16 @@ export default function ProfileValidationGate() {
     refetch,
     lastLoginPassword,
     clearLastLoginPassword,
+    setCurrentData,
+    setInvalidFields,
+    setFieldReasons,
+    setOpen,
+    user,
   ]);
 
+  // ============================================================================
+  // Event Handlers - Profile Update
+  // ============================================================================
   const handleUpdate = async (
     data: ProfileValidationFormData
   ): Promise<ProfileUpdateResult> => {
@@ -359,6 +398,9 @@ export default function ProfileValidationGate() {
     }
   };
 
+  // ============================================================================
+  // Render - Profile Validation Modal
+  // ============================================================================
   if (!open || !hasInvalidFields) {
     return null;
   }

@@ -1,14 +1,26 @@
 /**
- * Exchange rate helper functions for currency conversion
- * Only applies when "All Licensee" is selected
+ * Exchange Rate Helper Functions
+ *
+ * Provides helper functions for currency conversion and exchange rate management.
+ * Currency conversion only applies when "All Licensee" is selected. It handles
+ * conversion between USD (base currency) and other currencies (TTD, GYD, BBD),
+ * and provides utilities for currency formatting and display.
+ *
+ * Features:
+ * - Manages fixed exchange rates for USD, TTD, GYD, and BBD.
+ * - Maps licensees to their respective currencies.
+ * - Converts values between currencies (to/from USD, between currencies).
+ * - Provides currency symbols and names for display.
+ * - Formats amounts with currency symbols.
+ * - Handles currency conversion for financial data arrays.
  */
 
+import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import type {
   CurrencyCode,
   ExchangeRates,
   LicenseeCurrencyMapping,
 } from '@/shared/types/currency';
-import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 
 // Fixed exchange rates (USD as base currency)
 const FIXED_RATES: ExchangeRates = {
@@ -34,6 +46,10 @@ const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
   Barbados: 'BBD',
 };
 
+// ============================================================================
+// Currency Mapping Functions
+// ============================================================================
+
 /**
  * Get the currency for a specific licensee
  */
@@ -57,6 +73,10 @@ export function getCountryCurrency(countryName: string): CurrencyCode {
   return COUNTRY_CURRENCY_MAP[countryName] || 'USD';
 }
 
+// ============================================================================
+// Currency Conversion Logic
+// ============================================================================
+
 /**
  * Check if a licensee should have currency conversion applied
  */
@@ -67,29 +87,38 @@ export function shouldApplyConversion(
   return !licensee || licensee === 'all' || licensee === '';
 }
 
+// ============================================================================
+// Currency Conversion Functions
+// ============================================================================
+
 /**
  * Convert a value from a licensee's currency to USD
  */
-export function convertToUSD(value: number, licenseeOrCurrency: string): number {
+export function convertToUSD(
+  value: number,
+  licenseeOrCurrency: string
+): number {
   // Check if it's an actual currency code (must exist in FIXED_RATES)
   const isCurrencyCode = licenseeOrCurrency in FIXED_RATES;
-  
-  const sourceCurrency = isCurrencyCode 
+
+  const sourceCurrency = isCurrencyCode
     ? (licenseeOrCurrency as CurrencyCode)
     : getLicenseeCurrency(licenseeOrCurrency);
-  
+
   if (sourceCurrency === 'USD') {
     return value;
   }
 
   const rate = FIXED_RATES[sourceCurrency];
-  
+
   // Safety check: if rate is undefined, return original value without conversion
   if (!rate || isNaN(rate)) {
-    console.error(`⚠️ Currency conversion error: No rate found for ${sourceCurrency} (from ${licenseeOrCurrency})`);
+    console.error(
+      `⚠️ Currency conversion error: No rate found for ${sourceCurrency} (from ${licenseeOrCurrency})`
+    );
     return value;
   }
-  
+
   return value / rate;
 }
 
@@ -105,13 +134,15 @@ export function convertFromUSD(
   }
 
   const rate = FIXED_RATES[targetCurrency];
-  
+
   // Safety check: if rate is undefined, return original value without conversion
   if (!rate || isNaN(rate)) {
-    console.error(`⚠️ Currency conversion error: No rate found for ${targetCurrency}`);
+    console.error(
+      `⚠️ Currency conversion error: No rate found for ${targetCurrency}`
+    );
     return value;
   }
-  
+
   return value * rate;
 }
 
@@ -173,6 +204,10 @@ export function getCurrencyName(currency: CurrencyCode): string {
   return names[currency];
 }
 
+// ============================================================================
+// Currency Formatting Functions
+// ============================================================================
+
 /**
  * Format amount with currency symbol
  */
@@ -188,6 +223,10 @@ export function formatAmount(
 
   return `${symbol}${formatted}`;
 }
+
+// ============================================================================
+// Financial Data Conversion
+// ============================================================================
 
 /**
  * Convert financial data array with currency metadata

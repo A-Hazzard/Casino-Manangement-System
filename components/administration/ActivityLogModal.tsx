@@ -1,3 +1,20 @@
+/**
+ * Activity Log Modal Component
+ * Modal for displaying system-wide activity logs with filtering and grouping.
+ *
+ * Features:
+ * - Activity log display grouped by date ranges
+ * - Date range filtering
+ * - Action type icons (create, update, delete, payment, view)
+ * - Activity details modal integration
+ * - Loading states
+ * - GSAP animations
+ * - Activity grouping by time periods
+ * - Search and filter capabilities
+ *
+ * @param open - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ */
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { gsap } from 'gsap';
 import { Button } from '@/components/ui/button';
@@ -22,6 +39,10 @@ import { format } from 'date-fns';
 import { ReactNode } from 'react';
 import axios from 'axios';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 const getActionIcon = (actionType: string) => {
   switch (actionType.toLowerCase()) {

@@ -1,3 +1,17 @@
+/**
+ * Report Store
+ * Zustand store for managing report generation and configuration.
+ *
+ * Features:
+ * - Tracks report generation steps and progress
+ * - Manages report type selection and configuration
+ * - Stores available locations and machines for filtering
+ * - Handles report data and generation status
+ * - Provides error handling for report generation
+ * - SSR-safe with dummy state for server rendering
+ *
+ * @returns Zustand hook for accessing and updating report state.
+ */
 import { create } from 'zustand';
 import {
   ReportConfig,
@@ -6,6 +20,10 @@ import {
   ReportType,
 } from '@/lib/types/reports';
 import { CasinoLocation, GamingMachine } from '@/lib/types/reports';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type ReportStore = {
   // Step Management
@@ -37,6 +55,10 @@ type ReportStore = {
   setError: (error: string | null) => void;
 };
 
+// ============================================================================
+// Constants
+// ============================================================================
+
 const initialState = {
   currentStep: {
     id: 'selectType',
@@ -53,7 +75,26 @@ const initialState = {
   availableMachines: [],
 };
 
-export const useReportStore = create<ReportStore>(set => ({
+// ============================================================================
+// Store Creation
+// ============================================================================
+
+// Define a no-op version for SSR
+const dummyState: ReportStore = {
+  ...initialState,
+  setStep: () => {},
+  setReportType: () => {},
+  updateReportConfig: () => {},
+  resetReportConfig: () => {},
+  setAvailableLocations: () => {},
+  setAvailableMachines: () => {},
+  setReportData: () => {},
+  setIsGenerating: () => {},
+  setError: () => {},
+};
+
+const createStore = () => {
+  return create<ReportStore>(set => ({
   ...initialState,
 
   // Step Management
@@ -86,4 +127,20 @@ export const useReportStore = create<ReportStore>(set => ({
   setReportData: data => set({ reportData: data }),
   setIsGenerating: isGenerating => set({ isGenerating }),
   setError: error => set({ error }),
-}));
+  }));
+};
+
+// Create the store conditionally
+let storeInstance: ReturnType<typeof createStore> | null = null;
+
+// Helper to ensure we use the same instance
+const getClientStore = () => {
+  if (!storeInstance) {
+    storeInstance = createStore();
+  }
+  return storeInstance;
+};
+
+// Use this store only on client side
+export const useReportStore =
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

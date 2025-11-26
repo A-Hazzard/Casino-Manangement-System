@@ -1,3 +1,17 @@
+/**
+ * Chip Component
+ * Reusable chip component for displaying labels with optional remove functionality.
+ *
+ * Features:
+ * - Label display
+ * - Optional remove button
+ * - Accessible remove action
+ * - Consistent styling
+ *
+ * @param label - Chip label text
+ * @param onRemove - Optional callback when remove is clicked
+ * @param className - Additional CSS classes
+ */
 import React from 'react';
 import type { ChipProps } from '@/lib/types/components';
 

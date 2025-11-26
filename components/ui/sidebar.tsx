@@ -1,3 +1,15 @@
+/**
+ * Sidebar Components
+ * Reusable sidebar component with context provider for state management.
+ *
+ * Features:
+ * - SidebarProvider for global sidebar state
+ * - Open/closed state management
+ * - Collapsed/expanded state management
+ * - LocalStorage persistence
+ * - Responsive behavior (collapsed on mobile by default)
+ * - Context-based state sharing
+ */
 'use client';
 
 import { cn } from '@/lib/utils';
@@ -8,6 +20,10 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+
+// ============================================================================
+// Types & Context
+// ============================================================================
 
 type SidebarContextValue = {
   isOpen: boolean;

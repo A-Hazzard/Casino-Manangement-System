@@ -1,7 +1,21 @@
 /**
- * Session utility functions
- * Helper functions for formatting and processing session data
+ * Sessions Helper Functions
+ *
+ * Provides utility functions for formatting and processing session data,
+ * including currency formatting, duration formatting, date formatting,
+ * and query parameter building for session API calls.
+ *
+ * Features:
+ * - Formats currency amounts with fallback for undefined/null values.
+ * - Formats session duration in hours:minutes:seconds format.
+ * - Formats date strings for display.
+ * - Formats points/credits with fallback.
+ * - Builds API query parameters for session requests.
  */
+
+// ============================================================================
+// Formatting Functions
+// ============================================================================
 
 /**
  * Format currency amount with fallback for undefined/null values
@@ -56,6 +70,10 @@ export function formatPoints(points: number | undefined | null): string {
   if (points === null || points === undefined) return '0';
   return points.toLocaleString();
 }
+
+// ============================================================================
+// API Query Building
+// ============================================================================
 
 /**
  * Build API query parameters for sessions

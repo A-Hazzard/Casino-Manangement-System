@@ -1,11 +1,29 @@
 /**
  * Accounting Metrics Section Component
- * Handles the financial metrics display for cabinet accounting details
+ * Section component for displaying financial metrics with time period filtering.
+ *
+ * Features:
+ * - Financial metrics display (money in, money out, gross, jackpot, cancelled credits)
+ * - Time period filtering (Today, Yesterday, 7d, 30d, All Time, Custom)
+ * - Custom date range picker
+ * - Currency formatting
+ * - Loading skeleton states
+ * - Framer Motion animations
+ * - Responsive grid layout
+ *
+ * @param cabinetDetails - Cabinet object with financial data
+ * @param loading - Whether data is loading
+ * @param onTimePeriodChange - Callback when time period changes
+ * @param onCustomDateRangeChange - Callback when custom date range changes
  */
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -228,7 +246,7 @@ export const AccountingMetricsSection = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Money In</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className={`text-2xl font-bold ${getMoneyInColorClass(financialMetrics.moneyIn)}`}>
                 {shouldShowCurrency()
                   ? formatAmount(financialMetrics.moneyIn)
                   : formatCurrency(financialMetrics.moneyIn)}
@@ -245,7 +263,7 @@ export const AccountingMetricsSection = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Money Out</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className={`text-2xl font-bold ${getMoneyOutColorClass(financialMetrics.moneyOut, financialMetrics.moneyIn)}`}>
                 {shouldShowCurrency()
                   ? formatAmount(financialMetrics.moneyOut)
                   : formatCurrency(financialMetrics.moneyOut)}
@@ -263,11 +281,7 @@ export const AccountingMetricsSection = ({
             <div>
               <p className="text-sm font-medium text-gray-600">Net Win</p>
               <p
-                className={`text-2xl font-bold ${
-                  financialMetrics.netWin >= 0
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                }`}
+                className={`text-2xl font-bold ${getGrossColorClass(financialMetrics.netWin)}`}
               >
                 {shouldShowCurrency()
                   ? formatAmount(financialMetrics.netWin)

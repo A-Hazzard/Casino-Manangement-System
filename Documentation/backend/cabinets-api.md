@@ -999,7 +999,7 @@ const customBillData = await response.json();
 
 The Cabinets API integrates with the MQTT service for real-time SMIB communication:
 
-- **Service File**: `lib/services/mqttService.ts`
+- **Service File**: `app/api/lib/services/mqttService.ts`
 - **Connection**: Singleton MQTT client instance
 - **Topics**: Uses `sas/relay/[relayId]` for publishing, `smib/config` for responses
 - **QoS**: Default QoS 0 for configuration messages

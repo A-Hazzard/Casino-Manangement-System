@@ -1,3 +1,16 @@
+/**
+ * Command Components
+ * Reusable command palette component using cmdk library.
+ *
+ * Features:
+ * - Command root component
+ * - CommandDialog for modal command palette
+ * - CommandInput for search
+ * - CommandList, CommandEmpty, CommandGroup, CommandItem
+ * - CommandSeparator, CommandShortcut
+ * - Keyboard navigation
+ * - Search functionality
+ */
 'use client';
 
 import * as React from 'react';
@@ -7,6 +20,10 @@ import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+
+// ============================================================================
+// Command Components
+// ============================================================================
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,

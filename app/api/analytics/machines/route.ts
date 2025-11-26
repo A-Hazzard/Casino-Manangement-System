@@ -1,23 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
-import type { MachineAnalytics } from '@/lib/types/reports';
-import { PipelineStage } from 'mongoose';
-import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+/**
+ * Machine Analytics API Route
+ *
+ * This route handles fetching machine analytics data with role-based access control.
+ * It supports:
+ * - Filtering by location and licensee
+ * - Role-based location filtering
+ * - Sorting by total drop (highest performers first)
+ * - Pagination with limit
+ *
+ * @module app/api/analytics/machines/route
+ */
+
+import { getMachineAnalytics } from '@/app/api/lib/helpers/analytics';
+import {
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
+} from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching machine analytics
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Authenticate user and get accessible locations
+ * 4. Validate location access
+ * 5. Fetch machine analytics data
+ * 6. Return machine analytics
+ */
 export async function GET(request: NextRequest) {
-  try {
-    await connectDB();
-    const { searchParams } = new URL(request.url);
+  const startTime = Date.now();
 
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
+    const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get('limit')) || 5;
-    // Support both 'licensee' and 'licencee'
     const selectedLicensee =
       searchParams.get('licensee') || searchParams.get('licencee') || undefined;
     const selectedLocation = searchParams.get('location') || undefined;
 
-    // Derive allowed locations for current user (role-aware)
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 3: Authenticate user and get accessible locations
+    // ============================================================================
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
@@ -35,104 +69,53 @@ export async function GET(request: NextRequest) {
       userRoles
     );
 
+    // ============================================================================
+    // STEP 4: Validate location access
+    // ============================================================================
     if (allowedLocationIds !== 'all') {
-      // No allowed locations -> return empty list
       if (!Array.isArray(allowedLocationIds) || allowedLocationIds.length === 0) {
+        const duration = Date.now() - startTime;
+        if (duration > 1000) {
+          console.warn(`[Analytics Machines GET API] No access after ${duration}ms`);
+        }
         return NextResponse.json({ machines: [] });
       }
-      // If a specific location was requested, ensure it is allowed
+
       if (selectedLocation && !allowedLocationIds.includes(selectedLocation)) {
+        const duration = Date.now() - startTime;
+        if (duration > 1000) {
+          console.warn(`[Analytics Machines GET API] Location not accessible after ${duration}ms`);
+        }
         return NextResponse.json({ machines: [] });
       }
     }
 
-    const machinesPipeline: PipelineStage[] = [
-      // Stage 1: Filter machines by allowed locations (supports legacy field names)
-      ...(allowedLocationIds === 'all'
-        ? []
-        : [
-            {
-              $match: {
-                $or: [
-                  { locationId: { $in: allowedLocationIds } },
-                  { gamingLocation: { $in: allowedLocationIds } },
-                ],
-              },
-            } as PipelineStage,
-          ]),
-      // Stage 1b: Optional specific location filter (validated above)
-      ...(selectedLocation
-        ? [
-            {
-              $match: {
-                $or: [
-                  { locationId: selectedLocation },
-                  { gamingLocation: selectedLocation },
-                ],
-              },
-            } as PipelineStage,
-          ]
-        : []),
+    // ============================================================================
+    // STEP 5: Fetch machine analytics data
+    // ============================================================================
+    const machines = await getMachineAnalytics(
+      allowedLocationIds,
+      selectedLocation,
+      selectedLicensee,
+      limit
+    );
 
-      // Stage 2: Join machines with locations to get location details
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'locationId', // legacy field name support
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
-      },
-
-      // Stage 3: Flatten the location details array (each machine now has location info)
-      {
-        $unwind: '$locationDetails',
-      },
-
-      // Stage 4: Filter by licensee to ensure only relevant machines are included (if provided)
-      ...(selectedLicensee
-        ? [
-            {
-              $match: {
-                'locationDetails.rel.licencee': selectedLicensee,
-              },
-            } as PipelineStage,
-          ]
-        : []),
-
-      // Stage 5: Project only the fields needed for analytics
-      {
-        $project: {
-          _id: 1,
-          name: 1,
-          locationName: '$locationDetails.name',
-          totalDrop: 1,
-          gross: 1,
-          isOnline: 1,
-          hasSas: 1,
-        },
-      },
-
-      // Stage 6: Sort machines by total drop in descending order (highest performers first)
-      {
-        $sort: {
-          totalDrop: -1,
-        },
-      },
-    ];
-
-    if (limit) {
-      machinesPipeline.push({ $limit: limit });
+    // ============================================================================
+    // STEP 6: Return machine analytics
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Analytics Machines GET API] Completed in ${duration}ms`);
     }
-
-    const machines: MachineAnalytics[] =
-      await Machine.aggregate(machinesPipeline);
     return NextResponse.json({ machines });
   } catch (error: unknown) {
-    console.error('Error fetching machines:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal Server Error';
+    console.error(
+      `[Machine Analytics GET API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

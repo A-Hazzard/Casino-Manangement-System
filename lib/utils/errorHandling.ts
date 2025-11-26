@@ -1,5 +1,14 @@
 /**
- * Utility functions for handling errors gracefully in the application
+ * Error Handling Utilities
+ *
+ * Utility functions for handling errors gracefully in the application.
+ *
+ * Features:
+ * - Error classification and categorization
+ * - Retry logic with exponential backoff
+ * - User-friendly error messages
+ * - Timeout handling
+ * - Safe async function wrappers
  */
 
 import type { ApiError } from '@/lib/types/errors';
@@ -7,6 +16,9 @@ import type { ApiError } from '@/lib/types/errors';
 // Re-export for use in other files
 export type { ApiError };
 
+// ============================================================================
+// Error Classification
+// ============================================================================
 /**
  * Classify error types for better error handling
  */
@@ -112,6 +124,9 @@ export function classifyError(error: unknown): ApiError {
   };
 }
 
+// ============================================================================
+// Error Checking Functions
+// ============================================================================
 /**
  * Check if an error is retryable
  */
@@ -127,6 +142,9 @@ export function isRetryableError(error: ApiError): boolean {
   );
 }
 
+// ============================================================================
+// Error Message Helpers
+// ============================================================================
 /**
  * Get user-friendly error message
  */
@@ -162,6 +180,9 @@ export function getUserFriendlyErrorMessage(error: ApiError): string {
   return error.message || 'An unexpected error occurred. Please try again.';
 }
 
+// ============================================================================
+// Retry Logic
+// ============================================================================
 /**
  * Create a retry function with exponential backoff
  */
@@ -198,6 +219,9 @@ export function createRetryFunction<T>(
   };
 }
 
+// ============================================================================
+// Error Handling Functions
+// ============================================================================
 /**
  * Handle API errors with proper error classification
  */
@@ -215,6 +239,9 @@ export function handleApiError(error: unknown): ApiError {
   return classifiedError;
 }
 
+// ============================================================================
+// Promise Utilities
+// ============================================================================
 /**
  * Create a timeout promise that rejects after specified time
  */
@@ -231,6 +258,9 @@ export function createTimeoutPromise<T>(
   ]);
 }
 
+// ============================================================================
+// Safe Async Wrappers
+// ============================================================================
 /**
  * Safe async function wrapper that catches and handles errors
  */

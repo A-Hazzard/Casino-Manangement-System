@@ -1,3 +1,10 @@
+/**
+ * Custom Select Types
+ * Types for custom select dropdown components.
+ *
+ * Defines option structure and props for reusable custom select
+ * components with optional features, styling, and callbacks.
+ */
 export type SelectOption = {
   value: string;
   label: string;

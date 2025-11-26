@@ -1,3 +1,20 @@
+/**
+ * Machine Detail Page
+ *
+ * Displays detailed information about a specific machine/cabinet.
+ * This page is similar to the cabinet detail page but accessed via /machines route.
+ *
+ * Features:
+ * - Machine information display
+ * - SMIB configuration and management
+ * - Accounting details
+ * - Meter data section
+ * - OTA update section
+ * - Restart section
+ * - Role-based access control
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -35,7 +52,9 @@ import {
 // Extracted skeleton and error components
 import { CabinetDetailsLoadingState } from '@/components/ui/skeletons/CabinetDetailSkeletons';
 
-// Animation variants
+// ============================================================================
+// Animation Variants
+// ============================================================================
 const configContentVariants: Variants = {
   hidden: { opacity: 0, height: 0 },
   visible: { opacity: 1, height: 'auto' },
@@ -50,7 +69,13 @@ const itemVariants: Variants = {
   },
 };
 
-// Custom hook to safely handle client-side animations
+// ============================================================================
+// Custom Hooks
+// ============================================================================
+/**
+ * Custom hook to safely handle client-side animations
+ * Prevents hydration mismatches by only enabling animations after mount
+ */
 function useHasMounted() {
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -61,24 +86,39 @@ function useHasMounted() {
   return hasMounted;
 }
 
+// ============================================================================
+// Page Components
+// ============================================================================
+/**
+ * Machine Detail Page Content Component
+ * Handles all state management and data fetching for the machine detail page
+ */
 function CabinetDetailPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const slug = pathname.split('/').pop() || '';
-  const [isClient, setIsClient] = useState(false);
-  const hasMounted = useHasMounted();
-
   const {
     selectedLicencee,
     setSelectedLicencee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
+  const { openEditModal } = useCabinetActionsStore();
+  const hasMounted = useHasMounted();
 
-  // State for tracking date filter initialization
+  // ============================================================================
+  // State Management
+  // ============================================================================
+  const [isClient, setIsClient] = useState(false);
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
 
+  // ============================================================================
+  // Effects - Initialization
+  // ============================================================================
   // Detect when date filter is properly initialized
   useEffect(() => {
     if (activeMetricsFilter && !dateFilterInitialized) {
@@ -86,9 +126,9 @@ function CabinetDetailPageContent() {
     }
   }, [activeMetricsFilter, dateFilterInitialized]);
 
-  const { openEditModal } = useCabinetActionsStore();
-
-  // Custom hooks for data management
+  // ============================================================================
+  // Custom Hooks - Data Management
+  // ============================================================================
   const {
     cabinet,
     locationName,
@@ -307,7 +347,10 @@ function CabinetDetailPageContent() {
     }
   };
 
-  // 1. FIRST: If initial loading (no cabinet data yet), show skeleton loaders
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
+  // If initial loading (no cabinet data yet), show skeleton loaders
   if (!cabinet && !error) {
     return (
       <CabinetDetailsLoadingState
@@ -318,7 +361,7 @@ function CabinetDetailPageContent() {
     );
   }
 
-  // 2. SECOND: If there was an error, show appropriate error component
+  // If there was an error, show appropriate error component
   if (error) {
     return (
       <PageLayout
@@ -383,7 +426,9 @@ function CabinetDetailPageContent() {
     );
   }
 
-  // Main return statement should be here, AFTER all conditional returns
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <EditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
@@ -1239,6 +1284,10 @@ function CabinetDetailPageContent() {
   );
 }
 
+/**
+ * Machine Detail Page Component
+ * Thin wrapper that handles routing and authentication
+ */
 export default function CabinetDetailPage() {
   return (
     <ProtectedRoute requiredPage="machines">

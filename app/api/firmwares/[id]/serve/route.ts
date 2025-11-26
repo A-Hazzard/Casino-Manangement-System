@@ -1,30 +1,60 @@
+/**
+ * Firmware Serve API Route
+ *
+ * This route handles serving firmware files from GridFS.
+ * It supports:
+ * - Downloading firmware from GridFS to /public/firmwares/
+ * - Returning static URL for the firmware file
+ * - Auto-cleaning up files after 30 minutes
+ *
+ * @module app/api/firmwares/[id]/serve/route
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Firmware } from '@/app/api/lib/models/firmware';
-import fs from 'fs';
 import { GridFSBucket } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
 import path from 'path';
 
 /**
- * GET /api/firmwares/[id]/serve
- * Downloads firmware from GridFS to /public/firmwares/ and returns static URL
- * Auto-cleans up file after 30 minutes
+ * Main GET handler for serving firmware
+ *
+ * Flow:
+ * 1. Connect to database and initialize GridFS bucket
+ * 2. Parse and validate request parameters
+ * 3. Find firmware document
+ * 4. Create /public/firmwares directory if needed
+ * 5. Download firmware from GridFS
+ * 6. Write file to /public/firmwares/
+ * 7. Schedule auto-cleanup after 30 minutes
+ * 8. Return static URL
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database and initialize GridFS bucket
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       throw new Error('Database connection failed');
     }
-
     const bucket = new GridFSBucket(db, { bucketName: 'firmwares' });
+
+    // ============================================================================
+    // STEP 2: Parse and validate request parameters
+    // ============================================================================
     const { id } = await params;
 
-    // Find the firmware document
-    const firmwareDoc = await Firmware.findById(id).lean();
+    // ============================================================================
+    // STEP 3: Find firmware document
+    // ============================================================================
+    const firmwareDoc = await Firmware.findOne({ _id: id }).lean();
     if (!firmwareDoc) {
       return NextResponse.json(
         { error: 'Firmware not found' },
@@ -32,27 +62,24 @@ export async function GET(
       );
     }
 
-    // Type assertion for firmware document
     const firmware = firmwareDoc as unknown as {
       fileId: Parameters<typeof bucket.openDownloadStream>[0];
       fileName: string;
     };
 
-    console.log(
-      `📥 [FIRMWARE SERVE] Downloading ${firmware.fileName} from GridFS`
-    );
-
-    // Create /public/firmwares directory if it doesn't exist
+    // ============================================================================
+    // STEP 4: Create /public/firmwares directory if needed
+    // ============================================================================
     const firmwaresDir = path.join(process.cwd(), 'public', 'firmwares');
     if (!fs.existsSync(firmwaresDir)) {
       fs.mkdirSync(firmwaresDir, { recursive: true });
-      console.log(`📁 [FIRMWARE SERVE] Created directory: ${firmwaresDir}`);
     }
 
-    // Full path to save the file
     const filePath = path.join(firmwaresDir, firmware.fileName);
 
-    // Download from GridFS
+    // ============================================================================
+    // STEP 5: Download firmware from GridFS
+    // ============================================================================
     const downloadStream = bucket.openDownloadStream(firmware.fileId);
     const chunks: Buffer[] = [];
 
@@ -62,28 +89,34 @@ export async function GET(
 
     const buffer = Buffer.concat(chunks);
 
-    // Write to /public/firmwares/
+    // ============================================================================
+    // STEP 6: Write file to /public/firmwares/
+    // ============================================================================
     fs.writeFileSync(filePath, buffer);
-    console.log(`✅ [FIRMWARE SERVE] File saved to: ${filePath}`);
 
-    // Auto-cleanup after 30 minutes
+    // ============================================================================
+    // STEP 7: Schedule auto-cleanup after 30 minutes
+    // ============================================================================
     setTimeout(
       () => {
         try {
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
-            console.log(
-              `🗑️ [FIRMWARE SERVE] Auto-cleaned up: ${firmware.fileName}`
-            );
           }
         } catch (cleanupError) {
-          console.error(`❌ [FIRMWARE SERVE] Cleanup failed:`, cleanupError);
+          console.error('Firmware cleanup failed:', cleanupError);
         }
       },
       30 * 60 * 1000
-    ); // 30 minutes
+    );
 
-    // Return the static URL path
+    // ============================================================================
+    // STEP 8: Return static URL
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Firmware Serve API] Completed in ${duration}ms`);
+    }
     const staticUrl = `/firmwares/${firmware.fileName}`;
 
     return NextResponse.json({
@@ -93,10 +126,13 @@ export async function GET(
       size: buffer.length,
     });
   } catch (error) {
-    console.error('❌ [FIRMWARE SERVE] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to serve firmware' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to serve firmware';
+    console.error(
+      `[Firmware Serve API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -1,3 +1,18 @@
+/**
+ * Users Helper Functions
+ *
+ * Provides helper functions for user management, including CRUD operations,
+ * user lookup, data formatting, and activity logging. It handles all operations
+ * related to user accounts and their management.
+ *
+ * Features:
+ * - Finds users by email address or username (case-insensitive).
+ * - Formats user data for frontend consumption.
+ * - Retrieves all users from the database.
+ * - Creates, updates, and deletes users with activity logging.
+ * - Handles password hashing and user permissions.
+ */
+
 import { NextRequest } from 'next/server';
 import UserModel from '../../app/api/lib/models/user';
 import { hashPassword } from '../utils/password';
@@ -9,6 +24,10 @@ import type {
   UserDocumentWithPassword,
   OriginalUserType,
 } from '../types/users';
+
+// ============================================================================
+// User Lookup Functions
+// ============================================================================
 
 /**
  * Finds a user by email address (case-insensitive).
@@ -35,6 +54,10 @@ export async function getUserByUsername(
   });
 }
 
+// ============================================================================
+// User Data Formatting
+// ============================================================================
+
 /**
  * Formats user data for frontend consumption
  */
@@ -51,6 +74,10 @@ export function formatUsersForResponse(users: UserDocument[]) {
     profilePicture: user.profilePicture ?? null,
   }));
 }
+
+// ============================================================================
+// User Data Retrieval
+// ============================================================================
 
 /**
  * Retrieves all users from database
@@ -146,7 +173,8 @@ export async function updateUser(
   updateFields: Record<string, unknown>,
   request: NextRequest
 ) {
-  const user = await UserModel.findById(_id);
+  // CRITICAL: Use findOne with _id instead of findById (repo rule)
+  const user = await UserModel.findOne({ _id });
   if (!user) {
     throw new Error('User not found');
   }
@@ -182,8 +210,9 @@ export async function updateUser(
   console.log('[updateUser] Update operation:', JSON.stringify(updateOperation, null, 2));
 
   // Update user
-  const updatedUser = await UserModel.findByIdAndUpdate(
-    _id,
+  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+  const updatedUser = await UserModel.findOneAndUpdate(
+    { _id },
     updateOperation,
     { new: true }
   );
@@ -211,8 +240,9 @@ export async function updateUser(
  * Deletes a user with activity logging (soft delete)
  */
 export async function deleteUser(_id: string, request: NextRequest) {
-  const deletedUser = await UserModel.findByIdAndUpdate(
-    _id,
+  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+  const deletedUser = await UserModel.findOneAndUpdate(
+    { _id },
     {
       deletedAt: new Date(),
       updatedAt: new Date(),

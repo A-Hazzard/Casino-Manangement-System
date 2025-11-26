@@ -1,3 +1,14 @@
+/**
+ * Collections Types
+ * Types for collection modal, machine data, and collection operations.
+ *
+ * Includes types for:
+ * - Collection modal state and data
+ * - Machine financial data (meters in/out, money in/out)
+ * - Location and machine selection
+ * - Collection time management
+ * - Collection history and records
+ */
 export type Location = {
   _id: string;
   name: string;

@@ -1,3 +1,29 @@
+/**
+ * Custom Select Component
+ * Custom dropdown select component with search functionality and portal rendering.
+ *
+ * Features:
+ * - Single value selection
+ * - Searchable option filtering
+ * - Keyboard navigation
+ * - Portal rendering for proper z-index handling
+ * - Position calculation (top/bottom)
+ * - Focus management
+ * - Empty state handling
+ *
+ * Large component (~355 lines) handling custom select functionality.
+ *
+ * @param value - Currently selected value
+ * @param onValueChange - Callback when value changes
+ * @param options - Array of select options
+ * @param placeholder - Placeholder text
+ * @param disabled - Whether the select is disabled
+ * @param className - Additional CSS classes
+ * @param triggerClassName - CSS classes for trigger button
+ * @param contentClassName - CSS classes for dropdown content
+ * @param searchable - Whether options are searchable
+ * @param emptyMessage - Message to show when no options found
+ */
 'use client';
 
 import type { CustomSelectProps, SelectOption } from '@/lib/types/customSelect';

@@ -1,3 +1,18 @@
+/**
+ * Activity Log Date Filter Component
+ * Date filter component for activity logs with preset and custom date range options.
+ *
+ * Features:
+ * - Preset time period filters (Today, Yesterday, Last 7 Days, Last 30 Days, All Time, Custom)
+ * - Custom date range picker
+ * - Date range change callbacks
+ * - Time period change callbacks
+ * - Disabled state support
+ *
+ * @param onDateRangeChange - Callback when custom date range changes
+ * @param onTimePeriodChange - Callback when time period filter changes
+ * @param disabled - Whether controls are disabled
+ */
 'use client';
 
 import React, { useState } from 'react';

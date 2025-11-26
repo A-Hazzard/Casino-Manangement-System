@@ -1,24 +1,27 @@
+/**
+ * Metrics Helper Functions
+ *
+ * Provides helper functions for fetching and processing metric data from the API,
+ * including aggregation, grouping by day or hour, and filling missing intervals
+ * for consistent chart display. It handles various time periods and custom date ranges.
+ *
+ * Features:
+ * - Fetches metric data from the API with time period and date range filtering.
+ * - Supports licensee filtering and currency conversion.
+ * - Groups data by day or hour based on time period.
+ * - Fills missing intervals with zero values for consistent chart display.
+ * - Handles errors gracefully with comprehensive error handling.
+ */
+
 import { dashboardData } from '@/lib/types';
 import { TimePeriod } from '@shared/types';
 import axios from 'axios';
 import { formatISODate } from '@/shared/utils/dateFormat';
 
-/**
- * Fetches and aggregates metric data from the API endpoint.
- *
- * The function calls the `/api/metrics/meters` endpoint using a time period,
- * and optionally a Custom date range (startDate/endDate). It then normalizes the
- * data into the `dashboardData` shape, groups records by either day or by hour (if
- * the time period is "Today" or "Yesterday"), and finally sorts the results
- * chronologically.
- *
- * @param {TimePeriod} [timePeriod="7d"] - The time period to fetch metrics for.
- *                                     Options include "Today", "Yesterday",
- *                                     "7d", "30d", or "Custom" (when used with startDate/endDate).
- * @param {Date} [startDate] - The start date for a Custom date range (used when timePeriod is "Custom").
- * @param {Date} [endDate] - The end date for a Custom date range (used when timePeriod is "Custom").
- * @returns {Promise<dashboardData[]>} A promise that resolves to an array of aggregated dashboardData objects.
- */
+// ============================================================================
+// Metrics Data Fetching and Processing
+// ============================================================================
+
 /**
  * Fetches and aggregates metric data from the API endpoint.
  *
@@ -29,6 +32,7 @@ import { formatISODate } from '@/shared/utils/dateFormat';
  * @param startDate - (Optional) Start date for a custom range.
  * @param endDate - (Optional) End date for a custom range.
  * @param licencee - (Optional) Licencee ID to filter metrics.
+ * @param displayCurrency - (Optional) Currency code for display.
  * @returns Promise resolving to an array of aggregated dashboardData objects.
  */
 export async function getMetrics(
@@ -207,6 +211,10 @@ export async function getMetrics(
     return [];
   }
 }
+
+// ============================================================================
+// Data Processing and Interval Filling
+// ============================================================================
 
 /**
  * Fills missing time intervals in chart data with zero values

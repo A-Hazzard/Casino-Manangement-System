@@ -1,3 +1,14 @@
+/**
+ * Input Component
+ * Reusable input field component with consistent styling.
+ *
+ * Features:
+ * - Consistent styling across the application
+ * - Focus states and transitions
+ * - File input support
+ * - Disabled states
+ * - Responsive text sizing
+ */
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';

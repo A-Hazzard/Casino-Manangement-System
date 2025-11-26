@@ -1,4 +1,18 @@
 /**
+ * Performance Monitor Utility
+ *
+ * Simple performance monitoring utility for API endpoints.
+ *
+ * Features:
+ * - Operation timing
+ * - Performance logging
+ * - Sub-operation tracking
+ */
+
+// ============================================================================
+// PerformanceMonitor Class
+// ============================================================================
+/**
  * Simple performance monitoring utility for API endpoints
  */
 export class PerformanceMonitor {

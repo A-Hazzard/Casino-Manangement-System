@@ -1,3 +1,22 @@
+/**
+ * Machine Search Bar Component
+ * Search bar component for filtering machines in collection modals.
+ *
+ * Features:
+ * - Text search input
+ * - Clear button
+ * - Search icon
+ * - Result count display
+ * - Focus states and animations
+ * - Clean, non-buggy implementation
+ *
+ * @param value - Current search value
+ * @param onChange - Callback when search value changes
+ * @param onClear - Optional callback when search is cleared
+ * @param placeholder - Placeholder text
+ * @param resultCount - Number of filtered results
+ * @param totalCount - Total number of machines
+ */
 'use client';
 
 import { Search, X } from 'lucide-react';
@@ -12,10 +31,6 @@ type MachineSearchBarProps = {
   totalCount?: number;
 };
 
-/**
- * MachineSearchBar Component
- * Clean, non-buggy search bar for filtering machines
- */
 export const MachineSearchBar: React.FC<MachineSearchBarProps> = ({
   value,
   onChange,

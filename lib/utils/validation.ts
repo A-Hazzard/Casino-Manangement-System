@@ -1,9 +1,26 @@
+/**
+ * Validation Utilities
+ *
+ * Utility functions for validating user-related input such as emails,
+ * passwords, genders, and collection report payloads.
+ *
+ * Features:
+ * - Email format and pattern validation
+ * - Placeholder email detection
+ * - Password strength validation and feedback
+ * - Gender validation
+ * - Collection report payload validation helpers
+ */
+
 import { UserDocument } from '@/shared/types/auth';
 export const ALLOWED_GENDERS = ['male', 'female', 'other'] as const;
 export type AllowedGender = (typeof ALLOWED_GENDERS)[number];
 
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 
+// ============================================================================
+// Email Validation
+// ============================================================================
 /**
  * Validates if a string is a valid email address.
  *

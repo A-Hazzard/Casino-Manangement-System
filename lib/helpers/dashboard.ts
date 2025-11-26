@@ -75,7 +75,8 @@ export const loadGamingLocations = async (
 };
 
 /**
- * Fetches dashboard totals using the dedicated totals API
+ * Fetches dashboard totals using the location aggregation API (same as locations page)
+ * This ensures consistency between dashboard and locations page totals
  */
 export const fetchDashboardTotals = async (
   activeMetricsFilter: TimePeriod,
@@ -85,7 +86,7 @@ export const fetchDashboardTotals = async (
   displayCurrency?: string
 ) => {
   try {
-    let url = `/api/dashboard/totals?timePeriod=${activeMetricsFilter}`;
+    let url = `/api/locationAggregation?timePeriod=${activeMetricsFilter}`;
 
     if (
       activeMetricsFilter === 'Custom' &&
@@ -106,40 +107,45 @@ export const fetchDashboardTotals = async (
       url += `&currency=${displayCurrency}`;
     }
 
-    // Log the API call
-    console.warn('=== FETCH DASHBOARD TOTALS DEBUG ===');
-    console.warn('API URL:', url);
-    console.warn('Parameters:', {
-      activeMetricsFilter,
-      selectedLicencee,
-      displayCurrency,
-      customDateRange,
+    console.log('🔍 [fetchDashboardTotals] Calling API:', url);
+    const response = await axios.get(url);
+    const locationData = response.data;
+
+    console.log('🔍 [fetchDashboardTotals] API Response:', {
+      hasData: !!locationData.data,
+      dataLength: locationData.data?.length || 0,
+      firstFewLocations: (locationData.data || []).slice(0, 3).map((loc: { name?: string; locationName?: string; moneyIn?: number }) => ({
+        name: loc.name || loc.locationName,
+        moneyIn: loc.moneyIn
+      }))
     });
 
-    const response = await axios.get(url);
-    const totals = response.data;
+    // Sum up totals from all locations (same logic as locations page)
+    const totals = (locationData.data || []).reduce(
+      (acc: DashboardTotals, loc: { moneyIn?: number; moneyOut?: number; gross?: number }) => ({
+        moneyIn: acc.moneyIn + (loc.moneyIn || 0),
+        moneyOut: acc.moneyOut + (loc.moneyOut || 0),
+        gross: acc.gross + (loc.gross || 0),
+      }),
+      { moneyIn: 0, moneyOut: 0, gross: 0 }
+    );
 
-    // Log the response
-    console.warn('API Response:', {
+    console.log('🔍 [fetchDashboardTotals] Calculated Totals:', {
       moneyIn: totals.moneyIn,
       moneyOut: totals.moneyOut,
       gross: totals.gross,
-      currency: totals.currency,
-      converted: totals.converted,
+      locationCount: locationData.data?.length || 0
     });
 
     // Convert to DashboardTotals format
-    setTotals({
-      moneyIn: totals.moneyIn || 0,
-      moneyOut: totals.moneyOut || 0,
-      gross: totals.gross || 0,
-    });
+    setTotals(totals);
+    console.log('🔍 [fetchDashboardTotals] setTotals called with:', totals);
   } catch (error) {
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Dashboard Totals');
 
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error fetching dashboard totals:', error);
+      console.error('❌ [fetchDashboardTotals] Error fetching dashboard totals:', error);
     }
 
     setTotals(null);

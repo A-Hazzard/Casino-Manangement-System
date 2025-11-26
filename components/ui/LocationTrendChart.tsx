@@ -1,3 +1,26 @@
+/**
+ * Location Trend Chart Component
+ * Bar chart component displaying location trend data over time.
+ *
+ * Features:
+ * - Location trend data visualization
+ * - Multiple location support
+ * - Configurable data keys (handle, winLoss, jackpot, plays, drop, gross)
+ * - Hourly or daily time series
+ * - Recharts bar chart
+ * - Responsive design
+ * - Custom formatters
+ *
+ * @param title - Chart title
+ * @param icon - Icon element
+ * @param data - Array of location trend data
+ * @param dataKey - Data key to display
+ * @param locations - Array of location IDs
+ * @param locationNames - Mapping of location IDs to names
+ * @param colors - Array of colors for locations
+ * @param formatter - Value formatter function
+ * @param isHourly - Whether data is hourly
+ */
 import React from 'react';
 import {
   BarChart,

@@ -1,3 +1,19 @@
+/**
+ * Collection Issue Modal Component
+ * Modal for displaying collection report issues and their details.
+ *
+ * Features:
+ * - Issue type display with icons and colors
+ * - Issue description and details
+ * - Affected machine information
+ * - Issue severity indicators
+ * - Action buttons for resolving issues
+ * - Issue type configurations (inverted times, meter mismatches, SAS time issues)
+ *
+ * @param isOpen - Whether the modal is visible
+ * @param issue - Collection issue object to display
+ * @param onClose - Callback to close the modal
+ */
 import React from 'react';
 import {
   Dialog,
@@ -10,6 +26,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Clock, Database, RefreshCw } from 'lucide-react';
 import type { CollectionIssue } from '@/shared/types/entities';
+
+// ============================================================================
+// Types & Constants
+// ============================================================================
 
 interface CollectionIssueModalProps {
   isOpen: boolean;

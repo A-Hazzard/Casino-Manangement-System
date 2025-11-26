@@ -1,61 +1,82 @@
-import { mqttService } from '@/lib/services/mqttService';
+/**
+ * MQTT Config Publish API Route
+ *
+ * This route handles publishing configuration updates to SMIB devices via MQTT.
+ * It supports:
+ * - Validating config publish requests
+ * - Publishing config updates via MQTT service
+ *
+ * @module app/api/mqtt/config/publish/route
+ */
+
+import { validateMQTTConfigPublish } from '@/app/api/lib/helpers/mqtt';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * POST /api/mqtt/config/publish
- * Publish configuration updates to SMIB
+ * Main POST handler for publishing MQTT config
+ *
+ * Flow:
+ * 1. Parse request body
+ * 2. Validate request body
+ * 3. Publish config update via MQTT
+ * 4. Return success response
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const body = await request.json();
-    const { relayId, config } = body;
+    const { relayId, config } = body as {
+      relayId?: string;
+      config?: Record<string, unknown>;
+    };
 
-    console.warn(`📡 [API] Received publish request for relayId: ${relayId}`);
-    console.warn(`📡 [API] Config:`, config);
-
-    if (!relayId) {
+    // ============================================================================
+    // STEP 2: Validate request body
+    // ============================================================================
+    const validationError = validateMQTTConfigPublish(body);
+    if (validationError) {
       return NextResponse.json(
-        { success: false, error: 'relayId is required' },
+        { success: false, error: validationError },
         { status: 400 }
       );
     }
 
-    if (!config) {
-      return NextResponse.json(
-        { success: false, error: 'config object is required' },
-        { status: 400 }
-      );
+    // ============================================================================
+    // STEP 3: Publish config update via MQTT
+    // ============================================================================
+    await mqttService.publishConfig(relayId!, config!);
+
+    // ============================================================================
+    // STEP 4: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[MQTT Config Publish API] Completed in ${duration}ms`);
     }
-
-    // Validate config structure
-    if (!config.typ || !config.comp) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "config must include 'typ' and 'comp' fields",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Publish config update to SMIB via MQTT
-    console.warn(`📡 [API] Publishing config update to MQTT service...`);
-    await mqttService.publishConfig(relayId, config);
-    console.warn(`📡 [API] Config update published successfully`);
-
     return NextResponse.json({
       success: true,
-      message: `Config update published for ${config.comp} to relayId: ${relayId}`,
+      message: `Config update published for ${config!.comp} to relayId: ${relayId}`,
       relayId,
       config,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error publishing MQTT config:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[MQTT Config Publish API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

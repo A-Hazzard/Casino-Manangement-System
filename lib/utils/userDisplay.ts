@@ -1,11 +1,24 @@
+/**
+ * User Display Utilities
+ *
+ * Utility functions for deriving human-friendly display values for users.
+ *
+ * Features:
+ * - User display name derivation
+ * - Priority order: firstName + lastName -> username -> emailAddress
+ */
+
 import type { UserAuthPayload } from '@/shared/types/auth';
 
+// ============================================================================
+// Display Name Functions
+// ============================================================================
 /**
- * Gets the display name for a user based on their profile information
- * Priority: firstName + lastName -> username -> emailAddress
+ * Gets the display name for a user based on their profile information.
+ * Priority: firstName + lastName -> username -> emailAddress.
  *
- * @param user - The user object
- * @returns The display name for the user
+ * @param user - The user object.
+ * @returns The display name for the user.
  */
 export function getUserDisplayName(user: UserAuthPayload | null): string {
   if (!user) return 'Unknown User';

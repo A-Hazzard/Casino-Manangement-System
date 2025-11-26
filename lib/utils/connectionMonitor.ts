@@ -1,9 +1,21 @@
 /**
- * MongoDB connection monitoring and health check utilities
+ * Connection Monitor Utility
+ *
+ * MongoDB connection monitoring and health check utilities.
+ *
+ * Features:
+ * - Database operation monitoring
+ * - Connection statistics tracking
+ * - Health check functionality
+ * - Latency tracking
+ * - Performance warnings
  */
 
 import { Db } from 'mongodb';
 
+// ============================================================================
+// Types
+// ============================================================================
 type ConnectionStats = {
   totalConnections: number;
   activeConnections: number;
@@ -13,6 +25,9 @@ type ConnectionStats = {
   averageLatency: number;
 };
 
+// ============================================================================
+// ConnectionMonitor Class
+// ============================================================================
 class ConnectionMonitor {
   private stats: ConnectionStats = {
     totalConnections: 0,

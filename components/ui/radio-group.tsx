@@ -1,3 +1,15 @@
+/**
+ * Radio Group Components
+ * Reusable radio group component using Radix UI primitives.
+ *
+ * Features:
+ * - RadioGroup container
+ * - RadioGroupItem for individual options
+ * - Checked state indicators
+ * - Focus states
+ * - Disabled state support
+ * - Accessible implementation
+ */
 'use client';
 
 import * as React from 'react';
@@ -5,6 +17,10 @@ import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
 import { DotFilledIcon } from '@radix-ui/react-icons';
 
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Radio Group Components
+// ============================================================================
 
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,

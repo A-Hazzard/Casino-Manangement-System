@@ -1,3 +1,16 @@
+/**
+ * Dropdown Menu Components
+ * Reusable dropdown menu component using Radix UI primitives.
+ *
+ * Features:
+ * - DropdownMenu root, trigger, portal, group components
+ * - DropdownMenuContent with animations
+ * - DropdownMenuItem, DropdownMenuCheckboxItem, DropdownMenuRadioItem
+ * - DropdownMenuLabel, DropdownMenuSeparator
+ * - DropdownMenuSub for nested menus
+ * - Accessible and keyboard-friendly
+ * - Smooth animations
+ */
 'use client';
 
 import * as React from 'react';
@@ -5,6 +18,10 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Dropdown Menu Components
+// ============================================================================
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 

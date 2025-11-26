@@ -1,20 +1,37 @@
+/**
+ * Global Error Boundary Component
+ * Application-wide error boundary that catches and handles all errors.
+ *
+ * Features:
+ * - Catches React component errors
+ * - Handles global window errors
+ * - Catches unhandled promise rejections
+ * - Shows user-friendly error UI
+ * - Provides retry functionality
+ * - Logs errors in development mode
+ * - Can integrate with error reporting services (Sentry, LogRocket)
+ *
+ * @param children - Child components to wrap with error boundary
+ */
 "use client";
 
 import React, { useState, useEffect } from "react";
 import ErrorBoundary from "@/components/ui/errors/ErrorBoundary";
 import ConnectionError from "@/components/ui/errors/ConnectionError";
 
-/**
- * Global error boundary wrapper for the entire application
- * Handles both React errors and API connection errors
- */
 export default function GlobalErrorBoundary({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const [globalError, setGlobalError] = useState<Error | null>(null);
 
+  // ============================================================================
+  // Effects - Global Error Handlers
+  // ============================================================================
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       console.error("Global error caught:", event.error);
@@ -39,6 +56,10 @@ export default function GlobalErrorBoundary({
       );
     };
   }, []);
+
+  // ============================================================================
+  // Render - Error UI or Error Boundary Wrapper
+  // ============================================================================
 
   if (globalError) {
     return (

@@ -1,3 +1,10 @@
+/**
+ * Export Types
+ * Types for data export functionality.
+ *
+ * Re-exports shared export types and defines backend-specific
+ * export job types with status tracking and download URLs.
+ */
 import type {
   ExportFormat,
   ExportData,

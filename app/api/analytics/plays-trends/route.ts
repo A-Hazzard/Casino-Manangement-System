@@ -1,10 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { getDatesForTimePeriod } from '@/lib/utils/dates';
-import { TimePeriod } from '@/shared/types';
+/**
+ * Plays Trends Analytics API Route
+ *
+ * This route handles fetching plays trends data over time.
+ * It supports:
+ * - Filtering by time period
+ * - Optional filtering by licensee and location IDs
+ * - Hourly or daily aggregation based on time period
+ *
+ * @module app/api/analytics/plays-trends/route
+ */
 
+import { getPlaysTrends } from '@/app/api/lib/helpers/trends';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import type { TimePeriod } from '@/shared/types';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for fetching plays trends
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Fetch plays trends data
+ * 4. Return plays trends
+ */
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
+    const { searchParams } = new URL(req.url);
+    const timePeriod =
+      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+    const licencee = searchParams.get('licencee');
+    const locationIds = searchParams.get('locationIds');
+
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -13,90 +48,23 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(req.url);
-    const timePeriod =
-      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
-    const locationIds = searchParams.get('locationIds'); // Comma-separated location IDs
+    // ============================================================================
+    // STEP 3: Fetch plays trends data
+    // ============================================================================
+    const playsTrends = await getPlaysTrends(
+      db,
+      timePeriod,
+      licencee,
+      locationIds
+    );
 
-    // Get date range
-    const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
-
-    // Build aggregation pipeline
-    const pipeline = [
-      // Match meters for the time period
-      {
-        $match: {
-          readAt: { $gte: startDate, $lte: endDate },
-        },
-      },
-      // Lookup location details
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'location',
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
-      },
-      {
-        $unwind: '$locationDetails',
-      },
-      // Filter by licencee if provided
-      ...(licencee
-        ? [
-            {
-              $match: {
-                'locationDetails.rel.licencee': licencee,
-              },
-            },
-          ]
-        : []),
-      // Filter by specific locations if provided
-      ...(locationIds
-        ? [
-            {
-              $match: {
-                location: { $in: locationIds.split(',').map(id => id.trim()) },
-              },
-            },
-          ]
-        : []),
-      // Group by time period
-      {
-        $group: {
-          _id: {
-            $dateToString: {
-              format:
-                timePeriod === 'Today' || timePeriod === 'Yesterday'
-                  ? '%H:00'
-                  : '%Y-%m-%d',
-              date: '$readAt',
-            },
-          },
-          gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
-          count: { $sum: 1 },
-        },
-      },
-      // Sort by time
-      {
-        $sort: { _id: 1 },
-      },
-      // Project final format
-      {
-        $project: {
-          _id: 0,
-          time: '$_id',
-          gamesPlayed: '$gamesPlayed',
-        },
-      },
-    ];
-
-    const playsTrends = await db
-      .collection('meters')
-      .aggregate(pipeline)
-      .toArray();
-
+    // ============================================================================
+    // STEP 4: Return plays trends
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Analytics Plays Trends GET API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       data: playsTrends,
@@ -104,10 +72,13 @@ export async function GET(req: NextRequest) {
       locationIds: locationIds ? locationIds.split(',') : null,
     });
   } catch (error) {
-    console.error('Error fetching plays trends:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch plays trends' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch plays trends';
+    console.error(
+      `[Plays Trends Analytics GET API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

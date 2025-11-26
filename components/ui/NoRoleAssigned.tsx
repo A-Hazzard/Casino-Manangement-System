@@ -1,7 +1,20 @@
+/**
+ * No Role Assigned Component
+ * Alert component displayed when user has no role assigned.
+ *
+ * Features:
+ * - Error alert styling
+ * - Informative message
+ * - Contact information guidance
+ * - Centered layout
+ */
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export function NoRoleAssigned() {
+  // ============================================================================
+  // Render - Alert
+  // ============================================================================
   return (
     <div className="flex items-center justify-center min-h-[400px] p-6">
       <Alert className="max-w-2xl border-red-200 bg-red-50">

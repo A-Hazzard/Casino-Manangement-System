@@ -1,6 +1,24 @@
+/**
+ * Cabinets Page Utilities
+ *
+ * Utility functions for cabinet operations on the cabinets page.
+ *
+ * Features:
+ * - Cabinet online status checking
+ * - Communication mode extraction
+ * - Firmware version extraction
+ * - Cabinet display name formatting
+ * - SMIB configuration utilities
+ * - Currency and date formatting
+ * - Debounce function
+ */
+
 import { differenceInMinutes } from 'date-fns';
 import type { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 
+// ============================================================================
+// Cabinet Status Functions
+// ============================================================================
 /**
  * Check if cabinet is online based on last activity
  */
@@ -11,6 +29,9 @@ export function isCabinetOnline(cabinet: CabinetDetail): boolean {
   return differenceInMinutes(new Date(), lastActive) <= 3;
 }
 
+// ============================================================================
+// SMIB Configuration Functions
+// ============================================================================
 /**
  * Get communication mode from cabinet data
  */
@@ -44,6 +65,9 @@ export function getFirmwareVersion(cabinet: CabinetDetail): string {
   return 'Cloudy v1.0.4';
 }
 
+// ============================================================================
+// Cabinet Display Functions
+// ============================================================================
 /**
  * Get cabinet display name
  */
@@ -79,6 +103,9 @@ export function getCabinetLocationDisplay(cabinet: CabinetDetail): {
   };
 }
 
+// ============================================================================
+// SMIB ID Functions
+// ============================================================================
 /**
  * Get SMIB ID from cabinet data
  */
@@ -100,6 +127,9 @@ export function getFirmwareString(cabinet: CabinetDetail): string {
   return cabinet?.smibVersion?.firmware || 'FAC_v1-0-4(v1-0-4)';
 }
 
+// ============================================================================
+// Formatting Functions
+// ============================================================================
 /**
  * Format currency for display
  */
@@ -134,6 +164,9 @@ export function formatDateTime(date: Date): string {
   }).format(date);
 }
 
+// ============================================================================
+// Debounce Functions
+// ============================================================================
 /**
  * Debounce function for API calls
  */

@@ -799,6 +799,58 @@ export const fetchMachineEvents = async (machineId: string) => {
  * @param entryId - The ID of the entry to update or delete (required for 'update' and 'delete' operations).
  * @returns Promise resolving to success status.
  */
+/**
+ * Fetches cabinet/machine totals using the machines aggregation API
+ * This ensures consistency between cabinets page and other pages
+ * Similar to fetchDashboardTotals but for machines/cabinets
+ */
+export async function fetchCabinetTotals(
+  activeMetricsFilter: string,
+  customDateRange: { startDate: Date; endDate: Date } | undefined,
+  selectedLicencee: string | undefined,
+  displayCurrency?: string
+): Promise<{ moneyIn: number; moneyOut: number; gross: number } | null> {
+  try {
+    let url = `/api/machines/aggregation?timePeriod=${activeMetricsFilter}`;
+
+    if (
+      activeMetricsFilter === 'Custom' &&
+      customDateRange?.startDate &&
+      customDateRange?.endDate
+    ) {
+      const fromDate = customDateRange.startDate.toISOString().split('T')[0];
+      const toDate = customDateRange.endDate.toISOString().split('T')[0];
+      url += `&startDate=${fromDate}&endDate=${toDate}`;
+    }
+
+    if (selectedLicencee && selectedLicencee !== 'all') {
+      url += `&licensee=${selectedLicencee}`;
+    }
+
+    if (displayCurrency) {
+      url += `&currency=${displayCurrency}`;
+    }
+
+    const response = await axios.get(url);
+    const machineData = response.data.data || [];
+
+    // Sum up totals from all machines
+    const totals = machineData.reduce(
+      (acc: { moneyIn: number; moneyOut: number; gross: number }, machine: { moneyIn?: number; moneyOut?: number; gross?: number }) => ({
+        moneyIn: acc.moneyIn + (machine.moneyIn || 0),
+        moneyOut: acc.moneyOut + (machine.moneyOut || 0),
+        gross: acc.gross + (machine.gross || 0),
+      }),
+      { moneyIn: 0, moneyOut: 0, gross: 0 }
+    );
+
+    return totals;
+  } catch (error) {
+    console.error('Error fetching cabinet totals:', error);
+    return null;
+  }
+}
+
 export const updateMachineCollectionHistory = async (
   machineId: string,
   collectionHistoryEntry?: {

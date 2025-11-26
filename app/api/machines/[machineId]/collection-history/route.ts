@@ -1,31 +1,51 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../../lib/middleware/db';
+/**
+ * Machine Collection History API Route
+ *
+ * This route handles CRUD operations for machine collection history entries.
+ * It supports:
+ * - Adding new collection history entries
+ * - Updating existing entries
+ * - Deleting entries by ID or locationReportId
+ * - Managing collectionMetersHistory array on machine documents
+ *
+ * @module app/api/machines/[machineId]/collection-history/route
+ */
+
 import { Machine } from '@/app/api/lib/models/machines';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * Main PATCH handler for managing machine collection history
+ *
+ * Flow:
+ * 1. Parse route parameters and request body
+ * 2. Validate machine ID and operation
+ * 3. Connect to database
+ * 4. Find machine document
+ * 5. Initialize collectionMetersHistory if needed
+ * 6. Execute operation (add/update/delete)
+ * 7. Save machine document
+ * 8. Return success response
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ machineId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters and request body
+    // ============================================================================
     const { machineId } = await params;
     const body = await request.json();
     const { operation, entry, entryId } = body;
 
-    console.warn('Collection history API called:', {
-      machineId,
-      operation,
-      entry: entry
-        ? {
-            _id: entry._id,
-            metersIn: entry.metersIn,
-            metersOut: entry.metersOut,
-            locationReportId: entry.locationReportId,
-          }
-        : null,
-      entryId,
-    });
-
+    // ============================================================================
+    // STEP 2: Validate machine ID and operation
+    // ============================================================================
     if (!machineId) {
       return NextResponse.json(
         { success: false, error: 'Machine ID is required' },
@@ -43,10 +63,16 @@ export async function PATCH(
       );
     }
 
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Find the machine
-    const machine = await Machine.findById(machineId);
+    // ============================================================================
+    // STEP 4: Find machine document
+    // ============================================================================
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const machine = await Machine.findOne({ _id: machineId });
     if (!machine) {
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
@@ -54,11 +80,17 @@ export async function PATCH(
       );
     }
 
+    // ============================================================================
+    // STEP 5: Initialize collectionMetersHistory if needed
+    // ============================================================================
     // Initialize collectionMetersHistory if it doesn't exist
     if (!machine.collectionMetersHistory) {
       machine.collectionMetersHistory = [];
     }
 
+    // ============================================================================
+    // STEP 6: Execute operation (add/update/delete)
+    // ============================================================================
     let updated = false;
 
     switch (operation) {
@@ -126,7 +158,7 @@ export async function PATCH(
         break;
 
       case 'delete':
-        if (!entryId && !entry.locationReportId) {
+        if (!entryId && !entry?.locationReportId) {
           return NextResponse.json(
             {
               success: false,
@@ -145,7 +177,7 @@ export async function PATCH(
             (item: { _id: string | { toString(): string } }) =>
               String(item._id) === String(entryId)
           );
-        } else if (entry.locationReportId) {
+        } else if (entry?.locationReportId) {
           // Delete by locationReportId
           deleteIndex = machine.collectionMetersHistory.findIndex(
             (item: { locationReportId: string }) =>
@@ -165,20 +197,21 @@ export async function PATCH(
         break;
     }
 
+    // ============================================================================
+    // STEP 7: Save machine document
+    // ============================================================================
     if (updated) {
       // Save the updated machine
       await machine.save();
-      console.warn('Machine collection history updated successfully:', {
-        machineId,
-        operation,
-        newHistoryCount: machine.collectionMetersHistory.length,
-        latestEntry:
-          machine.collectionMetersHistory[
-            machine.collectionMetersHistory.length - 1
-          ],
-      });
     }
 
+    // ============================================================================
+    // STEP 8: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Machine Collection History API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       message: `Collection history ${operation} operation completed successfully`,
@@ -189,14 +222,21 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    console.error('Error updating machine collection history:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Machine Collection History API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         success: false,
-        error: 'Internal server error',
+        error: errorMessage,
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
   }
 }
+

@@ -1,3 +1,21 @@
+/**
+ * Activity Logs Search Bar Component
+ * Search bar for activity logs with mode selection dropdown.
+ *
+ * Features:
+ * - Text search input
+ * - Search mode selection (username, email, description, ID)
+ * - Dropdown for mode selection
+ * - Responsive design
+ * - Real-time search
+ *
+ * @param searchValue - Current search input value
+ * @param setSearchValue - Callback to update search value
+ * @param searchMode - Current search mode
+ * @param setSearchMode - Callback to update search mode
+ * @param searchDropdownOpen - Whether dropdown is open
+ * @param setSearchDropdownOpen - Callback to toggle dropdown
+ */
 import { MagnifyingGlassIcon, ChevronDownIcon } from '@radix-ui/react-icons';
 
 type ActivityLogsSearchBarProps = {
@@ -17,6 +35,9 @@ export default function ActivityLogsSearchBar({
   searchDropdownOpen,
   setSearchDropdownOpen,
 }: ActivityLogsSearchBarProps) {
+  // ============================================================================
+  // Render - Search Bar
+  // ============================================================================
   return (
     <div className="mt-6 rounded-t-lg bg-buttonActive p-3 md:p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">

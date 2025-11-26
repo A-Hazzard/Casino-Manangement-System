@@ -5,6 +5,11 @@ import gsap from 'gsap';
 import { useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils';
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { CabinetCardProps } from '@/lib/types/cardProps';
 import { motion } from 'framer-motion';
 import { Eye, Pencil, Trash2, ExternalLink } from 'lucide-react';
@@ -154,7 +159,7 @@ export default function CabinetCard(props: CabinetCardProps) {
           <span className="text-gray-500">Money In</span>
           <CurrencyValueWithOverflow
             value={props.moneyIn || 0}
-            className="font-medium"
+            className={`font-medium ${getMoneyInColorClass(props.moneyIn)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>
@@ -162,7 +167,7 @@ export default function CabinetCard(props: CabinetCardProps) {
           <span className="text-gray-500">Money Out</span>
           <CurrencyValueWithOverflow
             value={props.moneyOut || 0}
-            className="font-medium"
+            className={`font-medium ${getMoneyOutColorClass(props.moneyOut, props.moneyIn)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>
@@ -178,9 +183,7 @@ export default function CabinetCard(props: CabinetCardProps) {
           <span className="text-gray-500">Gross</span>
           <CurrencyValueWithOverflow
             value={props.gross || 0}
-            className={`font-medium ${
-              (props.gross || 0) < 0 ? 'text-red-500' : 'text-green-600'
-            }`}
+            className={`font-medium ${getGrossColorClass(props.gross)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>

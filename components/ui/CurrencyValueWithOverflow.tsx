@@ -14,6 +14,28 @@ type CurrencyValueWithOverflowProps = {
 };
 
 /**
+ * Currency Value With Overflow Component
+ * Component for displaying currency values with overflow handling and mobile popover.
+ *
+ * Features:
+ * - Currency value display with scaling (K, M)
+ * - Text overflow detection
+ * - Mobile popover for full value display
+ * - Custom currency formatting functions
+ * - Responsive text sizing
+ *
+ * @param value - Currency value to display
+ * @param className - Additional CSS classes
+ * @param formatCurrencyFn - Custom currency formatting function
+ * @param formatCurrencyWithScalingFn - Custom scaling formatter function
+ * @param currencyCode - Currency code for formatting
+ */
+
+// ============================================================================
+// Types & Helper Functions
+// ============================================================================
+
+/**
  * Helper function to create a scaling formatter
  */
 function createScalingFormatter(currencyCode: string = 'USD') {

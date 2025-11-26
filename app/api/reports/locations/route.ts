@@ -1,7 +1,25 @@
+/**
+ * Locations Report API Route
+ *
+ * This route handles fetching location reports with financial metrics and filtering.
+ * It supports:
+ * - Time period filtering (today, week, month, custom dates)
+ * - Licensee-based filtering
+ * - Location search
+ * - Currency conversion (Admin/Developer only for "All Licensees")
+ * - Role-based access control
+ * - Gaming day offset calculations
+ * - Pagination
+ * - Performance tracking
+ *
+ * @module app/api/reports/locations/route
+ */
+
 import {
   getUserAccessibleLicenseesFromToken,
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -9,17 +27,32 @@ import { getLicenseeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../lib/helpers/users';
 
-// Force recompilation to pick up rates.ts changes
-// Removed auto-index creation to avoid conflicts and extra latency
-
+/**
+ * Main GET handler for fetching locations report
+ *
+ * Flow:
+ * 1. Parse query parameters (timePeriod, licensee, currency, search, pagination)
+ * 2. Connect to database
+ * 3. Authenticate user and get permissions
+ * 4. Determine display currency
+ * 5. Get allowed location IDs using filter helper
+ * 6. Build location match filter
+ * 7. Fetch locations from database
+ * 8. Calculate gaming day ranges for locations
+ * 9. Aggregate financial metrics per location
+ * 10. Apply currency conversion if needed
+ * 11. Apply pagination
+ * 12. Return paginated location report
+ */
 export async function GET(req: NextRequest) {
-  // 🔍 PERFORMANCE: Start overall timer
   const perfStart = Date.now();
   const perfTimers: Record<string, number> = {};
 
   try {
+    // ============================================================================
+    // STEP 1: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
     // Support both 'licensee' and 'licencee' spelling for backwards compatibility
@@ -55,7 +88,9 @@ export async function GET(req: NextRequest) {
       customEndDate = new Date(customEnd);
     }
 
-    // 🔍 PERFORMANCE: Database connection
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     const dbConnectStart = Date.now();
     const db = await connectDB();
     perfTimers.dbConnect = Date.now() - dbConnectStart;
@@ -67,7 +102,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 🔍 PERFORMANCE: User authentication
+    // ============================================================================
+    // STEP 3: Authenticate user and get permissions
+    // ============================================================================
     const authStart = Date.now();
     const userPayload = await getUserFromServer();
     perfTimers.auth = Date.now() - authStart;
@@ -83,10 +120,11 @@ export async function GET(req: NextRequest) {
         }
       )?.['gaming-locations']?.resources || [];
 
-    // Get user's accessible licensees from token
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
 
-    // Determine an effective licensee for currency fallback
+    // ============================================================================
+    // STEP 4: Determine display currency
+    // ============================================================================
     let resolvedLicensee =
       licencee && licencee !== 'all' ? licencee : undefined;
     if (!resolvedLicensee && userAccessibleLicensees !== 'all') {
@@ -100,7 +138,9 @@ export async function GET(req: NextRequest) {
       displayCurrency = getLicenseeCurrency(resolvedLicensee);
     }
 
-    // Get allowed location IDs using the standard filter helper (handles intersection logic)
+    // ============================================================================
+    // STEP 5: Get allowed location IDs using filter helper
+    // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
       licencee || undefined,
@@ -108,7 +148,9 @@ export async function GET(req: NextRequest) {
       userRoles
     );
 
-    // Build location filter
+    // ============================================================================
+    // STEP 6: Build location match filter
+    // ============================================================================
     const locationMatchStage: Record<string, unknown> = {
       $or: [
         { deletedAt: null },
@@ -177,7 +219,9 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // 🔍 PERFORMANCE: Fetch locations
+    // ============================================================================
+    // STEP 7: Fetch locations from database
+    // ============================================================================
     const locationsStart = Date.now();
     const locations = await db
       .collection('gaminglocations')
@@ -194,7 +238,9 @@ export async function GET(req: NextRequest) {
       .toArray();
     perfTimers.fetchLocations = Date.now() - locationsStart;
 
-    // 🔍 PERFORMANCE: Calculate gaming day ranges
+    // ============================================================================
+    // STEP 8: Calculate gaming day ranges for locations
+    // ============================================================================
     const gamingDayStart = Date.now();
     const gamingDayRanges = getGamingDayRangesForLocations(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -208,7 +254,9 @@ export async function GET(req: NextRequest) {
     );
     perfTimers.gamingDayRanges = Date.now() - gamingDayStart;
 
-    // 🔍 PERFORMANCE: Process locations - OPTIMIZED WITH PARALLEL BATCHING
+    // ============================================================================
+    // STEP 9: Aggregate financial metrics per location
+    // ============================================================================
     const processingStart = Date.now();
     const locationResults = [];
 
@@ -555,7 +603,9 @@ export async function GET(req: NextRequest) {
 
     const paginatedData = paginatedResults;
 
-    // 🔍 PERFORMANCE: Currency conversion
+    // ============================================================================
+    // STEP 10: Apply currency conversion if needed
+    // ============================================================================
     const conversionStart = Date.now();
 
     // Apply currency conversion using the proper helper

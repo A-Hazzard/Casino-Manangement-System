@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { getCurrencyName, getCurrencySymbol } from '@/lib/helpers/rates';
+import { getCurrencySymbol } from '@/lib/helpers/rates';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { CurrencyCode } from '@/shared/types/currency';
 
@@ -44,7 +44,8 @@ export function CurrencyFilter({
   // is either an admin/developer or a non-admin with multiple licensees.
   const isAdminOrDev =
     userRoles.includes('admin') || userRoles.includes('developer');
-  const canShowSelector = isAllLicensee && (isAdminOrDev || hasMultipleLicensees);
+  const canShowSelector =
+    isAllLicensee && (isAdminOrDev || hasMultipleLicensees);
 
   if (!canShowSelector) {
     return null;
@@ -52,12 +53,6 @@ export function CurrencyFilter({
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <label
-        htmlFor="currency-select"
-        className="hidden text-sm font-medium text-gray-700 sm:block"
-      >
-        Currency:
-      </label>
       <Select
         value={displayCurrency}
         onValueChange={handleCurrencyChange}
@@ -65,23 +60,15 @@ export function CurrencyFilter({
       >
         <SelectTrigger
           id="currency-select"
-          className="h-8 w-24 text-sm sm:w-32"
+          className="h-8 w-auto min-w-[60px] text-sm"
           aria-label="Select currency"
         >
-          <SelectValue />
+          <SelectValue placeholder="USD" />
         </SelectTrigger>
         <SelectContent>
           {CURRENCY_OPTIONS.map(currency => (
             <SelectItem key={currency} value={currency}>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  {getCurrencySymbol(currency)}
-                </span>
-                <span className="text-sm text-gray-600">{currency}</span>
-                <span className="text-xs text-gray-500">
-                  {getCurrencyName(currency)}
-                </span>
-              </div>
+              {`${getCurrencySymbol(currency)} ${currency}`}
             </SelectItem>
           ))}
         </SelectContent>

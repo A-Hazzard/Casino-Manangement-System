@@ -1,3 +1,18 @@
+/**
+ * Activity Logger Helper Functions
+ *
+ * Provides helper functions for logging and retrieving activity logs in the system.
+ * It handles creating activity log entries, querying logs with filters, calculating
+ * changes between objects, and generating human-readable descriptions for activities.
+ *
+ * Features:
+ * - Logs user activities with actor, action type, entity, and change tracking.
+ * - Retrieves activity logs with filtering by entity type, action type, actor, and date range.
+ * - Calculates differences between old and new object states.
+ * - Generates human-readable descriptions for activity log entries.
+ * - Creates reusable activity logger functions bound to specific actors.
+ */
+
 import mongoose from 'mongoose';
 import { ActivityLog } from '../../app/api/lib/models/activityLog';
 import type {
@@ -7,6 +22,10 @@ import type {
   ActivityLogChange,
   ActivityLogQueryParams,
 } from '../types/activityLog';
+
+// ============================================================================
+// Activity Logging Operations
+// ============================================================================
 
 /**
  * Logs an activity to the database.
@@ -72,6 +91,10 @@ export async function logActivity(
   return activityLog.toObject();
 }
 
+// ============================================================================
+// Activity Log Retrieval
+// ============================================================================
+
 /**
  * Retrieves activity logs based on query parameters.
  *
@@ -134,6 +157,10 @@ export async function getActivityLogs(params: ActivityLogQueryParams): Promise<{
   };
 }
 
+// ============================================================================
+// Change Calculation Utilities
+// ============================================================================
+
 /**
  * Calculates changes between two objects.
  *
@@ -172,6 +199,10 @@ export function calculateChanges(
 
   return changes;
 }
+
+// ============================================================================
+// Description Generation
+// ============================================================================
 
 /**
  * Generates a human-readable description for an activity log.
@@ -226,6 +257,10 @@ export function generateDescription(
 
   return fallbackDescription;
 }
+
+// ============================================================================
+// Activity Logger Factory
+// ============================================================================
 
 /**
  * Creates an activity logger function for a specific actor.

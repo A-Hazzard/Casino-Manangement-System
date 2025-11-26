@@ -1,3 +1,15 @@
+/**
+ * Client Only Component
+ * Component that only renders its children on the client side.
+ *
+ * Features:
+ * - Prevents hydration mismatches
+ * - Fallback rendering during SSR
+ * - Mount state tracking
+ *
+ * @param children - Content to render on client side
+ * @param fallback - Fallback content to render during SSR
+ */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -8,6 +20,9 @@ type ClientOnlyProps = {
 };
 
 export default function ClientOnly({
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   children,
   fallback = null,
 }: ClientOnlyProps) {

@@ -1,11 +1,21 @@
 /**
- * Utility functions to provide default values for model fields
- * Ensures all required fields are present with appropriate default values
+ * Model Defaults Utilities
+ *
+ * Utility functions to provide default values for model fields.
+ *
+ * Features:
+ * - Machine model defaults
+ * - Collection model defaults
+ * - Generic model defaults application
+ * - Ensures all required fields are present with appropriate default values
  */
 
 import type { GamingMachine as MachineDocument } from '@/shared/types/entities';
 import type { CollectionDocument } from '@/lib/types/collections';
 
+// ============================================================================
+// Machine Defaults Functions
+// ============================================================================
 /**
  * Provides default values for Machine model fields
  */
@@ -192,6 +202,9 @@ export function getMachineDefaults(
   };
 }
 
+// ============================================================================
+// Collection Defaults Functions
+// ============================================================================
 /**
  * Provides default values for Collection model fields
  */
@@ -238,6 +251,9 @@ export function getCollectionDefaults(
   };
 }
 
+// ============================================================================
+// Generic Defaults Functions
+// ============================================================================
 /**
  * Generic function to apply defaults to any model data
  */

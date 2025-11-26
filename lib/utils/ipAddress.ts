@@ -1,5 +1,20 @@
+/**
+ * IP Address Utilities
+ *
+ * Utility functions for extracting and validating client IP addresses.
+ *
+ * Features:
+ * - IP address extraction from Next.js requests
+ * - Proxy header support (x-forwarded-for, x-real-ip, etc.)
+ * - Cloudflare support (cf-connecting-ip)
+ * - IP validation
+ */
+
 import { NextRequest } from 'next/server';
 
+// ============================================================================
+// IP Extraction Functions
+// ============================================================================
 /**
  * Extracts the client IP address from a Next.js request
  * Handles various proxy configurations and deployment environments
@@ -58,10 +73,9 @@ export function getClientIP(request: NextRequest): string | null {
   return null;
 }
 
-/**
- * Utility functions for IP address validation and formatting
- */
-
+// ============================================================================
+// IP Validation Functions
+// ============================================================================
 /**
  * Validates if a string is a valid IPv4 address
  */
@@ -86,6 +100,9 @@ export function isValidIP(ip: string): boolean {
   return isValidIPv4(ip) || isValidIPv6(ip);
 }
 
+// ============================================================================
+// IP Formatting Functions
+// ============================================================================
 /**
  * Formats an IP address for display
  */
@@ -133,6 +150,9 @@ export function maskIPAddress(ip: string): string {
   return 'Invalid IP';
 }
 
+// ============================================================================
+// IP Analysis Functions
+// ============================================================================
 /**
  * Checks if an IP address is a private/local address
  */
@@ -168,6 +188,9 @@ export function isPrivateIP(ip: string): boolean {
   return false;
 }
 
+// ============================================================================
+// IP Description Functions
+// ============================================================================
 /**
  * Gets a user-friendly IP address description
  *

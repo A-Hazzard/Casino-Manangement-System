@@ -171,6 +171,7 @@ export default function CircleCropModal({
               circularCrop
               className="max-h-96"
             >
+              {/* Using img instead of Next.js Image because react-image-crop requires direct HTMLImageElement ref access */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 ref={imgRef}

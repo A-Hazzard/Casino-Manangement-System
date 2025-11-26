@@ -1,3 +1,19 @@
+/**
+ * Date Time Picker Component
+ * Combined date and time picker component with popover calendar and time inputs.
+ *
+ * Features:
+ * - Date selection via calendar
+ * - Time selection via hour/minute/period inputs
+ * - Combined date-time value
+ * - Date and time formatting
+ * - Disabled state support
+ * - 12-hour format with AM/PM
+ *
+ * @param date - Currently selected date-time
+ * @param setDate - Callback to update selected date-time
+ * @param disabled - Whether the picker is disabled
+ */
 'use client';
 
 import * as React from 'react';

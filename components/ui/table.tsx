@@ -1,6 +1,22 @@
+/**
+ * Table Components
+ * Reusable table component with header, body, footer, and cell components.
+ *
+ * Features:
+ * - Table container with overflow handling
+ * - TableHeader, TableBody, TableFooter sections
+ * - TableRow, TableHead, TableCell components
+ * - TableCaption for accessibility
+ * - Centered/left alignment options
+ * - Hover and selected states
+ */
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Table Components
+// ============================================================================
 
 const Table = React.forwardRef<
   HTMLTableElement,

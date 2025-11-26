@@ -1,3 +1,16 @@
+/**
+ * Status Indicator Component
+ * Visual indicator for cabinet online/offline status on mobile.
+ *
+ * Features:
+ * - Online/offline status display
+ * - Animated status dot (pulsing for online)
+ * - Mobile-only display
+ * - Framer Motion animations
+ * - Color-coded status (green for online, red for offline)
+ *
+ * @param isOnline - Whether the cabinet is online
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 
@@ -8,6 +21,9 @@ type ExtendedStatusIndicatorProps = {
 const StatusIndicator: React.FC<ExtendedStatusIndicatorProps> = ({
   isOnline,
 }) => {
+  // ============================================================================
+  // Render - Status Indicator
+  // ============================================================================
   return (
     <motion.div
       className="mb-4 w-full rounded-md border border-border bg-container shadow md:hidden"

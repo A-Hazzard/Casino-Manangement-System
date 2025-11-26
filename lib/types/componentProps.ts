@@ -261,7 +261,7 @@ export type CollectionMobileUIProps = {
 };
 
 export type MonthlyDesktopUIProps = {
-  allLocationNames: string[];
+  locations: Array<{ id: string; name: string }>;
   monthlyLocation: string;
   onMonthlyLocationChange: (value: string) => void;
   pendingRange?: RDPDateRange;
@@ -281,7 +281,7 @@ export type MonthlyDesktopUIProps = {
 };
 
 export type MonthlyMobileUIProps = {
-  allLocationNames: string[];
+  locations: Array<{ id: string; name: string }>;
   monthlyLocation: string;
   onMonthlyLocationChange: (value: string) => void;
   pendingRange?: RDPDateRange;

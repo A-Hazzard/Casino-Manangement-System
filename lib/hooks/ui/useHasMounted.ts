@@ -6,8 +6,14 @@ import { useState, useEffect } from 'react';
  * @returns Boolean indicating if the component has mounted.
  */
 export function useHasMounted() {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [hasMounted, setHasMounted] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     setHasMounted(true);
   }, []);

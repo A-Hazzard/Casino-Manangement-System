@@ -1,28 +1,52 @@
+/**
+ * Location SMIB Restart API Route
+ *
+ * This route handles restarting all SMIBs at a specific location.
+ * It supports:
+ * - Restarting multiple SMIBs in parallel batches
+ * - Using relayIds from frontend MQTT discovery
+ * - Activity logging
+ * - Batch processing for efficiency
+ *
+ * @module app/api/locations/[locationId]/smib-restart/route
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { mqttService } from '@/lib/services/mqttService';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../../lib/helpers/users';
-import { connectDB } from '../../../lib/middleware/db';
 
 /**
- * POST /api/locations/[locationId]/smib-restart
- * Restart all SMIBs currently discovered via MQTT at a specific location
- * Uses relayIds from frontend (MQTT discovery), not database query
- * Processes in parallel batches of 10 for efficiency
+ * Main POST handler for restarting SMIBs at a location
+ *
+ * Flow:
+ * 1. Parse route parameters and request body
+ * 2. Validate relayIds
+ * 3. Connect to database
+ * 4. Remove duplicate relayIds
+ * 5. Process restart commands in batches
+ * 6. Log activity
+ * 7. Return results
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ locationId: string }> }
 ) {
-  try {
-    const { locationId } = await params;
-    await connectDB();
+  const startTime = Date.now();
 
-    // Get relayIds from request body (sent from frontend MQTT discovery)
+  try {
+    // ============================================================================
+    // STEP 1: Parse route parameters and request body
+    // ============================================================================
+    const { locationId } = await params;
     const body = await request.json();
     const relayIds = body.relayIds as string[];
 
+    // ============================================================================
+    // STEP 2: Validate relayIds
+    // ============================================================================
     if (!relayIds || relayIds.length === 0) {
       return NextResponse.json(
         {
@@ -33,12 +57,19 @@ export async function POST(
       );
     }
 
-    console.log(
-      `🔄 [API] Restarting ${relayIds.length} SMIBs at location ${locationId}`
-    );
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
+    await connectDB();
 
-    // Remove duplicates (in case frontend sends duplicates)
+    // ============================================================================
+    // STEP 4: Remove duplicate relayIds
+    // ============================================================================
     const uniqueRelayIds = Array.from(new Set(relayIds));
+
+    // ============================================================================
+    // STEP 5: Process restart commands in batches
+    // ============================================================================
 
     const results = {
       total: uniqueRelayIds.length,
@@ -57,20 +88,20 @@ export async function POST(
           try {
             await mqttService.restartSmib(relayId);
             results.successful++;
-            console.log(`✅ [API] Restart sent to SMIB: ${relayId}`);
           } catch (error) {
             results.failed++;
             results.errors.push({
               relayId,
               error: error instanceof Error ? error.message : 'Unknown error',
             });
-            console.error(`❌ [API] Failed to restart SMIB ${relayId}:`, error);
           }
         })
       );
     }
 
-    // Log activity
+    // ============================================================================
+    // STEP 6: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     const clientIP = getClientIP(request);
 
@@ -100,15 +131,24 @@ export async function POST(
       }
     }
 
+    // ============================================================================
+    // STEP 7: Return results
+    // ============================================================================
     return NextResponse.json({
       success: results.failed === 0,
       message: `Restart commands sent to ${results.successful} SMIBs${results.failed > 0 ? ` (${results.failed} failed)` : ''}`,
       results,
     });
   } catch (error) {
-    console.error('❌ Error in location SMIB restart endpoint:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Location SMIB Restart API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

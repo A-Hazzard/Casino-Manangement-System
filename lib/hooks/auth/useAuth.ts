@@ -13,9 +13,15 @@ import type { UseAuthReturn } from '@/lib/types/auth';
  * @returns AuthState object with user data
  */
 export function useAuth(): UseAuthReturn {
+  // ============================================================================
+  // State
+  // ============================================================================
   const { user, setUser } = useUserStore();
   const [isLoading, setIsLoading] = useState(true);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     const initializeAuth = async () => {
       if (!user) {
@@ -44,6 +50,9 @@ export function useAuth(): UseAuthReturn {
     initializeAuth();
   }, [user, setUser]);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     user: user as UserAuthPayload | null,
     isLoading,

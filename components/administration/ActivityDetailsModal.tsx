@@ -1,3 +1,21 @@
+/**
+ * Activity Details Modal Component
+ * Modal for displaying detailed information about an activity log entry.
+ *
+ * Features:
+ * - Detailed activity log information display
+ * - Change tracking with old/new value comparison
+ * - ID resolution to human-readable names
+ * - IP address information and description
+ * - Date and time formatting
+ * - Field name formatting
+ * - GSAP animations
+ * - User and resource information
+ *
+ * @param open - Whether the modal is visible
+ * @param activity - Activity log entry to display details for
+ * @param onClose - Callback to close the modal
+ */
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, User, Building2, Calendar, Clock } from 'lucide-react';

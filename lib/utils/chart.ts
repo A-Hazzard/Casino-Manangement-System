@@ -1,11 +1,24 @@
 /**
- * Chart utility functions for rendering and calculating chart data
+ * Chart Utility Functions
+ *
+ * Utility functions for rendering and calculating chart data.
+ *
+ * Features:
+ * - Pie chart label calculations
+ * - Chart positioning utilities
+ * - Label formatting
  */
 
 import { CustomizedLabelProps } from '@/lib/types/componentProps';
 
+// ============================================================================
+// Constants
+// ============================================================================
 const RADIAN = Math.PI / 180;
 
+// ============================================================================
+// Chart Calculation Functions
+// ============================================================================
 /**
  * Calculates pie chart label data based on props
  * @param props - Chart props containing positioning data

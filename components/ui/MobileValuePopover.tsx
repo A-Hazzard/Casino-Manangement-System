@@ -1,3 +1,18 @@
+/**
+ * Mobile Value Popover Component
+ * Component for displaying truncated values with popover for full value on mobile.
+ *
+ * Features:
+ * - Truncated value display
+ * - Popover with full value on click
+ * - Info icon indicator
+ * - Conditional icon display
+ *
+ * @param displayValue - Truncated value to display
+ * @param fullValue - Full value to show in popover
+ * @param showIcon - Whether to show info icon
+ * @param className - Additional CSS classes
+ */
 'use client';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

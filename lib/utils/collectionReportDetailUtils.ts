@@ -1,5 +1,20 @@
+/**
+ * Collection Report Detail Utilities
+ *
+ * Utility functions for generating and processing collection report detail data.
+ *
+ * Features:
+ * - Machine metrics data generation
+ * - Pagination support
+ * - Data transformation
+ * - Metrics calculation
+ */
+
 import type { CollectionDocument } from '@/lib/types/collections';
 
+// ============================================================================
+// Metrics Generation Functions
+// ============================================================================
 /**
  * Generate machine metrics data with pagination
  */

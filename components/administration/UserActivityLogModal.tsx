@@ -1,3 +1,20 @@
+/**
+ * User Activity Log Modal Component
+ * Modal for displaying user activity logs with filtering and grouping.
+ *
+ * Features:
+ * - Activity log display grouped by date ranges
+ * - Date range filtering
+ * - Action type icons (create, update, delete, view)
+ * - Activity details modal integration
+ * - Loading states
+ * - GSAP animations
+ * - Pagination support
+ * - Activity grouping by time periods
+ *
+ * @param open - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { gsap } from 'gsap';
 import axios from 'axios';
@@ -23,6 +40,10 @@ type UserActivityLogModalProps = {
   open: boolean;
   onClose: () => void;
 };
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 const getActionIcon = (actionType: string) => {
   const action = actionType.toLowerCase();

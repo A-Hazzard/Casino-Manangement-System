@@ -1,3 +1,24 @@
+/**
+ * Profile Validation Modal Component
+ * Comprehensive modal for validating and updating user profile information.
+ *
+ * Features:
+ * - Profile field validation
+ * - Personal information editing (name, gender, date of birth)
+ * - Contact information (email, phone, address)
+ * - Password update with strength validation
+ * - Licensee and location assignments
+ * - Form validation with error messages
+ * - Loading states
+ * - Success/error handling
+ *
+ * Very large component (~1127 lines) handling complete profile validation and update workflow.
+ *
+ * @param isOpen - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ * @param onSave - Callback when profile is saved
+ * @param validationData - Profile validation data and reasons
+ */
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -46,7 +67,7 @@ import type {
   ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type ProfileValidationModalProps = {
   open: boolean;
@@ -359,7 +380,7 @@ export default function ProfileValidationModal({
     };
   }, [formData.newPassword]);
 
-  const runClientValidation = (): Record<string, string> => {
+  const runClientValidation = useCallback((): Record<string, string> => {
     const newErrors: Record<string, string> = {};
     const username = formData.username.trim();
     const firstName = formData.firstName.trim();
@@ -513,7 +534,7 @@ export default function ProfileValidationModal({
     }
 
     return newErrors;
-  };
+  }, [formData, currentData, invalidFields, canManageAssignments, passwordRequired]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -523,7 +544,6 @@ export default function ProfileValidationModal({
     }, 300);
 
     return () => clearTimeout(handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     formData.username,
     formData.firstName,
@@ -546,6 +566,9 @@ export default function ProfileValidationModal({
     currentData.gender,
     currentData.emailAddress,
     currentData.dateOfBirth,
+    runClientValidation,
+    setErrors,
+    setIsFormValid,
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {

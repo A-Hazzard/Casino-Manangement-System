@@ -1,5 +1,9 @@
 /**
- * Type definition for Cabinet Card Props used in the CabinetCard component
+ * Card Props Types
+ * Type definitions for card component props throughout the application.
+ *
+ * Includes props for CabinetCard component displaying cabinet information
+ * with metrics, status, location, and action handlers.
  */
 export type CabinetCardProps = {
   _id: string;

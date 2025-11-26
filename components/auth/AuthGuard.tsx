@@ -1,3 +1,16 @@
+/**
+ * Auth Guard Component
+ * Global authentication guard that protects all routes except public pages.
+ *
+ * Features:
+ * - Redirects to login if user is not authenticated
+ * - Allows access to public routes (login, unauthorized)
+ * - Shows loading spinner while redirecting
+ * - Client-side only authentication check
+ * - Works with useUserStore for global auth state
+ *
+ * @param children - Child components to render if authenticated
+ */
 'use client';
 
 import { useEffect } from 'react';
@@ -9,11 +22,10 @@ type AuthGuardProps = {
   children: React.ReactNode;
 };
 
-/**
- * Global authentication guard that redirects to login if user is null
- * Prevents access to protected routes when user is not authenticated
- */
 export default function AuthGuard({ children }: AuthGuardProps) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const { user } = useUserStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -22,6 +34,9 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const publicRoutes = ['/login', '/unauthorized'];
   const isPublicRoute = publicRoutes.includes(pathname);
 
+  // ============================================================================
+  // Effects - Authentication Check
+  // ============================================================================
   useEffect(() => {
     // Only check authentication on client side
     if (typeof window === 'undefined') return;
@@ -38,6 +53,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       return;
     }
   }, [user, router, pathname, isPublicRoute]);
+
+  // ============================================================================
+  // Render - Loading or Protected Content
+  // ============================================================================
 
   // Don't render children if user is null and not on a public route
   if (!user && !isPublicRoute) {

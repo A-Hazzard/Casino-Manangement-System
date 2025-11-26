@@ -1,3 +1,15 @@
+/**
+ * Slider Component
+ * Reusable range slider component using Radix UI primitives.
+ *
+ * Features:
+ * - Single or range value selection
+ * - Track and thumb components
+ * - Focus states
+ * - Disabled state support
+ * - Touch-friendly
+ * - Accessible implementation
+ */
 'use client';
 
 import * as React from 'react';

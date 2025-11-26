@@ -1,12 +1,23 @@
+/**
+ * Database Permission Utilities
+ *
+ * Database-based permission utilities that query the database for current user data.
+ *
+ * Features:
+ * - Page access checking
+ * - Tab access checking
+ * - Admin access checking
+ * - Navigation link visibility
+ * - Role priority determination
+ */
+
 import { useUserStore } from '@/lib/store/userStore';
 import { PageName, TabName, UserRole } from './permissions';
 import { CACHE_KEYS, fetchUserWithCache } from './userCache';
 
-/**
- * Database-based permission utilities
- * These functions query the database for current user data instead of using the store
- */
-
+// ============================================================================
+// Type Definitions
+// ============================================================================
 /**
  * Fetches current user data from database for permission checks
  */
@@ -15,6 +26,12 @@ type MinimalUserPayload = {
   enabled: boolean;
 };
 
+// ============================================================================
+// User Data Fetching Functions
+// ============================================================================
+/**
+ * Get user data from store
+ */
 function getUserFromStore(): MinimalUserPayload | null {
   try {
     const { user } = useUserStore.getState();
@@ -75,6 +92,9 @@ async function getCurrentUserFromDb(): Promise<MinimalUserPayload | null> {
   }
 }
 
+// ============================================================================
+// Page Access Functions
+// ============================================================================
 /**
  * Check if user has access to a page (database-based)
  */
@@ -131,6 +151,9 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
   return roles.some(role => allowedRoles.includes(role));
 }
 
+// ============================================================================
+// Tab Access Functions
+// ============================================================================
 /**
  * Check if user has access to a specific tab (database-based)
  */
@@ -197,6 +220,9 @@ export async function hasTabAccessDb(
   return roles.some(role => allowedRoles.includes(role));
 }
 
+// ============================================================================
+// Admin Access Functions
+// ============================================================================
 /**
  * Check if user has admin access (database-based)
  */
@@ -211,6 +237,9 @@ export async function hasAdminAccessDb(): Promise<boolean> {
   return roles.includes('developer') || roles.includes('admin');
 }
 
+// ============================================================================
+// Navigation Functions
+// ============================================================================
 /**
  * Check if user should show navigation link (database-based)
  */
@@ -220,6 +249,9 @@ export async function shouldShowNavigationLinkDb(
   return await hasPageAccessDb(page);
 }
 
+// ============================================================================
+// Role Functions
+// ============================================================================
 /**
  * Get user's highest priority role (database-based)
  */

@@ -1,3 +1,15 @@
+/**
+ * MongoDB Types
+ * MongoDB and Mongoose-specific types for database operations.
+ *
+ * Includes types for:
+ * - Database query filters (date range, regex, arrays, expressions)
+ * - Machine/cabinet documents and queries
+ * - Cabinet details and query results
+ * - Transformed cabinet data for API responses
+ * - SAS meters and collection history
+ * Re-exports shared database types from shared/types.
+ */
 import mongoose from 'mongoose';
 import { ObjectId } from 'mongodb';
 import type {

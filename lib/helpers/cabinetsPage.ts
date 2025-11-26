@@ -1,13 +1,28 @@
 /**
- * Cabinets page helper functions for managing section changes, filtering, and data loading
+ * Cabinets Page Helper Functions
+ *
+ * Provides helper functions for managing the cabinets page, including section navigation,
+ * URL parameter handling, and cabinet filtering with smart alphabetical and numerical sorting.
+ * It handles section changes, search functionality, and location-based filtering.
+ *
+ * Features:
+ * - Manages section navigation (cabinets, movement requests, SMIB firmware, SMIB).
+ * - Handles URL parameter updates for section changes.
+ * - Filters cabinets by search term and selected location.
+ * - Sorts cabinets alphabetically and numerically for proper ordering.
  */
 
 import type { CabinetSection } from '@/lib/constants/cabinets';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
+// ============================================================================
+// Section Navigation
+// ============================================================================
+
 /**
  * Gets the active section from URL search parameters
+ *
  * @param searchParams - Current search parameters
  * @returns The active cabinet section
  */
@@ -52,6 +67,10 @@ export function handleSectionChange(
   router.push(newURL, { scroll: false });
 }
 
+// ============================================================================
+// Cabinet Sorting Utilities
+// ============================================================================
+
 /**
  * Utility function for proper alphabetical and numerical sorting
  */
@@ -84,6 +103,10 @@ function sortMachinesAlphabetically(machines: Cabinet[]) {
     return numAInt - numBInt;
   });
 }
+
+// ============================================================================
+// Cabinet Filtering Operations
+// ============================================================================
 
 /**
  * Filters cabinets based on search term and selected location

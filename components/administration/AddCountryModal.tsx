@@ -1,3 +1,18 @@
+/**
+ * Add Country Modal Component
+ * Modal for creating new countries with ISO codes.
+ *
+ * Features:
+ * - Country name input
+ * - Alpha-2 code input
+ * - Alpha-3 code input
+ * - ISO numeric code input
+ * - Form validation
+ * - Simple modal UI
+ *
+ * @param isOpen - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ */
 'use client';
 
 import { useState } from 'react';

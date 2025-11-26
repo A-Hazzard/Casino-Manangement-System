@@ -1,9 +1,23 @@
 /**
- * Movement requests helper functions for filtering, pagination, and API operations
+ * Movement Requests Helper Functions
+ *
+ * Provides helper functions for managing movement requests, including CRUD operations,
+ * filtering, and pagination. Movement requests track the movement of cabinets/machines
+ * between locations.
+ *
+ * Features:
+ * - Fetches all movement requests with optional licensee filtering.
+ * - Creates, updates, and deletes movement requests.
+ * - Filters movement requests by search term and location.
+ * - Paginates movement requests for display.
  */
 
 import axios from 'axios';
 import type { MovementRequest } from '@/lib/types/movementRequests';
+
+// ============================================================================
+// Movement Request API Operations
+// ============================================================================
 
 /**
  * Fetch all movement requests from the API.
@@ -54,6 +68,10 @@ export async function updateMovementRequest(
 export async function deleteMovementRequest(id: string): Promise<void> {
   await axios.delete(`/api/movement-requests/${id}`);
 }
+
+// ============================================================================
+// Movement Request Filtering and Pagination
+// ============================================================================
 
 /**
  * Filters movement requests based on search term and selected location

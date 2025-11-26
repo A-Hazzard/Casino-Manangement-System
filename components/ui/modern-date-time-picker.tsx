@@ -1,3 +1,21 @@
+/**
+ * Modern Date Time Picker Component
+ * Modern date-time picker with separate date and time selection.
+ *
+ * Features:
+ * - Date selection via calendar
+ * - Time selection via hour/minute selects
+ * - Combined date-time value
+ * - Date and time formatting
+ * - Disabled state support
+ * - Temporary state management
+ *
+ * @param date - Currently selected date-time
+ * @param setDate - Callback to update selected date-time
+ * @param disabled - Whether the picker is disabled
+ * @param placeholder - Placeholder text
+ * @param className - Additional CSS classes
+ */
 'use client';
 
 import * as React from 'react';

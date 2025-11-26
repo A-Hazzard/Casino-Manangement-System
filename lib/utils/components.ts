@@ -1,7 +1,21 @@
-// Component utility functions for layouts
+/**
+ * Component Utility Functions
+ *
+ * Utility functions for component layouts and data formatting.
+ *
+ * Features:
+ * - Metric number formatting
+ * - Pie chart label positioning
+ * - Cabinet data mapping
+ * - Component prop transformations
+ */
+
 import { GamingMachine as Cabinet } from '@/shared/types/entities';
 type CabinetProps = Cabinet;
 
+// ============================================================================
+// Formatting Functions
+// ============================================================================
 /**
  * Formats metric numbers for display
  */
@@ -12,6 +26,9 @@ export const formatMetricNumber = (
   return new Intl.NumberFormat().format(value);
 };
 
+// ============================================================================
+// Chart Utilities
+// ============================================================================
 /**
  * Pie chart rendering helper - calculates coordinates for labels
  */
@@ -30,6 +47,9 @@ export const calculatePieChartLabelPosition = (
   return { x, y, textAnchor: x > cx ? 'start' : 'end' };
 };
 
+// ============================================================================
+// Cabinet Mapping Functions
+// ============================================================================
 /**
  * Converts a Cabinet object to CabinetProps for rendering
  */

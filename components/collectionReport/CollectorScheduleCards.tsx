@@ -1,3 +1,19 @@
+/**
+ * Collector Schedule Cards Component
+ * Mobile-friendly card view for displaying collector schedules.
+ *
+ * Features:
+ * - Collector schedule data display
+ * - Status badges
+ * - Date formatting
+ * - Duration calculations
+ * - Loading states
+ * - Empty state handling
+ * - Responsive design (mobile only)
+ *
+ * @param data - Array of collector schedule rows
+ * @param loading - Whether data is loading
+ */
 import React from 'react';
 import { formatDateString } from '@/lib/utils/dateUtils';
 import { CollectorScheduleCardsProps } from '@/lib/types/componentProps';

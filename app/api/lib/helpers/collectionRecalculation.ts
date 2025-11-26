@@ -136,8 +136,9 @@ export async function recalculateMachineCollections(machineId?: string | null) {
     prevMetersOut = currentOut;
   }
 
-  await Machine.findByIdAndUpdate(
-    machineId,
+  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+  await Machine.findOneAndUpdate(
+    { _id: machineId },
     {
       $set: {
         'collectionMeters.metersIn': prevMetersIn,
@@ -149,4 +150,5 @@ export async function recalculateMachineCollections(machineId?: string | null) {
     { new: true }
   );
 }
+
 

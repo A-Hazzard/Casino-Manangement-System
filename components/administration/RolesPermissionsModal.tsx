@@ -1,3 +1,22 @@
+/**
+ * Roles Permissions Modal Component
+ * Modal for managing user roles and location permissions.
+ *
+ * Features:
+ * - Role assignment (developer, admin, manager, location admin, technician, collector)
+ * - Password change functionality
+ * - Location permissions management
+ * - Multi-select location dropdown
+ * - Select all locations option
+ * - Location search filtering
+ * - Form validation
+ * - GSAP animations
+ *
+ * @param open - Whether the modal is visible
+ * @param user - User object to edit permissions for
+ * @param onClose - Callback to close the modal
+ * @param onSave - Callback when permissions are saved
+ */
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +25,10 @@ import type { User, ResourcePermissions } from '@/lib/types/administration';
 import type { LocationSelectItem } from '@/lib/types/location';
 import { X } from 'lucide-react';
 import gsap from 'gsap';
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const ROLE_OPTIONS = [
   { label: 'Developer', value: 'developer' },

@@ -1,3 +1,13 @@
+/**
+ * Activity Log Skeleton Component
+ * Loading skeleton for activity log table/cards.
+ *
+ * Features:
+ * - Matches ActivityLogTable layout structure
+ * - Desktop table skeleton (10 rows)
+ * - Mobile cards skeleton (5 cards)
+ * - Responsive design
+ */
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 

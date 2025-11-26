@@ -1,3 +1,18 @@
+/**
+ * Login Form Component
+ * Pure presentational component for user login form.
+ *
+ * Features:
+ * - Email or username input field
+ * - Password input with show/hide toggle
+ * - Remember me checkbox
+ * - Form validation error display
+ * - Success/error message display
+ * - Loading and redirecting states
+ * - Accessible form with ARIA attributes
+ *
+ * @param props - LoginFormProps containing all form state and handlers
+ */
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -20,6 +35,9 @@ export default function LoginForm({
   redirecting,
   handleLogin,
 }: LoginFormProps) {
+  // ============================================================================
+  // Render - Login Form UI
+  // ============================================================================
   return (
     <>
       <div className="text-left">

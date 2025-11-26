@@ -1,3 +1,22 @@
+/**
+ * Licensee Card Component
+ * Mobile-friendly card view for displaying licensee information.
+ *
+ * Features:
+ * - Licensee information display (name, country, dates, payment status)
+ * - Payment status indicators
+ * - Action dropdown menu (edit, delete, payment history, toggle payment)
+ * - Payment status toggle functionality
+ * - Date formatting
+ * - Click outside to close dropdown
+ * - Responsive design (mobile only)
+ *
+ * @param licensee - Licensee object to display
+ * @param onEdit - Callback when edit is clicked
+ * @param onDelete - Callback when delete is clicked
+ * @param onPaymentHistory - Callback when payment history is clicked
+ * @param onTogglePaymentStatus - Callback when payment status is toggled
+ */
 import type { Licensee } from '@/lib/types/licensee';
 import {
   isLicenseePaid,

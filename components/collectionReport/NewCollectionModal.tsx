@@ -1,3 +1,28 @@
+/**
+ * New Collection Modal Component
+ * Comprehensive modal for creating new collection reports with machine data entry.
+ *
+ * Features:
+ * - Location selection
+ * - Collection time/date picker
+ * - Machine selection and data entry
+ * - Meter readings (meters in/out, previous meters)
+ * - Movement calculations
+ * - SAS time override functionality
+ * - Machine validation
+ * - Collection report creation
+ * - Machine collection history updates
+ * - Debounced search and validation
+ * - Loading states and skeletons
+ * - Toast notifications
+ * - Tooltips for guidance
+ *
+ * Very large component (~3464 lines) handling complete collection report creation workflow.
+ *
+ * @param open - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ * @param onSuccess - Callback when collection is successfully created
+ */
 import { Button } from '@/components/ui/button';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
@@ -33,7 +58,7 @@ import { formatDate } from '@/lib/utils/formatting';
 import { calculateMachineMovement } from '@/lib/utils/frontendMovementCalculation';
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 import { validateCollectionReportPayload } from '@/lib/utils/validation';
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 import { Edit3, ExternalLink, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -46,6 +71,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+// ============================================================================
+// Constants & Advanced State
+// ============================================================================
+
 // Advanced SAS start override state
 // (Placed near top-level to avoid re-renders from dynamic imports)
 
@@ -54,9 +83,28 @@ import {
 async function addMachineCollection(
   data: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
-  const res = await axios.post('/api/collections', data);
-  // The API returns { success: true, data: created, calculations: {...} }
-  return res.data.data;
+  try {
+    console.log('📤 [addMachineCollection] Sending POST to /api/collections', {
+      machineId: data.machineId,
+      location: data.location,
+      collector: data.collector,
+      metersIn: data.metersIn,
+      metersOut: data.metersOut,
+    });
+    const res = await axios.post('/api/collections', data);
+    console.log('✅ [addMachineCollection] Response received:', res.status);
+    // The API returns { success: true, data: created, calculations: {...} }
+    return res.data.data;
+  } catch (error) {
+    console.error('❌ [addMachineCollection] Error details:', {
+      error,
+      url: '/api/collections',
+      status: (error as AxiosError)?.response?.status,
+      statusText: (error as AxiosError)?.response?.statusText,
+      data: (error as AxiosError)?.response?.data,
+    });
+    throw error;
+  }
 }
 
 async function deleteMachineCollection(
@@ -265,39 +313,40 @@ export default function NewCollectionModal({
   );
 
   // Utility function for proper alphabetical and numerical sorting
-  const sortMachinesAlphabetically = useCallback(<
-    T extends { name?: string; serialNumber?: string },
-  >(
-    machines: T[]
-  ): T[] => {
-    return machines.sort((a, b) => {
-      const nameA = (a.name || a.serialNumber || '').toString();
-      const nameB = (b.name || b.serialNumber || '').toString();
+  const sortMachinesAlphabetically = useCallback(
+    <T extends { name?: string; serialNumber?: string }>(
+      machines: T[]
+    ): T[] => {
+      return machines.sort((a, b) => {
+        const nameA = (a.name || a.serialNumber || '').toString();
+        const nameB = (b.name || b.serialNumber || '').toString();
 
-      // Extract the base name and number parts
-      const matchA = nameA.match(/^(.+?)(\d+)?$/);
-      const matchB = nameB.match(/^(.+?)(\d+)?$/);
+        // Extract the base name and number parts
+        const matchA = nameA.match(/^(.+?)(\d+)?$/);
+        const matchB = nameB.match(/^(.+?)(\d+)?$/);
 
-      if (!matchA || !matchB) {
-        return nameA.localeCompare(nameB);
-      }
+        if (!matchA || !matchB) {
+          return nameA.localeCompare(nameB);
+        }
 
-      const [, baseA, numA] = matchA;
-      const [, baseB, numB] = matchB;
+        const [, baseA, numA] = matchA;
+        const [, baseB, numB] = matchB;
 
-      // First compare the base part alphabetically
-      const baseCompare = baseA.localeCompare(baseB);
-      if (baseCompare !== 0) {
-        return baseCompare;
-      }
+        // First compare the base part alphabetically
+        const baseCompare = baseA.localeCompare(baseB);
+        if (baseCompare !== 0) {
+          return baseCompare;
+        }
 
-      // If base parts are the same, compare numerically
-      const numAInt = numA ? parseInt(numA, 10) : 0;
-      const numBInt = numB ? parseInt(numB, 10) : 0;
+        // If base parts are the same, compare numerically
+        const numAInt = numA ? parseInt(numA, 10) : 0;
+        const numBInt = numB ? parseInt(numB, 10) : 0;
 
-      return numAInt - numBInt;
-    });
-  }, []);
+        return numAInt - numBInt;
+      });
+    },
+    []
+  );
 
   // Filter and sort machines based on search term when location is selected
   const filteredMachines = useMemo(() => {
@@ -318,7 +367,11 @@ export default function NewCollectionModal({
 
     // Always sort alphabetically and numerically
     return sortMachinesAlphabetically(result);
-  }, [machinesOfSelectedLocation, machineSearchTerm, sortMachinesAlphabetically]);
+  }, [
+    machinesOfSelectedLocation,
+    machineSearchTerm,
+    sortMachinesAlphabetically,
+  ]);
 
   const [selectedMachineId, setSelectedMachineId] = useState<
     string | undefined
@@ -713,7 +766,9 @@ export default function NewCollectionModal({
   useEffect(() => {
     if (selectedMachineId) {
       axios
-        .get(`/api/collections/check-first-collection?machineId=${selectedMachineId}`)
+        .get(
+          `/api/collections/check-first-collection?machineId=${selectedMachineId}`
+        )
         .then(response => {
           setIsFirstCollection(response.data.isFirstCollection);
         })
@@ -908,13 +963,17 @@ export default function NewCollectionModal({
   useEffect(() => {
     if (show && lockedLocationId) {
       // Check if locked location is in user's accessible locations
-      const isLocationAccessible = locations.some(loc => String(loc._id) === lockedLocationId);
-      
+      const isLocationAccessible = locations.some(
+        loc => String(loc._id) === lockedLocationId
+      );
+
       if (!isLocationAccessible) {
         console.warn(
           '🔒 SECURITY: Locked location not accessible to current user. Clearing store.',
-          'Locked:', lockedLocationId,
-          'Accessible:', locations.map(l => l._id)
+          'Locked:',
+          lockedLocationId,
+          'Accessible:',
+          locations.map(l => l._id)
         );
         // Clear the store - user doesn't have access to the locked location
         useCollectionModalStore.getState().resetState();
@@ -1204,8 +1263,14 @@ export default function NewCollectionModal({
   const debouncedCurrentMetersIn = useDebounce(currentMetersIn, 1500);
   const debouncedCurrentMetersOut = useDebounce(currentMetersOut, 1500);
   const debouncedCurrentMachineNotes = useDebounce(currentMachineNotes, 1500);
-  const debouncedCurrentRamClearMetersIn = useDebounce(currentRamClearMetersIn, 1500);
-  const debouncedCurrentRamClearMetersOut = useDebounce(currentRamClearMetersOut, 1500);
+  const debouncedCurrentRamClearMetersIn = useDebounce(
+    currentRamClearMetersIn,
+    1500
+  );
+  const debouncedCurrentRamClearMetersOut = useDebounce(
+    currentRamClearMetersOut,
+    1500
+  );
 
   useEffect(() => {
     if (
@@ -1470,8 +1535,14 @@ export default function NewCollectionModal({
       console.error('Error adding machine:', error);
 
       // Handle validation errors from backend
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const axiosError = error as any;
+      const axiosError = error as AxiosError<{
+        error: string;
+        details: string;
+        expectedPrevIn: number;
+        expectedPrevOut: number;
+        actualPrevIn: number;
+        actualPrevOut: number;
+      }>;
       if (
         axiosError.response?.status === 400 &&
         axiosError.response?.data?.error === 'Invalid previous meter values'
@@ -1714,7 +1785,6 @@ export default function NewCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isProcessing,
     selectedMachineId,
@@ -1730,8 +1800,19 @@ export default function NewCollectionModal({
     prevIn,
     prevOut,
     userId,
-    customSasStartTime,
     handleAddEntry,
+    setCollectedMachineEntries,
+    setEditingEntryId,
+    setSelectedMachineId,
+    setCurrentMetersIn,
+    setCurrentMetersOut,
+    setCurrentMachineNotes,
+    setCurrentRamClear,
+    setCurrentRamClearMetersIn,
+    setCurrentRamClearMetersOut,
+    setPrevIn,
+    setPrevOut,
+    setIsProcessing,
   ]);
 
   const confirmUpdateEntry = useCallback(() => {
@@ -1993,7 +2074,9 @@ export default function NewCollectionModal({
       await createCollectionReport(payload);
 
       // Step 2: ONLY AFTER report is successfully created, update collections with the report ID
-      console.warn('💾 Updating collections with reportId and isCompleted: true...');
+      console.warn(
+        '💾 Updating collections with reportId and isCompleted: true...'
+      );
       await updateCollectionsWithReportId(collectedMachineEntries, reportId);
 
       toast.dismiss('create-reports-toast');
@@ -2013,8 +2096,12 @@ export default function NewCollectionModal({
       console.error('❌ Failed to create collection report:', error);
 
       // Handle specific API response errors
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const axiosError = error as any;
+      const axiosError = error as AxiosError<{
+        error: string;
+        details: string;
+        existingReportId: string;
+        existingReportDate: string;
+      }>;
       if (axiosError.response?.data) {
         const errorData = axiosError.response.data;
 
@@ -2169,7 +2256,7 @@ export default function NewCollectionModal({
         }}
       >
         <DialogContent
-          className="flex h-[calc(100vh-2rem)] max-w-6xl flex-col bg-container p-0 md:h-[95vh] xl:h-[90vh] xl:max-w-7xl"
+          className="flex h-[calc(100vh-2rem)] max-w-6xl flex-col bg-container p-0 md:h-[95vh] lg:h-[90vh] lg:max-w-7xl"
           onInteractOutside={e => e.preventDefault()}
         >
           <DialogHeader className="p-4 pb-0 md:p-6">
@@ -2182,9 +2269,9 @@ export default function NewCollectionModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-0 flex-grow flex-col overflow-y-auto xl:flex-row">
-            {/* Mobile: Full width, Desktop: 1/5 width */}
-            <div className="flex w-full flex-col space-y-3 overflow-y-auto border-b border-gray-300 p-3 md:p-4 xl:w-1/5 xl:border-b-0 xl:border-r">
+          <div className="flex min-h-0 flex-grow flex-row overflow-hidden">
+            {/* Left sidebar: Location selector and machine list - 1/5 width */}
+            <div className="flex min-h-0 w-1/5 flex-col space-y-3 overflow-y-auto border-r border-gray-300 p-3 md:p-4">
               <div
                 className={
                   isProcessing ||
@@ -2355,8 +2442,8 @@ export default function NewCollectionModal({
               </div>
             </div>
 
-            {/* Mobile: Full width, Desktop: 3/5 width (60%) */}
-            <div className="flex w-full flex-col space-y-3 overflow-y-auto p-3 md:p-4 xl:w-3/5">
+            {/* Middle section: Form fields - 3/5 width (60%) */}
+            <div className="flex min-h-0 w-3/5 flex-col space-y-3 overflow-y-auto p-3 md:p-4">
               {(selectedMachineId && machineForDataEntry) ||
               collectedMachineEntries.length > 0 ? (
                 <>
@@ -2490,9 +2577,9 @@ export default function NewCollectionModal({
                         Number(debouncedCurrentMetersIn) < Number(prevIn) && (
                           <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                             <p className="text-xs text-red-600">
-                              Warning: Meters In ({debouncedCurrentMetersIn}) should be
-                              higher than or equal to Previous Meters In (
-                              {prevIn})
+                              Warning: Meters In ({debouncedCurrentMetersIn})
+                              should be higher than or equal to Previous Meters
+                              In ({prevIn})
                             </p>
                           </div>
                         )}
@@ -2524,9 +2611,9 @@ export default function NewCollectionModal({
                         Number(debouncedCurrentMetersOut) < Number(prevOut) && (
                           <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                             <p className="text-xs text-red-600">
-                              Warning: Meters Out ({debouncedCurrentMetersOut}) should be
-                              higher than or equal to Previous Meters Out (
-                              {prevOut})
+                              Warning: Meters Out ({debouncedCurrentMetersOut})
+                              should be higher than or equal to Previous Meters
+                              Out ({prevOut})
                             </p>
                           </div>
                         )}
@@ -2562,7 +2649,8 @@ export default function NewCollectionModal({
                             className={`border-blue-300 focus:border-blue-500 ${
                               debouncedCurrentRamClearMetersIn &&
                               prevIn &&
-                              Number(debouncedCurrentRamClearMetersIn) > Number(prevIn)
+                              Number(debouncedCurrentRamClearMetersIn) >
+                                Number(prevIn)
                                 ? 'border-red-500 focus:border-red-500'
                                 : ''
                             }`}
@@ -2575,8 +2663,9 @@ export default function NewCollectionModal({
                               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                                 <p className="text-xs text-red-600">
                                   Warning: RAM Clear Meters In (
-                                  {debouncedCurrentRamClearMetersIn}) should be lower
-                                  than or equal to Previous Meters In ({prevIn})
+                                  {debouncedCurrentRamClearMetersIn}) should be
+                                  lower than or equal to Previous Meters In (
+                                  {prevIn})
                                 </p>
                               </div>
                             )}
@@ -2599,7 +2688,8 @@ export default function NewCollectionModal({
                             className={`border-blue-300 focus:border-blue-500 ${
                               debouncedCurrentRamClearMetersOut &&
                               prevOut &&
-                              Number(debouncedCurrentRamClearMetersOut) > Number(prevOut)
+                              Number(debouncedCurrentRamClearMetersOut) >
+                                Number(prevOut)
                                 ? 'border-red-500 focus:border-red-500'
                                 : ''
                             }`}
@@ -2612,8 +2702,8 @@ export default function NewCollectionModal({
                               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                                 <p className="text-xs text-red-600">
                                   Warning: RAM Clear Meters Out (
-                                  {debouncedCurrentRamClearMetersOut}) should be lower
-                                  than or equal to Previous Meters Out (
+                                  {debouncedCurrentRamClearMetersOut}) should be
+                                  lower than or equal to Previous Meters Out (
                                   {prevOut})
                                 </p>
                               </div>
@@ -3046,13 +3136,13 @@ export default function NewCollectionModal({
               )}
             </div>
 
-            {/* Mobile: Full width, Desktop: 1/4 width */}
-            <div className="flex min-h-0 w-full flex-col border-t border-gray-300 bg-gray-50 xl:w-1/5 xl:border-l xl:border-t-0">
+            {/* Right sidebar: Collected machines list - 1/5 width */}
+            <div className="flex min-h-0 w-1/5 flex-col border-l border-gray-300 bg-gray-50">
               <div className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 p-3 pb-2 md:p-4">
                 <h3 className="text-lg font-semibold text-gray-700">
                   Collected Machines ({collectedMachineEntries.length})
                 </h3>
-                
+
                 {/* Update All Dates - Show if there are 2 or more machines */}
                 {collectedMachineEntries.length >= 2 && (
                   <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
@@ -3076,25 +3166,36 @@ export default function NewCollectionModal({
                     <Button
                       onClick={async () => {
                         if (!updateAllDate) return;
-                        
+
                         setIsProcessing(true);
-                        
+
                         try {
                           toast.loading('Updating all machines...', {
                             id: 'update-all-dates',
                           });
 
-                          console.warn('🔄 Updating machines:', collectedMachineEntries.map(m => ({ id: m._id, has_id: !!m._id })));
+                          console.warn(
+                            '🔄 Updating machines:',
+                            collectedMachineEntries.map(m => ({
+                              id: m._id,
+                              has_id: !!m._id,
+                            }))
+                          );
 
                           // Update all collections in database
                           const results = await Promise.allSettled(
                             collectedMachineEntries.map(async entry => {
                               if (!entry._id) {
-                                console.warn('⚠️ Skipping entry without _id:', entry);
+                                console.warn(
+                                  '⚠️ Skipping entry without _id:',
+                                  entry
+                                );
                                 return;
                               }
-                              
-                              console.warn(`📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`);
+
+                              console.warn(
+                                `📝 Updating collection ${entry._id} to ${updateAllDate.toISOString()}`
+                              );
                               return await axios.patch(
                                 `/api/collections?id=${entry._id}`,
                                 {
@@ -3146,7 +3247,7 @@ export default function NewCollectionModal({
                     </Button>
                   </div>
                 )}
-                
+
                 {/* Search bar for collected machines if more than 6 */}
                 {collectedMachineEntries.length > 6 && (
                   <div className="mt-2">

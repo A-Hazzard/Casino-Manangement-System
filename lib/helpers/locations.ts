@@ -164,19 +164,31 @@ export async function fetchCabinets(
   try {
     const params: Record<string, string> = {};
     if (timePeriod) params.timePeriod = timePeriod;
-    if (licensee && licensee !== 'all') {
-      // Convert licensee name to ObjectId for API compatibility
-      const licenseeObjectId = getLicenseeObjectId(licensee);
-      if (licenseeObjectId) {
-        params.licencee = licenseeObjectId;
+    if (licensee) {
+      if (licensee === 'all') {
+        // Pass 'all' to API so currency conversion is applied
+        params.licencee = 'all';
+      } else {
+        // Convert licensee name to ObjectId for API compatibility
+        const licenseeObjectId = getLicenseeObjectId(licensee);
+        if (licenseeObjectId) {
+          params.licencee = licenseeObjectId;
+        }
       }
     }
     if (currency) params.currency = currency;
+    // Don't pass limit to fetch all cabinets (for totals calculation)
+    // The API will return all results when limit is not provided
 
-    const response = await axios.get(`/api/locations/${locationId}/cabinets`, {
+    // Use the main location route which returns cabinets (not /cabinets which only has POST)
+    const response = await axios.get(`/api/locations/${locationId}`, {
       params,
       headers: getAuthHeaders(),
     });
+    // Handle paginated response format
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return Array.isArray(response.data.data) ? response.data.data : [];
+    }
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     console.error(

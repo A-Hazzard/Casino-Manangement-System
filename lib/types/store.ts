@@ -1,3 +1,13 @@
+/**
+ * Store Types
+ * Types for Zustand stores across the application.
+ *
+ * Includes types for:
+ * - Dashboard store (filters, data, loading states, currency)
+ * - User store (authentication payload, actions)
+ * - Firmware actions store (modals and selected firmware)
+ * Used by various Zustand store implementations for state management.
+ */
 import {
   ActiveFilters,
   ActiveTab,

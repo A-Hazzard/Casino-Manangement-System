@@ -1,20 +1,57 @@
+/**
+ * SMIB Meters API Route
+ *
+ * This route handles requesting meter data from a single SMIB device.
+ * It supports:
+ * - Requesting meters by relayId
+ * - Finding machine by relayId
+ * - Sending meter request via MQTT
+ * - Activity logging
+ *
+ * Note: Uses POST instead of GET because:
+ * - We're sending a command/action to the SMIB (triggering it to read meters)
+ * - This modifies state (SMIB performs a meter read operation)
+ * - Not idempotent (each request triggers a new meter read)
+ * - Requires request body (relayId) which is more RESTful as POST
+ * - The response comes via MQTT/SSE, not as the HTTP response
+ *
+ * @module app/api/smib/meters/route
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
-import { mqttService } from '@/lib/services/mqttService';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { connectDB } from '../../lib/middleware/db';
 
 /**
- * POST /api/smib/meters
- * Request meter data from a single SMIB device
+ * Main POST handler for requesting SMIB meters
+ *
+ * Flow:
+ * 1. Parse request body
+ * 2. Validate relayId
+ * 3. Connect to database
+ * 4. Find machine by relayId
+ * 5. Check for MQTT callbacks
+ * 6. Authenticate user
+ * 7. Send meter request via MQTT
+ * 8. Log activity
+ * 9. Return success response
  */
 export async function POST(request: NextRequest) {
-  try {
-    await connectDB();
+  const startTime = Date.now();
 
+  try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const { relayId } = await request.json();
+
+    // ============================================================================
+    // STEP 2: Validate relayId
+    // ============================================================================
 
     if (!relayId) {
       return NextResponse.json(
@@ -23,7 +60,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the machine with this relayId
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 4: Find machine by relayId
+    // ============================================================================
     const machine = await Machine.findOne({
       $or: [{ relayId }, { smibBoard: relayId }],
     });
@@ -35,21 +79,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Enforce user presence for logging and operation
+    // ============================================================================
+    // STEP 5: Check for MQTT callbacks
+    // ============================================================================
+    const hasCallbacks = mqttService.hasCallbacksForRelayId(relayId);
+
+    if (!hasCallbacks) {
+      console.warn(
+        `No callbacks registered for relayId ${relayId} - response may be lost`
+      );
+    }
+
+    // ============================================================================
+    // STEP 6: Authenticate user
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (!currentUser || !currentUser._id || !currentUser.emailAddress) {
-      console.error('❌ Activity logging failed: Missing user information');
       return NextResponse.json(
         { success: false, error: 'Authentication required to request meters' },
         { status: 401 }
       );
     }
 
-    // Send get meters command via MQTT
+    // ============================================================================
+    // STEP 7: Send meter request via MQTT
+    // ============================================================================
     try {
       await mqttService.requestMeterData(relayId);
-    } catch (mqttError) {
-      console.error('❌ Failed to request meter data:', mqttError);
+    } catch {
       return NextResponse.json(
         {
           success: false,
@@ -59,7 +116,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity (optional - don't fail the request if logging fails)
+    // ============================================================================
+    // STEP 8: Log activity
+    // ============================================================================
     const clientIP = getClientIP(request);
     try {
       await logActivity({
@@ -80,18 +139,27 @@ export async function POST(request: NextRequest) {
       });
     } catch (logError) {
       console.error('Failed to log activity:', logError);
-      // Don't fail the request if logging fails - just continue
     }
 
+    // ============================================================================
+    // STEP 9: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[SMIB Meters API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       message: 'Meter request sent successfully',
       relayId,
     });
   } catch (error) {
-    console.error('❌ Error in SMIB meters endpoint:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(`[SMIB Meters API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

@@ -1,4 +1,11 @@
-// MovementRequest type for movement requests
+/**
+ * Movement Requests Types
+ * Types for cabinet/asset movement requests and status tracking.
+ *
+ * Defines movement request structure including locations, financials,
+ * approval workflow, and status management (pending, approved, rejected).
+ */
+
 /**
  * Represents a movement request for a cabinet or other asset.
  */

@@ -1,3 +1,36 @@
+/**
+ * Collection Mobile UI Component
+ * Mobile layout wrapper for collection reports page.
+ *
+ * Features:
+ * - Mobile-only display (hidden on desktop)
+ * - Collection report filters
+ * - Collection report cards
+ * - Loading skeleton states
+ * - Licensee name display
+ * - Grid or single column layout
+ *
+ * @param loading - Whether data is loading
+ * @param filteredReports - Filtered collection reports to display
+ * @param mobileCardsRef - Ref for mobile cards element
+ * @param reportIssues - Issues data for reports
+ * @param locations - Available locations list
+ * @param selectedLocation - Currently selected location
+ * @param onLocationChange - Callback when location changes
+ * @param search - Current search value
+ * @param onSearchChange - Callback when search changes
+ * @param onSearchSubmit - Callback when search is submitted
+ * @param showUncollectedOnly - Whether to show only uncollected reports
+ * @param onShowUncollectedOnlyChange - Callback when uncollected filter changes
+ * @param selectedFilters - Currently selected status filters
+ * @param onFilterChange - Callback when filter changes
+ * @param onClearFilters - Callback to clear all filters
+ * @param isSearching - Whether search is in progress
+ * @param onEdit - Callback when edit is clicked
+ * @param onDelete - Callback when delete is clicked
+ * @param selectedLicencee - Currently selected licensee
+ * @param editableReportIds - Set of report IDs that can be edited
+ */
 import React from 'react';
 import CollectionReportCards from '@/components/collectionReport/CollectionReportCards';
 import CollectionReportCardSkeleton from '@/components/collectionReport/CollectionReportCardSkeleton';

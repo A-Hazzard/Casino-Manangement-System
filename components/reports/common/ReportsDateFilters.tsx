@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
-import { DatePicker } from '@/components/ui/date-picker';
 import { TimePeriod } from '@/app/api/lib/types';
+import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
+import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
+import { useState } from 'react';
 
 /**
  * Reports Date Filters Component
@@ -50,7 +50,7 @@ export default function ReportsDateFilters() {
 
     baseButtons.push({ label: 'Custom', value: 'Custom' as TimePeriod });
 
-    // Show "All Time" for non-meters tabs
+    // Show "All Time" for non-meters tabs only
     if (activeView !== 'meters') {
       baseButtons.push({ label: 'All Time', value: 'All Time' as TimePeriod });
     }
@@ -62,7 +62,8 @@ export default function ReportsDateFilters() {
 
   // Check if any loading state is active (dashboard store + reports store)
   const { isLoading: reportsLoading } = useReportsStore();
-  const isLoading = loadingChartData || loadingTopPerforming || refreshing || reportsLoading;
+  const isLoading =
+    loadingChartData || loadingTopPerforming || refreshing || reportsLoading;
 
   /**
    * Apply custom date range to both stores

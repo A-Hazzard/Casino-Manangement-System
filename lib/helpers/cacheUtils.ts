@@ -1,13 +1,32 @@
 /**
- * Cache utility functions for API performance optimization
+ * Cache Utility Functions
+ *
+ * Provides in-memory caching utilities for API performance optimization.
+ * It implements a simple TTL-based cache system to reduce redundant API calls
+ * and improve application responsiveness.
+ *
+ * Features:
+ * - In-memory cache with configurable TTL (default: 5 minutes).
+ * - Cache key generation from parameters.
+ * - Cache validation and expiration checking.
+ * - Cache statistics and management utilities.
  */
+
+// ============================================================================
+// Cache Configuration
+// ============================================================================
 
 // Simple in-memory cache for performance
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// ============================================================================
+// Cache Key Generation
+// ============================================================================
+
 /**
  * Generates a cache key from parameters
+ *
  * @param params - Object containing parameters to cache
  * @returns String cache key
  */
@@ -54,6 +73,10 @@ export function setCachedData(key: string, data: unknown): void {
     timestamp: Date.now(),
   });
 }
+
+// ============================================================================
+// Cache Management
+// ============================================================================
 
 /**
  * Clears all cached data

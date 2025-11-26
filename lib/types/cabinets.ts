@@ -1,3 +1,10 @@
+/**
+ * Cabinets Types
+ * Types for cabinet navigation and section management.
+ *
+ * Used for managing cabinet UI navigation between different
+ * sections (overview, meters, logs, etc.).
+ */
 import type { CabinetSection } from '@/lib/constants/cabinets';
 
 export type UseCabinetNavigationReturn = {

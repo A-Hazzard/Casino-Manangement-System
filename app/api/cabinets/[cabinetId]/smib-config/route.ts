@@ -1,33 +1,60 @@
+/**
+ * Cabinet SMIB Config API Route
+ *
+ * This route handles SMIB configuration operations for a cabinet.
+ * It supports:
+ * - Updating SMIB configuration
+ * - Sending configuration via MQTT
+ * - Handling machine control commands
+ * - Fetching current SMIB configuration
+ *
+ * @module app/api/cabinets/[cabinetId]/smib-config/route
+ */
+
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
-import { mqttService } from '@/lib/services/mqttService';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import type { SmibConfig } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../../lib/middleware/db';
 
 /**
- * POST /api/cabinets/[cabinetId]/smib-config
- * Update SMIB configuration and send via MQTT
+ * Main POST handler for updating SMIB configuration
+ *
+ * Flow:
+ * 1. Parse route parameters and request body
+ * 2. Connect to database
+ * 3. Find cabinet and verify location exists
+ * 4. Build update fields for SMIB config
+ * 5. Update machine in database
+ * 6. Send SMIB configuration via MQTT if provided
+ * 7. Handle machine control commands if provided
+ * 8. Return updated machine data
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ cabinetId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters and request body
+    // ============================================================================
     const { cabinetId } = await params;
+    const data = await request.json();
+
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Parse the request data
-    const data = await request.json();
-    console.warn('🔧 SMIB Config Update Request:', {
-      cabinetId,
-      smibConfig: data.smibConfig,
-      smibVersion: data.smibVersion,
-      machineControl: data.machineControl,
-    });
+    // ============================================================================
+    // STEP 3: Find cabinet and verify location exists
+    // ============================================================================
 
-    // Find the cabinet
-    const cabinet = await Machine.findById(cabinetId);
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const cabinet = await Machine.findOne({ _id: cabinetId });
     if (!cabinet) {
       return NextResponse.json(
         { success: false, error: 'Cabinet not found' },
@@ -35,8 +62,8 @@ export async function POST(
       );
     }
 
-    // Verify location exists
-    const location = await GamingLocations.findById(cabinet.gamingLocation);
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const location = await GamingLocations.findOne({ _id: cabinet.gamingLocation });
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found' },
@@ -44,21 +71,13 @@ export async function POST(
       );
     }
 
-    // Get original cabinet data for change tracking
-    const originalCabinet = await Machine.findById(cabinetId);
-    if (!originalCabinet) {
-      return NextResponse.json(
-        { success: false, error: 'Machine not found' },
-        { status: 404 }
-      );
-    }
-
-    // Build update object
+    // ============================================================================
+    // STEP 4: Build update fields for SMIB config
+    // ============================================================================
     const updateFields: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
-    // Handle SMIB configuration updates
     if (data.smibConfig !== undefined) {
       const now = new Date();
       const smibConfig = { ...data.smibConfig };
@@ -83,9 +102,12 @@ export async function POST(
       updateFields.smibVersion = data.smibVersion;
     }
 
-    // Update the machine
-    const updatedMachine = await Machine.findByIdAndUpdate(
-      cabinetId,
+    // ============================================================================
+    // STEP 5: Update machine in database
+    // ============================================================================
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    const updatedMachine = await Machine.findOneAndUpdate(
+      { _id: cabinetId },
       updateFields,
       { new: true, runValidators: true }
     );
@@ -97,78 +119,96 @@ export async function POST(
       );
     }
 
-    // Send SMIB configuration via MQTT if smibConfig is provided
+    // ============================================================================
+    // STEP 6: Send SMIB configuration via MQTT if provided
+    // ============================================================================
     const relayId = cabinet.relayId || cabinet.smibBoard;
     if (data.smibConfig && relayId) {
       try {
-        console.warn('📡 Sending SMIB config via MQTT to:', relayId);
         await mqttService.sendSMIBConfigUpdate(
           relayId,
           data.smibConfig as SmibConfig
         );
-        console.warn('✅ SMIB config sent successfully via MQTT');
       } catch (mqttError) {
-        console.error('❌ Failed to send SMIB config via MQTT:', mqttError);
-        // Don't fail the entire operation if MQTT fails
+        console.error('Failed to send SMIB config via MQTT:', mqttError);
       }
     }
 
-    // Handle machine control commands
+    // ============================================================================
+    // STEP 7: Handle machine control commands if provided
+    // ============================================================================
     if (data.machineControl && relayId) {
       try {
-        console.warn(
-          '🎮 Sending machine control command:',
-          data.machineControl
-        );
         await mqttService.sendMachineControlCommand(
           relayId,
           data.machineControl
         );
-        console.warn('✅ Machine control command sent successfully');
       } catch (mqttError) {
-        console.error('❌ Failed to send machine control command:', mqttError);
-        // Don't fail the entire operation if MQTT fails
+        console.error('Failed to send machine control command:', mqttError);
       }
     }
 
-    // Activity logging is handled by the frontend to ensure user context is available
-
-    // Debug logging for troubleshooting
-    console.warn('[SMIB CONFIG API] Update successful:', {
-      cabinetId,
-      updatedFields: Object.keys(updateFields),
-      serialNumber: updatedMachine.serialNumber,
-      mqttSent: !!(data.smibConfig || data.machineControl),
-    });
-
+    // ============================================================================
+    // STEP 8: Return updated machine data
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Cabinet SMIB Config POST API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       data: updatedMachine,
       mqttSent: !!(data.smibConfig || data.machineControl),
     });
   } catch (error) {
-    console.error('Error updating SMIB configuration:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to update SMIB configuration';
+    console.error(
+      `[Cabinet SMIB Config API POST] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to update SMIB configuration' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
 /**
- * GET /api/cabinets/[cabinetId]/smib-config
- * Get current SMIB configuration
+ * GET handler for fetching SMIB configuration
+ *
+ * Flow:
+ * 1. Parse route parameters
+ * 2. Connect to database
+ * 3. Find cabinet by ID
+ * 4. Return SMIB configuration and version
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ cabinetId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters
+    // ============================================================================
     const { cabinetId } = await params;
+
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Find the cabinet
-    const cabinet = await Machine.findById(cabinetId);
+    // ============================================================================
+    // STEP 3: Find cabinet by ID
+    // ============================================================================
+
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const cabinet = await Machine.findOne({ _id: cabinetId });
     if (!cabinet) {
       return NextResponse.json(
         { success: false, error: 'Cabinet not found' },
@@ -176,8 +216,15 @@ export async function GET(
       );
     }
 
+    // ============================================================================
+    // STEP 4: Return SMIB configuration and version
+    // ============================================================================
     const relayId = cabinet.relayId || cabinet.smibBoard || '';
 
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Cabinet SMIB Config GET API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       data: {
@@ -187,9 +234,17 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error fetching SMIB configuration:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch SMIB configuration';
+    console.error(
+      `[Cabinet SMIB Config API GET] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch SMIB configuration' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

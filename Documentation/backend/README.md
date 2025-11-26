@@ -309,7 +309,7 @@ The system includes comprehensive MQTT integration for real-time SMIB device com
 - **Machine Control**: Remote machine control commands (RESTART, LOCK, UNLOCK)
 
 **Key Files:**
-- `lib/services/mqttService.ts` - Singleton MQTT service
+- `app/api/lib/services/mqttService.ts` - Singleton MQTT service
 - `app/api/mqtt/config/subscribe/route.ts` - SSE endpoint
 - `app/api/mqtt/config/request/route.ts` - Config request endpoint
 - `app/api/mqtt/config/publish/route.ts` - Config publish endpoint

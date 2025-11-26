@@ -9,18 +9,21 @@
 ## 🎯 Core Principles
 
 ### 1. **Licensee-Based Data Isolation**
+
 - Every user (except Developer/Admin) belongs to one or more **licensees**
 - Users can ONLY see data for their assigned licensees
 - Data MUST be completely isolated between licensees (NO data leakage)
 - Licensee filter persists across page navigation via `localStorage`
 
 ### 2. **Location-Level Permissions**
+
 - Users can have granular access to specific **locations** (gaming venues)
 - Location access is determined by **intersection logic** (see below)
 - Managers see ALL locations for their licensees
 - Non-managers see ONLY specifically assigned locations
 
 ### 3. **Session Invalidation**
+
 - When admin changes user permissions → `sessionVersion++`
 - User's JWT becomes invalid → 401 Unauthorized → Auto-logout
 - User must re-login to get new JWT with updated permissions
@@ -30,6 +33,7 @@
 ## 📊 Data Model Relationships
 
 ### User Schema
+
 ```typescript
 {
   _id: string;                    // String ID (NOT ObjectId)
@@ -52,23 +56,25 @@
 ```
 
 ### Location Schema
+
 ```typescript
 {
-  _id: string;                    // String ID (NOT ObjectId)
+  _id: string; // String ID (NOT ObjectId)
   name: string;
   rel: {
-    licencee: string;             // ⭐ Single licensee ID this location belongs to
-  };
-  gameDayOffset: number;          // Gaming day start hour (e.g., 8 = 8 AM)
+    licencee: string; // ⭐ Single licensee ID this location belongs to
+  }
+  gameDayOffset: number; // Gaming day start hour (e.g., 8 = 8 AM)
 }
 ```
 
 ### Machine Schema
+
 ```typescript
 {
-  _id: string;                    // String ID (NOT ObjectId)
+  _id: string; // String ID (NOT ObjectId)
   serialNumber: string;
-  gamingLocation: string;         // ⭐ Location ID this machine belongs to
+  gamingLocation: string; // ⭐ Location ID this machine belongs to
   // Machine inherits licensee from its location
 }
 ```
@@ -80,6 +86,7 @@
 ### Role Hierarchy (6 Roles)
 
 #### **1. Developer**
+
 - **Licensee Access**: ALL (no restrictions)
 - **Location Access**: ALL (no restrictions)
 - **Dropdown**: Always shown (filter only, not restriction)
@@ -87,6 +94,7 @@
 - **Use Case**: System administrators
 
 #### **2. Admin**
+
 - **Licensee Access**: ALL (no restrictions)
 - **Location Access**: ALL (no restrictions)
 - **Dropdown**: Always shown (filter only, not restriction)
@@ -94,22 +102,25 @@
 - **Use Case**: Senior administrators
 
 #### **3. Manager**
+
 - **Licensee Access**: ONLY assigned licensees (`rel.licencee` array)
-- **Location Access**: ALL locations within assigned licensees
+- **Location Access**: ALL locations within assigned licensees (no intersection with location permissions)
 - **Dropdown**: Shown if 2+ assigned licensees
 - **Query Logic**: `licensee` parameter must be in user's `rel.licencee`
-- **Intersection**: Location permissions DON'T restrict managers
+- **Intersection**: Location permissions DON'T restrict managers (they see ALL locations for their licensees)
 - **Use Case**: Regional managers
 
 #### **4. Collector**
+
 - **Licensee Access**: ONLY assigned licensees (`rel.licencee` array)
 - **Location Access**: Intersection(licensee locations, assigned locations)
-- **Dropdown**: Shown if assigned locations span 2+ licensees
+- **Dropdown**: Shown if user has 2+ assigned licensees (not based on location count)
 - **Query Logic**: Auto-filtered to assigned locations
 - **Intersection**: `licensee locations ∩ resourcePermissions.gaming-locations.resources`
 - **Use Case**: Field collectors
 
 #### **5. Location Admin**
+
 - **Licensee Access**: ONLY assigned licensees (`rel.licencee` array)
 - **Location Access**: Intersection(licensee locations, assigned locations)
 - **Dropdown**: Never shown
@@ -118,6 +129,7 @@
 - **Use Case**: Location managers
 
 #### **6. Technician**
+
 - **Licensee Access**: ONLY assigned licensees (`rel.licencee` array)
 - **Location Access**: Intersection(licensee locations, assigned locations)
 - **Dropdown**: Never shown
@@ -194,8 +206,16 @@ const machines = await Machine.find(matchStage);
 import { applyLicenseeFilterToAggregation } from '@/app/api/lib/helpers/licenseeFilter';
 
 let pipeline: PipelineStage[] = [
-  { $match: { /* your filters */ } },
-  { $group: { /* your grouping */ } }
+  {
+    $match: {
+      /* your filters */
+    },
+  },
+  {
+    $group: {
+      /* your grouping */
+    },
+  },
 ];
 
 // Apply licensee filter
@@ -212,45 +232,110 @@ pipeline = applyLicenseeFilterToAggregation(
 
 ### 1. **Check If User Should See Content**
 
+**Pattern Used in:** Dashboard, Locations, Cabinets, Collection Reports, Cabinet Details
+
 ```typescript
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import { NoLicenseeAssigned } from '@/components/ui/NoLicenseeAssigned';
+import { useUserStore } from '@/lib/store/userStore';
 
 // In page component
-if (shouldShowNoLicenseeMessage(currentUser)) {
-  return <NoLicenseeAssigned />;
+const user = useUserStore(state => state.user);
+const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+
+if (showNoLicenseeMessage) {
+  return (
+    <PageLayout
+      headerProps={{ selectedLicencee, setSelectedLicencee }}
+      // ... other props
+    >
+      <NoLicenseeAssigned />
+    </PageLayout>
+  );
 }
 ```
 
 ### 2. **Use Licensee Dropdown**
 
+**Component:** `components/ui/LicenceeSelect.tsx`
+
+**Usage in Header:**
+
 ```typescript
-import { LicenceeSelect } from '@/components/ui/LicenceeSelect';
+// Header component (components/layout/Header.tsx) determines visibility:
+const shouldShowLicenseeSelect = isAdmin || hasMultipleLicensees;
 
-// Dropdown automatically:
-// - Fetches user's accessible licensees
-// - Filters to show only what user can access
-// - Shows/hides based on role and licensee count
-// - Persists selection to localStorage
-
-<LicenceeSelect />
+// Then conditionally renders:
+{!hideLicenceeFilter && shouldShowLicenseeSelect && (
+  <LicenceeSelect
+    selected={selectedLicencee || ''}
+    onChange={handleLicenseeChange}
+    userLicenseeIds={isAdmin ? undefined : userLicensees}
+    disabled={disabled}
+  />
+)}
 ```
+
+**Dropdown Behavior:**
+
+- **Fetches**: All licensees from API (filtered client-side for non-admins)
+- **Filters**: Non-admin users only see their assigned licensees (`userLicenseeIds` prop)
+- **Shows/Hides**: Based on `shouldShowLicenseeSelect` logic (admin OR 2+ licensees)
+- **Persistence**: Selection stored in `dashboardStore` (Zustand) which persists to localStorage
+- **Always Shows**: "All Licensees" option (empty string value)
 
 ### 3. **Include Licensee in API Calls**
 
 ```typescript
-import { useDashboardStore } from '@/lib/store/dashboardStore';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
-const { selectedLicencee } = useDashboardStore();
+const { selectedLicencee } = useDashBoardStore();
 
 // ALWAYS include in data fetching
 const { data } = useQuery({
   queryKey: ['data', selectedLicencee, timePeriod],
-  queryFn: () => fetchData({
-    licensee: selectedLicencee,  // ⭐ REQUIRED
-    timePeriod
-  })
+  queryFn: () =>
+    fetchData({
+      licensee: selectedLicencee, // ⭐ REQUIRED (can be empty string for "All Licensees")
+      timePeriod,
+    }),
 });
+
+// OR with custom hooks:
+const { locationData, loading } = useLocationData({
+  selectedLicencee, // ⭐ REQUIRED
+  activeMetricsFilter,
+  customDateRange,
+  searchTerm,
+});
+
+// OR with helper functions:
+await fetchCollectionReportsData(
+  selectedLicencee, // ⭐ REQUIRED
+  activeMetricsFilter,
+  customDateRange
+);
+```
+
+**Special Case - Collection Report Auto-Select:**
+
+```typescript
+// Collection Report page auto-selects single licensee on mount
+useEffect(() => {
+  if (user && isInitialMount.current && !hasInitializedLicensee.current) {
+    const userLicensees = user.rel?.licencee || [];
+
+    // Auto-select if user has exactly 1 licensee
+    if (
+      userLicensees.length === 1 &&
+      (!selectedLicencee || selectedLicencee === '')
+    ) {
+      setSelectedLicencee(userLicensees[0]);
+    }
+    hasInitializedLicensee.current = true;
+    isInitialMount.current = false;
+  }
+}, [user, selectedLicencee, setSelectedLicencee]);
 ```
 
 ### 4. **Update useEffect Dependencies**
@@ -260,7 +345,22 @@ const { data } = useQuery({
 useEffect(() => {
   fetchData();
 }, [selectedLicencee, timePeriod, otherDeps]); // Include selectedLicencee!
+
+// Example from locations page:
+useEffect(() => {
+  if (!searchTerm.trim()) {
+    fetchData(1, itemsPerBatch);
+  }
+}, [
+  selectedLicencee, // ⭐ CRITICAL: Must be included
+  activeMetricsFilter,
+  customDateRange,
+  selectedFilters,
+  // Note: searchTerm may be excluded if handled by hook with debouncing
+]);
 ```
+
+**Important:** If `selectedLicencee` is not in dependencies, the page won't refresh when the user changes licensee selection, causing stale data to display.
 
 ---
 
@@ -269,6 +369,7 @@ useEffect(() => {
 ### For Non-Managers (Collector, Location Admin, Technician)
 
 **FORMULA:**
+
 ```
 Accessible Locations = (Locations where rel.licencee IN user.rel.licencee)
                       ∩
@@ -276,22 +377,24 @@ Accessible Locations = (Locations where rel.licencee IN user.rel.licencee)
 ```
 
 **Code Implementation:**
+
 ```typescript
 // app/api/lib/helpers/licenseeFilter.ts - getUserLocationFilter()
 
 // Step 1: Get locations belonging to user's licensees
 const licenseeLocations = await GamingLocations.find({
-  'rel.licencee': { $in: userLicensees }
+  'rel.licencee': { $in: userLicensees },
 }).distinct('_id');
 
 // Step 2: Get user's assigned location permissions
-const userLocationPermissions = user.resourcePermissions?.['gaming-locations']?.resources || [];
+const userLocationPermissions =
+  user.resourcePermissions?.['gaming-locations']?.resources || [];
 
 // Step 3: Calculate intersection
 if (isManager) {
   return licenseeLocations; // Managers see ALL licensee locations
 } else {
-  const intersection = licenseeLocations.filter(id => 
+  const intersection = licenseeLocations.filter(id =>
     userLocationPermissions.includes(id)
   );
   return intersection; // Non-managers see ONLY intersection
@@ -303,6 +406,7 @@ if (isManager) {
 **NO INTERSECTION** - Managers see ALL locations for their assigned licensees, regardless of `resourcePermissions.gaming-locations.resources`.
 
 **Code:**
+
 ```typescript
 if (isManager) {
   // Return ALL locations for assigned licensees
@@ -317,15 +421,16 @@ if (isManager) {
 ### When to Increment sessionVersion
 
 **Trigger Conditions:**
+
 ```typescript
 // ⚠️ CRITICAL: sessionVersion is ONLY incremented when permissions change
 // It is NOT incremented on login - this allows multiple concurrent sessions
 
 // Increment sessionVersion when changing ANY of these:
-const permissionFieldsChanged = 
-  licenseeChanged ||           // rel.licencee array modified
-  locationsChanged ||          // resourcePermissions.gaming-locations.resources modified
-  rolesChanged;                // roles array modified
+const permissionFieldsChanged =
+  licenseeChanged || // rel.licencee array modified
+  locationsChanged || // resourcePermissions.gaming-locations.resources modified
+  rolesChanged; // roles array modified
 
 if (permissionFieldsChanged) {
   await UserModel.findOneAndUpdate(
@@ -340,7 +445,7 @@ await UserModel.findOneAndUpdate(
   { _id: user._id },
   {
     $set: { lastLoginAt: now },
-    $inc: { loginCount: 1 }
+    $inc: { loginCount: 1 },
     // sessionVersion remains unchanged
   }
 );
@@ -411,10 +516,7 @@ await UserModel.findByIdAndUpdate(userId, ...); // NEVER use this!
 // Get all locations for a licensee
 const locations = await GamingLocations.find({
   'rel.licencee': licenseeId,
-  $or: [
-    { deletedAt: null },
-    { deletedAt: { $lt: new Date('2020-01-01') } }
-  ]
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
 });
 ```
 
@@ -424,10 +526,7 @@ const locations = await GamingLocations.find({
 // Get machines at specific locations
 const machines = await Machine.find({
   gamingLocation: { $in: locationIds },
-  $or: [
-    { deletedAt: null },
-    { deletedAt: { $lt: new Date('2020-01-01') } }
-  ]
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
 });
 ```
 
@@ -441,13 +540,15 @@ const machines = await Machine.find({
 
 ```typescript
 // 1. Get user's accessible licensees from JWT token
-export async function getUserAccessibleLicenseesFromToken(): Promise<string[] | 'all'>
+export async function getUserAccessibleLicenseesFromToken(): Promise<
+  string[] | 'all'
+>;
 // Returns: 'all' for admins, string[] for others
 
 // 2. Get filtered location IDs based on role and licensees
 export async function getUserLocationFilter(
   selectedLicenseeFilter?: string
-): Promise<string[] | 'all'>
+): Promise<string[] | 'all'>;
 // Returns: 'all' for admins with no filter, string[] for filtered, [] for no access
 
 // 3. Apply licensee filter to aggregation pipeline
@@ -455,7 +556,7 @@ export function applyLicenseeFilterToAggregation(
   pipeline: PipelineStage[],
   licenseeId?: string,
   userAccessibleLicensees?: string[] | 'all'
-): PipelineStage[]
+): PipelineStage[];
 ```
 
 ### Frontend Utility Functions
@@ -464,19 +565,44 @@ export function applyLicenseeFilterToAggregation(
 
 ```typescript
 // Check if user should see "No Licensee Assigned" message
-export function shouldShowNoLicenseeMessage(user: User | null): boolean
+export function shouldShowNoLicenseeMessage(
+  user: UserAuthPayload | null
+): boolean;
 // Returns: true if non-admin user with no licensees
 
-// Check if user has admin role
-export function isUserAdmin(user: User | null): boolean
+// Check if user can access all licensees (admin/dev only)
+export function canAccessAllLicensees(user: UserAuthPayload | null): boolean;
 
-// Check if user has manager role
-export function isUserManager(user: User | null): boolean
+// Get user's accessible licensees
+export function getUserAccessibleLicensees(
+  user: UserAuthPayload | null
+): string[] | 'all';
+// Returns: 'all' for admins, string[] for others
 
-// Check if dropdown should be shown
-export function shouldShowLicenseeDropdown(user: User | null): boolean
+// Filter licensee options based on user permissions
+export function getFilteredLicenseeOptions(
+  allLicensees: Array<{ _id: string; name: string }>,
+  user: UserAuthPayload | null
+): Array<{ _id: string; name: string }>;
+
+// Get default selected licensee
+export function getDefaultSelectedLicensee(
+  user: UserAuthPayload | null
+): string;
+// Returns: '' for admins or multi-licensee users, first licensee for single-licensee users
+
+// Check if user can access a specific licensee
+export function canAccessLicensee(
+  user: UserAuthPayload | null,
+  licenseeId: string
+): boolean;
+
+// Check if licensee filter should be shown (used in some components)
+export function shouldShowLicenseeFilter(user: UserAuthPayload | null): boolean;
 // Returns: true for admins OR users with 2+ licensees
 ```
+
+**Note:** The Header component uses inline logic (`isAdmin || hasMultipleLicensees`) rather than calling `shouldShowLicenseeFilter()`, but both produce the same result.
 
 ---
 
@@ -490,30 +616,33 @@ import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    
+
     // 1. ⭐ ALWAYS support both spellings
-    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
-    
+    const licensee =
+      searchParams.get('licensee') || searchParams.get('licencee');
+
     // 2. Get filtered location IDs
-    const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
-    
+    const allowedLocationIds = await getUserLocationFilter(
+      licensee || undefined
+    );
+
     // 3. Handle no access case
     if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
       return NextResponse.json({ success: true, data: [] });
     }
-    
+
     // 4. Build MongoDB query
     const matchStage: Record<string, unknown> = {};
-    
+
     if (allowedLocationIds !== 'all') {
       matchStage['_id'] = { $in: allowedLocationIds }; // For locations
       // OR
       matchStage['gamingLocation'] = { $in: allowedLocationIds }; // For machines
     }
-    
+
     // 5. Execute query
     const data = await Model.find(matchStage);
-    
+
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return NextResponse.json({ error: 'Query failed' }, { status: 500 });
@@ -527,18 +656,18 @@ export async function GET(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const licensee = searchParams.get('licensee') || searchParams.get('licencee');
   const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
-  
+
   let pipeline: PipelineStage[] = [
-    { $match: { readAt: { $gte: startDate, $lte: endDate } } }
+    { $match: { readAt: { $gte: startDate, $lte: endDate } } },
   ];
-  
+
   // Apply location filter to pipeline
   if (allowedLocationIds !== 'all') {
     pipeline.unshift({
-      $match: { location: { $in: allowedLocationIds } }
+      $match: { location: { $in: allowedLocationIds } },
     });
   }
-  
+
   const results = await Meters.aggregate(pipeline);
   return NextResponse.json({ success: true, data: results });
 }
@@ -605,9 +734,9 @@ await UserModel.findOneAndUpdate(
 // ✅ CORRECT - Invalidate session when permissions change
 await UserModel.findOneAndUpdate(
   { _id: userId },
-  { 
+  {
     $set: { 'rel.licencee': newLicensees },
-    $inc: { sessionVersion: 1 } // ⭐ Force re-login
+    $inc: { sessionVersion: 1 }, // ⭐ Force re-login
   }
 );
 ```
@@ -633,6 +762,7 @@ useEffect(() => {
 ### Test Each Role
 
 When implementing licensee filtering:
+
 1. ✅ Test as Developer (can view all + filter)
 2. ✅ Test as Manager with 3 licensees (dropdown filters correctly)
 3. ✅ Test as Manager with 1 licensee (no dropdown)
@@ -683,32 +813,48 @@ When creating or modifying an API endpoint that returns licensee/location/machin
 
 When creating a page that displays licensee/location/machine data:
 
-- [ ] Import `shouldShowNoLicenseeMessage` and `NoLicenseeAssigned`
+- [ ] Import `shouldShowNoLicenseeMessage` from `@/lib/utils/licenseeAccess`
+- [ ] Import `NoLicenseeAssigned` component
 - [ ] Check if user should see content (return `<NoLicenseeAssigned />` if not)
-- [ ] Import `useDashboardStore` and get `selectedLicencee`
-- [ ] Include `selectedLicencee` in ALL data fetching queries
-- [ ] Add `selectedLicencee` to useEffect dependencies
-- [ ] Import and render `<LicenceeSelect />` in header (conditional visibility handled automatically)
-- [ ] Test page access for all roles
-- [ ] Verify filtering works correctly
-- [ ] Check licensee dropdown shows/hides correctly
+- [ ] Import `useDashBoardStore` (note: capital B in DashBoard)
+- [ ] Get `selectedLicencee` and `setSelectedLicencee` from store
+- [ ] Include `selectedLicencee` in ALL data fetching queries/hooks
+- [ ] Add `selectedLicencee` to useEffect dependencies (critical!)
+- [ ] Pass `selectedLicencee` to `PageLayout` headerProps
+- [ ] Licensee dropdown visibility is handled automatically by Header component
+- [ ] Test page access for all roles (admin, manager, collector, location admin, technician)
+- [ ] Verify filtering works correctly when licensee changes
+- [ ] Verify dropdown shows/hides correctly (admin always, others only with 2+ licensees)
+- [ ] Test with users having 0, 1, and 2+ licensees
 
 ---
 
 ## 🗄️ Important Files Reference
 
 ### Backend
+
 - `app/api/lib/helpers/licenseeFilter.ts` - Core filtering logic
 - `app/api/lib/helpers/users.ts` - User fetching with session validation
 - `app/api/lib/models/user.ts` - User schema with licensee fields
 
 ### Frontend
-- `lib/utils/licenseeAccess.ts` - Client-side access checks
-- `lib/store/dashboardStore.ts` - Licensee selection state
-- `components/ui/LicenceeSelect.tsx` - Licensee dropdown component
-- `components/ui/NoLicenseeAssigned.tsx` - No access message
+
+- `lib/utils/licenseeAccess.ts` - Client-side access checks and utility functions
+- `lib/store/dashboardStore.ts` - Licensee selection state (Zustand store with localStorage persistence)
+- `components/ui/LicenceeSelect.tsx` - Licensee dropdown component (filters licensees for non-admins)
+- `components/ui/NoLicenseeAssigned.tsx` - No access message component
+- `components/layout/Header.tsx` - Header with licensee dropdown visibility logic (`shouldShowLicenseeSelect = isAdmin || hasMultipleLicensees`)
+
+### Page Implementations
+
+- `app/page.tsx` (Dashboard) - ✅ Uses `shouldShowNoLicenseeMessage`, includes `selectedLicencee` in dependencies
+- `app/locations/page.tsx` - ✅ Uses `shouldShowNoLicenseeMessage`, includes `selectedLicencee` in dependencies
+- `app/cabinets/page.tsx` - ✅ Uses `shouldShowNoLicenseeMessage`, includes `selectedLicencee` in dependencies
+- `app/collection-report/page.tsx` - ✅ Uses `shouldShowNoLicenseeMessage`, auto-selects single licensee, includes `selectedLicencee` in dependencies
+- `app/administration/page.tsx` - ✅ Shows all users (no licensee filtering), increments `sessionVersion` on permission changes
 
 ### Types
+
 - `shared/types/entities.ts` - User, Location types
 - `shared/types/auth.ts` - JWT payload with licensee info
 - `lib/types/administration.ts` - Admin types with licensee
@@ -734,21 +880,68 @@ Is user Developer or Admin?
 
 ### "Should this page show licensee dropdown?"
 
+**Actual Implementation (Header.tsx):**
+
+```typescript
+const shouldShowLicenseeSelect = isAdmin || hasMultipleLicensees;
+```
+
+**Logic:**
+
 ```
 Is user Developer or Admin?
 ├─ YES → Always show
-└─ NO → Is user a Manager?
-    ├─ YES → Show if 2+ assigned licensees
-    └─ NO → Is user a Collector with 2+ licensees?
-        ├─ YES → Show dropdown
-        └─ NO → Don't show (single licensee or location-only access)
+└─ NO → Does user have 2+ assigned licensees?
+    ├─ YES → Show dropdown
+    └─ NO → Don't show (0 or 1 licensee)
 ```
+
+**Note:** The dropdown visibility is determined by role (admin/dev) OR licensee count (2+), regardless of specific role type (Manager, Collector, Location Admin, Technician). All non-admin users with 2+ licensees see the dropdown.
 
 ---
 
 ## 🎓 Examples from Codebase
 
-### Example 1: Dashboard Totals API
+### Example 1: Dashboard Page
+
+**File:** `app/page.tsx`
+
+```typescript
+// Get selected licensee from store
+const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+const user = useUserStore(state => state.user);
+
+// Check for no licensee access
+const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+if (showNoLicenseeMessage) {
+  return <NoLicenseeAssigned />;
+}
+
+// Include selectedLicencee in data fetching
+useEffect(() => {
+  const fetchMetrics = async () => {
+    await loadGamingLocations(setGamingLocations, selectedLicencee, {
+      forceAll: isAdminUser || selectedLicencee === 'all',
+    });
+
+    await fetchMetricsData(
+      activeMetricsFilter,
+      customDateRange,
+      selectedLicencee,  // ⭐ Passed to API
+      setTotals,
+      setChartData,
+      // ...
+    );
+  };
+  fetchMetrics();
+}, [
+  activeMetricsFilter,
+  selectedLicencee,  // ⭐ In dependencies
+  customDateRange,
+  displayCurrency,
+  // ...
+]);
+```
 
 **File:** `app/api/dashboard/totals/route.ts`
 
@@ -767,15 +960,35 @@ if (allowedLocationIds !== 'all') {
 **File:** `app/locations/page.tsx`
 
 ```typescript
-if (shouldShowNoLicenseeMessage(currentUser)) {
+// Check for no licensee access
+const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+if (showNoLicenseeMessage) {
   return <NoLicenseeAssigned />;
 }
 
-const { data } = useLocationData({
-  licensee: selectedLicencee,
-  timePeriod,
-  search: searchTerm
+// Get selected licensee from store
+const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+
+// Use custom hook with selectedLicencee
+const { locationData, loading, fetchData } = useLocationData({
+  selectedLicencee,  // ⭐ Included in hook
+  activeMetricsFilter,
+  customDateRange,
+  searchTerm,
+  selectedFilters,
 });
+
+// Include selectedLicencee in useEffect dependencies
+useEffect(() => {
+  if (!searchTerm.trim()) {
+    fetchData(1, itemsPerBatch);
+  }
+}, [
+  selectedLicencee,  // ⭐ Included
+  activeMetricsFilter,
+  customDateRange,
+  selectedFilters,
+]);
 ```
 
 ### Example 3: User Modal with Licensee Assignment
@@ -786,22 +999,42 @@ const { data } = useLocationData({
 // Multi-select for licensees
 <MultiSelect
   options={availableLicensees}
-  selected={formData.rel?.licencee || []}
-  onChange={(licensees) => setFormData({
-    ...formData,
-    rel: { ...formData.rel, licencee: licensees }
-  })}
+  selected={selectedLicenseeIds}
+  onChange={(licensees) => setSelectedLicenseeIds(licensees)}
 />
 
-// On save - increment sessionVersion if licensees changed
-const hasLicenseeChanges = !arraysEqual(
-  initialData.rel?.licencee || [],
-  formData.rel?.licencee || []
-);
+// On save - detect changes and increment sessionVersion
+const oldLicenseeIds = (user?.rel?.licencee || []).map(id => String(id));
+const newLicenseeIds = selectedLicenseeIds.map(id => String(id));
 
-if (hasLicenseeChanges) {
-  updateData.$inc = { sessionVersion: 1 };
+// Sort for comparison
+const oldLicenseeIdsSorted = [...oldLicenseeIds].sort();
+const newLicenseeIdsSorted = [...newLicenseeIds].sort();
+
+const licenseeIdsChanged =
+  oldLicenseeIdsSorted.length !== newLicenseeIdsSorted.length ||
+  !oldLicenseeIdsSorted.every((id, idx) => id === newLicenseeIdsSorted[idx]);
+
+// Check for permission field changes (licensees, locations, roles)
+const permissionFieldsChanged =
+  licenseeIdsChanged ||
+  locationIdsChanged ||
+  rolesChanged;
+
+// Increment sessionVersion if permissions changed
+if (permissionFieldsChanged) {
+  updatePayload.$inc = { sessionVersion: 1 };
 }
+```
+
+**File:** `app/administration/page.tsx`
+
+```typescript
+// Administration page shows ALL users (no licensee filtering)
+// Licensee filtering is only for data pages (dashboard, locations, cabinets, etc.)
+const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+// Note: selectedLicencee is available but not used for filtering users
+// Users are shown regardless of licensee (admin page shows all users)
 ```
 
 ---
@@ -836,4 +1069,3 @@ node -e "require('dotenv').config(); const mongoose = require('mongoose'); mongo
 **Remember:** When in doubt, check the comprehensive guide at `Documentation/licensee-location-filtering.md`
 
 **Last Updated:** November 9, 2025
-

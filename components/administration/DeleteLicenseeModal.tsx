@@ -1,3 +1,18 @@
+/**
+ * Delete Licensee Modal Component
+ * Confirmation modal for deleting a licensee.
+ *
+ * Features:
+ * - Licensee deletion confirmation
+ * - Warning message
+ * - GSAP animations
+ * - Licensee name display
+ *
+ * @param open - Whether the modal is visible
+ * @param licensee - Licensee object to delete
+ * @param onClose - Callback to close the modal
+ * @param onDelete - Callback when deletion is confirmed
+ */
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import type { Licensee } from '@/lib/types/licensee';

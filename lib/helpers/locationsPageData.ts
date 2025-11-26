@@ -1,5 +1,22 @@
+/**
+ * Locations Page Data Helper Functions
+ *
+ * Provides helper functions for fetching locations page data, including location
+ * lists with filters, search functionality, and machine statistics. It handles
+ * data retrieval for the locations overview page.
+ *
+ * Features:
+ * - Fetches locations data with filters, date range, and licensee filtering.
+ * - Searches all locations by search term.
+ * - Fetches machine statistics (total, online, offline counts).
+ */
+
 import axios from 'axios';
 import type { AggregatedLocation } from '@/lib/types/location';
+
+// ============================================================================
+// Location Data Fetching
+// ============================================================================
 
 /**
  * Fetch locations data with filters and date range
@@ -38,6 +55,10 @@ export async function fetchLocationsData(
   }
 }
 
+// ============================================================================
+// Location Search
+// ============================================================================
+
 /**
  * Search all locations
  */
@@ -61,6 +82,10 @@ export async function searchAllLocations(
     return [];
   }
 }
+
+// ============================================================================
+// Machine Statistics
+// ============================================================================
 
 /**
  * Fetch machine statistics

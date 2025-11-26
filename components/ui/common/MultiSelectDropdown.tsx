@@ -1,3 +1,25 @@
+/**
+ * Multi Select Dropdown Component
+ * Dropdown component for selecting multiple options with search functionality.
+ *
+ * Features:
+ * - Multiple option selection
+ * - Search functionality
+ * - Select all option
+ * - Selected items display
+ * - Click outside to close
+ * - Keyboard navigation
+ *
+ * @param options - Array of selectable options
+ * @param selectedIds - Array of selected option IDs
+ * @param onChange - Callback when selection changes
+ * @param placeholder - Placeholder text
+ * @param searchPlaceholder - Search input placeholder
+ * @param label - Label text
+ * @param disabled - Whether the dropdown is disabled
+ * @param showSelectAll - Whether to show select all option
+ * @param maxHeight - Maximum height for dropdown
+ */
 'use client';
 
 import { useState, useRef, useEffect } from 'react';

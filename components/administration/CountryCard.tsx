@@ -1,3 +1,16 @@
+/**
+ * Country Card Component
+ * Mobile-friendly card view for displaying country information.
+ *
+ * Features:
+ * - Country information display (name, alpha-2, alpha-3, ISO numeric)
+ * - Edit and delete action buttons
+ * - Responsive design (mobile only)
+ *
+ * @param country - Country object to display
+ * @param onEdit - Callback when edit is clicked
+ * @param onDelete - Callback when delete is clicked
+ */
 import type { Country } from '@/lib/types/country';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

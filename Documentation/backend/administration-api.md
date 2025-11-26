@@ -1,7 +1,7 @@
 # Administration & Users API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 2025
+**Last Updated:** November 22, 2025
 
 ## Quick Search Guide
 
@@ -389,7 +389,7 @@ The Administration & Users API provides comprehensive user management, system ad
 
 ## API Logging
 
-All endpoints in this API include comprehensive logging using the `APILogger` utility (`app/api/lib/utils/logger.ts`). Each request is logged with:
+All endpoints in this API include comprehensive logging using the `apiLogger` singleton (`app/api/lib/utils/logger.ts`). Each request is logged with:
 
 - **Timestamp**: ISO format timestamp
 - **Duration**: Request processing time in milliseconds
@@ -400,10 +400,45 @@ All endpoints in this API include comprehensive logging using the `APILogger` ut
 - **Request Parameters**: Query parameters and relevant request data
 - **Response Status**: Success/failure status with details
 
+**Usage Pattern:**
+
+```typescript
+import { apiLogger } from '@/app/api/lib/utils/logger';
+
+export async function GET(request: NextRequest) {
+  const context = apiLogger.createContext(request, '/api/users');
+  apiLogger.startLogging();
+
+  try {
+    // ... implementation ...
+    apiLogger.logSuccess(context, 'Users fetched successfully', { count: users.length });
+    return NextResponse.json({ users });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    apiLogger.logError(context, 'Failed to fetch users', errorMessage);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
+}
+```
+
 **Log Format Example:**
 
 ```
-[2024-01-15T10:30:45.123Z] [INFO] (245ms) GET /api/users: Users fetched successfully User: admin123 IP: 192.168.1.100 Params: {"licensee":"all"} Data: {"count":15}
+[2024-01-15T10:30:45.123Z] [INFO] [GET /api/users] 245ms - Users fetched successfully (User: admin123)
+```
+
+**Alternative: Using withLogging Decorator:**
+
+```typescript
+import { withLogging } from '@/app/api/lib/utils/logger';
+
+export const GET = withLogging(
+  async (request: NextRequest) => {
+    // ... implementation ...
+    return NextResponse.json({ users });
+  },
+  '/api/users'
+);
 ```
 
 ## Users API

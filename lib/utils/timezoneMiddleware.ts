@@ -1,19 +1,27 @@
 /**
  * Timezone Middleware for API Responses
  *
- * This middleware automatically converts all date fields in API responses
- * from UTC to Trinidad local time (UTC-4).
+ * Middleware-style helpers that automatically convert all date fields
+ * in API responses from UTC to Trinidad local time (UTC-4).
+ *
+ * Features:
+ * - JSON response helpers with timezone conversion
+ * - Success and error response helpers
+ * - Paginated response helper
  */
 
 import { NextResponse } from 'next/server';
 import { convertResponseToTrinidadTime } from './timezone';
 
+// ============================================================================
+// Response Helpers
+// ============================================================================
 /**
- * Creates a NextResponse with automatic timezone conversion for date fields
- * @param data - Response data (object or array)
- * @param options - NextResponse options (status, headers, etc.)
- * @param additionalDateFields - Additional date field names to convert
- * @returns NextResponse with Trinidad time converted dates
+ * Creates a NextResponse with automatic timezone conversion for date fields.
+ * @param data - Response data (object or array).
+ * @param options - NextResponse options (status, headers, etc.).
+ * @param additionalDateFields - Additional date field names to convert.
+ * @returns NextResponse with Trinidad time converted dates.
  */
 export function createTrinidadTimeResponse<T>(
   data: T,

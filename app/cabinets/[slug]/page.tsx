@@ -1,3 +1,19 @@
+/**
+ * Cabinet Detail Page
+ *
+ * Displays detailed information about a specific cabinet/machine.
+ *
+ * Features:
+ * - Cabinet information display
+ * - SMIB configuration and management
+ * - Accounting details
+ * - Meter data section
+ * - OTA update section
+ * - Restart section
+ * - Role-based access control
+ * - Responsive design for mobile and desktop
+ */
+
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -42,7 +58,9 @@ import { OTAUpdateSection } from '@/components/cabinets/smibManagement/OTAUpdate
 import { RestartSection } from '@/components/cabinets/smibManagement/RestartSection';
 import { CabinetDetailsLoadingState } from '@/components/ui/skeletons/CabinetDetailSkeletons';
 
-// Animation variants
+// ============================================================================
+// Animation Variants
+// ============================================================================
 const configContentVariants: Variants = {
   hidden: { opacity: 0, height: 0 },
   visible: { opacity: 1, height: 'auto' },
@@ -57,7 +75,13 @@ const itemVariants: Variants = {
   },
 };
 
-// Custom hook to safely handle client-side animations
+// ============================================================================
+// Custom Hooks
+// ============================================================================
+/**
+ * Custom hook to safely handle client-side animations
+ * Prevents hydration mismatches by only enabling animations after mount
+ */
 function useHasMounted() {
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -68,17 +92,42 @@ function useHasMounted() {
   return hasMounted;
 }
 
+// ============================================================================
+// Page Components
+// ============================================================================
+/**
+ * Cabinet Detail Page Content Component
+ * Handles all state management and data fetching for the cabinet detail page
+ */
 function CabinetDetailPageContent() {
+  // ============================================================================
+  // Hooks & Context
+  // ============================================================================
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const slug = pathname.split('/').pop() || '';
-  const [isClient, setIsClient] = useState(false);
+  const { user } = useUserStore();
+  const {
+    selectedLicencee,
+    setSelectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+  } = useDashBoardStore();
+  const { openEditModal } = useCabinetActionsStore();
   const hasMounted = useHasMounted();
 
-  // Get current user for permission checking
-  const { user } = useUserStore();
+  // ============================================================================
+  // State Management
+  // ============================================================================
+  const [isClient, setIsClient] = useState(false);
+  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
+
+  // ============================================================================
+  // Computed Values - Permissions
+  // ============================================================================
   const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
+  
   // Only Developer, Admin, and Technician can access SMIB Configuration
   const canAccessSmibConfig =
     user &&
@@ -103,30 +152,9 @@ function CabinetDetailPageContent() {
     );
   }, [user]);
 
-  // Note: canDeleteMachines is not currently used on this page but kept for future use
-  // const canDeleteMachines = useMemo(() => {
-  //   if (!user || !user.roles) return false;
-  //   const userRoles = user.roles || [];
-  //   // Collectors and technicians cannot delete machines
-  //   if (userRoles.includes('collector') || userRoles.includes('technician')) {
-  //     return false;
-  //   }
-  //   // Only managers, admins, developers, and location admins can delete
-  //   return ['developer', 'admin', 'manager', 'location admin'].some(role =>
-  //     userRoles.includes(role)
-  //   );
-  // }, [user]);
-
-  const {
-    selectedLicencee,
-    setSelectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-  } = useDashBoardStore();
-
-  // State for tracking date filter initialization
-  const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
-
+  // ============================================================================
+  // Effects - Initialization
+  // ============================================================================
   // Detect when date filter is properly initialized
   useEffect(() => {
     if (activeMetricsFilter && !dateFilterInitialized) {
@@ -134,8 +162,9 @@ function CabinetDetailPageContent() {
     }
   }, [activeMetricsFilter, dateFilterInitialized]);
 
-  const { openEditModal } = useCabinetActionsStore();
-
+  // ============================================================================
+  // Event Handlers
+  // ============================================================================
   // Copy to clipboard function
   const copyToClipboard = async (text: string, label: string) => {
     if (!text || text.trim() === '' || text === 'N/A') {
@@ -170,7 +199,9 @@ function CabinetDetailPageContent() {
     }
   };
 
-  // Custom hooks for data management
+  // ============================================================================
+  // Custom Hooks - Data Management
+  // ============================================================================
   const {
     cabinet,
     locationName,
@@ -216,6 +247,9 @@ function CabinetDetailPageContent() {
     // _updateAppConfig,
   } = useSmibConfiguration();
 
+  // ============================================================================
+  // State Management - UI State
+  // ============================================================================
   // Initialize activeMetricsTabContent from URL on first load
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
     useState<string>(() => {
@@ -229,13 +263,18 @@ function CabinetDetailPageContent() {
       return 'Range Metrics'; // default
     });
 
-  // Refs for animation
-  const configSectionRef = useRef<HTMLDivElement>(null);
-
   const [refreshing, setRefreshing] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
 
+  // ============================================================================
+  // Refs
+  // ============================================================================
+  const configSectionRef = useRef<HTMLDivElement>(null);
+
+  // ============================================================================
+  // Effects - Data Fetching & Initialization
+  // ============================================================================
   // Update SMIB configuration when cabinet data changes
   useEffect(() => {
     if (cabinet) {
@@ -258,8 +297,6 @@ function CabinetDetailPageContent() {
     fetchMqttConfig,
     disconnectFromConfigStream,
   ]);
-
-  // Note: Date filter changes are now handled by the main useEffect above
 
   // Don't show loading state on initial load
   useEffect(() => {
@@ -534,7 +571,10 @@ function CabinetDetailPageContent() {
     }
   };
 
-  // 0. FIRST: Show "No Licensee Assigned" message for non-admin users without licensees
+  // ============================================================================
+  // Early Returns
+  // ============================================================================
+  // Show "No Licensee Assigned" message for non-admin users without licensees
   if (showNoLicenseeMessage) {
     return (
       <PageLayout
@@ -554,7 +594,7 @@ function CabinetDetailPageContent() {
     );
   }
 
-  // 1. SECOND: If initial loading (no cabinet data yet), show skeleton loaders
+  // If initial loading (no cabinet data yet), show skeleton loaders
   if (!cabinet && !error) {
     return (
       <CabinetDetailsLoadingState
@@ -565,7 +605,7 @@ function CabinetDetailPageContent() {
     );
   }
 
-  // 2. SECOND: If there was an error, show appropriate error component
+  // If there was an error, show appropriate error component
   if (error) {
     return (
       <PageLayout
@@ -631,7 +671,9 @@ function CabinetDetailPageContent() {
     );
   }
 
-  // Main return statement should be here, AFTER all conditional returns
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <EditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
@@ -2029,6 +2071,10 @@ function CabinetDetailPageContent() {
   );
 }
 
+/**
+ * Cabinet Detail Page Component
+ * Thin wrapper that handles routing and authentication
+ */
 export default function CabinetDetailPage() {
   return (
     <ProtectedRoute requiredPage="machines">

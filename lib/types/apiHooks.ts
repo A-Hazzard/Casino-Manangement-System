@@ -1,3 +1,10 @@
+/**
+ * API Hooks Types
+ * Types for custom API hooks with retry logic and error handling.
+ *
+ * Used by useApiWithRetry hook for configurable API calls with
+ * automatic retry, timeout, and error handling.
+ */
 import type { ApiError } from '@/lib/types/errors';
 
 export type UseApiWithRetryOptions = {

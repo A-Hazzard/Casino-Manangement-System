@@ -1,9 +1,23 @@
+/**
+ * Tabs Components
+ * Reusable tabs component using Radix UI primitives.
+ *
+ * Features:
+ * - Tabs root, list, trigger, content components
+ * - Active state styling
+ * - Focus states
+ * - Accessible keyboard navigation
+ */
 'use client';
 
 import * as React from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Tabs Components
+// ============================================================================
 
 const Tabs = TabsPrimitive.Root;
 

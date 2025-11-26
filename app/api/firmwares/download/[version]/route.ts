@@ -1,71 +1,66 @@
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Firmware } from '@/app/api/lib/models/firmware';
-import { GridFSBucket } from 'mongodb';
+/**
+ * Firmware Download by Version API Route
+ *
+ * This route handles downloading firmware files from GridFS by version.
+ * It supports:
+ * - Finding firmware by version
+ * - Downloading firmware file from GridFS
+ * - Returning file with appropriate headers for SMIB OTA updates
+ *
+ * @module app/api/firmwares/download/[version]/route
+ */
+
+import {
+  downloadFirmwareFromGridFS,
+  findFirmwareByVersion,
+} from '@/app/api/lib/helpers/firmware';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * GET /api/firmwares/download/[version]
- * Downloads a firmware file by version (e.g. /api/firmwares/download/v1.0.1)
- * This endpoint is used by SMIBs for OTA updates
+ * Main GET handler for downloading firmware by version
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Find firmware document by version
+ * 3. Download firmware file from GridFS
+ * 4. Return file with appropriate headers for SMIB OTA
  */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ version: string }> }
 ) {
-  try {
-    const db = await connectDB();
-    if (!db) {
-      throw new Error('Database connection failed');
-    }
+  const startTime = Date.now();
 
-    const bucket = new GridFSBucket(db, { bucketName: 'firmwares' });
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { version } = await params;
 
-    console.log(`📥 [FIRMWARE DOWNLOAD] Requested version: ${version}`);
-
-    // Find the firmware document by version
-    const firmwareDoc = await Firmware.findOne({
-      version: version,
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    }).lean();
-
-    if (!firmwareDoc) {
-      console.error(
-        `❌ [FIRMWARE DOWNLOAD] Firmware version ${version} not found`
-      );
+    // ============================================================================
+    // STEP 2: Find firmware document by version
+    // ============================================================================
+    const firmware = await findFirmwareByVersion(version);
+    if (!firmware) {
       return NextResponse.json(
         { error: `Firmware version ${version} not found` },
         { status: 404 }
       );
     }
 
-    // Type assertion for firmware document
-    const firmware = firmwareDoc as unknown as {
-      fileId: Parameters<typeof bucket.openDownloadStream>[0];
-      fileName: string;
-    };
+    // ============================================================================
+    // STEP 3: Download firmware file from GridFS
+    // ============================================================================
+    const buffer = await downloadFirmwareFromGridFS(firmware.fileId);
 
-    console.log(`✅ [FIRMWARE DOWNLOAD] Found firmware: ${firmware.fileName}`);
-
-    // Create download stream from GridFS
-    const downloadStream = bucket.openDownloadStream(firmware.fileId);
-
-    // Convert stream to buffer
-    const chunks: Buffer[] = [];
-    for await (const chunk of downloadStream) {
-      chunks.push(chunk);
+    // ============================================================================
+    // STEP 4: Return file with appropriate headers for SMIB OTA
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Firmware Download by Version API] Completed in ${duration}ms`);
     }
-    const buffer = Buffer.concat(chunks);
-
-    console.log(
-      `✅ [FIRMWARE DOWNLOAD] Serving ${firmware.fileName} (${buffer.length} bytes)`
-    );
-
-    // Return the file with appropriate headers for SMIB OTA
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/octet-stream',
@@ -77,10 +72,13 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('❌ [FIRMWARE DOWNLOAD] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to download firmware' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to download firmware';
+    console.error(
+      `[Firmware Download by Version API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

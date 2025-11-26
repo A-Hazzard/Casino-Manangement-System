@@ -1,3 +1,21 @@
+/**
+ * Online Offline Indicator Component
+ * Component displaying machine online/offline status with real-time updates.
+ *
+ * Features:
+ * - Machine statistics fetching
+ * - Online/offline status indicator
+ * - Real-time updates (every minute)
+ * - Loading states
+ * - Error handling
+ * - Size variants (sm, md, lg)
+ * - Optional title display
+ * - Licensee filtering
+ *
+ * @param showTitle - Whether to show status text
+ * @param size - Indicator size (sm, md, lg)
+ * @param className - Additional CSS classes
+ */
 'use client';
 
 import { useEffect, useState } from 'react';

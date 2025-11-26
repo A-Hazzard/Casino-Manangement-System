@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { AggregatedLocation } from '@/shared/types/entities';
 import {
@@ -187,19 +192,19 @@ export default function EnhancedLocationTable({
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Drop (Money In):</span>
-              <span className="font-medium text-green-600">
+              <span className={`font-medium ${getMoneyInColorClass(location.moneyIn)}`}>
                 {formatCurrency(location.moneyIn)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Cancelled Credits:</span>
-              <span className="font-medium text-red-600">
+              <span className={`font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
                 {formatCurrency(location.moneyOut)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Gross Revenue:</span>
-              <span className="font-medium text-blue-600">
+              <span className={`font-medium ${getGrossColorClass(location.gross)}`}>
                 {formatCurrency(location.gross)}
               </span>
             </div>
@@ -454,13 +459,13 @@ export default function EnhancedLocationTable({
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                           {location.totalMachines}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-green-600">
+                        <td className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}>
                           {formatCurrency(location.moneyIn)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-red-600">
+                        <td className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
                           {formatCurrency(location.moneyOut)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-blue-600">
+                        <td className={`whitespace-nowrap px-4 py-3 text-sm font-medium ${getGrossColorClass(location.gross)}`}>
                           {formatCurrency(location.gross)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">

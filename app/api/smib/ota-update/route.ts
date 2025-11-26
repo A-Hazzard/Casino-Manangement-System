@@ -1,26 +1,54 @@
+/**
+ * SMIB OTA Update API Route
+ *
+ * This route handles triggering OTA firmware updates for a single SMIB device.
+ * It supports:
+ * - Preparing firmware file from GridFS
+ * - Building firmware URL from request headers
+ * - Configuring OTA URL on SMIB
+ * - Sending OTA update command via MQTT
+ * - Updating firmwareUpdatedAt timestamp
+ * - Activity logging
+ *
+ * @module app/api/smib/ota-update/route
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
-import { mqttService } from '@/lib/services/mqttService';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { connectDB } from '../../lib/middleware/db';
 
 /**
- * POST /api/smib/ota-update
- * Trigger OTA firmware update for a single SMIB device
- * Process:
- * 1. Download firmware from GridFS to /public/firmwares/
- * 2. Configure OTA URL on SMIB with full file URL
- * 3. Send OTA update command
- * 4. Update firmwareUpdatedAt timestamp
+ * Main POST handler for triggering OTA update
+ *
+ * Flow:
+ * 1. Parse request body
+ * 2. Validate relayId and firmwareId
+ * 3. Connect to database
+ * 4. Prepare firmware file and get URL
+ * 5. Build firmware URL from request headers
+ * 6. Configure OTA URL on SMIB
+ * 7. Send OTA update command
+ * 8. Update firmwareUpdatedAt timestamp
+ * 9. Log activity
+ * 10. Return success response
  */
 export async function POST(request: NextRequest) {
-  try {
-    await connectDB();
+  const startTime = Date.now();
 
+  try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const { relayId, firmwareId } = await request.json();
+
+    // ============================================================================
+    // STEP 2: Validate relayId and firmwareId
+    // ============================================================================
 
     if (!relayId || !firmwareId) {
       return NextResponse.json(
@@ -32,10 +60,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🔧 [OTA UPDATE] Initiating OTA for SMIB: ${relayId}`);
-    console.log(`🔧 [OTA UPDATE] Firmware ID: ${firmwareId}`);
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
+    await connectDB();
 
-    // Step 1: Call serve endpoint to download firmware to /public/firmwares/
+    // ============================================================================
+    // STEP 4: Prepare firmware file and get URL
+    // ============================================================================
     const serveResponse = await axios.get(
       `${request.headers.get('origin') || 'http://localhost:3000'}/api/firmwares/${firmwareId}/serve`
     );
@@ -49,56 +81,45 @@ export async function POST(request: NextRequest) {
 
     const { fileName } = serveResponse.data;
 
-    // Step 2: Build the full firmware binary URL from request headers
+    // ============================================================================
+    // STEP 5: Build firmware URL from request headers
+    // ============================================================================
     let host = request.headers.get('host');
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
 
     // If host is localhost, try to get the actual network IP
     if (host?.includes('localhost') || host?.includes('127.0.0.1')) {
-      // Try x-forwarded-host first (set by reverse proxies)
       const forwardedHost = request.headers.get('x-forwarded-host');
       if (forwardedHost && !forwardedHost.includes('localhost')) {
         host = forwardedHost;
       } else {
-        // Fallback: Get local network IP from environment or config
-        // This should be set in .env as NETWORK_IP for development
         const networkIp = process.env.NETWORK_IP;
         if (networkIp) {
           host = `${networkIp}:3000`;
-        }
-        // If no NETWORK_IP set, keep localhost but warn
-        else {
-          console.warn(
-            '⚠️ [OTA UPDATE] Using localhost - SMIB may not be able to reach this URL!'
-          );
-          console.warn(
-            '⚠️ [OTA UPDATE] Set NETWORK_IP in .env to your local IP (e.g., NETWORK_IP=192.168.1.100)'
-          );
         }
       }
     }
 
     const baseUrl = `${protocol}://${host}`;
-    // Send /firmwares/ URL to SMIB (Next.js static file serving)
     const firmwareBinUrl = `${baseUrl}/firmwares/`;
-    console.log(`📡 [OTA UPDATE] File Name: ${fileName}`);
-    console.log(`📡 [OTA UPDATE] Base URL: ${baseUrl}`);
-    console.log(`📡 [OTA UPDATE] Firmware Binary URL: ${firmwareBinUrl}`);
-    console.log(`📡 [OTA UPDATE] SMIB will append: ?&relayId=${relayId}`);
 
+    // ============================================================================
+    // STEP 6: Configure OTA URL on SMIB
+    // ============================================================================
     try {
-      // Step 3: Configure OTA URL on SMIB
       await mqttService.configureOTAUrl(relayId, firmwareBinUrl);
 
       // Wait for config to be applied
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Step 4: Send OTA update command
+      // ============================================================================
+      // STEP 7: Send OTA update command
+      // ============================================================================
       await mqttService.sendOTAUpdateCommand(relayId, firmwareBinUrl);
 
-      console.log(`✅ [OTA UPDATE] Commands sent successfully to ${relayId}`);
-
-      // Step 5: Update firmwareUpdatedAt timestamp
+      // ============================================================================
+      // STEP 8: Update firmwareUpdatedAt timestamp
+      // ============================================================================
       await Machine.updateOne(
         {
           $or: [{ relayId }, { smibBoard: relayId }],
@@ -109,10 +130,7 @@ export async function POST(request: NextRequest) {
           },
         }
       );
-
-      console.log(`✅ [OTA UPDATE] Updated firmwareUpdatedAt timestamp`);
-    } catch (mqttError) {
-      console.error('❌ Failed to send OTA update commands:', mqttError);
+    } catch {
       return NextResponse.json(
         {
           success: false,
@@ -122,7 +140,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity with proper user information and changes
+    // ============================================================================
+    // STEP 9: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     const clientIP = getClientIP(request);
 
@@ -160,17 +180,16 @@ export async function POST(request: NextRequest) {
         });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
-        // Don't fail the request if logging fails, but ensure we always log
-        console.warn(
-          '⚠️ Activity logging failed but continuing with OTA update'
-        );
       }
-    } else {
-      console.error('❌ No authenticated user found for activity logging');
-      // Still proceed with the OTA update but log the error
-      console.warn('⚠️ Proceeding with OTA update without activity logging');
     }
 
+    // ============================================================================
+    // STEP 10: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[SMIB OTA Update API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       message:
@@ -181,9 +200,15 @@ export async function POST(request: NextRequest) {
       firmwareBinUrl,
     });
   } catch (error) {
-    console.error('❌ Error in SMIB OTA update endpoint:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[SMIB OTA Update API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

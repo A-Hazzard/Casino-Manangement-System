@@ -1,8 +1,18 @@
 /**
- * Utility functions for detecting client IP addresses
- * Handles both local and public IP detection
+ * IP Detection Utilities
+ *
+ * Utility functions for detecting client IP addresses from requests.
+ *
+ * Features:
+ * - Multiple header support for IP detection
+ * - Proxy header handling
+ * - Cloudflare support
+ * - IP validation
  */
 
+// ============================================================================
+// IP Detection Functions
+// ============================================================================
 /**
  * Get the client's IP address from the request
  * Tries multiple headers to get the most accurate IP
@@ -44,6 +54,9 @@ export function getClientIP(request: Request): string {
   return 'unknown';
 }
 
+// ============================================================================
+// IP Validation Functions
+// ============================================================================
 /**
  * Validate if a string is a valid IP address
  */

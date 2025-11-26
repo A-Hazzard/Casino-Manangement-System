@@ -1,117 +1,128 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "../lib/middleware/db";
-import { CollectionReport } from "@/app/api/lib/models/collectionReport";
-import { getUserFromServer } from "../lib/helpers/users";
+/**
+ * Collection Reports API Route
+ *
+ * This route handles fetching collection reports with role-based access control.
+ * It supports:
+ * - Filtering by locationReportId and isEditing status
+ * - Role-based location filtering (admin, manager, collector/technician)
+ * - Sorting and pagination
+ *
+ * @module app/api/collection-reports/route
+ */
 
+import {
+  buildCollectionReportsLocationFilter,
+  buildCollectionReportsQuery,
+  extractUserPermissions,
+  type CollectionReportsQueryParams,
+} from '@/app/api/lib/helpers/collectionReports';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for fetching collection reports
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Authenticate user and extract permissions
+ * 4. Build location filter based on user role
+ * 5. Build MongoDB query
+ * 6. Execute query with sorting and pagination
+ * 7. Return collection reports
+ */
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const locationReportId = searchParams.get("locationReportId");
-    const isEditing = searchParams.get("isEditing");
-    const limit = searchParams.get("limit");
-    const sortBy = searchParams.get("sortBy") || "updatedAt";
-    const sortOrder = searchParams.get("sortOrder") || "desc";
+  const startTime = Date.now();
 
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
+    const { searchParams } = new URL(request.url);
+    const params: CollectionReportsQueryParams = {
+      locationReportId: searchParams.get('locationReportId'),
+      isEditing: searchParams.get('isEditing'),
+      limit: searchParams.get('limit'),
+      sortBy: searchParams.get('sortBy') || 'updatedAt',
+      sortOrder: searchParams.get('sortOrder') || 'desc',
+    };
+
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Get user data from JWT
+    // ============================================================================
+    // STEP 3: Authenticate user and extract permissions
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const userLicensees = (userPayload?.rel as { licencee?: string[] })?.licencee || [];
-    const userLocationPermissions = 
-      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
-    
-    console.log('[COLLECTION REPORTS] User roles:', userRoles);
-    console.log('[COLLECTION REPORTS] User licensees:', userLicensees);
-    console.log('[COLLECTION REPORTS] User location permissions:', userLocationPermissions);
-    
-    // Check if user is admin or manager
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
-    const isManager = userRoles.includes('manager');
-    
-    // Build the query
-    const query: Record<string, unknown> = {};
-    if (locationReportId) {
-      query.locationReportId = locationReportId;
-    }
-    if (isEditing === "true") {
-      query.isEditing = true;
-    }
-    
-    // Apply location filtering based on role
-    if (isAdmin && userLocationPermissions.length === 0) {
-      // Admin with no location restrictions - no filter
-      console.log('[COLLECTION REPORTS] Admin with no restrictions - no location filter');
-    } else if (isAdmin && userLocationPermissions.length > 0) {
-      // Admin with location restrictions - filter by those locations
-      query.locationId = { $in: userLocationPermissions };
-      console.log('[COLLECTION REPORTS] Admin with location restrictions:', userLocationPermissions);
-    } else if (isManager) {
-      // Manager - get ALL locations for their assigned licensees
-      console.log('[COLLECTION REPORTS] Manager - fetching all locations for licensees:', userLicensees);
-      
-      if (userLicensees.length === 0) {
-        console.log('[COLLECTION REPORTS] Manager has no licensees - returning empty');
-        return NextResponse.json([]);
+
+    const userPermissions = extractUserPermissions(userPayload as {
+      roles?: unknown;
+      rel?: { licencee?: unknown };
+      resourcePermissions?: {
+        'gaming-locations'?: { resources?: unknown };
+      };
+    });
+
+    // ============================================================================
+    // STEP 4: Build location filter based on user role
+    // ============================================================================
+    const locationFilter = await buildCollectionReportsLocationFilter(
+      userPermissions
+    );
+
+    // If location filter is empty array, user has no access
+    if (Array.isArray(locationFilter) && locationFilter.length === 0) {
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[Collection Reports GET API] No access after ${duration}ms`);
       }
-      
-      const db = await connectDB();
-      if (!db) {
-        return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
-      }
-      
-      const managerLocations = await db.collection('gaminglocations').find({
-        'rel.licencee': { $in: userLicensees },
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      }, { projection: { _id: 1 } }).toArray();
-      
-      const managerLocationIds = managerLocations.map(loc => String(loc._id));
-      console.log('[COLLECTION REPORTS] Manager location IDs:', managerLocationIds);
-      
-      if (managerLocationIds.length === 0) {
-        console.log('[COLLECTION REPORTS] No locations found for manager licensees - returning empty');
-        return NextResponse.json([]);
-      }
-      
-      query.locationId = { $in: managerLocationIds };
-    } else {
-      // Collector/Technician - use ONLY their assigned location permissions
-      if (userLocationPermissions.length === 0) {
-        console.log('[COLLECTION REPORTS] Non-manager with no location permissions - returning empty');
-        return NextResponse.json([]);
-      }
-      
-      query.locationId = { $in: userLocationPermissions };
-      console.log('[COLLECTION REPORTS] Collector/Technician - filtering by assigned locations:', userLocationPermissions);
+      return NextResponse.json([]);
     }
 
+    // ============================================================================
+    // STEP 5: Build MongoDB query
+    // ============================================================================
+    const query = buildCollectionReportsQuery(params, locationFilter);
+
+    // ============================================================================
+    // STEP 6: Execute query with sorting and pagination
+    // ============================================================================
     let queryBuilder = CollectionReport.find(query);
 
-    // Apply sorting
     const sortOptions: Record<string, 1 | -1> = {};
-    sortOptions[sortBy] = sortOrder === "asc" ? 1 : -1;
+    sortOptions[params.sortBy || 'updatedAt'] =
+      params.sortOrder === 'asc' ? 1 : -1;
     queryBuilder = queryBuilder.sort(sortOptions);
 
-    // Apply limit if specified
-    if (limit) {
-      queryBuilder = queryBuilder.limit(parseInt(limit, 10));
+    if (params.limit) {
+      queryBuilder = queryBuilder.limit(parseInt(params.limit, 10));
     }
 
     const collectionReports = await queryBuilder.exec();
 
+    // ============================================================================
+    // STEP 7: Return collection reports
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Collection Reports GET API] Completed in ${duration}ms`);
+    }
     return NextResponse.json(collectionReports);
   } catch (error) {
-    console.error("Error fetching collection reports:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Collection Reports GET API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

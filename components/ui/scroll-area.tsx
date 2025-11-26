@@ -1,9 +1,23 @@
+/**
+ * Scroll Area Components
+ * Reusable scrollable area component using Radix UI primitives.
+ *
+ * Features:
+ * - ScrollArea container with viewport
+ * - ScrollBar for vertical/horizontal scrolling
+ * - Custom scrollbar styling
+ * - Touch-friendly
+ */
 'use client';
 
 import * as React from 'react';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Scroll Area Components
+// ============================================================================
 
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,

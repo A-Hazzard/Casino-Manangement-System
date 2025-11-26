@@ -1,3 +1,18 @@
+/**
+ * Accounting Details Helper Functions
+ *
+ * Provides helper functions for fetching and processing accounting-related data
+ * for machines, including accepted bills, machine events, collection meters history,
+ * and collection reports. It handles SAS gross calculations and financial metrics
+ * aggregation for detailed accounting views.
+ *
+ * Features:
+ * - Fetches accepted bills, machine events, and collection meters history by machine ID.
+ * - Calculates SAS gross from meters data for specific time periods.
+ * - Retrieves and formats collection reports with machine and location metrics.
+ * - Supports time period filtering for all data queries.
+ */
+
 import { AcceptedBill } from '@/app/api/lib/models/acceptedBills';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -9,6 +24,18 @@ import type { GamingMachine as _MachineType } from '@/shared/types/entities';
 import { CollectionReportData } from '@/lib/types/api';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Meters } from '@/app/api/lib/models/meters';
+import { Collections } from '@/app/api/lib/models/collections';
+import type { GamingMachine } from '@/shared/types/entities';
+import { getDatesForTimePeriod } from '../utils/dates';
+import type { TimePeriod } from '@/shared/types/common';
+
+type CollectionMetersHistoryEntry = NonNullable<
+  GamingMachine['collectionMetersHistory']
+>[0];
+
+// ============================================================================
+// SAS Gross Calculation
+// ============================================================================
 
 /**
  * Calculate SAS gross by querying meters directly for a specific time period
@@ -63,6 +90,10 @@ async function calculateSasGrossFromMeters(
   }
 }
 
+// ============================================================================
+// Number Formatting Utilities
+// ============================================================================
+
 /**
  * Formats a number with smart decimal handling
  */
@@ -73,13 +104,10 @@ const formatSmartDecimal = (value: number): string => {
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
   return value.toFixed(hasSignificantDecimals ? 2 : 0);
 };
-import { Collections } from '@/app/api/lib/models/collections';
-import type { GamingMachine } from '@/shared/types/entities';
-type CollectionMetersHistoryEntry = NonNullable<
-  GamingMachine['collectionMetersHistory']
->[0];
-import { getDatesForTimePeriod } from '../utils/dates';
-import type { TimePeriod } from '@/shared/types/common';
+
+// ============================================================================
+// Accepted Bills Operations
+// ============================================================================
 
 /**
  * Fetches accepted bills for a given machine ID.
@@ -119,6 +147,10 @@ export async function getAcceptedBillsByMachine(
     return [];
   }
 }
+
+// ============================================================================
+// Machine Events Operations
+// ============================================================================
 
 /**
  * Fetches machine events for a given machine ID.
@@ -173,6 +205,10 @@ export async function getMachineEventsByMachine(
   }
 }
 
+// ============================================================================
+// Collection Meters History Operations
+// ============================================================================
+
 /**
  * Fetches collection meters history for a given machine ID.
  *
@@ -220,6 +256,10 @@ export async function getCollectionMetersHistoryByMachine(
   }
 }
 
+// ============================================================================
+// Accounting Details Aggregation
+// ============================================================================
+
 /**
  * Fetches all accounting details for a given machine ID.
  *
@@ -241,6 +281,10 @@ export async function getAccountingDetails(
 
   return { acceptedBills, machineEvents, collectionMetersHistory, machine };
 }
+
+// ============================================================================
+// Collection Report Operations
+// ============================================================================
 
 /**
  * Fetches and formats a collection report by its reportId.

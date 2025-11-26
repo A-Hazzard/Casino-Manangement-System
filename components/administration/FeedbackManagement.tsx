@@ -1,3 +1,22 @@
+/**
+ * Feedback Management Component
+ * Comprehensive component for managing user feedback and support tickets.
+ *
+ * Features:
+ * - Feedback list display (table on desktop, cards on mobile)
+ * - Search and filter functionality
+ * - Status management (new, in-progress, resolved, closed)
+ * - Priority management (low, medium, high, urgent)
+ * - Feedback details view
+ * - Edit feedback functionality
+ * - Delete feedback with confirmation
+ * - Pagination
+ * - Status badges
+ * - Date formatting
+ * - Toast notifications
+ *
+ * Large component (~1089 lines) handling complete feedback management workflow.
+ */
 'use client';
 
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +63,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type Feedback = {
   _id: string;

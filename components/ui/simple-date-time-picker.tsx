@@ -1,3 +1,19 @@
+/**
+ * Simple Date Time Picker Component
+ * Simple date-time picker using react-datepicker library.
+ *
+ * Features:
+ * - Date and time selection
+ * - react-datepicker integration
+ * - Click outside to close handling
+ * - Date formatting
+ * - Disabled state support
+ * - Temporary state management
+ *
+ * @param date - Currently selected date-time
+ * @param setDate - Callback to update selected date-time
+ * @param disabled - Whether the picker is disabled
+ */
 'use client';
 
 import * as React from 'react';

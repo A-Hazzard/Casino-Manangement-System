@@ -1,9 +1,27 @@
+/**
+ * Sessions Page Data Helper Functions
+ *
+ * Provides helper functions for fetching session-related data for the sessions page,
+ * including session events, session details, machine details, filters, and export functionality.
+ * It handles all operations related to session data retrieval and processing.
+ *
+ * Features:
+ * - Fetches session events with pagination and filtering.
+ * - Fetches session and machine details.
+ * - Fetches session events filters (event types, events, games).
+ * - Exports session events to various formats.
+ */
+
 import axios from 'axios';
 import type {
   MachineEvent,
   PaginationData,
   FilterData,
 } from '@/lib/types/sessions';
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
 export type SessionEventsQueryOptions = {
   page?: number;
@@ -19,6 +37,10 @@ export type SessionEventsResult = {
   pagination: PaginationData;
   filters: FilterData;
 };
+
+// ============================================================================
+// Session Data Fetching
+// ============================================================================
 
 /**
  * Fetch session events with pagination and filtering
@@ -126,6 +148,10 @@ export async function fetchSessionEventsFilters(
     };
   }
 }
+
+// ============================================================================
+// Session Export Functions
+// ============================================================================
 
 /**
  * Export session events

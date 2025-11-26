@@ -1,20 +1,45 @@
+/**
+ * Fix All Collection History API Route
+ *
+ * This route handles fixing collectionMetersHistory issues across all machines, including:
+ * - Detecting entries with 0/undefined prevIn/prevOut values
+ * - Rebuilding history from actual collections with correct prevIn/prevOut
+ * - Updating machine collection times and meters
+ *
+ * Supports:
+ * - Bulk processing of all machines across all reports
+ * - Admin/developer access control only
+ * - Comprehensive error tracking and reporting
+ *
+ * @module app/api/collection-reports/fix-all-collection-history/route
+ */
+
 import { NextResponse } from 'next/server';
+import { fixAllCollectionHistoryData } from '../../lib/helpers/bulkCollectionHistoryFix';
+import { getUserById, getUserIdFromServer } from '../../lib/helpers/users';
 import { connectDB } from '../../lib/middleware/db';
-import { Collections } from '../../lib/models/collections';
-import { CollectionReport } from '../../lib/models/collectionReport';
-import { Machine } from '../../lib/models/machines';
-import { getUserIdFromServer, getUserById } from '../../lib/helpers/users';
 
 /**
- * Fix all collection history issues across all collection reports
- * This specifically targets prevIn/prevOut issues in collectionMetersHistory
+ * Main POST handler for fixing collectionMetersHistory across all machines
+ *
+ * Flow:
+ * 1. Connect to database and authenticate user (admin/developer required)
+ * 2. Execute bulk fix operation for all machines
+ * 3. Return detailed summary of all fixes and errors
  */
 export async function POST() {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
     console.warn('🔧 Starting fix-all-collection-history process...');
 
-    // Check authentication (skip in development mode)
+    // ============================================================================
+    // STEP 2: Authenticate user and check permissions (admin/developer required)
+    // ============================================================================
     if (process.env.NODE_ENV !== 'development') {
       const userId = await getUserIdFromServer();
       if (!userId) {
@@ -26,7 +51,7 @@ export async function POST() {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
-      // Check if user has admin access
+      // Check if user has admin or developer access
       if (
         !user.roles?.includes('admin') &&
         !user.roles?.includes('developer')
@@ -40,217 +65,45 @@ export async function POST() {
       console.warn('⚠️ Running in development mode - skipping authentication');
     }
 
-    // Get all collection reports, sorted chronologically
-    const allReports = await CollectionReport.find({})
-      .sort({ timestamp: 1 })
-      .lean();
+    // ============================================================================
+    // STEP 3: Execute bulk fix operation for all machines
+    // ============================================================================
+    const results = await fixAllCollectionHistoryData();
 
-    console.warn(`📊 Found ${allReports.length} collection reports to process`);
-
-    let totalHistoryRebuilt = 0;
-    let machinesFixedCount = 0;
-    let reportsProcessed = 0;
-
-    // Get all unique machine IDs from all reports
-    const allMachineIds = new Set<string>();
-    for (const report of allReports) {
-      const reportCollections = await Collections.find({
-        locationReportId: report.locationReportId,
-      });
-      reportCollections.forEach(collection => {
-        if (collection.machineId) {
-          allMachineIds.add(collection.machineId as string);
-        }
-      });
-    }
-
-    console.warn(`🔍 Found ${allMachineIds.size} unique machines to process`);
-
-    // Process each machine individually
-    for (const machineId of allMachineIds) {
-      try {
-        console.warn(`🔧 Processing machine: ${machineId}`);
-
-        // Get all collections for this machine, sorted by timestamp
-        const machineCollections = await Collections.find({
-          machineId: machineId,
-          deletedAt: { $exists: false },
-        })
-          .sort({ timestamp: 1 })
-          .lean();
-
-        if (machineCollections.length === 0) {
-          console.warn(`   ⚠️ No collections found for machine ${machineId}`);
-          continue;
-        }
-
-        console.warn(
-          `   📊 Found ${machineCollections.length} collections for machine ${machineId}`
-        );
-
-        // Check if this machine actually has collectionMetersHistory issues
-        const machine = await Machine.findById(machineId);
-        if (
-          !machine ||
-          !machine.collectionMetersHistory ||
-          machine.collectionMetersHistory.length === 0
-        ) {
-          console.warn(
-            `   ⚠️ Machine ${machineId} has no collectionMetersHistory`
-          );
-          continue;
-        }
-
-        // Check if machine has issues
-        let machineHasIssues = false;
-        for (let i = 1; i < machine.collectionMetersHistory.length; i++) {
-          const entry = machine.collectionMetersHistory[i];
-          const prevMetersIn = entry.prevMetersIn || 0;
-          const prevMetersOut = entry.prevMetersOut || 0;
-
-          if (
-            (prevMetersIn === 0 ||
-              prevMetersIn === undefined ||
-              prevMetersIn === null) &&
-            (prevMetersOut === 0 ||
-              prevMetersOut === undefined ||
-              prevMetersOut === null)
-          ) {
-            machineHasIssues = true;
-            break;
-          }
-        }
-
-        if (!machineHasIssues) {
-          console.warn(
-            `   ✅ Machine ${machineId} - No collectionMetersHistory issues found`
-          );
-          continue;
-        }
-
-        console.warn(
-          `   🔧 Fixing collectionMetersHistory for machine ${machineId}`
-        );
-
-        // Rebuild history with correct prevIn/prevOut
-        const newHistory = machineCollections.map(
-          (collection, index: number) => {
-            let prevIn = 0;
-            let prevOut = 0;
-
-            if (index > 0) {
-              const previousCollection = machineCollections[index - 1];
-              prevIn = previousCollection.metersIn || 0;
-              prevOut = previousCollection.metersOut || 0;
-            }
-
-            return {
-              locationReportId: collection.locationReportId,
-              metersIn: collection.metersIn || 0,
-              metersOut: collection.metersOut || 0,
-              prevMetersIn: prevIn,
-              prevMetersOut: prevOut,
-              timestamp: new Date(collection.timestamp),
-              createdAt: new Date(collection.createdAt || collection.timestamp),
-            };
-          }
-        );
-
-        // Update the machine document
-        const mostRecentCollection =
-          machineCollections[machineCollections.length - 1];
-
-        // Use raw MongoDB driver instead of Mongoose to ensure update works
-        const mongoose = await import('mongoose');
-        const db = mongoose.default.connection.db;
-        if (!db) throw new Error('Database connection not available');
-
-        const updateResult = await db
-          .collection('machines')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .updateOne({ _id: machineId } as any, {
-            $set: {
-              collectionMetersHistory: newHistory,
-              collectionTime: mostRecentCollection
-                ? new Date(mostRecentCollection.timestamp)
-                : undefined,
-              previousCollectionTime:
-                machineCollections.length > 1
-                  ? new Date(
-                      machineCollections[
-                        machineCollections.length - 2
-                      ].timestamp
-                    )
-                  : undefined,
-              'collectionMeters.metersIn': mostRecentCollection?.metersIn || 0,
-              'collectionMeters.metersOut':
-                mostRecentCollection?.metersOut || 0,
-              updatedAt: new Date(),
-            },
-          });
-
-        if (updateResult.modifiedCount > 0) {
-          machinesFixedCount++;
-          totalHistoryRebuilt += newHistory.length;
-          console.warn(
-            `   ✅ Fixed ${newHistory.length} entries in collectionMetersHistory for machine ${machineId}`
-          );
-        } else if (updateResult.matchedCount > 0) {
-          console.warn(
-            `   ⚠️ Machine ${machineId} matched but not modified (data may be identical)`
-          );
-        } else {
-          console.warn(
-            `   ❌ Failed to update machine ${machineId} - no documents matched`
-          );
-        }
-      } catch (machineError) {
-        console.error(
-          `   ❌ Error processing machine ${machineId}:`,
-          machineError
-        );
-      }
-    }
-
-    // Count how many reports were affected
-    for (const report of allReports) {
-      const reportCollections = await Collections.find({
-        locationReportId: report.locationReportId,
-      });
-
-      // Check if any of the collections in this report belong to machines we fixed
-      const hasAffectedMachines = reportCollections.some(collection =>
-        allMachineIds.has(collection.machineId as string)
-      );
-
-      if (hasAffectedMachines) {
-        reportsProcessed++;
-      }
-    }
-
-    console.warn('🎉 Fix All Collection History Complete!');
-    console.warn(`   Total machines processed: ${allMachineIds.size}`);
-    console.warn(`   Machines fixed: ${machinesFixedCount}`);
-    console.warn(`   Total history entries rebuilt: ${totalHistoryRebuilt}`);
-    console.warn(`   Reports affected: ${reportsProcessed}`);
+    // ============================================================================
+    // STEP 4: Return detailed summary of fixes
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Fix All Collection History POST API] Fixed ${results.machinesFixedCount}/${results.totalMachines} machines with ${results.totalHistoryRebuilt} history entries after ${duration}ms.`
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'Collection history fix completed successfully',
       summary: {
-        totalMachinesProcessed: allMachineIds.size,
-        machinesFixed: machinesFixedCount,
-        totalHistoryRebuilt: totalHistoryRebuilt,
-        reportsAffected: reportsProcessed,
+        reportsProcessed: results.reportsProcessed,
+        totalMachines: results.totalMachines,
+        machinesFixed: results.machinesFixedCount,
+        totalHistoryRebuilt: results.totalHistoryRebuilt,
+        errorCount: results.errors.length,
       },
+      errors: results.errors.length > 0 ? results.errors : undefined,
+      message: `Processed ${results.reportsProcessed} reports and ${results.totalMachines} machines. Fixed ${results.machinesFixedCount} machines with ${results.totalHistoryRebuilt} total history entries rebuilt.`,
     });
-  } catch (error) {
-    console.error('❌ Error in fix-all-collection-history:', error);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Fix All Collection History POST API] Error after ${duration}ms:`,
+      errorMessage
+    );
+
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to fix collection history',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Internal server error',
+        details: errorMessage,
       },
       { status: 500 }
     );

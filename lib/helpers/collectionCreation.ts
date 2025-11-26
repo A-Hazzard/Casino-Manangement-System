@@ -1,4 +1,19 @@
-// mongoose import removed - no longer needed
+/**
+ * Collection Creation Helper Functions
+ *
+ * Provides helper functions for creating collections, including SAS metrics calculation,
+ * movement calculations, machine updates, and collection validation. It orchestrates
+ * the complete collection creation process with proper time period handling and
+ * meter synchronization.
+ *
+ * Features:
+ * - Calculates SAS metrics from meters collection for specific time periods.
+ * - Determines SAS time periods from previous collections or machine data.
+ * - Retrieves previous collection meters for movement calculations.
+ * - Validates collection creation payloads.
+ * - Orchestrates complete collection creation with all calculations.
+ */
+
 import { connectDB } from "@/app/api/lib/middleware/db";
 import { Meters } from "@/app/api/lib/models/meters";
 import { Machine } from "@/app/api/lib/models/machines";
@@ -9,10 +24,9 @@ import type {
   MovementCalculation,
 } from "@/lib/types/collections";
 
-/**
- * Collection Creation Helper Functions
- * Implements the collection creation logic as specified in the cursor prompt
- */
+// ============================================================================
+// Machine Identifier Operations
+// ============================================================================
 
 /**
  * Get machine identifier with priority: serialNumber -> customName -> machineId
@@ -20,7 +34,8 @@ import type {
 export async function getMachineIdentifier(machineId: string): Promise<string> {
   await connectDB();
 
-  const machine = await Machine.findById(machineId).lean();
+  // CRITICAL: Use findOne with _id instead of findById (repo rule)
+  const machine = await Machine.findOne({ _id: machineId }).lean();
   if (!machine) {
     throw new Error(`Machine not found: ${machineId}`);
   }
@@ -35,6 +50,10 @@ export async function getMachineIdentifier(machineId: string): Promise<string> {
     machineId
   );
 }
+
+// ============================================================================
+// SAS Metrics Calculation
+// ============================================================================
 
 /**
  * Calculate SAS metrics from meters collection
@@ -113,6 +132,10 @@ export async function calculateSasMetrics(
   };
 }
 
+// ============================================================================
+// SAS Time Period Operations
+// ============================================================================
+
 /**
  * Get SAS time period from machine collectionTime and custom times
  */
@@ -149,7 +172,8 @@ export async function getSasTimePeriod(
     let previousCollection = null;
 
     // Get machine data once to avoid multiple queries
-    const machine = await Machine.findById(machineId).lean();
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+  const machine = await Machine.findOne({ _id: machineId }).lean();
     const machineData = machine as Record<string, unknown> | null;
     const machineCustomName = machineData?.customName as string;
     const machineName = machineData?.name as string;
@@ -330,8 +354,12 @@ export async function getSasTimePeriod(
   return { sasStartTime, sasEndTime };
 }
 
+// ============================================================================
+// Previous Collection Meters Operations
+// ============================================================================
+
 /**
- * Get previous collection meters from the actual previous collection
+ * Get previous collection meters from the actual previous collection.
  * This ensures we get the correct baseline values for movement calculations
  */
 export async function getPreviousCollectionMeters(
@@ -339,7 +367,8 @@ export async function getPreviousCollectionMeters(
 ): Promise<PreviousCollectionMeters> {
   await connectDB();
 
-  const machine = await Machine.findById(machineId).lean();
+  // CRITICAL: Use findOne with _id instead of findById (repo rule)
+  const machine = await Machine.findOne({ _id: machineId }).lean();
   if (!machine) {
     throw new Error(`Machine not found: ${machineId}`);
   }
@@ -406,9 +435,10 @@ export async function getPreviousCollectionMeters(
       const GamingLocations = (
         await import("@/app/api/lib/models/gaminglocations")
       ).GamingLocations;
-      const gamingLocation = await GamingLocations.findById(
-        gamingLocationId
-      ).lean();
+      // CRITICAL: Use findOne with _id instead of findById (repo rule)
+      const gamingLocation = await GamingLocations.findOne({
+        _id: gamingLocationId,
+      }).lean();
       if (gamingLocation) {
         const locationData = gamingLocation as Record<string, unknown>;
         const previousCollectionTime = locationData.previousCollectionTime;
@@ -426,6 +456,10 @@ export async function getPreviousCollectionMeters(
   };
 }
 
+// ============================================================================
+// Machine Update Operations
+// ============================================================================
+
 /**
  * Update machine collection meters and collection time
  */
@@ -441,7 +475,8 @@ export async function updateMachineCollectionMeters(
   await connectDB();
 
   // Get current machine data to access previous meters for history
-  const currentMachine = await Machine.findById(machineId).lean();
+  // CRITICAL: Use findOne with _id instead of findById (repo rule)
+  const currentMachine = await Machine.findOne({ _id: machineId }).lean();
   if (!currentMachine) {
     throw new Error(`Machine with ID ${machineId} not found`);
   }
@@ -480,13 +515,18 @@ export async function updateMachineCollectionMeters(
   // This prevents duplicate history entries and ensures proper timing
 
   // Update machine without creating history entries
-  await Machine.findByIdAndUpdate(machineId, {
+  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+  await Machine.findOneAndUpdate({ _id: machineId }, {
     $set: updateData,
   });
 
   // Machine collection meters updated successfully
   return finalLocationReportId;
 }
+
+// ============================================================================
+// Collection Validation
+// ============================================================================
 
 /**
  * Validate collection creation payload
@@ -539,8 +579,12 @@ export function validateCollectionPayload(payload: unknown): {
   };
 }
 
+// ============================================================================
+// Collection Creation Orchestration
+// ============================================================================
+
 /**
- * Complete collection creation process
+ * Complete collection creation process.
  * Orchestrates all the steps: SAS metrics, movement calculation, and machine updates
  */
 export async function createCollectionWithCalculations(

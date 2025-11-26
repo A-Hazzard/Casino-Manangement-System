@@ -12,6 +12,7 @@ import type {
  * @param limit - Items per page (default: 50)
  * @param search - (Optional) Search term to filter users by username, email, or _id
  * @param searchMode - (Optional) Search mode: 'username', 'email', '_id', or 'all' (default: 'username', 'all' searches all fields)
+ * @param status - (Optional) Status filter: 'all', 'active', 'disabled', or 'deleted' (default: 'all')
  * @returns A promise that resolves to paginated users with pagination metadata.
  */
 export const fetchUsers = async (
@@ -19,7 +20,8 @@ export const fetchUsers = async (
   page: number = 1,
   limit: number = 50,
   search?: string,
-  searchMode: 'username' | 'email' | '_id' | 'all' = 'username'
+  searchMode: 'username' | 'email' | '_id' | 'all' = 'username',
+  status: 'all' | 'active' | 'disabled' | 'deleted' = 'all'
 ): Promise<{
   users: User[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
@@ -31,6 +33,9 @@ export const fetchUsers = async (
   if (search && search.trim()) {
     params.search = search.trim();
     params.searchMode = searchMode;
+  }
+  if (status && status !== 'all') {
+    params.status = status;
   }
   params.page = String(page);
   params.limit = String(limit);

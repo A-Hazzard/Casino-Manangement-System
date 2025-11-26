@@ -1,6 +1,18 @@
+/**
+ * Location Info Skeleton Component
+ * Loading skeleton for location information card.
+ *
+ * Features:
+ * - Matches LocationInfo layout structure
+ * - Header, address, and metric button skeletons
+ * - Responsive design
+ */
 import React from 'react';
 
 export default function LocationInfoSkeleton() {
+  // ============================================================================
+  // Render - Skeleton
+  // ============================================================================
   return (
     <div className="mb-4 animate-pulse rounded-lg bg-white p-4 shadow-sm md:p-6">
       <div className="mb-4 h-8 w-1/3 rounded bg-gray-200"></div>

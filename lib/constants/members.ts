@@ -1,3 +1,12 @@
+/**
+ * Members Constants
+ * Configuration for members page tabs and animations.
+ *
+ * Includes:
+ * - Members tabs configuration (list, summary report)
+ * - Animation variants for members page and tab transitions
+ * Used by members page components for consistent navigation and animations.
+ */
 import type { MembersTab } from '@/shared/types/entities';
 
 /**

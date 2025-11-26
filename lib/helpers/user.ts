@@ -1,4 +1,22 @@
+/**
+ * User Helper Functions
+ *
+ * Provides helper functions for user-related operations, including fetching
+ * the current user ID from the authentication token. It handles authentication
+ * errors and automatic logout/redirect when tokens are invalid.
+ *
+ * Features:
+ * - Fetches the current user ID from the authentication token API.
+ * - Handles 401 errors with automatic logout and redirect to login.
+ * - Prevents unnecessary redirects on login page or fresh devices.
+ * - Provides error handling for authentication failures.
+ */
+
 import axios from 'axios';
+
+// ============================================================================
+// User ID Fetching
+// ============================================================================
 
 export async function fetchUserId(): Promise<string | null> {
   try {

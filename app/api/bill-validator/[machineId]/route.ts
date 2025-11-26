@@ -1,10 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { AcceptedBill } from '@/app/api/lib/models/acceptedBills';
-import { Machine } from '@/app/api/lib/models/machines';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import type { TimePeriod } from '@/app/api/lib/types';
+/**
+ * Bill Validator API Route
+ *
+ * This route handles fetching bill validator data for a specific machine.
+ * It supports:
+ * - V1 and V2 data format handling
+ * - Gaming day offset calculations
+ * - Time period filtering
+ * - Custom date range filtering
+ * - Bill denomination filtering based on location settings
+ *
+ * @module app/api/bill-validator/[machineId]/route
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { AcceptedBill } from '@/app/api/lib/models/acceptedBills';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
+import type { TimePeriod } from '@/app/api/lib/types';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import { NextRequest, NextResponse } from 'next/server';
 
 type BillDocument = {
   toObject?: () => Record<string, unknown>;
@@ -16,8 +30,28 @@ type BillDocument = {
   createdAt?: Date;
 } & Record<string, unknown>;
 
+/**
+ * Main GET handler for fetching bill validator data
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Extract machine ID from URL path
+ * 3. Validate machine ID
+ * 4. Parse query parameters (timePeriod, dates)
+ * 5. Get machine and location data
+ * 6. Determine gaming day offset
+ * 7. Build date filter (V1 vs V2)
+ * 8. Query accepted bills
+ * 9. Process bills data (V1 or V2)
+ * 10. Return processed bill validator data
+ */
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       console.error('Database connection failed');
@@ -27,11 +61,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Extract machineId from the URL path
+    // ============================================================================
+    // STEP 2: Extract machine ID from URL path
+    // ============================================================================
     const url = new URL(req.url);
     const pathSegments = url.pathname.split('/');
     const machineId = pathSegments[pathSegments.length - 1];
 
+    // ============================================================================
+    // STEP 3: Validate machine ID
+    // ============================================================================
     if (!machineId) {
       return NextResponse.json(
         { error: 'Machine ID is required' },
@@ -39,18 +78,20 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Parse query parameters
+    // ============================================================================
     const searchParams = req.nextUrl.searchParams;
-
-    // Get time period and date range from query params
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    // Get gaming location first to access gameDayOffset for proper date filtering
+    // ============================================================================
+    // STEP 5: Get machine and location data
+    // ============================================================================
     let gamingLocation = null;
-
-    // First try to get location from machine
-    const machine = await Machine.findById(machineId);
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const machine = await Machine.findOne({ _id: machineId });
     console.warn(`[BILL VALIDATOR] Machine lookup:`, {
       machineId,
       machineFound: !!machine,
@@ -58,7 +99,10 @@ export async function GET(req: NextRequest) {
     });
 
     if (machine?.locationId) {
-      gamingLocation = await GamingLocations.findById(machine.locationId);
+      // CRITICAL: Use findOne with _id instead of findById (repo rule)
+      gamingLocation = await GamingLocations.findOne({
+        _id: machine.locationId,
+      });
       console.warn(`[BILL VALIDATOR] Location lookup:`, {
         locationId: machine.locationId,
         locationFound: !!gamingLocation,
@@ -66,10 +110,14 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // If no location found via machine, we'll get it from bills data later
-    const gameDayOffset = gamingLocation?.gameDayOffset ?? 8; // Default to 8 AM Trinidad time (Rule 1)
+    // ============================================================================
+    // STEP 6: Determine gaming day offset
+    // ============================================================================
+    const gameDayOffset = gamingLocation?.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
 
-    // Calculate date range with gaming day support
+    // ============================================================================
+    // STEP 7: Build date filter (V1 vs V2)
+    // ============================================================================
     let dateFilter: Record<string, unknown> = {};
     if (startDate && endDate) {
       // Custom date range - use the exact dates provided by the user without gaming day offset
@@ -101,11 +149,13 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    // Query accepted bills for the machine
+    // ============================================================================
+    // STEP 8: Query accepted bills
+    // ============================================================================
     let bills;
     let v2DateFilter: Record<string, unknown> = {};
 
-    // First, check if we have V1 or V2 data by looking at one bill
+    // Check if we have V1 or V2 data by looking at one bill
     const sampleBill = await AcceptedBill.findOne({ machine: machineId });
     if (sampleBill) {
       const sampleBillObj = sampleBill.toObject
@@ -239,7 +289,8 @@ export async function GET(req: NextRequest) {
       const billLocationId = billObj.location;
 
       if (billLocationId) {
-        gamingLocation = await GamingLocations.findById(billLocationId);
+        // CRITICAL: Use findOne with _id instead of findById (repo rule)
+        gamingLocation = await GamingLocations.findOne({ _id: billLocationId });
       }
     }
 
@@ -264,15 +315,22 @@ export async function GET(req: NextRequest) {
     // console.warn(`[BILL VALIDATOR] Final bill validator options:`, billValidatorOptions);
     // console.warn(`[BILL VALIDATOR] Number of bills to process:`, bills.length);
 
-    // Process bills to detect V1 vs V2 and calculate totals
+    // ============================================================================
+    // STEP 9: Process bills data (V1 or V2)
+    // ============================================================================
     const processedData = processBillsData(
       bills,
       currentBalance,
       billValidatorOptions
     );
 
-    // console.warn(`[BILL VALIDATOR] ===== FINAL RESULT =====`);
-    // console.warn(`[BILL VALIDATOR] Processed denominations:`, processedData.denominations);
+    // ============================================================================
+    // STEP 10: Return processed bill validator data
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 2000) {
+      console.warn(`[Bill Validator API] Completed in ${duration}ms`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -282,11 +340,14 @@ export async function GET(req: NextRequest) {
       dataVersion: processedData.version,
     });
   } catch (error) {
-    console.error('Error fetching bill validator data:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Bill Validator API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 

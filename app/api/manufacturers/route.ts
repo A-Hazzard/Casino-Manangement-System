@@ -1,14 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
+/**
+ * Manufacturers API Route
+ *
+ * This route handles fetching unique manufacturers from the machines collection.
+ * It supports:
+ * - Aggregating manufacturers from both 'manufacturer' and 'manuf' fields
+ * - Filtering out empty values
+ * - Alphabetical sorting
+ *
+ * @module app/api/manufacturers/route
+ */
 
+import { Machine } from '@/app/api/lib/models/machines';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Main GET handler for fetching manufacturers
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Aggregate unique manufacturers from machines collection
+ * 3. Filter out empty values
+ * 4. Sort alphabetically
+ * 5. Return manufacturers list
+ */
 export async function GET(_request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Get unique manufacturers from the machines collection
-    // We'll check both 'manufacturer' and 'manuf' fields
-    // Simplified approach: get all manufacturers and filter out empty ones
+    // ============================================================================
+    // STEP 2: Aggregate unique manufacturers from machines collection
+    // ============================================================================
+    // Check both 'manufacturer' and 'manuf' fields
     const manufacturers = await Machine.aggregate([
       {
         $project: {
@@ -33,22 +61,34 @@ export async function GET(_request: NextRequest) {
       },
     ]);
 
-    // Extract the unique manufacturers array
+    // ============================================================================
+    // STEP 3: Filter out empty values
+    // ============================================================================
     const uniqueManufacturers = manufacturers[0]?.allManufacturers || [];
-
-    // Filter out null, undefined, and empty string values
     const filteredManufacturers = uniqueManufacturers.filter(
       (manufacturer: string) => manufacturer && manufacturer.trim() !== ''
     );
 
-    // Sort alphabetically
+    // ============================================================================
+    // STEP 4: Sort alphabetically
+    // ============================================================================
     const sortedManufacturers = filteredManufacturers.sort();
+
+    // ============================================================================
+    // STEP 5: Return manufacturers list
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Manufacturers API] Completed in ${duration}ms`);
+    }
 
     return NextResponse.json(sortedManufacturers);
   } catch (error) {
-    console.error('Error fetching manufacturers:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch manufacturers';
+    console.error(`[Manufacturers API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { error: 'Failed to fetch manufacturers' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

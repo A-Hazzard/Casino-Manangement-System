@@ -20,7 +20,7 @@
 The Cabinets page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, SMIB configuration with live MQTT updates, and operational controls. This page serves as the central hub for managing all gaming cabinets across casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 11th, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.3.0
 
 ## Recent Critical Fixes & Optimizations (November 11th, 2025)
@@ -89,9 +89,15 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - Cabinet performance metrics and analytics.
   - **Machine Status Widget**: Displays online/total machine count (e.g., "37/40 Online") with offline count on the Cabinets tab
 - **SMIB Management:**
-  - SMIB (Slot Machine Interface Board) configuration.
-  - Communication settings and firmware management.
-  - Device status monitoring.
+  - **SMIB Device Selection**: Search and select SMIB devices by relay ID, serial number, or location
+  - **Network Configuration**: WiFi/network settings (SSID, password, channel)
+  - **MQTT Configuration**: MQTT broker settings, topics, and connection parameters
+  - **COMS Configuration**: Communication protocol settings (SAS/non-SAS/IGT, polling rates, RTE, GPC)
+  - **SMIB Operations**: Restart devices, request meter data, reset meters (non-SAS only)
+  - **OTA Updates**: Over-the-air firmware updates with version tracking
+  - **Location-wide Operations**: Batch restart all SMIBs at a location
+  - **Real-time Status**: Live connection status via MQTT/SSE streams
+  - **Offline Support**: Save configurations to database when SMIB is offline
 - **Movement Requests:**
   - Create and manage cabinet movement requests.
   - Track cabinet relocations between locations.
@@ -131,28 +137,49 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - `components/ui/cabinets/EditCabinetModal.tsx` - Edit cabinet form
   - `components/ui/cabinets/DeleteCabinetModal.tsx` - Cabinet deletion confirmation
 - **SMIB Management Components:**
-  - `components/cabinets/SMIBManagement.tsx` - SMIB configuration component
-  - `components/ui/firmware/SMIBFirmwareSection.tsx` - Firmware management
-  - `components/ui/firmware/UploadSmibDataModal.tsx` - Firmware upload
+  - `components/cabinets/SMIBManagementTab.tsx` - Main SMIB management tab component
+  - `components/cabinets/smibManagement/NetworkConfigSection.tsx` - Network/WiFi configuration section
+  - `components/cabinets/smibManagement/MqttTopicsSection.tsx` - MQTT topics and settings section
+  - `components/cabinets/smibManagement/ComsConfigSection.tsx` - Communication protocol configuration section
+  - `components/cabinets/smibManagement/RestartSection.tsx` - SMIB restart operations section
+  - `components/cabinets/smibManagement/MeterDataSection.tsx` - Meter data request and reset section
+  - `components/cabinets/smibManagement/OTAUpdateSection.tsx` - Over-the-air firmware update section
+  - `components/ui/firmware/SMIBFirmwareSection.tsx` - Firmware management section (separate tab)
+  - `components/ui/firmware/UploadSmibDataModal.tsx` - Firmware upload modal
+  - `components/ui/smib/SMIBSearchSelect.tsx` - SMIB device search and selection component
 - **Movement Management Components:**
   - `components/cabinets/MovementRequests.tsx` - Movement request component
   - `components/ui/movements/NewMovementRequestModal.tsx` - New movement form
 - **Utility Components:**
   - `components/ui/RefreshButton.tsx` - Data refresh functionality
   - `components/dashboard/DashboardDateFilters.tsx` - Date filtering
+  - `components/ui/FinancialMetricsCards.tsx` - Financial totals display
+  - `components/ui/MachineStatusWidget.tsx` - Machine status indicators
+  - `components/ui/NoLicenseeAssigned.tsx` - Message for users without licensees
+  - `components/ui/errors/PageErrorBoundary.tsx` - Error boundary wrapper
 
 ### State Management
 
-- **Global Store:** `lib/store/dashboardStore.ts` - Licensee and filter state
+- **Global Store:** `lib/store/dashboardStore.ts` - Zustand store for licensee and filter state
+  - **Store Hook:** `useDashBoardStore` (note: capital B in "Board")
+  - **Key Properties:** `selectedLicencee`, `activeMetricsFilter`, `customDateRange`
 - **Cabinet Actions Store:** `lib/store/cabinetActionsStore.ts` - Cabinet CRUD operations
 - **New Cabinet Store:** `lib/store/newCabinetStore.ts` - Cabinet creation state
+- **Currency Hook:** `useCurrencyFormat()` - Provides `displayCurrency` for currency conversion
+- **Custom Hooks:**
+  - `useCabinetData()` - Manages cabinet data fetching, filtering, and pagination with debouncing
+  - `useCabinetFilters()` - Manages filter state (search, location, game type, status)
+  - `useCabinetSorting()` - Handles sorting and pagination logic
+  - `useCabinetModals()` - Manages modal state for movement requests and SMIB data upload
+  - `useCabinetNavigation()` - Manages active section state (cabinets/smib/movement/firmware)
 - **Local State:** React `useState` hooks for UI state
 - **Key State Properties:**
   - `allCabinets`, `filteredCabinets` - Cabinet data arrays
-  - `loading`, `refreshing` - Loading states
+  - `initialLoading`, `loading`, `refreshing` - Loading states
   - `searchTerm`, `sortOrder`, `sortOption` - Search and sort states
   - `selectedLocation`, `locations` - Location filtering
   - `activeSection` - Current section (cabinets/smib/movement/firmware)
+  - `loadedBatches` - Tracks which batches have been loaded for pagination
 
 ### Data Flow
 
@@ -168,8 +195,10 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 #### Cabinet Management Endpoints
 
 - **GET `/api/machines/aggregation`** - Fetches aggregated cabinet data
-  - Parameters: `licensee`, `timePeriod`, `startDate`, `endDate`
+  - Parameters: `licencee`, `timePeriod`, `startDate`, `endDate`, `currency`
   - Returns: Array of cabinet objects with metrics
+  - Supports batching for performance (50 items per batch)
+  - Includes currency conversion for admin/developer viewing "All Licensees"
 - **GET `/api/machines`** - Fetches individual cabinet details
   - Parameters: `id` (cabinet ID)
   - Returns: Detailed cabinet information
@@ -212,6 +241,65 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
   - `fetchCollectionMetersHistory()` - Fetches collection history
   - `fetchMachineEvents()` - Fetches machine events
 
+#### Custom Hooks
+
+- **Cabinet Data Hook:** `lib/hooks/data/useCabinetData.ts`
+  - Manages cabinet data fetching, filtering, and pagination
+  - Handles search debouncing
+  - Manages batch loading for pagination
+  - Returns: `allCabinets`, `filteredCabinets`, `locations`, `gameTypes`, `financialTotals`, `loading`, `error`, `loadCabinets`
+
+- **Cabinet Filters Hook:** `lib/hooks/data/useCabinetFilters.ts`
+  - Manages filter state (search, location, game type, status)
+  - Returns: `searchTerm`, `selectedLocation`, `selectedGameType`, `selectedStatus`, and their setters
+
+- **Cabinet Sorting Hook:** `lib/hooks/data/useCabinetSorting.ts`
+  - Manages sorting and pagination logic
+  - Handles column sorting
+  - Returns: `sortOrder`, `sortOption`, `currentPage`, `paginatedCabinets`, `totalPages`, `handleColumnSort`, `setCurrentPage`, `transformCabinet`
+
+- **Cabinet Modals Hook:** `lib/hooks/data/useCabinetModals.ts`
+  - Manages modal state for movement requests and SMIB data upload
+  - Returns: modal open/close states and handlers
+
+- **Cabinet Navigation Hook:** `lib/hooks/navigation/useCabinetNavigation.ts`
+  - Manages active section state (cabinets/smib/movement/firmware)
+  - Returns: `activeSection`, `handleSectionChange`
+
+- **SMIB Discovery Hook:** `lib/hooks/data/useSMIBDiscovery.ts`
+  - Discovers available SMIB devices via MQTT
+  - Returns: `availableSmibs`, `loading`, `error`, `refreshSmibs`
+
+- **SMIB Configuration Hook:** `lib/hooks/data/useSmibConfiguration.ts`
+  - Manages SSE connection for live MQTT updates
+  - Handles configuration state and form data
+  - Provides methods for updating Network, MQTT, and COMS configs
+  - Returns: `formData`, `isConnectedToMqtt`, `connectToConfigStream`, `updateNetworkConfig`, `updateMqttConfig`, `updateComsConfig`, etc.
+
+#### SMIB Management API Endpoints
+
+- **SMIB Discovery**: MQTT-based discovery (no direct API endpoint)
+- **SMIB Configuration**:
+  - `GET /api/mqtt/config?cabinetId=[id]` - Get formatted MQTT configuration
+  - `POST /api/mqtt/config/request` - Request live config from SMIB device
+  - `POST /api/mqtt/config/publish` - Publish config updates to SMIB
+  - `GET /api/mqtt/config/subscribe?relayId=[relayId]` - SSE stream for live updates
+  - `POST /api/mqtt/update-machine-config` - Update machine config in database
+- **SMIB Operations**:
+  - `POST /api/smib/restart` - Restart single SMIB device
+  - `POST /api/smib/meters` - Request meter data from SMIB
+  - `POST /api/smib/reset-meters` - Reset meters (non-SAS only)
+  - `POST /api/smib/ota-update` - Initiate OTA firmware update
+- **Location-wide Operations**:
+  - `POST /api/locations/[locationId]/smib-restart` - Restart all SMIBs at location
+  - `POST /api/locations/[locationId]/smib-meters` - Request meters from all SMIBs
+  - `POST /api/locations/[locationId]/smib-ota` - Push firmware to all SMIBs
+- **Firmware Management**:
+  - `GET /api/firmwares` - List all firmware versions
+  - `POST /api/firmwares` - Upload firmware to GridFS
+  - `DELETE /api/firmwares/[id]` - Delete firmware
+  - `GET /api/firmwares/[filename]` - Serve firmware to SMIB device
+
 ### Key Dependencies
 
 #### Frontend Libraries
@@ -244,24 +332,59 @@ The Cabinets page provides comprehensive cabinet (slot machine) management for t
 CabinetsPage (app/cabinets/page.tsx)
 ├── Sidebar (components/layout/Sidebar.tsx)
 ├── Header (components/layout/Header.tsx)
-├── Section Tabs (Cabinets/SMIB/Movement/Firmware)
-├── Cabinets Section
-│   ├── Search and Filter Controls
-│   ├── CabinetTable (components/ui/cabinets/CabinetTable.tsx) [Desktop]
-│   ├── CabinetCard (components/ui/cabinets/CabinetCard.tsx) [Mobile]
-│   ├── Pagination Controls
+├── Section Navigation (CabinetsNavigation)
+│   └── Tabs: Cabinets | SMIB | Movement | Firmware
+├── Cabinets Section (activeSection === 'cabinets')
+│   ├── Financial Metrics Cards (FinancialMetricsCards)
+│   ├── Machine Status Widget (MachineStatusWidget)
+│   ├── Date Filters (DashboardDateFilters)
+│   ├── Search and Filter Controls (CabinetSearchFilters)
+│   │   ├── Search Input
+│   │   ├── Location Filter
+│   │   ├── Game Type Filter
+│   │   ├── Status Filter (Online/Offline)
+│   │   └── Sort Options
+│   ├── Cabinet Content Display (CabinetContentDisplay)
+│   │   ├── CabinetTable (components/ui/cabinets/CabinetTable.tsx) [Desktop]
+│   │   ├── CabinetCard (components/ui/cabinets/CabinetCard.tsx) [Mobile]
+│   │   └── Pagination Controls
 │   └── Cabinet Modals
-│       ├── NewCabinetModal
-│       ├── EditCabinetModal
-│       └── DeleteCabinetModal
-├── SMIB Section
-│   ├── SMIBManagement (components/cabinets/SMIBManagement.tsx)
-│   └── SMIBFirmwareSection (components/ui/firmware/SMIBFirmwareSection.tsx)
-├── Movement Section
+│       ├── NewCabinetModal (components/ui/cabinets/NewCabinetModal.tsx)
+│       ├── EditCabinetModal (components/ui/cabinets/EditCabinetModal.tsx)
+│       └── DeleteCabinetModal (components/ui/cabinets/DeleteCabinetModal.tsx)
+├── SMIB Management Section (activeSection === 'smib')
+│   └── SMIBManagementTab (components/cabinets/SMIBManagementTab.tsx)
+│       ├── SMIB Device Selection Header
+│       │   ├── SMIBSearchSelect (search and select SMIB)
+│       │   ├── Location Filter
+│       │   └── Restart All SMIBs Button (location-specific)
+│       ├── Configuration Sections (Grid Layout)
+│       │   ├── NetworkConfigSection (Network/WiFi settings)
+│       │   ├── ComsConfigSection (Communication protocol settings)
+│       │   └── MqttTopicsSection (MQTT broker and topic settings)
+│       └── SMIB Operations & Management
+│           ├── RestartSection (restart individual SMIB)
+│           ├── MeterDataSection (request/reset meter data)
+│           └── OTAUpdateSection (firmware updates)
+├── Movement Requests Section (activeSection === 'movement')
 │   ├── MovementRequests (components/cabinets/MovementRequests.tsx)
-│   └── NewMovementRequestModal (components/ui/movements/NewMovementRequestModal.tsx)
-└── Firmware Section
-    └── UploadSmibDataModal (components/ui/firmware/UploadSmibDataModal.tsx)
+│   │   ├── Search and Location Filter
+│   │   ├── MovementRequestsTable [Desktop]
+│   │   ├── MovementRequestCard [Mobile]
+│   │   └── Pagination Controls
+│   └── Movement Request Modals
+│       ├── NewMovementRequestModal (components/ui/movements/NewMovementRequestModal.tsx)
+│       ├── EditMovementRequestModal (components/ui/movements/EditMovementRequestModal.tsx)
+│       └── DeleteMovementRequestModal (components/ui/movements/DeleteMovementRequestModal.tsx)
+└── Firmware Management Section (activeSection === 'firmware')
+    └── SMIBFirmwareSection (components/ui/firmware/SMIBFirmwareSection.tsx)
+        ├── Firmware List
+        │   ├── SMIBFirmwareTable [Desktop]
+        │   └── SMIBFirmwareCard [Mobile]
+        └── Firmware Modals
+            ├── SMIBFirmwareModal (upload new firmware)
+            ├── DeleteFirmwareModal (delete firmware)
+            └── DownloadFirmwareModal (download firmware)
 ```
 
 ### Business Logic
@@ -305,6 +428,136 @@ CabinetsPage (app/cabinets/page.tsx)
 - **Conditional Rendering:** Separate desktop/mobile layouts
 - **Efficient Filtering:** Optimized search and filter algorithms
 - **Pagination:** Reduces DOM size and improves performance
+
+## Page Sections and Tabs
+
+### Cabinets Tab
+
+**Purpose**: Main cabinet management interface with listing, search, filtering, and CRUD operations.
+
+**Components**:
+
+- `CabinetContentDisplay` - Main content area with table/card views
+- `CabinetSearchFilters` - Search and filter controls
+- `FinancialMetricsCards` - Financial totals display
+- `MachineStatusWidget` - Online/offline machine count
+- `DashboardDateFilters` - Date range filtering
+
+**Features**:
+
+- Search cabinets by name, serial number, or game type
+- Filter by location, game type, and online/offline status
+- Sort by financial metrics, asset number, location, or last online
+- Pagination with batch loading (50 items per batch, 10 per page)
+- Desktop table view and mobile card view
+- Create, edit, and delete cabinets
+- Real-time status indicators
+- Financial metrics aggregation
+
+**Data Flow**:
+
+1. Initial load fetches first batch of 50 cabinets
+2. Search/filter triggers API call with debouncing
+3. Pagination loads additional batches as needed
+4. CRUD operations refresh data automatically
+
+### SMIB Management Tab
+
+**Purpose**: Comprehensive SMIB device configuration and management interface.
+
+**Components**:
+
+- `SMIBManagementTab` - Main container component
+- `SMIBSearchSelect` - SMIB device search and selection
+- `NetworkConfigSection` - Network/WiFi configuration
+- `MqttTopicsSection` - MQTT broker and topic settings
+- `ComsConfigSection` - Communication protocol configuration
+- `RestartSection` - SMIB restart operations
+- `MeterDataSection` - Meter data requests and resets
+- `OTAUpdateSection` - Firmware update management
+
+**Features**:
+
+- Search and select SMIB devices by relay ID, serial number, or location
+- Filter SMIBs by location
+- Real-time configuration updates via SSE/MQTT
+- Network configuration (WiFi SSID, password, channel)
+- MQTT configuration (broker, topics, QOS, TLS)
+- COMS configuration (protocol mode, polling rate, RTE, GPC)
+- SMIB restart with countdown and auto-refresh
+- Meter data requests and resets
+- OTA firmware updates
+- Location-wide batch operations (restart all SMIBs)
+- Offline support (saves to database when SMIB offline)
+
+**Data Flow**:
+
+1. SMIB discovery via MQTT (`useSMIBDiscovery` hook)
+2. Device selection triggers SSE connection for live updates
+3. Configuration changes sent via MQTT when online
+4. Database updated regardless of online/offline status
+5. Real-time updates received via SSE stream
+
+### Movement Requests Tab
+
+**Purpose**: Manage cabinet movement requests between locations.
+
+**Components**:
+
+- `MovementRequests` - Main movement requests component
+- `MovementRequestsTable` - Desktop table view
+- `MovementRequestCard` - Mobile card view
+- `NewMovementRequestModal` - Create new movement request
+- `EditMovementRequestModal` - Edit existing request
+- `DeleteMovementRequestModal` - Delete request confirmation
+
+**Features**:
+
+- Search movement requests by creator, locations, cabinet, or status
+- Filter by location (from/to)
+- View request details (locations, cabinet, status, dates)
+- Create new movement requests
+- Edit pending requests
+- Delete requests
+- Approval workflow tracking
+- Pagination support
+
+**Data Flow**:
+
+1. Fetch all movement requests on load
+2. Filter and search client-side
+3. CRUD operations update database
+4. Refresh trigger from parent component
+
+### Firmware Management Tab
+
+**Purpose**: Upload, manage, and deploy SMIB firmware versions.
+
+**Components**:
+
+- `SMIBFirmwareSection` - Main firmware management component
+- `SMIBFirmwareTable` - Desktop table view
+- `SMIBFirmwareCard` - Mobile card view
+- `SMIBFirmwareModal` - Upload new firmware
+- `DeleteFirmwareModal` - Delete firmware confirmation
+- `DownloadFirmwareModal` - Download firmware
+
+**Features**:
+
+- Upload firmware binaries to GridFS
+- List all available firmware versions
+- View firmware details (product, version, file size, date)
+- Delete firmware versions
+- Download firmware files
+- Desktop table and mobile card views
+- Responsive design
+
+**Data Flow**:
+
+1. Fetch firmware list from API
+2. Upload stores in GridFS
+3. Delete removes from GridFS
+4. Download serves from GridFS temporarily
 
 ## Notes Section
 
@@ -350,20 +603,142 @@ The cabinets page is like a **control room for managing all your slot machines**
 **🔧 What SMIB Is**
 
 - **Collection**: Uses `machines` collection with SMIB configuration
-- **Fields Used**: `smibConfig`, `smibVersion`, `smibBoard`
-- **Simple Explanation**: SMIB is the "brain" of each slot machine - it controls how the machine communicates and operates
+- **Fields Used**: `smibConfig`, `smibVersion`, `smibBoard`, `relayId`
+- **Simple Explanation**: SMIB (Slot Machine Interface Board) is the "brain" of each slot machine - it controls how the machine communicates and operates. It handles network connectivity, MQTT messaging, communication protocols, and firmware updates.
 
-**📡 Communication Settings**
+**📡 SMIB Device Selection & Discovery**
 
-- **Collection**: Updates `smibConfig` field in `machines` collection
-- **Fields Used**: `mqtt`, `net`, `coms` configuration objects
-- **Simple Explanation**: Like setting up WiFi for your slot machines - controls how they connect to your system
+- **Component**: `components/cabinets/SMIBManagementTab.tsx`
+- **Hook**: `useSMIBDiscovery()` - Discovers available SMIB devices via MQTT
+- **Features**:
+  - Search SMIBs by relay ID, serial number, or location name
+  - Filter SMIBs by location
+  - Display online/offline status
+  - URL parameter support (`?smib=relayId`) for direct SMIB access
+  - Location-wide operations (restart all SMIBs at a location)
+- **Data Source**: MQTT discovery service + database machine records
 
-**🔄 Firmware Management**
+**🌐 Network Configuration Section**
 
-- **Collection**: Uses `firmware` collection for SMIB software
-- **Fields Used**: `product`, `version`, `fileId`, `fileName`
-- **Simple Explanation**: Like updating the operating system on your slot machines - keeps them running the latest software
+- **Component**: `components/cabinets/smibManagement/NetworkConfigSection.tsx`
+- **Fields Managed**:
+  - `netStaSSID` - WiFi network name
+  - `netStaPwd` - WiFi password
+  - `netStaChan` - WiFi channel (1-11)
+  - `netMode` - Network mode (0 = Ethernet, 1 = WiFi client)
+- **Features**:
+  - Edit mode for updating network settings
+  - Live updates when SMIB is online (via MQTT)
+  - Database fallback when SMIB is offline
+  - Last configured timestamp display
+- **API**: `POST /api/mqtt/update-machine-config` - Updates network config
+
+**📨 MQTT Topics Configuration Section**
+
+- **Component**: `components/cabinets/smibManagement/MqttTopicsSection.tsx`
+- **Fields Managed**:
+  - `mqttPubTopic` - Publish topic (e.g., "sas/gy/server")
+  - `mqttCfgTopic` - Configuration topic (e.g., "smib/config")
+  - `mqttSubTopic` - Subscribe topic prefix (e.g., "sas/relay/")
+  - `mqttURI` - Full MQTT broker URI with credentials
+  - `mqttHost` - MQTT broker hostname
+  - `mqttPort` - MQTT broker port
+  - `mqttTLS` - TLS encryption (0 = off, 1 = on)
+  - `mqttQOS` - Quality of Service level (0, 1, or 2)
+  - `mqttIdleTimeout` - Idle timeout in seconds
+  - `mqttUsername` / `mqttPassword` - Broker credentials
+- **Features**:
+  - Topic configuration management
+  - Connection settings (host, port, TLS, QOS)
+  - Live updates when SMIB is online
+  - Database persistence when offline
+- **API**: `POST /api/mqtt/update-machine-config` - Updates MQTT config
+
+**🔌 COMS (Communication) Configuration Section**
+
+- **Component**: `components/cabinets/smibManagement/ComsConfigSection.tsx`
+- **Fields Managed**:
+  - `comsMode` - Communication mode (0 = SAS, 1 = non-SAS, 2 = IGT)
+  - `comsAddr` - Communication address
+  - `comsRateMs` - Polling rate in milliseconds
+  - `comsRTE` - Real-time events (0 = disabled, 1 = enabled)
+  - `comsGPC` - Game protocol configuration
+- **Features**:
+  - Protocol mode selection
+  - Polling rate configuration
+  - Real-time event enable/disable
+  - Live updates when SMIB is online
+  - Database persistence when offline
+- **API**: `POST /api/mqtt/update-machine-config` - Updates COMS config
+
+**🔄 SMIB Restart Section**
+
+- **Component**: `components/cabinets/smibManagement/RestartSection.tsx`
+- **Features**:
+  - Individual SMIB restart with confirmation
+  - 15-second countdown before restart
+  - Automatic data refresh after restart
+  - Online/offline status checking
+  - Error handling and user feedback
+- **API**: `POST /api/smib/restart` - Sends restart command via MQTT
+- **MQTT Command**: `{ "typ": "rst" }`
+
+**📊 Meter Data Section**
+
+- **Component**: `components/cabinets/smibManagement/MeterDataSection.tsx`
+- **Features**:
+  - Request meter data from SMIB device
+  - Reset meters (non-SAS machines only)
+  - Online/offline status checking
+  - Real-time meter data retrieval
+- **API**:
+  - `POST /api/smib/meters` - Request meter data
+  - `POST /api/smib/reset-meters` - Reset meters (non-SAS only)
+- **MQTT Commands**: Meter request and reset commands sent via MQTT
+
+**🚀 OTA (Over-The-Air) Update Section**
+
+- **Component**: `components/cabinets/smibManagement/OTAUpdateSection.tsx`
+- **Features**:
+  - Select firmware version from available firmwares
+  - Initiate OTA update to SMIB device
+  - Track firmware update status
+  - Display last firmware update timestamp
+  - Automatic refresh after update completion
+- **API**: `POST /api/smib/ota-update` - Initiates firmware update
+- **Process**:
+  1. Download firmware from GridFS to `/public/firmwares/`
+  2. Configure OTA URL on SMIB
+  3. Send update command with firmware filename
+  4. SMIB downloads and installs firmware
+  5. Auto-cleanup after 30 minutes
+
+**🔄 Firmware Management Tab**
+
+- **Component**: `components/ui/firmware/SMIBFirmwareSection.tsx`
+- **Features**:
+  - Upload new firmware versions to GridFS
+  - List all available firmware versions
+  - Delete firmware versions
+  - Download firmware files
+  - Desktop table view and mobile card view
+- **API**:
+  - `GET /api/firmwares` - List all firmwares
+  - `POST /api/firmwares` - Upload firmware
+  - `DELETE /api/firmwares/[id]` - Delete firmware
+  - `GET /api/firmwares/[filename]` - Serve firmware to SMIB
+
+**📡 Real-time Configuration Updates**
+
+- **Technology**: Server-Sent Events (SSE) for live MQTT updates
+- **Hook**: `useSmibConfiguration()` - Manages SSE connection and config state
+- **Features**:
+  - Live configuration updates from SMIB device
+  - Automatic form synchronization
+  - Connection status monitoring
+  - Fallback to database values when offline
+- **SSE Endpoint**: `GET /api/mqtt/config/subscribe?relayId=[relayId]`
+- **Request Endpoint**: `POST /api/mqtt/config/request` - Request live config from SMIB
 
 #### **Movement Requests Section**
 

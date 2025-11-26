@@ -1,5 +1,21 @@
+/**
+ * Card Components
+ * Reusable card component with header, content, and footer sections.
+ *
+ * Features:
+ * - Card container with border and shadow
+ * - CardHeader for title and description
+ * - CardTitle for main heading
+ * - CardDescription for subtitle
+ * - CardContent for main content
+ * - CardFooter for actions
+ */
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Card Components
+// ============================================================================
 
 const Card = React.forwardRef<
   HTMLDivElement,

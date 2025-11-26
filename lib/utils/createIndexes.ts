@@ -1,8 +1,24 @@
+/**
+ * Database Index Creation Utility
+ *
+ * Creates aggressive indexes for optimal query performance.
+ *
+ * Features:
+ * - Member collection indexes
+ * - Machine session indexes
+ * - Machine event indexes
+ * - Index optimization
+ * - One-time setup function
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 
+// ============================================================================
+// Index Creation Functions
+// ============================================================================
 /**
  * Creates aggressive indexes for optimal query performance
  * This should be run once during application setup

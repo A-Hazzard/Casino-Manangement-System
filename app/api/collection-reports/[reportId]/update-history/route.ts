@@ -1,30 +1,43 @@
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { Collections } from '@/app/api/lib/models/collections';
-import { Machine } from '@/app/api/lib/models/machines';
+/**
+ * Update Report History API Route
+ *
+ * This route handles batch updates to machine collectionMetersHistory from a collection report, including:
+ * - Validating collections belong to the report
+ * - Updating or creating history entries with correct prevIn/prevOut from actual collection data
+ * - Updating machine current meters
+ * - Marking collections as completed
+ *
+ * Note: Uses PATCH for updating existing report histories (not POST, which would be for creating new reports)
+ *
+ * @module app/api/collection-reports/[reportId]/update-history/route
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  type UpdateHistoryPayload,
+  updateReportMachineHistories,
+} from '@/app/api/lib/helpers/reportHistoryUpdate';
+import { connectDB } from '@/app/api/lib/middleware/db';
 
-type MachineChange = {
-  machineId: string;
-  locationReportId: string;
-  metersIn: number;
-  metersOut: number;
-  prevMetersIn: number;
-  prevMetersOut: number;
-  collectionId: string;
-};
-
-type UpdateHistoryPayload = {
-  changes: MachineChange[];
-};
-
-// CRITICAL: Use PATCH for updating existing report histories
-// POST would be for creating new reports, but we're updating existing ones
+/**
+ * Main PATCH handler for updating machine histories from a collection report
+ *
+ * Flow:
+ * 1. Parse and validate request parameters (reportId, changes array)
+ * 2. Connect to database
+ * 3. Execute batch history update operation
+ * 4. Return results summary
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ reportId: string }> }
 ) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { reportId } = await params;
     const body = (await request.json()) as UpdateHistoryPayload;
 
@@ -42,231 +55,22 @@ export async function PATCH(
       );
     }
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Verify report exists
-    // CRITICAL: Query by locationReportId field, not _id
-    // The reportId parameter is the locationReportId value
-    const report = await CollectionReport.findOne({
-      locationReportId: reportId,
-    });
-    if (!report) {
-      return NextResponse.json(
-        { success: false, error: 'Collection report not found' },
-        { status: 404 }
-      );
-    }
+    // ============================================================================
+    // STEP 3: Execute batch history update operation
+    // ============================================================================
+    const results = await updateReportMachineHistories(reportId, body.changes);
 
-    console.warn(
-      `🔄 Starting batch history update for report ${reportId} with ${body.changes.length} changes`
-    );
-
-    const results = {
-      updated: 0,
-      failed: 0,
-      errors: [] as Array<{ machineId: string; error: string }>,
-    };
-
-    // Process each machine change
-    for (const change of body.changes) {
-      try {
-        const {
-          machineId,
-          locationReportId,
-          collectionId,
-        } = change;
-
-        // Verify the collection exists and belongs to this report
-        console.warn(`🔍 Validating collection:`, {
-          collectionId,
-          reportId,
-          machineId,
-        });
-
-        const collection = await Collections.findOne({
-          _id: collectionId,
-          locationReportId: reportId,
-          machineId: machineId,
-        });
-
-        if (!collection) {
-          // Try to find the collection with just _id to see if it exists at all
-          const collectionById = await Collections.findById(collectionId);
-
-          console.error(`⚠️ Collection validation failed:`, {
-            collectionId,
-            expectedReportId: reportId,
-            expectedMachineId: machineId,
-            collectionExists: !!collectionById,
-            actualLocationReportId: collectionById?.locationReportId,
-            actualMachineId: collectionById?.machineId,
-            machineIdMatch: collectionById?.machineId === machineId,
-            reportIdMatch: collectionById?.locationReportId === reportId,
-          });
-
-          results.failed++;
-          results.errors.push({
-            machineId,
-            error: `Collection not found or mismatch. Collection exists: ${!!collectionById}, ReportId match: ${collectionById?.locationReportId === reportId}, MachineId match: ${collectionById?.machineId === machineId}`,
-          });
-          continue;
-        }
-
-        console.warn(
-          `✅ Collection validated successfully for machine ${machineId}`
-        );
-
-        // CRITICAL: Check if history entry exists first
-        const machine = await Machine.findById(machineId);
-        if (!machine) {
-          console.warn(`⚠️ Machine ${machineId} not found`);
-          results.failed++;
-          results.errors.push({
-            machineId,
-            error: 'Machine not found',
-          });
-          continue;
-        }
-
-        // CRITICAL FIX: Fetch the actual collection document to get CORRECT prevIn/prevOut
-        // The collection's prevIn/prevOut may have been recalculated by the backend
-        // Don't trust the frontend payload which may have stale values
-        const actualCollection = await Collections.findById(collectionId);
-        if (!actualCollection) {
-          console.error(`❌ Collection ${collectionId} not found`);
-          results.failed++;
-          results.errors.push({
-            machineId,
-            error: 'Collection not found',
-          });
-          continue;
-        }
-
-        const historyEntryExists = machine.collectionMetersHistory?.some(
-          (h: { locationReportId: string }) =>
-            h.locationReportId === locationReportId
-        );
-
-        if (historyEntryExists) {
-          // UPDATE existing history entry
-          console.warn(
-            `🔄 Updating existing history entry for machine ${machineId}, reportId ${locationReportId}`
-          );
-
-          const historyUpdateResult = await Machine.findByIdAndUpdate(
-            machineId,
-            {
-              $set: {
-                'collectionMetersHistory.$[elem].metersIn': actualCollection.metersIn,
-                'collectionMetersHistory.$[elem].metersOut': actualCollection.metersOut,
-                'collectionMetersHistory.$[elem].prevMetersIn': actualCollection.prevIn,      // ✅ FIX: Use collection's prevIn
-                'collectionMetersHistory.$[elem].prevMetersOut': actualCollection.prevOut,    // ✅ FIX: Use collection's prevOut
-                'collectionMetersHistory.$[elem].timestamp': new Date(),
-                updatedAt: new Date(),
-              },
-            },
-            {
-              arrayFilters: [
-                {
-                  'elem.locationReportId': locationReportId,
-                },
-              ],
-              new: true,
-            }
-          );
-
-          if (!historyUpdateResult) {
-            console.warn(
-              `⚠️ Failed to update history for machine ${machineId}`
-            );
-            results.failed++;
-            results.errors.push({
-              machineId,
-              error: 'Failed to update machine history',
-            });
-            continue;
-          }
-        } else {
-          // CREATE new history entry
-          console.warn(
-            `✨ Creating NEW history entry for machine ${machineId}, reportId ${locationReportId}`
-          );
-
-          const mongoose = await import('mongoose');
-          const historyEntry = {
-            _id: new mongoose.Types.ObjectId(),
-            metersIn: actualCollection.metersIn,       // ✅ FIX: Use collection's metersIn
-            metersOut: actualCollection.metersOut,     // ✅ FIX: Use collection's metersOut
-            prevMetersIn: actualCollection.prevIn,     // ✅ FIX: Use collection's prevIn
-            prevMetersOut: actualCollection.prevOut,   // ✅ FIX: Use collection's prevOut
-            timestamp: new Date(),
-            locationReportId: locationReportId,
-          };
-
-          const historyCreateResult = await Machine.findByIdAndUpdate(
-            machineId,
-            {
-              $push: {
-                collectionMetersHistory: historyEntry,
-              },
-              $set: {
-                updatedAt: new Date(),
-              },
-            },
-            { new: true }
-          );
-
-          if (!historyCreateResult) {
-            console.warn(
-              `⚠️ Failed to create history for machine ${machineId}`
-            );
-            results.failed++;
-            results.errors.push({
-              machineId,
-              error: 'Failed to create machine history',
-            });
-            continue;
-          }
-        }
-
-        // Update machine's current collectionMeters
-        // Use actualCollection values (already fetched above) to ensure consistency
-        await Machine.findByIdAndUpdate(machineId, {
-          $set: {
-            'collectionMeters.metersIn': actualCollection.metersIn,
-            'collectionMeters.metersOut': actualCollection.metersOut,
-            collectionTime: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-
-        // CRITICAL: Mark the collection as completed since it's part of a finalized report
-        await Collections.findByIdAndUpdate(collectionId, {
-          $set: {
-            isCompleted: true,
-            updatedAt: new Date(),
-          },
-        });
-
-        console.warn(
-          `✅ Updated machine ${machineId} history, meters, and marked collection as completed`
-        );
-        results.updated++;
-      } catch (error) {
-        console.error(`Error updating machine ${change.machineId}:`, error);
-        results.failed++;
-        results.errors.push({
-          machineId: change.machineId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    }
-
-    // NOTE: We do NOT set isEditing: false here
-    // That is handled by the main collection-report PATCH endpoint
-    // This endpoint only updates machine histories
-    console.warn(
-      `✅ Machine history updates completed: ${results.updated} succeeded, ${results.failed} failed`
+    // ============================================================================
+    // STEP 4: Return results summary
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Update Report History PATCH API] Updated ${results.updated}/${body.changes.length} machine histories after ${duration}ms.`
     );
 
     return NextResponse.json({
@@ -277,13 +81,28 @@ export async function PATCH(
           : `Updated ${results.updated} machines, ${results.failed} failed`,
       results,
     });
-  } catch (error) {
-    console.error('Error in update-history endpoint:', error);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Update Report History PATCH API] Error after ${duration}ms:`,
+      errorMessage
+    );
+
+    // Handle specific error cases
+    if (errorMessage === 'Collection report not found') {
+      return NextResponse.json(
+        { success: false, error: errorMessage },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: errorMessage,
       },
       { status: 500 }
     );

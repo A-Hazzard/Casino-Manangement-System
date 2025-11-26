@@ -35,7 +35,8 @@ export async function migrateFirmwareSchema() {
           const oldFile: OldFileType = firmware.file;
 
           // Update with new schema fields
-          await Firmware.findByIdAndUpdate(firmware._id, {
+          // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+          await Firmware.findOneAndUpdate({ _id: firmware._id }, {
             $set: {
               fileName:
                 oldFile.originalname || oldFile.filename || 'unknown.bin',
@@ -49,7 +50,8 @@ export async function migrateFirmwareSchema() {
           // console.log(`Migrated firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
         } else {
           // If missing new fields but no old file object, set defaults
-          await Firmware.findByIdAndUpdate(firmware._id, {
+          // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+          await Firmware.findOneAndUpdate({ _id: firmware._id }, {
             $set: {
               fileName: 'unknown.bin',
               fileSize: 0,

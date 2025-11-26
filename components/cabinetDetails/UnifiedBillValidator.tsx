@@ -1,3 +1,28 @@
+/**
+ * Unified Bill Validator Component
+ * Component for displaying bill validator data with time period filtering.
+ *
+ * Features:
+ * - Bill validator data display (v1 and v2 support)
+ * - Denomination breakdown
+ * - Time period filtering (Today, Yesterday, 7d, 30d, All Time, Custom)
+ * - Custom date range picker
+ * - Currency formatting
+ * - Total amount and quantity calculations
+ * - Unknown bills tracking
+ * - Current balance display
+ * - Refresh functionality
+ * - Loading states and skeletons
+ * - Framer Motion animations
+ * - Zustand store integration for date persistence
+ *
+ * Large component (~711 lines) handling bill validator data management.
+ *
+ * @param machineId - Machine ID to fetch bill validator data for
+ * @param timePeriod - Current time period filter
+ * @param onTimePeriodChange - Callback to change time period
+ * @param gameDayOffset - Game day offset for date calculations
+ */
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils';
@@ -11,6 +36,10 @@ import { Banknote, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useCabinetUIStore } from '@/lib/store/cabinetUIStore';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type BillValidatorData = {
   version: 'v1' | 'v2' | 'none';
@@ -341,36 +370,77 @@ export const UnifiedBillValidator: React.FC<UnifiedBillValidatorProps> = ({
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             {/* Desktop Table Skeleton */}
             <div className="hidden overflow-x-auto lg:block">
-              <div className="p-4">
-                <div className="mb-2 h-12 rounded bg-gray-50" />
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="mb-2 h-14 rounded bg-gray-100" />
-                ))}
-              </div>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-4 py-3 text-left">
+                      <Skeleton className="h-4 w-24" />
+                    </th>
+                    <th className="px-4 py-3 text-center">
+                      <Skeleton className="h-4 w-16 mx-auto" />
+                    </th>
+                    <th className="px-4 py-3 text-right">
+                      <Skeleton className="h-4 w-20 ml-auto" />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <tr key={i} className="border-b border-gray-100">
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Skeleton className="h-4 w-16 mx-auto" />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Skeleton className="h-4 w-24 ml-auto" />
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Total Row Skeleton */}
+                  <tr className="border-t-2 border-gray-300 bg-gray-50">
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-12" />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Skeleton className="h-5 w-16 mx-auto" />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Skeleton className="h-5 w-28 ml-auto" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             {/* Mobile Cards Skeleton */}
-            <div className="space-y-3 p-4 lg:hidden">
+            <div className="block space-y-3 p-4 lg:hidden">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Card key={i}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-4 w-12" />
-                      <Skeleton className="h-4 w-20" />
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-20 mb-2" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                      <div className="text-right">
+                        <Skeleton className="h-5 w-24" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
-            </div>
-
-            {/* Totals Footer Skeleton */}
-            <div className="border-t-2 border-gray-300 bg-gray-50 p-4">
-              <div className="flex items-center justify-between font-semibold">
-                <Skeleton className="h-5 w-16" />
-                <Skeleton className="h-5 w-12" />
-                <Skeleton className="h-5 w-24" />
-              </div>
+              {/* Total Card Skeleton */}
+              <Card className="border-t-2 border-gray-300 bg-gray-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between font-semibold">
+                    <Skeleton className="h-5 w-12" />
+                    <Skeleton className="h-5 w-16" />
+                    <Skeleton className="h-5 w-28" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

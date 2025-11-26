@@ -1,3 +1,21 @@
+/**
+ * Mobile Layout Component
+ * Dashboard layout optimized for mobile devices (hidden on xl+ screens).
+ *
+ * Features:
+ * - Date filters with custom date range support
+ * - Machine status widget (online/offline counts)
+ * - Refresh button for data reload
+ * - Financial metrics cards
+ * - Interactive charts (bar/line charts)
+ * - Map preview of gaming locations
+ * - Top performing section with tabs (locations vs cabinets)
+ * - Pie chart visualization
+ * - Skeleton loading states
+ * - No data messages
+ *
+ * @param props - MobileLayoutProps including data, loading states, and handlers
+ */
 "use client";
 
 import MapPreview from "@/components/ui/MapPreview";
@@ -18,8 +36,14 @@ import DashboardDateFilters from "@/components/dashboard/DashboardDateFilters";
 import { getLicenseeName } from "@/lib/utils/licenseeMapping";
 
 export default function MobileLayout(props: MobileLayoutProps) {
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   const licenseeName = getLicenseeName(props.selectedLicencee) || props.selectedLicencee || 'any licensee';
 
+  // ============================================================================
+  // Helper Components
+  // ============================================================================
   const NoDataMessage = ({ message }: { message: string }) => (
     <div
       className="flex flex-col items-center justify-center p-8 bg-container rounded-lg shadow-md"
@@ -30,6 +54,9 @@ export default function MobileLayout(props: MobileLayoutProps) {
     </div>
   );
 
+  // ============================================================================
+  // State - Machine Stats
+  // ============================================================================
   // Use online/offline counts from props if provided, otherwise fetch from API
   const [machineStats, setMachineStats] = useState<{
     totalMachines: number;
@@ -38,6 +65,9 @@ export default function MobileLayout(props: MobileLayoutProps) {
   } | null>(null);
   const [machineStatsLoading, setMachineStatsLoading] = useState(true);
 
+  // ============================================================================
+  // Effects - Fetch Machine Stats
+  // ============================================================================
   // Fetch machine stats for online/offline counts (similar to reports tab)
   useEffect(() => {
     let aborted = false;
@@ -76,10 +106,16 @@ export default function MobileLayout(props: MobileLayoutProps) {
     };
   }, []);
 
+  // ============================================================================
+  // Computed Values - Machine Counts
+  // ============================================================================
   // Use machine stats for online/offline counts
   const onlineCount = machineStats?.onlineMachines || 0;
   const offlineCount = machineStats?.offlineMachines || 0;
 
+  // ============================================================================
+  // Render - Mobile Dashboard Layout
+  // ============================================================================
   return (
     <div className="xl:hidden space-y-6">
       {/* Date Filter Controls (mobile) */}

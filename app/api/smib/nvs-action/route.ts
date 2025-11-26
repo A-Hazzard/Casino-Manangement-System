@@ -1,20 +1,48 @@
+/**
+ * SMIB NVS Action API Route
+ *
+ * This route handles executing NVS clear actions on SAS SMIB devices.
+ * It supports:
+ * - clear_nvs: Clear all NVS
+ * - clear_nvs_meters: Clear NVS meters
+ * - clear_nvs_bv: Clear NVS bill validator
+ * - clear_nvs_door: Clear NVS door
+ * - Sending commands via MQTT
+ * - Activity logging
+ *
+ * @module app/api/smib/nvs-action/route
+ */
+
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { mqttService } from '@/lib/services/mqttService';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { connectDB } from '../../lib/middleware/db';
 
 /**
- * POST /api/smib/nvs-action
- * Execute NVS clear actions on SAS SMIB devices
- * Actions: clear_nvs, clear_nvs_meters, clear_nvs_bv, clear_nvs_door
+ * Main POST handler for executing NVS actions
+ *
+ * Flow:
+ * 1. Parse request body
+ * 2. Validate relayId and action
+ * 3. Connect to database
+ * 4. Send appropriate NVS command via MQTT
+ * 5. Log activity
+ * 6. Return success response
  */
 export async function POST(request: NextRequest) {
-  try {
-    await connectDB();
+  const startTime = Date.now();
 
+  try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const { relayId, action } = await request.json();
+
+    // ============================================================================
+    // STEP 2: Validate relayId and action
+    // ============================================================================
 
     if (!relayId) {
       return NextResponse.json(
@@ -30,7 +58,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate action
     const validActions = [
       'clear_nvs',
       'clear_nvs_meters',
@@ -47,7 +74,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send appropriate NVS command via MQTT
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 4: Send appropriate NVS command via MQTT
+    // ============================================================================
     try {
       switch (action) {
         case 'clear_nvs':
@@ -65,8 +99,7 @@ export async function POST(request: NextRequest) {
         default:
           throw new Error(`Unhandled action: ${action}`);
       }
-    } catch (mqttError) {
-      console.error(`❌ Failed to send ${action} command:`, mqttError);
+    } catch {
       return NextResponse.json(
         {
           success: false,
@@ -76,7 +109,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity
+    // ============================================================================
+    // STEP 5: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     const clientIP = getClientIP(request);
 
@@ -105,6 +140,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 6: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[SMIB NVS Action API] Completed in ${duration}ms`);
+    }
     return NextResponse.json({
       success: true,
       message: `${action} command sent successfully`,
@@ -112,9 +154,15 @@ export async function POST(request: NextRequest) {
       action,
     });
   } catch (error) {
-    console.error('❌ Error in SMIB NVS action endpoint:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[SMIB NVS Action API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

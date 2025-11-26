@@ -26,7 +26,7 @@ import type { GamingMachine } from '@/shared/types/entities';
 import axios from 'axios';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ComsConfigSection } from './smibManagement/ComsConfigSection';
 import { MeterDataSection } from './smibManagement/MeterDataSection';
@@ -35,7 +35,9 @@ import { NetworkConfigSection } from './smibManagement/NetworkConfigSection';
 import { OTAUpdateSection } from './smibManagement/OTAUpdateSection';
 import { RestartSection } from './smibManagement/RestartSection';
 
-export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigger?: number } = {}) {
+export default function SMIBManagementTab({
+  refreshTrigger = 0,
+}: { refreshTrigger?: number } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { availableSmibs, loading, error, refreshSmibs } = useSMIBDiscovery();
@@ -79,10 +81,6 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
   // When a SMIB is selected, connect to its config stream
   useEffect(() => {
     if (selectedRelayId) {
-      console.log(
-        `🔗 [SMIB MANAGEMENT] Connecting to config stream for ${selectedRelayId}`
-      );
-
       // Set loading state - will persist until we receive actual data
       setIsInitialLoading(true);
 
@@ -108,13 +106,19 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
       }
 
       return () => {
-        smibConfig.disconnectFromConfigStream();
+        // Only disconnect if selectedRelayId is actually changing
+        // Don't disconnect on every render - let connectToConfigStream handle reusing connections
         setIsInitialLoading(false);
       };
     }
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRelayId, availableSmibs]);
+  }, [
+    selectedRelayId,
+    setIsInitialLoading,
+    availableSmibs,
+    smibConfig,
+    setSelectedMachineId,
+  ]);
 
   // Stop loading skeleton when we receive actual config data
   useEffect(() => {
@@ -124,9 +128,6 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
         smibConfig.formData.comsMode ||
         smibConfig.formData.mqttPubTopic)
     ) {
-      console.log(
-        '📦 [SMIB MANAGEMENT] Received config data, stopping skeleton loader'
-      );
       setIsInitialLoading(false);
     }
   }, [
@@ -143,29 +144,9 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
       axios
         .get(`/api/machines/by-id?id=${selectedMachineId}`)
         .then(response => {
-          console.log(
-            '📦 [SMIB MANAGEMENT] Fetched full machine data from DB:',
-            response.data
-          );
           if (response.data && response.data.data) {
             const machine = response.data.data;
             setMachineData(machine);
-            console.log(
-              '📦 [SMIB MANAGEMENT] Machine smibConfig:',
-              machine.smibConfig
-            );
-            console.log(
-              '📦 [SMIB MANAGEMENT] Network config:',
-              machine.smibConfig?.net
-            );
-            console.log(
-              '📦 [SMIB MANAGEMENT] COMS config:',
-              machine.smibConfig?.coms
-            );
-            console.log(
-              '📦 [SMIB MANAGEMENT] MQTT config:',
-              machine.smibConfig?.mqtt
-            );
             // Also fetch MQTT config to populate formData
             smibConfig.fetchMqttConfig(selectedMachineId);
           }
@@ -174,8 +155,7 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
           console.error('Failed to fetch machine data from DB:', err);
         });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRelayId, selectedMachineId]);
+  }, [selectedRelayId, selectedMachineId, setMachineData, smibConfig]);
 
   // Handle network config update
   const handleNetworkUpdate = async (data: {
@@ -319,10 +299,9 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
   };
 
   // Refresh SMIB data (re-request config and reload machine data)
-  const handleRefreshSmibData = async () => {
+  const handleRefreshSmibData = useCallback(async () => {
     if (!selectedRelayId) return;
 
-    console.log('🔄 [SMIB MANAGEMENT] Refreshing SMIB data...');
     setIsInitialLoading(true);
 
     // Refresh SMIB list
@@ -352,15 +331,21 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
     }
 
     // Loading will automatically stop when config data arrives
-  };
+  }, [
+    selectedRelayId,
+    selectedMachineId,
+    refreshSmibs,
+    smibConfig,
+    setIsInitialLoading,
+    setMachineData,
+  ]);
 
   // Refresh when trigger changes from parent
   useEffect(() => {
     if (refreshTrigger > 0) {
       handleRefreshSmibData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshTrigger]);
+  }, [refreshTrigger, handleRefreshSmibData]);
 
   // Get unique locations from available SMIBs (including unassigned)
   const uniqueLocations = useMemo(() => {
@@ -414,22 +399,10 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
       return;
     }
 
-    console.log(
-      '🔄 [SMIB MANAGEMENT] Restarting all SMIBs at location:',
-      selectedLocationId
-    );
-    console.log('🔄 [SMIB MANAGEMENT] Location name:', selectedLocationName);
-    console.log(
-      '🔄 [SMIB MANAGEMENT] Filtered SMIBs count:',
-      filteredSmibs.length
-    );
-
     // Extract unique relayIds from filtered SMIBs (from MQTT discovery)
     const relayIds = Array.from(
       new Set(filteredSmibs.map(smib => smib.relayId).filter(Boolean))
     );
-
-    console.log('🔄 [SMIB MANAGEMENT] Unique relay IDs to restart:', relayIds);
 
     if (relayIds.length === 0) {
       toast.error('No SMIBs found at this location');
@@ -440,12 +413,7 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
     setIsRestartingAll(true);
     try {
       const url = `/api/locations/${selectedLocationId}/smib-restart`;
-      console.log('📡 [SMIB MANAGEMENT] Calling POST:', url);
-      console.log('📡 [SMIB MANAGEMENT] Payload:', { relayIds });
-
       const response = await axios.post(url, { relayIds });
-
-      console.log('✅ [SMIB MANAGEMENT] Restart all response:', response.data);
 
       if (response.data.successful > 0) {
         toast.success(
@@ -742,6 +710,7 @@ export default function SMIBManagementTab({ refreshTrigger = 0 }: { refreshTrigg
                 <MeterDataSection
                   relayId={selectedRelayId}
                   isOnline={smibConfig.isConnectedToMqtt}
+                  smibConfig={smibConfig}
                 />
               </div>
 

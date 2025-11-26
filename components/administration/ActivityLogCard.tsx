@@ -1,3 +1,21 @@
+/**
+ * Activity Log Card Component
+ * Card component for displaying individual activity log entries.
+ *
+ * Features:
+ * - Activity log entry display
+ * - Expandable/collapsible details
+ * - Copy to clipboard functionality
+ * - Badge indicators for action types
+ * - Date formatting
+ * - User information display
+ * - Description parsing for failed logins
+ * - Toast notifications
+ *
+ * @param log - Activity log entry to display
+ * @param searchMode - Current search mode (username, email, description, _id)
+ * @param onDescriptionClick - Callback when description is clicked
+ */
 'use client';
 
 import React, { useState } from 'react';

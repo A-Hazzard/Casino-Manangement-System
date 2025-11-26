@@ -1,7 +1,7 @@
 # API Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 9th, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.1.0
 
 ## Quick Search Guide (Ctrl+F)
@@ -31,21 +31,35 @@ The Evolution One Casino Management System provides comprehensive REST APIs for 
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "password123"
+  "identifier": "user@example.com",
+  "password": "password123",
+  "rememberMe": false
 }
 ```
+
+**Note**: `identifier` accepts either email address or username. The backend checks both fields if the identifier looks like an email.
 
 **Response:**
 
 ```json
 {
-  "token": "jwt_token_here",
-  "user": {
-    "id": "user_id",
-    "email": "user@example.com",
-    "name": "User Name",
-    "role": "collector"
+  "success": true,
+  "data": {
+    "user": {
+      "_id": "user_id",
+      "emailAddress": "user@example.com",
+      "username": "username",
+      "roles": ["collector"],
+      "profile": {
+        "firstName": "User",
+        "lastName": "Name"
+      }
+    },
+    "token": "jwt_token_here",
+    "refreshToken": "refresh_token_here",
+    "expiresAt": "2025-11-24T12:00:00Z",
+    "requiresPasswordUpdate": false,
+    "requiresProfileUpdate": false
   }
 }
 ```
@@ -331,7 +345,7 @@ All APIs follow a consistent response format:
 | ------------------ | ------ | --------------------- | ------------------- |
 | `/login`           | POST   | User authentication   | Login page          |
 | `/logout`          | POST   | User logout           | Header component    |
-| `/token`           | GET    | Token validation      | Global auth context |
+| `/current-user`    | GET    | Get current user data | Global auth context |
 | `/forgot-password` | POST   | Password reset        | Login page          |
 | `/clear-token`     | POST   | Manual token clearing | Admin panel         |
 

@@ -1,3 +1,17 @@
+/**
+ * Date Range Component
+ * Simple date range input component with start and end date inputs.
+ *
+ * Features:
+ * - Start and end date inputs
+ * - Apply button to set custom date range
+ * - Date formatting
+ * - Filter state management
+ *
+ * @param CustomDateRange - Current custom date range
+ * @param setCustomDateRange - Callback to update date range
+ * @param setActiveFilters - Callback to update active filters
+ */
 import { Button } from './button';
 import { DateRangeProps } from '@/lib/types/componentProps';
 

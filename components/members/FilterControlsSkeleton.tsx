@@ -1,6 +1,17 @@
+/**
+ * Filter Controls Skeleton Component
+ * Loading skeleton for filter controls component.
+ *
+ * Features:
+ * - Matches filter controls layout structure
+ * - Label and filter button skeletons
+ */
 import React from 'react';
 
 export default function FilterControlsSkeleton() {
+  // ============================================================================
+  // Render - Skeleton
+  // ============================================================================
   return (
     <div className="mb-6">
       <div className="flex items-center space-x-2">

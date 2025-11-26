@@ -1,21 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Manufacturer Performance Analytics API Route
+ *
+ * This route handles fetching manufacturer performance data for a specific location.
+ * It supports:
+ * - Filtering by location and time period
+ * - Custom date range support
+ * - Optional filtering by licensee
+ * - Aggregating metrics by manufacturer
+ * - Calculating percentages for each manufacturer
+ *
+ * @module app/api/analytics/manufacturer-performance/route
+ */
+
+import { getManufacturerPerformance } from '@/app/api/lib/helpers/manufacturerPerformance';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { getDatesForTimePeriod } from '@/lib/utils/dates';
-import { TimePeriod } from '@/shared/types';
-import type { PipelineStage } from 'mongoose';
+import type { TimePeriod } from '@/shared/types';
+import { NextRequest, NextResponse } from 'next/server';
 
-type ManufacturerDataItem = {
-  _id: string;
-  totalMachines: number;
-  totalHandle: number;
-  totalWin: number;
-  totalDrop: number;
-  totalCancelledCredits: number;
-  totalGross: number;
-};
-
+/**
+ * Main GET handler for fetching manufacturer performance
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Fetch manufacturer performance data
+ * 4. Return manufacturer performance
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const locationId = searchParams.get('locationId');
     const timePeriod =
@@ -31,190 +48,47 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
-      console.error('Database connection not established');
       return NextResponse.json(
         { error: 'Database connection not established' },
         { status: 500 }
       );
     }
 
-    // Get date range
-    let startDateFilter: Date | undefined, endDateFilter: Date | undefined;
-
-    if (startDate && endDate) {
-      startDateFilter = new Date(startDate);
-      endDateFilter = new Date(endDate);
-    } else {
-      const dateRange = getDatesForTimePeriod(timePeriod);
-      startDateFilter = dateRange.startDate;
-      endDateFilter = dateRange.endDate;
-    }
-
-    if (!startDateFilter || !endDateFilter) {
-      const now = new Date();
-      endDateFilter = now;
-      startDateFilter = new Date(now.getTime() - 24 * 60 * 60 * 1000); // Default to last 24 hours
-    }
-
-    // Build aggregation pipeline
-    const pipeline = [
-      {
-        $match: {
-          readAt: { $gte: startDateFilter, $lte: endDateFilter },
-          location: locationId,
-        },
-      },
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'location',
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
-      },
-      {
-        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
-      },
-      {
-        $lookup: {
-          from: 'machines',
-          localField: 'machine',
-          foreignField: '_id',
-          as: 'machineDetails',
-        },
-      },
-      {
-        $unwind: { path: '$machineDetails', preserveNullAndEmptyArrays: true },
-      },
-    ];
-
-    // Add licensee filter if specified
-    if (licencee && licencee !== 'all') {
-      (pipeline as PipelineStage[]).push({
-        $match: {
-          'locationDetails.rel.licencee': licencee,
-        },
-      });
-    }
-
-    // Continue with aggregation
-    (pipeline as PipelineStage[]).push(
-      {
-        $group: {
-          _id: {
-            $cond: [
-              {
-                $and: [
-                  { $ne: ['$machineDetails.manufacturer', null] },
-                  { $ne: ['$machineDetails.manufacturer', ''] },
-                ],
-              },
-              '$machineDetails.manufacturer',
-              '$machineDetails.manuf',
-            ],
-          },
-          totalMachines: { $addToSet: '$machine' },
-          totalHandle: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
-          totalWin: {
-            $sum: {
-              $subtract: [
-                { $ifNull: ['$movement.coinIn', 0] },
-                { $ifNull: ['$movement.coinOut', 0] },
-              ],
-            },
-          },
-          totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          totalCancelledCredits: {
-            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-          },
-          totalGross: { $sum: { $ifNull: ['$movement.gross', 0] } },
-        },
-      },
-      {
-        $addFields: {
-          totalMachines: { $size: '$totalMachines' },
-        },
-      },
-      {
-        $sort: { totalHandle: -1 },
-      }
+    // ============================================================================
+    // STEP 3: Fetch manufacturer performance data
+    // ============================================================================
+    const result = await getManufacturerPerformance(
+      db,
+      locationId,
+      timePeriod,
+      startDate,
+      endDate,
+      licencee
     );
 
-    const manufacturerData = (await db
-      .collection('meters')
-      .aggregate(pipeline)
-      .toArray()) as ManufacturerDataItem[];
-
-    // Calculate totals for percentage calculations
-    const totals = manufacturerData.reduce(
-      (
-        acc: {
-          totalMachines: number;
-          totalHandle: number;
-          totalWin: number;
-          totalDrop: number;
-          totalCancelledCredits: number;
-          totalGross: number;
-        },
-        item: ManufacturerDataItem
-      ) => {
-        acc.totalMachines += item.totalMachines;
-        acc.totalHandle += item.totalHandle;
-        acc.totalWin += item.totalWin;
-        acc.totalDrop += item.totalDrop;
-        acc.totalCancelledCredits += item.totalCancelledCredits;
-        acc.totalGross += item.totalGross;
-        return acc;
-      },
-      {
-        totalMachines: 0,
-        totalHandle: 0,
-        totalWin: 0,
-        totalDrop: 0,
-        totalCancelledCredits: 0,
-        totalGross: 0,
-      }
-    );
-
-    // Calculate percentages
-    const result = manufacturerData.map((item: ManufacturerDataItem) => ({
-      manufacturer: item._id || 'Unknown',
-      floorPositions:
-        totals.totalMachines > 0
-          ? Math.round((item.totalMachines / totals.totalMachines) * 100)
-          : 0,
-      totalHandle:
-        totals.totalHandle > 0
-          ? Math.round((item.totalHandle / totals.totalHandle) * 100)
-          : 0,
-      totalWin:
-        totals.totalWin > 0
-          ? Math.round((item.totalWin / totals.totalWin) * 100)
-          : 0,
-      totalDrop:
-        totals.totalDrop > 0
-          ? Math.round((item.totalDrop / totals.totalDrop) * 100)
-          : 0,
-      totalCancelledCredits:
-        totals.totalCancelledCredits > 0
-          ? Math.round(
-              (item.totalCancelledCredits / totals.totalCancelledCredits) * 100
-            )
-          : 0,
-      totalGross:
-        totals.totalGross > 0
-          ? Math.round((item.totalGross / totals.totalGross) * 100)
-          : 0,
-    }));
-
+    // ============================================================================
+    // STEP 4: Return manufacturer performance
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Analytics Manufacturer Performance GET API] Completed in ${duration}ms`);
+    }
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching manufacturer performance data:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch manufacturer performance data' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to fetch manufacturer performance data';
+    console.error(
+      `[Manufacturer Performance Analytics GET API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

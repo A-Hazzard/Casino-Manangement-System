@@ -1,14 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Firmware by ID API Route
+ *
+ * This route handles operations for a specific firmware identified by ID.
+ * It supports:
+ * - DELETE: Soft deleting a firmware
+ *
+ * @module app/api/firmwares/[id]/route
+ */
+
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Firmware } from '@/app/api/lib/models/firmware';
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '../../lib/helpers/users';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main DELETE handler for soft deleting a firmware
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Find firmware by ID
+ * 4. Soft delete firmware
+ * 5. Log activity
+ * 6. Return success response
+ */
 export async function DELETE(req: NextRequest) {
   try {
-    await connectDB();
-
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const id = req.nextUrl.pathname.split('/').pop();
 
     if (!id) {
@@ -18,8 +40,15 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Get firmware data before deletion for logging
-    const firmwareToDelete = await Firmware.findById(id);
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 3: Find firmware by ID
+    // ============================================================================
+    const firmwareToDelete = await Firmware.findOne({ _id: id });
     if (!firmwareToDelete) {
       return NextResponse.json(
         { message: 'Firmware not found' },
@@ -27,8 +56,11 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    await Firmware.findByIdAndUpdate(
-      id,
+    // ============================================================================
+    // STEP 4: Soft delete firmware
+    // ============================================================================
+    await Firmware.findOneAndUpdate(
+      { _id: id },
       { deletedAt: new Date() },
       { new: true }
     );

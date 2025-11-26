@@ -1,3 +1,18 @@
+/**
+ * Settings Types
+ * Comprehensive types for user settings and application configuration.
+ *
+ * Includes types for:
+ * - Currency and language options
+ * - Notification settings (desktop, mobile, email)
+ * - Display settings (theme, date format, time zone)
+ * - Regional settings (currency, language, measurement units)
+ * - Privacy and security settings
+ * - System settings (debug mode, console logging)
+ * - Backup and restore settings
+ * - Integration settings (API keys, webhooks)
+ * - User settings store and preferences
+ */
 export type Currency =
   | 'USD'
   | 'EUR'

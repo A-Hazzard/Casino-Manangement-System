@@ -1,9 +1,24 @@
+/**
+ * Popover Components
+ * Reusable popover component using Radix UI primitives.
+ *
+ * Features:
+ * - Popover root, trigger, content components
+ * - Portal rendering
+ * - Positional alignment options
+ * - Smooth animations
+ * - Accessible implementation
+ */
 'use client';
 
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// Popover Components
+// ============================================================================
 
 const Popover = PopoverPrimitive.Root;
 

@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
+import {
   Table,
   TableBody,
   TableCell,
@@ -195,19 +200,19 @@ export default function RevenueAnalysisTable({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Drop</p>
-            <p className="text-sm font-medium text-gray-900">
+            <p className={`text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}>
               ${location.moneyIn.toLocaleString()}
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Cancelled Credits</p>
-            <p className="text-sm font-medium text-gray-900">
+            <p className={`text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
               ${location.moneyOut.toLocaleString()}
             </p>
           </div>
           <div className="col-span-2 space-y-1">
             <p className="text-xs text-gray-500">Gross Revenue</p>
-            <p className="text-lg font-semibold text-green-600">
+            <p className={`text-lg font-semibold ${getGrossColorClass(location.gross)}`}>
               ${location.gross.toLocaleString()}
             </p>
           </div>
@@ -332,13 +337,13 @@ export default function RevenueAnalysisTable({
                           {location.totalMachines}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className={`text-right font-mono ${getMoneyInColorClass(location.moneyIn)}`}>
                         ${location.moneyIn.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className={`text-right font-mono ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}>
                         ${location.moneyOut.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right font-mono font-semibold text-green-600">
+                      <TableCell className={`text-right font-mono font-semibold ${getGrossColorClass(location.gross)}`}>
                         ${location.gross.toLocaleString()}
                       </TableCell>
                     </TableRow>

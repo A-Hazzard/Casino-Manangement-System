@@ -1,3 +1,32 @@
+/**
+ * Header Component
+ * Main application header with navigation, filters, and user controls.
+ *
+ * Features:
+ * - Page title display
+ * - Sidebar toggle for mobile/desktop
+ * - Licensee selector dropdown with permissions check
+ * - Currency filter for financial data
+ * - User menu with profile and logout
+ * - Mobile responsive design
+ * - Real-time licensee data fetching
+ * - Currency conversion integration
+ * - Dashboard metrics refresh on licensee/currency change
+ * - Navigation links with role-based visibility
+ * - Animated mobile menu
+ * - Loading states for filters
+ *
+ * Large component (~664 lines) managing top-level navigation and controls.
+ *
+ * @param selectedLicencee - Currently selected licensee ID
+ * @param pageTitle - Title to display in header
+ * @param setSelectedLicencee - Callback to update selected licensee
+ * @param hideOptions - Hide user menu options
+ * @param hideLicenceeFilter - Hide licensee dropdown
+ * @param containerPaddingMobile - Custom mobile padding
+ * @param disabled - Disable interactive elements
+ * @param hideCurrencyFilter - Hide currency filter
+ */
 'use client';
 import CurrencyFilter from '@/components/filters/CurrencyFilter';
 import { ClientOnly } from '@/components/ui/ClientOnly';
@@ -33,6 +62,9 @@ export default function Header({
   disabled = false,
   hideCurrencyFilter = false,
 }: HeaderProps) {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const pathname = usePathname();
   const params = useParams();
   const router = useRouter();

@@ -1,3 +1,19 @@
+/**
+ * Reports Data Store (Analytics Data Store)
+ * Zustand store for managing analytics and reporting data across the application.
+ *
+ * Features:
+ * - Stores KPI metrics, performance trends, and top performing machines
+ * - Manages location data, selections, and comparisons
+ * - Tracks machine data, selections, and contribution analysis
+ * - Handles logistics entries and filtering
+ * - Manages chart data for dashboard, locations, and machines
+ * - Tracks data refresh timestamps for cache invalidation
+ * - Provides cache management and section-specific data clearing
+ * - SSR-safe with dummy state for server rendering
+ *
+ * @returns Zustand hook for accessing and updating analytics data state.
+ */
 import { create } from 'zustand';
 import {
   KpiMetric,
@@ -6,6 +22,10 @@ import {
   LogisticsEntry,
   ChartDataPoint,
 } from '@/lib/types/reports';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type AnalyticsDataStore = {
   // Dashboard data
@@ -103,7 +123,55 @@ type AnalyticsDataStore = {
   ) => void;
 };
 
-export const useAnalyticsDataStore = create<AnalyticsDataStore>(set => ({
+// ============================================================================
+// Store Creation
+// ============================================================================
+
+// Define a no-op version for SSR
+const dummyState: AnalyticsDataStore = {
+  kpiMetrics: [],
+  setKpiMetrics: () => {},
+  performanceTrends: [],
+  setPerformanceTrends: () => {},
+  topPerformingMachines: [],
+  setTopPerformingMachines: () => {},
+  locations: [],
+  setLocations: () => {},
+  selectedLocations: [],
+  setSelectedLocations: () => {},
+  locationComparisons: [],
+  setLocationComparisons: () => {},
+  machines: [],
+  setMachines: () => {},
+  selectedMachines: [],
+  setSelectedMachines: () => {},
+  machineComparisons: [],
+  setMachineComparisons: () => {},
+  machineContributionData: null,
+  setMachineContributionData: () => {},
+  logisticsEntries: [],
+  setLogisticsEntries: () => {},
+  filteredLogisticsEntries: [],
+  setFilteredLogisticsEntries: () => {},
+  chartData: {
+    dashboard: [],
+    locations: {},
+    machines: {},
+  },
+  setChartData: () => {},
+  lastUpdated: {
+    dashboard: null,
+    locations: null,
+    machines: null,
+    logistics: null,
+  },
+  setLastUpdated: () => {},
+  clearCache: () => {},
+  clearSectionData: () => {},
+};
+
+const createStore = () => {
+  return create<AnalyticsDataStore>(set => ({
   // Dashboard data
   kpiMetrics: [],
   setKpiMetrics: metrics => set({ kpiMetrics: metrics }),
@@ -262,4 +330,20 @@ export const useAnalyticsDataStore = create<AnalyticsDataStore>(set => ({
           return state;
       }
     }),
-}));
+  }));
+};
+
+// Create the store conditionally
+let storeInstance: ReturnType<typeof createStore> | null = null;
+
+// Helper to ensure we use the same instance
+const getClientStore = () => {
+  if (!storeInstance) {
+    storeInstance = createStore();
+  }
+  return storeInstance;
+};
+
+// Use this store only on client side
+export const useAnalyticsDataStore =
+  typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);

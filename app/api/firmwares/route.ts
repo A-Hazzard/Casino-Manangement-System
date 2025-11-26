@@ -1,24 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Firmwares API Route
+ *
+ * This route handles operations related to firmware files.
+ * It supports:
+ * - GET: Fetching all firmware documents with optional deleted items inclusion
+ * - POST: Uploading a new firmware file to GridFS and creating a firmware document
+ *
+ * @module app/api/firmwares/route
+ */
+
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Firmware } from '@/app/api/lib/models/firmware';
-import { GridFSBucket } from 'mongodb';
-import { Readable } from 'stream';
 import { generateMongoId } from '@/lib/utils/id';
-import { logActivity } from '@/lib/helpers/activityLogger';
-import { getUserFromServer } from '../lib/helpers/users';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import { GridFSBucket } from 'mongodb';
+import { NextRequest, NextResponse } from 'next/server';
+import { Readable } from 'stream';
 
 /**
- * GET /api/firmwares
- * Fetches all firmware documents with file metadata
+ * Main GET handler for fetching firmwares
+ *
+ * Flow:
+ * 1. Parse and validate request parameters
+ * 2. Connect to database
+ * 3. Build query with optional deleted items filter
+ * 4. Fetch firmwares sorted by creation date
+ * 5. Return firmwares
  */
 export async function GET(request: NextRequest) {
-  try {
-    await connectDB();
+  const startTime = Date.now();
 
+  try {
+    // ============================================================================
+    // STEP 1: Parse and validate request parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const includeDeleted = searchParams.get('includeDeleted') === 'true';
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 3: Build query with optional deleted items filter
+    // ============================================================================
     let query = {};
     if (!includeDeleted) {
       query = {
@@ -29,15 +57,28 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // ============================================================================
+    // STEP 4: Fetch firmwares sorted by creation date
+    // ============================================================================
     const firmwares = await Firmware.find(query).sort({ createdAt: -1 }).lean();
 
+    // ============================================================================
+    // STEP 5: Return firmwares
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Firmwares GET API] Completed in ${duration}ms`);
+    }
     return NextResponse.json(firmwares);
   } catch (error) {
-    console.error('Error fetching firmwares:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch firmwares' },
-      { status: 500 }
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch firmwares';
+    console.error(
+      `[Firmwares GET API] Error after ${duration}ms:`,
+      errorMessage
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
@@ -137,19 +178,19 @@ export async function POST(request: NextRequest) {
           { field: 'fileSize', oldValue: null, newValue: fileSize },
         ];
 
-        await logActivity(
-          {
-            id: currentUser._id as string,
-            email: currentUser.emailAddress as string,
-            role: (currentUser.roles as string[])?.[0] || 'user',
+        await logActivity({
+          action: 'CREATE',
+          details: `Uploaded new firmware "${product} v${version}" (${fileName})`,
+          ipAddress: getClientIP(request) || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
+          metadata: {
+            resource: 'Firmware',
+            resourceId: firmwareId,
+            resourceName: `${product} v${version}`,
+            changes: createChanges,
           },
-          'CREATE',
-          'Firmware',
-          { id: firmwareId, name: `${product} v${version}` },
-          createChanges,
-          `Uploaded new firmware "${product} v${version}" (${fileName})`,
-          getClientIP(request) || undefined
-        );
+        });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
       }

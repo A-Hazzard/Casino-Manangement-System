@@ -1,7 +1,7 @@
 # Dashboard Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 11th, 2025  
+**Last Updated:** November 22, 2025  
 **Version:** 2.2.0
 
 ## Recent Critical Fixes & Optimizations (November 11th, 2025)
@@ -13,10 +13,12 @@ Dashboard showed $0 for "Today" when viewed before 8 AM Trinidad time.
 
 **Root Cause:**  
 System calculated FUTURE date ranges instead of current gaming day:
+
 - ❌ At 2 AM Trinidad: Nov 11, 8 AM → Nov 12, 8 AM (future! no data!)
 - ✅ Should be: Nov 10, 8 AM → Nov 11, 8 AM (current gaming day!)
 
 **The Fix:**
+
 ```typescript
 // Check if current hour is before gaming day start
 const currentHour = nowLocal.getUTCHours();
@@ -24,6 +26,7 @@ const todayBase = currentHour < gameDayStartHour ? yesterday : today;
 ```
 
 **Result:**
+
 - ✅ Dashboard shows correct data 24/7 (was $0 before 8 AM)
 - ✅ Chart shows hourly data (was empty)
 - ✅ All cards display values correctly
@@ -31,10 +34,12 @@ const todayBase = currentHour < gameDayStartHour ? yesterday : today;
 ### Performance Optimization - 65% Faster! 🚀
 
 **Backend Parallel Licensee Processing:**
+
 - Before: Sequential processing (3s + 3s + 3s = 9-15s)
 - After: Parallel processing (max(3s, 3s, 3s) = 3-5s)
 
 **Performance:**
+
 - Today: 11.66s → 4.10s (65% faster!)
 - 30 Days: 14.94s → 5.20s (65% faster, UNDER 10s GOAL!)
 
@@ -120,13 +125,15 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 ⚠️ **IMPORTANT**: Currency conversion follows strict role-based rules:
 
 **Currency Selector Visibility:**
+
 - **Admin/Developer + "All Licensees"**: ✅ Currency selector VISIBLE
 - **Admin/Developer + Specific Licensee**: ❌ Currency selector HIDDEN (shows native currency)
 - **Manager**: ❌ Currency selector ALWAYS HIDDEN (always native currency)
 - **Other Roles**: ❌ Currency selector ALWAYS HIDDEN
 
 **Currency Conversion Logic:**
-- **Admin/Developer viewing "All Licensees"**: 
+
+- **Admin/Developer viewing "All Licensees"**:
   - Data converted from each licensee's native currency → USD → Selected display currency
   - Example: Barbados (BBD $2,310) + TTG (TTD $140) → USD $1,182.66
 - **Admin/Developer viewing Specific Licensee**:
@@ -137,9 +144,10 @@ The Dashboard page serves as the central command center for the Evolution One Ca
   - Example: Manager assigned to Barbados → $2,310 BBD
 
 **Supported Currencies:**
+
 - USD - US Dollar (base currency, rate: 1.0)
 - TTD - Trinidad & Tobago Dollar (rate: 6.75)
-- GYD - Guyanese Dollar (rate: 207.98)  
+- GYD - Guyanese Dollar (rate: 207.98)
 - BBD - Barbados Dollar (rate: 2.0)
 
 ### Responsive Layout
@@ -180,37 +188,47 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 ### State Management
 
 - **Store:** `lib/store/dashboardStore.ts` - Zustand store for dashboard state
+- **Store Hook:** `useDashBoardStore` (note: capital B in "Board")
 - **Key State Properties:**
   - `loadingChartData`, `loadingTopPerforming`, `refreshing` - Loading states
   - `activeFilters`, `activeMetricsFilter`, `activePieChartFilter` - Filter states
   - `totals`, `chartData`, `topPerformingData` - Data arrays
   - `gamingLocations`, `selectedLicencee` - Location and licensee data
   - `customDateRange` - Date range for custom filtering
+- **Currency Context:** `useCurrency()` hook from `lib/contexts/CurrencyContext.tsx` provides `displayCurrency`
+- **Error Handling:** `useGlobalErrorHandler()` hook for API error handling with retry logic
 
 ### Data Flow
 
 1. **Initial Load:** Fetches gaming locations and metrics data on component mount
 2. **Filter Changes:** Updates metrics and chart data when filters change
 3. **Licensee Changes:** Refetches all data with new licensee filter
-4. **Refresh:** Manually refreshes all dashboard data
-5. **Real-time Updates:** Automatic data updates based on selected time periods
+4. **Currency Changes:** Refetches all data when `displayCurrency` changes (for admin/developer viewing "All Licensees")
+5. **Refresh:** Manually refreshes all dashboard data via `useDashboardRefresh` hook
+6. **Real-time Updates:** Automatic data updates based on selected time periods
+7. **Floating Refresh Button:** Scroll-triggered refresh button appears when user scrolls down
 
 ### API Integration
 
 #### Backend Endpoints
 
-- **Metrics Data:** `/api/metrics/meters` - Fetches aggregated meter data
-  - Parameters: `timePeriod`, `startDate`, `endDate`, `licencee`
-  - Returns: Array of `Metrics` objects with drop, totalCancelledCredits, gross
+- **Dashboard Totals:** `/api/dashboard/totals` - Fetches financial totals (Money In, Money Out, Gross)
+  - Parameters: `timePeriod`, `startDate`, `endDate`, `licencee`, `currency`
+  - Returns: `{ moneyIn, moneyOut, gross, currency, converted }`
+  - Used for: Financial Metrics Cards at top of dashboard
+- **Chart Data:** `/api/metrics/meters` - Fetches aggregated meter data for charts
+  - Parameters: `timePeriod`, `startDate`, `endDate`, `licencee`, `currency`
+  - Returns: Array of `Metrics` objects with drop, totalCancelledCredits, gross (time-series data)
+  - Used for: Line charts showing revenue trends over time
 - **Top Performing:** `/api/metrics/top-performing` - Fetches top 5 performing locations/cabinets
-  - Parameters: `activeTab` (locations/Cabinets), `timePeriod`
+  - Parameters: `activeTab` (locations/Cabinets), `timePeriod`, `licencee`
   - Returns: Array of top performing data with totalDrop, totalGamesPlayed, totalJackpot
 - **Location Aggregation:** `/api/locationAggregation` - Fetches location-level aggregates
-  - Parameters: `timePeriod`
+  - Parameters: `timePeriod`, `licencee`
   - Returns: Location data with onlineMachines, totalMachines counts
-- **Dashboard Analytics:** `/api/analytics/dashboard` - Fetches global statistics
-  - Parameters: `licensee`
-  - Returns: Global stats including totalDrop, totalCancelledCredits, totalGross
+- **Gaming Locations:** `/api/locations/search-all` - Fetches location list for map
+  - Parameters: `licencee`
+  - Returns: Array of location objects with geoCoords for map display
 
 #### Data Processing
 
@@ -219,11 +237,17 @@ The Dashboard page serves as the central command center for the Evolution One Ca
   - Fills missing intervals with zero values
   - Sorts data chronologically
 - **Dashboard Helper:** `lib/helpers/dashboard.ts` - Orchestrates data fetching and processing
-  - `fetchMetricsData()` - Fetches and processes metrics
+  - `fetchMetricsData()` - Fetches totals via `/api/dashboard/totals` and chart data via `/api/metrics/meters`
+  - `fetchDashboardTotals()` - Fetches financial totals with currency conversion support
   - `fetchTopPerformingDataHelper()` - Fetches top performing data
   - `loadGamingLocations()` - Loads and filters location data
   - `handleDashboardRefresh()` - Complete refresh functionality
   - `calculatePieChartLabelData()` - Calculates pie chart label positions
+- **Custom Hooks:**
+  - `useDashboardFilters()` - Manages filter state and validation
+  - `useDashboardRefresh()` - Handles refresh logic with currency support
+  - `useDashboardScroll()` - Manages floating refresh button visibility
+  - `useGlobalErrorHandler()` - Provides error handling with retry logic
 
 ### Key Dependencies
 
@@ -235,6 +259,8 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 - **Day.js:** Date manipulation and formatting
 - **Axios:** HTTP client for API calls
 - **Lucide React:** `RefreshCw` - Icon components
+- **Zustand:** State management for dashboard store
+- **Currency Context:** `CurrencyContext` for currency selection state
 
 #### Type Definitions
 
@@ -259,16 +285,25 @@ The Dashboard page serves as the central command center for the Evolution One Ca
 
 ```
 Dashboard (app/page.tsx)
-├── Sidebar (components/layout/Sidebar.tsx)
-├── Header (components/layout/Header.tsx)
-├── DashboardDateFilters (components/dashboard/DashboardDateFilters.tsx)
-├── PcLayout (components/layout/PcLayout.tsx)
-│   ├── MachineStatusWidget (components/ui/MachineStatusWidget.tsx)
-│   ├── MapPreview (components/ui/MapPreview.tsx)
-│   ├── Chart (components/ui/dashboard/Chart.tsx)
-│   └── CustomSelect (components/ui/CustomSelect.tsx)
-└── MobileLayout (components/layout/MobileLayout.tsx)
-    └── [Similar components optimized for mobile]
+├── ProtectedRoute (components/auth/ProtectedRoute.tsx)
+├── PageErrorBoundary (components/ui/errors/PageErrorBoundary.tsx)
+├── NoLicenseeAssigned (components/ui/NoLicenseeAssigned.tsx) - Shown if user has no licensees
+├── PageLayout (components/layout/PageLayout.tsx)
+│   ├── Header (components/layout/Header.tsx) - With licensee selector
+│   └── Main Content
+│       ├── MobileLayout (components/layout/MobileLayout.tsx) - Mobile view
+│       │   ├── FinancialMetricsCards (components/ui/FinancialMetricsCards.tsx)
+│       │   ├── MachineStatusWidget (components/ui/MachineStatusWidget.tsx)
+│       │   ├── MapPreview (components/ui/MapPreview.tsx)
+│       │   ├── Chart (components/ui/dashboard/Chart.tsx)
+│       │   └── TopPerforming (components/ui/TopPerforming.tsx)
+│       └── PcLayout (components/layout/PcLayout.tsx) - Desktop view
+│           ├── FinancialMetricsCards (components/ui/FinancialMetricsCards.tsx)
+│           ├── MachineStatusWidget (components/ui/MachineStatusWidget.tsx)
+│           ├── MapPreview (components/ui/MapPreview.tsx)
+│           ├── Chart (components/ui/dashboard/Chart.tsx)
+│           └── TopPerforming (components/ui/TopPerforming.tsx)
+└── FloatingRefreshButton (components/ui/FloatingRefreshButton.tsx) - Scroll-triggered refresh
 ```
 
 ### Business Logic
@@ -282,9 +317,11 @@ Dashboard (app/page.tsx)
 ### Error Handling
 
 - **API Failures:** Graceful degradation with fallback data
+- **Error Handler:** `useGlobalErrorHandler()` hook provides `handleApiCallWithRetry()` for automatic retry logic
 - **Loading States:** Skeleton loaders during data fetching
-- **Network Issues:** Retry logic and error logging
+- **Network Issues:** Retry logic and error logging via global error handler
 - **Invalid Data:** Validation and sanitization of API responses
+- **Error Notifications:** Toast notifications for API errors via `showErrorNotification()`
 
 ### Performance Optimizations
 
@@ -388,45 +425,93 @@ The dashboard essentially **translates raw meter data from slot machines into bu
 
 **Current Implementation Analysis:**
 
+#### **How Dashboard Calculates Money In, Money Out, and Gross**
+
+The Dashboard page uses the **Location Aggregation API** (`/api/locationAggregation`) to fetch financial metrics. The calculation flow is:
+
+1. **API Call**: Dashboard calls `/api/locationAggregation` with time period and licensee filter
+2. **Backend Processing**: The API uses `getLocationsWithMetrics` helper which:
+   - Fetches all accessible locations (filtered by user permissions and licensee)
+   - For each location, calculates gaming day range based on location's `gameDayOffset`
+   - Aggregates meters from `meters` collection for all machines at each location
+   - Sums `movement.drop` and `movement.totalCancelledCredits` across all meter readings
+3. **Frontend Aggregation**: Dashboard sums the location-level totals to get overall totals
+
 #### **Money In (Drop) ✅**
 
-- **Current Implementation**:
+- **Data Source**: `meters` collection, `movement.drop` field
+- **Backend Implementation** (in `app/api/lib/helpers/locationAggregation.ts`):
   ```javascript
-  drop: {
-    $sum: {
-      $ifNull: ['$movement.drop', 0];
-    }
+  {
+    $match: {
+      machine: { $in: machineIds },
+      readAt: {
+        $gte: gamingDayRange.rangeStart,
+        $lte: gamingDayRange.rangeEnd,
+      },
+    },
+  },
+  {
+    $group: {
+      _id: null,
+      totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+    },
   }
+  ```
+- **Frontend Aggregation** (in `lib/helpers/dashboard.ts`):
+  ```javascript
+  const totals = locationData.data.reduce(
+    (acc, loc) => ({
+      moneyIn: acc.moneyIn + (loc.moneyIn || 0),
+      // ...
+    }),
+    { moneyIn: 0, moneyOut: 0, gross: 0 }
+  );
   ```
 - **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
 - **Business Context**: Physical cash inserted into machines across all selected locations
-- **Aggregation**: Sums across all machines and meter readings within date range
+- **Aggregation**:
+  - **Per Location**: Sums `movement.drop` from all meters for all machines at location within gaming day range
+  - **Dashboard Total**: Sums all location totals together
+- **Gaming Day Consideration**: Each location's gaming day offset is respected when calculating date ranges
 
 #### **Money Out (Total Cancelled Credits) ✅**
 
-- **Current Implementation**:
+- **Data Source**: `meters` collection, `movement.totalCancelledCredits` field
+- **Backend Implementation**:
   ```javascript
-  totalCancelledCredits: {
-    $sum: {
-      $ifNull: ['$movement.totalCancelledCredits', 0];
-    }
+  {
+    $group: {
+      _id: null,
+      totalMoneyOut: {
+        $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+      },
+    },
   }
   ```
+- **Frontend Aggregation**: Same as Money In - sums location totals
 - **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
-- **Business Context**: All credits paid out to players (vouchers + hand-paid)
-- **Aggregation**: Sums across all machines and meter readings within date range
+- **Business Context**: All credits paid out to players (vouchers + hand-paid) across all selected locations
+- **Aggregation**:
+  - **Per Location**: Sums `movement.totalCancelledCredits` from all meters for all machines at location
+  - **Dashboard Total**: Sums all location totals together
 
 #### **Gross Revenue Calculation ✅**
 
-- **Current Implementation**:
+- **Backend Implementation**:
   ```javascript
-  gross: {
-    $subtract: ['$moneyIn', '$moneyOut'];
-  }
-  // Where: moneyIn = drop, moneyOut = totalCancelledCredits
+  gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut;
+  ```
+- **Frontend Aggregation**:
+  ```javascript
+  gross: acc.gross + (loc.gross || 0);
+  // OR calculated as: moneyIn - moneyOut
   ```
 - **Financial Guide**: `Gross = Drop - Total Cancelled Credits` ✅ **MATCHES**
-- **Mathematical Formula**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)`
+- **Mathematical Formula**:
+  - **Per Location**: `gross = Σ(movement.drop) - Σ(movement.totalCancelledCredits)` for all machines at location
+  - **Dashboard Total**: `gross = Σ(location.gross)` OR `gross = Σ(location.moneyIn) - Σ(location.moneyOut)`
+- **Important**: Dashboard can calculate gross either by summing location gross values OR by subtracting total moneyOut from total moneyIn - both methods yield the same result
 
 #### **Machine Status Calculations ✅**
 
@@ -552,6 +637,7 @@ Daily Data (7d/30d/Custom):
    - **Denied Roles**: Collector, Location Admin, Technician (redirected to `/unauthorized`)
 
 2. **Licensee Assignment Check:**
+
    ```typescript
    // Non-admin users without licensees see informational message
    if (shouldShowNoLicenseeMessage(currentUser)) {
@@ -571,16 +657,19 @@ Daily Data (7d/30d/Custom):
    - Complete isolation between licensees (no data leakage)
 
 **API Request:**
+
 ```
 GET /api/dashboard/totals?licensee=732b094083226f216b3fc11a&timePeriod=Today
 ```
 
 **Backend Filtering:**
+
 - Developer/Admin: Can view selected licensee or all licensees
 - Manager: Can only view data for assigned licensees
 - All components (Totals, Charts, Top Performing, Map) respect filter
 
 **Session Invalidation:**
+
 - When admin changes user permissions, `sessionVersion` increments
 - User's JWT becomes invalid
 - Automatic logout with toast notification

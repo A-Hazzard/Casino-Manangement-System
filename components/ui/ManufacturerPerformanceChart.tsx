@@ -1,3 +1,16 @@
+/**
+ * Manufacturer Performance Chart Component
+ * Bar chart component displaying manufacturer performance metrics.
+ *
+ * Features:
+ * - Manufacturer performance data visualization
+ * - Multiple metrics (Floor Positions %, Handle %, Win %, Drop %, Cancelled Credits %, Gross %)
+ * - Recharts bar chart
+ * - Responsive design
+ * - Empty state handling
+ *
+ * @param data - Array of manufacturer performance data
+ */
 'use client';
 
 import {

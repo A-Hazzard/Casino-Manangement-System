@@ -1,3 +1,10 @@
+/**
+ * Firmware Types
+ * Types for firmware management and OTA updates.
+ *
+ * Defines firmware records with product, version, GridFS file references,
+ * and metadata for firmware update operations.
+ */
 import { Types } from 'mongoose';
 
 export type Firmware = {

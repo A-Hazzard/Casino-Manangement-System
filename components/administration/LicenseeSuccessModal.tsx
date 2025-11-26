@@ -1,3 +1,18 @@
+/**
+ * Licensee Success Modal Component
+ * Success modal displayed after creating a new licensee with license key.
+ *
+ * Features:
+ * - Success message display
+ * - License key display
+ * - Copy to clipboard functionality
+ * - GSAP animations
+ * - Licensee name display
+ *
+ * @param open - Whether the modal is visible
+ * @param licensee - Licensee object with name and license key
+ * @param onClose - Callback to close the modal
+ */
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { CheckCircle, Copy } from 'lucide-react';

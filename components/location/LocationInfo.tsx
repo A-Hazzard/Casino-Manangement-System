@@ -1,9 +1,27 @@
+/**
+ * Location Info Component
+ * Card component displaying location information and financial metrics.
+ *
+ * Features:
+ * - Location name and address display
+ * - Financial metrics (Gross, Net, Drop, Win)
+ * - Currency formatting with overflow handling
+ * - Address formatting
+ * - Framer Motion animations
+ * - Responsive grid layout
+ *
+ * @param location - Location data object
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { LocationData } from '@/lib/types/location';
 import { formatCurrency } from '@/lib/utils/formatting';
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import type { LocationData as LocationDataType } from '@/lib/types/location';
+
+// ============================================================================
+// Types & Helper Functions
+// ============================================================================
 
 type ExtendedLocationInfoProps = {
   location: LocationDataType | null;

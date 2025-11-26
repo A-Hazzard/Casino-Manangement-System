@@ -1,14 +1,24 @@
 /**
- * SAS meters payload parser (slice-based string parser for typ: rsp pyd)
+ * SAS Meters Payload Parser
+ *
+ * Slice-based string parser for SAS `rsp pyd` payloads.
  *
  * Format:
  * - Header: address(2), command(2), length(2), gameNumber(4)
  * - Exactly 10 meters, each: meterCode(4), meterSize(2), meterValue(size*2 hex chars)
  * - CRC at end (4 chars)
  *
- * Values are BCD (Binary Coded Decimal) - parse as decimal (base 10)
+ * Features:
+ * - Parses core SAS meter values from raw pyd hex strings
+ * - Handles error and invalid format cases
+ * - Returns a structured object with key meter values
+ *
+ * Values are BCD (Binary Coded Decimal) - parse as decimal (base 10).
  */
 
+// ============================================================================
+// Types
+// ============================================================================
 export type SasMetersParsed = {
   totalCoinCredits?: number;
   totalCoinOut?: number;
@@ -24,9 +34,12 @@ export type SasMetersParsed = {
   pyd?: string;
 };
 
+// ============================================================================
+// Parsing Functions
+// ============================================================================
 /**
- * Parse a SAS pyd HEX string and return key meters
- * Values are BCD (Binary Coded Decimal) - parse as decimal (base 10)
+ * Parse a SAS pyd HEX string and return key meters.
+ * Values are BCD (Binary Coded Decimal) - parse as decimal (base 10).
  */
 export function parseSasPyd(pyd: string): SasMetersParsed {
   const result: SasMetersParsed = {};

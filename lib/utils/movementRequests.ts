@@ -1,4 +1,17 @@
 /**
+ * Movement Request Utilities
+ *
+ * Utility functions for movement request operations.
+ *
+ * Features:
+ * - Status color coding
+ * - Date formatting for movement requests
+ */
+
+// ============================================================================
+// Status Functions
+// ============================================================================
+/**
  * Get the color class for a movement request status.
  * @param status MovementRequestStatus
  * @returns string (Tailwind color class)
@@ -18,6 +31,9 @@ export function getStatusColor(status: string): string {
   }
 }
 
+// ============================================================================
+// Date Formatting Functions
+// ============================================================================
 /**
  * Format a date for display in movement requests.
  * @param date Date or string

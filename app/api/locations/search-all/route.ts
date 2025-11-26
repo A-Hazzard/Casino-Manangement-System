@@ -1,10 +1,28 @@
+/**
+ * Locations Search All API Route
+ *
+ * This route handles searching all locations with financial metrics and currency conversion.
+ * It supports:
+ * - Location name and ID search
+ * - Licensee filtering
+ * - Role-based access control
+ * - Currency conversion (Admin/Developer only for "All Licensees")
+ * - Financial metrics aggregation
+ * - Machine statistics
+ *
+ * @module app/api/locations/search-all/route
+ */
+
+import {
+  getUserAccessibleLicenseesFromToken,
+  getUserLocationFilter,
+} from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../lib/helpers/users';
-import { getUserAccessibleLicenseesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 
 type LocationAggregationResult = {
   _id: string;
@@ -24,14 +42,35 @@ type LocationAggregationResult = {
   noSMIBLocation: boolean;
 };
 
+/**
+ * Main GET handler for searching all locations
+ *
+ * Flow:
+ * 1. Parse query parameters (licensee, search, currency)
+ * 2. Connect to database
+ * 3. Get user's accessible licensees and permissions
+ * 4. Apply location filtering based on permissions
+ * 5. Build location match filter
+ * 6. Fetch locations with aggregation (machines, financial data)
+ * 7. Apply currency conversion if needed
+ * 8. Return formatted location data
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const licencee = searchParams.get('licencee') || '';
     const search = searchParams.get('search')?.trim() || '';
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       return NextResponse.json(
@@ -40,16 +79,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's accessible licensees, roles, and location permissions from JWT token
+    // ============================================================================
+    // STEP 3: Get user's accessible licensees and permissions
+    // ============================================================================
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-    
-    // Get user's roles and location permissions
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions = 
-      (userPayload?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [];
+    const userLocationPermissions =
+      (userPayload?.resourcePermissions as {
+        'gaming-locations'?: { resources?: string[] };
+      })?.['gaming-locations']?.resources || [];
 
-    // Apply location filtering based on licensee + location permissions
+    // ============================================================================
+    // STEP 4: Apply location filtering based on permissions
+    // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,
       licencee || undefined,
@@ -57,7 +100,9 @@ export async function GET(request: NextRequest) {
       userRoles
     );
 
-    // Build location matching - apply user location permissions
+    // ============================================================================
+    // STEP 5: Build location match filter
+    // ============================================================================
     const locationMatch: {
       $and: Array<Record<string, unknown>>;
       [key: string]: unknown;
@@ -106,7 +151,9 @@ export async function GET(request: NextRequest) {
       locationMatch.$and.push({ _id: { $in: allowedLocationIds } });
     }
 
-    // Get all locations that match the criteria with financial data
+    // ============================================================================
+    // STEP 6: Fetch locations with aggregation (machines, financial data)
+    // ============================================================================
     let locations = (await db
       .collection('gaminglocations')
       .aggregate([
@@ -244,11 +291,13 @@ export async function GET(request: NextRequest) {
       ])
       .toArray()) as LocationAggregationResult[];
 
-    // Get current user's role to determine if currency conversion should apply
+    // ============================================================================
+    // STEP 7: Apply currency conversion if needed
+    // ============================================================================
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const isAdminOrDev = currentUserRoles.includes('admin') || currentUserRoles.includes('developer');
-    
+
     // Apply currency conversion ONLY for Admin/Developer viewing "All Licensees"
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       // Get licensee details for currency mapping
@@ -325,7 +374,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Transform the data to match the expected format
+    // ============================================================================
+    // STEP 8: Return formatted location data
+    // ============================================================================
     const response = locations.map((loc: LocationAggregationResult) => ({
       location: loc._id.toString(),
       locationName: loc.name || 'Unknown Location',
@@ -344,11 +395,18 @@ export async function GET(request: NextRequest) {
       noSMIBLocation: loc.noSMIBLocation || false,
     }));
 
+    const duration = Date.now() - startTime;
+    if (duration > 2000) {
+      console.warn(`[Locations Search All API] Completed in ${duration}ms`);
+    }
+
     return NextResponse.json(response);
   } catch (error) {
-    console.error('🔥 Search All Locations API Error:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error(`[Locations Search All API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: errorMessage },
       { status: 500 }
     );
   }

@@ -1,3 +1,19 @@
+/**
+ * Cabinet Info Header Component
+ * Header component displaying cabinet name and basic information.
+ *
+ * Features:
+ * - Cabinet name/title display
+ * - Edit button (pencil icon)
+ * - Manufacturer and game type display
+ * - Loading skeleton states
+ * - Framer Motion animations
+ * - Responsive design
+ *
+ * @param title - Cabinet name/title to display
+ * @param isLoading - Whether data is loading
+ * @param isOnline - Optional online status
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Pencil2Icon } from '@radix-ui/react-icons';

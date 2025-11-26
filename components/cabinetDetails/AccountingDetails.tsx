@@ -1,9 +1,39 @@
-
+/**
+ * Accounting Details Component
+ * Comprehensive component for displaying cabinet accounting metrics and history.
+ *
+ * Features:
+ * - Financial metrics display (money in, money out, gross, jackpot, cancelled credits)
+ * - Bill validator data with time period filtering
+ * - Collection history table
+ * - Activity log table
+ * - Time period filters (Today, Yesterday, 7d, 30d, All Time, Custom)
+ * - Currency formatting and conversion
+ * - Auto-fix functionality for meter discrepancies
+ * - Tab navigation (Metrics, Collection History, Activity Log)
+ * - Loading states and skeletons
+ * - Framer Motion animations
+ *
+ * Large component (~1337 lines) handling complete cabinet accounting workflow.
+ *
+ * @param cabinet - Cabinet/GamingMachine object
+ * @param loading - Whether data is loading
+ * @param activeMetricsTabContent - Currently active tab
+ * @param setActiveMetricsTabContent - Callback to change active tab
+ * @param activeMetricsFilter - Current time period filter
+ * @param disableCurrencyConversion - Whether to disable currency conversion
+ * @param onDataRefresh - Optional callback to refresh parent data after auto-fix
+ */
 import {
   containerVariants,
   itemVariants,
 } from '@/lib/constants/animationVariants';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import {
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+  getGrossColorClass,
+} from '@/lib/utils/financialColors';
 import { AccountingDetailsProps } from '@/lib/types/cabinetDetails';
 import { formatCurrency } from '@/lib/utils';
 import axios from 'axios';
@@ -24,6 +54,10 @@ import CollectionHistorySkeleton from './CollectionHistorySkeleton';
 import { CollectionHistoryTable } from './CollectionHistoryTable';
 
 import type { TimePeriod as ApiTimePeriod } from '@/shared/types/common';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
 
@@ -576,8 +610,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
     }
     // NOTE: autoFixAttemptedRef is NEVER reset during page session to prevent infinite loops
     // If user needs to re-run auto-fix, they must refresh the page or use manual "Fix History" button
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasCollectionHistoryIssues, isFixingCollectionHistory, isCheckingIssues]);
+  }, [hasCollectionHistoryIssues, isFixingCollectionHistory, isCheckingIssues, handleFixCollectionHistory]);
 
   // Separate date filter states for Activity Log and Bill Validator
 
@@ -835,7 +868,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </h4>
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
+                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyInColorClass(Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}>
                             {shouldApplyCurrency
                               ? formatAmount(
                                   Number(
@@ -870,7 +903,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
+                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyOutColorClass(Number(cabinet?.moneyOut ?? cabinet?.sasMeters?.totalCancelledCredits ?? 0), Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}>
                             {shouldApplyCurrency
                               ? formatAmount(
                                   Number(
@@ -907,7 +940,7 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </h4>
                         <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
+                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getGrossColorClass(Number(cabinet?.gross ?? (Number(cabinet?.moneyIn ?? 0) - Number(cabinet?.moneyOut ?? 0))))}`}>
                             {shouldApplyCurrency
                               ? formatAmount(
                                   Number(

@@ -1,5 +1,13 @@
 /**
- * Common animation variants used throughout the application
+ * Animations Constants
+ * Common animation variants used throughout the application.
+ *
+ * Includes:
+ * - Page-level animation variants for route/page transitions
+ * - Item animation variants for list/grid items
+ * - Hover scale variants for interactive UI elements
+ * - Spinner variants for loading indicators
+ * Used with Framer Motion for consistent animations across the app.
  */
 
 /**

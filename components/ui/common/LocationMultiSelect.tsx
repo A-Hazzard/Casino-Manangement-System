@@ -1,3 +1,22 @@
+/**
+ * Location Multi Select Component
+ * Multi-select dropdown component specifically for location selection.
+ *
+ * Features:
+ * - Multiple location selection
+ * - Search functionality
+ * - Selected locations display
+ * - Clear all functionality
+ * - Maximum selections limit
+ * - Click outside to close
+ *
+ * @param locations - Array of location options
+ * @param selectedLocations - Array of selected location IDs
+ * @param onSelectionChange - Callback when selection changes
+ * @param placeholder - Placeholder text
+ * @param className - Additional CSS classes
+ * @param maxSelections - Maximum number of selections allowed
+ */
 'use client';
 
 import { Badge } from '@/components/ui/badge';

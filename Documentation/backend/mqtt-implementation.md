@@ -1,7 +1,7 @@
 # MQTT Implementation Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** October 26th, 2025
+**Last Updated:** November 22, 2025
 
 ## Overview
 
@@ -40,7 +40,7 @@ The MQTT implementation follows a publish-subscribe pattern where:
 
 ## MQTT Service Implementation
 
-### Core Service (`lib/services/mqttService.ts`)
+### Core Service (`app/api/lib/services/mqttService.ts`)
 
 The MQTT service is implemented as a singleton class that handles:
 

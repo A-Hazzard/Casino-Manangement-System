@@ -1,3 +1,16 @@
+/**
+ * Export Utilities
+ *
+ * Comprehensive utility functions for exporting data to various formats (PDF, Excel).
+ *
+ * Features:
+ * - PDF export with styling and logos
+ * - Excel export functionality
+ * - Machine and location data exports
+ * - Legacy export support
+ * - Type definitions for export data structures
+ */
+
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -13,10 +26,15 @@ import type {
   LegacyExportData,
 } from '@shared/types/export';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
 // Re-export shared types for convenience
 export type { ExportData, ExportFormat, LegacyExportData };
 
-// Local types for export utilities
+/**
+ * Machine export data structure
+ */
 export type MachineExportData = {
   serialNumber?: string;
   origSerialNumber?: string;

@@ -1,8 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
+/**
+ * Machines API Route
+ *
+ * This route handles CRUD operations for gaming machines.
+ * It supports:
+ * - Fetching machines by ID or location
+ * - Creating new machines
+ * - Updating existing machines
+ * - Soft deleting machines
+ * - Time period filtering for meter data
+ * - Location-based access control
+ * - Meter data aggregation
+ *
+ * @module app/api/machines/route
+ */
+
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
+import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
+import { generateMongoId } from '@/lib/utils/id';
+import { getClientIP } from '@/lib/utils/ipAddress';
 import type { GamingMachine } from '@/shared/types/entities';
+import { NextRequest, NextResponse } from 'next/server';
+
 // TODO: Move these to shared types or create new ones
 type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
   collectionSettings?: {
@@ -12,16 +36,6 @@ type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
   };
 };
 type MachineUpdateData = Partial<GamingMachine>;
-// TODO: Import date utilities when implementing date filtering
-// import { getDatesForTimePeriod } from "../lib/utils/dates";
-import { Meters } from '../lib/models/meters';
-import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
-import { generateMongoId } from '@/lib/utils/id';
-
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '../lib/helpers/users';
-import { getClientIP } from '@/lib/utils/ipAddress';
-import { checkUserLocationAccess } from '../lib/helpers/licenseeFilter';
 
 // Validation helpers mirroring frontend rules
 function validateSerialNumber(value: unknown): string | null {
@@ -62,13 +76,38 @@ function normalizeSmibBoard(value: string | undefined): string | undefined {
   return value.toLowerCase();
 }
 
+/**
+ * Main GET handler for fetching machines
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse query parameters (id, locationId, timePeriod)
+ * 3. Validate parameters
+ * 4. Route to appropriate fetch logic (single machine or location-based)
+ * 5. Check location access if locationId provided
+ * 6. Fetch machine(s) from database
+ * 7. Aggregate meter data if timePeriod provided
+ * 8. Return machine data with meter information
+ */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse query parameters
+    // ============================================================================
     const id = request.nextUrl.searchParams.get('id');
     const locationId = request.nextUrl.searchParams.get('locationId');
     const timePeriod = request.nextUrl.searchParams.get('timePeriod');
 
+    // ============================================================================
+    // STEP 3: Validate parameters
+    // ============================================================================
     // Support both single machine fetch (id) and location-based fetch (locationId)
     if (!id && !locationId) {
       return NextResponse.json(
@@ -80,17 +119,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Route to appropriate fetch logic
+    // ============================================================================
     // If locationId is provided, fetch all machines for that location
     if (locationId && !id) {
-      // Check if user has access to this location (includes both licensee and location permissions)
+      // ============================================================================
+      // STEP 5: Check location access if locationId provided
+      // ============================================================================
       const hasAccess = await checkUserLocationAccess(locationId);
       if (!hasAccess) {
         return NextResponse.json(
-          { success: false, error: 'Unauthorized: You do not have access to this location' },
+          {
+            success: false,
+            error: 'Unauthorized: You do not have access to this location',
+          },
           { status: 403 }
         );
       }
-      
+
+      // ============================================================================
+      // STEP 6: Fetch machines from database
+      // ============================================================================
       const machines = await Machine.find({
         gamingLocation: locationId,
         $or: [
@@ -99,6 +149,9 @@ export async function GET(request: NextRequest) {
         ],
       }).sort({ serialNumber: 1 });
 
+      // ============================================================================
+      // STEP 8: Return machine data
+      // ============================================================================
       return NextResponse.json({
         success: true,
         data: machines.map(machine =>
@@ -118,7 +171,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch machine with all associated data for optimal performance
+    // ============================================================================
+    // STEP 6: Fetch machine from database
+    // ============================================================================
     const machine = await Machine.findOne({
       _id: id,
       $or: [
@@ -134,6 +189,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 7: Aggregate meter data if timePeriod provided
+    // ============================================================================
     // Implement timezone-aware date filtering using $facet aggregation
     // This approach calculates all time periods in a single efficient query
     let meterData;
@@ -382,21 +440,50 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // ============================================================================
+    // STEP 8: Return machine data with meter information
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: convertResponseToTrinidadTime(machine.toObject()),
     });
   } catch (error) {
-    console.error('Error fetching machine:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch machine';
+    console.error(
+      `[Machines API GET] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch machine' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
+/**
+ * Main POST handler for creating a new machine
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request body
+ * 3. Validate serial number and SMIB board
+ * 4. Normalize fields
+ * 5. Validate location ID
+ * 6. Generate machine ID
+ * 7. Create machine document
+ * 8. Save machine to database
+ * 9. Log activity
+ * 10. Return created machine
+ */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     const db = await connectDB();
 
     if (!db) {
@@ -407,9 +494,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
     const data = (await request.json()) as NewMachineData;
 
-    // Backend validations mirroring frontend
+    // ============================================================================
+    // STEP 3: Validate serial number and SMIB board
+    // ============================================================================
     const serialNumberError = validateSerialNumber(data.serialNumber);
     if (serialNumberError) {
       return NextResponse.json(
@@ -425,11 +517,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Normalize fields
+    // ============================================================================
+    // STEP 4: Normalize fields
+    // ============================================================================
     data.serialNumber = normalizeSerialNumber(data.serialNumber);
     data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? '';
 
-    // Check if we have a location ID
+    // ============================================================================
+    // STEP 5: Validate location ID
+    // ============================================================================
     if (!data.gamingLocation) {
       return NextResponse.json(
         { success: false, error: 'Location ID is required' },
@@ -437,17 +533,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Location ID validation removed - gamingLocation is stored as String, not ObjectId
-
-    // Generate a proper MongoDB ObjectId-style hex string for the machine
+    // ============================================================================
+    // STEP 6: Generate machine ID
+    // ============================================================================
     const machineId = await generateMongoId();
 
+    // ============================================================================
+    // STEP 7: Create machine document
+    // ============================================================================
     const newMachine = new Machine({
       _id: machineId,
       serialNumber: data.serialNumber,
       game: data.game,
       gameType: data.gameType || 'slot', // Default to "slot" if not provided
-      isCronosMachine: data.isCronosMachine,
+      isCronosMachine: data.isCronosMachine || false,
       // Handle isCronosMachine vs isSasMachine logic
       isSasMachine: data.isCronosMachine ? false : true, // If Cronos, not SAS. If not given, default to SAS
       loggedIn: false, // Default to not logged in
@@ -599,9 +698,14 @@ export async function POST(request: NextRequest) {
       collectorDenomination: 1, // Collection Report Multiplier as specified in prompt
     });
 
+    // ============================================================================
+    // STEP 8: Save machine to database
+    // ============================================================================
     await newMachine.save();
 
-    // Log activity
+    // ============================================================================
+    // STEP 9: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -687,22 +791,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 10: Return created machine
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: convertResponseToTrinidadTime(newMachine),
     });
   } catch (error) {
-    console.error('Failed to create new machine:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to create new machine';
+    console.error(
+      `[Machines API POST] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to create new machine' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
+/**
+ * Main PUT handler for updating an existing machine
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse machine ID from query parameters
+ * 3. Parse and validate request body
+ * 4. Validate update fields
+ * 5. Find original machine
+ * 6. Update machine in database
+ * 7. Update related Collections if serial number or game changed
+ * 8. Return updated machine
+ */
 export async function PUT(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse machine ID from query parameters
+    // ============================================================================
     const id = request.nextUrl.searchParams.get('id');
 
     if (!id) {
@@ -714,8 +849,14 @@ export async function PUT(request: NextRequest) {
 
     // ID validation removed - _id is stored as String, not ObjectId
 
+    // ============================================================================
+    // STEP 3: Parse and validate request body
+    // ============================================================================
     const data = (await request.json()) as MachineUpdateData;
 
+    // ============================================================================
+    // STEP 4: Validate update fields
+    // ============================================================================
     // Backend validations mirroring frontend (only when provided)
     if (data.serialNumber !== undefined) {
       const serialNumberError = validateSerialNumber(data.serialNumber);
@@ -739,8 +880,11 @@ export async function PUT(request: NextRequest) {
       data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? '';
     }
 
-    // Get original machine data for change tracking
-    const originalMachine = await Machine.findById(id);
+    // ============================================================================
+    // STEP 5: Find original machine
+    // ============================================================================
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const originalMachine = await Machine.findOne({ _id: id });
     if (!originalMachine) {
       return NextResponse.json(
         { success: false, error: 'Cabinet not found' },
@@ -748,11 +892,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updatedMachine = await Machine.findByIdAndUpdate(id, data, {
+    // ============================================================================
+    // STEP 6: Update machine in database
+    // ============================================================================
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    const updatedMachine = await Machine.findOneAndUpdate({ _id: id }, data, {
       new: true,
       runValidators: true,
     });
 
+    // ============================================================================
+    // STEP 7: Update related Collections if serial number or game changed
+    // ============================================================================
     // If serial number was updated, also update it in Collections
     if (
       data.serialNumber !== undefined &&
@@ -803,29 +954,51 @@ export async function PUT(request: NextRequest) {
 
     // Activity logging is handled by the frontend to ensure user context is available
 
-    // Debug logging for troubleshooting
-    console.warn('[MACHINES API] Update successful:', {
-      machineId: id,
-      updatedFields: Object.keys(data),
-      serialNumber: updatedMachine.serialNumber,
-    });
-
+    // ============================================================================
+    // STEP 8: Return updated machine
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: convertResponseToTrinidadTime(updatedMachine),
     });
   } catch (error) {
-    console.error('Error updating machine:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to update machine';
+    console.error(
+      `[Machines API PUT] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to update machine' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
+/**
+ * Main DELETE handler for soft deleting a machine
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse machine ID from query parameters
+ * 3. Find machine to delete
+ * 4. Perform soft delete
+ * 5. Log activity
+ * 6. Return deletion result
+ */
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse machine ID from query parameters
+    // ============================================================================
     const id = request.nextUrl.searchParams.get('id');
 
     if (!id) {
@@ -835,10 +1008,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // ID validation removed - _id is stored as String, not ObjectId
-
-    // Get machine data before deletion for logging
-    const machineToDelete = await Machine.findById(id);
+    // ============================================================================
+    // STEP 3: Find machine to delete
+    // ============================================================================
+    // CRITICAL: Use findOne with _id instead of findById (repo rule)
+    const machineToDelete = await Machine.findOne({ _id: id });
     if (!machineToDelete) {
       return NextResponse.json(
         { success: false, error: 'Cabinet not found' },
@@ -846,14 +1020,20 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await Machine.findByIdAndUpdate(id, {
+    // ============================================================================
+    // STEP 4: Perform soft delete
+    // ============================================================================
+    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    await Machine.findOneAndUpdate({ _id: id }, {
       $set: {
         deletedAt: new Date(),
         updatedAt: new Date(),
       },
     });
 
-    // Log activity
+    // ============================================================================
+    // STEP 5: Log activity
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
@@ -955,14 +1135,23 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 6: Return deletion result
+    // ============================================================================
     return NextResponse.json({
       success: true,
       message: 'Cabinet deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting cabinet:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to delete cabinet';
+    console.error(
+      `[Machines API DELETE] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
-      { success: false, error: 'Failed to delete cabinet' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

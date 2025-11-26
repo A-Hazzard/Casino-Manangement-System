@@ -1,8 +1,30 @@
+/**
+ * Top Performing Data Helper Functions
+ *
+ * Provides helper functions for fetching top-performing locations or machines (Cabinets)
+ * from the API and assigning colors dynamically for visualization. It handles data
+ * retrieval and color assignment for charts and visualizations.
+ *
+ * Features:
+ * - Fetches top-performing locations or machines from the API.
+ * - Supports time period and licensee filtering.
+ * - Assigns colors dynamically from a color palette for visualization.
+ * - Handles errors gracefully with empty array fallback.
+ */
+
 import axios from 'axios';
 import { TopPerformingData } from '@/lib/types';
 import { colorPalette } from '@/lib/constants/uiConstants';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
 type ActiveTab = 'locations' | 'Cabinets';
+
+// ============================================================================
+// Top Performing Data Fetching
+// ============================================================================
 
 /**
  * Fetches top-performing locations or Cabinets and assigns colors dynamically.

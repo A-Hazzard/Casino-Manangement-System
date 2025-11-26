@@ -1,8 +1,26 @@
 /**
  * Cabinet Details Header Component
- * Handles the header section with cabinet information, status, and actions
+ * Header section displaying cabinet information, status, and action buttons.
+ *
+ * Features:
+ * - Cabinet serial number and identifier display
+ * - Online/offline status indicator
+ * - Last online time display
+ * - Edit and refresh action buttons
+ * - Back navigation button
+ * - Expandable cabinet information section
+ * - Framer Motion animations
+ * - Responsive design
+ *
+ * @param cabinetDetails - Cabinet details object
+ * @param serialNumberIdentifier - Serial number or identifier to display
+ * @param isOnline - Whether cabinet is online
+ * @param lastOnlineMinutes - Minutes since last online
+ * @param loading - Whether data is loading
+ * @param onEdit - Callback when edit button is clicked
+ * @param onRefresh - Callback when refresh button is clicked
+ * @param onBack - Callback when back button is clicked
  */
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

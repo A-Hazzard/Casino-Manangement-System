@@ -36,6 +36,9 @@ export function useCabinetDetailsData({
   customDateRange,
   dateFilterInitialized,
 }: UseCabinetDetailsDataProps): UseCabinetDetailsDataReturn {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [cabinet, setCabinet] = useState<CabinetDetail | null>(null);
   const [locationName, setLocationName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +50,10 @@ export function useCabinetDetailsData({
 
   // Get display currency from store for currency conversion
   const { displayCurrency } = useDashBoardStore();
+
+  // ============================================================================
+  // Data Fetching
+  // ============================================================================
 
   const fetchCabinetDetailsData = useCallback(async () => {
     setError(null);
@@ -157,8 +164,7 @@ export function useCabinetDetailsData({
     if (activeMetricsFilter && dateFilterInitialized) {
       fetchCabinetDetailsData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, activeMetricsFilter, dateFilterInitialized, customDateRange, displayCurrency]);
+  }, [slug, activeMetricsFilter, dateFilterInitialized, customDateRange, displayCurrency, fetchCabinetDetailsData]);
 
   return {
     cabinet,

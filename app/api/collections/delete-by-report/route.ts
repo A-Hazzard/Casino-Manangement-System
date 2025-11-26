@@ -1,18 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../lib/middleware/db';
+/**
+ * Delete Collections by Report API Route
+ *
+ * This route handles deleting all collections and collectionMetersHistory entries
+ * by locationReportId. It supports:
+ * - Deleting all collections for a report
+ * - Reverting machine collectionMeters to previous values
+ * - Removing collectionMetersHistory entries
+ * - Deleting the collection report itself
+ * - Complete cleanup when a collection report is deleted
+ *
+ * @module app/api/collections/delete-by-report/route
+ */
+
 import { Collections } from '@/app/api/lib/models/collections';
-import { Machine } from '@/app/api/lib/models/machines';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { Machine } from '@/app/api/lib/models/machines';
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * DELETE /api/collections/delete-by-report
- * Deletes all collections and collectionMetersHistory entries by locationReportId
- * This endpoint handles complete cleanup when a collection report is deleted
+ * Main DELETE handler for deleting collections by report
+ *
+ * Flow:
+ * 1. Parse request body
+ * 2. Validate locationReportId
+ * 3. Connect to database
+ * 4. Find all collections with this locationReportId
+ * 5. Get machine IDs from collections
+ * 6. Revert machine collectionMeters and remove history entries
+ * 7. Delete all collections
+ * 8. Delete the collection report
+ * 9. Verify deletion completed
+ * 10. Return success response
  */
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const { locationReportId } = await request.json();
 
+    // ============================================================================
+    // STEP 2: Validate locationReportId
+    // ============================================================================
     if (!locationReportId) {
       return NextResponse.json(
         { success: false, error: 'Location report ID is required' },
@@ -20,42 +52,33 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Connect to database
+    // ============================================================================
     await connectDB();
 
-    console.warn(
-      'Deleting collections and history for locationReportId:',
-      locationReportId
-    );
-
-    // Step 1: Find all collections with this locationReportId
+    // ============================================================================
+    // STEP 4: Find all collections with this locationReportId
+    // ============================================================================
     const collections = await Collections.find({ locationReportId }).lean();
-    console.warn('Found collections to delete:', collections.length);
-    console.warn(
-      'Collections details:',
-      collections.map(c => ({
-        _id: c._id,
-        machineId: c.machineId,
-        locationReportId: c.locationReportId,
-        metersIn: c.metersIn,
-        metersOut: c.metersOut,
-        prevIn: c.prevIn,
-        prevOut: c.prevOut,
-      }))
-    );
 
-    // Step 2: Get machine IDs from collections
+    // ============================================================================
+    // STEP 5: Get machine IDs from collections
+    // ============================================================================
     const machineIds = [
       ...new Set(collections.map(c => c.machineId).filter(Boolean)),
     ];
-    console.warn('Machine IDs to update:', machineIds);
 
-    // Step 3: For each collection, revert machine collectionMeters to prevIn/prevOut values
+    // ============================================================================
+    // STEP 6: Revert machine collectionMeters and remove history entries
+    // ============================================================================
     const machineUpdatePromises = collections.map(async collection => {
       try {
         if (collection.machineId) {
           // Revert machine collectionMeters to the previous values from the collection
-          const result = await Machine.findByIdAndUpdate(
-            collection.machineId,
+          // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+          await Machine.findOneAndUpdate(
+            { _id: collection.machineId },
             {
               $set: {
                 'collectionMeters.metersIn': collection.prevIn || 0,
@@ -69,32 +92,7 @@ export async function DELETE(request: NextRequest) {
             { new: true }
           );
 
-          if (result) {
-            console.warn(
-              `Reverted machine ${collection.machineId} collectionMeters:`,
-              {
-                from: {
-                  metersIn: collection.metersIn,
-                  metersOut: collection.metersOut,
-                },
-                to: {
-                  metersIn: collection.prevIn,
-                  metersOut: collection.prevOut,
-                },
-              }
-            );
-
-            // Log the remaining collectionMetersHistory entries to verify deletion
-            const remainingHistory =
-              result.collectionMetersHistory?.filter(
-                (entry: { locationReportId: string }) =>
-                  entry.locationReportId === locationReportId
-              ) || [];
-            console.warn(
-              `Remaining history entries for ${locationReportId} on machine ${collection.machineId}:`,
-              remainingHistory.length
-            );
-          }
+          // Machine updated successfully
         }
       } catch (error) {
         console.error(
@@ -106,41 +104,32 @@ export async function DELETE(request: NextRequest) {
 
     await Promise.all(machineUpdatePromises);
 
-    // Step 4: Delete all collections with this locationReportId
+    // ============================================================================
+    // STEP 7: Delete all collections
+    // ============================================================================
     const deleteResult = await Collections.deleteMany({ locationReportId });
-    console.warn('Deleted collections:', deleteResult.deletedCount);
 
-    // Step 5: Delete the collection report itself
+    // ============================================================================
+    // STEP 8: Delete the collection report
+    // ============================================================================
     const reportDeleteResult = await CollectionReport.deleteOne({
       locationReportId,
     });
-    console.warn('Deleted collection report:', reportDeleteResult.deletedCount);
 
-    // Step 6: Final verification - check if any collections or history entries remain
+    // ============================================================================
+    // STEP 9: Verify deletion completed
+    // ============================================================================
     const remainingCollections = await Collections.find({
       locationReportId,
     }).lean();
-    console.warn(
-      'Final verification - remaining collections:',
-      remainingCollections.length
-    );
 
-    // Check remaining history entries on machines
-    for (const machineId of machineIds) {
-      const machine = (await Machine.findById(machineId).lean()) as {
-        collectionMetersHistory?: Array<{ locationReportId: string }>;
-      } | null;
-      const remainingHistory =
-        machine?.collectionMetersHistory?.filter(
-          (entry: { locationReportId: string }) =>
-            entry.locationReportId === locationReportId
-        ) || [];
-      console.warn(
-        `Final verification - remaining history on machine ${machineId}:`,
-        remainingHistory.length
-      );
+    // ============================================================================
+    // STEP 10: Return success response
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Collections Delete By Report DELETE API] Completed in ${duration}ms`);
     }
-
     return NextResponse.json({
       success: true,
       message: 'Successfully deleted collections and history',
@@ -153,14 +142,23 @@ export async function DELETE(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error deleting collections by report ID:', error);
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to delete collections and history';
+    console.error(
+      `[Delete Collections by Report API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to delete collections and history',
+        error: errorMessage,
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
   }
 }
+

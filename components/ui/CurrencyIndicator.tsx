@@ -9,8 +9,17 @@ interface CurrencyIndicatorProps {
 }
 
 /**
- * Component that displays the current currency being used
- * Only shows when "All Licensee" is selected
+ * Currency Indicator Component
+ * Component that displays the current currency being used.
+ *
+ * Features:
+ * - Currency symbol and code display
+ * - Conditional rendering (only shows when "All Licensee" is selected)
+ * - Optional label display
+ * - Currency info from store
+ *
+ * @param className - Additional CSS classes
+ * @param showLabel - Whether to show "Currency:" label
  */
 export function CurrencyIndicator({
   className = '',
