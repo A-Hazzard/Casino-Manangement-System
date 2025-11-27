@@ -20,13 +20,13 @@ import {
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import { apiLogger } from '@/app/api/lib/utils/logger';
 import { UpdateLocationData } from '@/lib/types/location';
-import { getClientIP } from '@/lib/utils/ipAddress';
 import { generateMongoId } from '@/lib/utils/id';
+import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -60,7 +60,8 @@ export async function GET(request: Request) {
     // ============================================================================
     const { searchParams } = new URL(request.url);
     // Support both 'licensee' and 'licencee' spelling for backwards compatibility
-    const licencee = searchParams.get('licensee') || searchParams.get('licencee');
+    const licencee =
+      searchParams.get('licensee') || searchParams.get('licencee');
     const minimal = searchParams.get('minimal') === '1';
     const showAll = searchParams.get('showAll') === 'true';
     const forceAll =
@@ -73,10 +74,17 @@ export async function GET(request: Request) {
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions =
-      (userPayload?.resourcePermissions as {
-        'gaming-locations'?: { resources?: string[] };
-      })?.['gaming-locations']?.resources || [];
+
+    // Use only new field
+    let userLocationPermissions: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
+    }
 
     // ============================================================================
     // STEP 4: Build query filter based on access control
@@ -406,7 +414,10 @@ export async function POST(request: Request) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
-    console.error(`[Locations API POST] Error after ${duration}ms:`, errorMessage);
+    console.error(
+      `[Locations API POST] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
@@ -485,43 +496,41 @@ export async function PUT(request: Request) {
     // STEP 4: Validate update fields and business rules
     // ============================================================================
     // Backend validations mirroring frontend for provided fields
-      if (name !== undefined && typeof name !== 'string') {
-        return NextResponse.json(
-          { success: false, message: 'Location name must be a string' },
-          { status: 400 }
-        );
-      }
-      if (country !== undefined && typeof country !== 'string') {
-        return NextResponse.json(
-          { success: false, message: 'Country must be a country ID string' },
-          { status: 400 }
-        );
-      }
-      if (
-        profitShare !== undefined &&
-        (typeof profitShare !== 'number' ||
-          profitShare < 0 ||
-          profitShare > 100)
-      ) {
-        return NextResponse.json(
-          { success: false, message: 'Profit share must be between 0 and 100' },
-          { status: 400 }
-        );
-      }
-      if (
-        gameDayOffset !== undefined &&
-        (typeof gameDayOffset !== 'number' ||
-          gameDayOffset < 0 ||
-          gameDayOffset > 23)
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Day start time (gameDayOffset) must be between 0 and 23',
-          },
-          { status: 400 }
-        );
-      }
+    if (name !== undefined && typeof name !== 'string') {
+      return NextResponse.json(
+        { success: false, message: 'Location name must be a string' },
+        { status: 400 }
+      );
+    }
+    if (country !== undefined && typeof country !== 'string') {
+      return NextResponse.json(
+        { success: false, message: 'Country must be a country ID string' },
+        { status: 400 }
+      );
+    }
+    if (
+      profitShare !== undefined &&
+      (typeof profitShare !== 'number' || profitShare < 0 || profitShare > 100)
+    ) {
+      return NextResponse.json(
+        { success: false, message: 'Profit share must be between 0 and 100' },
+        { status: 400 }
+      );
+    }
+    if (
+      gameDayOffset !== undefined &&
+      (typeof gameDayOffset !== 'number' ||
+        gameDayOffset < 0 ||
+        gameDayOffset > 23)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Day start time (gameDayOffset) must be between 0 and 23',
+        },
+        { status: 400 }
+      );
+    }
 
     // ============================================================================
     // STEP 5: Verify country exists if provided
@@ -542,57 +551,57 @@ export async function PUT(request: Request) {
     // ============================================================================
     const updateData: UpdateLocationData = {};
 
-      // Only include fields that are present in the request
-      if (name) updateData.name = name;
-      if (country) updateData.country = country;
+    // Only include fields that are present in the request
+    if (name) updateData.name = name;
+    if (country) updateData.country = country;
 
-      // Handle nested objects
-      if (address) {
-        updateData.address = {};
-        if (address.street !== undefined)
-          updateData.address.street = address.street;
-        if (address.city !== undefined) updateData.address.city = address.city;
+    // Handle nested objects
+    if (address) {
+      updateData.address = {};
+      if (address.street !== undefined)
+        updateData.address.street = address.street;
+      if (address.city !== undefined) updateData.address.city = address.city;
+    }
+
+    if (rel) {
+      updateData.rel = {};
+      if (rel.licencee !== undefined) updateData.rel.licencee = rel.licencee;
+    }
+
+    // Handle primitive types with explicit checks to handle zero values
+    if (typeof profitShare === 'number') updateData.profitShare = profitShare;
+    if (typeof gameDayOffset === 'number')
+      updateData.gameDayOffset = gameDayOffset;
+    if (typeof isLocalServer === 'boolean')
+      updateData.isLocalServer = isLocalServer;
+
+    // Handle nested geoCoords object - only save valid coordinates
+    if (geoCoords) {
+      const lat = geoCoords.latitude;
+      const lng = geoCoords.longitude;
+
+      // Only save if both coordinates are valid numbers (not NaN, not 0, not undefined)
+      if (
+        typeof lat === 'number' &&
+        typeof lng === 'number' &&
+        !Number.isNaN(lat) &&
+        !Number.isNaN(lng) &&
+        lat !== 0 &&
+        lng !== 0
+      ) {
+        updateData.geoCoords = {
+          latitude: lat,
+          longitude: lng,
+        };
       }
+    }
 
-      if (rel) {
-        updateData.rel = {};
-        if (rel.licencee !== undefined) updateData.rel.licencee = rel.licencee;
-      }
-
-      // Handle primitive types with explicit checks to handle zero values
-      if (typeof profitShare === 'number') updateData.profitShare = profitShare;
-      if (typeof gameDayOffset === 'number')
-        updateData.gameDayOffset = gameDayOffset;
-      if (typeof isLocalServer === 'boolean')
-        updateData.isLocalServer = isLocalServer;
-
-      // Handle nested geoCoords object - only save valid coordinates
-      if (geoCoords) {
-        const lat = geoCoords.latitude;
-        const lng = geoCoords.longitude;
-
-        // Only save if both coordinates are valid numbers (not NaN, not 0, not undefined)
-        if (
-          typeof lat === 'number' &&
-          typeof lng === 'number' &&
-          !Number.isNaN(lat) &&
-          !Number.isNaN(lng) &&
-          lat !== 0 &&
-          lng !== 0
-        ) {
-          updateData.geoCoords = {
-            latitude: lat,
-            longitude: lng,
-          };
-        }
-      }
-
-      // Handle billValidatorOptions
-      if (billValidatorOptions) {
-        updateData.billValidatorOptions = Object.fromEntries(
-          Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
-        ) as UpdateLocationData['billValidatorOptions'];
-      }
+    // Handle billValidatorOptions
+    if (billValidatorOptions) {
+      updateData.billValidatorOptions = Object.fromEntries(
+        Object.entries(billValidatorOptions).map(([k, v]) => [k, Boolean(v)])
+      ) as UpdateLocationData['billValidatorOptions'];
+    }
 
     // Always update the updatedAt timestamp
     updateData.updatedAt = new Date();
@@ -631,7 +640,10 @@ export async function PUT(request: Request) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
-    console.error(`[Locations API PUT] Error after ${duration}ms:`, errorMessage);
+    console.error(
+      `[Locations API PUT] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
@@ -780,7 +792,10 @@ export async function DELETE(request: Request) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
-    console.error(`[Locations API DELETE] Error after ${duration}ms:`, errorMessage);
+    console.error(
+      `[Locations API DELETE] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }

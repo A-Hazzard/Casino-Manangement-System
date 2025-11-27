@@ -1,8 +1,8 @@
 # Database Models & Relationships
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 3, 2025  
-**Version:** 2.1.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.2.0
 
 ## Table of Contents
 

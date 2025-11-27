@@ -1,8 +1,8 @@
 # Engineering Guidelines - Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 3.0.0
+**Last Updated:** November 27, 2025  
+**Version:** 3.1.0
 
 ## Table of Contents
 
@@ -95,6 +95,23 @@ This document provides a high-level overview of engineering guidelines for the E
 - Avoid rendering waterfalls; batch network requests when possible
 - Track performance metrics for slow operations
 - Use proper code-splitting and lazy loading
+
+## Loading States & Skeleton Loaders - CRITICAL REQUIREMENTS
+
+- **MANDATORY: Every page and component with async data MUST use specific skeleton loaders**
+- **NEVER use generic loading states** like "Loading...", "Loading Data", or generic spinners
+- **EVERY skeleton loader MUST exactly match the layout and structure of the actual content**
+- **Skeleton loaders MUST be page/component-specific** - no generic reusable skeletons for different content types
+
+### Skeleton Loader Requirements:
+
+1. **Content-Specific Skeletons**: Each page must have its own skeleton that matches the exact layout of the real content
+2. **Visual Accuracy**: Exact dimensions and spacing as the real content, proper visual hierarchy, all interactive elements represented
+3. **Implementation Standards**: Use Shadcn Skeleton component, create dedicated skeleton files in `components/ui/skeletons/`
+4. **File Organization**: Skeleton files in `components/ui/skeletons/[PageName]Skeletons.tsx`
+5. **Mobile-Specific Requirements**: Every page and section must have mobile-specific loaders that match mobile layouts
+
+For detailed skeleton loader requirements, see the Frontend Guidelines section 7.1.
 
 ## Code Quality
 

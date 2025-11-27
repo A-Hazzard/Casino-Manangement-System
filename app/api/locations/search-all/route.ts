@@ -21,6 +21,8 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import type { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -67,6 +69,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')?.trim() || '';
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '30d';
+    const customStartDate = searchParams.get('startDate')
+      ? new Date(searchParams.get('startDate')!)
+      : undefined;
+    const customEndDate = searchParams.get('endDate')
+      ? new Date(searchParams.get('endDate')!)
+      : undefined;
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -85,10 +94,16 @@ export async function GET(request: NextRequest) {
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions =
-      (userPayload?.resourcePermissions as {
-        'gaming-locations'?: { resources?: string[] };
-      })?.['gaming-locations']?.resources || [];
+    // Use only new field
+    let userLocationPermissions: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
+    }
 
     // ============================================================================
     // STEP 4: Apply location filtering based on permissions
@@ -154,28 +169,35 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 6: Fetch locations with aggregation (machines, financial data)
     // ============================================================================
-    let locations = (await db
+    // First, get matching locations
+    const matchingLocations = await db
       .collection('gaminglocations')
       .aggregate([
-        // Stage 1: Filter locations by deletion status, search term, and licencee
         { $match: locationMatch },
-        // Stage 2: Lookup machine statistics for each location
         {
           $lookup: {
             from: 'machines',
             let: { id: '$_id' },
             pipeline: [
-              // Stage 2a: Match machines for this location (excluding deleted ones)
               {
                 $match: {
-                  $expr: { $eq: ['$gamingLocation', '$$id'] },
+                  $expr: {
+                    $or: [
+                      {
+                        $eq: [
+                          { $toString: '$gamingLocation' },
+                          { $toString: '$$id' },
+                        ],
+                      },
+                      { $eq: ['$gamingLocation', '$$id'] },
+                    ],
+                  },
                   $or: [
                     { deletedAt: null },
                     { deletedAt: { $lt: new Date('2020-01-01') } },
                   ],
                 },
               },
-              // Stage 2b: Group machines to calculate counts and online status
               {
                 $group: {
                   _id: null,
@@ -200,105 +222,123 @@ export async function GET(request: NextRequest) {
             as: 'machineStats',
           },
         },
-        // Stage 3: Lookup financial data from meters (last 30 days by default)
-        {
-          $lookup: {
-            from: 'meters',
-            let: { locationId: { $toString: '$_id' } },
-            pipeline: [
-              // Stage 3a: Match meter records for this location within date range
-              {
-                $match: {
-                  $expr: { $eq: ['$location', '$$locationId'] },
-                  createdAt: {
-                    $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                    $lte: new Date(),
-                  },
-                },
-              },
-              // Stage 3b: Group meter records to calculate financial totals
-              {
-                $group: {
-                  _id: null,
-                  totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-                  totalMoneyOut: {
-                    $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-                  },
-                },
-              },
-            ],
-            as: 'financialData',
-          },
-        },
-        // Stage 4: Add computed fields for machine statistics and financial data
-        {
-          $addFields: {
-            totalMachines: {
-              $ifNull: [
-                { $arrayElemAt: ['$machineStats.totalMachines', 0] },
-                0,
-              ],
-            },
-            onlineMachines: {
-              $ifNull: [
-                { $arrayElemAt: ['$machineStats.onlineMachines', 0] },
-                0,
-              ],
-            },
-            moneyIn: {
-              $ifNull: [
-                { $arrayElemAt: ['$financialData.totalMoneyIn', 0] },
-                0,
-              ],
-            },
-            moneyOut: {
-              $ifNull: [
-                { $arrayElemAt: ['$financialData.totalMoneyOut', 0] },
-                0,
-              ],
-            },
-            isLocalServer: { $ifNull: ['$isLocalServer', false] },
-            hasSmib: { $ifNull: ['$hasSmib', false] },
-            noSMIBLocation: { $not: ['$hasSmib'] },
-          },
-        },
-        // Stage 5: Calculate gross revenue (money in minus money out)
-        {
-          $addFields: {
-            gross: { $subtract: ['$moneyIn', '$moneyOut'] },
-          },
-        },
-        // Stage 6: Project final fields for location response
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            address: 1,
-            country: 1,
-            rel: 1,
-            profitShare: 1,
-            geoCoords: 1,
-            totalMachines: 1,
-            onlineMachines: 1,
-            moneyIn: 1,
-            moneyOut: 1,
-            gross: 1,
-            isLocalServer: 1,
-            hasSmib: 1,
-            noSMIBLocation: 1,
-          },
-        },
       ])
-      .toArray()) as LocationAggregationResult[];
+      .toArray();
+
+    // Now calculate financial metrics for each location using gaming day ranges
+    const locations = await Promise.all(
+      matchingLocations.map(async location => {
+        const locationId = location._id.toString();
+        const gameDayOffset = location.gameDayOffset ?? 8;
+
+        // Calculate gaming day range for this location
+        const gamingDayRange = getGamingDayRangeForPeriod(
+          timePeriod,
+          gameDayOffset,
+          customStartDate,
+          customEndDate
+        );
+
+        // Get all machines for this location
+        const machinesForLocation = await db
+          .collection('machines')
+          .find(
+            {
+              $and: [
+                {
+                  $or: [
+                    { gamingLocation: locationId },
+                    { gamingLocation: location._id },
+                  ],
+                },
+                {
+                  $or: [
+                    { deletedAt: null },
+                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                  ],
+                },
+              ],
+            },
+            { projection: { _id: 1 } }
+          )
+          .toArray();
+
+        const machineIds = machinesForLocation.map(m => m._id.toString());
+
+        // Aggregate meters for all machines in this location using gaming day range
+        const metersAggregation = await db
+          .collection('meters')
+          .aggregate([
+            {
+              $match: {
+                machine: { $in: machineIds },
+                readAt: {
+                  $gte: gamingDayRange.rangeStart,
+                  $lte: gamingDayRange.rangeEnd,
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+                totalMoneyOut: {
+                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                },
+              },
+            },
+          ])
+          .toArray();
+
+        const financialData = metersAggregation[0] || {
+          totalMoneyIn: 0,
+          totalMoneyOut: 0,
+        };
+
+        return {
+          ...location,
+          totalMachines: location.machineStats?.[0]?.totalMachines || 0,
+          onlineMachines: location.machineStats?.[0]?.onlineMachines || 0,
+          moneyIn: financialData.totalMoneyIn || 0,
+          moneyOut: financialData.totalMoneyOut || 0,
+          gross:
+            (financialData.totalMoneyIn || 0) -
+            (financialData.totalMoneyOut || 0),
+        };
+      })
+    );
+    // Format locations for response
+    const formattedLocations = (locations as LocationAggregationResult[]).map(
+      loc => ({
+        _id: loc._id,
+        name: loc.name,
+        address: loc.address,
+        country: loc.country,
+        rel: loc.rel,
+        profitShare: loc.profitShare,
+        geoCoords: loc.geoCoords,
+        totalMachines: loc.totalMachines || 0,
+        onlineMachines: loc.onlineMachines || 0,
+        moneyIn: loc.moneyIn || 0,
+        moneyOut: loc.moneyOut || 0,
+        gross: loc.gross || 0,
+        isLocalServer: loc.isLocalServer || false,
+        hasSmib: loc.hasSmib || false,
+        noSMIBLocation: !(loc.hasSmib || false),
+      })
+    ) as LocationAggregationResult[];
 
     // ============================================================================
     // STEP 7: Apply currency conversion if needed
     // ============================================================================
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
-    const isAdminOrDev = currentUserRoles.includes('admin') || currentUserRoles.includes('developer');
+    const isAdminOrDev =
+      currentUserRoles.includes('admin') ||
+      currentUserRoles.includes('developer');
 
     // Apply currency conversion ONLY for Admin/Developer viewing "All Licensees"
+    let finalLocations = formattedLocations;
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       // Get licensee details for currency mapping
       const licenseesData = await db
@@ -331,7 +371,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Convert each location's financial data
-      locations = locations.map(loc => {
+      finalLocations = formattedLocations.map(loc => {
         const licenseeId = loc.rel?.licencee as string | undefined;
 
         if (!licenseeId) {
@@ -377,7 +417,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 8: Return formatted location data
     // ============================================================================
-    const response = locations.map((loc: LocationAggregationResult) => ({
+    const response = finalLocations.map((loc: LocationAggregationResult) => ({
       location: loc._id.toString(),
       locationName: loc.name || 'Unknown Location',
       country: loc.country,
@@ -403,8 +443,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error(`[Locations Search All API] Error after ${duration}ms:`, errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Locations Search All API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }

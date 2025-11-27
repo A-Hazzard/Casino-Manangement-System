@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
-import { Database, MapPin, Eye, Pencil } from 'lucide-react';
+import { Eye, Pencil } from 'lucide-react';
 import { LocationCardData } from '@/lib/types/location';
 import formatCurrency from '@/lib/utils/currency';
 import {
@@ -41,16 +41,6 @@ export default function LocationCard({
       ref={cardRef}
       className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow hover:shadow-md"
     >
-      {typeof location.onlineMachines === 'number' && (
-        <span
-          className={`absolute right-3 top-3 z-10 h-3 w-3 rounded-full border-2 border-white ${
-            location.onlineMachines > 0
-              ? 'animate-pulse-slow bg-green-500'
-              : 'bg-red-500'
-          }`}
-          title={location.onlineMachines > 0 ? 'Online' : 'Offline'}
-        />
-      )}
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <button
@@ -124,21 +114,6 @@ export default function LocationCard({
           className={`break-words text-right font-semibold ${getGrossColorClass(location.gross)}`}
           formatCurrencyFn={formatCurrency}
         />
-      </div>
-
-      <div className="mt-2 flex justify-between gap-2">
-        <Button
-          className="flex h-auto items-center space-x-1 rounded-md bg-blueHighlight px-2 py-1 text-xs text-primary-foreground"
-        >
-          <Database className="mr-1 h-3 w-3" />
-          {location.totalMachines} MACHINES
-        </Button>
-        <Button
-          className="flex h-auto items-center space-x-1 rounded-md bg-button px-2 py-1 text-xs text-primary-foreground"
-        >
-          <MapPin className="mr-1 h-3 w-3" />
-          {location.onlineMachines} ONLINE
-        </Button>
       </div>
 
       {/* Action Buttons */}

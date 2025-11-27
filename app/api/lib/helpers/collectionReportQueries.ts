@@ -33,12 +33,16 @@ export async function fetchLocationsWithMachines(
   }
 
   const userRoles = (user.roles as string[]) || [];
-  const userAccessibleLicensees =
-    ((user.rel as Record<string, unknown>)?.licencee as string[]) || [];
-  const userLocationPermissions =
-    ((
-      user.resourcePermissions as Record<string, Record<string, unknown>>
-    )?.['gaming-locations']?.resources as string[]) || [];
+  // Use only new field
+  let userAccessibleLicensees: string[] = [];
+  if (Array.isArray((user as { assignedLicensees?: string[] })?.assignedLicensees)) {
+    userAccessibleLicensees = (user as { assignedLicensees: string[] }).assignedLicensees;
+  }
+  // Use only new field
+  let userLocationPermissions: string[] = [];
+  if (Array.isArray((user as { assignedLocations?: string[] })?.assignedLocations)) {
+    userLocationPermissions = (user as { assignedLocations: string[] }).assignedLocations;
+  }
   const isAdmin =
     userRoles.includes('admin') || userRoles.includes('developer');
 

@@ -735,7 +735,7 @@ When a user opens the collection modal, incomplete collections (collections not 
 
 ```typescript
 // 1. Get user's accessible location IDs
-const locationIds = user.resourcePermissions['gaming-locations'].resources;
+const locationIds = user.assignedLocations || [];
 // Example: ['691166b455fe4b9b7ae3e702']
 
 // 2. Convert IDs to location names
@@ -764,13 +764,13 @@ const collections = await Collections.find({
 - ✅ Collectors assigned to Location A cannot see Location B's incomplete collections
 - ✅ Admin/Developer see all incomplete collections (for troubleshooting)
 - ✅ Manager see incomplete collections for all locations in their assigned licensees
-- ✅ Location permissions from `resourcePermissions` are strictly enforced
+- ✅ Location permissions from `assignedLocations` are strictly enforced
 
 **Example:**
 
 ```
 User: testuser (Collector, TTG)
-  resourcePermissions: ['691166b455fe4b9b7ae3e702']
+  assignedLocations: ['691166b455fe4b9b7ae3e702']
   → Location: 'Test-Permission-Location'
 
 Modal Query: GET /api/collections?incompleteOnly=true
@@ -945,7 +945,7 @@ The Monthly Report tab calculates financial metrics by aggregating data from the
   { $unwind: '$locationDetails' },
   {
     $match: {
-      'locationDetails.rel.licencee': licencee,
+      'locationDetails.rel.licencee': licencee, // Note: rel.licencee is correct for GamingLocation schema
     },
   }
   ```

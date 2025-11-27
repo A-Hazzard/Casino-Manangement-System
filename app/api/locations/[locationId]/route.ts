@@ -15,15 +15,20 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { TimePeriod } from '@/app/api/lib/types';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import {
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenseeCurrency,
+} from '@/lib/helpers/rates';
 import { TransformedCabinet } from '@/lib/types/mongo';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
-import { convertToUSD, convertFromUSD, getLicenseeCurrency, getCountryCurrency } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -71,6 +76,36 @@ export async function GET(request: NextRequest) {
     // STEP 2: Check if basic location details requested (no query params)
     // ============================================================================
     const hasQueryParams = url.searchParams.toString().length > 0;
+    const nameOnly = url.searchParams.get('nameOnly') === 'true';
+
+    // Handle nameOnly requests - returns just name and licensee for display purposes
+    // This bypasses access control since it only returns non-sensitive display data
+    if (nameOnly) {
+      await connectDB();
+
+      // CRITICAL: Use findOne with _id instead of findById (repo rule)
+      const location = await GamingLocations.findOne({ _id: locationId }, {
+        _id: 1,
+        name: 1,
+        'rel.licencee': 1,
+      });
+
+      if (!location) {
+        return NextResponse.json(
+          { success: false, message: 'Location not found' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        location: {
+          _id: location._id,
+          name: location.name,
+          licenseeId: location.rel?.licencee,
+        },
+      });
+    }
 
     if (!hasQueryParams) {
       // Return basic location details for edit modal
@@ -125,7 +160,8 @@ export async function GET(request: NextRequest) {
     const timePeriod = url.searchParams.get('timePeriod') as TimePeriod;
     const customStartDate = url.searchParams.get('startDate');
     const customEndDate = url.searchParams.get('endDate');
-    const displayCurrency = (url.searchParams.get('currency') as CurrencyCode) || 'USD';
+    const displayCurrency =
+      (url.searchParams.get('currency') as CurrencyCode) || 'USD';
 
     // Pagination parameters
     // When searching, limit may be undefined to fetch all results
@@ -220,12 +256,43 @@ export async function GET(request: NextRequest) {
       {
         $match: { _id: { $in: [locationId, locationIdObj] } },
       },
-      // Lookup machines for this location
+      // Lookup machines for this location (include deleted machines with sentinel date)
+      // CRITICAL: gamingLocation is stored as String, not ObjectId
       {
         $lookup: {
           from: 'machines',
-          localField: '_id',
-          foreignField: 'gamingLocation',
+          let: {
+            locationIdStr: { $toString: '$_id' },
+            locationIdObj: '$_id',
+          },
+          pipeline: [
+            {
+              $match: {
+                $and: [
+                  {
+                    $expr: {
+                      $or: [
+                        {
+                          $eq: [
+                            { $toString: '$gamingLocation' },
+                            '$$locationIdStr',
+                          ],
+                        }, // String match
+                        { $eq: ['$gamingLocation', '$$locationIdObj'] }, // ObjectId match (if stored as ObjectId)
+                      ],
+                    },
+                  },
+                  {
+                    // Include machines that are not deleted OR have sentinel deletedAt date
+                    $or: [
+                      { deletedAt: null },
+                      { deletedAt: { $lt: new Date('2020-01-01') } },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
           as: 'machines',
         },
       },
@@ -267,11 +334,19 @@ export async function GET(request: NextRequest) {
     aggregationPipeline.push({
       $lookup: {
         from: 'meters',
-        let: { machineId: '$machines._id' },
+        let: {
+          machineIdStr: { $toString: '$machines._id' },
+          machineIdObj: '$machines._id',
+        },
         pipeline: [
           {
             $match: {
-              $expr: { $eq: ['$machine', '$$machineId'] },
+              $expr: {
+                $or: [
+                  { $eq: [{ $toString: '$machine' }, '$$machineIdStr'] }, // String match
+                  { $eq: ['$machine', '$$machineIdObj'] }, // ObjectId match (if stored as ObjectId)
+                ],
+              },
               // Use the calculated gaming day range for this location
               readAt: {
                 $gte: gamingDayRange.rangeStart,
@@ -434,7 +509,9 @@ export async function GET(request: NextRequest) {
     // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
     const location = await db
       .collection('gaminglocations')
-      .findOne({ _id: locationId } as Record<string, unknown>, { projection: { 'rel.licencee': 1, country: 1 } });
+      .findOne({ _id: locationId } as Record<string, unknown>, {
+        projection: { 'rel.licencee': 1, country: 1 },
+      });
 
     // Get licensee and country info for currency conversion
     let nativeCurrency: CurrencyCode = 'USD';
@@ -447,7 +524,9 @@ export async function GET(request: NextRequest) {
           // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
           const country = await db
             .collection('countries')
-            .findOne({ _id: countryId } as Record<string, unknown>, { projection: { name: 1 } });
+            .findOne({ _id: countryId } as Record<string, unknown>, {
+              projection: { name: 1 },
+            });
           if (country?.name) {
             nativeCurrency = getCountryCurrency(country.name);
           }
@@ -457,7 +536,9 @@ export async function GET(request: NextRequest) {
         // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
         const licensee = await db
           .collection('licencees')
-          .findOne({ _id: locationLicenseeId } as Record<string, unknown>, { projection: { name: 1 } });
+          .findOne({ _id: locationLicenseeId } as Record<string, unknown>, {
+            projection: { name: 1 },
+          });
         if (licensee?.name) {
           nativeCurrency = getLicenseeCurrency(licensee.name);
         }
@@ -555,4 +636,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

@@ -49,14 +49,14 @@ export async function POST(_request: NextRequest) {
     }
 
     const user = await getUserById(userId);
-    if (!user) {
+    if (!user || Array.isArray(user)) {
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
       );
     }
 
-    const userRoles = user?.roles || [];
+    const userRoles = user.roles || [];
 
     // Check if user has admin or developer access
     const hasAdminAccess =
@@ -73,7 +73,7 @@ export async function POST(_request: NextRequest) {
 
     console.warn(`🔧 Starting bulk SAS time fix for all reports...`);
     console.warn(
-      `   Initiated by: ${user?.username || 'Unknown'} (${userRoles.join(', ')})`
+      `   Initiated by: ${user.username || 'Unknown'} (${userRoles.join(', ')})`
     );
 
     // ============================================================================

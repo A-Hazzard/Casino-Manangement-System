@@ -138,6 +138,49 @@ export async function GET(req: NextRequest) {
     const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
 
     // ============================================================================
+    // STEP 5.5: Get user location permissions for filtering
+    // ============================================================================
+    // Use only new field
+    let userAccessibleLicensees: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLicensees?: string[] })?.assignedLicensees
+      )
+    ) {
+      userAccessibleLicensees = (userPayload as { assignedLicensees: string[] })
+        .assignedLicensees;
+    }
+    // Use only new field
+    let userLocationPermissions: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
+    }
+
+    // Get user's accessible locations
+    const { getUserLocationFilter } = await import(
+      '@/app/api/lib/helpers/licenseeFilter'
+    );
+    const allowedLocationIds = await getUserLocationFilter(
+      isAdminOrDev ? 'all' : userAccessibleLicensees,
+      licencee || undefined,
+      userLocationPermissions,
+      userRoles
+    );
+
+    // If user has no access, return empty result
+    if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
+      return NextResponse.json({
+        data: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+      });
+    }
+
+    // ============================================================================
     // STEP 6: Build machine and location match filters
     // ============================================================================
     const machineMatchStage: Record<string, unknown> = {
@@ -146,6 +189,11 @@ export async function GET(req: NextRequest) {
         { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
+
+    // Apply user location filter if not admin/dev
+    if (allowedLocationIds !== 'all') {
+      machineMatchStage.gamingLocation = { $in: allowedLocationIds };
+    }
 
     // Add online status filter
     if (onlineStatus !== 'all') {
@@ -178,8 +226,15 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // Add location filter if specified
+    // Add location filter if specified (overrides user permissions if admin/dev)
     if (locationId && locationId !== 'all') {
+      // Check if user has access to this specific location
+      if (allowedLocationIds !== 'all' && !allowedLocationIds.includes(locationId)) {
+        return NextResponse.json(
+          { error: 'Unauthorized: You do not have access to this location' },
+          { status: 403 }
+        );
+      }
       machineMatchStage.gamingLocation = locationId;
     }
 
@@ -190,6 +245,11 @@ export async function GET(req: NextRequest) {
         { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     };
+
+    // Apply user location filter to location match stage if not admin/dev
+    if (allowedLocationIds !== 'all') {
+      locationMatchStage._id = { $in: allowedLocationIds };
+    }
 
     // Add licencee filter if specified
     if (licencee && licencee !== 'all') {

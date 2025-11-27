@@ -1,3 +1,4 @@
+import { connectDB } from '../middleware/db';
 import { GamingLocations } from '../models/gaminglocations';
 import { Licencee } from '../models/licencee';
 import UserModel from '../models/user';
@@ -8,11 +9,12 @@ import { getUserFromServer } from './users';
  * - Returns 'all' for admin/developer
  * - Returns array of licensee IDs for non-admins
  */
-export async function getUserAccessibleLicenseesFromToken(): Promise<
-  string[] | 'all'
-> {
+export async function getUserAccessibleLicenseesFromToken(userPayloadOverride?: {
+  assignedLicensees?: string[];
+  roles?: string[];
+}): Promise<string[] | 'all'> {
   try {
-    const userPayload = await getUserFromServer();
+    const userPayload = userPayloadOverride || (await getUserFromServer());
 
     if (!userPayload) {
       return [];
@@ -26,26 +28,37 @@ export async function getUserAccessibleLicenseesFromToken(): Promise<
         : [];
 
     let roles = normalizeRoles(userPayload.roles);
-    let userLicensees =
-      ((userPayload.rel as { licencee?: string[] } | undefined)?.licencee ||
-        []).map(value => String(value));
+
+    // Use only new field
+    let userLicensees: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLicensees?: string[] }).assignedLicensees
+      )
+    ) {
+      userLicensees = (
+        userPayload as { assignedLicensees: string[] }
+      ).assignedLicensees.map(value => String(value));
+    }
 
     const needsRoleHydration = roles.length === 0;
     const needsLicenseeHydration = userLicensees.length === 0;
 
-    if ((needsRoleHydration || needsLicenseeHydration) && userPayload._id) {
+    // Check if userPayload has _id (it won't if it's userPayloadOverride)
+    const userId =
+      '_id' in userPayload ? (userPayload as { _id: string })._id : null;
+
+    if ((needsRoleHydration || needsLicenseeHydration) && userId) {
       try {
         const dbUser = (await UserModel.findOne(
-          { _id: userPayload._id as string },
-          { roles: 1, rel: 1 }
+          { _id: userId },
+          { roles: 1, assignedLicensees: 1 }
         )
           .lean()
-          .exec()) as
-          | {
-              roles?: unknown;
-              rel?: { licencee?: unknown };
-            }
-          | null;
+          .exec()) as {
+          roles?: unknown;
+          assignedLicensees?: string[];
+        } | null;
 
         if (dbUser) {
           if (needsRoleHydration) {
@@ -58,13 +71,15 @@ export async function getUserAccessibleLicenseesFromToken(): Promise<
           }
 
           if (needsLicenseeHydration) {
-            const rawLicencees = dbUser.rel?.licencee;
-            const normalizedRelLicencees = Array.isArray(rawLicencees)
-              ? rawLicencees
-              : rawLicencees != null
-                ? [rawLicencees]
-                : [];
-            userLicensees = normalizedRelLicencees.map(value => String(value));
+            // Use only new field
+            if (
+              Array.isArray(dbUser.assignedLicensees) &&
+              dbUser.assignedLicensees.length > 0
+            ) {
+              userLicensees = dbUser.assignedLicensees.map(value =>
+                String(value)
+              );
+            }
           }
         }
       } catch (error) {
@@ -213,15 +228,36 @@ export async function validateLicenseeAccess(
 export async function getLicenseeLocationFilter(
   userAccessibleLicensees: string[] | 'all'
 ): Promise<string[] | 'all'> {
+  console.log('🔍 [getLicenseeLocationFilter] Input:', {
+    userAccessibleLicensees,
+    isAll: userAccessibleLicensees === 'all',
+    isArray: Array.isArray(userAccessibleLicensees),
+    length: Array.isArray(userAccessibleLicensees)
+      ? userAccessibleLicensees.length
+      : 0,
+  });
+
   if (userAccessibleLicensees === 'all') {
+    console.log('🔍 [getLicenseeLocationFilter] Returning "all"');
     return 'all';
   }
 
   if (userAccessibleLicensees.length === 0) {
+    console.log(
+      '🔍 [getLicenseeLocationFilter] No licensees - returning empty array'
+    );
     return [];
   }
 
-  // Get all locations that belong to user's licensees
+  const db = await connectDB();
+  if (!db) {
+    throw new Error('Database connection failed');
+  }
+
+  console.log(
+    '🔍 [getLicenseeLocationFilter] Querying locations for licensees:',
+    userAccessibleLicensees
+  );
   const locations = await GamingLocations.find(
     {
       'rel.licencee': { $in: userAccessibleLicensees },
@@ -230,10 +266,28 @@ export async function getLicenseeLocationFilter(
         { deletedAt: { $lt: new Date('2020-01-01') } },
       ],
     },
-    { _id: 1 }
+    { _id: 1, name: 1, 'rel.licencee': 1 }
   ).lean();
 
-  return locations.map(loc => String(loc._id));
+  const locationIds = locations.map(loc => String(loc._id));
+  console.log('🔍 [getLicenseeLocationFilter] Found locations:', {
+    count: locationIds.length,
+    firstFew: locations
+      .slice(0, 5)
+      .map(
+        (loc: {
+          _id: unknown;
+          name?: string;
+          rel?: { licencee?: string };
+        }) => ({
+          _id: String(loc._id),
+          name: loc.name,
+          licensee: loc.rel?.licencee,
+        })
+      ),
+  });
+
+  return locationIds;
 }
 
 /**
@@ -259,9 +313,7 @@ export async function getUserLocationFilter(
   userRoles: string[] = []
 ): Promise<string[] | 'all'> {
   // Check if user is admin, manager, or location admin
-  const normalizedRoles = userRoles.map(role =>
-    role?.toLowerCase?.() ?? role
-  );
+  const normalizedRoles = userRoles.map(role => role?.toLowerCase?.() ?? role);
   const isAdmin =
     userAccessibleLicensees === 'all' ||
     normalizedRoles.includes('admin') ||
@@ -301,22 +353,47 @@ export async function getUserLocationFilter(
     selectedLicenseeFilter !== '' &&
     selectedLicenseeFilter !== 'all'
   ) {
+    // For non-admin users, validate that they have access to the selected licensee
+    if (!isAdmin && Array.isArray(userAccessibleLicensees)) {
+      const normalizedSelected = String(selectedLicenseeFilter).trim();
+      const normalizedAccessible = userAccessibleLicensees.map(id =>
+        String(id).trim()
+      );
+
+      if (!normalizedAccessible.includes(normalizedSelected)) {
+        console.warn(
+          `[getUserLocationFilter] ⚠️ User attempted to access licensee they don't have access to: ${selectedLicenseeFilter}`
+        );
+        console.warn(
+          `[getUserLocationFilter] User's accessible licensees:`,
+          normalizedAccessible
+        );
+        console.warn(
+          `[getUserLocationFilter] Ignoring invalid licensee filter and using user's assigned licensees instead`
+        );
+        // Ignore the invalid licensee filter and use user's assigned licensees
+        selectedLicenseeFilter = undefined;
+      }
+    }
+
     // Filter by specific licensee (even for admins - they can use dropdown to filter)
     // First, try to resolve the licensee filter (could be ID or name)
     let licenseeId = selectedLicenseeFilter;
-    
+
     // Check if it's a name by trying to find the licensee by name
     try {
       const licenseeDoc = await Licencee.findOne(
         {
           $or: [
             { _id: selectedLicenseeFilter },
-            { name: { $regex: new RegExp(`^${selectedLicenseeFilter}$`, 'i') } },
+            {
+              name: { $regex: new RegExp(`^${selectedLicenseeFilter}$`, 'i') },
+            },
           ],
         },
         { _id: 1 }
       ).lean();
-      
+
       if (licenseeDoc && !Array.isArray(licenseeDoc)) {
         licenseeId = String(licenseeDoc._id);
         console.log(
@@ -333,7 +410,7 @@ export async function getUserLocationFilter(
         error
       );
     }
-    
+
     // Now query locations by licensee ID
     // rel.licencee is stored as a String, so we can query directly
     const locations = await GamingLocations.find(
@@ -358,13 +435,25 @@ export async function getUserLocationFilter(
     );
   } else {
     // Get all locations from user's licensees
+    console.log(
+      '🔍 [getUserLocationFilter] Getting all locations from user licensees:',
+      userAccessibleLicensees
+    );
     licenseeLocations = await getLicenseeLocationFilter(
       userAccessibleLicensees
     );
     console.log(
-      '[getUserLocationFilter] All licensee locations:',
-      licenseeLocations === 'all' ? 'all' : licenseeLocations.length
+      '🔍 [getUserLocationFilter] All licensee locations:',
+      licenseeLocations === 'all'
+        ? 'all'
+        : `${licenseeLocations.length} locations`
     );
+    if (Array.isArray(licenseeLocations) && licenseeLocations.length > 0) {
+      console.log(
+        '🔍 [getUserLocationFilter] Licensee location IDs (first 10):',
+        licenseeLocations.slice(0, 10)
+      );
+    }
   }
 
   // If licenseeLocations is 'all', check if user has location restrictions
@@ -379,8 +468,8 @@ export async function getUserLocationFilter(
     return result;
   }
 
-  // LOCATION ADMINS see ONLY their assigned locations (no licensee intersection needed)
-  // Location admins can have locations from any licensee, so we return their assigned locations directly
+  // LOCATION ADMINS see their assigned locations OR all locations from their assigned licensees
+  // If they have specific location assignments, use those. Otherwise, show all locations from their licensees.
   if (isLocationAdmin) {
     if (userLocationPermissions.length > 0) {
       // Return location admin's assigned locations directly (no licensee filtering)
@@ -391,11 +480,13 @@ export async function getUserLocationFilter(
       );
       return userLocationPermissions;
     }
-    // Location admin with no location permissions should see nothing
-    console.warn(
-      '[getUserLocationFilter] ⚠️ Location Admin with NO location permissions - returning empty array!'
+    // Location admin with no specific location assignments should see all locations from their assigned licensees
+    // This is a fallback for location admins who are assigned to a licensee but don't have specific location restrictions
+    console.log(
+      '[getUserLocationFilter] Location Admin with no specific location assignments - falling back to licensee locations:',
+      Array.isArray(licenseeLocations) ? licenseeLocations.length : 'all'
     );
-    return [];
+    return licenseeLocations;
   }
 
   // MANAGERS OR ADMINS see ALL locations for their assigned/selected licensees (no location permission intersection)
@@ -410,22 +501,72 @@ export async function getUserLocationFilter(
   // NON-MANAGERS, NON-ADMINS (collectors, technicians) must intersect with location permissions
   if (userLocationPermissions.length > 0) {
     console.log(
-      '[getUserLocationFilter] Non-manager - intersecting locations:'
+      '[getUserLocationFilter] 🔍 COLLECTOR/TECHNICIAN - Intersecting locations:'
     );
-    console.log('  Licensee locations:', licenseeLocations);
-    console.log('  User location permissions:', userLocationPermissions);
+    console.log('  📍 Licensee locations count:', licenseeLocations.length);
+    console.log(
+      '  📍 Licensee locations (first 10):',
+      licenseeLocations.slice(0, 10)
+    );
+    console.log(
+      '  👤 User location permissions count:',
+      userLocationPermissions.length
+    );
+    console.log('  👤 User location permissions:', userLocationPermissions);
 
-    const intersection = licenseeLocations.filter(id =>
-      userLocationPermissions.includes(id)
+    // Normalize IDs to strings for comparison (trim whitespace and convert to lowercase for comparison)
+    // Create a map of normalized -> original for licensee locations
+    const licenseeLocationMap = new Map<string, string>();
+    licenseeLocations.forEach(id => {
+      const normalized = String(id).trim().toLowerCase();
+      if (!licenseeLocationMap.has(normalized)) {
+        licenseeLocationMap.set(normalized, String(id));
+      }
+    });
+
+    const normalizedLicenseeLocations = Array.from(licenseeLocationMap.keys());
+    const normalizedUserPermissions = userLocationPermissions.map(id =>
+      String(id).trim().toLowerCase()
     );
 
-    console.log('  Intersection result:', intersection);
+    console.log(
+      '  🔄 Normalized licensee locations (first 5):',
+      normalizedLicenseeLocations.slice(0, 5)
+    );
+    console.log('  🔄 Normalized user permissions:', normalizedUserPermissions);
 
-    if (intersection.length === 0) {
-      console.warn('[getUserLocationFilter] ⚠️ No locations in intersection!');
+    // Perform case-insensitive intersection
+    const intersectionNormalized = normalizedLicenseeLocations.filter(id =>
+      normalizedUserPermissions.includes(id)
+    );
+
+    // Map back to original format (use the licensee locations format as source of truth)
+    const intersectionResult = intersectionNormalized
+      .map(normalized => licenseeLocationMap.get(normalized)!)
+      .filter(Boolean);
+
+    console.log('  ✅ Intersection result count:', intersectionResult.length);
+    console.log('  ✅ Intersection result:', intersectionResult);
+
+    if (intersectionResult.length === 0) {
+      console.warn(
+        '[getUserLocationFilter] ⚠️⚠️⚠️ NO LOCATIONS IN INTERSECTION! ⚠️⚠️⚠️'
+      );
       console.warn(
         "  This means the user's allowed location(s) don't belong to their assigned licensees"
       );
+      console.warn('  Checking for partial matches...');
+
+      // Check if any user permissions match any licensee locations (case-insensitive)
+      const partialMatches = normalizedUserPermissions.filter(userId =>
+        normalizedLicenseeLocations.some(licenseeId => userId === licenseeId)
+      );
+
+      if (partialMatches.length > 0) {
+        console.warn('  ⚠️ Found case-insensitive matches:', partialMatches);
+        console.warn('  ⚠️ This suggests an ID format mismatch issue');
+      }
+
       console.warn('  User needs either:');
       console.warn(
         '    1. Location assigned that belongs to one of their licensees, OR'
@@ -435,7 +576,7 @@ export async function getUserLocationFilter(
       );
     }
 
-    return intersection;
+    return intersectionResult;
   }
 
   // Non-manager, non-admin with NO location permissions should see NOTHING
@@ -461,12 +602,28 @@ export async function checkUserLocationAccess(
     }
 
     const userRoles = (user.roles as string[]) || [];
-    const userAccessibleLicensees =
-      ((user.rel as Record<string, unknown>)?.licencee as string[]) || [];
-    const userLocationPermissions =
-      ((user.resourcePermissions as Record<string, Record<string, unknown>>)?.[
-        'gaming-locations'
-      ]?.resources as string[]) || [];
+
+    // Use only new field
+    let userAccessibleLicensees: string[] = [];
+    if (
+      Array.isArray(
+        (user as { assignedLicensees?: string[] }).assignedLicensees
+      )
+    ) {
+      userAccessibleLicensees = (user as { assignedLicensees: string[] })
+        .assignedLicensees;
+    }
+
+    // Use only new field
+    let userLocationPermissions: string[] = [];
+    if (
+      Array.isArray(
+        (user as { assignedLocations?: string[] }).assignedLocations
+      )
+    ) {
+      userLocationPermissions = (user as { assignedLocations: string[] })
+        .assignedLocations;
+    }
 
     const isAdmin =
       userRoles.includes('admin') || userRoles.includes('developer');

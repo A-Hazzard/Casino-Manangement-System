@@ -1,16 +1,6 @@
 import type { ActivityLogData } from '@/lib/types/hooks';
 import type { Licensee } from '@/lib/types/licensee';
 
-export type GamingLocationsResource = {
-  entity: 'gaming-locations';
-  resources: string[];
-};
-
-export type ResourcePermissions = {
-  'gaming-locations'?: GamingLocationsResource;
-  // Add other resource types as needed
-};
-
 export type User = {
   _id: string;
   name: string;
@@ -20,10 +10,11 @@ export type User = {
   enabled: boolean;
   roles: string[];
   profilePicture: string | null;
-  resourcePermissions?: ResourcePermissions;
   rel?: {
     licencee?: string[];
   };
+  assignedLocations?: string[]; // Array of location IDs user has access to
+  assignedLicensees?: string[]; // Array of licensee IDs user has access to
   password?: string;
   profile?: {
     firstName?: string;
@@ -65,24 +56,11 @@ export type UserDetailsModalProps = {
   open: boolean;
   user: User | null;
   onClose: () => void;
-  onSave: (data: {
-    firstName?: string;
-    lastName?: string;
-    middleName?: string;
-    otherName?: string;
-    gender?: string;
-    phoneNumber?: string;
-    street?: string;
-    town?: string;
-    region?: string;
-    country?: string;
-    postalCode?: string;
-    dateOfBirth?: string;
-    idType?: string;
-    idNumber?: string;
-    notes?: string;
-    profilePicture?: string | null;
-  }) => void;
+  onSave: (
+    data: Partial<User> & {
+      password?: string;
+    }
+  ) => void;
 };
 
 // Hook types for useAdministrationData

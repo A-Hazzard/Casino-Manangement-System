@@ -423,13 +423,20 @@ export const searchLocations = async (
 export const searchAllLocations = async (
   searchTerm: string,
   licensee?: string,
-  displayCurrency?: string
+  displayCurrency?: string,
+  timePeriod?: string,
+  customDateRange?: { from: Date; to: Date }
 ): Promise<AggregatedLocation[]> => {
   try {
     const params: Record<string, string> = {};
     if (searchTerm) params.search = searchTerm;
     if (licensee) params.licencee = licensee;
     if (displayCurrency) params.currency = displayCurrency;
+    if (timePeriod) params.timePeriod = timePeriod;
+    if (customDateRange?.from && customDateRange?.to) {
+      params.startDate = customDateRange.from.toISOString();
+      params.endDate = customDateRange.to.toISOString();
+    }
 
     const response = await axios.get('/api/locations/search-all', { params });
     return response.data || [];

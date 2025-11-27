@@ -10,7 +10,9 @@
  */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { MovementRequest } from '@/app/api/lib/models/movementrequests';
 import { getClientIP } from '@/lib/utils/ipAddress';
@@ -32,13 +34,53 @@ export async function GET(req: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP 1: Parse and validate request parameters
+    // STEP 1: Connect to database and authenticate user
     // ============================================================================
-    const { searchParams } = new URL(req.url);
-    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+    await connectDB();
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
 
     // ============================================================================
-    // STEP 2: Fetch all non-deleted movement requests
+    // STEP 2: Get user location permissions
+    // ============================================================================
+    // Use only new field
+    let userAccessibleLicensees: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLicensees?: string[] })?.assignedLicensees
+      )
+    ) {
+      userAccessibleLicensees = (userPayload as { assignedLicensees: string[] })
+        .assignedLicensees;
+    }
+    // Use only new field
+    let userLocationPermissions: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
+    }
+
+    // Get user's accessible locations
+    const { searchParams } = new URL(req.url);
+    const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+    const allowedLocationIds = await getUserLocationFilter(
+      isAdminOrDev ? 'all' : userAccessibleLicensees,
+      licensee && licensee !== 'all' ? licensee : undefined,
+      userLocationPermissions,
+      userRoles
+    );
+
+    // ============================================================================
+    // STEP 3: Fetch all non-deleted movement requests
     // ============================================================================
     let requests = await MovementRequest.find({
       $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
@@ -47,7 +89,20 @@ export async function GET(req: NextRequest) {
       .lean();
 
     // ============================================================================
-    // STEP 3: Filter by licensee if provided
+    // STEP 4: Filter by user location permissions
+    // ============================================================================
+    if (allowedLocationIds !== 'all') {
+      // Filter requests to only include those where locationFrom or locationTo
+      // is in the user's accessible locations
+      requests = requests.filter(
+        request =>
+          allowedLocationIds.includes(request.locationFrom) ||
+          allowedLocationIds.includes(request.locationTo)
+      );
+    }
+
+    // ============================================================================
+    // STEP 5: Filter by licensee if provided (additional filter)
     // ============================================================================
     if (licensee && licensee !== 'all') {
       const licenseeLocations = await GamingLocations.find(
@@ -73,7 +128,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Fetch location names for lookup
+    // STEP 6: Fetch location names for lookup
     // ============================================================================
     const locations = await GamingLocations.find(
       {
@@ -91,7 +146,7 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 5: Transform requests with location names
+    // STEP 7: Transform requests with location names
     // ============================================================================
     const transformed = requests.map(req => ({
       ...req,
@@ -100,7 +155,7 @@ export async function GET(req: NextRequest) {
     }));
 
     // ============================================================================
-    // STEP 6: Return transformed requests
+    // STEP 8: Return transformed requests
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {

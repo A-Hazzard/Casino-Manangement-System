@@ -145,11 +145,15 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
-    const currentUserLicensees =
-      (currentUser?.rel as { licencee?: string[] })?.licencee || [];
-    const currentUserLocationPermissions = 
-      ((currentUser?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [])
-      .map(id => String(id));
+    let currentUserLicensees: string[] = [];
+    if (Array.isArray((currentUser as { assignedLicensees?: string[] })?.assignedLicensees)) {
+      currentUserLicensees = (currentUser as { assignedLicensees: string[] }).assignedLicensees;
+    }
+    
+    let currentUserLocationPermissions: string[] = [];
+    if (Array.isArray((currentUser as { assignedLocations?: string[] })?.assignedLocations)) {
+      currentUserLocationPermissions = (currentUser as { assignedLocations: string[] }).assignedLocations.map(id => String(id));
+    }
 
     const isAdmin =
       currentUserRoles.includes('admin') ||
@@ -165,7 +169,7 @@ export async function GET(request: NextRequest) {
           .select('_id')
           .lean(),
         Machine.find({}).select('_id gamingLocation').lean(), // Get all machines, will filter by location
-        User.find({ 'rel.licencee': { $in: currentUserLicensees } })
+        User.find({ assignedLicensees: { $in: currentUserLicensees } })
           .select('_id')
           .lean(),
       ]);
@@ -212,7 +216,7 @@ export async function GET(request: NextRequest) {
 
       // Get all users who have access to at least one of the location admin's assigned locations
       const users = await User.find({
-        'resourcePermissions.gaming-locations.resources': {
+        assignedLocations: {
           $in: currentUserLocationPermissions,
         },
       })

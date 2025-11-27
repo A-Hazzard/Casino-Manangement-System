@@ -68,6 +68,7 @@ export type MachineData = {
   gamingLocation: string;
   sasMeters?: unknown;
   lastActivity?: Date;
+  game?: string;
 };
 
 /**
@@ -361,6 +362,7 @@ export async function fetchMachinesData(
       gamingLocation: 1,
       sasMeters: 1,
       lastActivity: 1,
+      game: 1, // Include game field for display
     })
     .sort({ lastActivity: -1 })
     .toArray();
@@ -698,6 +700,7 @@ export function transformMeterData(
       locationId: machine.gamingLocation,
       createdAt: meterData.lastReadAt || machine.lastActivity,
       machineDocumentId,
+      game: machine.game || undefined,
       // Include raw fields for export logic
       customName: machine.custom?.name || undefined,
       serialNumber: machine.serialNumber?.trim() || undefined,

@@ -1,8 +1,8 @@
 # Pages Overview
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 9th, 2025  
-**Version:** 2.1.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.2.0
 
 ## Table of Contents
 
@@ -113,9 +113,15 @@ This document provides a comprehensive overview of all pages in the Evolution On
 - **URL:** `/reports`
 - **Documentation:** `Reports FRD.md`
 - **Status:** Comprehensive reporting module with multi-tab layout
-- **Access:** Developer only
+- **Access:** Developer, Admin, Manager (role-dependent tab access)
 - **Licensee Filtering:** ✅ Supported
-- **Features:** Dashboard, locations, machines, and meters reports with export functionality
+- **Features:** 
+  - Dashboard, locations, machines, and meters reports with export functionality
+  - Meters tab: Location selection, top performing machines chart, hourly charts, meter data table
+  - Comprehensive skeleton loaders matching actual layout
+  - Interactive pie charts with navigation to location details
+  - Search functionality with debouncing
+  - Server-side pagination
 
 ### ✅ Members
 

@@ -53,7 +53,7 @@ export async function GET(_request: NextRequest) {
     // ============================================================================
     const dbUser = await getUserById(userId);
 
-    if (!dbUser) {
+    if (!dbUser || Array.isArray(dbUser)) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
@@ -82,7 +82,8 @@ export async function GET(_request: NextRequest) {
         roles: dbUser.roles || [],
         rel: dbUser.rel || undefined,
         isEnabled: dbUser.isEnabled ?? true,
-        resourcePermissions: dbUser.resourcePermissions || {},
+        assignedLocations: dbUser.assignedLocations || undefined,
+        assignedLicensees: dbUser.assignedLicensees || undefined,
         createdAt: dbUser.createdAt || new Date(),
         updatedAt: dbUser.updatedAt || new Date(),
         requiresProfileUpdate,

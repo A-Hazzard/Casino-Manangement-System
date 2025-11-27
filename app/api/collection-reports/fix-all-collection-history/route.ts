@@ -47,7 +47,7 @@ export async function POST() {
       }
 
       const user = await getUserById(userId);
-      if (!user) {
+      if (!user || Array.isArray(user)) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 

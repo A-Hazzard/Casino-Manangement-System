@@ -1,8 +1,8 @@
 # Collection Report Details Page - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 2.4.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.5.0
 
 ## Recent Updates (November 11th, 2025)
 

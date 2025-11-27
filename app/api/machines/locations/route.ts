@@ -55,10 +55,11 @@ export async function GET(request: NextRequest) {
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions =
-      (userPayload?.resourcePermissions as {
-        'gaming-locations'?: { resources?: string[] };
-      })?.['gaming-locations']?.resources || [];
+    // Use only new field
+    let userLocationPermissions: string[] = [];
+    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
+    }
 
     // ============================================================================
     // STEP 4: Determine allowed location IDs

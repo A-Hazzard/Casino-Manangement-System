@@ -20,8 +20,8 @@
 The Cabinets page provides comprehensive cabinet (slot machine) management for the casino system, including real-time monitoring, SMIB configuration with live MQTT updates, and operational controls. This page serves as the central hub for managing all gaming cabinets across casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 2.3.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.4.0
 
 ## Recent Critical Fixes & Optimizations (November 11th, 2025)
 

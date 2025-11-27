@@ -33,7 +33,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
-import type { ResourcePermissions, User } from '@/lib/types/administration';
+import type { User } from '@/lib/types/administration';
 import type { Country } from '@/lib/types/country';
 import type { Licensee } from '@/lib/types/licensee';
 import type { LocationSelectItem } from '@/lib/types/location';
@@ -89,7 +89,6 @@ export type UserModalProps = {
   onSave: (
     user: Partial<User> & {
       password?: string;
-      resourcePermissions: ResourcePermissions;
     }
   ) => void;
 };
@@ -107,7 +106,10 @@ export default function UserModal({
   const isManager =
     currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
   const isLocationAdmin =
-    currentUserRoles.includes('location admin') && !isAdmin && !isDeveloper && !isManager;
+    currentUserRoles.includes('location admin') &&
+    !isAdmin &&
+    !isDeveloper &&
+    !isManager;
   const canEditAccountFields = Boolean(
     currentUser?.roles?.some(role =>
       ['admin', 'developer', 'manager', 'location admin'].includes(role)
@@ -139,18 +141,21 @@ export default function UserModal({
   }, [isDeveloper, isAdmin, isManager, isLocationAdmin]);
   const currentUserLicenseeIds = useMemo(
     () =>
-      ((currentUser?.rel as { licencee?: string[] })?.licencee || []).map(id =>
-        String(id)
-      ),
-    [currentUser?.rel]
+      (Array.isArray(currentUser?.assignedLicensees)
+        ? currentUser.assignedLicensees
+        : []
+      ).map(id => String(id)),
+    [currentUser?.assignedLicensees]
   );
-  
+
   // Get location admin's assigned locations
   const currentUserLocationPermissions = useMemo(
     () =>
-      ((currentUser?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [])
-      .map(id => String(id)),
-    [currentUser?.resourcePermissions]
+      (Array.isArray(currentUser?.assignedLocations)
+        ? currentUser.assignedLocations
+        : []
+      ).map(id => String(id)),
+    [currentUser?.assignedLocations]
   );
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -237,8 +242,12 @@ export default function UserModal({
       firstName: targetUser.profile?.firstName || '',
       lastName: targetUser.profile?.lastName || '',
       gender: targetUser.profile?.gender || '',
-      phoneNumber: (targetUser.profile as { phoneNumber?: string } | undefined)?.phoneNumber || 
-                   (targetUser.profile as { contact?: { phone?: string } } | undefined)?.contact?.phone || '',
+      phoneNumber:
+        (targetUser.profile as { phoneNumber?: string } | undefined)
+          ?.phoneNumber ||
+        (targetUser.profile as { contact?: { phone?: string } } | undefined)
+          ?.contact?.phone ||
+        '',
       street: targetUser.profile?.address?.street || '',
       town: targetUser.profile?.address?.town || '',
       region: targetUser.profile?.address?.region || '',
@@ -259,26 +268,20 @@ export default function UserModal({
     setRoles(targetUser.roles || []);
     setIsEnabled(targetUser.enabled !== undefined ? targetUser.enabled : true);
 
-    const userLocationIds =
-      targetUser.resourcePermissions?.['gaming-locations']?.resources?.map(id =>
-        String(id)
-      ) || [];
-    setSelectedLocationIds(userLocationIds);
-
-    const rawLicenseeIds =
-      targetUser.rel?.licencee?.map(id => String(id)) || [];
+    // Note: Location IDs will be initialized by the separate effect that handles
+    // location initialization from user.assignedLocations
+    // This prevents overwriting manual changes when locations/licensees load
+    // Use only new field
+    let rawLicenseeIds: string[] = [];
+    if (
+      Array.isArray(targetUser.assignedLicensees) &&
+      targetUser.assignedLicensees.length > 0
+    ) {
+      rawLicenseeIds = targetUser.assignedLicensees.map(id => String(id));
+    }
     rawLicenseeIdsRef.current = rawLicenseeIds;
 
-    const currentLocations = locationsRef.current;
-    if (currentLocations.length > 0) {
-      setAllLocationsSelected(
-        userLocationIds.length > 0 &&
-          userLocationIds.length === currentLocations.length
-      );
-    } else {
-      setAllLocationsSelected(false);
-    }
-
+    // Set licensee IDs if licensees are already loaded
     const currentLicensees = licenseesRef.current;
     if (currentLicensees.length > 0) {
       const normalizedLicenseeIds = rawLicenseeIds.map(value => {
@@ -303,56 +306,93 @@ export default function UserModal({
         normalizedLicenseeIds.length > 0 &&
         normalizedLicenseeIds.length === currentLicensees.length;
       setAllLicenseesSelected(shouldSelectAll);
-
-      if (normalizedLicenseeIds.length > 0) {
-        setSelectedLocationIds(prev =>
-          prev.filter(locId => {
-            const location = locationsRef.current.find(
-              loc => loc._id === locId
-            );
-            if (!location || !location.licenseeId) {
-              return shouldSelectAll;
-            }
-            return normalizedLicenseeIds.includes(location.licenseeId);
-          })
-        );
-      }
     } else {
+      // Licensees not loaded yet - will be set when they load
       setSelectedLicenseeIds(prev =>
         arraysEqual(prev, rawLicenseeIds) ? prev : rawLicenseeIds
       );
       setAllLicenseesSelected(false);
     }
+
+    // Note: selectedLocationIds will be set by the separate effect that handles
+    // location initialization from user.assignedLocations
   }, []);
 
-  // Initialize form data when user changes
+  // Track the current user ID to detect when user changes
+  const currentUserIdRef = useRef<string | null>(null);
+
+  // Initialize form data when user changes (only when user ID changes, not when locations/licensees load)
   useEffect(() => {
     if (user) {
-      console.log('[UserModal] Initializing with user:', {
-        username: user.username,
-        hasRel: !!user.rel,
-        relLicencee: user.rel?.licencee,
-        relLicenceeType: typeof user.rel?.licencee,
-        relLicenceeIsArray: Array.isArray(user.rel?.licencee),
-        locationPermissions:
-          user.resourcePermissions?.['gaming-locations']?.resources,
-      });
+      const userId = user._id;
 
-      setIsLoading(false);
-      hydrateFormFromUser(user);
+      // Only hydrate if this is a different user (user ID changed)
+      if (currentUserIdRef.current !== userId) {
+        console.log('[UserModal] New user detected, initializing form:', {
+          userId,
+          previousUserId: currentUserIdRef.current,
+          username: user.username,
+          assignedLicensees: user.assignedLicensees,
+          locationPermissions: user.assignedLocations,
+        });
+
+        currentUserIdRef.current = userId;
+        // Reset initialization refs when user changes
+        hasInitializedLocationsFromUserRef.current = false;
+        hasInitializedLicenseesFromLocationsRef.current = false;
+        setIsLoading(false);
+        hydrateFormFromUser(user);
+      }
     } else if (open) {
+      currentUserIdRef.current = null;
       setIsLoading(true);
-      
+
       // For location admins creating new user, auto-set licensee
       if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
         setSelectedLicenseeIds(currentUserLicenseeIds);
         setAllLicenseesSelected(false);
       }
     }
-  }, [user, open, hydrateFormFromUser, locations.length, licensees.length, isLocationAdmin, currentUserLicenseeIds]);
+  }, [
+    user,
+    open,
+    hydrateFormFromUser,
+    isLocationAdmin,
+    currentUserLicenseeIds,
+  ]);
 
-  // Load locations
+  // Track if locations have been loaded to prevent re-fetching
+  const hasLoadedLocationsRef = useRef(false);
+  // Track if we've initialized locations from user's assignedLocations (to prevent re-initialization)
+  const hasInitializedLocationsFromUserRef = useRef(false);
+  // Track if we've initialized licensees from user's locations (to prevent re-initialization)
+  const hasInitializedLicenseesFromLocationsRef = useRef(false);
+
+  // Reset refs when modal closes
   useEffect(() => {
+    if (!open) {
+      hasLoadedLocationsRef.current = false;
+      hasInitializedLocationsFromUserRef.current = false;
+      hasInitializedLicenseesFromLocationsRef.current = false;
+      // Also reset selectedLocationIds when modal closes
+      setSelectedLocationIds([]);
+      setAllLocationsSelected(false);
+    }
+  }, [open]);
+
+  // Load locations when modal opens - only once
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    // Only fetch locations if we haven't loaded them yet
+    if (hasLoadedLocationsRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
     const loadLocations = async () => {
       try {
         // Fetch all locations with showAll parameter for admin access
@@ -365,6 +405,8 @@ export default function UserModal({
             },
           }
         );
+
+        if (cancelled) return;
 
         if (!response.ok) {
           console.error('Failed to fetch locations');
@@ -389,34 +431,297 @@ export default function UserModal({
         );
 
         // Filter locations for location admins - only show their assigned locations
-        if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
+        const currentIsLocationAdmin = isLocationAdmin;
+        const currentLocationPermissions = currentUserLocationPermissions;
+        if (currentIsLocationAdmin && currentLocationPermissions.length > 0) {
           formattedLocs = formattedLocs.filter((loc: LocationSelectItem) =>
-            currentUserLocationPermissions.includes(loc._id)
+            currentLocationPermissions.includes(loc._id)
           );
         }
 
         setLocations(formattedLocs);
-
-        // Check if all locations are selected
-        const userLocationIds = (
-          user?.resourcePermissions?.['gaming-locations']?.resources || []
-        ).map(id => String(id));
-        if (userLocationIds.length > 0 && formattedLocs.length > 0) {
-          setAllLocationsSelected(
-            userLocationIds.length === formattedLocs.length
-          );
-        }
+        hasLoadedLocationsRef.current = true;
       } catch (error) {
         console.error('Error loading locations:', error);
       }
     };
 
-    loadLocations();
-  }, [user, isLocationAdmin, currentUserLocationPermissions]);
+    void loadLocations();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isLocationAdmin, currentUserLocationPermissions]);
+
+  // Track the last user ID to detect user changes
+  const lastUserIdRef = useRef<string | undefined>(undefined);
+
+  // Update location assignments when user or locations change (e.g., after API fetch)
+  useEffect(() => {
+    if (!open) {
+      // Clear selections when modal is closed
+      setSelectedLocationIds([]);
+      setAllLocationsSelected(false);
+      lastUserIdRef.current = undefined;
+      return;
+    }
+
+    // Wait for both user and locations to be available
+    if (!user) {
+      console.log(
+        '[UserModal] Waiting for user data to load before setting location assignments'
+      );
+      return;
+    }
+
+    // Reset initialization refs when user changes
+    if (lastUserIdRef.current !== user._id) {
+      console.log('[UserModal] User changed, resetting initialization refs:', {
+        previousUserId: lastUserIdRef.current,
+        newUserId: user._id,
+      });
+      hasInitializedLocationsFromUserRef.current = false;
+      hasInitializedLicenseesFromLocationsRef.current = false;
+      lastUserIdRef.current = user._id;
+    }
+
+    // Wait for locations to load before setting assignments
+    if (locations.length === 0) {
+      console.log(
+        '[UserModal] Waiting for locations to load before setting location assignments',
+        {
+          hasUser: !!user,
+          userId: user?._id,
+          locationsCount: locations.length,
+        }
+      );
+      return;
+    }
+
+    // Wait for licensees to load before setting assignments
+    // This ensures we can properly select licensees for assigned locations
+    if (licensees.length === 0) {
+      console.log(
+        '[UserModal] Waiting for licensees to load before setting location assignments',
+        {
+          hasUser: !!user,
+          userId: user?._id,
+          licenseesCount: licensees.length,
+        }
+      );
+      return;
+    }
+
+    // Helper function to truncate long strings (like profilePicture)
+    const truncateString = (str: unknown, maxLength = 50): string => {
+      if (typeof str !== 'string') return String(str);
+      if (str.length <= maxLength) return str;
+      return str.substring(0, maxLength) + '...';
+    };
+
+    // Create a safe user object for logging (truncate profilePicture)
+    const userForLogging = {
+      ...user,
+      profilePicture: user.profilePicture
+        ? truncateString(user.profilePicture, 50)
+        : user.profilePicture,
+    };
+
+    console.log('[UserModal] Updating location assignments from user:', {
+      userId: user._id,
+      username: user.username,
+      assignedLocations: user.assignedLocations,
+      locationsCount: locations.length,
+      userObject: userForLogging,
+    });
+
+    // Use only new field
+    let userLocationIds: string[] = [];
+    if (
+      Array.isArray(user.assignedLocations) &&
+      user.assignedLocations.length > 0
+    ) {
+      userLocationIds = user.assignedLocations.map(id => String(id).trim());
+      console.log('[UserModal] Found assignedLocations:', {
+        resourcesCount: userLocationIds.length,
+        resources: userLocationIds,
+      });
+    } else {
+      console.log(
+        '[UserModal] No location assignments found in assignedLocations'
+      );
+    }
+
+    console.log('[UserModal] Extracted user location IDs:', userLocationIds);
+    console.log(
+      '[UserModal] Available location IDs:',
+      locations.map(loc => loc._id)
+    );
+
+    // Only initialize locations from user data on first load
+    // Don't overwrite manual changes made by the user
+    if (!hasInitializedLocationsFromUserRef.current) {
+      if (userLocationIds.length > 0) {
+        // IMPORTANT: Set selectedLocationIds to ALL location IDs from user's assignedLocations
+        // Don't filter them - we want to preserve all assigned locations, even if they're not
+        // currently visible in the dropdown (e.g., because their licensee isn't selected)
+        // The dropdown will filter what's shown, but we need to keep all IDs for saving
+        console.log(
+          '[UserModal] Initializing selectedLocationIds from user assignedLocations:',
+          userLocationIds
+        );
+
+        // Find which locations exist in the loaded locations array (for display purposes)
+        const validLocationIds = userLocationIds.filter(locId => {
+          const normalizedLocId = String(locId).trim();
+          return locations.some(
+            (loc: LocationSelectItem) =>
+              String(loc._id).trim() === normalizedLocId
+          );
+        });
+        console.log(
+          '[UserModal] Valid location IDs (found in loaded locations):',
+          validLocationIds
+        );
+        console.log(
+          '[UserModal] Location IDs not in loaded locations (will be preserved but not visible):',
+          userLocationIds.filter(locId => {
+            const normalizedLocId = String(locId).trim();
+            return !locations.some(
+              (loc: LocationSelectItem) =>
+                String(loc._id).trim() === normalizedLocId
+            );
+          })
+        );
+
+        // Find the licensees for the valid locations and ensure they're selected
+        // This is important so the locations appear in availableLocations for editing
+        // BUT: Only do this on initial load, not when user manually changes licensees
+        if (
+          validLocationIds.length > 0 &&
+          licensees.length > 0 &&
+          !hasInitializedLicenseesFromLocationsRef.current
+        ) {
+          const locationLicenseeIds = new Set<string>();
+          validLocationIds.forEach(locId => {
+            const location = locations.find(
+              (loc: LocationSelectItem) =>
+                String(loc._id).trim() === String(locId).trim()
+            );
+            if (location?.licenseeId) {
+              locationLicenseeIds.add(String(location.licenseeId));
+            }
+          });
+
+          console.log(
+            '[UserModal] Found licensees for assigned locations:',
+            Array.from(locationLicenseeIds)
+          );
+
+          // Ensure all licensees for these locations are selected (only on initial load)
+          if (locationLicenseeIds.size > 0) {
+            const licenseeIdsArray = Array.from(locationLicenseeIds);
+            // Use functional update to get the latest state
+            setSelectedLicenseeIds(prevSelectedLicenseeIds => {
+              console.log(
+                '[UserModal] Current selectedLicenseeIds:',
+                prevSelectedLicenseeIds
+              );
+              const missingLicenseeIds = licenseeIdsArray.filter(
+                licId => !prevSelectedLicenseeIds.includes(licId)
+              );
+
+              if (missingLicenseeIds.length > 0) {
+                console.log(
+                  '[UserModal] Auto-selecting licensees for assigned locations (initial load):',
+                  missingLicenseeIds
+                );
+                const newSelectedLicenseeIds = [
+                  ...prevSelectedLicenseeIds,
+                  ...missingLicenseeIds,
+                ];
+                // Update allLicenseesSelected if all licensees are now selected
+                const allLicenseeIds = licensees.map(lic => String(lic._id));
+                setAllLicenseesSelected(
+                  newSelectedLicenseeIds.length === allLicenseeIds.length &&
+                    allLicenseeIds.every(id =>
+                      newSelectedLicenseeIds.includes(id)
+                    )
+                );
+                console.log(
+                  '[UserModal] Updated selectedLicenseeIds:',
+                  newSelectedLicenseeIds
+                );
+                return newSelectedLicenseeIds;
+              }
+              console.log(
+                '[UserModal] No missing licensees to add, keeping current selection'
+              );
+              return prevSelectedLicenseeIds;
+            });
+          }
+          // Mark as initialized to prevent re-initialization
+          hasInitializedLicenseesFromLocationsRef.current = true;
+        } else {
+          console.log('[UserModal] Skipping licensee auto-selection:', {
+            validLocationIdsLength: validLocationIds.length,
+            licenseesLength: licensees.length,
+            hasInitializedLicenseesFromLocations:
+              hasInitializedLicenseesFromLocationsRef.current,
+          });
+        }
+
+        // Set selectedLocationIds to ALL user location IDs (not just valid ones)
+        // This ensures all assigned locations are preserved when saving
+        console.log(
+          '[UserModal] Setting selectedLocationIds to:',
+          userLocationIds
+        );
+        setSelectedLocationIds(userLocationIds);
+        // Only set allLocationsSelected if all loaded locations are selected
+        setAllLocationsSelected(
+          validLocationIds.length > 0 &&
+            validLocationIds.length === locations.length
+        );
+        // Mark as initialized to prevent overwriting manual changes
+        hasInitializedLocationsFromUserRef.current = true;
+        console.log(
+          '[UserModal] Location initialization complete. selectedLocationIds set to:',
+          userLocationIds
+        );
+      } else {
+        // Clear selected locations if user has none
+        console.log(
+          '[UserModal] No location IDs found in user assignedLocations - clearing selections'
+        );
+        setSelectedLocationIds([]);
+        setAllLocationsSelected(false);
+        hasInitializedLocationsFromUserRef.current = true;
+      }
+    } else {
+      console.log(
+        '[UserModal] Locations already initialized from user - skipping to preserve manual changes'
+      );
+    }
+  }, [open, user, locations, licensees]);
+
+  // Track if we've loaded licensees to prevent re-fetching
+  const hasLoadedLicenseesRef = useRef(false);
+  const selectedLicenseeIdsRef = useRef<string[]>([]);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedLicenseeIdsRef.current = selectedLicenseeIds;
+  }, [selectedLicenseeIds]);
 
   // Load licensees when the modal is open and normalise assignments - only when modal opens
   useEffect(() => {
     if (!open) {
+      hasLoadedLicenseesRef.current = false;
+      return;
+    }
+
+    // Only load once when modal opens
+    if (hasLoadedLicenseesRef.current) {
       return;
     }
 
@@ -426,7 +731,9 @@ export default function UserModal({
       try {
         const result = await fetchLicensees();
         if (cancelled) return;
-        
+
+        hasLoadedLicenseesRef.current = true;
+
         // Extract licensees array from the result
         let lics = Array.isArray(result.licensees) ? result.licensees : [];
 
@@ -443,8 +750,9 @@ export default function UserModal({
           lics = lics.filter(lic =>
             currentUserLicenseeIds.includes(String(lic._id))
           );
-          // Auto-set the licensee for location admins
-          if (lics.length > 0 && selectedLicenseeIds.length === 0) {
+          // Auto-set the licensee for location admins only if not already set
+          const currentSelectedIds = selectedLicenseeIdsRef.current;
+          if (lics.length > 0 && currentSelectedIds.length === 0) {
             setSelectedLicenseeIds([String(lics[0]._id)]);
             setAllLicenseesSelected(false);
           }
@@ -518,7 +826,7 @@ export default function UserModal({
     return () => {
       cancelled = true;
     };
-  }, [open, isLocationAdmin, currentUserLicenseeIds, setLicensees, setSelectedLicenseeIds, setAllLicenseesSelected, isManager, selectedLicenseeIds.length]);
+  }, [open, isManager, isLocationAdmin, currentUserLicenseeIds]);
 
   // Load countries
   useEffect(() => {
@@ -666,16 +974,23 @@ export default function UserModal({
         currentUserLocationPermissions.includes(loc._id)
       );
     }
-    
+
     // For other roles, filter by selected licensees
     return allLicenseesSelected
       ? locations
       : selectedLicenseeIds.length > 0
         ? locations.filter(
-            loc => loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
+            loc =>
+              loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
           )
         : [];
-  }, [isLocationAdmin, currentUserLocationPermissions, locations, allLicenseesSelected, selectedLicenseeIds]);
+  }, [
+    isLocationAdmin,
+    currentUserLocationPermissions,
+    locations,
+    allLicenseesSelected,
+    selectedLicenseeIds,
+  ]);
 
   const handleAllLocationsChange = (checked: boolean) => {
     setAllLocationsSelected(checked);
@@ -703,6 +1018,8 @@ export default function UserModal({
       '[UserModal] handleLicenseeChange called with IDs:',
       newSelectedIds
     );
+
+    // Update licensee selection first
     setSelectedLicenseeIds(newSelectedIds);
 
     // Update "All Licensees" checkbox state
@@ -711,21 +1028,53 @@ export default function UserModal({
     );
 
     // Remove selected locations that don't belong to the newly selected licensees
-    const validLocationIds = selectedLocationIds.filter(locId => {
-      const location = locations.find(l => l._id === locId);
-      return (
-        location &&
-        location.licenseeId &&
-        newSelectedIds.includes(location.licenseeId)
-      );
-    });
+    // Use a function to get the current state to avoid stale closure
+    setSelectedLocationIds(prevLocationIds => {
+      console.log('[UserModal] Filtering locations after licensee change:', {
+        previousLocationIds: prevLocationIds,
+        newLicenseeIds: newSelectedIds,
+        previousCount: prevLocationIds.length,
+      });
 
-    if (validLocationIds.length !== selectedLocationIds.length) {
-      setSelectedLocationIds(validLocationIds);
-      toast.info(
-        "Some locations were removed because they don't belong to the selected licensees"
-      );
-    }
+      const validLocationIds = prevLocationIds.filter(locId => {
+        const location = locations.find(l => l._id === locId);
+        // Keep location if:
+        // 1. It exists in locations array AND belongs to a selected licensee, OR
+        // 2. It doesn't exist in locations array (preserve unknown locations)
+        if (!location) {
+          // Location not in loaded locations - preserve it
+          console.log(
+            `[UserModal] Preserving location ${locId} (not in loaded locations)`
+          );
+          return true;
+        }
+        // Location exists - check if it belongs to a selected licensee
+        const belongsToSelectedLicensee =
+          location.licenseeId && newSelectedIds.includes(location.licenseeId);
+        console.log(`[UserModal] Location ${locId} (${location.name}):`, {
+          licenseeId: location.licenseeId,
+          belongsToSelectedLicensee,
+          willKeep: belongsToSelectedLicensee,
+        });
+        return belongsToSelectedLicensee;
+      });
+
+      console.log('[UserModal] Location filtering result:', {
+        before: prevLocationIds.length,
+        after: validLocationIds.length,
+        removed: prevLocationIds.length - validLocationIds.length,
+        validLocationIds,
+      });
+
+      if (validLocationIds.length !== prevLocationIds.length) {
+        const removedCount = prevLocationIds.length - validLocationIds.length;
+        toast.info(
+          `${removedCount} location${removedCount > 1 ? 's' : ''} removed because ${removedCount > 1 ? "they don't" : "it doesn't"} belong to the selected licensee${newSelectedIds.length > 1 ? 's' : ''}`
+        );
+      }
+
+      return validLocationIds;
+    });
   };
 
   const handleAllLicenseesChange = (checked: boolean) => {
@@ -842,11 +1191,18 @@ export default function UserModal({
     if (hasChanged(formData.gender, existingProfile.gender)) {
       profileUpdate.gender = formData.gender.trim() || undefined;
     }
-    if (hasChanged(formData.phoneNumber, (existingProfile as { phoneNumber?: string }).phoneNumber)) {
+    if (
+      hasChanged(
+        formData.phoneNumber,
+        (existingProfile as { phoneNumber?: string }).phoneNumber
+      )
+    ) {
       const trimmedPhone = formData.phoneNumber.trim();
       // Phone number is optional, but if provided, it must be valid
       if (trimmedPhone && !validatePhoneNumber(trimmedPhone)) {
-        toast.error('Please enter a valid phone number (7-20 digits, spaces, hyphens, parentheses, optional leading +)');
+        toast.error(
+          'Please enter a valid phone number (7-20 digits, spaces, hyphens, parentheses, optional leading +)'
+        );
         return;
       }
       profileUpdate.phoneNumber = trimmedPhone || undefined;
@@ -916,10 +1272,23 @@ export default function UserModal({
     }
 
     // Check for location and licensee changes BEFORE building update object
-    const oldLocationIds = (
-      user?.resourcePermissions?.['gaming-locations']?.resources || []
-    ).map(id => String(id));
+    // Handle both 'gaming-locations' (kebab-case) and 'gamingLocations' (camelCase) for backward compatibility
+    // Use only new field
+    let oldLocationIds: string[] = [];
+    if (
+      Array.isArray(user?.assignedLocations) &&
+      user.assignedLocations.length > 0
+    ) {
+      oldLocationIds = user.assignedLocations.map(id => String(id));
+    }
     const newLocationIds = selectedLocationIds.map(id => String(id));
+
+    console.log('[UserModal] Location comparison:', {
+      oldLocationIds,
+      newLocationIds,
+      oldCount: oldLocationIds.length,
+      newCount: newLocationIds.length,
+    });
 
     // Sort for comparison
     const oldLocationIdsSorted = [...oldLocationIds].sort();
@@ -931,7 +1300,14 @@ export default function UserModal({
         (id, idx) => id === newLocationIdsSorted[idx]
       );
 
-    const oldLicenseeIds = (user?.rel?.licencee || []).map(id => String(id));
+    // Use only new field
+    let oldLicenseeIds: string[] = [];
+    if (
+      Array.isArray(user?.assignedLicensees) &&
+      user.assignedLicensees.length > 0
+    ) {
+      oldLicenseeIds = user.assignedLicensees.map(id => String(id));
+    }
     const newLicenseeIds = selectedLicenseeIds.map(id => String(id));
 
     // Sort for comparison
@@ -958,9 +1334,6 @@ export default function UserModal({
     const newEmail = updatedEmail.trim().toLowerCase();
     const usernameChanged = user.username !== updatedUsername;
     const emailChanged = originalEmail !== newEmail;
-    const rolesChanged =
-      JSON.stringify((user.roles || []).sort()) !==
-      JSON.stringify(roles.sort());
 
     // Debug logging for change detection
     console.log('[UserModal] Change Detection Debug:', {
@@ -972,75 +1345,80 @@ export default function UserModal({
       'updatedEmail isEmpty': !updatedEmail || updatedEmail.length === 0,
     });
 
-    // Structure the data properly to match the User type - only include changed fields
+    // Check if roles have changed
+    const originalRoles = (user.roles || [])
+      .map(r => String(r).trim().toLowerCase())
+      .sort();
+    const newRoles = (roles || [])
+      .map(r => String(r).trim().toLowerCase())
+      .sort();
+    const rolesChanged =
+      originalRoles.length !== newRoles.length ||
+      !originalRoles.every((role, idx) => role === newRoles[idx]);
+
+    // Structure the data properly - ONLY include fields that have changed
     // Note: Backend uses 'isEnabled' but User type uses 'enabled', so we need to allow both
     const updatedUser: Partial<User> & {
       password?: string;
-      resourcePermissions: ResourcePermissions;
       isEnabled?: boolean; // Backend field name
     } = {
       _id: user._id,
-      // Initialize with existing resourcePermissions or default
-      resourcePermissions: (user?.resourcePermissions || {
-        'gaming-locations': {
-          entity: 'gaming-locations' as const,
-          resources: [],
-        },
-      }) as ResourcePermissions,
     };
-    
-    // For location admins, auto-set licensee to their licensee
-    if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
-      // Always use the location admin's licensee
-      updatedUser.rel = {
-        licencee: currentUserLicenseeIds,
-      };
-    }
 
-    // Only include fields that have changed
+    // Only include username if it changed
     if (usernameChanged) {
       updatedUser.username = updatedUsername;
     }
-    // Always include email if we can edit account fields (to ensure it's preserved)
-    // Only include it in the update if it changed OR if we're editing from admin page
-    if (canEditAccountFields) {
-      if (emailChanged) {
-        // Email is being changed - validate and include it
-        if (updatedEmail && updatedEmail.trim()) {
-          updatedUser.email = updatedEmail.trim();
-          updatedUser.emailAddress = updatedEmail.trim();
-        } else {
-          toast.error('Email address cannot be empty');
-          return;
-        }
-      } else if (updatedEmail && updatedEmail.trim()) {
-        // Email hasn't changed but we should preserve it when editing from admin page
-        // This ensures email is always present in the update payload
-        updatedUser.email = updatedEmail.trim();
-        updatedUser.emailAddress = updatedEmail.trim();
-      }
-    }
+
+    // Only include roles if they changed
     if (rolesChanged) {
       updatedUser.roles = roles;
     }
 
-    // Only include licensee if it changed (and user can edit it)
-    // Location admins have their licensee auto-set above, so skip here
-    if (licenseeIdsChanged && !isManager && !isLocationAdmin) {
+    // Only include licensee fields if they changed
+    if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
+      // Check if location admin's licensee assignment would change
+      const currentUserLicenseeIdsSorted = [...currentUserLicenseeIds].sort();
+      const oldLicenseeIdsSortedForLocationAdmin = [...oldLicenseeIds].sort();
+      const locationAdminLicenseeChanged =
+        currentUserLicenseeIdsSorted.length !==
+          oldLicenseeIdsSortedForLocationAdmin.length ||
+        !currentUserLicenseeIdsSorted.every(
+          (id, idx) => id === oldLicenseeIdsSortedForLocationAdmin[idx]
+        );
+
+      if (locationAdminLicenseeChanged) {
+        updatedUser.rel = {
+          licencee: currentUserLicenseeIds,
+        };
+        updatedUser.assignedLicensees = currentUserLicenseeIds;
+      }
+    } else if (licenseeIdsChanged && !isManager && !isLocationAdmin) {
+      // Update licensee if it changed (and user can edit it)
       updatedUser.rel = {
         licencee: selectedLicenseeIds,
       };
+      updatedUser.assignedLicensees = selectedLicenseeIds;
     }
 
-    // Update resourcePermissions if locations changed
+    // Only include email if it changed and we can edit account fields
+    if (canEditAccountFields && emailChanged) {
+      if (updatedEmail && updatedEmail.trim()) {
+        updatedUser.email = updatedEmail.trim();
+        updatedUser.emailAddress = updatedEmail.trim();
+      } else {
+        toast.error('Email address cannot be empty');
+        return;
+      }
+    }
+
+    // Only update assignedLocations if locations changed
     if (locationIdsChanged) {
-      updatedUser.resourcePermissions = {
-        ...(user?.resourcePermissions || {}),
-        'gaming-locations': {
-          entity: 'gaming-locations' as const,
-          resources: selectedLocationIds,
-        },
-      } as ResourcePermissions;
+      updatedUser.assignedLocations = selectedLocationIds;
+      console.log('[UserModal] Updated assignedLocations with locations:', {
+        locationCount: selectedLocationIds.length,
+        locations: selectedLocationIds,
+      });
     }
 
     // Only include profile if it has fields to update
@@ -1112,7 +1490,8 @@ export default function UserModal({
       'profile',
       'profilePicture',
       'rel',
-      'resourcePermissions',
+      'assignedLocations',
+      'assignedLicensees',
     ];
 
     for (const field of fieldsToCompare) {
@@ -1155,15 +1534,11 @@ export default function UserModal({
 
     // Log location and licensee changes if they changed
     if (locationIdsChanged) {
-      ensureChangeLogged(
-        'resourcePermissions.gaming-locations.resources',
-        oldLocationIds,
-        newLocationIds
-      );
+      ensureChangeLogged('assignedLocations', oldLocationIds, newLocationIds);
     }
 
     if (licenseeIdsChanged && !isManager) {
-      ensureChangeLogged('rel.licencee', oldLicenseeIds, newLicenseeIds);
+      ensureChangeLogged('assignedLicensees', oldLicenseeIds, newLicenseeIds);
     }
 
     // Log for debugging
@@ -1177,11 +1552,14 @@ export default function UserModal({
     console.log('  Meaningful changes:', meaningfulChanges.length);
 
     // Only proceed if there are actual changes
-    if (
-      meaningfulChanges.length === 0 &&
-      !locationIdsChanged &&
-      !licenseeIdsChanged
-    ) {
+    // Check if we have any fields in updatedUser besides _id
+    const hasAnyChanges =
+      Object.keys(updatedUser).filter(key => key !== '_id').length > 0 ||
+      meaningfulChanges.length > 0 ||
+      locationIdsChanged ||
+      licenseeIdsChanged;
+
+    if (!hasAnyChanges) {
       console.error('[UserModal] ❌ No changes detected - blocking save');
       console.error('  This might be a bug if you just made changes!');
       toast.info('No changes detected');
@@ -1202,6 +1580,46 @@ export default function UserModal({
         new: newLicenseeIdsSorted,
       });
     }
+
+    // ============================================================================
+    // STEP: Log the complete updatedUser object before sending
+    // ============================================================================
+    console.log('[UserModal] ============================================');
+    console.log('[UserModal] STEP 1: Complete updatedUser object:');
+    console.log('[UserModal]   _id:', updatedUser._id);
+    console.log('[UserModal]   username:', updatedUser.username);
+    console.log('[UserModal]   email:', updatedUser.email);
+    console.log('[UserModal]   emailAddress:', updatedUser.emailAddress);
+    console.log('[UserModal]   roles:', updatedUser.roles);
+    console.log('[UserModal]   rel:', JSON.stringify(updatedUser.rel, null, 2));
+    console.log(
+      '[UserModal]   assignedLocations:',
+      updatedUser.assignedLocations
+        ? `Array(${updatedUser.assignedLocations.length})`
+        : 'undefined',
+      updatedUser.assignedLocations
+    );
+    console.log(
+      '[UserModal]   assignedLicensees:',
+      updatedUser.assignedLicensees
+        ? `Array(${updatedUser.assignedLicensees.length})`
+        : 'undefined',
+      updatedUser.assignedLicensees
+    );
+    console.log(
+      '[UserModal]   profile:',
+      JSON.stringify(updatedUser.profile, null, 2)
+    );
+    console.log(
+      '[UserModal]   profilePicture:',
+      updatedUser.profilePicture ? 'present' : 'null'
+    );
+    console.log(
+      '[UserModal]   password:',
+      updatedUser.password ? 'present' : 'not included'
+    );
+    console.log('[UserModal]   isEnabled:', updatedUser.isEnabled);
+    console.log('[UserModal] ============================================');
 
     setIsLoading(true);
     try {
@@ -1377,7 +1795,10 @@ export default function UserModal({
                         type="tel"
                         value={formData.phoneNumber}
                         onChange={e =>
-                          setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))
+                          setFormData(prev => ({
+                            ...prev,
+                            phoneNumber: e.target.value,
+                          }))
                         }
                         placeholder="Enter phone number"
                         className="w-full"
@@ -2007,7 +2428,9 @@ export default function UserModal({
                           <div className="text-center">
                             <div className="text-gray-700">
                               {allLicenseesSelected
-                                ? `All Licensees (${licensees.length} licensees)`
+                                ? licensees.length === 1
+                                  ? licensees[0]?.name || 'Unknown Licensee'
+                                  : `All Licensees (${licensees.length} licensees)`
                                 : selectedLicenseeIds.length > 0
                                   ? selectedLicenseeIds
                                       .map(
@@ -2028,7 +2451,8 @@ export default function UserModal({
                             )}
                             {isLocationAdmin && (
                               <p className="mt-2 text-xs italic text-gray-500">
-                                Licensee is automatically set to your assigned licensee
+                                Licensee is automatically set to your assigned
+                                licensee
                               </p>
                             )}
                           </div>
@@ -2068,7 +2492,9 @@ export default function UserModal({
                           <div className="text-center">
                             <div className="text-gray-700">
                               {allLicenseesSelected
-                                ? `All Licensees (${licensees.length} licensees)`
+                                ? licensees.length === 1
+                                  ? licensees[0]?.name || 'Unknown Licensee'
+                                  : `All Licensees (${licensees.length} licensees)`
                                 : selectedLicenseeIds.length > 0
                                   ? selectedLicenseeIds
                                       .map(
@@ -2125,9 +2551,40 @@ export default function UserModal({
                               (allLicenseesSelected ||
                                 selectedLicenseeIds.length > 0) && (
                                 <MultiSelectDropdown
+                                  key={`locations-${selectedLocationIds.join(',')}-${selectedLicenseeIds.join(',')}-${user?._id || 'no-user'}`}
                                   options={locationOptions}
-                                  selectedIds={selectedLocationIds}
-                                  onChange={setSelectedLocationIds}
+                                  selectedIds={selectedLocationIds.filter(id =>
+                                    locationOptions.some(opt => opt.id === id)
+                                  )}
+                                  onChange={newSelectedIds => {
+                                    // When locations are changed via dropdown:
+                                    // 1. Keep locations that aren't in current options (from other licensees)
+                                    // 2. Update locations that are in current options based on dropdown selection
+                                    setSelectedLocationIds(prevLocationIds => {
+                                      const locationsNotInOptions =
+                                        prevLocationIds.filter(
+                                          id =>
+                                            !locationOptions.some(
+                                              opt => opt.id === id
+                                            )
+                                        );
+                                      // Merge: locations from other licensees + new selections from dropdown
+                                      const merged = [
+                                        ...locationsNotInOptions,
+                                        ...newSelectedIds,
+                                      ];
+                                      console.log(
+                                        '[UserModal] Location selection changed:',
+                                        {
+                                          previous: prevLocationIds,
+                                          notInOptions: locationsNotInOptions,
+                                          newFromDropdown: newSelectedIds,
+                                          merged: merged,
+                                        }
+                                      );
+                                      return merged;
+                                    });
+                                  }}
                                   placeholder={
                                     availableLocations.length === 0
                                       ? 'No locations available for selected licensees'
@@ -2169,10 +2626,26 @@ export default function UserModal({
                                   <tbody>
                                     {selectedLocationIds
                                       .map(id => {
+                                        // Find location in loaded locations array
                                         const location = locations.find(
-                                          l => l._id === id
+                                          l =>
+                                            String(l._id).trim() ===
+                                            String(id).trim()
                                         );
-                                        if (!location) return null;
+                                        // If location not found in loaded locations, still show the ID
+                                        // This handles cases where locations belong to unselected licensees
+                                        if (!location) {
+                                          return (
+                                            <tr key={id}>
+                                              <td className="border border-gray-300 px-4 py-2 text-gray-600">
+                                                {id} (Location not loaded)
+                                              </td>
+                                              <td className="border border-gray-300 px-4 py-2 text-gray-500">
+                                                N/A
+                                              </td>
+                                            </tr>
+                                          );
+                                        }
 
                                         const licensee = location.licenseeId
                                           ? licensees.find(

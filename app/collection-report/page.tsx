@@ -66,10 +66,8 @@ import {
   getLocationsWithMachines,
 } from '@/lib/helpers/collectionReport';
 import {
-  handleTabChange,
   resetCollectorFilters,
   resetSchedulerFilters,
-  syncStateWithURL,
 } from '@/lib/helpers/collectionReportPage';
 import {
   animateCards,
@@ -237,7 +235,9 @@ function CollectionReportContent() {
   useEffect(() => {
     // Only auto-select on initial mount (when user is loaded for the first time)
     if (user && isInitialMount.current && !hasInitializedLicensee.current) {
-      const userLicensees = user.rel?.licencee || [];
+      const userLicensees = Array.isArray(user.assignedLicensees)
+        ? user.assignedLicensees
+        : [];
 
       // If user has exactly 1 licensee, auto-select it (only on initial mount)
       if (
@@ -306,14 +306,40 @@ function CollectionReportContent() {
   // Update URL when tab changes
   const handleTabChangeLocal = useCallback(
     (value: string) => {
-      handleTabChange(value, setActiveTab, pushToUrl);
+      const newTab = value as CollectionView;
+      // Update state immediately for instant UI response
+      setActiveTab(newTab);
+      // Update URL asynchronously (don't block UI)
+      setTimeout(() => {
+        pushToUrl(newTab);
+      }, 0);
     },
     [pushToUrl]
   );
 
   // Keep state in sync with URL changes (for browser back/forward)
+  // Only update if URL section differs from current activeTab
   useEffect(() => {
-    syncStateWithURL(searchParams, activeTab, setActiveTab);
+    const section = searchParams?.get('section');
+    const urlTab = section as CollectionView | null;
+
+    // Map URL section to CollectionView
+    let newTab: CollectionView | null = null;
+    if (
+      urlTab === 'monthly' ||
+      urlTab === 'manager' ||
+      urlTab === 'collector' ||
+      urlTab === 'collection'
+    ) {
+      newTab = urlTab;
+    } else if (!section) {
+      newTab = 'collection'; // default
+    }
+
+    // Only update if URL differs from current state
+    if (newTab && newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
   }, [searchParams, activeTab]);
 
   // ============================================================================
@@ -988,7 +1014,7 @@ function CollectionReportContent() {
     if (!monthlyDateRange.from || !monthlyDateRange.to) return;
     setMonthlyLoading(true);
     setMonthlyPage(1);
-    
+
     // Convert location ID to name for API call
     const locationName =
       monthlyLocation !== 'all'
@@ -996,7 +1022,7 @@ function CollectionReportContent() {
             loc => loc.id === monthlyLocation || loc.name === monthlyLocation
           )?.name || monthlyLocation
         : undefined;
-    
+
     fetchMonthlyReportSummaryAndDetails({
       startDate: monthlyDateRange.from,
       endDate: monthlyDateRange.to,
@@ -1120,7 +1146,7 @@ function CollectionReportContent() {
       fetchMonthlyReportLocations(selectedLicencee || undefined)
         .then((locations: Array<{ id: string; name: string }>) => {
           setMonthlyLocations(locations);
-          
+
           // Check if current location is still valid
           if (monthlyLocation !== 'all') {
             const locationExists = locations.some(
@@ -1146,7 +1172,13 @@ function CollectionReportContent() {
     if (activeTab === 'monthly') {
       fetchMonthlyData();
     }
-  }, [monthlyDateRange, monthlyLocation, selectedLicencee, activeTab, fetchMonthlyData]);
+  }, [
+    monthlyDateRange,
+    monthlyLocation,
+    selectedLicencee,
+    activeTab,
+    fetchMonthlyData,
+  ]);
 
   // Set date range to last month for monthly report
   const handleLastMonth = () => {

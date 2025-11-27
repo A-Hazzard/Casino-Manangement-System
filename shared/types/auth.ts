@@ -65,12 +65,8 @@ export type UserAuthPayload = {
   rel?: {
     licencee?: string[];
   };
-  resourcePermissions?: {
-    'gaming-locations'?: {
-      entity: string;
-      resources: string[];
-    };
-  };
+  assignedLocations?: string[];
+  assignedLicensees?: string[];
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -130,6 +126,8 @@ export type JwtPayload = {
   rel?: {
     licencee?: string[];
   };
+  assignedLocations?: string[];
+  assignedLicensees?: string[];
   // Enhanced security
   sessionId: string;
   dbContext: {

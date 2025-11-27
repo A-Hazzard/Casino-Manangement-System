@@ -18,8 +18,8 @@
 The Login page provides secure authentication for users accessing the casino management system. This page serves as the entry point for all authenticated users and implements robust security measures.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 2.3.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.4.0
 
 ### File Information
 

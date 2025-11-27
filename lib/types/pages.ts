@@ -1,5 +1,4 @@
 import { GamingMachine } from '@/shared/types/entities';
-import type { ResourcePermissions } from './administration';
 
 // Location page types
 export type ExtendedCabinetDetail = GamingMachine & {
@@ -46,7 +45,6 @@ export type AddUserForm = {
   lastName?: string;
   gender?: string;
   profilePicture?: string | null;
-  resourcePermissions?: ResourcePermissions;
   allowedLocations: string[];
   licenseeIds?: string[];
   street?: string;

@@ -15,6 +15,7 @@ export type MetersReportData = {
   // Optional fields for export logic
   customName?: string;
   serialNumber?: string;
+  game?: string;
 };
 
 export type MetersReportResponse = {

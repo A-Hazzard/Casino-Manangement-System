@@ -21,6 +21,10 @@ import {
 } from '@/app/api/lib/helpers/licenseeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { getLicenseeCurrency } from '@/lib/helpers/rates';
@@ -92,35 +96,78 @@ export async function GET(req: NextRequest) {
     // STEP 2: Connect to database
     // ============================================================================
     const dbConnectStart = Date.now();
-    const db = await connectDB();
+    await connectDB();
     perfTimers.dbConnect = Date.now() - dbConnectStart;
-
-    if (!db) {
-      return NextResponse.json(
-        { error: 'DB connection failed' },
-        { status: 500 }
-      );
-    }
 
     // ============================================================================
     // STEP 3: Authenticate user and get permissions
     // ============================================================================
     const authStart = Date.now();
-    const userPayload = await getUserFromServer();
-    perfTimers.auth = Date.now() - authStart;
-    if (!userPayload) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // DEV MODE: Allow bypassing auth for testing
+    const isDevMode = process.env.NODE_ENV === 'development';
+    const testUserId = searchParams.get('testUserId');
 
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions =
-      (
-        userPayload?.resourcePermissions as {
-          'gaming-locations'?: { resources?: string[] };
+    let userPayload;
+    let userRoles: string[] = [];
+    let userLocationPermissions: string[] = [];
+    let userAccessibleLicensees: string[] | 'all' = [];
+
+    if (isDevMode && testUserId) {
+      perfTimers.auth = Date.now() - authStart;
+      // Dev mode: Get user directly from DB for testing
+      console.warn(
+        '[Reports/Locations] 🔧 DEV MODE: Using testUserId:',
+        testUserId
+      );
+      const UserModel = (await import('../../lib/models/user')).default;
+      const testUserResult = await UserModel.findOne({
+        _id: testUserId,
+      }).lean();
+      if (testUserResult && !Array.isArray(testUserResult)) {
+        const testUser = testUserResult as {
+          roles?: string[];
+          assignedLocations?: string[];
+          assignedLicensees?: string[];
+        };
+        userRoles = (testUser.roles || []) as string[];
+        userLocationPermissions = Array.isArray(testUser.assignedLocations)
+          ? testUser.assignedLocations.map((id: string) => String(id))
+          : [];
+        userAccessibleLicensees = Array.isArray(testUser.assignedLicensees)
+          ? testUser.assignedLicensees.map((id: string) => String(id))
+          : [];
+        console.log('[Reports/Locations] DEV MODE - User from DB:', {
+          roles: userRoles,
+          assignedLocations: userLocationPermissions,
+          assignedLicensees: userAccessibleLicensees,
+        });
+      } else {
+        return NextResponse.json(
+          { error: 'Test user not found' },
+          { status: 404 }
+        );
+      }
+    } else {
+      // Normal mode: Get user from JWT
+      userPayload = await getUserFromServer();
+      perfTimers.auth = Date.now() - authStart;
+      if (!userPayload) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      if (userPayload) {
+        userRoles = (userPayload.roles as string[]) || [];
+        // Extract assignedLocations from new field only
+        const assignedLocations = (
+          userPayload as { assignedLocations?: string[] }
+        )?.assignedLocations;
+        if (Array.isArray(assignedLocations) && assignedLocations.length > 0) {
+          userLocationPermissions = assignedLocations;
         }
-      )?.['gaming-locations']?.resources || [];
+      }
 
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+      userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    }
 
     // ============================================================================
     // STEP 4: Determine display currency
@@ -135,7 +182,28 @@ export async function GET(req: NextRequest) {
 
     // Default to the licensee's native currency when none is provided
     if (!currencyParam && resolvedLicensee) {
-      displayCurrency = getLicenseeCurrency(resolvedLicensee);
+      // Get licensee name from ID to properly resolve currency
+      try {
+        const licenseeDoc = await Licencee.findOne(
+          { _id: resolvedLicensee },
+          { name: 1 }
+        ).lean();
+        if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
+          displayCurrency = getLicenseeCurrency(licenseeDoc.name);
+          console.log(
+            `🔍 [Reports/Locations] Auto-detected currency: ${displayCurrency} for licensee: ${licenseeDoc.name} (${resolvedLicensee})`
+          );
+        } else {
+          console.warn(
+            `🔍 [Reports/Locations] Licensee not found: ${resolvedLicensee}, using default USD`
+          );
+        }
+      } catch (error) {
+        console.warn(
+          '[Reports/Locations] Failed to get licensee name for currency, using default USD:',
+          error
+        );
+      }
     }
 
     // ============================================================================
@@ -146,6 +214,47 @@ export async function GET(req: NextRequest) {
       licencee || undefined,
       userLocationPermissions,
       userRoles
+    );
+
+    // Debug logging for all users (especially collectors)
+    console.log(
+      '🔍 [Reports/Locations] ========================================'
+    );
+    console.log('🔍 [Reports/Locations] User roles:', userRoles);
+    console.log(
+      '🔍 [Reports/Locations] User assignedLocations count:',
+      userLocationPermissions.length
+    );
+    console.log(
+      '🔍 [Reports/Locations] User assignedLocations:',
+      userLocationPermissions
+    );
+    console.log(
+      '🔍 [Reports/Locations] User accessibleLicensees:',
+      userAccessibleLicensees
+    );
+    console.log('🔍 [Reports/Locations] Licencee param:', licencee);
+    console.log(
+      '🔍 [Reports/Locations] Allowed location IDs:',
+      allowedLocationIds === 'all'
+        ? 'all (no filtering)'
+        : `${Array.isArray(allowedLocationIds) ? allowedLocationIds.length : 0} locations`
+    );
+    if (Array.isArray(allowedLocationIds) && allowedLocationIds.length > 0) {
+      console.log(
+        '🔍 [Reports/Locations] Allowed location IDs list (first 10):',
+        allowedLocationIds.slice(0, 10)
+      );
+    } else if (
+      Array.isArray(allowedLocationIds) &&
+      allowedLocationIds.length === 0
+    ) {
+      console.warn(
+        '⚠️⚠️⚠️ [Reports/Locations] EMPTY ALLOWED LOCATION IDs - USER WILL SEE NO DATA ⚠️⚠️⚠️'
+      );
+    }
+    console.log(
+      '🔍 [Reports/Locations] ========================================'
     );
 
     // ============================================================================
@@ -182,19 +291,16 @@ export async function GET(req: NextRequest) {
       // Resolve licensee name to ID if needed (getUserLocationFilter should handle this, but double-check)
       let licenseeId = licencee;
       try {
-        const licenseeDoc = await db
-          .collection('licencees')
-          .findOne(
-            {
-              $or: [
-                { _id: licencee },
-                { name: { $regex: new RegExp(`^${licencee}$`, 'i') } },
-              ],
-            } as Record<string, unknown>,
-            { projection: { _id: 1 } }
-          );
-        if (licenseeDoc) {
-          licenseeId = licenseeDoc._id.toString();
+        const licenseeDoc = await Licencee.findOne({
+          $or: [
+            { _id: licencee },
+            { name: { $regex: new RegExp(`^${licencee}$`, 'i') } },
+          ],
+        })
+          .select('_id')
+          .lean();
+        if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc._id) {
+          licenseeId = String(licenseeDoc._id);
         }
       } catch (error) {
         console.warn(
@@ -223,19 +329,14 @@ export async function GET(req: NextRequest) {
     // STEP 7: Fetch locations from database
     // ============================================================================
     const locationsStart = Date.now();
-    const locations = await db
-      .collection('gaminglocations')
-      .find(locationMatchStage, {
-        projection: {
-          _id: 1,
-          name: 1,
-          gameDayOffset: 1,
-          isLocalServer: 1,
-          rel: 1,
-          country: 1,
-        },
-      })
-      .toArray();
+    const locations = await GamingLocations.find(locationMatchStage, {
+      _id: 1,
+      name: 1,
+      gameDayOffset: 1,
+      isLocalServer: 1,
+      rel: 1,
+      country: 1,
+    }).lean();
     perfTimers.fetchLocations = Date.now() - locationsStart;
 
     // ============================================================================
@@ -279,58 +380,58 @@ export async function GET(req: NextRequest) {
       });
 
       // Get all location IDs
-      const allLocationIds = locations.map(loc => loc._id.toString());
+      const allLocationIds = locations.map((loc: { _id: unknown }) =>
+        String(loc._id)
+      );
 
       // Single aggregation for all machines across all locations
-      const allMachinesData = await db
-        .collection('machines')
-        .find({
-          gamingLocation: { $in: allLocationIds },
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
-          ],
-        })
-        .toArray();
+      const allMachinesData = await Machine.find({
+        gamingLocation: { $in: allLocationIds },
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      }).lean();
 
       // Create machine-to-location map
       const machineToLocation = new Map();
       const locationToMachines = new Map();
-      allMachinesData.forEach(machine => {
-        const machineId = machine._id.toString();
-        const locationId = machine.gamingLocation;
-        machineToLocation.set(machineId, locationId);
-        if (!locationToMachines.has(locationId)) {
-          locationToMachines.set(locationId, []);
+      allMachinesData.forEach(
+        (machine: { _id: unknown; gamingLocation?: string }) => {
+          const machineId = String(machine._id);
+          const locationId = machine.gamingLocation;
+          machineToLocation.set(machineId, locationId);
+          if (!locationToMachines.has(locationId)) {
+            locationToMachines.set(locationId, []);
+          }
+          locationToMachines.get(locationId).push(machine);
         }
-        locationToMachines.get(locationId).push(machine);
-      });
+      );
 
       // Get ALL machine IDs and create a machine-to-location map for grouping
-      const allMachineIds = allMachinesData.map(m => m._id.toString());
+      const allMachineIds = allMachinesData.map((m: { _id: unknown }) =>
+        String(m._id)
+      );
 
       // Fetch meters WITHOUT $lookup (much faster!)
-      const allMeters = await db
-        .collection('meters')
-        .aggregate([
-          {
-            $match: {
-              machine: { $in: allMachineIds },
-              readAt: {
-                $gte: globalStart,
-                $lte: globalEnd,
-              },
+      const allMeters = await Meters.aggregate([
+        {
+          $match: {
+            machine: { $in: allMachineIds },
+            readAt: {
+              $gte: globalStart,
+              $lte: globalEnd,
             },
           },
-          {
-            $project: {
-              machine: 1,
-              drop: '$movement.drop',
-              totalCancelledCredits: '$movement.totalCancelledCredits',
-            },
+        },
+        {
+          $project: {
+            machine: 1,
+            drop: '$movement.drop',
+            totalCancelledCredits: '$movement.totalCancelledCredits',
           },
-        ])
-        .toArray();
+        },
+      ]);
 
       // Group meters by location using the machine-to-location map (in-memory, very fast!)
       const locationMetricsMap = new Map();
@@ -368,7 +469,7 @@ export async function GET(req: NextRequest) {
 
       // Build location results
       for (const location of locations) {
-        const locationId = location._id.toString();
+        const locationId = String((location as { _id: unknown })._id);
         const machines = locationToMachines.get(locationId) || [];
         const metrics = metricsMap.get(locationId) || {
           moneyIn: 0,
@@ -447,8 +548,8 @@ export async function GET(req: NextRequest) {
 
         // Process batch in parallel
         const batchResults = await Promise.all(
-          batch.map(async location => {
-            const locationId = location._id.toString();
+          batch.map(async (location: { _id: unknown }) => {
+            const locationId = String(location._id);
             const gamingDayRange = gamingDayRanges.get(locationId);
 
             if (!gamingDayRange) {
@@ -461,63 +562,56 @@ export async function GET(req: NextRequest) {
             try {
               // 🚀 SUPER OPTIMIZED: Fetch machines ONCE, then aggregate meters
               // Get machines with only essential fields (reduces data transfer)
-              const machines = await db
-                .collection('machines')
-                .find(
-                  {
-                    gamingLocation: locationId,
-                    $or: [
-                      { deletedAt: null },
-                      { deletedAt: { $lt: new Date('2020-01-01') } },
-                    ],
-                  },
-                  {
-                    projection: {
-                      _id: 1,
-                      assetNumber: 1,
-                      serialNumber: 1,
-                      isSasMachine: 1,
-                      lastActivity: 1,
-                    },
-                  }
-                )
-                .toArray();
+              const machines = await Machine.find(
+                {
+                  gamingLocation: locationId,
+                  $or: [
+                    { deletedAt: null },
+                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                  ],
+                },
+                {
+                  _id: 1,
+                  assetNumber: 1,
+                  serialNumber: 1,
+                  isSasMachine: 1,
+                  lastActivity: 1,
+                }
+              ).lean();
 
               let metrics;
               if (machines.length === 0) {
                 metrics = [{ moneyIn: 0, moneyOut: 0, meterCount: 0 }];
               } else {
                 // Aggregate meters with optimized projection (only fetch what we need)
-                const machineIds = machines.map(m => m._id.toString());
-                metrics = await db
-                  .collection('meters')
-                  .aggregate([
-                    {
-                      $match: {
-                        machine: { $in: machineIds },
-                        readAt: {
-                          $gte: gamingDayRange.rangeStart,
-                          $lte: gamingDayRange.rangeEnd,
-                        },
+                const machineIds = machines.map((m: { _id: unknown }) =>
+                  String(m._id)
+                );
+                metrics = await Meters.aggregate([
+                  {
+                    $match: {
+                      machine: { $in: machineIds },
+                      readAt: {
+                        $gte: gamingDayRange.rangeStart,
+                        $lte: gamingDayRange.rangeEnd,
                       },
                     },
-                    {
-                      $project: {
-                        drop: '$movement.drop',
-                        totalCancelledCredits:
-                          '$movement.totalCancelledCredits',
-                      },
+                  },
+                  {
+                    $project: {
+                      drop: '$movement.drop',
+                      totalCancelledCredits: '$movement.totalCancelledCredits',
                     },
-                    {
-                      $group: {
-                        _id: null,
-                        moneyIn: { $sum: '$drop' },
-                        moneyOut: { $sum: '$totalCancelledCredits' },
-                        meterCount: { $sum: 1 },
-                      },
+                  },
+                  {
+                    $group: {
+                      _id: null,
+                      moneyIn: { $sum: '$drop' },
+                      moneyOut: { $sum: '$totalCancelledCredits' },
+                      meterCount: { $sum: 1 },
                     },
-                  ])
-                  .toArray();
+                  },
+                ]);
               }
 
               const locationMetrics = metrics[0] || {
@@ -554,8 +648,10 @@ export async function GET(req: NextRequest) {
               return {
                 _id: locationId,
                 location: locationId,
-                locationName: location.name,
-                isLocalServer: location.isLocalServer || false,
+                locationName: (location as { name?: string }).name || '',
+                isLocalServer:
+                  (location as { isLocalServer?: boolean }).isLocalServer ||
+                  false,
                 moneyIn: locationMetrics.moneyIn,
                 moneyOut: locationMetrics.moneyOut,
                 gross: gross,
@@ -565,15 +661,23 @@ export async function GET(req: NextRequest) {
                 nonSasMachines: nonSasMachines,
                 hasSasMachines: sasMachines > 0,
                 hasNonSasMachines: nonSasMachines > 0,
-                rel: location.rel, // Include rel for licensee information
-                country: location.country, // Include country for currency mapping
-                machines: machines.map(m => ({
-                  _id: m._id.toString(),
-                  assetNumber: m.assetNumber,
-                  serialNumber: m.serialNumber,
-                  isSasMachine: m.isSasMachine,
-                  lastActivity: m.lastActivity,
-                })),
+                rel: (location as { rel?: { licencee?: string } }).rel, // Include rel for licensee information
+                country: (location as { country?: string }).country, // Include country for currency mapping
+                machines: machines.map(
+                  (m: {
+                    _id: unknown;
+                    assetNumber?: string;
+                    serialNumber?: string;
+                    isSasMachine?: boolean;
+                    lastActivity?: Date;
+                  }) => ({
+                    _id: String(m._id),
+                    assetNumber: m.assetNumber,
+                    serialNumber: m.serialNumber,
+                    isSasMachine: m.isSasMachine,
+                    lastActivity: m.lastActivity,
+                  })
+                ),
               };
             } catch (error) {
               console.error(
@@ -625,23 +729,21 @@ export async function GET(req: NextRequest) {
         );
 
         // Get licensee details for currency mapping
-        const licenseesData = await db
-          .collection('licencees')
-          .find(
-            {
-              $or: [
-                { deletedAt: null },
-                { deletedAt: { $lt: new Date('2020-01-01') } },
-              ],
-            },
-            { projection: { _id: 1, name: 1 } }
-          )
-          .toArray();
+        const licenseesData = await Licencee.find({
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+        })
+          .select('_id name')
+          .lean();
 
         // Create a map of licensee ID to name
         const licenseeIdToName = new Map<string, string>();
-        licenseesData.forEach(lic => {
-          licenseeIdToName.set(lic._id.toString(), lic.name);
+        licenseesData.forEach((lic: { _id: unknown; name?: string }) => {
+          if (!Array.isArray(lic) && lic._id && lic.name) {
+            licenseeIdToName.set(String(lic._id), lic.name);
+          }
         });
 
         // Convert each location's financial data
@@ -745,6 +847,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(response);
   } catch (err: unknown) {
     console.error('Error in reports locations route:', err);
+    if (err instanceof Error) {
+      console.error('[Reports/Locations] Error stack:', err.stack);
+    }
+    console.error('[Reports/Locations] Full error:', err);
 
     // Handle specific MongoDB connection errors
     if (err instanceof Error) {

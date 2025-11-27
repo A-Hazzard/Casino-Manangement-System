@@ -21,7 +21,8 @@ type CurrentUserResponse = {
       licencee?: string[];
     };
     isEnabled: boolean;
-    resourcePermissions?: UserAuthPayload['resourcePermissions'];
+    assignedLocations?: string[];
+    assignedLicensees?: string[];
     createdAt: string;
     updatedAt: string;
     requiresProfileUpdate?: boolean;
@@ -94,7 +95,8 @@ export function useCurrentUserQuery() {
         roles: dbUser.roles,
         rel: dbUser.rel, // ✅ Include rel field
         isEnabled: dbUser.isEnabled,
-        resourcePermissions: dbUser.resourcePermissions,
+        assignedLocations: dbUser.assignedLocations,
+        assignedLicensees: dbUser.assignedLicensees,
         requiresProfileUpdate: dbUser.requiresProfileUpdate,
         invalidProfileFields: dbUser.invalidProfileFields,
         invalidProfileReasons: dbUser.invalidProfileReasons,
@@ -108,7 +110,7 @@ export function useCurrentUserQuery() {
         setUser(userPayload);
 
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ User store updated with rel.licencee:', dbUser.rel);
+          console.log('✅ User store updated with assignedLicensees:', dbUser.assignedLicensees);
         }
       }
 

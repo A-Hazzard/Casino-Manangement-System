@@ -10,6 +10,7 @@
  * - Supports licensee filtering (defaults to "all").
  * - Handles errors gracefully with default values.
  * - Provides type definitions for machine statistics.
+ * - Uses new dedicated machine status API that queries lastActivity.
  */
 
 import axios from 'axios';
@@ -29,19 +30,29 @@ export type MachineStats = {
 // ============================================================================
 
 /**
- * Fetches machine statistics for online/offline counts
+ * Fetches machine statistics for online/offline counts based on lastActivity
+ * Uses the new dedicated /api/machines/status endpoint that properly filters
+ * by user permissions and selected licensee.
+ *
  * @param licensee - The licensee filter (defaults to "all")
+ * @param locationId - Optional specific location ID to get stats for that location only
  * @returns Promise resolving to machine stats
  */
 export async function fetchMachineStats(
-  licensee: string = 'all'
+  licensee: string = 'all',
+  locationId?: string
 ): Promise<MachineStats> {
   try {
     const params = new URLSearchParams();
-    params.append('licensee', licensee);
+    if (licensee && licensee !== 'all') {
+      params.append('licensee', licensee);
+    }
+    if (locationId) {
+      params.append('locationId', locationId);
+    }
 
     const res = await axios.get(
-      `/api/analytics/machines/stats?${params.toString()}`
+      `/api/machines/status?${params.toString()}`
     );
     const data = res.data;
 

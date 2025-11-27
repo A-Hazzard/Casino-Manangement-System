@@ -46,7 +46,7 @@ export async function GET(_request: NextRequest) {
       }
 
       const user = await getUserById(userId);
-      if (!user) {
+      if (!user || Array.isArray(user)) {
         const duration = Date.now() - startTime;
         console.error(
           `[Investigate Issues GET API] User not found after ${duration}ms.`

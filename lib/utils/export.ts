@@ -43,10 +43,14 @@ async function getBase64FromUrl(url: string): Promise<string> {
  * Exports the monthly report summary and details as a styled PDF file, with logo at the top.
  * @param summary - The summary data for the report.
  * @param details - The details data for the report.
+ * @param totalLocations - Total number of locations available.
+ * @param currentLocationsCount - Number of locations in the current report.
  */
 export async function exportMonthlyReportPDF(
   summary: MonthlyReportSummary,
-  details: MonthlyReportDetailsRow[]
+  details: MonthlyReportDetailsRow[],
+  totalLocations?: number,
+  currentLocationsCount?: number
 ) {
   const doc = new jsPDF();
   // Add logo at the top (centered)
@@ -62,7 +66,11 @@ export async function exportMonthlyReportPDF(
     doc.text('Evolution One Solutions', 14, 16);
   }
   doc.setFontSize(16);
-  doc.text('All Locations Total', 14, 32);
+  // Show total locations count if provided
+  const titleText = totalLocations !== undefined && currentLocationsCount !== undefined
+    ? `All (${currentLocationsCount}/${totalLocations}) Locations Total`
+    : 'All Locations Total';
+  doc.text(titleText, 14, 32);
   // Table colors: Tailwind buttonActive: #5119E9
   autoTable(doc, {
     startY: 36,
@@ -98,16 +106,24 @@ export async function exportMonthlyReportPDF(
  * Exports the monthly report summary and details as an Excel file, matching the PDF structure.
  * @param summary - The summary data for the report.
  * @param details - The details data for the report.
+ * @param totalLocations - Total number of locations available.
+ * @param currentLocationsCount - Number of locations in the current report.
  */
 export function exportMonthlyReportExcel(
   summary: MonthlyReportSummary,
-  details: MonthlyReportDetailsRow[]
+  details: MonthlyReportDetailsRow[],
+  totalLocations?: number,
+  currentLocationsCount?: number
 ) {
   // Add a title row and blank row for logo/title spacing
+  // Show total locations count if provided
+  const titleText = totalLocations !== undefined && currentLocationsCount !== undefined
+    ? `All (${currentLocationsCount}/${totalLocations}) Locations Total`
+    : 'All Locations Total';
   const summarySheet = [
     ['Evolution One Solutions'],
     [''],
-    ['All Locations Total'],
+    [titleText],
     ['DROP', 'CANCELLED CREDITS', 'GROSS', 'SAS GROSS'],
     [summary.drop, summary.cancelledCredits, summary.gross, summary.sasGross],
   ];

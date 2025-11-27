@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { User, ResourcePermissions } from '@/lib/types/administration';
+import type { User } from '@/lib/types/administration';
 import type { LocationSelectItem } from '@/lib/types/location';
 import { X } from 'lucide-react';
 import gsap from 'gsap';
@@ -46,7 +46,6 @@ export type RolesPermissionsModalProps = {
   onSave: (
     user: Partial<User> & {
       password?: string;
-      resourcePermissions: ResourcePermissions;
     }
   ) => void;
 };
@@ -63,8 +62,15 @@ export default function RolesPermissionsModal({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [roles, setRoles] = useState<string[]>(user?.roles || []);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
+  // Use only new field
+  const getInitialLocationIds = (): string[] => {
+    if (Array.isArray(user?.assignedLocations) && user.assignedLocations.length > 0) {
+      return user.assignedLocations;
+    }
+    return [];
+  };
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>(
-    user?.resourcePermissions?.['gaming-locations']?.resources || []
+    getInitialLocationIds()
   );
   const [locationSearch, setLocationSearch] = useState('');
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
@@ -73,8 +79,11 @@ export default function RolesPermissionsModal({
   useEffect(() => {
     if (open) {
       setRoles(user?.roles || []);
-      const userLocationIds =
-        user?.resourcePermissions?.['gaming-locations']?.resources || [];
+      // Use only new field
+      let userLocationIds: string[] = [];
+      if (Array.isArray(user?.assignedLocations) && user.assignedLocations.length > 0) {
+        userLocationIds = user.assignedLocations;
+      }
       setSelectedLocationIds(userLocationIds);
       setPassword('');
       setConfirmPassword('');
@@ -115,8 +124,11 @@ export default function RolesPermissionsModal({
       setLocations(formattedLocs);
 
       // Check if all locations are selected
-      const userLocationIds =
-        user?.resourcePermissions?.['gaming-locations']?.resources || [];
+      // Use only new field
+      let userLocationIds: string[] = [];
+      if (Array.isArray(user?.assignedLocations) && user.assignedLocations.length > 0) {
+        userLocationIds = user.assignedLocations;
+      }
       if (userLocationIds.length > 0 && formattedLocs.length > 0) {
         setAllLocationsSelected(
           userLocationIds.length === formattedLocs.length
@@ -193,13 +205,7 @@ export default function RolesPermissionsModal({
       ...user,
       roles,
       password: password || undefined,
-      resourcePermissions: {
-        ...(user?.resourcePermissions || {}),
-        'gaming-locations': {
-          entity: 'gaming-locations',
-          resources: selectedLocationIds,
-        },
-      },
+      assignedLocations: selectedLocationIds,
     });
   };
 

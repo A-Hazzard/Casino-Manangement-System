@@ -94,8 +94,8 @@ export default function Header({
 
   // Get user's licensee assignments (memoized to prevent unnecessary re-renders)
   const userLicensees = useMemo(() => {
-    return user?.rel?.licencee || [];
-  }, [user?.rel?.licencee]);
+    return Array.isArray(user?.assignedLicensees) ? user.assignedLicensees : [];
+  }, [user?.assignedLicensees]);
 
   const isAdmin =
     normalizedRoles.includes('admin') || normalizedRoles.includes('developer');

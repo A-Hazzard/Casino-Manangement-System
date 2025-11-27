@@ -403,7 +403,7 @@ type MetersReportResponse = {
 };
 
 type MetersReportData = {
-  machineId: string; // Machine identifier
+  machineId: string; // Machine identifier (formatted: "CustomName (SerialNumber)" or "SerialNumber")
   metersIn: number; // Coin In (total bets placed)
   metersOut: number; // Coin Out (automatic payouts)
   jackpot: number; // Jackpot payouts
@@ -412,6 +412,9 @@ type MetersReportData = {
   attPaidCredits: number; // Hand paid cancelled credits
   gamesPlayed: number; // Total games played
   location: string; // Location name
+  locationId: string; // Location ID for navigation
+  machineDocumentId: string; // Machine document ID for navigation
+  game?: string; // Game name (if available)
   createdAt: string; // Last activity timestamp
 };
 ```
@@ -930,6 +933,8 @@ metersSchema.index({ machine: 1, createdAt: -1 });
 - **MetersTab**: `components/reports/tabs/MetersTab.tsx`
   - Refetches locations when licensee filter changes
   - Supports debounced search with chart synchronization
+  - Top Performing Machines chart calculated from table data
+  - Comprehensive skeleton loaders for all sections
 - **LocationMultiSelect**: Location selection component
   - Scrollable selected locations list (max 30 visible)
   - Vertical scrolling for large location selections
@@ -937,6 +942,11 @@ metersSchema.index({ machine: 1, createdAt: -1 });
   - Mobile-responsive hourly charts with horizontal scrolling
   - Responsive label formatting and touch-friendly interactions
   - Charts automatically filter based on search term
+- **Top Performing Machines Chart**: Interactive pie chart
+  - Shows top 10 machines by drop (billIn) value
+  - Machine names include game information when available
+  - Navigation icons to view location details
+  - Synchronized with table data and search filters
 - **Pagination**: Server-side pagination controls
 
 ## Monitoring & Logging
@@ -987,13 +997,28 @@ console.error('❌ Meters Report API Error:', {
 
 ---
 
-**Last Updated**: November 20, 2025  
-**Version**: 1.1  
+**Last Updated**: November 27, 2025  
+**Version**: 1.2  
 **Maintained By**: Evolution One CMS Development Team
 
-## Recent Updates (November 20, 2025)
+## Recent Updates
 
-### UI/UX Improvements
+### November 27, 2025
+
+- **Top Performing Machines Chart**: 
+  - Chart now displays machines from the same data source as the table
+  - Uses `billIn` (drop) as the performance metric
+  - Machine names include game information in brackets when available
+  - Navigation icons added to view location details
+  - Chart automatically updates when table data changes (search/filter)
+- **Skeleton Loaders**: 
+  - Comprehensive skeleton loaders for all sections matching actual layout
+  - Top Performing Machines chart skeleton shows legend + pie chart structure
+  - Meters Export Report skeleton includes header, hourly charts, search bar, and table structure
+  - All loaders match exact dimensions and layout of actual content
+- **Table Alignment**: All table cells center-aligned to match headers
+
+### November 20, 2025
 
 - **Licensee Filter Refetching**: MetersTab now automatically refetches locations when licensee filter changes
 - **Mobile Chart Optimization**:

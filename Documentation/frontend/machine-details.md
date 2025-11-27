@@ -1,8 +1,8 @@
 # Cabinet Details Page Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 2.2.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.3.0
 
 ## Quick Search Guide
 

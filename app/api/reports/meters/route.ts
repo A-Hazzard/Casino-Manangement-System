@@ -116,12 +116,10 @@ export async function GET(req: NextRequest) {
     // STEP 3: Get user permissions and determine accessible locations
     // ============================================================================
     const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
-    const userLocationPermissions =
-      (
-        userPayload?.resourcePermissions as {
-          'gaming-locations'?: { resources?: string[] };
-        }
-      )?.['gaming-locations']?.resources || [];
+    let userLocationPermissions: string[] = [];
+    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
+    }
 
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicensees,

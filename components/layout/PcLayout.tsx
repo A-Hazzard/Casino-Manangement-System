@@ -41,7 +41,7 @@ import {
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import axios from 'axios';
 import { RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import CustomSelect from '../ui/CustomSelect';
 
@@ -92,6 +92,10 @@ export default function PcLayout(props: PcLayoutProps) {
   >([]);
   const [aggLoading, setAggLoading] = useState(true);
 
+  // Track fetch to prevent duplicate calls
+  const lastAggFetchRef = useRef<string>('');
+  const aggFetchInProgressRef = useRef(false);
+
   // Only fetch locationAggregation for MapPreview when needed
   useEffect(() => {
     let aborted = false;
@@ -107,6 +111,18 @@ export default function PcLayout(props: PcLayoutProps) {
         setAggLoading(false);
         return;
       }
+
+      // Create unique key for this fetch
+      const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${customDateRange?.startDate?.getTime()}-${customDateRange?.endDate?.getTime()}`;
+      
+      // Skip if this exact fetch is already in progress
+      if (aggFetchInProgressRef.current && lastAggFetchRef.current === fetchKey) {
+        return;
+      }
+
+      // Mark as in progress and update key
+      aggFetchInProgressRef.current = true;
+      lastAggFetchRef.current = fetchKey;
 
       setAggLoading(true);
       try {
@@ -142,7 +158,10 @@ export default function PcLayout(props: PcLayoutProps) {
       } catch {
         if (!aborted) setLocationAggregates([]);
       } finally {
-        if (!aborted) setAggLoading(false);
+        if (!aborted) {
+          setAggLoading(false);
+          aggFetchInProgressRef.current = false;
+        }
       }
     };
     fetchAgg();

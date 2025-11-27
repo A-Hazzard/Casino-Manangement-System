@@ -156,14 +156,26 @@ export async function GET(req: NextRequest) {
     }
 
     const userRoles = (userPayload?.roles as string[]) || [];
-    const userLicensees =
-      (userPayload?.rel as { licencee?: string[] })?.licencee || [];
-    const userLocationPermissions =
-      (
-        userPayload?.resourcePermissions as {
-          'gaming-locations'?: { resources?: string[] };
-        }
-      )?.['gaming-locations']?.resources || [];
+    // Use only new field
+    let userLicensees: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLicensees?: string[] })?.assignedLicensees
+      )
+    ) {
+      userLicensees = (userPayload as { assignedLicensees: string[] })
+        .assignedLicensees;
+    }
+    // Use only new field
+    let userLocationPermissions: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
+    }
 
     const allowedLocationIds = await determineAllowedLocationIds(
       userRoles,

@@ -1,7 +1,7 @@
 # Authentication API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025
+**Last Updated:** November 27, 2025
 
 ## Quick Search Guide
 
@@ -64,13 +64,26 @@ User {
 
 ```typescript
 JWT_PAYLOAD {
-  userId: string;                 // User's unique identifier
-  email: string;                  // User's email address
-  role: string;                   // User's role
-  permissions: string[];          // User's permissions
+  _id: string;                    // User's unique identifier
+  emailAddress: string;           // User's email address
+  username: string;               // User's username
+  isEnabled: boolean;             // Account enabled status
+  roles: string[];                // User's roles array
+  sessionId: string;              // Session identifier (user ID)
+  sessionVersion: number;         // Session version for invalidation
+  dbContext: {                    // Database context
+    connectionString: string;
+    timestamp: number;
+  };
   iat: number;                    // Issued at timestamp
-  exp: number;                    // Expiration timestamp (48 hours)
+  exp: number;                    // Expiration timestamp (7 or 30 days based on rememberMe)
 }
+
+// NOTE: assignedLocations and assignedLicensees are NOT included in JWT token
+// to prevent cookie size issues. These are stored in userPayload (localStorage)
+// and can be fetched from database when needed. The middleware only needs to
+// verify the token exists and is valid - location/licensee filtering happens
+// in API routes, not middleware.
 ```
 
 ### What Happens When a User Logs Out

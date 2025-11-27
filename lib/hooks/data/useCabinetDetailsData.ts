@@ -67,6 +67,16 @@ export function useCabinetDetailsData({
         return;
       }
 
+      // If Custom is selected but dates aren't available, don't fetch
+      // This prevents the 500 error "Custom start and end dates are required"
+      if (
+        activeMetricsFilter === 'Custom' &&
+        (!customDateRange || !customDateRange.startDate || !customDateRange.endDate)
+      ) {
+        setMetricsLoading(false);
+        return;
+      }
+
       // Pass currency for conversion when viewing "All Licensees"
       const currency = selectedLicencee === '' || !selectedLicencee ? displayCurrency : undefined;
 

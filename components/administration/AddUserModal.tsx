@@ -124,18 +124,24 @@ export default function AddUserModal({
   }, [isDeveloper, isAdmin, isManager, isLocationAdmin]);
   const currentUserLicenseeIds = useMemo(
     () =>
-      ((currentUser?.rel as { licencee?: string[] })?.licencee || []).map(id =>
-        String(id)
-      ),
-    [currentUser?.rel]
+      (Array.isArray(currentUser?.assignedLicensees)
+        ? currentUser.assignedLicensees
+        : []
+      ).map(id => String(id)),
+    [currentUser?.assignedLicensees]
   );
   
   // Get location admin's assigned locations
   const currentUserLocationPermissions = useMemo(
-    () =>
-      ((currentUser?.resourcePermissions as { 'gaming-locations'?: { resources?: string[] } })?.['gaming-locations']?.resources || [])
-      .map(id => String(id)),
-    [currentUser?.resourcePermissions]
+    () => {
+      // Use only new field
+      let locationIds: string[] = [];
+      if (Array.isArray(currentUser?.assignedLocations) && currentUser.assignedLocations.length > 0) {
+        locationIds = currentUser.assignedLocations;
+      }
+      return locationIds.map(id => String(id));
+    },
+    [currentUser?.assignedLocations]
   );
 
   const [isCropOpen, setIsCropOpen] = useState(false);
@@ -695,23 +701,14 @@ export default function AddUserModal({
       return;
     }
 
-    // Build resourcePermissions from allowedLocations
-    const resourcePermissions = {
-      'gaming-locations': {
-        entity: 'gaming-locations' as const,
-        resources: formState.allowedLocations || [],
-      },
-    };
-
     // For location admins, ensure licensee is set to their licensee
     const finalLicenseeIds = isLocationAdmin && currentUserLicenseeIds.length > 0
       ? currentUserLicenseeIds
       : (formState.licenseeIds || []);
 
-    // Update form state with resourcePermissions and ensure licenseeIds is set
+    // Update form state and ensure licenseeIds is set
     setFormState({
       ...formState,
-      resourcePermissions,
       // Ensure licenseeIds is set (required for all users)
       // For location admins, use their licensee
       licenseeIds: finalLicenseeIds,

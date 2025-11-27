@@ -1,8 +1,8 @@
 # Locations Page
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 2.3.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.4.0
 
 ## Recent Updates (December 2024)
 

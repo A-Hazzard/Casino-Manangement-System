@@ -73,7 +73,17 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 4: Return user data
+    // STEP 4: Format user data
+    // ============================================================================
+    if (Array.isArray(user)) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    const formattedUser = {
+      ...user,
+    };
+
+    // ============================================================================
+    // STEP 5: Return user data
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
@@ -81,7 +91,7 @@ export async function GET(
     }
 
     apiLogger.logSuccess(context, `Successfully fetched user ${userId}`);
-    return NextResponse.json({ success: true, user });
+    return NextResponse.json({ success: true, user: formattedUser });
   } catch (err: unknown) {
     const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
@@ -100,7 +110,7 @@ export async function GET(
 }
 
 /**
- * Main PUT handler for updating user by ID
+ * Main PATCH handler for updating user by ID
  *
  * Flow:
  * 1. Resolve route parameters
@@ -111,7 +121,7 @@ export async function GET(
  * 6. Update user in database
  * 7. Return updated user data
  */
-export async function PUT(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
@@ -155,19 +165,30 @@ export async function PUT(
     const updatedUser = await updateUserHelper(userId, updateFields, request);
 
     // ============================================================================
-    // STEP 5: Return updated user data
+    // STEP 5: Convert Mongoose document to plain object
+    // ============================================================================
+    const userObject = updatedUser.toObject
+      ? updatedUser.toObject({ virtuals: false, getters: true })
+      : updatedUser;
+
+    const formattedUser = {
+      ...userObject,
+    };
+
+    // ============================================================================
+    // STEP 6: Return updated user data
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
-      console.warn(`[Users API] PUT completed in ${duration}ms`);
+      console.warn(`[Users API] PATCH completed in ${duration}ms`);
     }
 
     apiLogger.logSuccess(context, `Successfully updated user ${userId}`);
-    return NextResponse.json({ success: true, user: updatedUser });
+    return NextResponse.json({ success: true, user: formattedUser });
   } catch (err: unknown) {
     const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[Users API] PUT error after ${duration}ms:`, errorMsg);
+    console.error(`[Users API] PATCH error after ${duration}ms:`, errorMsg);
     apiLogger.logError(context, 'User update failed', errorMsg);
     return NextResponse.json(
       {

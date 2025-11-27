@@ -337,7 +337,11 @@ export default function ProfileModal({
           licenceeId?: unknown;
         };
 
-        const response = await axios.get('/api/locations?minimal=1');
+        // Use forceAll for privileged users or to ensure we get all locations for name resolution
+        const forceAllParam = isPrivilegedEditor ? '&forceAll=true' : '';
+        const response = await axios.get(
+          `/api/locations?minimal=1${forceAllParam}`
+        );
         const rawLocations: RawLocationResponse[] =
           response.data?.locations || [];
         const locationsData = rawLocations.map(location => {
@@ -373,17 +377,22 @@ export default function ProfileModal({
     if (open) {
       loadLocations();
     }
-  }, [open]);
+  }, [open, isPrivilegedEditor]);
 
   // Fetch missing location names by ID
   useEffect(() => {
     const fetchMissingLocations = async () => {
-      if (!userData?.resourcePermissions?.['gaming-locations']?.resources)
-        return;
-      if (locationsLoading) return; // Don't fetch if locations are still loading
+      // Use only new field
+      let locationIds: string[] = [];
+      if (
+        Array.isArray(userData?.assignedLocations) &&
+        userData.assignedLocations.length > 0
+      ) {
+        locationIds = userData.assignedLocations;
+      }
 
-      const locationIds =
-        userData.resourcePermissions['gaming-locations'].resources;
+      if (locationIds.length === 0) return;
+      if (locationsLoading) return; // Don't fetch if locations are still loading
       const missingIds = locationIds.filter(id => {
         const normalizedId = String(id);
         return !locations.find(l => String(l._id) === normalizedId);
@@ -403,11 +412,14 @@ export default function ProfileModal({
         idsToFetch
       );
 
-      // Fetch each missing location by ID
+      // Fetch each missing location by ID using nameOnly to bypass access control
       const fetchPromises = idsToFetch.map(async locationId => {
         try {
           const normalizedId = String(locationId);
-          const response = await axios.get(`/api/locations/${normalizedId}`);
+          // Use nameOnly=true to get just the name without access control checks
+          const response = await axios.get(
+            `/api/locations/${normalizedId}?nameOnly=true`
+          );
           const locationData = response.data?.location || response.data;
           if (locationData?.name) {
             return { id: normalizedId, name: locationData.name };
@@ -440,7 +452,14 @@ export default function ProfileModal({
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [open, userData, locations, locationsLoading, setMissingLocationNames, missingLocationNames]);
+  }, [
+    open,
+    userData,
+    locations,
+    locationsLoading,
+    setMissingLocationNames,
+    missingLocationNames,
+  ]);
 
   // Reset assignment initialization when closing modal
   useEffect(() => {
@@ -463,7 +482,13 @@ export default function ProfileModal({
 
     const normalize = (value: unknown) => String(value);
 
-    const userLicensees = (userData.rel?.licencee || []).map(normalize);
+    // Use only new field
+    const userLicensees = (
+      Array.isArray(userData?.assignedLicensees) &&
+      userData.assignedLicensees.length > 0
+        ? userData.assignedLicensees
+        : []
+    ).map(normalize);
     const isPrivileged = userData.roles?.some(role =>
       ['admin', 'developer'].includes(role.toLowerCase())
     );
@@ -483,10 +508,14 @@ export default function ProfileModal({
       setSelectedLicenseeIds([]);
     }
 
-    const userLocations =
-      userData.resourcePermissions?.['gaming-locations']?.resources?.map(
-        normalize
-      ) || [];
+    // Use only new field
+    let userLocations: string[] = [];
+    if (
+      Array.isArray(userData?.assignedLocations) &&
+      userData.assignedLocations.length > 0
+    ) {
+      userLocations = userData.assignedLocations.map(normalize);
+    }
     if (userLocations.length > 0) {
       setSelectedLocationIds(userLocations);
       setAllLocationsSelected(false);
@@ -796,7 +825,8 @@ export default function ProfileModal({
       profilePicture?: string | null;
       roles?: string[];
       rel?: { licencee: string[] };
-      resourcePermissions?: User['resourcePermissions'];
+      assignedLocations?: string[];
+      assignedLicensees?: string[];
     } = {
       _id: userData._id,
       profile: sanitizedProfile,
@@ -859,13 +889,8 @@ export default function ProfileModal({
       payload.rel = {
         licencee: normalizedSelectedLicensees,
       };
-      payload.resourcePermissions = {
-        ...(userData.resourcePermissions || {}),
-        'gaming-locations': {
-          entity: 'gaming-locations',
-          resources: normalizedSelectedLocations,
-        },
-      };
+      payload.assignedLicensees = normalizedSelectedLicensees;
+      payload.assignedLocations = normalizedSelectedLocations;
     }
 
     // Build comparison objects with ONLY editable fields
@@ -874,7 +899,6 @@ export default function ProfileModal({
       profilePicture: userData.profilePicture,
       roles: userData.roles,
       rel: userData.rel || {},
-      resourcePermissions: userData.resourcePermissions || {},
     };
 
     const formDataComparison = {
@@ -883,13 +907,6 @@ export default function ProfileModal({
       roles: selectedRoles,
       rel: {
         licencee: normalizedSelectedLicensees,
-      },
-      resourcePermissions: {
-        ...(userData.resourcePermissions || {}),
-        'gaming-locations': {
-          entity: 'gaming-locations',
-          resources: normalizedSelectedLocations,
-        },
       },
     };
 
@@ -911,8 +928,16 @@ export default function ProfileModal({
       passwordData.newPassword && passwordData.confirmPassword
     );
 
-    const originalLicenseeIds =
-      (userData.rel?.licencee || []).map(value => String(value)) || [];
+    // Use only new field
+    let originalLicenseeIds: string[] = [];
+    if (
+      Array.isArray(userData?.assignedLicensees) &&
+      userData.assignedLicensees.length > 0
+    ) {
+      originalLicenseeIds = userData.assignedLicensees.map(value =>
+        String(value)
+      );
+    }
     const licenseeIdsChanged =
       originalLicenseeIds.length !== normalizedSelectedLicensees.length ||
       !originalLicenseeIds.every(id =>
@@ -922,10 +947,16 @@ export default function ProfileModal({
         originalLicenseeIds.includes(id)
       );
 
-    const originalLocationIds =
-      userData.resourcePermissions?.['gaming-locations']?.resources?.map(
-        value => String(value)
-      ) || [];
+    // Use only new field
+    let originalLocationIds: string[] = [];
+    if (
+      Array.isArray(userData?.assignedLocations) &&
+      userData.assignedLocations.length > 0
+    ) {
+      originalLocationIds = userData.assignedLocations.map(value =>
+        String(value)
+      );
+    }
     const locationIdsChanged =
       originalLocationIds.length !== normalizedSelectedLocations.length ||
       !originalLocationIds.every(id =>
@@ -940,7 +971,7 @@ export default function ProfileModal({
         field: 'Assigned Licensees',
         oldValue: originalLicenseeIds,
         newValue: normalizedSelectedLicensees,
-        path: 'rel.licencee',
+        path: 'assignedLicensees',
       });
     }
 
@@ -949,7 +980,7 @@ export default function ProfileModal({
         field: 'Assigned Locations',
         oldValue: originalLocationIds,
         newValue: normalizedSelectedLocations,
-        path: 'resourcePermissions',
+        path: 'assignedLocations',
       });
     }
 
@@ -1007,8 +1038,9 @@ export default function ProfileModal({
         const fieldPath = change.path;
         return (
           fieldPath === 'roles' ||
-          fieldPath.startsWith('resourcePermissions') ||
-          fieldPath.startsWith('rel')
+          fieldPath.startsWith('rel') ||
+          fieldPath === 'assignedLocations' ||
+          fieldPath === 'assignedLicensees'
         );
       });
 
@@ -1530,52 +1562,67 @@ export default function ProfileModal({
                           <p className="p-2">
                             {licenseesLoading ? (
                               <Skeleton className="inline-block h-5 w-32" />
-                            ) : userData?.rel?.licencee &&
-                              userData.rel.licencee.length > 0 ? (
-                              (() => {
-                                const licenseeNames = userData.rel.licencee
-                                  .map(licenseeId => {
-                                    const normalizedId = String(licenseeId);
-                                    const match = licensees.find(
-                                      licensee =>
-                                        String(licensee._id) === normalizedId
-                                    );
-                                    return match?.name || null;
-                                  })
-                                  .filter(
-                                    (name): name is string => name !== null
-                                  );
-
-                                if (licenseeNames.length === 0) {
-                                  // If no matches found, show IDs as fallback
-                                  return userData.rel.licencee
-                                    .map(id => `Unknown (${id})`)
-                                    .join(', ');
-                                }
-
-                                // Show matched names, and any unmatched IDs
-                                const unmatchedIds =
-                                  userData.rel.licencee.filter(id => {
-                                    const normalizedId = String(id);
-                                    return !licensees.some(
-                                      licensee =>
-                                        String(licensee._id) === normalizedId
-                                    );
-                                  });
-
-                                const result = [...licenseeNames];
-                                if (unmatchedIds.length > 0) {
-                                  result.push(
-                                    ...unmatchedIds.map(id => `Unknown (${id})`)
-                                  );
-                                }
-
-                                return result.join(', ');
-                              })()
-                            ) : isPrivilegedEditor ? (
-                              'All Licensees (Admin)'
                             ) : (
-                              'None'
+                              (() => {
+                                // Try new field first, fallback to old field
+                                const userLicensees =
+                                  Array.isArray(userData?.assignedLicensees) &&
+                                  userData.assignedLicensees.length > 0
+                                    ? userData.assignedLicensees
+                                    : [];
+
+                                return userLicensees.length > 0
+                                  ? (() => {
+                                      const licenseeNames = userLicensees
+                                        .map(licenseeId => {
+                                          const normalizedId =
+                                            String(licenseeId);
+                                          const match = licensees.find(
+                                            licensee =>
+                                              String(licensee._id) ===
+                                              normalizedId
+                                          );
+                                          return match?.name || null;
+                                        })
+                                        .filter(
+                                          (name): name is string =>
+                                            name !== null
+                                        );
+
+                                      if (licenseeNames.length === 0) {
+                                        // If no matches found, show IDs as fallback
+                                        return userLicensees
+                                          .map(id => `Unknown (${id})`)
+                                          .join(', ');
+                                      }
+
+                                      // Show matched names, and any unmatched IDs
+                                      const unmatchedIds = userLicensees.filter(
+                                        id => {
+                                          const normalizedId = String(id);
+                                          return !licensees.some(
+                                            licensee =>
+                                              String(licensee._id) ===
+                                              normalizedId
+                                          );
+                                        }
+                                      );
+
+                                      const result = [...licenseeNames];
+                                      if (unmatchedIds.length > 0) {
+                                        result.push(
+                                          ...unmatchedIds.map(
+                                            id => `Unknown (${id})`
+                                          )
+                                        );
+                                      }
+
+                                      return result.join(', ');
+                                    })()
+                                  : isPrivilegedEditor
+                                    ? 'All Licensees (Admin)'
+                                    : 'None';
+                              })()
                             )}
                           </p>
                         )}
@@ -1643,10 +1690,12 @@ export default function ProfileModal({
                         ) : (
                           <div className="w-full">
                             {(() => {
+                              // Try new field first, fallback to old field
                               const locationPermissions =
-                                userData?.resourcePermissions?.[
-                                  'gaming-locations'
-                                ]?.resources || [];
+                                Array.isArray(userData?.assignedLocations) &&
+                                userData.assignedLocations.length > 0
+                                  ? userData.assignedLocations
+                                  : [];
 
                               const userRolesLower =
                                 userData?.roles?.map(role =>

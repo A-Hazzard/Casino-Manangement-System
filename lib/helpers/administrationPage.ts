@@ -5,7 +5,7 @@ import {
   updateUser,
 } from '@/lib/helpers/administration';
 import { fetchLicensees } from '@/lib/helpers/clientLicensees';
-import type { ResourcePermissions, SortKey, User } from '@/lib/types/administration';
+import type { SortKey, User } from '@/lib/types/administration';
 import type { Licensee } from '@/lib/types/licensee';
 import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
 import { getNext30Days } from '@/lib/utils/licensee';
@@ -94,7 +94,6 @@ export const userManagement = {
     selectedUser: User,
     updated: Partial<User> & {
       password?: string;
-      resourcePermissions: Record<string, unknown>;
     },
     setIsRolesModalOpen: (open: boolean) => void,
     setSelectedUser: (user: User | null) => void,
@@ -129,7 +128,6 @@ export const userManagement = {
       lastName,
       gender,
       profilePicture,
-      resourcePermissions,
       licenseeIds,
       street,
       town,
@@ -197,7 +195,6 @@ export const userManagement = {
       profile: Record<string, unknown>;
       isEnabled: boolean;
       profilePicture: string | null;
-      resourcePermissions: ResourcePermissions;
       rel?: {
         licencee?: string[];
       };
@@ -209,7 +206,6 @@ export const userManagement = {
       profile,
       isEnabled: true,
       profilePicture: profilePicture || null,
-      resourcePermissions: resourcePermissions || {},
     };
 
     // Include licensee assignments (required for all users)

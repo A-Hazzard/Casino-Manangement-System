@@ -316,86 +316,11 @@ function LoginPageContent() {
           return;
         }
 
-        console.warn(
-          '📝 Credentials validated, now verifying token and setting user store...'
-        );
-
         // Set redirecting FIRST to prevent the useEffect redirect from interfering
         setRedirecting(true);
 
-        // Verify that cookies are actually set by making a test request
-        try {
-          // Suppress console errors for this expected request
-          const originalError = console.error;
-          console.error = () => {}; // Temporarily disable console.error
-
-          const testResponse = await fetch('/api/test-current-user', {
-            credentials: 'include',
-          });
-          const testData = await testResponse.json();
-
-          // Restore console.error
-          console.error = originalError;
-
-          // Debug: Log cookie verification result
-          console.warn('🍪 Cookie Verification Result:', {
-            status: testResponse.status,
-            success: testData.success,
-            userId: testData.userId,
-            cookies: document.cookie,
-          });
-
-          if (!testData.success || !testData.userId) {
-            console.error(
-              '❌ Token verification failed - cookies not set properly'
-            );
-            setMessage(
-              'Login failed - session could not be established. Please try again.'
-            );
-            setMessageType('error');
-            setRedirecting(false);
-            clearUser();
-            setLoading(false);
-            return;
-          }
-
-          console.warn(
-            '✅ Token verified successfully, userId from cookie:',
-            testData.userId
-          );
-        } catch (error) {
-          console.error('❌ Token verification request failed:', error);
-          setMessage(
-            'Login failed - unable to verify session. Please try again.'
-          );
-          setMessageType('error');
-          setRedirecting(false);
-          clearUser();
-          setLoading(false);
-          return;
-        }
-
-        // Now store user data in the Zustand store (after token verification)
+        // Store user data in the Zustand store
         setUser(response.user);
-
-        // Wait a moment to ensure the store is updated
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Verify that the user was actually set in the store
-        const storeUser = useUserStore.getState().user;
-        if (!storeUser) {
-          console.error('❌ Failed to set user in store');
-          setMessage('Login failed - unable to set user session');
-          setMessageType('error');
-          setRedirecting(false);
-          setLoading(false);
-          return;
-        }
-
-        console.warn('✅ User store updated successfully:', {
-          userId: storeUser._id,
-          email: storeUser.emailAddress,
-        });
 
         const requiresProfileUpdate =
           response.requiresProfileUpdate ||
@@ -429,13 +354,16 @@ function LoginPageContent() {
                   .toISOString()
                   .split('T')[0]
               : '',
-            licenseeIds: Array.isArray(response.user?.rel?.licencee)
-              ? (response.user?.rel?.licencee as string[]).map(id => String(id))
+            licenseeIds: Array.isArray(response.user?.assignedLicensees)
+              ? (response.user.assignedLicensees as string[]).map(id =>
+                  String(id)
+                )
               : [],
-            locationIds:
-              response.user?.resourcePermissions?.[
-                'gaming-locations'
-              ]?.resources?.map((id: unknown) => String(id)) || [],
+            locationIds: Array.isArray(response.user?.assignedLocations)
+              ? (response.user.assignedLocations as string[]).map(id =>
+                  String(id)
+                )
+              : [],
           });
           setShowProfileValidationModal(true);
           setRedirecting(false);
@@ -443,7 +371,26 @@ function LoginPageContent() {
           return;
         }
 
-        // Only show success message after everything is verified
+        // Wait a moment to ensure the store is updated (matches old system)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Verify that the user was actually set in the store (matches old system)
+        const storeUser = useUserStore.getState().user;
+        if (!storeUser) {
+          console.error('❌ Failed to set user in store');
+          setMessage('Login failed - unable to set user session');
+          setMessageType('error');
+          setRedirecting(false);
+          setLoading(false);
+          return;
+        }
+
+        console.warn('✅ User store updated successfully:', {
+          userId: storeUser._id,
+          email: storeUser.emailAddress,
+        });
+
+        // Show success message
         setMessage('Login successful. Redirecting...');
         setMessageType('success');
 
@@ -457,24 +404,28 @@ function LoginPageContent() {
         // Mark that we've handled the redirect
         setHasRedirected(true);
 
-        // First, clean the URL by removing error parameters
+        // Clean the URL by removing error parameters
         // This ensures we don't keep the database_mismatch parameter in history
         if (window.location.search) {
           console.warn('🧹 Cleaning URL parameters before redirect...');
           window.history.replaceState({}, '', '/login');
         }
 
-        // Use window.location.href for a hard redirect
-        // This ensures clean navigation and clears any lingering state
+        // Use window.location.href for a hard redirect to ensure cookies are sent
+        // The cookie is set by the API response, but we need to wait for the browser
+        // to process it before redirecting. A full page reload ensures cookies are included.
+        // Increased delay to 1000ms to ensure cookie is fully processed by browser
         setTimeout(() => {
           console.warn('⏰ Executing redirect now to:', redirectPath);
           console.warn('🔐 Final state check before redirect:', {
             userInStore: !!useUserStore.getState().user,
-            cookies: document.cookie.includes('token'),
             redirectPath,
+            cookies: document.cookie,
           });
+          // Use window.location.href to force a full page reload
+          // This ensures the cookie set by the API response is included in the redirect request
           window.location.href = redirectPath;
-        }, 800);
+        }, 1000);
       } else {
         const backendMsg =
           response.message || 'Invalid email or password. Please try again.';
@@ -590,17 +541,30 @@ function LoginPageContent() {
                 .toISOString()
                 .split('T')[0]
             : data.dateOfBirth) || '',
-        licenseeIds: Array.isArray(result.user?.rel?.licencee)
-          ? (result.user?.rel?.licencee as string[]).map(id => String(id))
-          : data.licenseeIds,
-        locationIds: Array.isArray(
-          result.user?.resourcePermissions?.['gaming-locations']?.resources
-        )
-          ? (
-              result.user?.resourcePermissions?.['gaming-locations']
-                ?.resources as string[]
-            ).map(id => String(id))
-          : data.locationIds,
+        licenseeIds: (() => {
+          // Use only new field
+          if (
+            Array.isArray(result.user?.assignedLicensees) &&
+            result.user.assignedLicensees.length > 0
+          ) {
+            return result.user.assignedLicensees.map((id: string) =>
+              String(id)
+            );
+          }
+          return data.licenseeIds;
+        })(),
+        locationIds: (() => {
+          // Use only new field
+          if (
+            Array.isArray(result.user?.assignedLocations) &&
+            result.user.assignedLocations.length > 0
+          ) {
+            return result.user.assignedLocations.map((id: string) =>
+              String(id)
+            );
+          }
+          return data.locationIds;
+        })(),
       });
 
       const redirectPath = getDefaultRedirectPathFromRoles(

@@ -12,7 +12,6 @@ export type CurrentUserData = {
   profile: Record<string, unknown>;
   roles: string[];
   enabled: boolean;
-  resourcePermissions: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 };

@@ -77,14 +77,27 @@ export async function GET(request: NextRequest): Promise<Response> {
     // ============================================================================
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
-    const currentUserLicensees =
-      (currentUser?.rel as { licencee?: string[] })?.licencee || [];
-    const currentUserLocationPermissionsRaw =
-      (
-        currentUser?.resourcePermissions as {
-          'gaming-locations'?: { resources?: string[] | unknown[] };
-        }
-      )?.['gaming-locations']?.resources || [];
+    // Use only new fields
+    let currentUserLicensees: string[] = [];
+    if (
+      Array.isArray(
+        (currentUser as { assignedLicensees?: string[] })?.assignedLicensees
+      )
+    ) {
+      currentUserLicensees = (currentUser as { assignedLicensees: string[] })
+        .assignedLicensees;
+    }
+
+    let currentUserLocationPermissionsRaw: unknown[] = [];
+    if (
+      Array.isArray(
+        (currentUser as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      currentUserLocationPermissionsRaw = (
+        currentUser as { assignedLocations: string[] }
+      ).assignedLocations;
+    }
     const currentUserLocationPermissions =
       currentUserLocationPermissionsRaw.map(id => String(id));
 
@@ -94,7 +107,6 @@ export async function GET(request: NextRequest): Promise<Response> {
       licensees: currentUserLicensees,
       locationPermissionsRaw: currentUserLocationPermissionsRaw,
       locationPermissions: currentUserLocationPermissions,
-      resourcePermissions: currentUser?.resourcePermissions,
     });
 
     const isAdmin =
@@ -116,40 +128,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       users = await getAllUsers();
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[USERS API] getAllUsers result:', {
-        totalUsers: users.length,
-        usernames: users.slice(0, 10).map(u => u.username),
-        hasAaronTest: users.some(
-          u =>
-            u.username === 'aaronTest' ||
-            u.emailAddress === 'aaronsploit@gmail.com'
-        ),
-        aaronUser: users.find(
-          u =>
-            u.username === 'aaronTest' ||
-            u.emailAddress === 'aaronsploit@gmail.com'
-        ),
-      });
-    }
-
     let result = users.map(user => {
-      // Convert resourcePermissions from Mongoose Map to plain object if needed
-      let resourcePermissions = user.resourcePermissions;
-      if (
-        resourcePermissions &&
-        typeof resourcePermissions === 'object' &&
-        'toObject' in resourcePermissions
-      ) {
-        // It's a Mongoose Map, convert to plain object
-        resourcePermissions = (
-          resourcePermissions as { toObject: () => Record<string, unknown> }
-        ).toObject();
-      } else if (resourcePermissions && resourcePermissions instanceof Map) {
-        // It's a native Map, convert to plain object
-        resourcePermissions = Object.fromEntries(resourcePermissions);
-      }
-
       return {
         _id: user._id,
         name: `${user.profile?.firstName ?? ''} ${
@@ -161,10 +140,8 @@ export async function GET(request: NextRequest): Promise<Response> {
         roles: user.roles,
         profilePicture: user.profilePicture ?? null,
         profile: user.profile,
-        resourcePermissions: resourcePermissions as
-          | Record<string, unknown>
-          | undefined,
-        rel: user.rel,
+        assignedLocations: user.assignedLocations || undefined,
+        assignedLicensees: user.assignedLicensees || undefined,
         loginCount: user.loginCount,
         lastLoginAt: user.lastLoginAt,
         sessionVersion: user.sessionVersion,
@@ -178,27 +155,13 @@ export async function GET(request: NextRequest): Promise<Response> {
       // Managers can only see users with same licensees
       const beforeManagerFilter = result.length;
       result = result.filter(user => {
-        const userLicensees =
-          (user.rel as { licencee?: string[] })?.licencee || [];
+        const userLicensees = Array.isArray(user.assignedLicensees)
+          ? user.assignedLicensees
+          : [];
         // User must have at least one licensee in common with the manager
         const hasCommonLicensee = userLicensees.some(userLic =>
           currentUserLicensees.includes(userLic)
         );
-
-        // Debug logging for aaronTest user
-        if (
-          process.env.NODE_ENV === 'development' &&
-          (user.username === 'aaronTest' ||
-            user.email === 'aaronsploit@gmail.com')
-        ) {
-          console.warn('[USERS API] Manager filter check for aaronTest:', {
-            username: user.username,
-            email: user.email,
-            userLicensees,
-            currentUserLicensees,
-            hasCommonLicensee,
-          });
-        }
 
         return hasCommonLicensee;
       });
@@ -220,14 +183,6 @@ export async function GET(request: NextRequest): Promise<Response> {
         currentUserLocationPermissionsCount:
           currentUserLocationPermissions.length,
         totalUsersBeforeFilter: result.length,
-        sampleUserIds: result.slice(0, 5).map(u => ({
-          id: u._id,
-          username: u.username,
-          hasResourcePermissions: !!u.resourcePermissions,
-          resourcePermissionsKeys: u.resourcePermissions
-            ? Object.keys(u.resourcePermissions as Record<string, unknown>)
-            : [],
-        })),
       });
 
       if (currentUserLocationPermissions.length === 0) {
@@ -262,77 +217,13 @@ export async function GET(request: NextRequest): Promise<Response> {
             return true;
           }
 
-          // Try to get location permissions from resourcePermissions (plural) or resourcePermission (singular)
-          // Handle both 'gaming-locations' (kebab-case) and 'gamingLocations' (camelCase)
-          const resourcePerms = user.resourcePermissions as
-            | Record<string, unknown>
-            | undefined;
-          const resourcePerm = (
-            user as { resourcePermission?: Record<string, unknown> }
-          ).resourcePermission;
-
           let userLocationPermissionsRaw: unknown[] = [];
-
-          // Debug: Log the structure we're working with (always log for specific usernames for debugging)
-          const shouldDebugUser =
-            process.env.NODE_ENV === 'development' &&
-            (result.length < 20 ||
-              user.username === 'llezama' ||
-              user.username === 'aaron');
-
-          if (shouldDebugUser) {
-            console.warn('[USERS API] Checking user resourcePermissions:', {
-              username: user.username,
-              userId,
-              hasResourcePermissions: !!resourcePerms,
-              resourcePermissionsType: typeof resourcePerms,
-              resourcePermissionsKeys: resourcePerms
-                ? Object.keys(resourcePerms)
-                : [],
-              resourcePermissionsValue: JSON.stringify(resourcePerms, null, 2),
-            });
-          }
-
-          // Try resourcePermissions['gaming-locations'] first (most common)
-          if (resourcePerms?.['gaming-locations']) {
-            const gamingLocs = resourcePerms['gaming-locations'] as {
-              resources?: unknown[];
-              entity?: string;
-            };
-            userLocationPermissionsRaw = Array.isArray(gamingLocs?.resources)
-              ? gamingLocs.resources
-              : [];
-
-            if (shouldDebugUser) {
-              console.warn('[USERS API] Found gaming-locations:', {
-                username: user.username,
-                userId,
-                entity: gamingLocs?.entity,
-                resources: userLocationPermissionsRaw,
-                resourcesCount: userLocationPermissionsRaw.length,
-                resourcesType: typeof gamingLocs?.resources,
-                isArray: Array.isArray(gamingLocs?.resources),
-                firstFewResources: userLocationPermissionsRaw.slice(0, 5),
-              });
-            }
-          }
-          // Try resourcePermissions.gamingLocations (camelCase)
-          else if (resourcePerms?.gamingLocations) {
-            const gamingLocs = resourcePerms.gamingLocations as {
-              resources?: unknown[];
-            };
-            userLocationPermissionsRaw = Array.isArray(gamingLocs?.resources)
-              ? gamingLocs.resources
-              : [];
-          }
-          // Try resourcePermission.gamingLocations (singular, camelCase)
-          else if (resourcePerm?.gamingLocations) {
-            const gamingLocs = resourcePerm.gamingLocations as {
-              resources?: unknown[];
-            };
-            userLocationPermissionsRaw = Array.isArray(gamingLocs?.resources)
-              ? gamingLocs.resources
-              : [];
+          const userWithNewFields = user as { assignedLocations?: string[] };
+          if (
+            Array.isArray(userWithNewFields.assignedLocations) &&
+            userWithNewFields.assignedLocations.length > 0
+          ) {
+            userLocationPermissionsRaw = userWithNewFields.assignedLocations;
           }
 
           // Convert all location IDs to normalized strings for comparison (trim only, IDs are case-sensitive)
@@ -349,17 +240,6 @@ export async function GET(request: NextRequest): Promise<Response> {
 
           // User must have at least one location in common with the location admin
           if (userLocationPermissions.length === 0) {
-            if (shouldDebugUser) {
-              console.warn(
-                '[USERS API] User filtered out (no location permissions):',
-                {
-                  username: user.username,
-                  userId,
-                  resourcePermissions: JSON.stringify(resourcePerms, null, 2),
-                  resourcePermission: resourcePerm,
-                }
-              );
-            }
             return false; // Users with no location permissions are not visible to location admins
           }
 
@@ -367,29 +247,6 @@ export async function GET(request: NextRequest): Promise<Response> {
           const hasMatchingLocation = userLocationPermissions.some(userLoc =>
             normalizedCurrentLocs.includes(userLoc)
           );
-
-          if (shouldDebugUser) {
-            console.warn('[USERS API] User filter check:', {
-              username: user.username,
-              userId,
-              userLocationPermissionsCount: userLocationPermissions.length,
-              userLocationPermissionsSample: userLocationPermissions.slice(
-                0,
-                10
-              ),
-              currentUserLocationPermissions: normalizedCurrentLocs,
-              hasMatchingLocation,
-              matchDetails: userLocationPermissions
-                .slice(0, 10)
-                .map(userLoc => ({
-                  userLoc,
-                  matches: normalizedCurrentLocs.includes(userLoc),
-                  inCurrentLocs: normalizedCurrentLocs.includes(userLoc),
-                })),
-              allUserLocs: userLocationPermissions,
-              allCurrentLocs: normalizedCurrentLocs,
-            });
-          }
 
           return hasMatchingLocation;
         });
@@ -421,8 +278,9 @@ export async function GET(request: NextRequest): Promise<Response> {
     // ============================================================================
     if (licensee && licensee !== 'all') {
       result = result.filter(user => {
-        const userLicensees =
-          (user.rel as { licencee?: string[] })?.licencee || [];
+        const userLicensees = Array.isArray(user.assignedLicensees)
+          ? user.assignedLicensees
+          : [];
         return userLicensees.includes(licensee);
       });
     }
@@ -443,23 +301,6 @@ export async function GET(request: NextRequest): Promise<Response> {
             username.includes(lowerSearchValue) ||
             email.includes(lowerSearchValue) ||
             userId.includes(lowerSearchValue);
-
-          // Debug logging for specific search terms
-          if (
-            process.env.NODE_ENV === 'development' &&
-            (lowerSearchValue.includes('aaron') ||
-              lowerSearchValue.includes('aaronsploit'))
-          ) {
-            console.warn('[USERS API] Search match check:', {
-              searchTerm: lowerSearchValue,
-              username,
-              email,
-              userId,
-              matches,
-              userUsername: user.username,
-              userEmail: user.email,
-            });
-          }
 
           return matches;
         } else if (searchMode === 'username') {
@@ -485,6 +326,19 @@ export async function GET(request: NextRequest): Promise<Response> {
           usernames: result.slice(0, 10).map(u => u.username),
         });
       }
+    }
+
+    // ============================================================================
+    // STEP 7.5: Filter out current user from results
+    // ============================================================================
+    const currentUserId = currentUser?._id ? String(currentUser._id) : null;
+    if (currentUserId) {
+      result = result.filter(user => {
+        const userId = user._id?.toString
+          ? user._id.toString()
+          : String(user._id);
+        return userId !== currentUserId;
+      });
     }
 
     // ============================================================================
@@ -577,8 +431,8 @@ export async function POST(request: NextRequest): Promise<Response> {
       profile = {},
       isEnabled = true,
       profilePicture = null,
-      resourcePermissions = {},
-      rel,
+      assignedLocations,
+      assignedLicensees,
     } = body;
 
     // ============================================================================
@@ -661,8 +515,8 @@ export async function POST(request: NextRequest): Promise<Response> {
         profile,
         isEnabled,
         profilePicture,
-        resourcePermissions,
-        rel,
+        assignedLocations,
+        assignedLicensees,
       },
       request
     );
@@ -750,7 +604,20 @@ export async function PUT(request: NextRequest): Promise<Response> {
     const updatedUser = await updateUserHelper(_id, updateFields, request);
 
     // ============================================================================
-    // STEP 5: Return updated user data
+    // STEP 5: Convert Mongoose document to plain object
+    // ============================================================================
+    const userObject = updatedUser.toObject
+      ? updatedUser.toObject()
+      : updatedUser;
+
+    const formattedUser = {
+      ...userObject,
+      assignedLocations: userObject.assignedLocations || undefined,
+      assignedLicensees: userObject.assignedLicensees || undefined,
+    };
+
+    // ============================================================================
+    // STEP 6: Return updated user data
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
@@ -758,9 +625,12 @@ export async function PUT(request: NextRequest): Promise<Response> {
     }
 
     apiLogger.logSuccess(context, `Successfully updated user ${_id}`);
-    return new Response(JSON.stringify({ success: true, user: updatedUser }), {
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({ success: true, user: formattedUser }),
+      {
+        status: 200,
+      }
+    );
   } catch (err: unknown) {
     const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';

@@ -64,7 +64,7 @@ export default function ReportsContent() {
   // Check user roles
   const userRoles = useMemo(() => {
     const roles = user?.roles || [];
-    return roles.map(role => 
+    return roles.map(role =>
       typeof role === 'string' ? role.toLowerCase() : ''
     );
   }, [user?.roles]);

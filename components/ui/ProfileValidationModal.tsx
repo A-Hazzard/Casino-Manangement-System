@@ -4,7 +4,7 @@
  *
  * Features:
  * - Profile field validation
- * - Personal information editing (name, gender, date of birth)
+ * - Personal information editing (name, gender)
  * - Contact information (email, phone, address)
  * - Password update with strength validation
  * - Licensee and location assignments
@@ -59,7 +59,6 @@ import {
   validatePasswordStrength,
   validatePhoneNumber,
   validateProfileField,
-  isValidDateInput,
   isPlaceholderEmail,
 } from '@/lib/utils/validation';
 import type {
@@ -119,7 +118,6 @@ export default function ProfileValidationModal({
     gender: currentData.gender,
     emailAddress: currentData.emailAddress,
     phone: currentData.phone,
-    dateOfBirth: currentData.dateOfBirth,
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -147,7 +145,6 @@ export default function ProfileValidationModal({
         gender: currentData.gender,
         emailAddress: currentData.emailAddress,
         phone: currentData.phone,
-        dateOfBirth: currentData.dateOfBirth,
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
@@ -382,18 +379,17 @@ export default function ProfileValidationModal({
 
   const runClientValidation = useCallback((): Record<string, string> => {
     const newErrors: Record<string, string> = {};
-    const username = formData.username.trim();
-    const firstName = formData.firstName.trim();
-    const lastName = formData.lastName.trim();
-    const otherName = formData.otherName.trim();
-    const genderValue = formData.gender.trim().toLowerCase();
-    const emailAddress = formData.emailAddress.trim();
-    const phone = formData.phone.trim();
-    const dateOfBirth = formData.dateOfBirth.trim();
+    const username = (formData.username || '').trim();
+    const firstName = (formData.firstName || '').trim();
+    const lastName = (formData.lastName || '').trim();
+    const otherName = (formData.otherName || '').trim();
+    const genderValue = (formData.gender || '').trim().toLowerCase();
+    const emailAddress = (formData.emailAddress || '').trim();
+    const phone = (formData.phone || '').trim();
     const usernameChanged =
-      username.toLowerCase() !== currentData.username.toLowerCase();
+      username.toLowerCase() !== (currentData.username || '').toLowerCase();
     const emailChanged =
-      emailAddress.toLowerCase() !== currentData.emailAddress.toLowerCase();
+      emailAddress.toLowerCase() !== (currentData.emailAddress || '').toLowerCase();
 
     if (invalidFields.username || usernameChanged) {
       if (!username) {
@@ -432,34 +428,20 @@ export default function ProfileValidationModal({
       }
     }
 
-    if (invalidFields.otherName || otherName !== currentData.otherName.trim()) {
+    if (invalidFields.otherName || otherName !== (currentData.otherName || '').trim()) {
       if (otherName && !validateNameField(otherName)) {
         newErrors.otherName =
           'Other name may only contain letters and spaces and cannot look like a phone number.';
       }
     }
 
-    const currentGender = currentData.gender.trim().toLowerCase();
+    const currentGender = (currentData.gender || '').trim().toLowerCase();
     if (invalidFields.gender || genderValue !== currentGender) {
       if (genderValue && !validateOptionalGender(genderValue)) {
         newErrors.gender = 'Select a valid gender option.';
       }
     }
 
-    const currentDob = currentData.dateOfBirth.trim();
-    if (invalidFields.dateOfBirth || dateOfBirth !== currentDob) {
-      if (!dateOfBirth) {
-        newErrors.dateOfBirth = 'Date of birth is required.';
-      } else if (!isValidDateInput(dateOfBirth)) {
-        newErrors.dateOfBirth = 'Provide a valid date of birth.';
-      } else {
-        const parsedDob = new Date(dateOfBirth);
-        const today = new Date();
-        if (parsedDob > today) {
-          newErrors.dateOfBirth = 'Date of birth cannot be in the future.';
-        }
-      }
-    }
 
     if (invalidFields.emailAddress || emailChanged) {
       if (!emailAddress) {
@@ -552,7 +534,6 @@ export default function ProfileValidationModal({
     formData.gender,
     formData.emailAddress,
     formData.phone,
-    formData.dateOfBirth,
     formData.currentPassword,
     formData.newPassword,
     formData.confirmPassword,
@@ -565,7 +546,6 @@ export default function ProfileValidationModal({
     currentData.otherName,
     currentData.gender,
     currentData.emailAddress,
-    currentData.dateOfBirth,
     runClientValidation,
     setErrors,
     setIsFormValid,
@@ -593,7 +573,6 @@ export default function ProfileValidationModal({
       gender: formData.gender.trim().toLowerCase(),
       emailAddress: formData.emailAddress.trim(),
       phone: formData.phone.trim(),
-      dateOfBirth: formData.dateOfBirth.trim(),
       // Explicitly include licenseeIds and locationIds to ensure they're sent
       licenseeIds: formData.licenseeIds || [],
       locationIds: formData.locationIds || [],
@@ -858,34 +837,6 @@ export default function ProfileValidationModal({
             </div>
           )}
 
-          {invalidFields.dateOfBirth && (
-            <div className="space-y-2">
-              <Label htmlFor="dateOfBirth">Date of Birth</Label>
-              <Input
-                id="dateOfBirth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={e =>
-                  setFormData(prev => ({
-                    ...prev,
-                    dateOfBirth: e.target.value,
-                  }))
-                }
-                className={cn(
-                  INPUT_CLASS,
-                  errors.dateOfBirth && 'border-red-500'
-                )}
-                disabled={loading}
-                max={new Date().toISOString().split('T')[0]}
-              />
-              {reasons.dateOfBirth && (
-                <p className="text-xs text-muted-foreground">
-                  Why this is required: {reasons.dateOfBirth}
-                </p>
-              )}
-              {renderFieldError('dateOfBirth')}
-            </div>
-          )}
 
           {invalidFields.emailAddress && (
             <div className="space-y-2">

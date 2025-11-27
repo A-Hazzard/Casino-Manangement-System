@@ -111,20 +111,42 @@ export function useLocationData({
     // Note: selectedFiltersKey is intentionally excluded - we use ref to avoid recreation
   ]);
 
+  // Track fetch to prevent duplicate calls
+  const fetchInProgressRef = useRef(false);
+  const lastFetchKeyRef = useRef<string>('');
+
   // Optimized data fetching with better error handling
   const fetchData = useCallback(async (page?: number, limit?: number) => {
+    // Create unique key for this fetch
+    const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}`;
+    
+    // Skip if this exact fetch is already in progress
+    if (fetchInProgressRef.current && lastFetchKeyRef.current === fetchKey) {
+      return;
+    }
+
+    // Mark as in progress and update key
+    fetchInProgressRef.current = true;
+    lastFetchKeyRef.current = fetchKey;
+
     setLoading(true);
     setError(null);
 
     try {
-      // If there's a search term, use the search function to get ALL locations
+      // Only use backend search if debounced search term exists
+      // Frontend filtering is handled in the component
       if (debouncedSearchTerm.trim()) {
         setSearchLoading(true);
         const effectiveLicencee = selectedLicencee || '';
+        const effectiveFilter = activeMetricsFilter || 'Today';
         const searchData = await searchAllLocations(
           debouncedSearchTerm,
           effectiveLicencee,
-          displayCurrency
+          displayCurrency,
+          effectiveFilter,
+          dateRangeForFetch
+            ? { from: dateRangeForFetch.from, to: dateRangeForFetch.to }
+            : undefined
         );
         setLocationData(searchData);
         setTotalCount(searchData.length);
@@ -148,12 +170,15 @@ export function useLocationData({
     } finally {
       lastFetchRef.current = Date.now();
       setLoading(false);
+      fetchInProgressRef.current = false;
     }
   }, [
     debouncedSearchTerm,
     displayCurrency,
     fetchBatch,
     selectedLicencee,
+    activeMetricsFilter,
+    dateRangeForFetch,
   ]);
 
   // Refresh data when user returns to the page

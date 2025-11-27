@@ -28,6 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { User, SortKey } from '@/lib/types/administration';
+import type { UserAuthPayload } from '@/shared/types/auth';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import editIcon from '@/public/editIcon.svg';
 import deleteIcon from '@/public/deleteIcon.svg';
@@ -38,6 +39,7 @@ type UserTableProps = {
   requestSort: (key: SortKey) => void;
   onEdit?: (user: User) => void;
   onDelete?: (user: User) => void;
+  currentUser?: UserAuthPayload | null;
 };
 
 export default function UserTable({
@@ -46,7 +48,30 @@ export default function UserTable({
   requestSort,
   onEdit,
   onDelete,
+  currentUser,
 }: UserTableProps) {
+  // Check if current user is a location admin
+  const isLocationAdmin =
+    currentUser?.roles?.some(
+      role =>
+        role.toLowerCase() === 'location admin' &&
+        !currentUser.roles?.some(
+          r =>
+            r.toLowerCase() === 'developer' ||
+            r.toLowerCase() === 'admin' ||
+            r.toLowerCase() === 'manager'
+        )
+    ) || false;
+
+  // Helper function to check if a user is a manager, developer, or admin
+  const isProtectedRole = (user: User): boolean => {
+    const roles = (user.roles || []).map(r => r.toLowerCase());
+    return (
+      roles.includes('developer') ||
+      roles.includes('admin') ||
+      roles.includes('manager')
+    );
+  };
   // Map column headers to their corresponding sort keys
   const columnConfig = [
     { header: 'NAME', sortKey: 'name' as SortKey },
@@ -188,36 +213,38 @@ export default function UserTable({
                 )}
               </TableCell>
               <TableCell className="text-left">
-                <div className="flex max-w-[120px] items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => onEdit?.(user)}
-                  >
-                    <Image
-                      src={editIcon}
-                      alt="Edit"
-                      width={16}
-                      height={16}
-                      className="opacity-70 hover:opacity-100"
-                    />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => onDelete?.(user)}
-                  >
-                    <Image
-                      src={deleteIcon}
-                      alt="Delete"
-                      width={16}
-                      height={16}
-                      className="opacity-70 hover:opacity-100"
-                    />
-                  </Button>
-                </div>
+                {!(isLocationAdmin && isProtectedRole(user)) && (
+                  <div className="flex max-w-[120px] items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => onEdit?.(user)}
+                    >
+                      <Image
+                        src={editIcon}
+                        alt="Edit"
+                        width={16}
+                        height={16}
+                        className="opacity-70 hover:opacity-100"
+                      />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => onDelete?.(user)}
+                    >
+                      <Image
+                        src={deleteIcon}
+                        alt="Delete"
+                        width={16}
+                        height={16}
+                        className="opacity-70 hover:opacity-100"
+                      />
+                    </Button>
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ))}

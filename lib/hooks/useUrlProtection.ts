@@ -88,15 +88,6 @@ export function useUrlProtection({
             return;
           }
 
-          // Only check database permissions for specific tabs that require it
-          // Skip database check for admin users on most tabs
-          if (
-            userRoles.includes('admin') ||
-            userRoles.includes('developer')
-          ) {
-            // Admin users have access to all tabs, skip database check
-            return;
-          }
 
           // Check if user has permission for this specific tab (database query)
           // Map currentSection to proper TabName format

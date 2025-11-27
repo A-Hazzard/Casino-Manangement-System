@@ -7,21 +7,29 @@ import type { UserAuthPayload } from '@/shared/types/auth';
  * - Hide for non-admin users with single or no licensee
  * - Hide for location admins with single or no licensee
  */
-export function shouldShowLicenseeFilter(user: UserAuthPayload | null): boolean {
+export function shouldShowLicenseeFilter(
+  user: UserAuthPayload | null
+): boolean {
   if (!user) return false;
-  
+
   const roles = user.roles || [];
   const normalizedRoles = roles.map(role =>
     typeof role === 'string' ? role.toLowerCase() : role
   );
-  const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
-  
+  const isAdmin =
+    normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+
   // Always show for admins
   if (isAdmin) return true;
-  
+
   // For location admins, only show if they have multiple licensees
   // For other users, show if they have multiple licensees
-  const userLicensees = user.rel?.licencee || [];
+  // Use only new field
+  const userLicensees = Array.isArray(
+    (user as { assignedLicensees?: string[] })?.assignedLicensees
+  )
+    ? (user as { assignedLicensees: string[] }).assignedLicensees
+    : [];
   return userLicensees.length > 1;
 }
 
@@ -43,12 +51,17 @@ export function getUserAccessibleLicensees(
   user: UserAuthPayload | null
 ): string[] | 'all' {
   if (!user) return [];
-  
+
   if (canAccessAllLicensees(user)) {
     return 'all';
   }
-  
-  return user.rel?.licencee || [];
+
+  // Use only new field
+  return Array.isArray(
+    (user as { assignedLicensees?: string[] })?.assignedLicensees
+  )
+    ? (user as { assignedLicensees: string[] }).assignedLicensees
+    : [];
 }
 
 /**
@@ -59,13 +72,18 @@ export function getFilteredLicenseeOptions(
   user: UserAuthPayload | null
 ): Array<{ _id: string; name: string }> {
   if (!user) return [];
-  
+
   if (canAccessAllLicensees(user)) {
     return allLicensees;
   }
-  
-  const userLicenseeIds = user.rel?.licencee || [];
-  return allLicensees.filter(licensee => 
+
+  // Use only new field
+  const userLicenseeIds = Array.isArray(
+    (user as { assignedLicensees?: string[] })?.assignedLicensees
+  )
+    ? (user as { assignedLicensees: string[] }).assignedLicensees
+    : [];
+  return allLicensees.filter(licensee =>
     userLicenseeIds.includes(licensee._id)
   );
 }
@@ -80,12 +98,17 @@ export function getDefaultSelectedLicensee(
   user: UserAuthPayload | null
 ): string {
   if (!user) return '';
-  
+
   if (canAccessAllLicensees(user)) {
     return ''; // Show all for admins
   }
-  
-  const userLicensees = user.rel?.licencee || [];
+
+  // Use only new field
+  const userLicensees = Array.isArray(
+    (user as { assignedLicensees?: string[] })?.assignedLicensees
+  )
+    ? (user as { assignedLicensees: string[] }).assignedLicensees
+    : [];
   return userLicensees.length === 1 ? userLicensees[0] : '';
 }
 
@@ -97,12 +120,17 @@ export function canAccessLicensee(
   licenseeId: string
 ): boolean {
   if (!user || !licenseeId) return false;
-  
+
   if (canAccessAllLicensees(user)) {
     return true;
   }
-  
-  const userLicensees = user.rel?.licencee || [];
+
+  // Use only new field
+  const userLicensees = Array.isArray(
+    (user as { assignedLicensees?: string[] })?.assignedLicensees
+  )
+    ? (user as { assignedLicensees: string[] }).assignedLicensees
+    : [];
   return userLicensees.includes(licenseeId);
 }
 
@@ -115,12 +143,17 @@ export function shouldShowNoLicenseeMessage(
   user: UserAuthPayload | null
 ): boolean {
   if (!user) return false;
-  
+
   if (canAccessAllLicensees(user)) {
     return false;
   }
-  
-  const userLicensees = user.rel?.licencee || [];
+
+  // Use only new field
+  const userLicensees = Array.isArray(
+    (user as { assignedLicensees?: string[] })?.assignedLicensees
+  )
+    ? (user as { assignedLicensees: string[] }).assignedLicensees
+    : [];
   return userLicensees.length === 0;
 }
 
@@ -128,12 +161,9 @@ export function shouldShowNoLicenseeMessage(
  * Determines if "No Role Assigned" message should be shown
  * - Show for users with no roles
  */
-export function shouldShowNoRoleMessage(
-  user: UserAuthPayload | null
-): boolean {
+export function shouldShowNoRoleMessage(user: UserAuthPayload | null): boolean {
   if (!user) return false;
-  
+
   const roles = user.roles || [];
   return roles.length === 0;
 }
-

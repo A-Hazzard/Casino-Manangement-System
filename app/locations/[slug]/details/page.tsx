@@ -13,56 +13,40 @@
 
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
-import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
-import { Button } from '@/components/ui/button';
-import { useRouter, useParams } from 'next/navigation';
-import {
-  ArrowLeftIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from '@radix-ui/react-icons';
-import { formatCurrency } from '@/lib/utils';
-import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
-import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
-import { getFinancialColorClass } from '@/lib/utils/financialColors';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import Link from 'next/link';
-import LocationInfoSkeleton from '@/components/location/LocationInfoSkeleton';
 import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
-import { fetchLocationDetails, fetchCabinets } from '@/lib/helpers/locations';
+import { CabinetContentDisplay } from '@/components/cabinets/CabinetContentDisplay';
+import LocationInfoSkeleton from '@/components/location/LocationInfoSkeleton';
 import MetricsSummary from '@/components/locationDetails/MetricsSummary';
-import CabinetTable from '@/components/ui/cabinets/CabinetTable';
-import CabinetCard from '@/components/ui/cabinets/CabinetCard';
-import { TimePeriod } from '@/lib/types/api';
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
+import { Button } from '@/components/ui/button';
+import { DeleteCabinetModal } from '@/components/ui/cabinets/DeleteCabinetModal';
+import { EditCabinetModal } from '@/components/ui/cabinets/EditCabinetModal';
+import CurrencyValueWithOverflow from '@/components/ui/CurrencyValueWithOverflow';
 import RefreshButton from '@/components/ui/RefreshButton';
-import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
-import type { LocationInfo, ExtendedCabinetDetail } from '@/lib/types/pages';
-import { fetchAllGamingLocations } from '@/lib/helpers/locations';
-import { fetchLocationDetailsById } from '@/lib/helpers/locations';
-// import type { GamingMachine } from "@/shared/types/entities";
-type CabinetSortOption =
-  | 'assetNumber'
-  | 'locationName'
-  | 'moneyIn'
-  | 'moneyOut'
-  | 'jackpot'
-  | 'gross'
-  | 'cancelledCredits'
-  | 'game'
-  | 'smbId'
-  | 'serialNumber'
-  | 'lastOnline';
-import { mapToCabinetProps } from '@/lib/utils/cabinet';
+import {
+  fetchAllGamingLocations,
+  fetchCabinets,
+  fetchLocationDetails,
+  fetchLocationDetailsById,
+} from '@/lib/helpers/locations';
+import { useCabinetSorting } from '@/lib/hooks/data';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useCabinetActionsStore } from '@/lib/store/cabinetActionsStore';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import type { ExtendedCabinetDetail, LocationInfo } from '@/lib/types/pages';
+import { formatCurrency } from '@/lib/utils';
+import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
+import { getFinancialColorClass } from '@/lib/utils/financialColors';
+import { ArrowLeftIcon } from '@radix-ui/react-icons';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+// import type { GamingMachine } from "@/shared/types/entities";
 
 /**
  * Location Details Page Component
@@ -79,7 +63,6 @@ export default function LocationDetailsPage() {
   const {
     selectedLicencee,
     activeMetricsFilter,
-    setActiveMetricsFilter,
     setSelectedLicencee,
   } = useDashBoardStore();
 
@@ -97,9 +80,6 @@ export default function LocationDetailsPage() {
   const [filteredCabinets, setFilteredCabinets] = useState<
     ExtendedCabinetDetail[]
   >([]);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [activeMetricsTabContent, setActiveMetricsTabContent] =
     useState('Range Metrics');
   const [metricsLoading, setMetricsLoading] = useState(false);
@@ -113,10 +93,46 @@ export default function LocationDetailsPage() {
     return calculateCabinetFinancialTotals(allCabinets);
   }, [allCabinets]);
 
+  // Calculate machine status from all cabinets
+  const machineStatus = useMemo(() => {
+    const total = allCabinets.length;
+    const online = allCabinets.filter(cabinet => {
+      if (!cabinet.lastActivity) return false;
+      const lastActive = new Date(cabinet.lastActivity);
+      const now = new Date();
+      const minutesSinceLastActivity = (now.getTime() - lastActive.getTime()) / (1000 * 60);
+      return minutesSinceLastActivity <= 3;
+    }).length;
+    const offline = total - online;
+    return { total, online, offline };
+  }, [allCabinets]);
+
   // ============================================================================
   // Constants
   // ============================================================================
   const itemsPerPage = 10;
+
+  // Use the same sorting hook as the cabinets page
+  const {
+    sortOrder,
+    sortOption,
+    currentPage,
+    paginatedCabinets,
+    totalPages,
+    handleColumnSort,
+    setCurrentPage,
+    transformCabinet,
+  } = useCabinetSorting({
+    filteredCabinets,
+    itemsPerPage,
+  });
+
+  // Update selected cabinet when paginated cabinets change
+  useEffect(() => {
+    if (paginatedCabinets.length > 0 && !selectedCabinet) {
+      setSelectedCabinet(paginatedCabinets[0]);
+    }
+  }, [paginatedCabinets, selectedCabinet]);
 
   // ============================================================================
   // Event Handlers
@@ -127,41 +143,25 @@ export default function LocationDetailsPage() {
     handleRefresh();
   };
 
-  // Sorting and pagination logic
-  const handleColumnSort = (column: CabinetSortOption) => {
-    if (sortOption === column) {
-      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortOption(column);
-      setSortOrder('desc');
+  // Edit and delete handlers - accept Machine type from CabinetContentDisplay
+  const handleEdit = (
+    cabinet: ExtendedCabinetDetail | ReturnType<typeof transformCabinet>
+  ) => {
+    // Find the original cabinet from allCabinets to ensure we have all ExtendedCabinetDetail properties
+    const originalCabinet = allCabinets.find(c => c._id === cabinet._id);
+    if (originalCabinet) {
+      openEditModal(originalCabinet);
     }
   };
 
-  const sorted = [...filteredCabinets].sort((a, b) => {
-    const order = sortOrder === 'desc' ? -1 : 1;
-    const aValue = a[sortOption] || 0;
-    const bValue = b[sortOption] || 0;
-    return (aValue > bValue ? 1 : -1) * order;
-  });
-
-  const paginatedCabinets = sorted.slice(
-    currentPage * itemsPerPage,
-    (currentPage + 1) * itemsPerPage
-  );
-  const totalPages = Math.ceil(sorted.length / itemsPerPage);
-
-  // Edit and delete handlers
-  const handleEdit = (cabinet: ExtendedCabinetDetail) => {
-    openEditModal(cabinet);
-  };
-
-  const handleDelete = (cabinet: ExtendedCabinetDetail) => {
-    openDeleteModal(cabinet);
-  };
-
-  // Transform cabinet for table props
-  const transformCabinet = (cabinet: ExtendedCabinetDetail) => {
-    return mapToCabinetProps(cabinet);
+  const handleDelete = (
+    cabinet: ExtendedCabinetDetail | ReturnType<typeof transformCabinet>
+  ) => {
+    // Find the original cabinet from allCabinets to ensure we have all ExtendedCabinetDetail properties
+    const originalCabinet = allCabinets.find(c => c._id === cabinet._id);
+    if (originalCabinet) {
+      openDeleteModal(originalCabinet);
+    }
   };
 
   // Effect to handle licensee changes - refetch locations and update selection
@@ -234,8 +234,11 @@ export default function LocationDetailsPage() {
         if (location) setLocationInfo(location);
         setCabinets(cabinets);
         setAllCabinets(cabinets); // Store all cabinets for totals calculation
+
+        // Don't pre-sort here - let the sorted useMemo handle it based on sortOption/sortOrder
+        // This ensures the sort state is the single source of truth
         setFilteredCabinets(cabinets);
-        setSelectedCabinet(cabinets[0] || null);
+        setCurrentPage(0); // Reset to first page when data loads
       } catch (error) {
         console.error('Error initializing page:', error);
         // Set empty arrays on error to prevent loading states
@@ -248,7 +251,7 @@ export default function LocationDetailsPage() {
     };
 
     initializePage();
-  }, [slug, activeMetricsFilter, selectedLicencee, displayCurrency]);
+  }, [slug, activeMetricsFilter, selectedLicencee, displayCurrency, setCurrentPage]);
 
   // Add refresh function
   const handleRefresh = async () => {
@@ -283,7 +286,7 @@ export default function LocationDetailsPage() {
       setCabinets(cabinets);
       setAllCabinets(cabinets); // Store all cabinets for totals calculation
       setFilteredCabinets(cabinets);
-      setSelectedCabinet(cabinets[0] || null);
+      setCurrentPage(0); // Reset to first page when refreshing
     } catch (error) {
       console.error('Error refreshing data:', error);
       // Set empty arrays on error to prevent loading states
@@ -309,79 +312,42 @@ export default function LocationDetailsPage() {
   }, []);
 
   // Utility function for proper alphabetical and numerical sorting
-  const sortMachinesAlphabetically = (machines: ExtendedCabinetDetail[]) => {
-    return machines.sort((a, b) => {
-      const nameA = (
-        a.assetNumber ||
-        a.smbId ||
-        a.serialNumber ||
-        ''
-      ).toString();
-      const nameB = (
-        b.assetNumber ||
-        b.smbId ||
-        b.serialNumber ||
-        ''
-      ).toString();
-
-      // Extract the base name and number parts
-      const matchA = nameA.match(/^(.+?)(\d+)?$/);
-      const matchB = nameB.match(/^(.+?)(\d+)?$/);
-
-      if (!matchA || !matchB) {
-        return nameA.localeCompare(nameB);
-      }
-
-      const [, baseA, numA] = matchA;
-      const [, baseB, numB] = matchB;
-
-      // First compare the base part alphabetically
-      const baseCompare = baseA.localeCompare(baseB);
-      if (baseCompare !== 0) {
-        return baseCompare;
-      }
-
-      // If base parts are the same, compare numerically
-      const numAInt = numA ? parseInt(numA, 10) : 0;
-      const numBInt = numB ? parseInt(numB, 10) : 0;
-
-      return numAInt - numBInt;
-    });
-  };
-
-  // Handle search filtering
+  // Handle search filtering - just filter, don't sort (sorting is handled by sorted useMemo)
   useEffect(() => {
     if (!searchTerm.trim()) {
+      // When search is cleared, show all cabinets (they will be sorted by the sorted useMemo)
       setFilteredCabinets(cabinets);
+      setCurrentPage(0); // Reset to first page when clearing search
     } else {
       const searchLower = searchTerm.toLowerCase();
-      const filtered = cabinets.filter(
-        cabinet => {
-          const cabinetRecord = cabinet as Record<string, unknown>;
-          // Check custom.name (lowercase - primary per schema) first, then Custom.name (uppercase - legacy fallback)
-          const customName = (
+      const filtered = cabinets.filter(cabinet => {
+        const cabinetRecord = cabinet as Record<string, unknown>;
+        // Check custom.name (lowercase - primary per schema) first, then Custom.name (uppercase - legacy fallback)
+        const customName =
+          (
             (cabinetRecord.custom as Record<string, unknown>)?.name ||
             (cabinetRecord.Custom as Record<string, unknown>)?.name
-          )?.toString().toLowerCase() || '';
-          
-          const cabinetId = String(cabinet._id || '').toLowerCase();
-          return (
-            cabinet.assetNumber?.toLowerCase().includes(searchLower) ||
-            cabinet.smbId?.toLowerCase().includes(searchLower) ||
-            cabinet.serialNumber?.toLowerCase().includes(searchLower) ||
-            cabinet.game?.toLowerCase().includes(searchLower) ||
-            cabinet.locationName?.toLowerCase().includes(searchLower) ||
-            customName.includes(searchLower) ||
-            cabinetId.includes(searchLower)
-          );
-        }
-      );
+          )
+            ?.toString()
+            .toLowerCase() || '';
 
-      // Sort the filtered cabinets alphabetically and numerically
-      const sortedFiltered = sortMachinesAlphabetically(filtered);
-      setFilteredCabinets(sortedFiltered);
+        const cabinetId = String(cabinet._id || '').toLowerCase();
+        return (
+          cabinet.assetNumber?.toLowerCase().includes(searchLower) ||
+          cabinet.smbId?.toLowerCase().includes(searchLower) ||
+          cabinet.serialNumber?.toLowerCase().includes(searchLower) ||
+          cabinet.game?.toLowerCase().includes(searchLower) ||
+          cabinet.locationName?.toLowerCase().includes(searchLower) ||
+          customName.includes(searchLower) ||
+          cabinetId.includes(searchLower)
+        );
+      });
+
+      // Don't sort here - let the sorted useMemo handle it based on current sortOption/sortOrder
+      setFilteredCabinets(filtered);
+      setCurrentPage(0); // Reset to first page when searching
     }
-  }, [searchTerm, cabinets]);
+  }, [searchTerm, cabinets, setCurrentPage]);
 
   // ============================================================================
   // Render
@@ -423,29 +389,38 @@ export default function LocationDetailsPage() {
           </div>
         </div>
 
-        {/* Time Period Filter Buttons */}
-        <div className="hide-scrollbar mb-6 overflow-x-auto">
-          <div className="flex min-w-max flex-wrap gap-2">
-            {[
-              { label: 'Today', value: 'Today' as TimePeriod },
-              { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
-              { label: 'Last 7 days', value: '7d' as TimePeriod },
-              { label: '30 days', value: '30d' as TimePeriod },
-              { label: 'All Time', value: 'All Time' as TimePeriod },
-            ].map(filter => (
-              <Button
-                key={filter.value}
-                onClick={() => setActiveMetricsFilter(filter.value)}
-                className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
-                  activeMetricsFilter === filter.value
-                    ? 'bg-buttonActive text-white'
-                    : 'bg-button text-white hover:bg-button/90'
-                }`}
-                disabled={metricsLoading}
-              >
-                {filter.label}
-              </Button>
-            ))}
+        {/* Date Filters and Machine Status */}
+        <div className="mb-6">
+          <div className="mb-3">
+            <DashboardDateFilters
+              hideAllTime={false}
+              onCustomRangeGo={handleRefresh}
+              disabled={metricsLoading || refreshing}
+              enableTimeInputs={false}
+              mode="desktop"
+              showIndicatorOnly={true}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1 flex items-center">
+              <DashboardDateFilters
+                hideAllTime={false}
+                onCustomRangeGo={handleRefresh}
+                disabled={metricsLoading || refreshing}
+                enableTimeInputs={false}
+                mode="desktop"
+                hideIndicator={true}
+              />
+            </div>
+            <div className="w-auto flex-shrink-0 flex items-center">
+              <MachineStatusWidget
+                isLoading={metricsLoading}
+                onlineCount={machineStatus.online}
+                offlineCount={machineStatus.offline}
+                totalCount={machineStatus.total}
+                showTotal={true}
+              />
+            </div>
           </div>
         </div>
 
@@ -508,7 +483,9 @@ export default function LocationDetailsPage() {
                             locationFinancialTotals?.moneyOut || 0,
                             displayCurrency
                           )
-                        : formatCurrency(locationFinancialTotals?.moneyOut || 0)}
+                        : formatCurrency(
+                            locationFinancialTotals?.moneyOut || 0
+                          )}
                     </p>
                   </div>
                 </div>
@@ -587,139 +564,26 @@ export default function LocationDetailsPage() {
           </div>
         </div>
 
-        {/* Cabinet Table and Cards - Exact same as cabinets page */}
-        {filteredCabinets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg bg-white p-8 shadow-md">
-            <div className="mb-2 text-lg text-gray-500">No Data Available</div>
-            <div className="text-center text-sm text-gray-400">
-              {searchTerm
-                ? 'No cabinets match your search criteria.'
-                : 'No cabinets available for this location.'}
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Desktop Table View with green header and border styling */}
-            <div className="hidden md:block">
-              <CabinetTable
-                data={paginatedCabinets.map(transformCabinet)}
-                loading={metricsLoading}
-                sortOption={sortOption}
-                sortOrder={sortOrder}
-                onSort={column => handleColumnSort(column as CabinetSortOption)}
-                onPageChange={setCurrentPage}
-                onEdit={cabinetProps => {
-                  // Find the original cabinet
-                  const cabinet = paginatedCabinets.find(
-                    c => c._id === cabinetProps._id
-                  );
-                  if (cabinet) handleEdit(cabinet);
-                }}
-                onDelete={cabinetProps => {
-                  // Find the original cabinet
-                  const cabinet = paginatedCabinets.find(
-                    c => c._id === cabinetProps._id
-                  );
-                  if (cabinet) handleDelete(cabinet);
-                }}
-              />
-            </div>
-
-            {/* Mobile Card View - Only show on small screens */}
-            <div className="mt-4 block w-full max-w-full space-y-3 px-1 sm:space-y-4 sm:px-2 md:hidden">
-              {paginatedCabinets.map(cabinet => (
-                <CabinetCard
-                  key={cabinet._id}
-                  _id={cabinet._id}
-                  assetNumber={cabinet.assetNumber || ''}
-                  game={cabinet.game || ''}
-                  smbId={
-                    cabinet.smbId || cabinet.smibBoard || cabinet.relayId || ''
-                  }
-                  serialNumber={getSerialNumberIdentifier(cabinet)}
-                  locationId={cabinet.locationId || ''}
-                  locationName={cabinet.locationName || ''}
-                  moneyIn={cabinet.moneyIn || 0}
-                  moneyOut={cabinet.moneyOut || 0}
-                  cancelledCredits={cabinet.moneyOut || 0}
-                  jackpot={cabinet.jackpot || 0}
-                  gross={cabinet.gross || 0}
-                  lastOnline={
-                    cabinet.lastOnline instanceof Date
-                      ? cabinet.lastOnline.toISOString()
-                      : typeof cabinet.lastOnline === 'string'
-                        ? cabinet.lastOnline
-                        : undefined
-                  }
-                  installedGame={cabinet.installedGame || cabinet.game || ''}
-                  onEdit={() => handleEdit(cabinet)}
-                  onDelete={() => handleDelete(cabinet)}
-                />
-              ))}
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(0)}
-                  disabled={currentPage === 0}
-                  className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
-                >
-                  <DoubleArrowLeftIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                  disabled={currentPage === 0}
-                  className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
-                >
-                  <ChevronLeftIcon className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-gray-700">Page</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
-                  value={currentPage + 1}
-                  onChange={e => {
-                    let val = Number(e.target.value);
-                    if (isNaN(val)) val = 1;
-                    if (val < 1) val = 1;
-                    if (val > totalPages) val = totalPages;
-                    setCurrentPage(val - 1);
-                  }}
-                  className="w-16 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                  aria-label="Page number"
-                />
-                <span className="text-sm text-gray-700">of {totalPages}</span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setCurrentPage(p => Math.min(totalPages - 1, p + 1))
-                  }
-                  disabled={currentPage === totalPages - 1}
-                  className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
-                >
-                  <ChevronRightIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(totalPages - 1)}
-                  disabled={currentPage === totalPages - 1}
-                  className="border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50"
-                >
-                  <DoubleArrowRightIcon className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </>
-        )}
+        {/* Cabinet Table and Cards - Using same component as cabinets page */}
+        <CabinetContentDisplay
+          paginatedCabinets={paginatedCabinets}
+          filteredCabinets={filteredCabinets}
+          allCabinets={allCabinets}
+          initialLoading={false}
+          loading={metricsLoading}
+          error={null}
+          sortOption={sortOption}
+          sortOrder={sortOrder}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onSort={handleColumnSort}
+          onPageChange={setCurrentPage}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onRetry={handleRefresh}
+          transformCabinet={transformCabinet}
+          selectedLicencee={selectedLicencee}
+        />
 
         {selectedCabinet && (
           <AccountingDetails

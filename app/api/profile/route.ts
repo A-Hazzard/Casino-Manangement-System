@@ -17,12 +17,9 @@ import {
   hasInvalidProfileFields,
 } from '@/app/api/lib/helpers/profileValidation';
 import { getUserIdFromServer } from '@/app/api/lib/helpers/users';
-import UserModel from '@/app/api/lib/models/user';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import {
-  comparePassword,
-  hashPassword,
-} from '@/app/api/lib/utils/validation';
+import UserModel from '@/app/api/lib/models/user';
+import { comparePassword, hashPassword } from '@/app/api/lib/utils/validation';
 import {
   containsEmailPattern,
   isValidDateInput,
@@ -128,13 +125,15 @@ export async function PUT(request: NextRequest) {
     }
 
     if (gender && !validateOptionalGender(gender)) {
-      errors.gender =
-        'Select a valid gender option.';
+      errors.gender = 'Select a valid gender option.';
     }
 
     if (!validateEmail(emailAddress)) {
       errors.emailAddress = 'Provide a valid email address.';
-    } else if (containsEmailPattern(username) || emailAddress.toLowerCase() === username.toLowerCase()) {
+    } else if (
+      containsEmailPattern(username) ||
+      emailAddress.toLowerCase() === username.toLowerCase()
+    ) {
       errors.emailAddress =
         'Email address must differ from username and other identifiers.';
     }
@@ -142,9 +141,7 @@ export async function PUT(request: NextRequest) {
     if (!validatePhoneNumber(phone)) {
       errors.phone =
         'Provide a valid phone number (digits, spaces, hyphen, parentheses, optional leading +).';
-    } else if (
-      normalizePhoneNumber(phone) === normalizePhoneNumber(username)
-    ) {
+    } else if (normalizePhoneNumber(phone) === normalizePhoneNumber(username)) {
       errors.phone = 'Phone number cannot match the username.';
     }
 
@@ -200,8 +197,8 @@ export async function PUT(request: NextRequest) {
               typeof item === 'string'
                 ? item.trim()
                 : item != null
-                ? String(item)
-                : ''
+                  ? String(item)
+                  : ''
             )
             .filter(Boolean)
         )
@@ -212,14 +209,28 @@ export async function PUT(request: NextRequest) {
     const requestedLicenseeIds = normalizeIdArray(body.licenseeIds);
     const requestedLocationIds = normalizeIdArray(body.locationIds);
 
-    const existingLicensees =
-      Array.isArray(user.rel?.licencee) && user.rel?.licencee
-        ? (user.rel?.licencee as unknown[]).map(id => String(id))
-        : [];
-    const existingLocations =
-      user.resourcePermissions?.['gaming-locations']?.resources?.map(
-        (id: unknown) => String(id)
-      ) || [];
+    // Use only new fields
+    let existingLicensees: string[] = [];
+    if (
+      Array.isArray(
+        (user as { assignedLicensees?: string[] })?.assignedLicensees
+      )
+    ) {
+      existingLicensees = (
+        user as { assignedLicensees: string[] }
+      ).assignedLicensees.map(id => String(id));
+    }
+
+    let existingLocations: string[] = [];
+    if (
+      Array.isArray(
+        (user as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      existingLocations = (
+        user as { assignedLocations: string[] }
+      ).assignedLocations.map(id => String(id));
+    }
 
     const userRoles =
       (user.roles as string[] | undefined)?.map(role =>
@@ -291,7 +302,10 @@ export async function PUT(request: NextRequest) {
     // STEP 7: Verify current password if changing password
     // ============================================================================
     if (passwordChangeRequested) {
-      const matches = await comparePassword(currentPassword, user.password || '');
+      const matches = await comparePassword(
+        currentPassword,
+        user.password || ''
+      );
       if (!matches) {
         return NextResponse.json(
           {
@@ -387,7 +401,8 @@ export async function PUT(request: NextRequest) {
 
     // Update licensees if user can manage assignments and licenseeIds are provided
     if (canManageAssignments && requestedLicenseeIds !== undefined) {
-      updateSet['rel.licencee'] = requestedLicenseeIds;
+      // Update only new field - no longer writing to old fields
+      updateSet['assignedLicensees'] = requestedLicenseeIds;
       const sortedExistingLicensees = sortIds(existingLicensees);
       const sortedRequestedLicensees = sortIds(requestedLicenseeIds);
       if (!arraysEqual(sortedRequestedLicensees, sortedExistingLicensees)) {
@@ -397,10 +412,8 @@ export async function PUT(request: NextRequest) {
 
     // Update locations if user can manage assignments and locationIds are provided
     if (canManageAssignments && requestedLocationIds !== undefined) {
-      updateSet['resourcePermissions.gaming-locations.entity'] =
-        'gaming-locations';
-      updateSet['resourcePermissions.gaming-locations.resources'] =
-        requestedLocationIds;
+      // Update only new field - no longer writing to old fields
+      updateSet['assignedLocations'] = requestedLocationIds;
       const sortedExistingLocations = sortIds(existingLocations);
       const sortedRequestedLocations = sortIds(requestedLocationIds);
       if (!arraysEqual(sortedRequestedLocations, sortedExistingLocations)) {
@@ -455,7 +468,8 @@ export async function PUT(request: NextRequest) {
         roles: updatedObject.roles,
         rel: updatedObject.rel,
         isEnabled: updatedObject.isEnabled,
-        resourcePermissions: updatedObject.resourcePermissions,
+        assignedLocations: updatedObject.assignedLocations || undefined,
+        assignedLicensees: updatedObject.assignedLicensees || undefined,
         requiresProfileUpdate,
         invalidProfileFields: invalidFields,
         invalidProfileReasons: reasons,
@@ -466,7 +480,8 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to update profile';
     console.error(`[Profile API] PUT error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, message: errorMessage },
@@ -474,4 +489,3 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-

@@ -19,8 +19,8 @@
 This document outlines the core functional requirements for the Reports Module within the Evolution One Casino Management System. The module provides comprehensive reporting capabilities for financial monitoring, machine performance analysis, customer data insights, and operational oversight across all casino locations.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 2024  
-**Version:** 2.1.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.2.0
 
 ### Purpose
 
@@ -296,6 +296,59 @@ The Locations Tab provides three distinct export functions, each supporting PDF 
 - **Expected vs Actual**: Comparison of predicted revenue vs actual meter data
 - **Variance Reporting**: Identification of significant discrepancies
 - **Audit Trail**: Complete record of all meter readings and changes
+
+#### 5.4.1. Meters Tab Structure
+
+The Meters Tab (`/reports?section=meters`) provides comprehensive meter reading analysis with the following components:
+
+**Location Selection & Controls Card:**
+
+- **Left Column**: Location multi-select dropdown with "Clear Selection" and "Select All" buttons
+- **Right Column**: Top Performing Machines pie chart showing top 10 machines by drop (billIn) value
+  - Interactive pie chart with hover states
+  - Legend showing machine names with game information (if available)
+  - Navigation icons to view location details
+  - Chart displays machines currently shown in the table (synchronized with search/filter)
+
+**Meters Export Report Card:**
+
+- **Header**: Title, badge showing record count, and description
+- **Hourly Charts** (when locations selected): Three charts showing hourly trends:
+  - Games Played Per Hour (full width)
+  - Coin In Per Hour (left column)
+  - Coin Out Per Hour (right column)
+  - Charts automatically filter based on table search results
+- **Search Bar**: Located above the table, always visible
+  - Searches by machine serial number, custom name, or location name
+  - Debounced search (500ms delay) for performance
+  - Shows "Showing X of Y records" with filter status
+- **Data Table**: Desktop and mobile views
+  - **Desktop**: 10-column table with all meter fields
+  - **Mobile**: Card-based layout with grouped metrics
+  - Columns: Machine ID, Location, Meters In, Money Won, Jackpot, Bill In, Voucher Out, Hand Paid Cancelled Credits, Games Played, Date
+  - All cells center-aligned to match headers
+  - Color-coded financial values (green for positive, red for negative)
+- **Pagination**: Server-side pagination with page navigation controls
+
+**Loading States & Skeleton Loaders:**
+
+- **Initial Load**: Full page skeleton when locations are loading
+- **Data Fetching**: Inline skeleton loaders for each section:
+  - Top Performing Machines chart skeleton (legend + pie chart structure)
+  - Hourly charts skeleton (matches MetersHourlyCharts loading state)
+  - Meters Export Report card skeleton (header, search bar, table structure)
+  - All skeleton loaders match the exact layout of actual content
+- **Top Performing Machines**: Shows skeleton in the chart container while `topMachinesLoading` is true
+- **Meters Table**: Shows skeleton table structure while `loading` is true
+
+**Top Performing Machines Chart:**
+
+- Calculated from the same data source as the table (`allMetersData`)
+- Uses `billIn` (drop) as the performance metric
+- Displays top 10 machines by total drop value
+- Machine names formatted as: "CustomName (SerialNumber, Game)" or "SerialNumber (Game)"
+- Includes navigation icons to view location details
+- Chart updates automatically when table data changes (search/filter)
 
 ## 6. Data Flow and Processing
 

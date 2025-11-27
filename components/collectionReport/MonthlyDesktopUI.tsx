@@ -64,10 +64,12 @@ const MonthlyDesktopUI: React.FC<MonthlyDesktopUIProps> = ({
 }) => {
   // Handler for export with format selection
   const handleExport = async (format: 'pdf' | 'excel') => {
+    const totalLocations = locations.length;
+    const currentLocationsCount = monthlyDetails.length;
     if (format === 'pdf') {
-      await exportMonthlyReportPDF(monthlySummary, monthlyDetails);
+      await exportMonthlyReportPDF(monthlySummary, monthlyDetails, totalLocations, currentLocationsCount);
     } else {
-      exportMonthlyReportExcel(monthlySummary, monthlyDetails);
+      exportMonthlyReportExcel(monthlySummary, monthlyDetails, totalLocations, currentLocationsCount);
     }
   };
 

@@ -100,10 +100,16 @@ export const CabinetContentDisplay = ({
   
   useEffect(() => {
     const loadLicenseeNames = async () => {
-      if (user?.rel?.licencee && user.rel.licencee.length > 0) {
+      // Use only new field
+      let userLicensees: string[] = [];
+      if (Array.isArray(user?.assignedLicensees) && user.assignedLicensees.length > 0) {
+        userLicensees = user.assignedLicensees;
+      }
+      
+      if (userLicensees.length > 0) {
         const result = await fetchLicensees();
         const allLicensees = Array.isArray(result.licensees) ? result.licensees : [];
-        const names = user.rel.licencee
+        const names = userLicensees
           .map(id => {
             const licensee = allLicensees.find(l => String(l._id) === String(id));
             return licensee?.name;

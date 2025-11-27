@@ -33,6 +33,12 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import { fetchLocationDetails } from '@/lib/helpers/locations';
+import { getLicenseeCurrency, getCountryCurrency } from '@/lib/helpers/rates';
+import { fetchLicenseeById } from '@/lib/helpers/clientLicensees';
+import type { CurrencyCode } from '@/shared/types/currency';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import axios from 'axios';
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -113,7 +119,9 @@ function CabinetDetailPageContent() {
     setSelectedLicencee,
     activeMetricsFilter,
     customDateRange,
+    setDisplayCurrency: setDashboardCurrency,
   } = useDashBoardStore();
+  const { setDisplayCurrency } = useCurrency();
   const { openEditModal } = useCabinetActionsStore();
   const hasMounted = useHasMounted();
 
@@ -153,6 +161,26 @@ function CabinetDetailPageContent() {
   }, [user]);
 
   // ============================================================================
+  // Custom Hooks - Data Management (must be before effects that use cabinet)
+  // ============================================================================
+  const {
+    cabinet,
+    locationName,
+    error,
+    errorType,
+    metricsLoading,
+    isOnline,
+    fetchCabinetDetailsData,
+    handleCabinetUpdated,
+  } = useCabinetDetailsData({
+    slug,
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    dateFilterInitialized,
+  });
+
+  // ============================================================================
   // Effects - Initialization
   // ============================================================================
   // Detect when date filter is properly initialized
@@ -161,6 +189,62 @@ function CabinetDetailPageContent() {
       setDateFilterInitialized(true);
     }
   }, [activeMetricsFilter, dateFilterInitialized]);
+
+  // Set default currency based on cabinet's location licensee
+  useEffect(() => {
+    const setDefaultCurrencyForCabinet = async () => {
+      if (!cabinet?.gamingLocation || !user) return;
+
+      try {
+        // Fetch location details to get licensee
+        const locationData = await fetchLocationDetails(cabinet.gamingLocation);
+        
+        if (!locationData) return;
+
+        let defaultCurrency: CurrencyCode = 'USD';
+
+        // Get licensee from location
+        const licenseeId = locationData.rel?.licencee;
+        if (licenseeId) {
+          // Fetch licensee name using helper function
+          const licensee = await fetchLicenseeById(licenseeId);
+          if (licensee?.name) {
+            defaultCurrency = getLicenseeCurrency(licensee.name);
+          }
+        } else if (locationData.country) {
+          // If no licensee, fetch country name to determine currency
+          try {
+            const response = await axios.get(`/api/countries`, {
+              params: { country: locationData.country },
+            });
+            const countries = response.data?.countries || response.data?.data || [];
+            const country = Array.isArray(countries) ? countries[0] : countries;
+            const countryName = country?.name;
+            if (countryName) {
+              defaultCurrency = getCountryCurrency(countryName);
+            }
+          } catch (countryError) {
+            console.warn('Could not fetch country for currency:', countryError);
+          }
+        }
+
+        // Check if user has multiple assignedLicensees
+        const assignedLicensees = user.assignedLicensees || [];
+        const hasMultipleLicensees = assignedLicensees.length > 1;
+
+        // Set default currency if user has multiple licensees (allows them to change it)
+        // or if it's different from current currency
+        if (hasMultipleLicensees || defaultCurrency !== 'USD') {
+          setDisplayCurrency(defaultCurrency);
+          setDashboardCurrency(defaultCurrency);
+        }
+      } catch (error) {
+        console.error('Error setting default currency for cabinet:', error);
+      }
+    };
+
+    setDefaultCurrencyForCabinet();
+  }, [cabinet?.gamingLocation, user, setDisplayCurrency, setDashboardCurrency]);
 
   // ============================================================================
   // Event Handlers
@@ -198,26 +282,6 @@ function CabinetDetailPageContent() {
       }
     }
   };
-
-  // ============================================================================
-  // Custom Hooks - Data Management
-  // ============================================================================
-  const {
-    cabinet,
-    locationName,
-    error,
-    errorType,
-    metricsLoading,
-    isOnline,
-    fetchCabinetDetailsData,
-    handleCabinetUpdated,
-  } = useCabinetDetailsData({
-    slug,
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    dateFilterInitialized,
-  });
 
   const {
     smibConfigExpanded,
@@ -581,7 +645,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
-          hideCurrencyFilter: selectedLicencee !== '' && selectedLicencee !== undefined,
+          hideCurrencyFilter: user ? (user.assignedLicensees || []).length <= 1 : undefined,
         }}
         pageTitle=""
         hideOptions={true}
@@ -612,7 +676,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
-          hideCurrencyFilter: selectedLicencee !== '' && selectedLicencee !== undefined,
+          hideCurrencyFilter: user ? (user.assignedLicensees || []).length <= 1 : undefined,
         }}
         pageTitle=""
         hideOptions={true}
@@ -683,7 +747,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
-          hideCurrencyFilter: selectedLicencee !== '' && selectedLicencee !== undefined,
+          hideCurrencyFilter: user ? (user.assignedLicensees || []).length <= 1 : undefined,
         }}
         pageTitle=""
         hideOptions={true}
@@ -2036,7 +2100,7 @@ function CabinetDetailPageContent() {
             cabinet={cabinet}
             loading={metricsLoading}
             activeMetricsTabContent={activeMetricsTabContent}
-            disableCurrencyConversion={selectedLicencee !== '' && selectedLicencee !== undefined}
+            disableCurrencyConversion={user ? (user.assignedLicensees || []).length <= 1 : undefined}
             setActiveMetricsTabContent={handleTabChange}
             onDataRefresh={fetchCabinetDetailsData}
           />

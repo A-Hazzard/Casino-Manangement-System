@@ -37,17 +37,19 @@ export const getLocationsWithMetrics = async (
   const locationIdFilter: { _id?: { $in: string[] } } = {};
 
   // Debug logging
+  console.log('🔍 [getLocationsWithMetrics] ========================================');
   if (allowedLocationIds === 'all') {
     console.log(
-      '[getLocationsWithMetrics] allowedLocationIds is "all" - no location filtering will be applied'
+      '🔍 [getLocationsWithMetrics] allowedLocationIds is "all" - no location filtering will be applied'
     );
   } else if (allowedLocationIds !== undefined) {
     console.log(
-      `[getLocationsWithMetrics] allowedLocationIds is array with ${allowedLocationIds.length} locations - filtering will be applied`
+      `🔍 [getLocationsWithMetrics] allowedLocationIds is array with ${allowedLocationIds.length} locations - filtering will be applied`
     );
+    console.log('🔍 [getLocationsWithMetrics] Allowed location IDs (first 10):', allowedLocationIds.slice(0, 10));
   } else {
     console.log(
-      '[getLocationsWithMetrics] allowedLocationIds is undefined - will check licensee filter'
+      '🔍 [getLocationsWithMetrics] allowedLocationIds is undefined - will check licensee filter'
     );
   }
 
@@ -56,12 +58,14 @@ export const getLocationsWithMetrics = async (
     // This already includes licensee filtering if applicable
     if (allowedLocationIds.length === 0) {
       // No accessible locations
+      console.warn('⚠️⚠️⚠️ [getLocationsWithMetrics] EMPTY allowedLocationIds - returning empty result ⚠️⚠️⚠️');
       return {
         rows: [],
         totalCount: 0,
       };
     }
     locationIdFilter._id = { $in: allowedLocationIds };
+    console.log('🔍 [getLocationsWithMetrics] Applied location filter:', { _id: { $in: allowedLocationIds.slice(0, 5) } });
   } else if (licencee && licencee !== 'all') {
     // No user location permissions provided, but licensee filter is specified
     // Prefetch location ids for this licensee
@@ -119,13 +123,23 @@ export const getLocationsWithMetrics = async (
   // This means when no selectedLocations are provided, we load ALL locations with financial data
   if (!basicList) {
     // Execute the location pipeline first to get all matching locations
+    console.log('🔍 [getLocationsWithMetrics] Executing location pipeline with filter:', JSON.stringify(basePipeline[0].$match, null, 2));
     const locations = await db
       .collection('gaminglocations')
       .aggregate(basePipeline)
       .toArray();
 
+    console.log('🔍 [getLocationsWithMetrics] Pipeline returned locations:', {
+      count: locations.length,
+      firstFew: locations.slice(0, 5).map((loc: { _id?: string; name?: string }) => ({
+        _id: String(loc._id),
+        name: loc.name
+      }))
+    });
+
     // If no locations found, return empty result
     if (locations.length === 0) {
+      console.warn('⚠️⚠️⚠️ [getLocationsWithMetrics] NO LOCATIONS FOUND - returning empty result ⚠️⚠️⚠️');
       return {
         rows: [],
         totalCount: 0,

@@ -52,11 +52,7 @@ import { fetchLicensees } from '@/lib/helpers/clientLicensees';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useAdministrationNavigation } from '@/lib/hooks/navigation';
 import { useUserStore } from '@/lib/store/userStore';
-import type {
-  ResourcePermissions,
-  SortKey,
-  User,
-} from '@/lib/types/administration';
+import type { SortKey, User } from '@/lib/types/administration';
 import type { Country } from '@/lib/types/country';
 import type { Licensee } from '@/lib/types/licensee';
 import {
@@ -132,7 +128,7 @@ function AdministrationPageContent() {
   // ============================================================================
   // Prevent hydration mismatch by rendering content only on client
   const [mounted, setMounted] = useState(false);
-  
+
   // Users section state
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allLoadedUsers, setAllLoadedUsers] = useState<User[]>([]);
@@ -320,7 +316,16 @@ function AdministrationPageContent() {
       updated.delete('users');
       return updated;
     });
-  }, [selectedLicencee, selectedStatus, mounted, setAllUsers, setAllLoadedUsers, setLoadedBatches, setCurrentPage, setLoadedSections]);
+  }, [
+    selectedLicencee,
+    selectedStatus,
+    mounted,
+    setAllUsers,
+    setAllLoadedUsers,
+    setLoadedBatches,
+    setCurrentPage,
+    setLoadedSections,
+  ]);
 
   // Debounce search value
   useEffect(() => {
@@ -341,7 +346,15 @@ function AdministrationPageContent() {
       setAllUsers(allLoadedUsers);
       setCurrentPage(0);
     }
-  }, [debouncedSearchValue, allLoadedUsers, setUsingBackendSearch, setPaginationMetadata, setIsSearching, setAllUsers, setCurrentPage]);
+  }, [
+    debouncedSearchValue,
+    allLoadedUsers,
+    setUsingBackendSearch,
+    setPaginationMetadata,
+    setIsSearching,
+    setAllUsers,
+    setCurrentPage,
+  ]);
 
   // Frontend search - search through loaded users first
   useEffect(() => {
@@ -500,7 +513,18 @@ function AdministrationPageContent() {
       };
       loadUsers();
     }
-  }, [activeSection, selectedLicencee, selectedStatus, loadedSections, itemsPerBatch, setAllUsers, setAllLoadedUsers, setIsLoading, setLoadedBatches, setLoadedSections]);
+  }, [
+    activeSection,
+    selectedLicencee,
+    selectedStatus,
+    loadedSections,
+    itemsPerBatch,
+    setAllUsers,
+    setAllLoadedUsers,
+    setIsLoading,
+    setLoadedBatches,
+    setLoadedSections,
+  ]);
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
@@ -540,7 +564,7 @@ function AdministrationPageContent() {
             const updated = [...prev, ...newItems];
             setAllLoadedUsers(updated);
             return updated;
-      });
+          });
         })
         .catch(error => {
           if (process.env.NODE_ENV === 'development') {
@@ -620,7 +644,17 @@ function AdministrationPageContent() {
       };
       loadLicensees();
     }
-  }, [activeSection, selectedLicencee, loadedSections, licenseesItemsPerBatch, setAllLicensees, setIsLicenseesLoading, setLicenseesCurrentPage, setLicenseesLoadedBatches, setLoadedSections]);
+  }, [
+    activeSection,
+    selectedLicencee,
+    loadedSections,
+    licenseesItemsPerBatch,
+    setAllLicensees,
+    setIsLicenseesLoading,
+    setLicenseesCurrentPage,
+    setLicenseesLoadedBatches,
+    setLoadedSections,
+  ]);
 
   // Fetch next batch for licensees when crossing batch boundaries
   useEffect(() => {
@@ -712,8 +746,10 @@ function AdministrationPageContent() {
     }
     return allUsers.filter(user => {
       const userRoles = user.roles || [];
-      return userRoles.some(role => 
-        typeof role === 'string' && role.toLowerCase() === selectedRole.toLowerCase()
+      return userRoles.some(
+        role =>
+          typeof role === 'string' &&
+          role.toLowerCase() === selectedRole.toLowerCase()
       );
     });
   }, [allUsers, selectedRole]);
@@ -744,7 +780,12 @@ function AdministrationPageContent() {
     // If we have items, return the calculated pages (based on all loaded data)
     // This will dynamically increase as more batches are loaded
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [roleFilteredUsers.length, itemsPerPage, usingBackendSearch, paginationMetadata]);
+  }, [
+    roleFilteredUsers.length,
+    itemsPerPage,
+    usingBackendSearch,
+    paginationMetadata,
+  ]);
 
   const processedUsers = useMemo(() => {
     // When using backend search, backend already filters, so we only need to sort and filter test users
@@ -770,301 +811,523 @@ function AdministrationPageContent() {
     setSortConfig
   );
 
-  const handleEditUser = useCallback(async (user: User) => {
-    // Set loading state and open modal first
-    setIsUserModalOpen(true);
-    setSelectedUser(null); // Set to null initially to trigger loading state
+  const handleEditUser = useCallback(
+    async (user: User) => {
+      // Set loading state and open modal first
+      setIsUserModalOpen(true);
+      setSelectedUser(null); // Set to null initially to trigger loading state
 
-    try {
-      // Fetch detailed user information
-      const response = await axios.get(`/api/users/${user._id}`);
-      if (response.data.success) {
-        setSelectedUser(response.data.user);
-      } else {
+      try {
+        // Fetch detailed user information
+        const response = await axios.get(`/api/users/${user._id}`);
+        if (response.data.success) {
+          setSelectedUser(response.data.user);
+        } else {
+          toast.error('Failed to load user details');
+          setIsUserModalOpen(false);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to fetch user details:', error);
+        }
         toast.error('Failed to load user details');
         setIsUserModalOpen(false);
       }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to fetch user details:', error);
+    },
+    [setIsUserModalOpen, setSelectedUser]
+  );
+
+  const handleDeleteUser = useCallback(
+    (user: User) => {
+      setSelectedUserToDelete(user);
+      setIsDeleteModalOpen(true);
+    },
+    [setSelectedUserToDelete, setIsDeleteModalOpen]
+  );
+
+  const handleSaveUser = useCallback(
+    async (
+      updated: Partial<User> & {
+        password?: string;
       }
-      toast.error('Failed to load user details');
-      setIsUserModalOpen(false);
-    }
-  }, [setIsUserModalOpen, setSelectedUser]);
+    ) => {
+      if (!selectedUser) return;
 
-  const handleDeleteUser = useCallback((user: User) => {
-    setSelectedUserToDelete(user);
-    setIsDeleteModalOpen(true);
-  }, [setSelectedUserToDelete, setIsDeleteModalOpen]);
+      // Validate that we have at least one field to update
+      // Note: User type uses 'enabled' but backend uses 'isEnabled', so check both
+      const hasUpdates =
+        updated.username !== undefined ||
+        updated.email !== undefined ||
+        updated.emailAddress !== undefined ||
+        updated.roles !== undefined ||
+        updated.profile !== undefined ||
+        updated.profilePicture !== undefined ||
+        updated.password !== undefined ||
+        updated.rel !== undefined ||
+        updated.assignedLocations !== undefined ||
+        updated.assignedLicensees !== undefined ||
+        (updated as { isEnabled?: boolean }).isEnabled !== undefined ||
+        (updated as { enabled?: boolean }).enabled !== undefined;
 
-  const handleSaveUser = useCallback(async (
-    updated: Partial<User> & {
-      password?: string;
-      resourcePermissions: ResourcePermissions;
-    }
-  ) => {
-    if (!selectedUser) return;
-
-    // Validate that we have at least one field to update
-    const hasUpdates =
-      updated.username !== undefined ||
-      updated.email !== undefined ||
-      updated.emailAddress !== undefined ||
-      updated.roles !== undefined ||
-      updated.profile !== undefined ||
-      updated.profilePicture !== undefined ||
-      updated.password !== undefined ||
-      updated.rel !== undefined ||
-      updated.resourcePermissions !== undefined;
-
-    if (!hasUpdates) {
-      toast.error('No changes detected. Please update at least one field.');
-      return;
-    }
-
-    // Build comparison objects with ONLY editable fields
-    const normalizedOriginalEmail = (
-      selectedUser.email ||
-      selectedUser.emailAddress ||
-      ''
-    ).trim();
-    const normalizedUpdatedEmail = (
-      updated.email ||
-      updated.emailAddress ||
-      ''
-    ).trim();
-
-    const originalData = {
-      username: selectedUser.username,
-      email: normalizedOriginalEmail,
-      emailAddress: (
-        selectedUser.emailAddress ||
-        selectedUser.email ||
-        ''
-      ).trim(),
-      profile: selectedUser.profile,
-      roles: selectedUser.roles,
-      resourcePermissions: selectedUser.resourcePermissions,
-      profilePicture: selectedUser.profilePicture,
-      rel: selectedUser.rel,
-    };
-
-    const formDataComparison = {
-      username: updated.username,
-      email: normalizedUpdatedEmail,
-      emailAddress: normalizedUpdatedEmail,
-      profile: updated.profile,
-      roles: updated.roles,
-      resourcePermissions: updated.resourcePermissions,
-      profilePicture: updated.profilePicture,
-      password: updated.password, // Include if changing password
-      rel: updated.rel,
-    };
-
-    // Detect changes by comparing ONLY editable fields
-    const changes = detectChanges(originalData, formDataComparison);
-    const meaningfulChanges = filterMeaningfulChanges(changes);
-
-    console.log('[Administration] handleSaveUser - Change Detection:');
-    console.log('  Original rel:', originalData.rel);
-    console.log('  Updated rel:', formDataComparison.rel);
-    console.log('  Meaningful changes:', meaningfulChanges);
-    console.log(
-      '  Changes summary:',
-      meaningfulChanges.map(
-        c =>
-          `${c.path}: ${JSON.stringify(c.oldValue)} → ${JSON.stringify(c.newValue)}`
-      )
-    );
-
-    // Only proceed if there are actual changes
-    if (meaningfulChanges.length === 0) {
-      console.error('[Administration] ❌ No changes detected - blocking save');
-      toast.info('No changes detected');
-      return;
-    }
-
-    console.log('[Administration] ✅ Changes detected, proceeding with save');
-
-    // Check if permission-related fields changed (roles, resourcePermissions, rel)
-    console.log('[Administration] Checking for permission field changes...');
-    console.log(
-      '[Administration] All changed paths:',
-      meaningfulChanges.map(c => c.path)
-    );
-
-    const permissionFieldsChanged = meaningfulChanges.some(change => {
-      const fieldPath = change.path;
-      const isPermissionField =
-        fieldPath === 'roles' ||
-        fieldPath.startsWith('resourcePermissions') ||
-        fieldPath.startsWith('rel');
-
-      if (isPermissionField) {
-        console.log(
-          '[Administration] Found permission field change:',
-          fieldPath
-        );
+      if (!hasUpdates) {
+        toast.error('No changes detected. Please update at least one field.');
+        return;
       }
 
-      return isPermissionField;
-    });
-
-    console.log(
-      '[Administration] Permission fields changed:',
-      permissionFieldsChanged
-    );
-
-    // Build update payload with only changed fields + required _id
-    const updatePayload: Record<string, unknown> = { _id: selectedUser._id };
-
-    // For MongoDB, we can use dot notation directly for nested fields
-    // This allows MongoDB to update only the specific nested field without replacing the entire parent object
-    meaningfulChanges.forEach(change => {
-      if (change.newValue !== undefined) {
-        // Use dot notation for nested paths (MongoDB supports this in $set)
-        // For paths with hyphens like "resourcePermissions.gaming-locations.resources",
-        // MongoDB dot notation works correctly
-        updatePayload[change.path] = change.newValue;
-      }
-    });
-
-    // Debug logging for location permission updates
-    if (permissionFieldsChanged) {
-      const locationChanges = meaningfulChanges.filter(c =>
-        c.path.startsWith('resourcePermissions.gaming-locations.resources')
-      );
-      if (locationChanges.length > 0) {
-        console.log('[Administration] Location permission update:', {
-          path: locationChanges[0].path,
-          oldValue: locationChanges[0].oldValue,
-          newValue: locationChanges[0].newValue,
-          updatePayloadKey: Object.keys(updatePayload).find(k =>
-            k.includes('resourcePermissions')
-          ),
-        });
-      }
-    }
-
-    // If permission-related fields changed, increment sessionVersion to invalidate existing JWT
-    if (permissionFieldsChanged) {
-      updatePayload.$inc = { sessionVersion: 1 };
+      // ============================================================================
+      // STEP 1: Log original API data
+      // ============================================================================
       console.log(
-        '[Administration] 🔒 Permission fields changed - incrementing sessionVersion to invalidate user session'
+        '[Administration] ============================================'
       );
-    }
+      console.log('[Administration] STEP 1: Original API data (selectedUser):');
+      console.log('[Administration]   _id:', selectedUser._id);
+      console.log('[Administration]   username:', selectedUser.username);
+      console.log('[Administration]   email:', selectedUser.email);
+      console.log(
+        '[Administration]   emailAddress:',
+        selectedUser.emailAddress
+      );
+      console.log(
+        '[Administration]   roles:',
+        JSON.stringify(selectedUser.roles, null, 2)
+      );
+      console.log(
+        '[Administration]   rel:',
+        JSON.stringify(selectedUser.rel, null, 2)
+      );
+      console.log(
+        '[Administration]   profile:',
+        JSON.stringify(selectedUser.profile, null, 2)
+      );
+      console.log(
+        '[Administration]   profilePicture:',
+        selectedUser.profilePicture ? 'present' : 'null'
+      );
+      console.log(
+        '[Administration] ============================================'
+      );
 
-    console.log('[Administration] Update payload:', updatePayload);
-    console.log('[Administration] Update payload rel:', updatePayload.rel);
+      // ============================================================================
+      // STEP 2: Log what's being sent from UserModal
+      // ============================================================================
+      console.log(
+        '[Administration] ============================================'
+      );
+      console.log(
+        '[Administration] STEP 2: Data received from UserModal (updated):'
+      );
+      console.log('[Administration]   _id:', updated._id);
+      console.log('[Administration]   username:', updated.username);
+      console.log('[Administration]   email:', updated.email);
+      console.log('[Administration]   emailAddress:', updated.emailAddress);
+      console.log(
+        '[Administration]   roles:',
+        JSON.stringify(updated.roles, null, 2)
+      );
+      console.log(
+        '[Administration]   rel:',
+        JSON.stringify(updated.rel, null, 2)
+      );
+      console.log(
+        '[Administration]   profile:',
+        JSON.stringify(updated.profile, null, 2)
+      );
+      console.log(
+        '[Administration]   profilePicture:',
+        updated.profilePicture ? 'present' : 'null'
+      );
+      console.log(
+        '[Administration]   password:',
+        updated.password ? 'present' : 'not included'
+      );
+      console.log(
+        '[Administration] ============================================'
+      );
 
-    try {
-      await updateUser(updatePayload as never);
+      // ============================================================================
+      // STEP 3: Normalize email values for comparison
+      // ============================================================================
+      const normalizedOriginalEmail = (
+        selectedUser.email ||
+        selectedUser.emailAddress ||
+        ''
+      ).trim();
+      const normalizedUpdatedEmail = (
+        updated.email ||
+        updated.emailAddress ||
+        ''
+      ).trim();
 
-      // Log the update activity with proper change tracking
-      try {
-        const changesSummary = getChangesSummary(meaningfulChanges);
-        await fetch('/api/activity-logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'update',
-            resource: 'user',
-            resourceId: selectedUser._id,
-            resourceName: selectedUser.username,
-            details: `Updated user: ${changesSummary}`,
-            userId: user?._id || 'unknown',
-            username: getUserDisplayName(),
-            userRole: 'user',
-            previousData: originalData,
-            newData: updatePayload,
-            changes: meaningfulChanges.map(change => ({
-              field: change.field,
-              oldValue: change.oldValue,
-              newValue: change.newValue,
-            })),
-          }),
-        });
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to log activity:', error);
-        }
+      // ============================================================================
+      // STEP 4: Build comparison objects - compare API data to what's being sent
+      // ============================================================================
+      const originalData = {
+        username: selectedUser.username,
+        email: normalizedOriginalEmail,
+        emailAddress: (
+          selectedUser.emailAddress ||
+          selectedUser.email ||
+          ''
+        ).trim(),
+        profile: selectedUser.profile,
+        roles: selectedUser.roles || [],
+        profilePicture: selectedUser.profilePicture,
+        rel: selectedUser.rel,
+        // Include new fields for comparison
+        assignedLocations: selectedUser.assignedLocations,
+        assignedLicensees: selectedUser.assignedLicensees,
+      };
+
+      const formDataComparison = {
+        username: updated.username,
+        email: normalizedUpdatedEmail,
+        emailAddress: normalizedUpdatedEmail,
+        profile: updated.profile,
+        roles: updated.roles || [],
+        profilePicture: updated.profilePicture,
+        password: updated.password, // Include if changing password
+        // Always use what's being sent - if rel is undefined, it means it wasn't included
+        rel: updated.rel,
+        // Include new fields for comparison
+        assignedLocations: updated.assignedLocations,
+        assignedLicensees: updated.assignedLicensees,
+      };
+
+      // ============================================================================
+      // STEP 5: Detect ALL differences between API data and what's being sent
+      // ============================================================================
+      console.log(
+        '[Administration] ============================================'
+      );
+      console.log('[Administration] STEP 3: Comparing original vs updated:');
+      console.log(
+        '[Administration]   Original rel:',
+        JSON.stringify(originalData.rel, null, 2)
+      );
+      console.log(
+        '[Administration]   Updated rel:',
+        JSON.stringify(formDataComparison.rel, null, 2)
+      );
+      console.log(
+        '[Administration]   Original assignedLocations:',
+        JSON.stringify(originalData.assignedLocations, null, 2)
+      );
+      console.log(
+        '[Administration]   Updated assignedLocations:',
+        JSON.stringify(formDataComparison.assignedLocations, null, 2)
+      );
+      console.log(
+        '[Administration]   Original assignedLicensees:',
+        JSON.stringify(originalData.assignedLicensees, null, 2)
+      );
+      console.log(
+        '[Administration]   Updated assignedLicensees:',
+        JSON.stringify(formDataComparison.assignedLicensees, null, 2)
+      );
+      console.log(
+        '[Administration]   Original roles:',
+        JSON.stringify(originalData.roles, null, 2)
+      );
+      console.log(
+        '[Administration]   Updated roles:',
+        JSON.stringify(formDataComparison.roles, null, 2)
+      );
+      console.log(
+        '[Administration] ============================================'
+      );
+
+      const changes = detectChanges(originalData, formDataComparison);
+      const meaningfulChanges = filterMeaningfulChanges(changes);
+
+      console.log(
+        '[Administration] ============================================'
+      );
+      console.log('[Administration] STEP 4: Detected changes:');
+      console.log(
+        '[Administration]   Total changes found:',
+        meaningfulChanges.length
+      );
+      meaningfulChanges.forEach((change, index) => {
+        console.log(`[Administration]   Change ${index + 1}:`);
+        console.log(`[Administration]     Path: ${change.path}`);
+        console.log(
+          `[Administration]     Old: ${JSON.stringify(change.oldValue)}`
+        );
+        console.log(
+          `[Administration]     New: ${JSON.stringify(change.newValue)}`
+        );
+      });
+      console.log(
+        '[Administration] ============================================'
+      );
+
+      // Only proceed if there are actual changes
+      if (meaningfulChanges.length === 0) {
+        console.error(
+          '[Administration] ❌ No changes detected - blocking save'
+        );
+        toast.info('No changes detected');
+        return;
       }
 
-      // Only close modal and refresh data on success
-      setIsUserModalOpen(false);
-      setSelectedUser(null);
+      console.log('[Administration] ✅ Changes detected, proceeding with save');
 
-      // If location permissions were updated, warn user about JWT refresh
+      // ============================================================================
+      // STEP 6: Check if permission-related fields changed
+      // ============================================================================
+      const permissionFieldsChanged = meaningfulChanges.some(change => {
+        const fieldPath = change.path;
+        return (
+          fieldPath === 'roles' ||
+          fieldPath.startsWith('rel') ||
+          fieldPath === 'assignedLocations' ||
+          fieldPath === 'assignedLicensees'
+        );
+      });
+
+      console.log(
+        '[Administration] ============================================'
+      );
+      console.log('[Administration] STEP 5: Permission fields check:');
+      console.log(
+        '[Administration]   Permission fields changed:',
+        permissionFieldsChanged
+      );
+      console.log(
+        '[Administration] ============================================'
+      );
+
+      // ============================================================================
+      // STEP 7: Build update payload - include ALL differences
+      // ============================================================================
+      const updatePayload: Record<string, unknown> = { _id: selectedUser._id };
+
+      // First, include top-level fields directly from the updated object
+      // This ensures we send complete objects, not just changed nested paths
+      if (updated.username !== undefined) {
+        updatePayload.username = updated.username;
+      }
+      if (updated.email !== undefined || updated.emailAddress !== undefined) {
+        updatePayload.emailAddress = updated.emailAddress || updated.email;
+        updatePayload.email = updated.email || updated.emailAddress;
+      }
+      if (updated.roles !== undefined) {
+        updatePayload.roles = updated.roles;
+      }
+      if (updated.profile !== undefined) {
+        updatePayload.profile = updated.profile;
+      }
+      if (updated.profilePicture !== undefined) {
+        updatePayload.profilePicture = updated.profilePicture;
+      }
+      if (updated.password !== undefined) {
+        updatePayload.password = updated.password;
+      }
+      // Handle isEnabled/enabled - User type uses 'enabled' but API expects 'isEnabled'
+      if ('isEnabled' in updated && updated.isEnabled !== undefined) {
+        updatePayload.isEnabled = updated.isEnabled;
+      } else if ('enabled' in updated && updated.enabled !== undefined) {
+        updatePayload.isEnabled = updated.enabled;
+      }
+      if (updated.rel !== undefined) {
+        updatePayload.rel = updated.rel;
+      }
+
+      // IMPORTANT: Always include assignedLocations and assignedLicensees if they exist in updated object
+      // This ensures the new fields are always sent
+      if (updated.assignedLocations !== undefined) {
+        updatePayload.assignedLocations = updated.assignedLocations;
+        console.log(
+          '[Administration]   Adding assignedLocations directly from updated object:',
+          updated.assignedLocations
+        );
+      }
+      if (updated.assignedLicensees !== undefined) {
+        updatePayload.assignedLicensees = updated.assignedLicensees;
+        console.log(
+          '[Administration]   Adding assignedLicensees directly from updated object:',
+          updated.assignedLicensees
+        );
+      }
+
+      // If permission-related fields changed, increment sessionVersion
       if (permissionFieldsChanged) {
-        const locationChanges = meaningfulChanges.filter(c =>
-          c.path.startsWith('resourcePermissions.gaming-locations.resources')
-        );
-        if (locationChanges.length > 0) {
-          toast.success(
-            `User updated successfully. Note: The user may need to log out and log back in for location permission changes to take effect.`
+        updatePayload.$inc = { sessionVersion: 1 };
+        console.log('[Administration]   Adding $inc: { sessionVersion: 1 }');
+      }
+
+      // ============================================================================
+      // STEP 8: Log final update payload
+      // ============================================================================
+      console.log(
+        '[Administration] ============================================'
+      );
+      console.log('[Administration] STEP 6: Final update payload:');
+      console.log(
+        '[Administration]   Complete payload:',
+        JSON.stringify(updatePayload, null, 2)
+      );
+      console.log(
+        '[Administration]   Payload keys:',
+        Object.keys(updatePayload)
+      );
+      console.log('[Administration]   Has rel:', 'rel' in updatePayload);
+      console.log();
+      console.log(
+        '[Administration]   Has assignedLocations:',
+        'assignedLocations' in updatePayload,
+        updatePayload.assignedLocations
+      );
+      console.log(
+        '[Administration]   Has assignedLicensees:',
+        'assignedLicensees' in updatePayload,
+        updatePayload.assignedLicensees
+      );
+      console.log(
+        '[Administration] ============================================'
+      );
+
+      try {
+        const response = await updateUser(updatePayload as never);
+        const updatedUserData = response.data?.user;
+
+        // Log the update activity with proper change tracking
+        try {
+          const changesSummary = getChangesSummary(meaningfulChanges);
+          await fetch('/api/activity-logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'update',
+              resource: 'user',
+              resourceId: selectedUser._id,
+              resourceName: selectedUser.username,
+              details: `Updated user: ${changesSummary}`,
+              userId: user?._id || 'unknown',
+              username: getUserDisplayName(),
+              userRole: 'user',
+              previousData: originalData,
+              newData: updatePayload,
+              changes: meaningfulChanges.map(change => ({
+                field: change.field,
+                oldValue: change.oldValue,
+                newValue: change.newValue,
+              })),
+            }),
+          });
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to log activity:', error);
+          }
+        }
+
+        // Update the user in allUsers array if it exists there
+        if (updatedUserData) {
+          setAllUsers(prevUsers =>
+            prevUsers.map(u =>
+              u._id === updatedUserData._id ? updatedUserData : u
+            )
           );
+          setAllLoadedUsers(prevUsers =>
+            prevUsers.map(u =>
+              u._id === updatedUserData._id ? updatedUserData : u
+            )
+          );
+        }
+
+        // Only close modal and refresh data on success
+        setIsUserModalOpen(false);
+        setSelectedUser(null);
+
+        // If location permissions were updated, warn user about JWT refresh
+        if (permissionFieldsChanged) {
+          const locationChanges = meaningfulChanges.filter(
+            c =>
+              c.path.startsWith('assignedLocations') ||
+              c.path === 'assignedLocations' ||
+              c.path === 'assignedLicensees'
+          );
+          if (locationChanges.length > 0) {
+            toast.success(
+              `User updated successfully. Note: The user may need to log out and log back in for location permission changes to take effect.`
+            );
+          } else {
+            toast.success(
+              `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
+            );
+          }
         } else {
-      toast.success(
-        `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
-      );
+          toast.success(
+            `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
+          );
         }
-      } else {
-        toast.success(
-          `User updated successfully: ${getChangesSummary(meaningfulChanges)}`
+
+        // Refresh users with licensee filter
+        setRefreshing(true);
+        const result = await fetchUsers(
+          selectedLicencee,
+          1,
+          itemsPerBatch,
+          undefined,
+          'username',
+          selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
         );
-      }
+        setAllUsers(result.users);
+        setLoadedBatches(new Set([1]));
+        setCurrentPage(0);
+        setRefreshing(false);
+      } catch (error) {
+        console.error('Failed to update user:', error);
 
-      // Refresh users with licensee filter
-      setRefreshing(true);
-      const result = await fetchUsers(
-        selectedLicencee,
-        1,
-        itemsPerBatch,
-        undefined,
-        'username',
-        selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
-      );
-      setAllUsers(result.users);
-      setLoadedBatches(new Set([1]));
-      setCurrentPage(0);
-      setRefreshing(false);
-    } catch (error) {
-      console.error('Failed to update user:', error);
+        // Extract detailed error message from axios error
+        let errorMessage = 'Failed to update user';
 
-      // Extract detailed error message from axios error
-      let errorMessage = 'Failed to update user';
-
-      // Handle axios errors (from updateUser helper)
-      if (error && typeof error === 'object') {
-        const axiosError = error as {
-          response?: {
-            data?: { message?: string; error?: string };
-            status?: number;
+        // Handle axios errors (from updateUser helper)
+        if (error && typeof error === 'object') {
+          const axiosError = error as {
+            response?: {
+              data?: { message?: string; error?: string };
+              status?: number;
+            };
+            message?: string;
           };
-          message?: string;
-        };
 
-        // Prioritize server error message from response.data
-        if (axiosError.response?.data) {
-          errorMessage =
-            axiosError.response.data.message ||
-            axiosError.response.data.error ||
-            errorMessage;
-        } else if (axiosError.message) {
-          // Only use axios message if we don't have response data
-          errorMessage = axiosError.message;
+          // Prioritize server error message from response.data
+          if (axiosError.response?.data) {
+            errorMessage =
+              axiosError.response.data.message ||
+              axiosError.response.data.error ||
+              errorMessage;
+          } else if (axiosError.message) {
+            // Only use axios message if we don't have response data
+            errorMessage = axiosError.message;
+          }
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
         }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
 
-      toast.error(errorMessage);
-      // Don't close modal on error - let user try again
-    }
-  }, [selectedUser, user, getUserDisplayName, selectedLicencee, selectedStatus, itemsPerBatch, setRefreshing, setAllUsers, setLoadedBatches, setCurrentPage, setIsUserModalOpen, setSelectedUser]);
+        toast.error(errorMessage);
+        // Don't close modal on error - let user try again
+      }
+    },
+    [
+      selectedUser,
+      user,
+      getUserDisplayName,
+      selectedLicencee,
+      selectedStatus,
+      itemsPerBatch,
+      setRefreshing,
+      setAllUsers,
+      setLoadedBatches,
+      setCurrentPage,
+      setIsUserModalOpen,
+      setSelectedUser,
+    ]
+  );
 
   // Add User modal handlers
   const openAddUserModal = () => {
@@ -1089,9 +1352,20 @@ function AdministrationPageContent() {
     } catch (error) {
       console.error('Failed to refresh users data:', error);
     }
-  }, [selectedLicencee, itemsPerBatch, selectedStatus, setIsAddUserModalOpen, setAllUsers, setLoadedBatches, setCurrentPage]);
-  const handleAddUserFormChange = useCallback((data: Partial<AddUserForm>) =>
-    setAddUserForm(prev => ({ ...prev, ...data })), [setAddUserForm]);
+  }, [
+    selectedLicencee,
+    itemsPerBatch,
+    selectedStatus,
+    setIsAddUserModalOpen,
+    setAllUsers,
+    setLoadedBatches,
+    setCurrentPage,
+  ]);
+  const handleAddUserFormChange = useCallback(
+    (data: Partial<AddUserForm>) =>
+      setAddUserForm(prev => ({ ...prev, ...data })),
+    [setAddUserForm]
+  );
   const handleSaveAddUser = useCallback(async () => {
     await administrationUtils.userManagement.createNewUser(
       addUserForm,
@@ -1110,7 +1384,16 @@ function AdministrationPageContent() {
         setCurrentPage(0);
       }
     );
-  }, [addUserForm, selectedLicencee, selectedStatus, itemsPerBatch, setIsAddUserModalOpen, setAllUsers, setLoadedBatches, setCurrentPage]);
+  }, [
+    addUserForm,
+    selectedLicencee,
+    selectedStatus,
+    itemsPerBatch,
+    setIsAddUserModalOpen,
+    setAllUsers,
+    setLoadedBatches,
+    setCurrentPage,
+  ]);
 
   const handleOpenAddLicensee = () => {
     setLicenseeForm({});
@@ -1220,27 +1503,46 @@ function AdministrationPageContent() {
           'Failed to add licensee'
       );
     }
-  }, [licenseeForm, user, getUserDisplayName, getCountryNameById, licenseesItemsPerBatch, setCreatedLicensee, setIsLicenseeSuccessModalOpen, setIsAddLicenseeModalOpen, setLicenseeForm, setIsLicenseesLoading, setAllLicensees, setLicenseesLoadedBatches, setLicenseesCurrentPage]);
-  const handleOpenEditLicensee = useCallback((licensee: Licensee) => {
-    setSelectedLicensee(licensee);
-    setLicenseeForm({
-      _id: licensee._id,
-      name: licensee.name,
-      description: licensee.description,
-      country: licensee.country,
-      startDate: licensee.startDate ? new Date(licensee.startDate) : undefined,
-      expiryDate: licensee.expiryDate
-        ? new Date(licensee.expiryDate)
-        : undefined,
-      prevStartDate: licensee.prevStartDate
-        ? new Date(licensee.prevStartDate)
-        : undefined,
-      prevExpiryDate: licensee.prevExpiryDate
-        ? new Date(licensee.prevExpiryDate)
-        : undefined,
-    });
-    setIsEditLicenseeModalOpen(true);
-  }, [setSelectedLicensee, setLicenseeForm, setIsEditLicenseeModalOpen]);
+  }, [
+    licenseeForm,
+    user,
+    getUserDisplayName,
+    getCountryNameById,
+    licenseesItemsPerBatch,
+    setCreatedLicensee,
+    setIsLicenseeSuccessModalOpen,
+    setIsAddLicenseeModalOpen,
+    setLicenseeForm,
+    setIsLicenseesLoading,
+    setAllLicensees,
+    setLicenseesLoadedBatches,
+    setLicenseesCurrentPage,
+  ]);
+  const handleOpenEditLicensee = useCallback(
+    (licensee: Licensee) => {
+      setSelectedLicensee(licensee);
+      setLicenseeForm({
+        _id: licensee._id,
+        name: licensee.name,
+        description: licensee.description,
+        country: licensee.country,
+        startDate: licensee.startDate
+          ? new Date(licensee.startDate)
+          : undefined,
+        expiryDate: licensee.expiryDate
+          ? new Date(licensee.expiryDate)
+          : undefined,
+        prevStartDate: licensee.prevStartDate
+          ? new Date(licensee.prevStartDate)
+          : undefined,
+        prevExpiryDate: licensee.prevExpiryDate
+          ? new Date(licensee.prevExpiryDate)
+          : undefined,
+      });
+      setIsEditLicenseeModalOpen(true);
+    },
+    [setSelectedLicensee, setLicenseeForm, setIsEditLicenseeModalOpen]
+  );
   const handleSaveEditLicensee = useCallback(async () => {
     try {
       if (!selectedLicensee) return;
@@ -1357,11 +1659,27 @@ function AdministrationPageContent() {
       );
       // Don't close modal on error - let user try again
     }
-  }, [selectedLicensee, licenseeForm, user, getUserDisplayName, licenseesItemsPerBatch, setIsEditLicenseeModalOpen, setSelectedLicensee, setLicenseeForm, setIsLicenseesLoading, setAllLicensees, setLicenseesLoadedBatches, setLicenseesCurrentPage]);
-  const handleOpenDeleteLicensee = useCallback((licensee: Licensee) => {
-    setSelectedLicensee(licensee);
-    setIsDeleteLicenseeModalOpen(true);
-  }, [setSelectedLicensee, setIsDeleteLicenseeModalOpen]);
+  }, [
+    selectedLicensee,
+    licenseeForm,
+    user,
+    getUserDisplayName,
+    licenseesItemsPerBatch,
+    setIsEditLicenseeModalOpen,
+    setSelectedLicensee,
+    setLicenseeForm,
+    setIsLicenseesLoading,
+    setAllLicensees,
+    setLicenseesLoadedBatches,
+    setLicenseesCurrentPage,
+  ]);
+  const handleOpenDeleteLicensee = useCallback(
+    (licensee: Licensee) => {
+      setSelectedLicensee(licensee);
+      setIsDeleteLicenseeModalOpen(true);
+    },
+    [setSelectedLicensee, setIsDeleteLicenseeModalOpen]
+  );
   const handleDeleteLicensee = useCallback(async () => {
     if (!selectedLicensee) return;
 
@@ -1438,7 +1756,19 @@ function AdministrationPageContent() {
           'Failed to delete licensee'
       );
     }
-  }, [selectedLicensee, user, getUserDisplayName, getCountryNameById, licenseesItemsPerBatch, setIsDeleteLicenseeModalOpen, setSelectedLicensee, setIsLicenseesLoading, setAllLicensees, setLicenseesLoadedBatches, setLicenseesCurrentPage]);
+  }, [
+    selectedLicensee,
+    user,
+    getUserDisplayName,
+    getCountryNameById,
+    licenseesItemsPerBatch,
+    setIsDeleteLicenseeModalOpen,
+    setSelectedLicensee,
+    setIsLicenseesLoading,
+    setAllLicensees,
+    setLicenseesLoadedBatches,
+    setLicenseesCurrentPage,
+  ]);
 
   const licenseesWithCountryNames = useMemo(() => {
     // Safety check: ensure allLicensees is always an array
@@ -1464,15 +1794,21 @@ function AdministrationPageContent() {
     );
   }, [licenseesWithCountryNames, licenseeSearchValue]);
 
-  const handlePaymentHistory = useCallback((licensee: Licensee) => {
-    setSelectedLicenseeForPayment(licensee);
-    setIsPaymentHistoryModalOpen(true);
-  }, [setSelectedLicenseeForPayment, setIsPaymentHistoryModalOpen]);
+  const handlePaymentHistory = useCallback(
+    (licensee: Licensee) => {
+      setSelectedLicenseeForPayment(licensee);
+      setIsPaymentHistoryModalOpen(true);
+    },
+    [setSelectedLicenseeForPayment, setIsPaymentHistoryModalOpen]
+  );
 
-  const handleTogglePaymentStatus = useCallback((licensee: Licensee) => {
-    setSelectedLicenseeForPaymentChange(licensee);
-    setIsPaymentConfirmModalOpen(true);
-  }, [setSelectedLicenseeForPaymentChange, setIsPaymentConfirmModalOpen]);
+  const handleTogglePaymentStatus = useCallback(
+    (licensee: Licensee) => {
+      setSelectedLicenseeForPaymentChange(licensee);
+      setIsPaymentConfirmModalOpen(true);
+    },
+    [setSelectedLicenseeForPaymentChange, setIsPaymentConfirmModalOpen]
+  );
 
   const handleConfirmPaymentStatusChange = useCallback(async () => {
     if (!selectedLicenseeForPaymentChange) return;
@@ -1565,11 +1901,22 @@ function AdministrationPageContent() {
       }
       toast.error('Failed to update payment status');
     }
-  }, [selectedLicenseeForPaymentChange, user, getUserDisplayName, licenseesItemsPerBatch, setIsPaymentConfirmModalOpen, setSelectedLicenseeForPaymentChange, setIsLicenseesLoading, setAllLicensees, setLicenseesLoadedBatches, setLicenseesCurrentPage]);
+  }, [
+    selectedLicenseeForPaymentChange,
+    user,
+    getUserDisplayName,
+    licenseesItemsPerBatch,
+    setIsPaymentConfirmModalOpen,
+    setSelectedLicenseeForPaymentChange,
+    setIsLicenseesLoading,
+    setAllLicensees,
+    setLicenseesLoadedBatches,
+    setLicenseesCurrentPage,
+  ]);
 
   const renderSectionContent = useCallback(() => {
     const userRoles = user?.roles || [];
-    
+
     // Check access for each section
     if (activeSection === 'activity-logs') {
       if (!hasTabAccess(userRoles, 'administration', 'activity-logs')) {
@@ -1825,16 +2172,17 @@ function AdministrationPageContent() {
             </div>
           ) : processedUsers.length > 0 ? (
             <>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              {processedUsers.map(user => (
-                <UserCard
-                  key={user.username}
-                  user={user}
-                  onEdit={handleEditUser}
-                  onDelete={handleDeleteUser}
-                />
-              ))}
-            </div>
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                {processedUsers.map(userItem => (
+                  <UserCard
+                    key={userItem.username}
+                    user={userItem}
+                    onEdit={handleEditUser}
+                    onDelete={handleDeleteUser}
+                    currentUser={user}
+                  />
+                ))}
+              </div>
               {/* Pagination Controls */}
               {!isLoading && totalPages > 1 && (
                 <PaginationControls
@@ -1855,13 +2203,14 @@ function AdministrationPageContent() {
             <UserTableSkeleton />
           ) : processedUsers.length > 0 ? (
             <>
-            <UserTable
-              users={processedUsers}
-              sortConfig={sortConfig}
-              requestSort={requestSort}
-              onEdit={handleEditUser}
-              onDelete={handleDeleteUser}
-            />
+              <UserTable
+                users={processedUsers}
+                sortConfig={sortConfig}
+                requestSort={requestSort}
+                onEdit={handleEditUser}
+                onDelete={handleDeleteUser}
+                currentUser={user}
+              />
               {/* Pagination Controls */}
               {!isLoading && totalPages > 1 && (
                 <PaginationControls
@@ -2054,8 +2403,7 @@ function AdministrationPageContent() {
     setSelectedUser,
     setSelectedUserToDelete,
     totalPages,
-    user?._id,
-    user?.roles,
+    user,
     licenseesItemsPerBatch,
     itemsPerBatch,
   ]);

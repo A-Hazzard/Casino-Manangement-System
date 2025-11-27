@@ -362,10 +362,11 @@ export type User = {
   isEnabled: boolean; // Added for API compatibility
   roles: string[];
   profilePicture: string | null;
-  resourcePermissions?: ResourcePermissions;
   rel?: {
     licencee?: string[];
   };
+  assignedLocations?: string[]; // Array of location IDs user has access to
+  assignedLicensees?: string[]; // Array of licensee IDs user has access to
   password?: string;
   profile?: {
     firstName?: string;
@@ -473,14 +474,6 @@ export type CasinoMember = {
     hasNextPage: boolean;
     hasPrevPage: boolean;
   };
-};
-
-export type ResourcePermissions = {
-  'gaming-locations'?: {
-    entity: 'gaming-locations';
-    resources: string[];
-  };
-  // Add other resource types as needed
 };
 
 // Licensee types

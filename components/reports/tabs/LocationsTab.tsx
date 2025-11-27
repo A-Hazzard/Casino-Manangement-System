@@ -46,6 +46,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 // import { formatCurrency } from "@/lib/utils/formatting";
 import LocationMap from '@/components/reports/common/LocationMap';
 import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
+import { fetchAggregatedLocationsData } from '@/lib/helpers/locations';
 import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from '@/lib/helpers/reportsPage';
 import {
   getMoneyInColorClass,
@@ -85,6 +86,7 @@ import axios from 'axios';
 import { LocationExportData, TopLocationData } from '@/lib/types';
 import { LocationMetrics, TopLocation } from '@/shared/types';
 import { MachineData } from '@/shared/types/machines';
+import { TimePeriod } from '@/lib/types/api';
 
 // Skeleton loader components - now imported from ReportsSkeletons
 
@@ -241,9 +243,11 @@ export default function LocationsTab() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 10; // Items per page for overview table
+  const itemsPerBatch = 50; // Items per batch (5 pages of 10 items each)
 
-  // Store all locations (for pagination and export)
-  const [allLocations, setAllLocations] = useState<AggregatedLocation[]>([]);
+  // Store accumulated locations for batch loading (like locations page)
+  const [accumulatedLocations, setAccumulatedLocations] = useState<AggregatedLocation[]>([]);
+  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
   const [paginatedLocations, setPaginatedLocations] = useState<
     AggregatedLocation[]
   >([]);
@@ -280,7 +284,61 @@ export default function LocationsTab() {
     }
   }, [selectedLicencee]);
 
-  // Simplified data fetching for locations with lazy loading
+  // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor((page - 1) / (itemsPerBatch / itemsPerPage)) + 1;
+  }, [itemsPerBatch, itemsPerPage]);
+
+  // Fetch a specific batch of locations (like locations page)
+  const fetchBatch = useCallback(async (page: number = 1, limit: number = 50) => {
+    const effectiveLicencee = selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : '';
+    
+    // Build date range for custom dates
+    let dateRange: { from: Date; to: Date } | undefined;
+    if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
+      dateRange = {
+        from: customDateRange.startDate instanceof Date 
+          ? customDateRange.startDate 
+          : new Date(customDateRange.startDate as string),
+        to: customDateRange.endDate instanceof Date 
+          ? customDateRange.endDate 
+          : new Date(customDateRange.endDate as string),
+      };
+    }
+
+    // Convert activeMetricsFilter to TimePeriod
+    let timePeriod: string = 'Today';
+    if (activeMetricsFilter === 'Today') {
+      timePeriod = 'Today';
+    } else if (activeMetricsFilter === 'Yesterday') {
+      timePeriod = 'Yesterday';
+    } else if (activeMetricsFilter === 'last7days' || activeMetricsFilter === '7d') {
+      timePeriod = '7d';
+    } else if (activeMetricsFilter === 'last30days' || activeMetricsFilter === '30d') {
+      timePeriod = '30d';
+    } else if (activeMetricsFilter === 'All Time') {
+      timePeriod = 'All Time';
+    } else if (activeMetricsFilter === 'Custom') {
+      timePeriod = 'Custom';
+    }
+
+    return await fetchAggregatedLocationsData(
+      timePeriod as TimePeriod,
+      effectiveLicencee,
+      '', // No filter string for reports page
+      dateRange,
+      displayCurrency,
+      page,
+      limit
+    );
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    displayCurrency,
+  ]);
+
+  // Simplified data fetching for locations with batch loading
   const fetchLocationDataAsync = useCallback(
     async (specificLocations?: string[]) => {
       console.warn(
@@ -300,9 +358,30 @@ export default function LocationsTab() {
         await fetchGamingLocationsAsync();
         setGamingLocationsLoading(false);
 
-        // Build API parameters for location data
+        // Reset accumulated locations and batches when filters change
+        setAccumulatedLocations([]);
+        setLoadedBatches(new Set());
+        setCurrentPage(1);
+
+        // Fetch first batch (50 items) for table
+        const firstBatchResult = await fetchBatch(1, itemsPerBatch);
+        
+        if (firstBatchResult.pagination) {
+          setTotalCount(firstBatchResult.pagination.total);
+          setTotalPages(Math.ceil(firstBatchResult.pagination.total / itemsPerPage));
+        } else {
+          setTotalCount(firstBatchResult.data.length);
+          setTotalPages(Math.ceil(firstBatchResult.data.length / itemsPerPage));
+        }
+
+        setAccumulatedLocations(firstBatchResult.data);
+        setLoadedBatches(new Set([1]));
+        setPaginationLoading(false);
+        setLocationsLoading(false);
+
+        // Build API parameters for dropdown (still fetch all for dropdown selection)
         const params: Record<string, string> = {
-          limit: '1000', // Get all locations
+          limit: '1000', // Get all locations for dropdown
           page: '1',
           showAllLocations: 'true',
         };
@@ -478,12 +557,8 @@ export default function LocationsTab() {
           selectedCount: currentSelectedLocations.length,
         });
 
-        // Store all locations for pagination and export
-        setAllLocations(filteredData);
-        setTotalCount(filteredData.length);
-        setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
-        setCurrentPage(1);
-        setPaginationLoading(false); // Show pagination immediately
+        // Note: Table data is now handled by batch loading above
+        // This section only handles dropdown data and metrics calculation
 
         // Calculate metrics overview
         // Use dashboard totals API when no specific locations are selected (more efficient and consistent)
@@ -632,6 +707,9 @@ export default function LocationsTab() {
       selectedRevenueLocations,
       displayCurrency,
       setLoading,
+      fetchBatch,
+      metricsTotals,
+      itemsPerBatch,
     ]
   );
 
@@ -954,10 +1032,9 @@ export default function LocationsTab() {
         `🔍 Filtering locations - allLocationsForDropdown: ${allLocationsForDropdown.length}, filteredData: ${filteredData.length}, selectedLocations: ${currentSelectedLocations.length}`
       );
 
-      setAllLocations(filteredData);
-      setTotalCount(filteredData.length);
-      setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
-      setCurrentPage(1);
+      // Note: Table data is now handled by batch loading
+      // This section only handles dropdown filtering for other tabs
+      // For overview tab, batch loading handles table data
 
       // Recalculate metrics overview
       const overview = filteredData.reduce(
@@ -1016,10 +1093,71 @@ export default function LocationsTab() {
     allLocationsForDropdown,
   ]);
 
+  // Fetch new batch when crossing batch boundary (like locations page)
+  useEffect(() => {
+    if (paginationLoading || !activeMetricsFilter) return; // Skip while loading or no filter
+
+    const currentBatch = calculateBatchNumber(currentPage);
+    const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5 pages per batch
+
+    // Check if we're on the last page of the current batch
+    const isLastPageOfBatch = currentPage % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+
+    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      setLoadedBatches(prev => {
+        const newSet = new Set(prev);
+        newSet.add(nextBatch);
+        return newSet;
+      });
+      fetchBatch(nextBatch, itemsPerBatch).then(result => {
+        if (result.data.length > 0) {
+          setAccumulatedLocations(prev => {
+            const existingIds = new Set(prev.map(loc => loc._id || loc.location));
+            const newLocations = result.data.filter(
+              loc => !existingIds.has(loc._id || loc.location)
+            );
+            return [...prev, ...newLocations];
+          });
+        }
+      });
+    }
+
+    // Also ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      setLoadedBatches(prev => {
+        const newSet = new Set(prev);
+        newSet.add(currentBatch);
+        return newSet;
+      });
+      fetchBatch(currentBatch, itemsPerBatch).then(result => {
+        if (result.data.length > 0) {
+          setAccumulatedLocations(prev => {
+            const existingIds = new Set(prev.map(loc => loc._id || loc.location));
+            const newLocations = result.data.filter(
+              loc => !existingIds.has(loc._id || loc.location)
+            );
+            return [...prev, ...newLocations];
+          });
+        }
+      });
+    }
+  }, [
+    currentPage,
+    paginationLoading,
+    activeMetricsFilter,
+    loadedBatches,
+    itemsPerBatch,
+    itemsPerPage,
+    calculateBatchNumber,
+    fetchBatch,
+  ]);
+
   // Debug effect to log state changes
   useEffect(() => {
     console.warn(
-      `🔍 State Debug - paginationLoading: ${paginationLoading}, locations count: ${allLocations.length}, currentPage: ${currentPage}, totalPages: ${totalPages}, totalCount: ${totalCount}`
+      `🔍 State Debug - paginationLoading: ${paginationLoading}, locations count: ${accumulatedLocations.length}, currentPage: ${currentPage}, totalPages: ${totalPages}, totalCount: ${totalCount}`
     );
     console.warn(
       `🔍 Table Props Debug - totalPages: ${totalPages}, totalCount: ${totalCount}`
@@ -1029,25 +1167,25 @@ export default function LocationsTab() {
     );
   }, [
     paginationLoading,
-    allLocations.length,
+    accumulatedLocations.length,
     currentPage,
     totalPages,
     totalCount,
   ]);
 
-  // Calculate paginated items for overview table
+  // Calculate paginated items for overview table (from accumulated locations)
   const paginatedTableItems = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return allLocations.slice(startIndex, endIndex);
-  }, [allLocations, currentPage, itemsPerPage]);
+    return accumulatedLocations.slice(startIndex, endIndex);
+  }, [accumulatedLocations, currentPage, itemsPerPage]);
 
-  // Update paginatedLocations state from allLocations (for Location Evaluation and Revenue Analysis tabs)
+  // Update paginatedLocations state from accumulatedLocations (for Location Evaluation and Revenue Analysis tabs)
   useEffect(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    setPaginatedLocations(allLocations.slice(startIndex, endIndex));
-  }, [allLocations, currentPage, itemsPerPage]);
+    setPaginatedLocations(accumulatedLocations.slice(startIndex, endIndex));
+  }, [accumulatedLocations, currentPage, itemsPerPage]);
 
   const handleLocationSelect = (locationIds: string[]) => {
     setCurrentSelectedLocations(locationIds);
@@ -1055,7 +1193,12 @@ export default function LocationsTab() {
 
   // Handle export for location overview
   const handleExportLocationOverview = async (format: 'pdf' | 'excel') => {
-    if (allLocations.length === 0) {
+    // For export, use dropdown data (all locations) or accumulated locations
+    const locationsToExport = allLocationsForDropdown.length > 0 
+      ? allLocationsForDropdown 
+      : accumulatedLocations;
+    
+    if (locationsToExport.length === 0) {
       toast.error('No location data to export', {
         duration: 3000,
       });
@@ -1064,7 +1207,7 @@ export default function LocationsTab() {
 
     try {
       // Calculate totals from all locations if metricsOverview is not available
-      const calculatedTotals = allLocations.reduce(
+      const calculatedTotals = locationsToExport.reduce(
         (acc, loc) => {
           acc.totalGross += (loc.gross as number) || 0;
           acc.totalDrop += (loc.moneyIn as number) || 0;
@@ -1098,7 +1241,7 @@ export default function LocationsTab() {
           : '0.00';
 
       // Prepare location data rows
-      const locationRows = allLocations.map(loc => [
+      const locationRows = locationsToExport.map(loc => [
         loc.locationName || loc.name || 'Unknown',
         (loc.totalMachines || 0).toString(),
         (loc.onlineMachines || 0).toString(),
@@ -1141,7 +1284,7 @@ export default function LocationsTab() {
           generatedAt: new Date().toISOString(),
           dateRange: activeMetricsFilter || 'Today',
           tab: 'location-overview',
-          selectedLocations: allLocations.length,
+          selectedLocations: locationsToExport.length,
         },
         summary: [
           {
@@ -1172,8 +1315,8 @@ export default function LocationsTab() {
           'Location Name',
           'Total Machines',
           'Online Machines',
-          'Drop',
-          'Cancelled Credits',
+          'Money In',
+          'Money Out',
           'Gross Revenue',
           'Hold %',
         ],
@@ -1190,7 +1333,7 @@ export default function LocationsTab() {
       }
 
       toast.success(
-        `Successfully exported ${allLocations.length} locations to ${format.toUpperCase()}`,
+        `Successfully exported ${locationsToExport.length} locations to ${format.toUpperCase()}`,
         {
           duration: 3000,
         }
@@ -1215,7 +1358,7 @@ export default function LocationsTab() {
         : selectedRevenueLocations;
     await handleExportSASEvaluationHelper(
       currentSelectedLocations,
-      allLocations as unknown as LocationExportData[],
+      allLocationsForDropdown as unknown as LocationExportData[],
       topLocations as TopLocationData[],
       selectedDateRange,
       activeMetricsFilter,
@@ -1232,7 +1375,7 @@ export default function LocationsTab() {
           : selectedRevenueLocations;
       const filteredData =
         currentSelectedLocations.length > 0
-          ? allLocations.filter(loc => {
+          ? allLocationsForDropdown.filter(loc => {
               // Find the corresponding topLocation to get the correct locationId
               const topLocation = topLocations.find(
                 tl => tl.locationName === loc.name
@@ -1241,7 +1384,7 @@ export default function LocationsTab() {
                 ? currentSelectedLocations.includes(topLocation.locationId)
                 : false;
             })
-          : allLocations;
+          : allLocationsForDropdown;
 
       const exportDataObj: ExtendedLegacyExportData = {
         title: 'Revenue Analysis Report',
@@ -1509,7 +1652,7 @@ export default function LocationsTab() {
                     : selectedRevenueLocations
                 }
                 onLocationSelect={handleLocationSelect}
-                aggregates={allLocations}
+                aggregates={allLocationsForDropdown}
                 gamingLocations={gamingLocations}
                 gamingLocationsLoading={gamingLocationsLoading}
                 financialDataLoading={locationsLoading}
@@ -1535,7 +1678,7 @@ export default function LocationsTab() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={allLocations.length === 0 || locationsLoading}
+                        disabled={accumulatedLocations.length === 0 || locationsLoading}
                         className="flex items-center gap-2"
                       >
                         <Download className="h-4 w-4" />
@@ -1572,7 +1715,7 @@ export default function LocationsTab() {
                       />
                     ))}
                   </div>
-                ) : allLocations.length > 0 ? (
+                ) : accumulatedLocations.length > 0 ? (
                   <>
                     <div className="overflow-x-auto">
                       <table className="w-full">
@@ -1588,10 +1731,10 @@ export default function LocationsTab() {
                               Online Machines
                             </th>
                             <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                              Drop
+                              Money In
                             </th>
                             <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                              Cancelled Credits
+                              Money Out
                             </th>
                             <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                               Gross Revenue

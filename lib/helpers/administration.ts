@@ -1,9 +1,8 @@
-import axios from 'axios';
 import type {
-  User,
   SortKey,
-  ResourcePermissions,
+  User,
 } from '@/lib/types/administration';
+import axios from 'axios';
 
 /**
  * Fetches a list of users with full profile data.
@@ -24,7 +23,12 @@ export const fetchUsers = async (
   status: 'all' | 'active' | 'disabled' | 'deleted' = 'all'
 ): Promise<{
   users: User[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }> => {
   const params: Record<string, string> = {};
   if (licensee && licensee !== 'all') {
@@ -43,23 +47,24 @@ export const fetchUsers = async (
   const response = await axios.get('/api/users', { params });
   return {
     users: response.data?.users || [],
-    pagination:
-      response.data?.pagination || {
-        page: 1,
-        limit,
-        total: 0,
-        totalPages: 0,
-      },
+    pagination: response.data?.pagination || {
+      page: 1,
+      limit,
+      total: 0,
+      totalPages: 0,
+    },
   };
 };
 
 export const updateUser = async (
   user: Partial<User> & {
     password?: string;
-    resourcePermissions: ResourcePermissions;
   }
 ) => {
-  return axios.put('/api/users', user);
+  if (!user._id) {
+    throw new Error('User ID is required for update');
+  }
+  return axios.patch(`/api/users/${user._id}`, user);
 };
 
 /**
@@ -102,19 +107,19 @@ export const filterAndSortUsers = (
     processedUsers.sort((a, b) => {
       let valA: unknown = a[key!];
       let valB: unknown = b[key!];
-      
+
       // Handle email field - check both email and emailAddress
       if (key === 'emailAddress') {
         valA = a.email || a.emailAddress;
         valB = b.email || b.emailAddress;
       }
-      
+
       // Handle date fields
       if (key === 'lastLoginAt') {
         valA = valA ? new Date(valA as string | Date).getTime() : null;
         valB = valB ? new Date(valB as string | Date).getTime() : null;
       }
-      
+
       // Handle string comparison (case-insensitive for text fields)
       if (typeof valA === 'string' && typeof valB === 'string') {
         const lowerA = valA.toLowerCase();
@@ -123,14 +128,14 @@ export const filterAndSortUsers = (
         if (lowerA > lowerB) return direction === 'ascending' ? 1 : -1;
         return 0;
       }
-      
+
       // Handle null/undefined values
       if (valA == null && valB != null)
         return direction === 'ascending' ? -1 : 1;
       if (valA != null && valB == null)
         return direction === 'ascending' ? 1 : -1;
       if (valA == null && valB == null) return 0;
-      
+
       // Handle numeric and boolean comparison
       if (valA! < valB!) return direction === 'ascending' ? -1 : 1;
       if (valA! > valB!) return direction === 'ascending' ? 1 : -1;
@@ -152,7 +157,6 @@ export const createUser = async (user: {
   };
   isEnabled?: boolean;
   profilePicture?: string | null;
-  resourcePermissions?: ResourcePermissions;
   rel?: {
     licencee?: string[];
   };

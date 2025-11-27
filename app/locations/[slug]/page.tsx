@@ -59,6 +59,7 @@ import { IMAGES } from '@/lib/constants/images';
 import { useUserStore } from '@/lib/store/userStore';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { useLocationMachineStats } from '@/lib/hooks/data';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import Image from 'next/image';
@@ -168,13 +169,9 @@ export default function LocationPage() {
   // Calculate financial totals from cabinet data
   const financialTotals = calculateCabinetFinancialTotals(allCabinets);
 
-  // Calculate machine status from cabinet data
-  const machineStats = {
-    onlineMachines: allCabinets.filter(cabinet => cabinet.online === true)
-      .length,
-    offlineMachines: allCabinets.filter(cabinet => cabinet.online === false)
-      .length,
-  };
+  // Machine status stats from dedicated API (location-specific)
+  const { machineStats, machineStatsLoading, refreshMachineStats } =
+    useLocationMachineStats(locationId);
 
   // Extract game types from cabinets
   const gameTypes = useMemo(() => {
@@ -692,6 +689,8 @@ export default function LocationPage() {
     setLoading(true);
     setCabinetsLoading(true);
     try {
+      // Refresh machine status stats
+      await refreshMachineStats();
       // Fetch cabinets data for the SELECTED location
       try {
         // Only fetch if we have a valid activeMetricsFilter and it's been properly initialized
@@ -748,6 +747,7 @@ export default function LocationPage() {
     customDateRange,
     dateFilterInitialized,
     locationId,
+    refreshMachineStats,
     debouncedSearchTerm,
     itemsPerBatch,
   ]);
@@ -951,10 +951,10 @@ export default function LocationPage() {
             </div>
             <div className="ml-4 w-auto flex-shrink-0">
               <MachineStatusWidget
-                isLoading={loading || cabinetsLoading}
-                onlineCount={machineStats.onlineMachines}
-                offlineCount={machineStats.offlineMachines}
-                totalCount={allCabinets.length}
+                isLoading={machineStatsLoading}
+                onlineCount={machineStats?.onlineMachines || 0}
+                offlineCount={machineStats?.offlineMachines || 0}
+                totalCount={machineStats?.totalMachines}
                 showTotal={true}
               />
             </div>
@@ -972,10 +972,10 @@ export default function LocationPage() {
             </div>
             <div className="w-full">
               <MachineStatusWidget
-                isLoading={loading || cabinetsLoading}
-                onlineCount={machineStats.onlineMachines}
-                offlineCount={machineStats.offlineMachines}
-                totalCount={allCabinets.length}
+                isLoading={machineStatsLoading}
+                onlineCount={machineStats?.onlineMachines || 0}
+                offlineCount={machineStats?.offlineMachines || 0}
+                totalCount={machineStats?.totalMachines}
                 showTotal={true}
               />
             </div>

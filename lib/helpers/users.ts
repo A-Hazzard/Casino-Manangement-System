@@ -16,7 +16,6 @@
 import { NextRequest } from 'next/server';
 import UserModel from '../../app/api/lib/models/user';
 import { hashPassword } from '../utils/password';
-import type { ResourcePermissions } from '@/lib/types/administration';
 import { logActivity } from './activityLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import type {
@@ -106,7 +105,6 @@ export async function createUser(
     profile?: Record<string, unknown>;
     isEnabled?: boolean;
     profilePicture?: string | null;
-    resourcePermissions?: ResourcePermissions;
   },
   request: NextRequest
 ) {
@@ -118,7 +116,6 @@ export async function createUser(
     profile = {},
     isEnabled = true,
     profilePicture = null,
-    resourcePermissions = {},
   } = data;
 
   const existingUser = await UserModel.findOne({
@@ -139,7 +136,6 @@ export async function createUser(
     profile,
     isEnabled,
     profilePicture,
-    resourcePermissions,
     deletedAt: new Date(-1), // SMIB boards require all fields to be present
   });
 

@@ -1,8 +1,8 @@
 # Collections API - Backend Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 1.0.0
+**Last Updated:** November 27, 2025  
+**Version:** 1.1.0
 
 ## Overview
 
@@ -89,7 +89,7 @@ if (incompleteOnly === 'true') {
 
 **Key Points:**
 1. Collection's `location` field stores the **location name**, not the ID
-2. User's `resourcePermissions` stores **location IDs**
+2. User's `assignedLocations` stores **location IDs**
 3. API converts IDs → names for filtering
 4. Result: Users only see incomplete collections for their assigned locations
 
@@ -100,7 +100,7 @@ if (incompleteOnly === 'true') {
 GET /api/collections?incompleteOnly=true
 
 // API Flow:
-// 1. User has resourcePermissions: ['691166b455fe4b9b7ae3e702']
+// 1. User has assignedLocations: ['691166b455fe4b9b7ae3e702']
 // 2. Query location: { _id: '691166b455fe4b9b7ae3e702' } → name: 'Test-Permission-Location'
 // 3. Filter collections: { location: 'Test-Permission-Location', isCompleted: false }
 // 4. Return only collections for that location
@@ -208,12 +208,8 @@ All GET requests are automatically filtered by user's accessible locations:
 // Example: Collector assigned to specific locations
 User: {
   roles: ['collector'],
-  rel: { licencee: ['TTG_ID'] },
-  resourcePermissions: {
-    'gaming-locations': {
-      resources: ['LOCATION_A_ID', 'LOCATION_B_ID']
-    }
-  }
+  assignedLocations: ['LOCATION_A_ID', 'LOCATION_B_ID'],
+  assignedLicensees: ['TTG_ID']
 }
 
 // API automatically filters:
@@ -314,7 +310,7 @@ When `incompleteOnly=true`:
 **CRITICAL**: This field stores the **location name** (e.g., "DevLabTuna"), NOT the location ID!
 
 This is why filtering logic must:
-1. Get user's accessible location IDs from `resourcePermissions`
+1. Get user's accessible location IDs from `assignedLocations` field
 2. Query `gaminglocations` collection to get location names
 3. Filter collections by location names
 
@@ -374,7 +370,7 @@ GET /api/collections?machineId=<machineId>&beforeTimestamp=<date>&sortBy=timesta
 
 ### November 10, 2025 - Location Permission Bypass 🔒
 
-**Issue**: The GET endpoint was not checking user's `resourcePermissions`, allowing any user with a valid token to view collections from any location by manipulating URL parameters.
+**Issue**: The GET endpoint was not checking user's `assignedLocations`, allowing any user with a valid token to view collections from any location by manipulating URL parameters.
 
 **Fix**: Implemented `getUserLocationFilter` to:
 1. Get user's role, licensees, and location permissions
@@ -447,7 +443,7 @@ GET /api/collections?collector=<userName>&incompleteOnly=true
 ### Issue: User Can't See Incomplete Collections
 
 **Check:**
-1. User has `resourcePermissions['gaming-locations'].resources` assigned
+1. User has `assignedLocations` array assigned
 2. Location exists in `gaminglocations` collection
 3. Collection's `location` field matches the location's `name` field exactly
 4. Collection has `isCompleted: false` and `locationReportId: ''`
@@ -456,7 +452,7 @@ GET /api/collections?collector=<userName>&incompleteOnly=true
 ```javascript
 // Check user's accessible locations
 const user = await Users.findOne({ username: 'testuser' });
-const locationIds = user.resourcePermissions['gaming-locations'].resources;
+const locationIds = user.assignedLocations || [];
 
 // Check location names
 const locations = await GamingLocations.find({ _id: { $in: locationIds } });

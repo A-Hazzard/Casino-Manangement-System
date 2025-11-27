@@ -40,20 +40,18 @@
   username: string;
   emailAddress: string;
   roles: string[];                // ['developer', 'manager', 'collector', etc.]
-  rel: {
-    licencee: string[];           // ⭐ Array of licensee IDs user has access to
-  };
-  resourcePermissions: {
-    'gaming-locations': {
-      entity: 'gaming-locations';
-      resources: string[];        // ⭐ Array of specific location IDs
-    };
-  };
+
+  // ⭐ PRIMARY FIELDS - Use these exclusively
+  assignedLocations: string[];    // Array of location IDs user has access to
+  assignedLicensees: string[];    // Array of licensee IDs user has access to
+
   sessionVersion: number;         // ⭐ Incremented when permissions change
   loginCount: number;
   lastLoginAt: Date;
 }
 ```
+
+**Important:** The codebase uses ONLY `assignedLocations` and `assignedLicensees` fields. The old `rel.licencee` and `resourcePermissions` fields are no longer used and should not be referenced in code.
 
 ### Location Schema
 
@@ -103,38 +101,38 @@
 
 #### **3. Manager**
 
-- **Licensee Access**: ONLY assigned licensees (`rel.licencee` array)
+- **Licensee Access**: ONLY assigned licensees (`assignedLicensees` array)
 - **Location Access**: ALL locations within assigned licensees (no intersection with location permissions)
 - **Dropdown**: Shown if 2+ assigned licensees
-- **Query Logic**: `licensee` parameter must be in user's `rel.licencee`
+- **Query Logic**: `licensee` parameter must be in user's `assignedLicensees`
 - **Intersection**: Location permissions DON'T restrict managers (they see ALL locations for their licensees)
 - **Use Case**: Regional managers
 
 #### **4. Collector**
 
-- **Licensee Access**: ONLY assigned licensees (`rel.licencee` array)
+- **Licensee Access**: ONLY assigned licensees (`assignedLicensees` array)
 - **Location Access**: Intersection(licensee locations, assigned locations)
 - **Dropdown**: Shown if user has 2+ assigned licensees (not based on location count)
 - **Query Logic**: Auto-filtered to assigned locations
-- **Intersection**: `licensee locations ∩ resourcePermissions.gaming-locations.resources`
+- **Intersection**: `licensee locations ∩ assignedLocations`
 - **Use Case**: Field collectors
 
 #### **5. Location Admin**
 
-- **Licensee Access**: ONLY assigned licensees (`rel.licencee` array)
+- **Licensee Access**: ONLY assigned licensees (`assignedLicensees` array)
 - **Location Access**: Intersection(licensee locations, assigned locations)
 - **Dropdown**: Never shown
 - **Query Logic**: Auto-filtered to assigned locations
-- **Intersection**: `licensee locations ∩ resourcePermissions.gaming-locations.resources`
+- **Intersection**: `licensee locations ∩ assignedLocations`
 - **Use Case**: Location managers
 
 #### **6. Technician**
 
-- **Licensee Access**: ONLY assigned licensees (`rel.licencee` array)
+- **Licensee Access**: ONLY assigned licensees (`assignedLicensees` array)
 - **Location Access**: Intersection(licensee locations, assigned locations)
 - **Dropdown**: Never shown
 - **Query Logic**: Auto-filtered to assigned locations
-- **Intersection**: `licensee locations ∩ resourcePermissions.gaming-locations.resources`
+- **Intersection**: `licensee locations ∩ assignedLocations`
 - **Use Case**: Field technicians
 
 ---
@@ -323,7 +321,10 @@ await fetchCollectionReportsData(
 // Collection Report page auto-selects single licensee on mount
 useEffect(() => {
   if (user && isInitialMount.current && !hasInitializedLicensee.current) {
-    const userLicensees = user.rel?.licencee || [];
+    // Use new field with fallback to old field
+    const userLicensees = user.assignedLicensees?.length
+      ? user.assignedLicensees
+      : user.rel?.licencee || [];
 
     // Auto-select if user has exactly 1 licensee
     if (
@@ -371,9 +372,9 @@ useEffect(() => {
 **FORMULA:**
 
 ```
-Accessible Locations = (Locations where rel.licencee IN user.rel.licencee)
+Accessible Locations = (Locations where rel.licencee IN user.assignedLicensees)
                       ∩
-                      (user.resourcePermissions.gaming-locations.resources)
+                      (user.assignedLocations)
 ```
 
 **Code Implementation:**
@@ -381,16 +382,18 @@ Accessible Locations = (Locations where rel.licencee IN user.rel.licencee)
 ```typescript
 // app/api/lib/helpers/licenseeFilter.ts - getUserLocationFilter()
 
-// Step 1: Get locations belonging to user's licensees
+// Step 1: Get user's assigned licensees
+const userLicensees = user.assignedLicensees || [];
+
+// Step 2: Get locations belonging to user's licensees
 const licenseeLocations = await GamingLocations.find({
   'rel.licencee': { $in: userLicensees },
 }).distinct('_id');
 
-// Step 2: Get user's assigned location permissions
-const userLocationPermissions =
-  user.resourcePermissions?.['gaming-locations']?.resources || [];
+// Step 3: Get user's assigned location permissions
+const userLocationPermissions = user.assignedLocations || [];
 
-// Step 3: Calculate intersection
+// Step 4: Calculate intersection
 if (isManager) {
   return licenseeLocations; // Managers see ALL licensee locations
 } else {
@@ -403,7 +406,7 @@ if (isManager) {
 
 ### For Managers
 
-**NO INTERSECTION** - Managers see ALL locations for their assigned licensees, regardless of `resourcePermissions.gaming-locations.resources`.
+**NO INTERSECTION** - Managers see ALL locations for their assigned licensees, regardless of `assignedLocations`.
 
 **Code:**
 
@@ -428,8 +431,8 @@ if (isManager) {
 
 // Increment sessionVersion when changing ANY of these:
 const permissionFieldsChanged =
-  licenseeChanged || // rel.licencee array modified
-  locationsChanged || // resourcePermissions.gaming-locations.resources modified
+  licenseeChanged || // assignedLicensees array modified
+  locationsChanged || // assignedLocations array modified
   rolesChanged; // roles array modified
 
 if (permissionFieldsChanged) {
@@ -499,10 +502,16 @@ const user = await UserModel.findById(userId); // NEVER use this!
 ### Updating Users
 
 ```typescript
-// ✅ CORRECT
+// ✅ CORRECT - Update new fields only
 await UserModel.findOneAndUpdate(
   { _id: userId },
-  { $set: { 'rel.licencee': licensees }, $inc: { sessionVersion: 1 } },
+  {
+    $set: {
+      assignedLicensees: licensees,
+      assignedLocations: locations,
+    },
+    $inc: { sessionVersion: 1 }
+  },
   { new: true }
 );
 

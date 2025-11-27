@@ -1,4 +1,3 @@
-import type { ResourcePermissions } from '@/lib/types/administration';
 import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import {
@@ -104,16 +103,18 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
     const jwtPayload = payload as JWTPayload & {
       roles?: string[];
       rel?: { licencee?: string[] };
-      resourcePermissions?: Record<string, unknown>;
       permissions?: string[];
+      assignedLocations?: string[];
+      assignedLicensees?: string[];
     };
 
     let dbUser: {
       sessionVersion?: number;
       roles?: string[];
       rel?: { licencee?: string[] };
-      resourcePermissions?: Record<string, unknown>;
       permissions?: string[];
+      assignedLocations?: string[];
+      assignedLicensees?: string[];
       isEnabled?: boolean;
       deletedAt?: Date | null;
     } | null = null;
@@ -124,14 +125,15 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         const UserModel = (await import('../models/user')).default;
         dbUser = (await UserModel.findOne({ _id: jwtPayload._id })
           .select(
-            'sessionVersion roles rel resourcePermissions permissions isEnabled deletedAt'
+            'sessionVersion roles rel permissions assignedLocations assignedLicensees isEnabled deletedAt'
           )
           .lean()) as {
           sessionVersion?: number;
           roles?: string[];
           rel?: { licencee?: string[] };
-          resourcePermissions?: Record<string, unknown>;
           permissions?: string[];
+          assignedLocations?: string[];
+          assignedLicensees?: string[];
           isEnabled?: boolean;
           deletedAt?: Date | null;
         } | null;
@@ -192,12 +194,51 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         jwtPayload.rel = dbUser.rel;
       }
 
-      if (!jwtPayload.resourcePermissions && dbUser.resourcePermissions) {
-        jwtPayload.resourcePermissions = dbUser.resourcePermissions;
-      }
-
       if (!jwtPayload.permissions && dbUser.permissions) {
         jwtPayload.permissions = dbUser.permissions;
+      }
+
+      // Hydrate assignedLocations and assignedLicensees from database
+      // ALWAYS prefer database values (database is source of truth)
+      // Only log in development and only when there's an issue
+      if (process.env.NODE_ENV === 'development') {
+        const jwtHasLocations = Array.isArray(jwtPayload.assignedLocations);
+        const dbHasLocations = Array.isArray(dbUser.assignedLocations);
+        if (jwtHasLocations && !dbHasLocations && jwtPayload.assignedLocations) {
+          console.warn(
+            `[getUserFromServer] JWT has ${jwtPayload.assignedLocations.length} locations but DB doesn't - using JWT`
+          );
+        }
+      }
+
+      // ALWAYS use database value if it exists (even if empty array)
+      if (Array.isArray(dbUser.assignedLocations)) {
+        // Database has data (even if empty) - ALWAYS use it (database is source of truth)
+        const dbLocations = dbUser.assignedLocations.map((id: string) =>
+          String(id)
+        );
+        jwtPayload.assignedLocations = dbLocations;
+      } else if (Array.isArray(jwtPayload.assignedLocations)) {
+        // JWT has data but DB doesn't - keep JWT data
+        // (This shouldn't happen after migration, but handle gracefully)
+      } else {
+        // No data in JWT or DB - ensure empty array is set
+        jwtPayload.assignedLocations = [];
+      }
+
+      // ALWAYS use database value if it exists (even if empty array)
+      if (Array.isArray(dbUser.assignedLicensees)) {
+        // Database has data (even if empty) - ALWAYS use it (database is source of truth)
+        const dbLicensees = dbUser.assignedLicensees.map((id: string) =>
+          String(id)
+        );
+        jwtPayload.assignedLicensees = dbLicensees;
+      } else if (Array.isArray(jwtPayload.assignedLicensees)) {
+        // JWT has data but DB doesn't - keep JWT data
+        // (This shouldn't happen after migration, but handle gracefully)
+      } else {
+        // No data in JWT or DB - ensure empty array is set
+        jwtPayload.assignedLicensees = [];
       }
     }
 
@@ -295,9 +336,10 @@ export async function getDeletedUsers() {
 /**
  * Retrieves a user by ID from database
  * Note: _id is stored as String in the schema, not ObjectId
+ * Uses .lean() to return a plain JavaScript object with all fields preserved
  */
 export async function getUserById(userId: string) {
-  return await UserModel.findOne({ _id: userId }, '-password');
+  return await UserModel.findOne({ _id: userId }, '-password').lean();
 }
 
 /**
@@ -312,10 +354,8 @@ export async function createUser(
     profile?: Record<string, unknown>;
     isEnabled?: boolean;
     profilePicture?: string | null;
-    resourcePermissions?: ResourcePermissions;
-    rel?: {
-      licencee?: string[];
-    };
+    assignedLocations?: string[];
+    assignedLicensees?: string[];
   },
   request: NextRequest
 ) {
@@ -327,8 +367,8 @@ export async function createUser(
     profile = {},
     isEnabled = true,
     profilePicture = null,
-    resourcePermissions = {},
-    rel,
+    assignedLocations,
+    assignedLicensees,
   } = data;
 
   // Get current user to check permissions for role assignment
@@ -400,12 +440,13 @@ export async function createUser(
   }
 
   // Validate that licensee is provided (user should never be created without a licensee)
-  if (
-    !rel ||
-    !rel.licencee ||
-    !Array.isArray(rel.licencee) ||
-    rel.licencee.length === 0
-  ) {
+  // Use only new field
+  const hasLicensees =
+    assignedLicensees &&
+    Array.isArray(assignedLicensees) &&
+    assignedLicensees.length > 0;
+
+  if (!hasLicensees) {
     throw new Error('A user must be assigned to at least one licensee');
   }
 
@@ -426,6 +467,10 @@ export async function createUser(
   // Create user - catch MongoDB duplicate key errors
   let newUser;
   try {
+    // Use only new fields - no longer writing to old fields
+    const finalAssignedLicensees = assignedLicensees || [];
+    const finalAssignedLocations = assignedLocations || [];
+
     newUser = await UserModel.create({
       _id: new (
         await import('mongoose')
@@ -438,8 +483,9 @@ export async function createUser(
       profile,
       isEnabled,
       profilePicture,
-      resourcePermissions,
-      rel: rel || {},
+      // Old fields removed - only using assignedLocations and assignedLicensees
+      assignedLocations: finalAssignedLocations,
+      assignedLicensees: finalAssignedLicensees,
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
   } catch (dbError: unknown) {
@@ -537,13 +583,49 @@ export async function updateUser(
     throw new Error('User not found');
   }
 
-  // Get current user to check permissions (early check for manager restrictions)
-  const requestingUser = await getUserFromServer();
-  const requestingUserRoles = (requestingUser?.roles || []) as string[];
-  const isDeveloper = requestingUserRoles.includes('developer');
-  const isAdmin = requestingUserRoles.includes('admin') && !isDeveloper;
-  const isManager =
-    requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+  // DEV MODE: Bypass authentication in development
+  const isDevMode = process.env.NODE_ENV === 'development';
+  let requestingUser = null;
+  let requestingUserRoles: string[] = [];
+  let isDeveloper = false;
+  let isAdmin = false;
+  let isManager = false;
+  let isLocationAdmin = false;
+
+  if (!isDevMode) {
+    // Get current user to check permissions (early check for manager restrictions)
+    requestingUser = await getUserFromServer();
+    requestingUserRoles = (requestingUser?.roles || []) as string[];
+    isDeveloper = requestingUserRoles.includes('developer');
+    isAdmin = requestingUserRoles.includes('admin') && !isDeveloper;
+    isManager =
+      requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+    isLocationAdmin =
+      requestingUserRoles.includes('location admin') &&
+      !isAdmin &&
+      !isManager &&
+      !isDeveloper;
+  } else {
+    // In dev mode, treat as developer to bypass all restrictions
+    isDeveloper = true;
+  }
+
+  // Location admins cannot edit managers, developers, or admins
+  if (isLocationAdmin) {
+    const targetUserRoles = (user.roles || []) as string[];
+    const normalizedTargetRoles = targetUserRoles.map(r =>
+      String(r).trim().toLowerCase()
+    );
+    const isTargetDeveloper = normalizedTargetRoles.includes('developer');
+    const isTargetAdmin = normalizedTargetRoles.includes('admin');
+    const isTargetManager = normalizedTargetRoles.includes('manager');
+
+    if (isTargetDeveloper || isTargetAdmin || isTargetManager) {
+      throw new Error(
+        'Location admins cannot edit developers, admins, or managers'
+      );
+    }
+  }
 
   // Validate role assignments if roles are being updated
   if (updateFields.roles !== undefined) {
@@ -597,14 +679,55 @@ export async function updateUser(
   }
 
   // Prevent managers from changing licensee assignments
-  if (isManager && updateFields.rel && typeof updateFields.rel === 'object') {
-    const relUpdate = updateFields.rel as Record<string, unknown>;
-    if (relUpdate.licencee !== undefined) {
-      // Get original licensee assignments
-      const originalLicensees =
-        (user.rel as { licencee?: string[] })?.licencee || [];
-      const newLicensees = Array.isArray(relUpdate.licencee)
-        ? relUpdate.licencee.map(id => String(id))
+  // Check both old and new fields
+  if (isManager) {
+    // Check old field
+    if (updateFields.rel && typeof updateFields.rel === 'object') {
+      const relUpdate = updateFields.rel as Record<string, unknown>;
+      if (relUpdate.licencee !== undefined) {
+        // Get original licensee assignments (use only new field)
+        let originalLicensees: string[] = [];
+        if (
+          Array.isArray(
+            (user as { assignedLicensees?: string[] })?.assignedLicensees
+          )
+        ) {
+          originalLicensees = (user as { assignedLicensees: string[] })
+            .assignedLicensees;
+        }
+        const newLicensees = Array.isArray(relUpdate.licencee)
+          ? relUpdate.licencee.map(id => String(id))
+          : [];
+
+        // Check if licensee assignments changed
+        const originalNormalized = originalLicensees
+          .map(id => String(id))
+          .sort();
+        const newNormalized = newLicensees.sort();
+        const licenseeChanged =
+          originalNormalized.length !== newNormalized.length ||
+          !originalNormalized.every((id, idx) => id === newNormalized[idx]);
+
+        if (licenseeChanged) {
+          throw new Error('Managers cannot change licensee assignments');
+        }
+      }
+    }
+
+    // Check new field
+    if (updateFields.assignedLicensees !== undefined) {
+      // Get original licensee assignments (use only new field)
+      let originalLicensees: string[] = [];
+      if (
+        Array.isArray(
+          (user as { assignedLicensees?: string[] })?.assignedLicensees
+        )
+      ) {
+        originalLicensees = (user as { assignedLicensees: string[] })
+          .assignedLicensees;
+      }
+      const newLicensees = Array.isArray(updateFields.assignedLicensees)
+        ? (updateFields.assignedLicensees as string[]).map(id => String(id))
         : [];
 
       // Check if licensee assignments changed
@@ -622,12 +745,29 @@ export async function updateUser(
 
   // For managers, ensure they can only toggle isEnabled for users in their licensee
   if (isManager && updateFields.isEnabled !== undefined) {
-    const managerLicenseeIds = (
-      (requestingUser?.rel as { licencee?: string[] })?.licencee || []
-    ).map(id => String(id));
-    const userLicenseeIds = (
-      (user.rel as { licencee?: string[] })?.licencee || []
-    ).map(id => String(id));
+    // Use only new field for manager
+    let managerLicenseeIds: string[] = [];
+    if (
+      Array.isArray(
+        (requestingUser as { assignedLicensees?: string[] })?.assignedLicensees
+      )
+    ) {
+      managerLicenseeIds = (
+        requestingUser as { assignedLicensees: string[] }
+      ).assignedLicensees.map(id => String(id));
+    }
+
+    // Use only new field for user
+    let userLicenseeIds: string[] = [];
+    if (
+      Array.isArray(
+        (user as { assignedLicensees?: string[] })?.assignedLicensees
+      )
+    ) {
+      userLicenseeIds = (
+        user as { assignedLicensees: string[] }
+      ).assignedLicensees.map(id => String(id));
+    }
 
     // Check if user belongs to any of the manager's licensees
     const hasSharedLicensee = userLicenseeIds.some(id =>
@@ -959,6 +1099,8 @@ export async function updateUser(
     }
   }
 
+  // No longer syncing to old fields - only using assignedLocations and assignedLicensees
+
   // Separate MongoDB operators from regular fields
   const mongoOperators: Record<string, unknown> = {};
   const regularFields: Record<string, unknown> = {};
@@ -1059,6 +1201,39 @@ export async function updateUser(
  * Deletes a user with activity logging (soft delete)
  */
 export async function deleteUser(_id: string, request: NextRequest) {
+  // Get the user to be deleted first to check their roles
+  const userToDelete = await UserModel.findOne({ _id });
+  if (!userToDelete) {
+    throw new Error('User not found');
+  }
+
+  // Check if current user is a location admin and prevent deletion of managers/developers/admins
+  const currentUser = await getUserFromServer();
+  if (currentUser) {
+    const currentUserRoles = (currentUser.roles || []) as string[];
+    const isLocationAdmin =
+      currentUserRoles.includes('location admin') &&
+      !currentUserRoles.includes('developer') &&
+      !currentUserRoles.includes('admin') &&
+      !currentUserRoles.includes('manager');
+
+    if (isLocationAdmin) {
+      const targetUserRoles = (userToDelete.roles || []) as string[];
+      const normalizedTargetRoles = targetUserRoles.map(r =>
+        String(r).trim().toLowerCase()
+      );
+      const isTargetDeveloper = normalizedTargetRoles.includes('developer');
+      const isTargetAdmin = normalizedTargetRoles.includes('admin');
+      const isTargetManager = normalizedTargetRoles.includes('manager');
+
+      if (isTargetDeveloper || isTargetAdmin || isTargetManager) {
+        throw new Error(
+          'Location admins cannot delete developers, admins, or managers'
+        );
+      }
+    }
+  }
+
   const deletedUser = await UserModel.findOneAndUpdate(
     { _id },
     {
@@ -1070,8 +1245,6 @@ export async function deleteUser(_id: string, request: NextRequest) {
   if (!deletedUser) {
     throw new Error('User not found');
   }
-
-  const currentUser = await getUserFromServer();
   if (currentUser && currentUser.emailAddress) {
     try {
       const deleteChanges = [

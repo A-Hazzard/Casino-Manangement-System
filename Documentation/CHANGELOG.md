@@ -8,6 +8,45 @@ All notable changes to the project and its documentation are recorded here. The 
 
 ### Added
 
+- **Meters Tab Enhancements (Reports Page)**
+  - Top Performing Machines interactive pie chart with navigation to location details
+  - Machine names display with game information in brackets (e.g., "CustomName (SerialNumber, Game)")
+  - Comprehensive skeleton loaders matching actual layout for all sections
+  - Search functionality with improved matching (includes serial numbers in parentheses)
+  - Meters Export Report with proper table alignment and pagination
+
+- **Administration Page Improvements**
+  - Current user automatically excluded from user list
+  - Location admin restrictions: cannot edit/delete users with developer/admin/manager roles
+  - Licensee name display instead of "All Licensees (1 licensees)" for single licensee users
+  - Change detection: only sends changed fields to API (roles, username, email, assignedLicensees, assignedLocations, profile, profilePicture, password, isEnabled)
+
+- **Date Filter Improvements**
+  - Select component for date filters on mobile/tablet (below `lg:`)
+  - Button group for date filters on desktop (`lg:` and above)
+  - Machine status widget alignment with date filters on all pages
+  - Date range indicator in separate row above filter controls
+
+- **Location Cards UI Improvements**
+  - Removed redundant machines and online container (purple/green buttons)
+  - Removed green/red circle online/offline indicator (status shown via X/Y indicator)
+
+### Changed
+
+- **JWT Token Structure**
+  - Removed `assignedLocations` and `assignedLicensees` from JWT token payload to prevent cookie size issues
+  - Full user data stored in localStorage via `userPayload`
+  - Middleware only verifies token validity; location/licensee filtering happens in API routes
+
+- **Documentation Updates**
+  - Comprehensive documentation review and update (November 27, 2025)
+  - Updated all references from `resourcePermissions` to `assignedLocations`
+  - Updated all user-related `rel.licencee` references to `assignedLicensees`
+  - Added skeleton loader requirements to engineering guidelines
+  - Updated API documentation to reflect current JWT token structure
+
+### Fixed
+
 - **Feedback Management System**
   - Complete feedback management interface in Administration page
   - Status workflow: pending → reviewed → resolved

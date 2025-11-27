@@ -64,16 +64,19 @@ export async function buildCollectionReportsLocationFilter(
       throw new Error('Database connection failed');
     }
 
-    const managerLocations = await db.collection('gaminglocations').find(
-      {
-        'rel.licencee': { $in: licensees },
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      },
-      { projection: { _id: 1 } }
-    ).toArray();
+    const managerLocations = await db
+      .collection('gaminglocations')
+      .find(
+        {
+          'rel.licencee': { $in: licensees },
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
+        },
+        { projection: { _id: 1 } }
+      )
+      .toArray();
 
     const managerLocationIds = managerLocations.map(loc => String(loc._id));
 
@@ -123,6 +126,7 @@ export function buildCollectionReportsQuery(
 
 /**
  * Extracts user permissions from user payload
+ * Uses new fields (assignedLocations, assignedLicensees)
  *
  * @param userPayload - User payload from JWT token
  * @returns User permissions object
@@ -130,20 +134,30 @@ export function buildCollectionReportsQuery(
 export function extractUserPermissions(userPayload: {
   roles?: unknown;
   rel?: { licencee?: unknown };
-  resourcePermissions?: {
-    'gaming-locations'?: { resources?: unknown };
-  };
+  assignedLocations?: string[];
+  assignedLicensees?: string[];
 }): UserPermissions {
   const roles = Array.isArray(userPayload.roles)
     ? (userPayload.roles as string[])
     : [];
-  const licensees =
-    ((userPayload.rel as { licencee?: string[] } | undefined)?.licencee ||
-      []) as string[];
-  const locationPermissions =
-    ((userPayload.resourcePermissions as {
-      'gaming-locations'?: { resources?: string[] };
-    } | undefined)?.['gaming-locations']?.resources || []) as string[];
+
+  // Use only new field
+  let licensees: string[] = [];
+  if (
+    Array.isArray(userPayload.assignedLicensees) &&
+    userPayload.assignedLicensees.length > 0
+  ) {
+    licensees = userPayload.assignedLicensees;
+  }
+
+  // Use only new field
+  let locationPermissions: string[] = [];
+  if (
+    Array.isArray(userPayload.assignedLocations) &&
+    userPayload.assignedLocations.length > 0
+  ) {
+    locationPermissions = userPayload.assignedLocations;
+  }
 
   return {
     roles,
@@ -151,4 +165,3 @@ export function extractUserPermissions(userPayload: {
     locationPermissions,
   };
 }
-

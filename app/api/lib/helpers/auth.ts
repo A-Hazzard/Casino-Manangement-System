@@ -47,7 +47,7 @@ export async function authenticateUser(
     // (in case user has their email as their username - they should still be able to login)
     const looksLikeEmail = /\S+@\S+\.\S+/.test(identifier);
     let user = null;
-    
+
     if (looksLikeEmail) {
       // Try email first, then username (in case username is an email)
       user = await getUserByEmail(identifier);
@@ -57,6 +57,19 @@ export async function authenticateUser(
     } else {
       // If it doesn't look like an email, only try username lookup
       user = await getUserByUsername(identifier);
+    }
+
+    // Enhanced logging for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[authenticateUser] Login attempt:', {
+        identifier,
+        looksLikeEmail,
+        userFound: !!user,
+        userId: user?._id,
+        username: user?.username,
+        email: user?.emailAddress,
+        isEnabled: user?.isEnabled,
+      });
     }
 
     if (!user) {
@@ -73,13 +86,20 @@ export async function authenticateUser(
 
     // Check if user is enabled
     if (!user.isEnabled) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[authenticateUser] User account is disabled:', {
+          identifier,
+          userId: user._id,
+          username: user.username,
+        });
+      }
       await logActivity({
         action: 'login_blocked',
         details: `Disabled user attempted login: ${identifier}`,
         ipAddress,
         userAgent,
-        userId: 'unknown',
-        username: 'unknown',
+        userId: user._id,
+        username: user.username,
       });
       return {
         success: false,
@@ -88,8 +108,25 @@ export async function authenticateUser(
     }
 
     // Verify password
+    const hasPassword = !!user.password;
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[authenticateUser] Password check:', {
+        identifier,
+        userId: user._id,
+        hasPassword,
+        passwordLength: user.password?.length || 0,
+      });
+    }
+
     const isMatch = await comparePassword(password, user.password || '');
     if (!isMatch) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[authenticateUser] Password mismatch:', {
+          identifier,
+          userId: user._id,
+          username: user.username,
+        });
+      }
       await logActivity({
         action: 'login_failed',
         details: `Invalid password for: ${identifier}`,
@@ -148,10 +185,10 @@ export async function authenticateUser(
       const userObject = (user as any).toJSON();
 
       const sessionId = userObject._id.toString();
-
-      // resourcePermissions should already be a plain object after toJSON()
-      const resourcePermissionsPlain =
-        userObject.resourcePermissions || undefined;
+      // Don't include assignedLocations/assignedLicensees in token to prevent cookie size issues
+      // The full list is available from userPayload (stored in localStorage) and can be fetched from DB
+      // The middleware only needs to verify the token exists and is valid - it doesn't need location data
+      // Location/licensee filtering happens in API routes, not middleware
 
       const accessToken = await generateAccessToken({
         _id: userObject._id.toString(),
@@ -159,6 +196,8 @@ export async function authenticateUser(
         username: String(userObject.username || ''),
         isEnabled: userObject.isEnabled,
         roles: userObject.roles || [],
+        // Removed assignedLocations and assignedLicensees to keep token small enough for cookies
+        // Full data is in userPayload (localStorage) and can be fetched from DB when needed
         sessionId: sessionId,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         dbContext: {
@@ -178,9 +217,9 @@ export async function authenticateUser(
         username: String(userObject.username || ''),
         isEnabled: userObject.isEnabled,
         roles: userObject.roles || [],
-        rel: userObject.rel || undefined,
         profile: userObject.profile || undefined,
-        resourcePermissions: resourcePermissionsPlain,
+        assignedLocations: userObject.assignedLocations || undefined,
+        assignedLicensees: userObject.assignedLicensees || undefined,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -225,10 +264,10 @@ export async function authenticateUser(
 
     // Generate tokens
     const sessionId = userObject._id.toString(); // Use user ID as session ID
-
-    // resourcePermissions should already be a plain object after toJSON()
-    const resourcePermissionsPlain =
-      userObject.resourcePermissions || undefined;
+    // Don't include assignedLocations/assignedLicensees in token to prevent cookie size issues
+    // The full list is available from userPayload (stored in localStorage) and can be fetched from DB
+    // The middleware only needs to verify the token exists and is valid - it doesn't need location data
+    // Location/licensee filtering happens in API routes, not middleware
 
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
@@ -236,6 +275,8 @@ export async function authenticateUser(
       username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
+      // Removed assignedLocations and assignedLicensees to keep token small enough for cookies
+      // Full data is in userPayload (localStorage) and can be fetched from DB when needed
       sessionId: sessionId,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       dbContext: {
@@ -255,9 +296,9 @@ export async function authenticateUser(
       username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
-      rel: userObject.rel || undefined,
       profile: userObject.profile || undefined,
-      resourcePermissions: resourcePermissionsPlain,
+      assignedLocations: userObject.assignedLocations || undefined,
+      assignedLicensees: userObject.assignedLicensees || undefined,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       lastLoginAt: new Date(),
       loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -357,12 +398,22 @@ export async function refreshAccessToken(
 
     const sessionId = userObject._id.toString();
 
+    // Extract new fields
+    const assignedLocations = userObject.assignedLocations?.length
+      ? userObject.assignedLocations
+      : undefined;
+    const assignedLicensees = userObject.assignedLicensees?.length
+      ? userObject.assignedLicensees
+      : undefined;
+
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
       username: String(userObject.username || ''),
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
+      assignedLocations,
+      assignedLicensees,
       sessionId: sessionId,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       dbContext: {

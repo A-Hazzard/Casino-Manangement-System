@@ -109,29 +109,22 @@ func worker(ctx context.Context, dbInstance *mongo.Database, users <-chan bson.M
 				continue
 			}
 
-			// Extract resourcePermissions.
-			permissions, exists := user["resourcePermissions"].(bson.M)
-			if !exists || permissions == nil {
-				fmt.Printf("🚧 Skipping user %v, no assigned locations.\n", user["username"])
-				continue
-			}
-
-			// Extract gaming-locations.
-			rawLocations, exists := permissions["gaming-locations"]
+			// Extract assignedLocations.
+			rawLocations, exists := user["assignedLocations"]
 			if !exists || rawLocations == nil {
 				fmt.Printf("🚧 Skipping user %v, no assigned locations.\n", user["username"])
 				continue
 			}
 
-			// Convert gaming-locations.resources to []string.
+			// Convert assignedLocations to []string.
 			var locationIds []string
-			switch res := rawLocations.(bson.M)["resources"].(type) {
+			switch res := rawLocations.(type) {
 			case []interface{}:
 				for _, loc := range res {
 					if str, ok := loc.(string); ok {
 						locationIds = append(locationIds, str)
 					} else {
-						fmt.Printf("🚧 Skipping user %v, resource element is not a string: %T\n", user["username"], loc)
+						fmt.Printf("🚧 Skipping user %v, location element is not a string: %T\n", user["username"], loc)
 					}
 				}
 			case primitive.A:
@@ -139,7 +132,7 @@ func worker(ctx context.Context, dbInstance *mongo.Database, users <-chan bson.M
 					if str, ok := loc.(string); ok {
 						locationIds = append(locationIds, str)
 					} else {
-						fmt.Printf("🚧 Skipping user %v, resource element is not a string: %T\n", user["username"], loc)
+						fmt.Printf("🚧 Skipping user %v, location element is not a string: %T\n", user["username"], loc)
 					}
 				}
 			case []string:

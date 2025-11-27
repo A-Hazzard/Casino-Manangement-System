@@ -49,7 +49,7 @@ export async function POST(
       }
 
       const user = await getUserById(userId);
-      if (!user) {
+      if (!user || Array.isArray(user)) {
         const duration = Date.now() - startTime;
         console.error(
           `[Fix Collection History POST API] User not found after ${duration}ms.`

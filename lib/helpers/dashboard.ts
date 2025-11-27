@@ -107,6 +107,10 @@ export const fetchDashboardTotals = async (
       url += `&currency=${displayCurrency}`;
     }
 
+    // Add cache-busting parameter to ensure fresh data (especially for location admins)
+    // This prevents stale cache from showing incorrect totals
+    url += `&clearCache=true`;
+
     console.log('🔍 [fetchDashboardTotals] Calling API:', url);
     const response = await axios.get(url);
     const locationData = response.data;
@@ -114,14 +118,35 @@ export const fetchDashboardTotals = async (
     console.log('🔍 [fetchDashboardTotals] API Response:', {
       hasData: !!locationData.data,
       dataLength: locationData.data?.length || 0,
-      firstFewLocations: (locationData.data || []).slice(0, 3).map((loc: { name?: string; locationName?: string; moneyIn?: number }) => ({
+      responseKeys: Object.keys(locationData),
+      firstFewLocations: (locationData.data || []).slice(0, 3).map((loc: { name?: string; locationName?: string; moneyIn?: number; _id?: string }) => ({
         name: loc.name || loc.locationName,
+        _id: loc._id,
         moneyIn: loc.moneyIn
-      }))
+      })),
+      fullResponse: locationData // Log full response for debugging
     });
 
+    // Check if response has error
+    if (locationData.error) {
+      console.error('❌ [fetchDashboardTotals] API returned error:', locationData.error);
+      setTotals(null);
+      return;
+    }
+
+    // Verify data structure
+    if (!Array.isArray(locationData.data)) {
+      console.error('❌ [fetchDashboardTotals] API response.data is not an array:', {
+        type: typeof locationData.data,
+        value: locationData.data,
+        responseKeys: Object.keys(locationData)
+      });
+      setTotals(null);
+      return;
+    }
+
     // Sum up totals from all locations (same logic as locations page)
-    const totals = (locationData.data || []).reduce(
+    const totals = locationData.data.reduce(
       (acc: DashboardTotals, loc: { moneyIn?: number; moneyOut?: number; gross?: number }) => ({
         moneyIn: acc.moneyIn + (loc.moneyIn || 0),
         moneyOut: acc.moneyOut + (loc.moneyOut || 0),
@@ -134,7 +159,8 @@ export const fetchDashboardTotals = async (
       moneyIn: totals.moneyIn,
       moneyOut: totals.moneyOut,
       gross: totals.gross,
-      locationCount: locationData.data?.length || 0
+      locationCount: locationData.data.length,
+      locationsWithData: locationData.data.filter((loc: { moneyIn?: number }) => (loc.moneyIn || 0) > 0).length
     });
 
     // Convert to DashboardTotals format
@@ -144,9 +170,12 @@ export const fetchDashboardTotals = async (
     const apiError = classifyError(error);
     showErrorNotification(apiError, 'Dashboard Totals');
 
-    if (process.env.NODE_ENV === 'development') {
-      console.error('❌ [fetchDashboardTotals] Error fetching dashboard totals:', error);
-    }
+    console.error('❌ [fetchDashboardTotals] Error fetching dashboard totals:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      response: (error as { response?: { data?: unknown; status?: number } })?.response?.data,
+      status: (error as { response?: { status?: number } })?.response?.status
+    });
 
     setTotals(null);
   }

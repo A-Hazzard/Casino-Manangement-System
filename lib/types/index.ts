@@ -83,7 +83,9 @@ export type TopPerformingItem = {
   color: string;
   totalDrop: number;
   location?: string;
+  locationId?: string;
   machine?: string;
+  game?: string;
 };
 
 export type TopPerformingData = Array<TopPerformingItem>;

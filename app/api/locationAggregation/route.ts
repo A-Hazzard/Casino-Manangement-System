@@ -25,6 +25,9 @@ import {
   convertLocationCurrency,
 } from '@/app/api/lib/helpers/locationCurrencyConversion';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
+import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { LocationFilter } from '@/lib/types/location';
@@ -57,8 +60,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
     const licencee = searchParams.get('licencee') || undefined;
-    const displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const currencyParam = searchParams.get('currency') as CurrencyCode | null;
+    let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const machineTypeFilter =
       (searchParams.get('machineTypeFilter') as LocationFilter) || null;
     const clearCacheParam = searchParams.get('clearCache') === 'true';
@@ -130,8 +133,8 @@ export async function GET(req: NextRequest) {
 
     // Quick data availability check with timeout
     const dataCheckPromise = Promise.all([
-      db.collection('meters').countDocuments({}, { limit: 1 }),
-      db.collection('gaminglocations').countDocuments({}, { limit: 1 }),
+      Meters.countDocuments({}).limit(1),
+      GamingLocations.countDocuments({}).limit(1),
     ]);
 
     const dataCheckTimeout = new Promise((_, reject) =>
@@ -150,15 +153,133 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 5: Get user's accessible locations (for permission filtering)
     // ============================================================================
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const userLocationPermissions =
-      (
-        userPayload?.resourcePermissions as {
-          'gaming-locations'?: { resources?: string[] };
+    // DEV MODE: Allow bypassing auth for testing
+    const isDevMode = process.env.NODE_ENV === 'development';
+    const testUserId = searchParams.get('testUserId');
+
+    let userPayload;
+    let userRoles: string[] = [];
+    let userLocationPermissions: string[] = [];
+    let userAccessibleLicensees: string[] | 'all' = [];
+
+    if (isDevMode && testUserId) {
+      // Dev mode: Get user directly from DB for testing
+      console.warn(
+        '[LocationAggregation] 🔧 DEV MODE: Using testUserId:',
+        testUserId
+      );
+      const UserModel = (await import('../lib/models/user')).default;
+      const testUserResult = await UserModel.findOne({
+        _id: testUserId,
+      }).lean();
+      if (testUserResult && !Array.isArray(testUserResult)) {
+        const testUser = testUserResult as {
+          roles?: string[];
+          assignedLocations?: string[];
+          assignedLicensees?: string[];
+        };
+        userRoles = (testUser.roles || []) as string[];
+        userLocationPermissions = Array.isArray(testUser.assignedLocations)
+          ? testUser.assignedLocations.map((id: string) => String(id))
+          : [];
+        userAccessibleLicensees = Array.isArray(testUser.assignedLicensees)
+          ? testUser.assignedLicensees.map((id: string) => String(id))
+          : [];
+        console.log('[LocationAggregation] DEV MODE - User from DB:', {
+          roles: userRoles,
+          assignedLocations: userLocationPermissions,
+          assignedLicensees: userAccessibleLicensees,
+        });
+      } else {
+        return NextResponse.json(
+          { error: 'Test user not found' },
+          { status: 404 }
+        );
+      }
+    } else {
+      // Normal mode: Get user from JWT
+      userPayload = await getUserFromServer();
+      if (!userPayload && !isDevMode) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      if (userPayload) {
+        userRoles = (userPayload.roles as string[]) || [];
+        // Extract assignedLocations from new field only
+        const assignedLocations = (
+          userPayload as { assignedLocations?: string[] }
+        )?.assignedLocations;
+        if (Array.isArray(assignedLocations) && assignedLocations.length > 0) {
+          userLocationPermissions = assignedLocations;
         }
-      )?.['gaming-locations']?.resources || [];
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+      }
+      userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    }
+
+    // Debug logging for all users (especially collectors)
+    console.log(
+      '🔍 [LocationAggregation] ========================================'
+    );
+    console.log('🔍 [LocationAggregation] User roles:', userRoles);
+    console.log(
+      '🔍 [LocationAggregation] User assignedLocations count:',
+      userLocationPermissions.length
+    );
+    console.log(
+      '🔍 [LocationAggregation] User assignedLocations:',
+      userLocationPermissions
+    );
+    console.log(
+      '🔍 [LocationAggregation] User accessibleLicensees:',
+      userAccessibleLicensees
+    );
+    console.log('[LocationAggregation] Licencee param:', licencee);
+
+    // In normal mode (not dev mode or no testUserId), get licensees from token
+    if (!isDevMode || !testUserId) {
+      userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    }
+
+    // ============================================================================
+    // STEP 4.5: Determine display currency (if not provided) - AFTER DB connection
+    // ============================================================================
+    if (!currencyParam && userAccessibleLicensees !== 'all') {
+      // For non-admin users, auto-detect currency from their licensee
+      let resolvedLicensee: string | undefined =
+        licencee && licencee !== 'all' ? licencee : undefined;
+      if (
+        !resolvedLicensee &&
+        Array.isArray(userAccessibleLicensees) &&
+        userAccessibleLicensees.length === 1
+      ) {
+        resolvedLicensee = userAccessibleLicensees[0];
+      }
+
+      if (resolvedLicensee) {
+        // Get licensee name from ID to properly resolve currency
+        try {
+          const licenseeDoc = await Licencee.findOne(
+            { _id: resolvedLicensee },
+            { name: 1 }
+          ).lean();
+          if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
+            const { getLicenseeCurrency } = await import('@/lib/helpers/rates');
+            displayCurrency = getLicenseeCurrency(licenseeDoc.name);
+            console.log(
+              `🔍 [LocationAggregation] Auto-detected currency: ${displayCurrency} for licensee: ${licenseeDoc.name} (${resolvedLicensee})`
+            );
+          } else {
+            console.warn(
+              `🔍 [LocationAggregation] Licensee not found: ${resolvedLicensee}, using default USD`
+            );
+          }
+        } catch (error) {
+          console.warn(
+            '[LocationAggregation] Failed to get licensee name for currency, using default USD:',
+            error
+          );
+        }
+      }
+    }
 
     // Get allowed location IDs (respects user permissions and licensee filter)
     const allowedLocationIds = await getUserLocationFilter(
@@ -168,18 +289,28 @@ export async function GET(req: NextRequest) {
       userRoles
     );
 
-    // Debug logging for Developer role
-    if (userRoles.includes('developer') || userRoles.includes('admin')) {
-      console.log('[LocationAggregation] Developer/Admin user detected');
-      console.log('[LocationAggregation] User roles:', userRoles);
-      console.log('[LocationAggregation] Licencee param:', licencee);
+    console.log(
+      '🔍 [LocationAggregation] Allowed location IDs:',
+      allowedLocationIds === 'all'
+        ? 'all (no filtering)'
+        : `${Array.isArray(allowedLocationIds) ? allowedLocationIds.length : 0} locations`
+    );
+    if (Array.isArray(allowedLocationIds) && allowedLocationIds.length > 0) {
       console.log(
-        '[LocationAggregation] Allowed location IDs:',
-        allowedLocationIds === 'all'
-          ? 'all (no filtering)'
-          : `${Array.isArray(allowedLocationIds) ? allowedLocationIds.length : 0} locations`
+        '🔍 [LocationAggregation] Allowed location IDs list (first 10):',
+        allowedLocationIds.slice(0, 10)
+      );
+    } else if (
+      Array.isArray(allowedLocationIds) &&
+      allowedLocationIds.length === 0
+    ) {
+      console.warn(
+        '⚠️⚠️⚠️ [LocationAggregation] EMPTY ALLOWED LOCATION IDs - USER WILL SEE NO DATA ⚠️⚠️⚠️'
       );
     }
+    console.log(
+      '🔍 [LocationAggregation] ========================================'
+    );
 
     // ============================================================================
     // STEP 6: Check cache for existing results (AFTER getting user permissions)
@@ -221,6 +352,22 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 7: Fetch aggregated location metrics
     // ============================================================================
+    console.log(
+      '🔍 [LocationAggregation] Calling getLocationsWithMetrics with:',
+      {
+        allowedLocationIds:
+          allowedLocationIds === 'all'
+            ? 'all'
+            : Array.isArray(allowedLocationIds)
+              ? `${allowedLocationIds.length} locations`
+              : 'none',
+        timePeriod,
+        licencee,
+        page,
+        limit,
+      }
+    );
+
     const { rows, totalCount } = await getLocationsWithMetrics(
       db,
       { startDate, endDate },
@@ -235,6 +382,17 @@ export async function GET(req: NextRequest) {
       customEndDate,
       allowedLocationIds
     );
+
+    console.log('🔍 [LocationAggregation] getLocationsWithMetrics returned:', {
+      rowsCount: rows.length,
+      totalCount,
+      firstFewLocationIds: rows
+        .slice(0, 5)
+        .map((r: { _id?: string; name?: string }) => ({
+          _id: r._id,
+          name: r.name,
+        })),
+    });
 
     // ============================================================================
     // STEP 7: Apply machine type filters
@@ -298,6 +456,10 @@ export async function GET(req: NextRequest) {
       `[Location Aggregation GET API] Error after ${duration}ms:`,
       errorMessage
     );
+    if (error instanceof Error) {
+      console.error('[Location Aggregation GET API] Error stack:', error.stack);
+    }
+    console.error('[Location Aggregation GET API] Full error:', error);
 
     // Handle specific MongoDB connection errors
     if (error instanceof Error) {

@@ -79,10 +79,9 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Apply location-based filtering
     // ============================================================================
-    const userPermissions = user.resourcePermissions as Record<string, unknown>;
-    const allowedLocationIds =
-      ((userPermissions?.['gaming-locations'] as Record<string, unknown>)
-        ?.resources as string[]) || [];
+    const allowedLocationIds = Array.isArray(user.assignedLocations)
+      ? user.assignedLocations
+      : [];
 
     if (locationId) {
       if (

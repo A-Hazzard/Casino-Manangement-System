@@ -61,9 +61,17 @@ export default function ProfileValidationGate() {
   const { refetch } = useCurrentUserQuery();
   const { lastLoginPassword, clearLastLoginPassword } =
     useAuthSessionStore();
-  const userLicenseeDeps = user?.rel?.licencee;
-  const userLocationDeps =
-    user?.resourcePermissions?.['gaming-locations']?.resources;
+  // Use only new fields - memoize to prevent dependency array issues
+  const userLicenseeDeps = useMemo(() => {
+    return Array.isArray(user?.assignedLicensees) && user.assignedLicensees.length > 0
+      ? user.assignedLicensees
+      : [];
+  }, [user?.assignedLicensees]);
+  const userLocationDeps = useMemo(() => {
+    return Array.isArray(user?.assignedLocations) && user.assignedLocations.length > 0
+      ? user.assignedLocations
+      : [];
+  }, [user?.assignedLocations]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [invalidFields, setInvalidFields] =
@@ -163,13 +171,16 @@ export default function ProfileValidationGate() {
 
       const needsUpdate = Object.values(nextInvalid).some(Boolean);
 
-      const latestLicenseeIds = Array.isArray(latestUser.rel?.licencee)
-        ? (latestUser.rel?.licencee as string[]).map(id => String(id))
-        : [];
-      const latestLocationIds =
-        latestUser.resourcePermissions?.['gaming-locations']?.resources?.map(
-          (id: unknown) => String(id)
-        ) || [];
+      // Use only new fields
+      let latestLicenseeIds: string[] = [];
+      if (Array.isArray(latestUser.assignedLicensees) && latestUser.assignedLicensees.length > 0) {
+        latestLicenseeIds = latestUser.assignedLicensees.map(id => String(id));
+      }
+      
+      let latestLocationIds: string[] = [];
+      if (Array.isArray(latestUser.assignedLocations) && latestUser.assignedLocations.length > 0) {
+        latestLocationIds = latestUser.assignedLocations.map(id => String(id));
+      }
 
     setCurrentData({
       username: latestUser.username || '',
@@ -304,17 +315,20 @@ export default function ProfileValidationGate() {
               .toISOString()
               .split('T')[0]
           : data.dateOfBirth) || '',
-        licenseeIds: Array.isArray(result.user?.rel?.licencee)
-          ? (result.user?.rel?.licencee as string[]).map(id => String(id))
-          : data.licenseeIds ?? [],
-        locationIds: Array.isArray(
-          result.user?.resourcePermissions?.['gaming-locations']?.resources
-        )
-          ? (
-              result.user?.resourcePermissions?.['gaming-locations']
-                ?.resources as string[]
-            ).map(id => String(id))
-          : data.locationIds ?? [],
+        licenseeIds: (() => {
+          // Use only new field
+          if (Array.isArray(result.user?.assignedLicensees) && result.user.assignedLicensees.length > 0) {
+            return result.user.assignedLicensees.map((id: string) => String(id));
+          }
+          return data.licenseeIds ?? [];
+        })(),
+        locationIds: (() => {
+          // Use only new field
+          if (Array.isArray(result.user?.assignedLocations) && result.user.assignedLocations.length > 0) {
+            return result.user.assignedLocations.map((id: string) => String(id));
+          }
+          return data.locationIds ?? [];
+        })(),
       });
 
       // Check if profile update is complete (no invalid fields remaining)

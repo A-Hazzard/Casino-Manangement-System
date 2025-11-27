@@ -16,6 +16,7 @@
  */
 import Image from 'next/image';
 import type { User } from '@/lib/types/administration';
+import type { UserAuthPayload } from '@/shared/types/auth';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,9 +25,37 @@ type UserCardProps = {
   user: User;
   onEdit?: (user: User) => void;
   onDelete?: (user: User) => void;
+  currentUser?: UserAuthPayload | null;
 };
 
-export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
+export default function UserCard({
+  user,
+  onEdit,
+  onDelete,
+  currentUser,
+}: UserCardProps) {
+  // Check if current user is a location admin
+  const isLocationAdmin =
+    currentUser?.roles?.some(
+      role =>
+        role.toLowerCase() === 'location admin' &&
+        !currentUser.roles?.some(
+          r =>
+            r.toLowerCase() === 'developer' ||
+            r.toLowerCase() === 'admin' ||
+            r.toLowerCase() === 'manager'
+        )
+    ) || false;
+
+  // Helper function to check if a user is a manager, developer, or admin
+  const isProtectedRole = (targetUser: User): boolean => {
+    const roles = (targetUser.roles || []).map(r => r.toLowerCase());
+    return (
+      roles.includes('developer') ||
+      roles.includes('admin') ||
+      roles.includes('manager')
+    );
+  };
   // ============================================================================
   // Render - User Card
   // ============================================================================
@@ -128,26 +157,28 @@ export default function UserCard({ user, onEdit, onDelete }: UserCardProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
-          <Button
-            onClick={() => onEdit?.(user)}
-            variant="outline"
-            size="sm"
-            className="flex-1 flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span>Edit</span>
-          </Button>
-          <Button
-            onClick={() => onDelete?.(user)}
-            variant="outline"
-            size="sm"
-            className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
-          </Button>
-        </div>
+        {!(isLocationAdmin && isProtectedRole(user)) && (
+          <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
+            <Button
+              onClick={() => onEdit?.(user)}
+              variant="outline"
+              size="sm"
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              <span>Edit</span>
+            </Button>
+            <Button
+              onClick={() => onDelete?.(user)}
+              variant="outline"
+              size="sm"
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete</span>
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

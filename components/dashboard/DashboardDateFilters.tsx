@@ -15,7 +15,9 @@ export default function DashboardDateFilters({
   hideAllTime,
   mode = 'auto',
   enableTimeInputs = false,
-}: DashboardDateFiltersProps) {
+  hideIndicator = false,
+  showIndicatorOnly = false,
+}: DashboardDateFiltersProps & { hideIndicator?: boolean; showIndicatorOnly?: boolean }) {
   const {
     activeMetricsFilter,
     setActiveMetricsFilter,
@@ -111,17 +113,24 @@ export default function DashboardDateFilters({
     handleFilterClick(value as TimePeriod);
   };
 
-  const showDesktopButtons = mode === 'desktop' || mode === 'auto';
+  // If only showing indicator, return early
+  if (showIndicatorOnly) {
+    return (
+      <div className="flex w-full flex-col gap-3">
+        <DateRangeIndicator />
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full flex-col gap-3">
       {/* Date Range Indicator */}
-      <DateRangeIndicator />
+      {!hideIndicator && <DateRangeIndicator />}
 
-      {/* Filter Controls */}
+      {/* Filter Controls - This section aligns with Machine Status Widget */}
       <div className="flex w-full flex-wrap items-center gap-2">
-        {/* Mobile only: Select dropdown */}
-        <div className={mode === 'auto' ? 'w-full md:hidden' : 'w-full'}>
+        {/* Select dropdown - used below lg: (mobile and tablet) */}
+        <div className={mode === 'auto' ? 'w-full lg:hidden' : mode === 'mobile' ? 'w-full' : 'hidden'}>
           <CustomSelect
             value={activeMetricsFilter}
             onValueChange={handleSelectChange}
@@ -131,7 +140,7 @@ export default function DashboardDateFilters({
             }))}
             placeholder="Select date range"
             disabled={isLoading}
-            className={`${mode === 'auto' ? 'w-full' : 'w-full'} ${
+            className={`w-full ${
               isLoading ? 'cursor-not-allowed opacity-50' : ''
             }`}
             triggerClassName="bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors min-h-[44px] text-base"
@@ -139,15 +148,9 @@ export default function DashboardDateFilters({
           />
         </div>
 
-        {/* md and above: Filter buttons */}
-        {showDesktopButtons && (
-          <div
-            className={
-              mode === 'auto'
-                ? 'hidden flex-wrap items-center gap-2 md:flex'
-                : 'flex flex-wrap items-center gap-2'
-            }
-          >
+        {/* Desktop buttons - shown on lg: and above when mode is auto or desktop */}
+        {(mode === 'auto' || mode === 'desktop') && (
+          <div className={mode === 'auto' ? 'hidden flex-wrap items-center gap-2 lg:flex' : 'flex flex-wrap items-center gap-2'}>
             {timeFilterButtons.map(filter => (
               <Button
                 key={filter.value}

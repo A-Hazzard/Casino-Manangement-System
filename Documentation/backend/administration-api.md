@@ -1,7 +1,7 @@
 # Administration & Users API Documentation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025
+**Last Updated:** November 27, 2025
 
 ## Quick Search Guide
 
@@ -26,7 +26,7 @@ The Administration & Users API manages system users, licensees, and activity log
 1. **Database Operations**:
    - Creates `User` document in `users` collection
    - Stores `username`, `email`, `password` (hashed), `roles`, `profile`
-   - Sets `isEnabled`, `resourcePermissions`, `profilePicture`
+   - Sets `isEnabled`, `assignedLocations`, `assignedLicensees`, `profilePicture`
    - Generates unique `_id` and timestamps
 
 2. **User Model Fields**:
@@ -62,10 +62,8 @@ User {
   };
   isEnabled: boolean;             // Whether user account is active (can be toggled by admins/managers)
   profilePicture?: string;        // Base64 encoded image or URL
-  resourcePermissions: Map<
-    string,
-    { entity: string; resources: string[] }
-  >;                              // Licensee/location scoped permissions
+  assignedLocations: string[];    // Array of location IDs user has access to
+  assignedLicensees: string[];    // Array of licensee IDs user has access to
   passwordUpdatedAt?: Date | null;// Tracks when the password last met compliance
   sessionVersion: number;         // Incremented to force re-authentication
   createdAt: Date;                // Account creation timestamp
@@ -87,7 +85,7 @@ User {
 
 1. **Field Updates**:
    - Updates `username`, `email`, `roles`, `profile` fields
-   - Modifies `resourcePermissions` for different resource types
+   - Updates `assignedLocations` and `assignedLicensees` arrays
    - Updates `profilePicture` if provided
    - Sets `isEnabled` status
    - Increments `sessionVersion` whenever roles, licensee assignments, or location permissions change
@@ -411,10 +409,13 @@ export async function GET(request: NextRequest) {
 
   try {
     // ... implementation ...
-    apiLogger.logSuccess(context, 'Users fetched successfully', { count: users.length });
+    apiLogger.logSuccess(context, 'Users fetched successfully', {
+      count: users.length,
+    });
     return NextResponse.json({ users });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     apiLogger.logError(context, 'Failed to fetch users', errorMessage);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
@@ -432,13 +433,10 @@ export async function GET(request: NextRequest) {
 ```typescript
 import { withLogging } from '@/app/api/lib/utils/logger';
 
-export const GET = withLogging(
-  async (request: NextRequest) => {
-    // ... implementation ...
-    return NextResponse.json({ users });
-  },
-  '/api/users'
-);
+export const GET = withLogging(async (request: NextRequest) => {
+  // ... implementation ...
+  return NextResponse.json({ users });
+}, '/api/users');
 ```
 
 ## Users API
@@ -470,11 +468,8 @@ Retrieves all system users with optional filtering.
         "phone": "+1234567890",
         "department": "IT"
       },
-      "resourcePermissions": {
-        "locations": ["read", "write"],
-        "machines": ["read"],
-        "reports": ["read", "write", "export"]
-      }
+      "assignedLocations": ["location-id-1", "location-id-2"],
+      "assignedLicensees": ["licensee-id-1"]
     }
   ]
 }
@@ -510,11 +505,8 @@ Creates a new system user.
   },
   "isEnabled": true,
   "profilePicture": null,
-  "resourcePermissions": {
-    "locations": ["read"],
-    "machines": ["read"],
-    "reports": ["read"]
-  }
+  "assignedLocations": ["location-id-1"],
+  "assignedLicensees": ["licensee-id-1"]
 }
 ```
 
@@ -535,11 +527,8 @@ Creates a new system user.
       "department": "Operations"
     },
     "isEnabled": true,
-    "resourcePermissions": {
-      "locations": ["read"],
-      "machines": ["read"],
-      "reports": ["read"]
-    },
+    "assignedLocations": ["location-id-1"],
+    "assignedLicensees": ["licensee-id-1"],
     "createdAt": "2024-01-01T00:00:00.000Z"
   }
 }
@@ -612,11 +601,8 @@ Updates an existing system user.
   },
   "isEnabled": true,
   "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
-  "resourcePermissions": {
-    "locations": ["read", "write"],
-    "machines": ["read", "write"],
-    "reports": ["read", "write", "export"]
-  }
+  "assignedLocations": ["location-id-1", "location-id-2"],
+  "assignedLicensees": ["licensee-id-1"]
 }
 ```
 
@@ -638,11 +624,8 @@ Updates an existing system user.
     },
     "isEnabled": true,
     "profilePicture": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...",
-    "resourcePermissions": {
-      "locations": ["read", "write"],
-      "machines": ["read", "write"],
-      "reports": ["read", "write", "export"]
-    },
+    "assignedLocations": ["location-id-1", "location-id-2"],
+    "assignedLicensees": ["licensee-id-1"],
     "updatedAt": "2024-01-01T00:00:00.000Z"
   }
 }
@@ -1028,10 +1011,8 @@ type User = {
   };
   isEnabled: boolean;
   profilePicture?: string; // Base64 or URL
-  resourcePermissions: Map<
-    string,
-    { entity: string; resources: string[] }
-  >;
+  assignedLocations: string[]; // Array of location IDs
+  assignedLicensees: string[]; // Array of licensee IDs
   passwordUpdatedAt?: Date | null;
   sessionVersion: number;
   createdAt: Date;

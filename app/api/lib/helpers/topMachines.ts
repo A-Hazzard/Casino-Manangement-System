@@ -250,7 +250,9 @@ export function buildTopMachinesDetailedPipeline(
         _id: '$machine',
         locationId: { $first: '$location' },
         locationName: { $first: '$locationDetails.name' },
-        machineId: { $first: '$machineDetails.serialNumber' },
+        serialNumber: { $first: '$machineDetails.serialNumber' },
+        customName: { $first: '$machineDetails.custom.name' },
+        machineDocumentId: { $first: '$machine' },
         game: { $first: '$machineDetails.game' },
         manufacturer: {
           $first: {
@@ -339,10 +341,50 @@ export function buildTopMachinesDetailedPipeline(
         _id: 0,
         locationId: '$locationId',
         locationName: { $ifNull: ['$locationName', 'Unknown Location'] },
-        machineId: { $ifNull: ['$machineId', 'Unknown Machine'] },
+        serialNumber: { $ifNull: ['$serialNumber', ''] },
+        customName: { $ifNull: ['$customName', ''] },
+        machineDocumentId: '$machineDocumentId',
+        machineId: {
+          $cond: {
+            if: {
+              $and: [
+                { $ne: [{ $trim: { input: { $ifNull: ['$customName', ''] } } }, ''] },
+                { $ne: [{ $trim: { input: { $ifNull: ['$serialNumber', ''] } } }, ''] },
+                { $ne: [{ $trim: { input: { $ifNull: ['$customName', ''] } } }, { $trim: { input: { $ifNull: ['$serialNumber', ''] } } }] },
+              ],
+            },
+            then: {
+              $concat: [
+                { $trim: { input: { $ifNull: ['$customName', ''] } } },
+                ' (',
+                { $trim: { input: { $ifNull: ['$serialNumber', ''] } } },
+                ')',
+              ],
+            },
+            else: {
+              $cond: {
+                if: { $ne: [{ $trim: { input: { $ifNull: ['$serialNumber', ''] } } }, ''] },
+                then: { $trim: { input: { $ifNull: ['$serialNumber', ''] } } },
+                else: {
+                  $cond: {
+                    if: { $ne: [{ $trim: { input: { $ifNull: ['$customName', ''] } } }, ''] },
+                    then: { $trim: { input: { $ifNull: ['$customName', ''] } } },
+                    else: {
+                      $concat: [
+                        'Machine ',
+                        { $substr: ['$machineDocumentId', { $subtract: [{ $strLenCP: '$machineDocumentId' }, 6] }, 6] },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         game: { $ifNull: ['$game', 'Unknown Game'] },
         manufacturer: { $ifNull: ['$manufacturer', 'Not Specified'] },
         handle: { $round: ['$handle', 2] },
+        totalDrop: { $round: ['$handle', 2] },
         winLoss: { $round: ['$winLoss', 2] },
         jackpot: { $round: ['$jackpot', 2] },
         avgWagerPerGame: { $round: ['$avgWagerPerGame', 2] },

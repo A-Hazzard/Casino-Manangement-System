@@ -64,29 +64,6 @@ function formatProfileObject(profile: Record<string, unknown>): string {
   return parts.length > 0 ? parts.join('; ') : 'Empty profile';
 }
 
-/**
- * Formats a resourcePermissions object
- * @param permissions - The permissions object to format
- * @returns Formatted string representation
- */
-function formatResourcePermissionsObject(
-  permissions: Record<string, unknown>
-): string {
-  const locationData =
-    permissions['gaming-locations'] || permissions['locations'];
-  if (locationData && typeof locationData === 'object') {
-    const locationObj = locationData as {
-      entity?: string;
-      resources?: string[];
-    };
-    const resources = locationObj.resources || [];
-    const entity = locationObj.entity || 'unknown';
-    return resources.length > 0
-      ? `${resources.length} ${entity} resources`
-      : `No ${entity} resources`;
-  }
-  return 'No permissions';
-}
 
 // ============================================================================
 // Date Formatting Functions
@@ -170,14 +147,6 @@ export function formatValue(value: unknown, fieldName?: string): string {
   // Special handling for complex field types
   if (fieldName === 'profile' && typeof value === 'object' && value !== null) {
     return formatProfileObject(value as Record<string, unknown>);
-  }
-
-  if (
-    fieldName === 'resourcePermissions' &&
-    typeof value === 'object' &&
-    value !== null
-  ) {
-    return formatResourcePermissionsObject(value as Record<string, unknown>);
   }
 
   // Check if the value is a date string (ISO format or Date object)
@@ -308,25 +277,6 @@ export function formatValue(value: unknown, fieldName?: string): string {
         }
 
         return parts.length > 0 ? parts.join('; ') : 'Empty profile';
-      }
-
-      // Check if it's a resourcePermissions object
-      if ('gaming-locations' in value || 'locations' in value) {
-        const permissions = value as Record<string, unknown>;
-        const locationData =
-          permissions['gaming-locations'] || permissions['locations'];
-        if (locationData && typeof locationData === 'object') {
-          const locationObj = locationData as {
-            entity?: string;
-            resources?: string[];
-          };
-          const resources = locationObj.resources || [];
-          const entity = locationObj.entity || 'unknown';
-          return resources.length > 0
-            ? `${resources.length} ${entity} resources`
-            : `No ${entity} resources`;
-        }
-        return 'No permissions';
       }
 
       // Check if it's an address object

@@ -52,6 +52,7 @@ import {
   useCabinetFilters,
   useCabinetModals,
   useCabinetSorting,
+  useLocationMachineStats,
 } from '@/lib/hooks/data';
 import { useCabinetNavigation } from '@/lib/hooks/navigation';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -155,6 +156,10 @@ function CabinetsPageContent() {
 
   const { activeSection, handleSectionChange } = useCabinetNavigation();
 
+  // Machine status stats from dedicated API
+  const { machineStats, machineStatsLoading, refreshMachineStats } =
+    useLocationMachineStats();
+
   // ============================================================================
   // State Management
   // ============================================================================
@@ -247,6 +252,8 @@ function CabinetsPageContent() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
+      // Refresh machine status stats
+      await refreshMachineStats();
       if (activeSection === 'cabinets') {
         await loadCabinets();
       } else if (activeSection === 'movement') {
@@ -445,29 +452,39 @@ function CabinetsPageContent() {
           />
         )}
 
-        {/* Machine Statistics - Only show on cabinets section */}
+        {/* Date Filters and Machine Status - Only show on cabinets section */}
         {activeSection === 'cabinets' && (
-          <div className="mb-2 mt-4 flex items-center justify-end gap-4">
-            <MachineStatusWidget
-              isLoading={loading}
-              onlineCount={allCabinets.filter(c => c.online === true).length}
-              offlineCount={allCabinets.filter(c => c.online === false).length}
-              totalCount={allCabinets.length}
-              showTotal={true}
-            />
-          </div>
-        )}
-
-        {/* Date Filters - Only show on cabinets section */}
-        {activeSection === 'cabinets' && (
-          <div className="mb-2 mt-2 flex items-center justify-between gap-4">
-            <div className="min-w-0 flex-1">
+          <div className="mb-2 mt-4">
+            <div className="mb-3">
               <DashboardDateFilters
                 disabled={loading}
                 hideAllTime={true}
                 onCustomRangeGo={loadCabinets}
                 enableTimeInputs={true}
+                mode="desktop"
+                showIndicatorOnly={true}
               />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1 flex items-center">
+                <DashboardDateFilters
+                  disabled={loading}
+                  hideAllTime={true}
+                  onCustomRangeGo={loadCabinets}
+                  enableTimeInputs={true}
+                  mode="desktop"
+                  hideIndicator={true}
+                />
+              </div>
+              <div className="w-auto flex-shrink-0 flex items-center">
+                <MachineStatusWidget
+                  isLoading={machineStatsLoading}
+                  onlineCount={machineStats?.onlineMachines || 0}
+                  offlineCount={machineStats?.offlineMachines || 0}
+                  totalCount={machineStats?.totalMachines}
+                  showTotal={true}
+                />
+              </div>
             </div>
           </div>
         )}

@@ -165,11 +165,11 @@ export const fetchCabinetById = async (
     // Add query parameters
     const queryParams = [];
 
-    if (
-      timePeriod === 'Custom' &&
-      customDateRange?.from &&
-      customDateRange?.to
-    ) {
+    if (timePeriod === 'Custom') {
+      // For Custom time period, dates are required
+      if (!customDateRange?.from || !customDateRange?.to) {
+        throw new Error('Custom start and end dates are required for Custom time period');
+      }
       // Extract just the date part (YYYY-MM-DD)
       const fromDate = customDateRange.from.toISOString().split('T')[0];
       const toDate = customDateRange.to.toISOString().split('T')[0];

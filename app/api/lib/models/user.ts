@@ -105,6 +105,8 @@ const UserSchema = new Schema(
     rel: {
       licencee: [{ type: String }],
     },
+    assignedLocations: [{ type: String }], // Array of location IDs user has access to
+    assignedLicensees: [{ type: String }], // Array of licensee IDs user has access to
     profile: {
       firstName: {
         type: String,
@@ -230,17 +232,6 @@ const UserSchema = new Schema(
       notes: { type: String, trim: true },
     },
     profilePicture: { type: String, default: null }, // default null for missing entries
-    resourcePermission: {
-      type: new Schema(
-        {
-          gamingLocations: {
-            resources: [{ type: String }]
-          }
-        },
-        { _id: false }
-      ),
-      default: undefined,
-    },
     password: { type: String, required: true },
     passwordUpdatedAt: { type: Date, default: null },
     sessionVersion: { type: Number, default: 1 },

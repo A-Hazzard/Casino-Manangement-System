@@ -48,6 +48,7 @@ import LocationTable from '@/components/ui/locations/LocationTable';
 import NewLocationModal from '@/components/ui/locations/NewLocationModal';
 import PaginationControls from '@/components/ui/PaginationControls';
 import { IMAGES } from '@/lib/constants/images';
+import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
 import {
   useLocationData,
   useLocationMachineStats,
@@ -55,12 +56,15 @@ import {
   useLocationSorting,
 } from '@/lib/hooks/data';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
-import { useUserStore } from '@/lib/store/userStore';
-import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
-import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
-import { DashboardTotals } from '@/lib/types';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { useUserStore } from '@/lib/store/userStore';
+import { DashboardTotals } from '@/lib/types';
+import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
+import {
+  canAccessLicensee,
+  getDefaultSelectedLicensee,
+  shouldShowNoLicenseeMessage,
+} from '@/lib/utils/licenseeAccess';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import { AggregatedLocation } from '@/shared/types/common';
@@ -97,9 +101,11 @@ function LocationsPageContent() {
     AggregatedLocation[]
   >([]);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
-  
+
   // Separate state for metrics totals (from dedicated API call)
-  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(null);
+  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(
+    null
+  );
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 
   // ============================================================================
@@ -120,12 +126,12 @@ function LocationsPageContent() {
     totalCount,
     fetchBatch,
   } = useLocationData({
-      selectedLicencee,
-      activeMetricsFilter,
-      customDateRange,
-      searchTerm,
-      selectedFilters,
-    });
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    searchTerm,
+    selectedFilters,
+  });
 
   // ============================================================================
   // Refs
@@ -142,9 +148,12 @@ function LocationsPageContent() {
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
   // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
-  }, [itemsPerBatch, itemsPerPage]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / (itemsPerBatch / itemsPerPage)) + 1;
+    },
+    [itemsPerBatch, itemsPerPage]
+  );
 
   // Memoize selectedFilters string to avoid recreating on every render
   const selectedFiltersKey = useMemo(() => {
@@ -172,10 +181,39 @@ function LocationsPageContent() {
     );
   }, [user]);
 
-  // Use accumulated locations for pagination (or filtered data for search)
-  const locationsForPagination = searchTerm.trim()
+  // Frontend filter: First try to filter from accumulated locations
+  const frontendFilteredLocations = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return accumulatedLocations;
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    return accumulatedLocations.filter(location => {
+      const name = (location.name || '').toLowerCase();
+      const locationId = String(location._id || '').toLowerCase();
+      return name.includes(searchLower) || locationId.includes(searchLower);
+    });
+  }, [accumulatedLocations, searchTerm]);
+
+  // Determine if we need backend search:
+  // - If frontend filter has results, use those
+  // - If frontend filter has no results AND search term is not empty, trigger backend search
+  const shouldUseBackendSearch = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return false;
+    }
+    // If frontend filter found results, don't use backend
+    if (frontendFilteredLocations.length > 0) {
+      return false;
+    }
+    // Only use backend if frontend found nothing
+    return true;
+  }, [searchTerm, frontendFilteredLocations.length]);
+
+  // Use frontend filtered locations if available, otherwise use backend search results
+  const locationsForPagination = shouldUseBackendSearch
     ? locationData
-    : accumulatedLocations;
+    : frontendFilteredLocations;
 
   // Filter out test locations (unless developer)
   const filteredLocationData = useMemo(() => {
@@ -204,12 +242,17 @@ function LocationsPageContent() {
 
   const { sortOrder, sortOption, handleColumnSort, totalPages, currentItems } =
     useLocationSorting({
-    locationData: filteredLocationData,
-    selectedFilters,
-    currentPage,
-    totalCount: searchTerm.trim() ? undefined : totalCount,
-    itemsPerPage,
-  });
+      locationData: filteredLocationData,
+      selectedFilters,
+      currentPage,
+      // For frontend search, use filtered length; for backend search, use locationData length; otherwise use totalCount
+      totalCount: searchTerm.trim()
+        ? shouldUseBackendSearch
+          ? locationData.length
+          : frontendFilteredLocations.length
+        : totalCount,
+      itemsPerPage,
+    });
 
   // Calculate financial totals from location data (for backward compatibility, but metrics cards use metricsTotals)
   const financialTotals = calculateLocationFinancialTotals(
@@ -236,16 +279,34 @@ function LocationsPageContent() {
   const startDateTimestamp = customDateRange?.startDate?.getTime();
   const endDateTimestamp = customDateRange?.endDate?.getTime();
 
-  // Initialize: fetch first batch on mount and when filters change (excluding searchTerm)
-  // Search is handled internally by useLocationData hook with debouncing
+  // Track if initial fetch has been done to prevent multiple fetches on mount
+  const hasInitialFetchRef = useRef(false);
+  const lastFetchParamsRef = useRef<string>('');
+
+  // Initialize: fetch first batch on mount and when filters change
+  // Search is handled with frontend filtering first, backend only if needed
   useEffect(() => {
+    // Only fetch batch data when search is cleared or not active
     if (!searchTerm.trim()) {
+      // Create a unique key for this fetch to prevent duplicate calls
+      const fetchKey = `${selectedLicencee}-${activeMetricsFilter}-${startDateTimestamp}-${endDateTimestamp}-${selectedFiltersKey}`;
+      
+      // Skip if this exact fetch was already triggered
+      if (lastFetchParamsRef.current === fetchKey && hasInitialFetchRef.current) {
+        return;
+      }
+      
+      // Update the last fetch params
+      lastFetchParamsRef.current = fetchKey;
+      
       // Reset accumulated data when filters change
       isResettingRef.current = true;
       setAccumulatedLocations([]);
       setLoadedBatches(new Set());
       lastLocationDataRef.current = [];
       fetchData(1, itemsPerBatch);
+      hasInitialFetchRef.current = true;
+      
       // Reset flag after a short delay to allow state updates to complete
       setTimeout(() => {
         isResettingRef.current = false;
@@ -257,10 +318,22 @@ function LocationsPageContent() {
     startDateTimestamp,
     endDateTimestamp,
     selectedFiltersKey,
-    searchTerm,
     itemsPerBatch,
     fetchData,
+    searchTerm, // Include searchTerm to reset when search is cleared
   ]);
+
+  // Trigger backend search only if frontend filter found no results
+  useEffect(() => {
+    if (shouldUseBackendSearch) {
+      // Use debounced search term for backend query
+      const timeoutId = setTimeout(() => {
+        fetchData();
+      }, 500); // Debounce backend search
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [shouldUseBackendSearch, fetchData]);
 
   // Update accumulated locations when new data arrives
   useEffect(() => {
@@ -272,9 +345,9 @@ function LocationsPageContent() {
     // Check if locationData actually changed by comparing IDs
     const currentIds = new Set(locationData.map(loc => loc._id));
     const lastIds = new Set(lastLocationDataRef.current.map(loc => loc._id));
-    
+
     // Check if sets are different
-    const dataChanged = 
+    const dataChanged =
       currentIds.size !== lastIds.size ||
       Array.from(currentIds).some(id => !lastIds.has(id)) ||
       Array.from(lastIds).some(id => !currentIds.has(id));
@@ -283,7 +356,8 @@ function LocationsPageContent() {
       return;
     }
 
-    if (locationData.length > 0 && !searchTerm.trim()) {
+    // Only update accumulated locations when not searching (batch loading)
+    if (!searchTerm.trim() && locationData.length > 0) {
       setAccumulatedLocations(prev => {
         // Merge with existing, avoiding duplicates
         const existingIds = new Set(prev.map(loc => loc._id));
@@ -292,44 +366,103 @@ function LocationsPageContent() {
         );
         return [...prev, ...newLocations];
       });
-    } else if (searchTerm.trim()) {
-      // For search, use the data directly
-      setAccumulatedLocations(locationData);
     }
 
     // Update ref with current data
     lastLocationDataRef.current = locationData;
   }, [locationData, searchTerm]);
 
-  // Initialize selectedLicencee if not set
+  // Initialize selectedLicencee based on user's assigned licensees
+  // Auto-select single licensee for non-admin users
+  const hasInitializedLicenseeRef = useRef(false);
   useEffect(() => {
-    if (!selectedLicencee) {
-      setSelectedLicencee('');
+    if (!user) {
+      hasInitializedLicenseeRef.current = false;
+      return;
     }
-  }, [selectedLicencee, setSelectedLicencee]);
+
+    // Only initialize once when user is first loaded
+    if (hasInitializedLicenseeRef.current) {
+      // Validate that selected licensee is still accessible
+      if (selectedLicencee && selectedLicencee !== '' && selectedLicencee !== 'all') {
+        if (!canAccessLicensee(user, selectedLicencee)) {
+          // User can't access this licensee anymore, reset to default
+          const defaultLicensee = getDefaultSelectedLicensee(user);
+          setSelectedLicencee(defaultLicensee);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(
+              `[LocationsPage] Reset selectedLicencee to default: ${defaultLicensee} (user can't access: ${selectedLicencee})`
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    // Initialize on first load
+    const defaultLicensee = getDefaultSelectedLicensee(user);
+    if (defaultLicensee && (!selectedLicencee || selectedLicencee === '')) {
+      setSelectedLicencee(defaultLicensee);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(
+          `[LocationsPage] Auto-selected licensee for user: ${defaultLicensee}`
+        );
+      }
+    } else if (selectedLicencee && !canAccessLicensee(user, selectedLicencee)) {
+      // Selected licensee is not accessible, reset to default
+      setSelectedLicencee(defaultLicensee);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(
+          `[LocationsPage] Reset selectedLicencee to default: ${defaultLicensee} (user can't access: ${selectedLicencee})`
+        );
+      }
+    }
+
+    hasInitializedLicenseeRef.current = true;
+  }, [user, selectedLicencee, setSelectedLicencee]);
 
   // Reset page when search changes
   useEffect(() => {
     setCurrentPage(0);
   }, [searchTerm, selectedFilters, setCurrentPage]);
 
+  // Track metrics fetch to prevent duplicate calls
+  const lastMetricsFetchRef = useRef<string>('');
+  const metricsFetchInProgressRef = useRef(false);
+
   // Separate useEffect to fetch metrics totals independently (like dashboard does)
   // This ensures metrics cards always show totals from all locations, separate from table pagination
   useEffect(() => {
     const fetchMetrics = async () => {
       if (!activeMetricsFilter) {
-        console.log('🔍 [LocationsPage] Skipping metrics fetch - no activeMetricsFilter');
+        console.log(
+          '🔍 [LocationsPage] Skipping metrics fetch - no activeMetricsFilter'
+        );
         return;
       }
+
+      // Create unique key for this fetch
+      const metricsFetchKey = `${activeMetricsFilter}-${selectedLicencee}-${customDateRange?.startDate?.getTime()}-${customDateRange?.endDate?.getTime()}-${displayCurrency}`;
+      
+      // Skip if this exact fetch was already triggered or is in progress
+      if ((lastMetricsFetchRef.current === metricsFetchKey && metricsFetchInProgressRef.current) || metricsFetchInProgressRef.current) {
+        return;
+      }
+
+      // Mark as in progress and update key
+      metricsFetchInProgressRef.current = true;
+      lastMetricsFetchRef.current = metricsFetchKey;
 
       console.log('🔍 [LocationsPage] Starting metrics totals fetch:', {
         activeMetricsFilter,
         selectedLicencee,
         displayCurrency,
-        customDateRange: customDateRange ? {
-          startDate: customDateRange.startDate?.toISOString(),
-          endDate: customDateRange.endDate?.toISOString()
-        } : null
+        customDateRange: customDateRange
+          ? {
+              startDate: customDateRange.startDate?.toISOString(),
+              endDate: customDateRange.endDate?.toISOString(),
+            }
+          : null,
       });
 
       setMetricsTotalsLoading(true);
@@ -343,24 +476,34 @@ function LocationsPageContent() {
             },
             selectedLicencee,
             totals => {
-              console.log('🔍 [LocationsPage] fetchDashboardTotals callback received:', {
-                totals,
-                moneyIn: totals?.moneyIn,
-                moneyOut: totals?.moneyOut,
-                gross: totals?.gross
-              });
+              console.log(
+                '🔍 [LocationsPage] fetchDashboardTotals callback received:',
+                {
+                  totals,
+                  moneyIn: totals?.moneyIn,
+                  moneyOut: totals?.moneyOut,
+                  gross: totals?.gross,
+                }
+              );
               setMetricsTotals(totals);
-              console.log('🔍 [LocationsPage] setMetricsTotals called with:', totals);
+              console.log(
+                '🔍 [LocationsPage] setMetricsTotals called with:',
+                totals
+              );
               resolve();
             },
             displayCurrency
           ).catch(reject);
         });
       } catch (error) {
-        console.error('❌ [LocationsPage] Failed to fetch metrics totals:', error);
+        console.error(
+          '❌ [LocationsPage] Failed to fetch metrics totals:',
+          error
+        );
         setMetricsTotals(null);
       } finally {
         setMetricsTotalsLoading(false);
+        metricsFetchInProgressRef.current = false;
         console.log('🔍 [LocationsPage] Metrics totals fetch completed');
       }
     };
@@ -432,16 +575,34 @@ function LocationsPageContent() {
   // ============================================================================
   // Effects - UI Animations
   // ============================================================================
+  // Track previous items to prevent animation on initial load
+  const prevItemsRef = useRef<AggregatedLocation[]>([]);
+  const hasAnimatedRef = useRef(false);
+
   // Animate when filtered data changes (filtering, sorting, search, pagination)
+  // Only animate if data actually changed (not just re-render) and not on initial load
   useEffect(() => {
     if (!isLoading && currentItems.length > 0) {
-      // Animate table rows for desktop view
-      if (tableRef.current) {
-        animateTableRows(tableRef);
+      // Check if items actually changed (compare IDs)
+      const currentIds = currentItems.map(item => item._id).join(',');
+      const prevIds = prevItemsRef.current.map(item => item._id).join(',');
+      
+      // Only animate if items changed AND we've already done initial render
+      if (currentIds !== prevIds && hasAnimatedRef.current) {
+        // Animate table rows for desktop view
+        if (tableRef.current) {
+          animateTableRows(tableRef);
+        }
+        // Animate cards for mobile view
+        if (cardsRef.current) {
+          animateCards(cardsRef);
+        }
       }
-      // Animate cards for mobile view
-      if (cardsRef.current) {
-        animateCards(cardsRef);
+      
+      // Update refs
+      prevItemsRef.current = currentItems;
+      if (!hasAnimatedRef.current && currentItems.length > 0) {
+        hasAnimatedRef.current = true;
       }
     }
   }, [
@@ -481,13 +642,13 @@ function LocationsPageContent() {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-lg font-bold text-gray-800 sm:text-2xl md:text-3xl">
               Locations
-            <Image
-              src={IMAGES.locationIcon}
-              alt="Location Icon"
-              width={32}
-              height={32}
+              <Image
+                src={IMAGES.locationIcon}
+                alt="Location Icon"
+                width={32}
+                height={32}
                 className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
-            />
+              />
             </h1>
             {/* Mobile: Refresh icon */}
             <button
@@ -504,7 +665,7 @@ function LocationsPageContent() {
             {!isLoading && canManageLocations && (
               <button
                 onClick={openNewLocationModal}
-              disabled={isLoading}
+                disabled={isLoading}
                 className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
                 aria-label="New Location"
               >
@@ -551,22 +712,35 @@ function LocationsPageContent() {
         </div>
 
         {/* Date Filters Section: Desktop layout with date filters and machine status */}
-        <div className="mb-0 mt-4 hidden items-center justify-between gap-4 md:flex">
-          <div className="min-w-0 flex-1">
+        <div className="mb-0 mt-4 hidden md:block">
+          <div className="mb-3">
             <DashboardDateFilters
               hideAllTime={true}
               onCustomRangeGo={fetchData}
               disabled={isLoading}
+              mode="desktop"
+              showIndicatorOnly={true}
             />
           </div>
-          <div className="ml-4 w-auto flex-shrink-0">
-            <MachineStatusWidget
-              isLoading={machineStatsLoading}
-              onlineCount={machineStats?.onlineMachines || 0}
-              offlineCount={machineStats?.offlineMachines || 0}
-              totalCount={machineStats?.totalMachines}
-              showTotal={true}
-            />
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1 flex items-center">
+              <DashboardDateFilters
+                hideAllTime={true}
+                onCustomRangeGo={fetchData}
+                disabled={isLoading}
+                mode="desktop"
+                hideIndicator={true}
+              />
+            </div>
+            <div className="w-auto flex-shrink-0 flex items-center">
+              <MachineStatusWidget
+                isLoading={machineStatsLoading}
+                onlineCount={machineStats?.onlineMachines || 0}
+                offlineCount={machineStats?.offlineMachines || 0}
+                totalCount={machineStats?.totalMachines}
+                showTotal={true}
+              />
+            </div>
           </div>
         </div>
 

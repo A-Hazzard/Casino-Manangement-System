@@ -25,12 +25,6 @@ export type UserDocument = {
 export type UserDocumentWithPassword = UserDocument & {
   password?: string;
   permissions?: string[];
-  resourcePermissions?: {
-    [key: string]: {
-      entity: string;
-      resources: string[];
-    };
-  };
   isLocked?: boolean;
   lockedUntil?: Date | string;
   failedLoginAttempts?: number;
@@ -42,12 +36,6 @@ export type UserDocumentWithPassword = UserDocument & {
     isEnabled: boolean;
     roles: string[];
     permissions?: string[];
-    resourcePermissions?: {
-      [key: string]: {
-        entity: string;
-        resources: string[];
-      };
-    };
     sessionVersion?: number;
     loginCount?: number;
     lastLoginAt?: Date | string | null;

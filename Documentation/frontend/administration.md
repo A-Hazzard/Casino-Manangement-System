@@ -18,8 +18,8 @@
 The Administration page provides comprehensive user and licensee management for the casino management system, including role-based access control, permissions management, activity logging, and feedback management.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 2.4.0
+**Last Updated:** November 27, 2025  
+**Version:** 2.5.0
 
 ### File Information
 
@@ -33,15 +33,19 @@ The Administration page provides comprehensive user and licensee management for 
 
 - **User Management:**
   - View, search, sort, add, edit, and delete users
+  - **Current User Exclusion:** The current user viewing the page is automatically excluded from the user list
   - Assign roles and permissions with granular control
-  - **Licensee Assignment:** Multi-select dropdown to assign users to one or more licensees
-  - **Location Permissions:** Resource-based permissions for location-specific access
+  - **Licensee Assignment:** Multi-select dropdown to assign users to one or more licensees using `assignedLicensees` field
+  - **Location Assignment:** Multi-select dropdown to assign users to specific locations using `assignedLocations` field
+  - **Location Admin Restrictions:** Location admins cannot edit or delete users with `developer`, `admin`, or `manager` roles
+  - **Licensee Display:** When a user has only one assigned licensee, displays the licensee name instead of "All Licensees (1 licensees)"
   - User profile management with compliance-enforced personal information (legal names, gender, phone number, date of birth)
   - **Profile Picture Management:** Upload, crop (circular format), and remove profile pictures
   - **Session Management:** Display login count, last login (`lastLoginAt`), and session version
   - Password reset and account status management
   - **Account Status Toggle:** `isEnabled` checkbox to enable/disable user accounts (admins can toggle any user, managers can only toggle users in their licensee)
-  - **Session Invalidation:** Auto-increment `sessionVersion` when changing permissions (forces re-login)
+  - **Session Invalidation:** Auto-increment `sessionVersion` when changing `assignedLicensees`, `assignedLocations`, or `roles` (forces re-login)
+  - **Change Detection:** Only sends changed fields to the API (roles, username, email, assignedLicensees, assignedLocations, profile, profilePicture, password, isEnabled)
   - **Email Preservation:** Email field properly preserved when editing other user fields (prevents false "Email address cannot be empty" errors)
   - **Security Compliance Gate:** Mirrors the post-login profile validation modal; only fields that fail validation are shown for admins, including licensee/location assignments for developer/admin roles
   - Activity logs for user actions and system events
@@ -165,7 +169,7 @@ The Administration page provides comprehensive user and licensee management for 
   - Returns: `{ users: User[] }` with complete user profiles including profile pictures
   - **Logging:** Comprehensive API logging with duration and context
 - **POST `/api/users`** - Creates new user
-  - Body: `{ username, email, password, roles, profile, isEnabled, resourcePermissions, profilePicture }`
+  - Body: `{ username, email, password, roles, profile, isEnabled, assignedLocations, assignedLicensees, profilePicture }`
   - **Profile Requirements:** `profile.firstName`, `profile.lastName`, `profile.phoneNumber`, and `profile.identification.dateOfBirth` must pass the same validation rules enforced by the profile validation gate
   - Returns: `{ success: true, user: User }`
   - **Logging:** Success/failure logging with user creation details
@@ -455,8 +459,8 @@ The administration page is like a **control center for managing people and busin
 
 **🔐 User Permissions System**
 
-- **Collection**: Updates `resourcePermissions` field in `users` collection
-- **Fields Used**: `roles`, `resourcePermissions`, `allowedLocations`
+- **Collection**: Updates `assignedLocations` and `assignedLicensees` fields in `users` collection
+- **Fields Used**: `roles`, `assignedLocations`, `assignedLicensees`
 - **Simple Explanation**: Like giving someone keys to different rooms - you decide which parts of the system they can access
 
 **🖼️ Profile Picture Management**
