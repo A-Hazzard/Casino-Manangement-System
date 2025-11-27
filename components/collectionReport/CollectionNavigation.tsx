@@ -20,8 +20,6 @@
 
 import { motion } from 'framer-motion';
 import type { CollectionView, CollectionTab } from '@/lib/types/collection';
-import { useUserStore } from '@/lib/store/userStore';
-import { hasTabAccess } from '@/lib/utils/permissions';
 
 type Props = {
   tabs: CollectionTab[];
@@ -36,32 +34,9 @@ export default function CollectionNavigation({
   onChange,
   isLoading = false,
 }: Props) {
-  const { user } = useUserStore();
-  const userRoles = user?.roles || [];
-
-  // Filter tabs based on user permissions
-  const accessibleTabs = tabs.filter(tab => {
-    switch (tab.id) {
-      case 'collection':
-        return true; // All users with collection-report access can see this
-      case 'monthly':
-        return hasTabAccess(userRoles, 'collection-reports', 'monthly');
-      case 'manager':
-        return hasTabAccess(
-          userRoles,
-          'collection-reports',
-          'manager-schedules'
-        );
-      case 'collector':
-        return hasTabAccess(
-          userRoles,
-          'collection-reports',
-          'collector-schedules'
-        );
-      default:
-        return true;
-    }
-  });
+  // Show all tabs - no filtering based on permissions
+  // Page-level access is already checked by ProtectedRoute and useUrlProtection
+  const accessibleTabs = tabs;
 
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">

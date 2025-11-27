@@ -82,7 +82,6 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'manager',
       'location admin',
       'collector',
-      'technician',
     ],
     reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
     sessions: ['developer'], // ✅ Restricted to developer only

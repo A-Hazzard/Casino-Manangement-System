@@ -68,6 +68,14 @@ export function useUrlProtection({
           searchParams?.get('tab');
 
         if (currentSection) {
+          // For collection-report page, allow all tabs if user has page access
+          // Technicians are already blocked at page level
+          if (page === 'collection-report') {
+            // Skip tab-level permission checks for collection-report page
+            // All users with page access can access all tabs
+            return;
+          }
+
           // Check if the current tab is in the allowed tabs
           const isTabAllowed = allowedTabs.includes(currentSection);
 
@@ -88,7 +96,6 @@ export function useUrlProtection({
             return;
           }
 
-
           // Check if user has permission for this specific tab (database query)
           // Map currentSection to proper TabName format
           let tabName: string;
@@ -98,14 +105,6 @@ export function useUrlProtection({
               tabName = 'administration-licensees';
             else if (currentSection === 'activity-logs')
               tabName = 'administration-activity-logs';
-            else return; // Unknown tab, skip permission check
-          } else if (page === 'collection-report') {
-            if (currentSection === 'monthly')
-              tabName = 'collection-reports-monthly';
-            else if (currentSection === 'manager')
-              tabName = 'collection-reports-manager-schedules';
-            else if (currentSection === 'collector')
-              tabName = 'collection-reports-collector-schedules';
             else return; // Unknown tab, skip permission check
           } else {
             return; // No tab permissions for this page
@@ -117,9 +116,6 @@ export function useUrlProtection({
               | 'administration-users'
               | 'administration-licensees'
               | 'administration-activity-logs'
-              | 'collection-reports-monthly'
-              | 'collection-reports-manager-schedules'
-              | 'collection-reports-collector-schedules'
           );
 
           if (!hasPermission) {
