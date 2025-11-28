@@ -1,36 +1,47 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import MemberDetailsModal from '@/components/members/MemberDetailsModal';
 import { Button } from '@/components/ui/button';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import {
-  Search,
-  Filter,
-  Eye,
-  Download,
-  Users,
-  MapPin,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useDebounce } from '@/lib/utils/hooks';
+import { formatPhoneNumber } from '@/lib/utils/phoneFormatter';
+import type {
+  Location,
+  MemberSummary,
+  SummaryStats,
+} from '@/shared/types/entities';
+import type { PaginationInfo } from '@/shared/types/reports';
+import axios from 'axios';
+import { motion } from 'framer-motion';
+import {
+  Activity,
   Calendar,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Activity,
-  ChevronDown,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Filter,
+  MapPin,
+  RefreshCw,
+  Search,
+  Users,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
-import MemberDetailsModal from '@/components/members/MemberDetailsModal';
-import { formatPhoneNumber } from '@/lib/utils/phoneFormatter';
-import { motion } from 'framer-motion';
-import axios from 'axios';
-import type {
-  MemberSummary,
-  SummaryStats,
-  Location,
-} from '@/shared/types/entities';
-import type { PaginationInfo } from '@/shared/types/reports';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -45,6 +56,7 @@ export default function MembersSummaryTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [locationFilter, setLocationFilter] = useState('all');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -54,7 +66,9 @@ export default function MembersSummaryTab() {
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
-  const { activeMetricsFilter, customDateRange, selectedLicencee } = useDashBoardStore();
+  const [usingBackendSearch, setUsingBackendSearch] = useState(false);
+  const [allLoadedMembers, setAllLoadedMembers] = useState<MemberSummary[]>([]);
+  const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
   // Fetch locations for the filter dropdown
   const fetchLocations = useCallback(async () => {
@@ -89,9 +103,9 @@ export default function MembersSummaryTab() {
         limit: '10',
       });
 
-      // Add search term
-      if (searchTerm) {
-        params.append('search', searchTerm);
+      // Add search term (use debounced value)
+      if (debouncedSearchTerm && usingBackendSearch) {
+        params.append('search', debouncedSearchTerm);
       }
 
       // Add location filter
@@ -100,6 +114,8 @@ export default function MembersSummaryTab() {
       }
 
       // Add date filtering
+      // For Summary Report, we want to show members based on when they last logged in
+      // Default to 'all' if no filter is set, or if filter is 'Today' (which doesn't make sense for lastLogin)
       let dateFilter = 'all';
       if (
         activeMetricsFilter === 'Custom' &&
@@ -129,18 +145,36 @@ export default function MembersSummaryTab() {
           dateFilterMap[activeMetricsFilter] ||
           activeMetricsFilter.toLowerCase();
       }
-      params.append('dateFilter', dateFilter);
-      params.append('filterBy', 'lastLogin'); // Add this to filter by last login date
-      
-      // Add licencee parameter if selected
-      if (selectedLicencee && selectedLicencee !== 'all') {
-        params.append('licencee', selectedLicencee);
+      // If Today is selected, default to 'all' since "today" for lastLogin doesn't make sense
+      if (activeMetricsFilter === 'Today') {
+        dateFilter = 'all';
       }
+      params.append('dateFilter', dateFilter);
+      // filterBy=lastLogin means we're filtering members by when they last logged in
+      // This is useful for seeing which members were active during a specific time period
+      params.append('filterBy', 'lastLogin');
+      // Licensee filtering removed - show all members regardless of licensee
 
       const response = await axios.get(`/api/members/summary?${params}`);
       const data = response.data;
 
-      setMembers(data.data.members);
+      // Debug: Log the response to verify structure
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[MembersSummaryTab] API Response:', {
+          summary: data.data?.summary,
+          totalLocations: data.data?.summary?.totalLocations,
+          totalMembers: data.data?.summary?.totalMembers,
+          membersCount: data.data?.members?.length || 0,
+          members: data.data?.members,
+          dateFilter,
+          filterBy: 'lastLogin',
+          pagination: data.data?.pagination,
+        });
+      }
+
+      const fetchedMembers = data.data.members || [];
+      setMembers(fetchedMembers);
+      setAllLoadedMembers(fetchedMembers);
       setSummaryStats(data.data.summary);
       setPagination(data.data.pagination);
     } catch (err) {
@@ -153,10 +187,10 @@ export default function MembersSummaryTab() {
   }, [
     activeMetricsFilter,
     customDateRange,
-    searchTerm,
+    debouncedSearchTerm,
     locationFilter,
     currentPage,
-    selectedLicencee,
+    usingBackendSearch,
   ]);
 
   useEffect(() => {
@@ -166,7 +200,47 @@ export default function MembersSummaryTab() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, locationFilter, activeMetricsFilter, customDateRange]);
+  }, [
+    debouncedSearchTerm,
+    locationFilter,
+    activeMetricsFilter,
+    customDateRange,
+  ]);
+
+  // Frontend search - search through loaded members first
+  useEffect(() => {
+    if (!debouncedSearchTerm || !debouncedSearchTerm.trim()) {
+      setUsingBackendSearch(false);
+      setMembers(allLoadedMembers);
+      return;
+    }
+
+    // Try frontend search first
+    const lowerSearchValue = debouncedSearchTerm.toLowerCase().trim();
+    const frontendResults = allLoadedMembers.filter(member => {
+      const fullName = (member.fullName || '').toLowerCase();
+      const phoneNumber = (member.phoneNumber || '').toLowerCase();
+      const address = (member.address || '').toLowerCase();
+      const locationName = (member.locationName || '').toLowerCase();
+      const memberId = String(member._id || '').toLowerCase();
+
+      return (
+        fullName.includes(lowerSearchValue) ||
+        phoneNumber.includes(lowerSearchValue) ||
+        address.includes(lowerSearchValue) ||
+        locationName.includes(lowerSearchValue) ||
+        memberId.includes(lowerSearchValue)
+      );
+    });
+
+    if (frontendResults.length > 0) {
+      setUsingBackendSearch(false);
+      setMembers(frontendResults);
+    } else {
+      // No frontend results, trigger backend search
+      setUsingBackendSearch(true);
+    }
+  }, [debouncedSearchTerm, allLoadedMembers]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -305,10 +379,12 @@ export default function MembersSummaryTab() {
         }
       };
 
-      const timeString = `${hours.toString().padStart(2, '0')}:${minutes
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      const timeString = `${displayHours.toString().padStart(2, '0')}:${minutes
         .toString()
-        .padStart(2, '0')}`;
-      return `${month} ${day}${getOrdinalSuffix(day)} ${year} at ${timeString}`;
+        .padStart(2, '0')} ${ampm}`;
+      return `${month} ${day}${getOrdinalSuffix(day)} ${year}, ${timeString}`;
     } catch {
       return 'Invalid Date';
     }
@@ -322,12 +398,20 @@ export default function MembersSummaryTab() {
     }).format(amount);
   };
 
-  const exportToCSV = () => {
-    if (members.length === 0) {
+  const handleExport = async (format: 'pdf' | 'csv') => {
+    if (sortedMembers.length === 0) {
       toast.error('No data to export');
       return;
     }
 
+    if (format === 'csv') {
+      exportToCSV();
+    } else {
+      await exportToPDF();
+    }
+  };
+
+  const exportToCSV = () => {
     const headers = [
       'Full Name',
       'Address',
@@ -337,7 +421,7 @@ export default function MembersSummaryTab() {
       'Location',
       'Win/Loss',
     ];
-    const csvData = members.map(member => [
+    const csvData = sortedMembers.map(member => [
       member.fullName,
       member.address || '-',
       formatPhoneNumber(member.phoneNumber),
@@ -368,32 +452,189 @@ export default function MembersSummaryTab() {
     toast.success('Members data exported successfully');
   };
 
-  const filteredMembers = members.filter(member => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      member.fullName.toLowerCase().includes(searchLower) ||
-      member.phoneNumber.toLowerCase().includes(searchLower) ||
-      (member.address || '').toLowerCase().includes(searchLower) ||
-      member.locationName.toLowerCase().includes(searchLower)
-    );
-  });
+  const exportToPDF = async () => {
+    try {
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
 
-  const sortedMembers = [...filteredMembers].sort((a, b) => {
-    const aValue: unknown = a[sortBy as keyof MemberSummary];
-    const bValue: unknown = b[sortBy as keyof MemberSummary];
+      const doc = new jsPDF();
 
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortOrder === 'asc'
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
+      // Add logo at the top (centered)
+      try {
+        const logoResponse = await fetch('/Evolution_one_Solutions_logo.png');
+        if (logoResponse.ok) {
+          const logoBlob = await logoResponse.blob();
+          const logoBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(logoBlob);
+          });
+          doc.addImage(logoBase64, 'PNG', 75, 6, 60, 0);
+        }
+      } catch {
+        doc.setFontSize(10);
+        doc.text('Evolution One Solutions', 14, 16);
+      }
+
+      // Title
+      doc.setFontSize(16);
+      doc.text('Members Summary Report', 14, 32);
+
+      // Metadata section
+      let yPosition = 40;
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+
+      if (summaryStats) {
+        doc.text(`Total Members: ${summaryStats.totalMembers}`, 14, yPosition);
+        yPosition += 6;
+        doc.text(
+          `Total Locations: ${summaryStats.totalLocations}`,
+          14,
+          yPosition
+        );
+        yPosition += 6;
+        doc.text(
+          `Active Members: ${summaryStats.activeMembers}`,
+          14,
+          yPosition
+        );
+        yPosition += 6;
+      }
+
+      const dateRangeText =
+        activeMetricsFilter === 'Custom' &&
+        customDateRange?.startDate &&
+        customDateRange?.endDate
+          ? `${formatDate(customDateRange.startDate.toString())} - ${formatDate(customDateRange.endDate.toString())}`
+          : activeMetricsFilter || 'All Time';
+      doc.text(`Date Range: ${dateRangeText}`, 14, yPosition);
+      yPosition += 6;
+
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, yPosition);
+      yPosition += 10;
+
+      // Summary table
+      if (summaryStats) {
+        autoTable(doc, {
+          startY: yPosition,
+          head: [['Metric', 'Value']],
+          body: [
+            ['Total Members', summaryStats.totalMembers.toString()],
+            ['Total Locations', summaryStats.totalLocations.toString()],
+            ['Active Members', summaryStats.activeMembers.toString()],
+          ],
+          headStyles: {
+            fillColor: [81, 25, 233],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+          },
+          styles: { fontSize: 10 },
+        });
+        yPosition =
+          (doc as unknown as { lastAutoTable?: { finalY?: number } })
+            .lastAutoTable?.finalY || yPosition + 20;
+      }
+
+      // Members table
+      const tableData = sortedMembers.map(member => [
+        member.fullName,
+        member.address || '-',
+        formatPhoneNumber(member.phoneNumber),
+        formatDateTime(member.lastLogin),
+        formatDate(member.createdAt),
+        member.locationName,
+        formatCurrency(member.winLoss || 0),
+      ]);
+
+      autoTable(doc, {
+        startY: yPosition + 5,
+        head: [
+          [
+            'Full Name',
+            'Address',
+            'Phone',
+            'Last Login',
+            'Joined',
+            'Location',
+            'Win/Loss',
+          ],
+        ],
+        body: tableData,
+        headStyles: {
+          fillColor: [81, 25, 233],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+        },
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 30 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 30 },
+          6: { cellWidth: 20, halign: 'right' },
+        },
+        margin: { left: 10, right: 10 },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+      });
+
+      // Footer with page numbers
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(
+          `Page ${i} of ${pageCount}`,
+          doc.internal.pageSize.getWidth() / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Generate filename with date
+      const dateStr = new Date().toISOString().split('T')[0];
+      doc.save(`members_summary_${dateStr}.pdf`);
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('Failed to export PDF');
     }
+  };
 
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+  // Filter by location if needed (frontend filtering)
+  const filteredMembers = useMemo(() => {
+    if (locationFilter === 'all') {
+      return members;
     }
+    return members.filter(member => {
+      return (
+        member.locationName === locationFilter || member._id === locationFilter
+      );
+    });
+  }, [members, locationFilter]);
 
-    return 0;
-  });
+  const sortedMembers = useMemo(() => {
+    return [...filteredMembers].sort((a, b) => {
+      const aValue: unknown = a[sortBy as keyof MemberSummary];
+      const bValue: unknown = b[sortBy as keyof MemberSummary];
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      return 0;
+    });
+  }, [filteredMembers, sortBy, sortOrder]);
 
   const renderPagination = () => {
     if (
@@ -425,7 +666,7 @@ export default function MembersSummaryTab() {
             </Button>
             <Button
               onClick={handlePrevPage}
-              disabled={!pagination.hasPrev}
+              disabled={!pagination?.hasPrev}
               variant="outline"
               size="sm"
               className="px-2 py-1 text-xs"
@@ -453,7 +694,7 @@ export default function MembersSummaryTab() {
             </div>
             <Button
               onClick={handleNextPage}
-              disabled={!pagination.hasNext}
+              disabled={!pagination?.hasNext}
               variant="outline"
               size="sm"
               className="px-2 py-1 text-xs"
@@ -489,7 +730,8 @@ export default function MembersSummaryTab() {
                     )
                   : 0}
               </span>{' '}
-              of <span className="font-medium">
+              of{' '}
+              <span className="font-medium">
                 {pagination ? Number(pagination.total) || 0 : 0}
               </span>{' '}
               results
@@ -511,7 +753,7 @@ export default function MembersSummaryTab() {
               </Button>
               <Button
                 onClick={handlePrevPage}
-                disabled={!pagination.hasPrev}
+                disabled={!pagination?.hasPrev}
                 variant="outline"
                 size="sm"
                 className="relative inline-flex items-center border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-400 hover:bg-gray-50"
@@ -559,7 +801,7 @@ export default function MembersSummaryTab() {
 
               <Button
                 onClick={handleNextPage}
-                disabled={!pagination.hasNext}
+                disabled={!pagination?.hasNext}
                 variant="outline"
                 size="sm"
                 className="relative inline-flex items-center border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-400 hover:bg-gray-50"
@@ -609,7 +851,7 @@ export default function MembersSummaryTab() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Locations</p>
               <p className="text-2xl font-bold text-gray-900">
-                {locations.length}
+                {summaryStats.totalLocations}
               </p>
             </div>
           </div>
@@ -650,14 +892,7 @@ export default function MembersSummaryTab() {
       );
     }
 
-    if (sortedMembers.length === 0) {
-      return (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <p className="text-gray-500">No members found</p>
-        </div>
-      );
-    }
-
+    // Always show the table, even if no members (show empty table instead of "No members found")
     return (
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="overflow-x-auto">
@@ -745,65 +980,76 @@ export default function MembersSummaryTab() {
               </tr>
             </thead>
             <tbody>
-              {sortedMembers.map(member => (
-                <tr key={member._id} className="text-center hover:bg-muted">
-                  <td className="border border-border p-3">
-                    <div className="text-left">
-                      <div className="font-medium text-gray-900">
-                        {member.fullName}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="border border-border p-3 text-left">
-                    {member.address || '-'}
-                  </td>
-                  <td className="border border-border p-3">
-                    {formatPhoneNumber(member.phoneNumber)}
-                  </td>
-                  <td className="border border-border p-3">
-                    {formatDateTime(member.lastLogin)}
-                  </td>
-                  <td className="border border-border p-3">
-                    {formatDate(member.createdAt)}
-                  </td>
-                  <td className="border border-border p-3">
-                    {member.locationName}
-                  </td>
-                  <td className="border border-border p-3">
-                    <div
-                      className={`font-medium ${
-                        (member.winLoss || 0) >= 0
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {formatCurrency(member.winLoss || 0)}
-                    </div>
-                  </td>
-                  <td className="border border-border p-3">
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewMember(member)}
-                        className="flex items-center gap-1"
-                      >
-                        <Eye className="h-3 w-3" />
-                        View Details
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewSessions(member._id)}
-                        className="flex items-center gap-1"
-                      >
-                        <Activity className="h-3 w-3" />
-                        View Sessions
-                      </Button>
-                    </div>
+              {sortedMembers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="border border-border p-8 text-center text-gray-500"
+                  >
+                    No members found
                   </td>
                 </tr>
-              ))}
+              ) : (
+                sortedMembers.map(member => (
+                  <tr key={member._id} className="text-center hover:bg-muted">
+                    <td className="border border-border p-3">
+                      <div className="text-left">
+                        <div className="font-medium text-gray-900">
+                          {member.fullName}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="border border-border p-3 text-left">
+                      {member.address || '-'}
+                    </td>
+                    <td className="border border-border p-3">
+                      {formatPhoneNumber(member.phoneNumber)}
+                    </td>
+                    <td className="border border-border p-3">
+                      {formatDateTime(member.lastLogin)}
+                    </td>
+                    <td className="border border-border p-3">
+                      {formatDate(member.createdAt)}
+                    </td>
+                    <td className="border border-border p-3">
+                      {member.locationName}
+                    </td>
+                    <td className="border border-border p-3">
+                      <div
+                        className={`font-medium ${
+                          (member.winLoss || 0) >= 0
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {formatCurrency(member.winLoss || 0)}
+                      </div>
+                    </td>
+                    <td className="border border-border p-3">
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewMember(member)}
+                          className="flex items-center gap-1"
+                        >
+                          <Eye className="h-3 w-3" />
+                          View Details
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewSessions(member._id)}
+                          className="flex items-center gap-1"
+                        >
+                          <Activity className="h-3 w-3" />
+                          View Sessions
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -829,90 +1075,91 @@ export default function MembersSummaryTab() {
       );
     }
 
-    if (sortedMembers.length === 0) {
-      return (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <p className="text-gray-500">No members found</p>
-        </div>
-      );
-    }
-
+    // Always show the list, even if no members (show empty list instead of "No members found")
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4">
-          {sortedMembers.map(member => (
-            <div
-              key={member._id}
-              className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {member.fullName}
-                  </h3>
-                  <p className="text-sm text-gray-500">{member.locationName}</p>
-                </div>
-                <div className="ml-4 flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewMember(member)}
-                    className="flex items-center gap-1 whitespace-nowrap"
-                  >
-                    <Eye className="h-3 w-3" />
-                    View Details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewSessions(member._id)}
-                    className="flex items-center gap-1 whitespace-nowrap"
-                  >
-                    <Activity className="h-3 w-3" />
-                    View Sessions
-                  </Button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-500">Address:</span>
-                  <p className="font-medium text-gray-900">
-                    {member.address || '-'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Phone:</span>
-                  <p className="font-medium text-gray-900">
-                    {formatPhoneNumber(member.phoneNumber)}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Last Login:</span>
-                  <p className="font-medium text-gray-900">
-                    {formatDateTime(member.lastLogin)}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Joined:</span>
-                  <p className="font-medium text-gray-900">
-                    {formatDate(member.createdAt)}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Win/Loss:</span>
-                  <p
-                    className={`font-medium ${
-                      (member.winLoss || 0) >= 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {formatCurrency(member.winLoss || 0)}
-                  </p>
-                </div>
-              </div>
+          {sortedMembers.length === 0 ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+              <p className="text-gray-500">No members found</p>
             </div>
-          ))}
+          ) : (
+            sortedMembers.map(member => (
+              <div
+                key={member._id}
+                className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      {member.fullName}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {member.locationName}
+                    </p>
+                  </div>
+                  <div className="ml-4 flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewMember(member)}
+                      className="flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <Eye className="h-3 w-3" />
+                      View Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewSessions(member._id)}
+                      className="flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <Activity className="h-3 w-3" />
+                      View Sessions
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Address:</span>
+                    <p className="font-medium text-gray-900">
+                      {member.address || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Phone:</span>
+                    <p className="font-medium text-gray-900">
+                      {formatPhoneNumber(member.phoneNumber)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Last Login:</span>
+                    <p className="font-medium text-gray-900">
+                      {formatDateTime(member.lastLogin)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Joined:</span>
+                    <p className="font-medium text-gray-900">
+                      {formatDate(member.createdAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Win/Loss:</span>
+                    <p
+                      className={`font-medium ${
+                        (member.winLoss || 0) >= 0
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}
+                    >
+                      {formatCurrency(member.winLoss || 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
         {renderPagination()}
       </div>
@@ -958,30 +1205,60 @@ export default function MembersSummaryTab() {
           <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-gray-400" />
             <span className="text-sm text-gray-600">Location:</span>
-            <div className="relative">
-              <select
-                value={locationFilter}
-                onChange={e => handleLocationFilter(e.target.value)}
-                className="h-11 w-full appearance-none rounded-full border border-gray-300 bg-white px-4 pr-10 text-gray-700 focus:border-buttonActive focus:ring-buttonActive md:w-48"
-              >
-                <option value="all">All Locations</option>
-                {locations.map(location => (
-                  <option key={location._id} value={location._id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            </div>
+            <LocationSingleSelect
+              locations={locations.map(loc => ({
+                id: loc._id,
+                name: loc.name || loc.locationName || '',
+              }))}
+              selectedLocation={locationFilter}
+              onSelectionChange={handleLocationFilter}
+              includeAllOption={true}
+              allOptionLabel="All Locations"
+              showSasBadge={false}
+              className="w-48"
+            />
           </div>
           <Button
-            onClick={exportToCSV}
+            onClick={() => {
+              setCurrentPage(1);
+              fetchMembersSummary();
+            }}
             variant="outline"
             className="flex items-center gap-2"
+            title="Refresh data"
           >
-            <Download className="h-4 w-4" />
-            Export CSV
+            <RefreshCw className="h-4 w-4" />
+            Refresh
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={sortedMembers.length === 0}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleExport('pdf')}
+                className="cursor-pointer"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExport('csv')}
+                className="cursor-pointer"
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export as CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

@@ -1070,7 +1070,7 @@ grep -r "LicenceeSelect" app components
 grep -r "sessionVersion.*1" app
 
 # Check user's licensees in DB
-node -e "require('dotenv').config(); const mongoose = require('mongoose'); mongoose.connect(process.env.MONGO_URI).then(async () => { const user = await mongoose.connection.db.collection('users').findOne({ username: 'username_here' }); console.log('Licensees:', user?.rel?.licencee); process.exit(0); });"
+node -e "require('dotenv').config(); const mongoose = require('mongoose'); mongoose.connect(process.env.MONGODB_URI).then(async () => { const user = await mongoose.connection.db.collection('users').findOne({ username: 'username_here' }); console.log('Licensees:', user?.rel?.licencee); process.exit(0); });"
 ```
 
 ---

@@ -12,10 +12,14 @@
 const { MongoClient, ObjectId } = require('mongodb');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.DATABASE_URL;
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URL ||
+  process.env.DATABASE_URL;
 
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI not found in environment variables');
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not found in environment variables');
   process.exit(1);
 }
 
@@ -53,8 +57,8 @@ function getYesterdayGamingDayRange(gameDayOffset = 8, timezoneOffset = -4) {
 
 async function main() {
   console.log('🚀 Creating simple test meters...\n');
-  
-  const client = new MongoClient(MONGO_URI);
+
+  const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
@@ -73,74 +77,86 @@ async function main() {
     // STEP 2: Find locations for each licensee
     // ============================================================================
     console.log('📊 Finding locations...');
-    
+
     // Find Barbados location
-    const barbadosLocation = await db.collection('gaminglocations').findOne({
-      'rel.licencee': { $exists: true, $ne: null },
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    }, {
-      projection: { _id: 1, name: 1, 'rel.licencee': 1, gameDayOffset: 1 }
-    });
+    const barbadosLocation = await db.collection('gaminglocations').findOne(
+      {
+        'rel.licencee': { $exists: true, $ne: null },
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      },
+      {
+        projection: { _id: 1, name: 1, 'rel.licencee': 1, gameDayOffset: 1 },
+      }
+    );
 
     // Get licensee name for Barbados
     let barbadosLicenseeName = null;
     if (barbadosLocation?.rel?.licencee) {
       const licensee = await db.collection('licencees').findOne({
-        _id: barbadosLocation.rel.licencee
+        _id: barbadosLocation.rel.licencee,
       });
       barbadosLicenseeName = licensee?.name;
     }
 
     // Find TTG location
-    const ttgLocation = await db.collection('gaminglocations').findOne({
-      'rel.licencee': { $exists: true, $ne: null },
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    }, {
-      projection: { _id: 1, name: 1, 'rel.licencee': 1, gameDayOffset: 1 }
-    });
+    const ttgLocation = await db.collection('gaminglocations').findOne(
+      {
+        'rel.licencee': { $exists: true, $ne: null },
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      },
+      {
+        projection: { _id: 1, name: 1, 'rel.licencee': 1, gameDayOffset: 1 },
+      }
+    );
 
     // Get licensee name for TTG
     let ttgLicenseeName = null;
     if (ttgLocation?.rel?.licencee) {
       const licensee = await db.collection('licencees').findOne({
-        _id: ttgLocation.rel.licencee
+        _id: ttgLocation.rel.licencee,
       });
       ttgLicenseeName = licensee?.name;
     }
 
     // Find Cabana location
-    const cabanaLocation = await db.collection('gaminglocations').findOne({
-      'rel.licencee': { $exists: true, $ne: null },
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    }, {
-      projection: { _id: 1, name: 1, 'rel.licencee': 1, gameDayOffset: 1 }
-    });
+    const cabanaLocation = await db.collection('gaminglocations').findOne(
+      {
+        'rel.licencee': { $exists: true, $ne: null },
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      },
+      {
+        projection: { _id: 1, name: 1, 'rel.licencee': 1, gameDayOffset: 1 },
+      }
+    );
 
     // Get licensee name for Cabana
     let cabanaLicenseeName = null;
     if (cabanaLocation?.rel?.licencee) {
       const licensee = await db.collection('licencees').findOne({
-        _id: cabanaLocation.rel.licencee
+        _id: cabanaLocation.rel.licencee,
       });
       cabanaLicenseeName = licensee?.name;
     }
 
     // Actually, let's find locations by licensee name
-    const allLicensees = await db.collection('licencees').find({
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    }).toArray();
+    const allLicensees = await db
+      .collection('licencees')
+      .find({
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      })
+      .toArray();
 
     let barbadosLicenseeId = null;
     let ttgLicenseeId = null;
@@ -220,9 +236,13 @@ async function main() {
       return;
     }
 
-    console.log(`   Barbados Machine: ${barbadosMachine.serialNumber || barbadosMachine._id}`);
+    console.log(
+      `   Barbados Machine: ${barbadosMachine.serialNumber || barbadosMachine._id}`
+    );
     console.log(`   TTG Machine: ${ttgMachine.serialNumber || ttgMachine._id}`);
-    console.log(`   Cabana Machine: ${cabanaMachine.serialNumber || cabanaMachine._id}\n`);
+    console.log(
+      `   Cabana Machine: ${cabanaMachine.serialNumber || cabanaMachine._id}\n`
+    );
 
     // ============================================================================
     // STEP 4: Create meters
@@ -234,8 +254,13 @@ async function main() {
     // Barbados: 2 BBD
     const barbadosGameDayOffset = barbadosLoc.gameDayOffset ?? 8;
     const barbadosRange = getYesterdayGamingDayRange(barbadosGameDayOffset);
-    const barbadosReadAt = new Date(barbadosRange.rangeStart.getTime() + (barbadosRange.rangeEnd.getTime() - barbadosRange.rangeStart.getTime()) / 2);
-    
+    const barbadosReadAt = new Date(
+      barbadosRange.rangeStart.getTime() +
+        (barbadosRange.rangeEnd.getTime() -
+          barbadosRange.rangeStart.getTime()) /
+          2
+    );
+
     meters.push({
       _id: generateMongoIdHex(),
       machine: barbadosMachine._id.toString(),
@@ -276,8 +301,11 @@ async function main() {
     // TTG: 4 TTD
     const ttgGameDayOffset = ttgLoc.gameDayOffset ?? 8;
     const ttgRange = getYesterdayGamingDayRange(ttgGameDayOffset);
-    const ttgReadAt = new Date(ttgRange.rangeStart.getTime() + (ttgRange.rangeEnd.getTime() - ttgRange.rangeStart.getTime()) / 2);
-    
+    const ttgReadAt = new Date(
+      ttgRange.rangeStart.getTime() +
+        (ttgRange.rangeEnd.getTime() - ttgRange.rangeStart.getTime()) / 2
+    );
+
     meters.push({
       _id: generateMongoIdHex(),
       machine: ttgMachine._id.toString(),
@@ -318,8 +346,11 @@ async function main() {
     // Cabana: 8 GYD
     const cabanaGameDayOffset = cabanaLoc.gameDayOffset ?? 8;
     const cabanaRange = getYesterdayGamingDayRange(cabanaGameDayOffset);
-    const cabanaReadAt = new Date(cabanaRange.rangeStart.getTime() + (cabanaRange.rangeEnd.getTime() - cabanaRange.rangeStart.getTime()) / 2);
-    
+    const cabanaReadAt = new Date(
+      cabanaRange.rangeStart.getTime() +
+        (cabanaRange.rangeEnd.getTime() - cabanaRange.rangeStart.getTime()) / 2
+    );
+
     meters.push({
       _id: generateMongoIdHex(),
       machine: cabanaMachine._id.toString(),
@@ -380,7 +411,6 @@ async function main() {
     console.log('='.repeat(80));
     console.log('✅ Test data created!');
     console.log('='.repeat(80) + '\n');
-
   } catch (error) {
     console.error('❌ Error:', error);
     throw error;
@@ -391,4 +421,3 @@ async function main() {
 }
 
 main().catch(console.error);
-

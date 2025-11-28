@@ -1,22 +1,22 @@
 import { buttonVariants } from '@/components/ui/button';
 import {
-  ActiveFilters,
-  ActiveTab,
-  dashboardData,
-  DashboardTotals,
-  dateRange,
-  locations,
-  TimeFrames,
-  TopPerformingData,
+    ActiveFilters,
+    ActiveTab,
+    dashboardData,
+    DashboardTotals,
+    dateRange,
+    locations,
+    TimeFrames,
+    TopPerformingData,
 } from '@/lib/types';
+import type { CollectorSchedule } from '@/lib/types/components';
 import { TimePeriod } from '@shared/types';
 import { VariantProps } from 'class-variance-authority';
+import { LatLng } from 'leaflet';
 import { JSX } from 'react';
-import type { LocationSelectItem } from './location';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 import type { CollectionReportLocationWithMachines } from './api';
-import { LatLng } from 'leaflet';
-import type { CollectorSchedule } from '@/lib/types/components';
+import type { LocationSelectItem } from './location';
 
 export type DashboardLayoutProps = {
   activeTab: ActiveTab;
@@ -45,7 +45,7 @@ export type DashboardLayoutProps = {
   setTotals: (_state: DashboardTotals | null) => void;
   setChartData: (_state: dashboardData[]) => void;
   setPieChartSortIsOpen: (_state: boolean) => void;
-  setTopPerformingData: (_state: TopPerformingData[]) => void;
+  setTopPerformingData: (_state: TopPerformingData) => void;
   onRefresh: () => void;
   renderCustomizedLabel: (_props: CustomizedLabelProps) => JSX.Element;
   queryType?: 'user' | 'all';

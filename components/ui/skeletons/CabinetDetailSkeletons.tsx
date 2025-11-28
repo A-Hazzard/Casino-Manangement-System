@@ -100,6 +100,17 @@ const CabinetDetailPageSkeleton = () => (
       </div>
     </div>
 
+    {/* Chart skeleton - Above Accounting Details on md+ screens */}
+    <div className="hidden md:block mb-6">
+      <div className="rounded-lg bg-container p-6 shadow-md">
+        <div className="mb-4 flex items-center justify-between">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-8 w-24" />
+        </div>
+        <div className="h-[320px] w-full animate-pulse rounded-md bg-gray-200" />
+      </div>
+    </div>
+
     {/* Accounting Details skeleton */}
     <div className="space-y-6">
       {/* Sidebar skeleton */}
@@ -167,6 +178,17 @@ const CabinetDetailPageSkeleton = () => (
             </CardContent>
           </Card>
         </div>
+      </div>
+    </div>
+
+    {/* Chart skeleton - Below Accounting Details on mobile */}
+    <div className="md:hidden mt-6">
+      <div className="rounded-lg bg-container p-6 shadow-md">
+        <div className="mb-4 flex items-center justify-between">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-8 w-24" />
+        </div>
+        <div className="h-[320px] w-full animate-pulse rounded-md bg-gray-200" />
       </div>
     </div>
   </div>

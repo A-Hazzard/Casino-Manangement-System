@@ -382,6 +382,7 @@ function MemberDetailsPageContent() {
           setSelectedLicencee,
         }}
         mainClassName="flex flex-col flex-1 px-4 py-6 sm:px-6 lg:px-8 w-full max-w-full"
+        hideCurrencyFilter={true}
         showToaster={false}
       >
         <div className="mt-8 w-full">{renderContent()}</div>

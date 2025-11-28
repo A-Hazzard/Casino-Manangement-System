@@ -1,8 +1,8 @@
 # Collection Report System - Frontend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 22, 2025  
-**Version:** 2.5.0
+**Last Updated:** November 28, 2025  
+**Version:** 2.6.0
 
 ## Overview
 
@@ -862,6 +862,154 @@ useEffect(() => {
 - Implement loading states with skeleton loaders
 - Use responsive design principles
 - Ensure accessibility compliance
+
+## Mobile Collection Modal State Management (November 28, 2025)
+
+### Architecture Overview
+
+The mobile collection modals (`MobileCollectionModal.tsx` and `MobileEditCollectionModal.tsx`) use a **dual-state architecture**:
+
+1. **Local Component State** (`modalState`): Controls immediate UI rendering and button enablement
+2. **Zustand Store** (`useCollectionModalStore`): Enables state persistence across modal opens/closes
+
+```typescript
+// Local state - controls UI rendering
+const [modalState, setModalState] = useState<MobileModalState>({
+  collectedMachines: [],
+  isLoadingCollections: false,
+  // ... other fields
+});
+
+// Zustand store - state persistence
+const { collectedMachines, setCollectedMachines } = useCollectionModalStore();
+```
+
+### Collection Fetch on Modal Open
+
+When the mobile modal opens, it fetches existing incomplete collections:
+
+**Fetch Flow:**
+
+1. Modal opens (`show = true`)
+2. `fetchExistingCollections()` triggered by `useEffect`
+3. `GET /api/collections?incompleteOnly=true` (no location filter on initial fetch)
+4. Backend filters by user's `assignedLocations`
+5. Collections loaded into both `modalState.collectedMachines` and Zustand store
+6. If collections found, auto-select the location from the first collection
+7. Buttons (View Collected Machines, View Form) become enabled
+
+**Critical Implementation Detail:**
+
+The initial fetch does NOT filter by location ID. This is intentional because:
+- Users may have started collections at different locations
+- We want to show ALL incomplete collections for the user's accessible locations
+- A `useRef` (`hasFetchedOnOpenRef`) prevents refetching when location is auto-selected
+
+```typescript
+const hasFetchedOnOpenRef = useRef(false);
+
+useEffect(() => {
+  if (show && locations.length > 0) {
+    if (!hasFetchedOnOpenRef.current) {
+      hasFetchedOnOpenRef.current = true;
+      fetchExistingCollections(); // No location filter
+    }
+  }
+}, [show, selectedLocationId, fetchExistingCollections, locations.length]);
+```
+
+### Button Enablement Logic
+
+**CRITICAL**: Buttons must check `modalState.collectedMachines.length`, not the Zustand store:
+
+```typescript
+// ✅ CORRECT
+<button disabled={modalState.collectedMachines.length === 0}>
+  View Collected Machines ({modalState.collectedMachines.length})
+</button>
+
+// ❌ WRONG - causes race conditions
+<button disabled={(collectedMachines || modalState.collectedMachines).length === 0}>
+```
+
+### Delete Operation
+
+When deleting a collection from the mobile modal:
+
+1. User confirms deletion in confirmation dialog
+2. `deleteMachineFromList(entryId)` called
+3. `DELETE /api/collections?id={entryId}` API call made
+4. On success, `modalState.collectedMachines` updated
+5. Sync effect updates Zustand store
+6. Success toast shown
+
+```typescript
+const deleteMachineFromList = useCallback(async (entryId: string) => {
+  setModalState(prev => ({ ...prev, isProcessing: true }));
+  
+  try {
+    await axios.delete(`/api/collections?id=${entryId}`);
+    
+    setModalState(prev => ({
+      ...prev,
+      collectedMachines: prev.collectedMachines.filter(m => m._id !== entryId),
+      isProcessing: false,
+    }));
+    
+    toast.success('Collection removed successfully');
+  } catch (error) {
+    setModalState(prev => ({ ...prev, isProcessing: false }));
+    toast.error('Failed to remove collection');
+  }
+}, [modalState.collectedMachines]);
+```
+
+### State Synchronization
+
+Two `useEffect` hooks handle synchronization between local state and Zustand store:
+
+**1. modalState → Zustand Store** (for user actions)
+
+```typescript
+useEffect(() => {
+  if (modalState.isLoadingCollections) return; // Skip during loading
+  
+  if (modalStateChanged) {
+    setStoreCollectedMachines(modalState.collectedMachines);
+  }
+}, [modalState.collectedMachines, modalState.isLoadingCollections]);
+```
+
+**2. Zustand Store → modalState** (for external updates)
+
+```typescript
+useEffect(() => {
+  if (modalState.isLoadingCollections) return; // Skip during loading
+  
+  setModalState(prev => ({
+    ...prev,
+    collectedMachines, // From Zustand store
+  }));
+}, [collectedMachines, modalState.isLoadingCollections]);
+```
+
+**Important:** Both effects skip synchronization when `isLoadingCollections` is true to prevent race conditions.
+
+### Common Issues and Solutions
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Buttons not enabling after collections load | Checking Zustand store instead of modalState | Check `modalState.collectedMachines.length` |
+| Collections cleared after auto-select location | Refetch triggered by `selectedLocationId` change | Use `hasFetchedOnOpenRef` to prevent refetch |
+| "Cannot update component while rendering" error | Calling `setStoreCollectedMachines` inside `setModalState` | Use `useEffect` for state sync |
+| Delete not working | Missing API call | Add `axios.delete()` before updating local state |
+
+### Reference Files
+
+- `.cursor/mobile-collection-modal-context.md` - Detailed debugging guide
+- `components/collectionReport/mobile/MobileCollectionModal.tsx` - Create modal implementation
+- `components/collectionReport/mobile/MobileEditCollectionModal.tsx` - Edit modal implementation
+- `lib/store/collectionModalStore.ts` - Zustand store definition
 
 ## Financial Calculations Analysis
 

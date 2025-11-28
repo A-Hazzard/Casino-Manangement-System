@@ -54,8 +54,12 @@ export async function POST(_request: NextRequest) {
     });
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[Admin Reconnect DB API] Error after ${duration}ms:`, errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Admin Reconnect DB API] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json(
       {
         success: false,
@@ -76,7 +80,6 @@ export async function POST(_request: NextRequest) {
 export async function GET(_request: NextRequest) {
   return NextResponse.json({
     message: 'Use POST to reconnect database',
-    currentUri: process.env.MONGO_URI ? 'Set' : 'Not set',
+    currentUri: process.env.MONGODB_URI ? 'Set' : 'Not set',
   });
 }
-

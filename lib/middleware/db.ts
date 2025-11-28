@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGO_URI;
+const MONGODB_URI = process.env.MONGODB_URI;
 if (typeof window === 'undefined' && !MONGODB_URI) {
-  throw new Error('MONGO_URI not set in environment variables');
+  throw new Error('MONGODB_URI not set in environment variables');
 }
 
 const mongooseCache: {
@@ -25,7 +25,7 @@ export async function connectDB() {
   }
 
   if (!MONGODB_URI) {
-    throw new Error('MONGO_URI not set in environment variables');
+    throw new Error('MONGODB_URI not set in environment variables');
   }
 
   if (mongooseCache.conn) {

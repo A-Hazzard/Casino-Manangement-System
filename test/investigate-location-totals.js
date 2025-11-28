@@ -9,17 +9,17 @@
 require('dotenv').config({ path: '.env' });
 const { MongoClient, ObjectId } = require('mongodb');
 
-const MONGO_URI =
-  process.env.MONGO_URI ||
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
   'mongodb://sunny1:87ydaiuhdsia2e@147.182.210.65:32017/sas-prod?authSource=admin';
 
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI not found in environment variables');
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not found in environment variables');
   process.exit(1);
 }
 
 async function investigate() {
-  const client = new MongoClient(MONGO_URI);
+  const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();

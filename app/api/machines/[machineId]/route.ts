@@ -227,13 +227,12 @@ export async function GET(
         moneyIn: { $sum: '$movement.drop' },
         moneyOut: { $sum: '$movement.totalCancelledCredits' },
         jackpot: { $sum: '$movement.jackpot' },
-        // For Live Metrics, we need cumulative values, not daily deltas
-        // So we get the latest values from the most recent meter record
-        coinIn: { $last: '$coinIn' },
-        coinOut: { $last: '$coinOut' },
-        gamesPlayed: { $last: '$gamesPlayed' },
-        gamesWon: { $last: '$gamesWon' },
-        handPaidCancelledCredits: { $last: '$handPaidCancelledCredits' },
+        // Use movement fields for all metrics to get period-based totals
+        coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
+        coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
+        gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
+        gamesWon: { $sum: { $ifNull: ['$movement.gamesWon', 0] } },
+        handPaidCancelledCredits: { $sum: { $ifNull: ['$movement.handPaidCancelledCredits', 0] } },
         meterCount: { $sum: 1 },
       },
     });

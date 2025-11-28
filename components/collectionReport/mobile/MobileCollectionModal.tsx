@@ -1,17 +1,17 @@
 'use client';
 
 import {
-  MobileCollectedListPanel,
-  MobileFormPanel,
+    MobileCollectedListPanel,
+    MobileFormPanel,
 } from '@/components/collectionReport/forms';
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 import { InfoConfirmationDialog } from '@/components/ui/InfoConfirmationDialog';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import {
-  Dialog,
-  DialogContent,
-  DialogPortal,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogPortal,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MobileCollectionModalSkeleton } from '@/components/ui/skeletons/MobileCollectionModalSkeleton';
@@ -20,8 +20,8 @@ import { useDebounce, useDebouncedCallback } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-  CollectionReportLocationWithMachines,
-  CollectionReportMachineSummary,
+    CollectionReportLocationWithMachines,
+    CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collections';
 import { formatDate } from '@/lib/utils/formatting';
@@ -29,7 +29,7 @@ import { calculateMachineMovement } from '@/lib/utils/frontendMovementCalculatio
 import { formatMachineDisplayNameWithBold } from '@/lib/utils/machineDisplay';
 import { getUserDisplayName } from '@/lib/utils/userDisplay';
 import axios, { type AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type MobileCollectionModalProps = {
@@ -653,7 +653,7 @@ export default function MobileCollectionModal({
           `/api/collections?id=${modalState.editingEntryId}`,
           collectionPayload
         );
-        createdCollection = response.data;
+        createdCollection = response.data.data;
       } else {
         // Create new collection via API
         const response = await axios.post(
@@ -667,25 +667,28 @@ export default function MobileCollectionModal({
 
       // Update local and Zustand state with the created/updated collection
       setModalState(prev => {
+        // ENRICH the created collection with machine details that might be missing from the API response
+        // This prevents "N/A" from showing up in the list after an update
+        const enrichedCollection = {
+          ...createdCollection,
+          machineName: modalState.selectedMachineData?.name || createdCollection.machineName,
+          serialNumber: modalState.selectedMachineData?.serialNumber || createdCollection.serialNumber,
+          machineCustomName: modalState.selectedMachineData?.custom?.name || createdCollection.machineCustomName,
+          game: modalState.selectedMachineData?.game || createdCollection.game,
+        };
+
         const newCollectedMachines = isEditing
           ? prev.collectedMachines.map(m =>
-              m._id === modalState.editingEntryId ? createdCollection : m
+              m._id === modalState.editingEntryId ? enrichedCollection : m
             )
-          : [...prev.collectedMachines, createdCollection];
+          : [...prev.collectedMachines, enrichedCollection];
 
         const newLockedLocationId =
           prev.collectedMachines.length === 0 && !isEditing
             ? prev.selectedLocation || undefined
             : prev.lockedLocationId;
 
-        // Persist to Zustand store
-        setStoreCollectedMachines(newCollectedMachines);
-        if (
-          newLockedLocationId &&
-          newLockedLocationId !== prev.lockedLocationId
-        ) {
-          setStoreLockedLocation(newLockedLocationId);
-        }
+        // Zustand store will be synced via useEffect when modalState.collectedMachines changes
 
         return {
           ...prev,
@@ -749,36 +752,53 @@ export default function MobileCollectionModal({
     modalState.isProcessing,
     modalState.editingEntryId,
     user,
-    setStoreCollectedMachines,
-    setStoreLockedLocation,
   ]);
 
   // Delete machine from collection list
   const deleteMachineFromList = useCallback(
-    (entryId: string) => {
-      setModalState(prev => {
-        const newCollectedMachines = prev.collectedMachines.filter(
-          m => m._id !== entryId
+    async (entryId: string) => {
+      setModalState(prev => ({ ...prev, isProcessing: true }));
+      
+      try {
+        // Find the entry data before deletion for logging
+        const entryToDeleteData = modalState.collectedMachines.find(
+          e => e._id === entryId
         );
-        const newLockedLocationId =
-          newCollectedMachines.length === 0 ? undefined : prev.lockedLocationId;
+        
+        // Call the delete API to actually delete from database
+        await axios.delete(`/api/collections?id=${entryId}`);
+        
+        console.warn('📱 Mobile: Collection deleted from database:', entryId);
+        
+        // Update local state after successful deletion
+        setModalState(prev => {
+          const newCollectedMachines = prev.collectedMachines.filter(
+            m => m._id !== entryId
+          );
+          const newLockedLocationId =
+            newCollectedMachines.length === 0 ? undefined : prev.lockedLocationId;
 
-        // Persist to Zustand store
-        setStoreCollectedMachines(newCollectedMachines);
-        if (newLockedLocationId !== prev.lockedLocationId) {
-          setStoreLockedLocation(newLockedLocationId);
-        }
-
-        return {
-          ...prev,
-          collectedMachines: newCollectedMachines,
-          // Unlock location if no machines remain
-          lockedLocationId: newLockedLocationId,
-        };
-      });
-      // Success feedback is handled by UI state changes
+          return {
+            ...prev,
+            collectedMachines: newCollectedMachines,
+            // Unlock location if no machines remain
+            lockedLocationId: newLockedLocationId,
+            isProcessing: false,
+          };
+        });
+        
+        toast.success(
+          entryToDeleteData?.machineCustomName 
+            ? `Removed ${entryToDeleteData.machineCustomName} from collection`
+            : 'Collection removed successfully'
+        );
+      } catch (error) {
+        console.error('📱 Mobile: Failed to delete collection:', error);
+        setModalState(prev => ({ ...prev, isProcessing: false }));
+        toast.error('Failed to remove collection. Please try again.');
+      }
     },
-    [setStoreCollectedMachines, setStoreLockedLocation]
+    [modalState.collectedMachines]
   );
 
   // Edit machine in collection list
@@ -1207,9 +1227,21 @@ export default function MobileCollectionModal({
             '🔄 Mobile: Found existing collections:',
             response.data.length
           );
+          console.warn('🔄 Mobile: Collections data:', response.data);
 
           // Update Zustand store with existing collections
           setStoreCollectedMachines(response.data);
+          console.warn('🔄 Mobile: Updated Zustand store with collections');
+
+          // Also update modalState directly to ensure UI updates immediately
+          setModalState(prev => {
+            console.warn('🔄 Mobile: Updating modalState.collectedMachines from', prev.collectedMachines.length, 'to', response.data.length);
+            return {
+              ...prev,
+              collectedMachines: response.data,
+            };
+          });
+          console.warn('🔄 Mobile: Updated modalState.collectedMachines');
 
           // Get the proper location ID from the first machine
           const firstCollection = response.data[0];
@@ -1240,10 +1272,20 @@ export default function MobileCollectionModal({
           console.warn('🔄 Mobile: No existing collections found');
           // Clear any existing state if no collections found
           setStoreCollectedMachines([]);
+          // Also update modalState directly to ensure UI updates immediately
+          setModalState(prev => ({
+            ...prev,
+            collectedMachines: [],
+          }));
         }
       } catch (error) {
         console.error('Error fetching existing collections:', error);
         setStoreCollectedMachines([]);
+        // Also update modalState directly to ensure UI updates immediately
+        setModalState(prev => ({
+          ...prev,
+          collectedMachines: [],
+        }));
       } finally {
         setModalState(prev => ({ ...prev, isLoadingCollections: false }));
       }
@@ -1257,17 +1299,73 @@ export default function MobileCollectionModal({
     ]
   );
 
+  // Track if we've already fetched collections on modal open to prevent re-fetching when auto-selecting location
+  const hasFetchedOnOpenRef = useRef(false);
+  // Track if we're updating from modalState to prevent sync loop
+  const isUpdatingFromModalStateRef = useRef(false);
+
   // Fetch existing collections when modal opens (server-side driven, no local state dependency)
   useEffect(() => {
     if (show && locations.length > 0) {
-      console.warn('🔄 Mobile: Modal opened - fetching fresh collections data');
-      // Always fetch fresh data when modal opens, regardless of current state
-      fetchExistingCollections(selectedLocationId);
+      if (!hasFetchedOnOpenRef.current) {
+        console.warn('🔄 Mobile: Modal opened - fetching fresh collections data');
+        // Always fetch fresh data when modal opens, regardless of current state
+        // Don't pass locationId on initial fetch to get all incomplete collections
+        fetchExistingCollections(undefined);
+        hasFetchedOnOpenRef.current = true;
+      }
+    } else if (!show) {
+      // Reset the ref when modal closes
+      hasFetchedOnOpenRef.current = false;
     }
-  }, [show, selectedLocationId, fetchExistingCollections, locations.length]);
+  }, [show, fetchExistingCollections, locations.length]);
 
-  // Sync mobile state with Zustand store for proper state sharing
+  // Sync modalState.collectedMachines and lockedLocationId to Zustand store when they change
+  // This handles updates from deleteMachineFromList and other local state changes
   useEffect(() => {
+    if (modalState.isLoadingCollections || isUpdatingFromModalStateRef.current) {
+      return; // Don't sync while loading collections or when we're updating from Zustand
+    }
+    // Only sync if modalState.collectedMachines is different from Zustand store
+    if (modalState.collectedMachines.length !== collectedMachines.length ||
+        modalState.collectedMachines.some((m, i) => m._id !== collectedMachines[i]?._id)) {
+      isUpdatingFromModalStateRef.current = true;
+      setStoreCollectedMachines(modalState.collectedMachines);
+      // Also sync lockedLocationId if it changed
+      if (modalState.lockedLocationId !== lockedLocationId) {
+        if (modalState.lockedLocationId) {
+          setStoreLockedLocation(modalState.lockedLocationId);
+        }
+      }
+      // Reset flag after a microtask to allow Zustand to update
+      queueMicrotask(() => {
+        isUpdatingFromModalStateRef.current = false;
+      });
+    } else if (modalState.lockedLocationId !== lockedLocationId) {
+      // Sync lockedLocationId even if collectedMachines didn't change
+      isUpdatingFromModalStateRef.current = true;
+      if (modalState.lockedLocationId) {
+        setStoreLockedLocation(modalState.lockedLocationId);
+      }
+      queueMicrotask(() => {
+        isUpdatingFromModalStateRef.current = false;
+      });
+    }
+  }, [
+    modalState.collectedMachines,
+    modalState.lockedLocationId,
+    modalState.isLoadingCollections,
+    collectedMachines,
+    lockedLocationId,
+    setStoreCollectedMachines,
+    setStoreLockedLocation,
+  ]);
+
+  // Sync other Zustand store values to modalState
+  useEffect(() => {
+    if (modalState.isLoadingCollections || isUpdatingFromModalStateRef.current) {
+      return; // Don't sync while loading collections or when we're updating from modalState
+    }
     setModalState(prev => ({
       ...prev,
       selectedLocation: selectedLocationId || null,
@@ -1282,21 +1380,39 @@ export default function MobileCollectionModal({
     lockedLocationId,
     availableMachines,
     collectedMachines,
+    modalState.isLoadingCollections,
   ]);
 
   // Reset modal state when modal opens to ensure CollectedMachinesList is hidden
   useEffect(() => {
     if (show) {
+      console.warn('🔄 Mobile: Modal opened effect - checking collectedMachines');
+      console.warn('🔄 Mobile: Store collectedMachines.length:', collectedMachines.length);
+      console.warn('🔄 Mobile: modalState.collectedMachines.length:', modalState.collectedMachines.length);
+      console.warn('🔄 Mobile: isLoadingCollections:', modalState.isLoadingCollections);
+      
+      // Wait for collections to load before making decisions
+      if (modalState.isLoadingCollections) {
+        console.warn('🔄 Mobile: Still loading collections, skipping state reset');
+        return;
+      }
+      
+      // Check both store and modalState to see if we have collections
+      const hasCollections = collectedMachines.length > 0 || modalState.collectedMachines.length > 0;
+      console.warn('🔄 Mobile: hasCollections:', hasCollections);
+      
       // If we have collected machines, show the collected machines list
-      if (collectedMachines.length > 0) {
+      if (hasCollections) {
+        console.warn('🔄 Mobile: Showing collected machines list');
         setModalState(prev => ({
           ...prev,
           isMachineListVisible: false,
           isFormVisible: false,
           isCollectedListVisible: true,
         }));
-      } else if (collectedMachines.length === 0) {
+      } else {
         // Only reset panels if we have no collected machines (fresh start)
+        console.warn('🔄 Mobile: No collections, resetting to main screen');
         setModalState(prev => ({
           ...prev,
           isMachineListVisible: false,
@@ -1304,9 +1420,8 @@ export default function MobileCollectionModal({
           isCollectedListVisible: false,
         }));
       }
-      // If we have collected machines in create mode, keep panels as-is
     }
-  }, [show, setModalState, collectedMachines]);
+  }, [show, setModalState, collectedMachines, modalState.collectedMachines.length, modalState.isLoadingCollections]);
 
   if (!show) return null;
 
@@ -1479,59 +1594,59 @@ export default function MobileCollectionModal({
                         )}
 
                         {/* View Form Button - Show when there are collected machines */}
-                        {modalState.collectedMachines.length > 0 && (
-                          <button
-                            onClick={() => {
-                              pushNavigation('main'); // Track that we came from main screen
-                              setModalState(prev => ({
-                                ...prev,
-                                isCollectedListVisible: true,
-                                isViewingFinancialForm: true, // Show financial form instead of machine list
-                              }));
-                            }}
-                            className="w-full rounded-lg bg-purple-600 py-3 font-medium text-white hover:bg-purple-700"
-                          >
-                            View Form ({modalState.collectedMachines.length}{' '}
-                            machine
-                            {modalState.collectedMachines.length !== 1
-                              ? 's'
-                              : ''}
-                            )
-                          </button>
-                        )}
+                        {(() => {
+                          const hasCollections = modalState.collectedMachines.length > 0;
+                          console.warn('🔍 Mobile: View Form button check - modalState.collectedMachines.length:', modalState.collectedMachines.length, 'hasCollections:', hasCollections);
+                          return hasCollections ? (
+                            <button
+                              onClick={() => {
+                                pushNavigation('main'); // Track that we came from main screen
+                                setModalState(prev => ({
+                                  ...prev,
+                                  isCollectedListVisible: true,
+                                  isViewingFinancialForm: true, // Show financial form instead of machine list
+                                }));
+                              }}
+                              className="w-full rounded-lg bg-purple-600 py-3 font-medium text-white hover:bg-purple-700"
+                            >
+                              View Form ({modalState.collectedMachines.length}{' '}
+                              machine
+                              {modalState.collectedMachines.length !== 1
+                                ? 's'
+                                : ''}
+                              )
+                            </button>
+                          ) : null;
+                        })()}
 
-                        <button
-                          onClick={() => {
-                            if (modalState.collectedMachines.length === 0) {
-                              return;
-                            }
-                            pushNavigation('main'); // Track that we came from main screen
-                            setModalState(prev => ({
-                              ...prev,
-                              isCollectedListVisible: true,
-                              isViewingFinancialForm: false, // Show machine list instead of financial form
-                            }));
-                          }}
-                          className={`w-full rounded-lg py-3 font-medium ${
-                            (
-                              collectedMachines ||
-                              modalState.collectedMachines ||
-                              []
-                            ).length === 0
-                              ? 'cursor-not-allowed bg-gray-400 text-gray-200'
-                              : 'bg-green-600 text-white hover:bg-green-700'
-                          }`}
-                        >
-                          View Collected Machines (
-                          {
-                            (
-                              collectedMachines ||
-                              modalState.collectedMachines ||
-                              []
-                            ).length
-                          }
-                          )
-                        </button>
+                        {(() => {
+                          const hasCollections = modalState.collectedMachines.length > 0;
+                          console.warn('🔍 Mobile: View Collected Machines button check - modalState.collectedMachines.length:', modalState.collectedMachines.length, 'hasCollections:', hasCollections);
+                          return (
+                            <button
+                              onClick={() => {
+                                if (modalState.collectedMachines.length === 0) {
+                                  return;
+                                }
+                                pushNavigation('main'); // Track that we came from main screen
+                                setModalState(prev => ({
+                                  ...prev,
+                                  isCollectedListVisible: true,
+                                  isViewingFinancialForm: false, // Show machine list instead of financial form
+                                }));
+                              }}
+                              className={`w-full rounded-lg py-3 font-medium ${
+                                modalState.collectedMachines.length === 0
+                                  ? 'cursor-not-allowed bg-gray-400 text-gray-200'
+                                  : 'bg-green-600 text-white hover:bg-green-700'
+                              }`}
+                            >
+                              View Collected Machines (
+                              {modalState.collectedMachines.length}
+                              )
+                            </button>
+                          );
+                        })()}
                       </div>
                     )}
 

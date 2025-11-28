@@ -1,29 +1,33 @@
 /**
  * Compare APIs - Production Database
- * 
+ *
  * Compares the responses from:
  * - /api/locationAggregation (Dashboard)
  * - /api/reports/locations (Locations Page)
  * - /api/machines/aggregation (Cabinets Page)
- * 
+ *
  * READ-ONLY - Does not modify any data
  */
 
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.DATABASE_URL;
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URL ||
+  process.env.DATABASE_URL;
 
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI not found in environment variables');
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not found in environment variables');
   process.exit(1);
 }
 
 async function main() {
   console.log('🔍 Comparing APIs for Production Database\n');
   console.log('⚠️  READ-ONLY MODE - No data will be modified\n');
-  
-  const client = new MongoClient(MONGO_URI);
+
+  const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
@@ -43,21 +47,25 @@ async function main() {
     // STEP 1: Get locations and their gaming day ranges
     // ============================================================================
     console.log('📍 Fetching locations...');
-    const locations = await db.collection('gaminglocations')
-      .find({
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      }, {
-        projection: {
-          _id: 1,
-          name: 1,
-          gameDayOffset: 1,
-          'rel.licencee': 1,
-          country: 1,
+    const locations = await db
+      .collection('gaminglocations')
+      .find(
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
         },
-      })
+        {
+          projection: {
+            _id: 1,
+            name: 1,
+            gameDayOffset: 1,
+            'rel.licencee': 1,
+            country: 1,
+          },
+        }
+      )
       .toArray();
 
     console.log(`   Found ${locations.length} locations\n`);
@@ -66,11 +74,13 @@ async function main() {
     // STEP 2: Calculate gaming day ranges for each location
     // ============================================================================
     console.log('📅 Calculating gaming day ranges...');
-    
+
     // Simple gaming day range calculation for "Yesterday"
     const nowUtc = new Date();
     const timezoneOffset = -4; // UTC-4 for Trinidad/Guyana/Barbados
-    const nowLocal = new Date(nowUtc.getTime() + timezoneOffset * 60 * 60 * 1000);
+    const nowLocal = new Date(
+      nowUtc.getTime() + timezoneOffset * 60 * 60 * 1000
+    );
     const today = new Date(
       Date.UTC(
         nowLocal.getUTCFullYear(),
@@ -88,7 +98,7 @@ async function main() {
       const gameDayOffset = loc.gameDayOffset ?? 8;
       const rangeStart = new Date(yesterdayBase);
       rangeStart.setUTCHours(gameDayOffset - timezoneOffset, 0, 0, 0);
-      
+
       const rangeEnd = new Date(yesterdayBase);
       rangeEnd.setDate(rangeEnd.getDate() + 1);
       rangeEnd.setUTCHours(gameDayOffset - timezoneOffset, 0, 0, 0);
@@ -104,7 +114,9 @@ async function main() {
       };
     });
 
-    console.log(`   Calculated ranges for ${locationRanges.length} locations\n`);
+    console.log(
+      `   Calculated ranges for ${locationRanges.length} locations\n`
+    );
 
     // ============================================================================
     // STEP 3: Simulate locationAggregation API logic
@@ -114,16 +126,20 @@ async function main() {
 
     for (const locRange of locationRanges) {
       // Get machines for this location (as string)
-      const machines = await db.collection('machines')
-        .find({
-          gamingLocation: locRange.locationId,
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
-          ],
-        }, {
-          projection: { _id: 1 },
-        })
+      const machines = await db
+        .collection('machines')
+        .find(
+          {
+            gamingLocation: locRange.locationId,
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          },
+          {
+            projection: { _id: 1 },
+          }
+        )
         .toArray();
 
       const machineIds = machines.map(m => m._id.toString());
@@ -139,7 +155,8 @@ async function main() {
       }
 
       // Aggregate meters
-      const metersAgg = await db.collection('meters')
+      const metersAgg = await db
+        .collection('meters')
         .aggregate([
           {
             $match: {
@@ -154,7 +171,9 @@ async function main() {
             $group: {
               _id: null,
               moneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-              moneyOut: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
+              moneyOut: {
+                $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+              },
             },
           },
         ])
@@ -180,28 +199,36 @@ async function main() {
       { moneyIn: 0, moneyOut: 0, gross: 0 }
     );
 
-    console.log(`   Location Aggregation Total: Money In = ${locationAggTotal.moneyIn.toFixed(2)}`);
-    console.log(`   Locations with data: ${locationAggregationResults.filter(l => l.moneyIn > 0).length}\n`);
+    console.log(
+      `   Location Aggregation Total: Money In = ${locationAggTotal.moneyIn.toFixed(2)}`
+    );
+    console.log(
+      `   Locations with data: ${locationAggregationResults.filter(l => l.moneyIn > 0).length}\n`
+    );
 
     // ============================================================================
     // STEP 4: Simulate machines/aggregation API logic
     // ============================================================================
     console.log('🔍 Simulating /api/machines/aggregation logic...');
-    
+
     // Get all machines
-    const allMachines = await db.collection('machines')
-      .find({
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      }, {
-        projection: {
-          _id: 1,
-          gamingLocation: 1,
-          'rel.licencee': 1,
+    const allMachines = await db
+      .collection('machines')
+      .find(
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
         },
-      })
+        {
+          projection: {
+            _id: 1,
+            gamingLocation: 1,
+            'rel.licencee': 1,
+          },
+        }
+      )
       .toArray();
 
     console.log(`   Found ${allMachines.length} machines`);
@@ -211,7 +238,7 @@ async function main() {
     for (const machine of allMachines) {
       const locId = machine.gamingLocation?.toString();
       if (!locId) continue;
-      
+
       if (!machinesByLocation.has(locId)) {
         machinesByLocation.set(locId, []);
       }
@@ -233,7 +260,8 @@ async function main() {
       }
 
       // Aggregate meters for this location's machines
-      const metersAgg = await db.collection('meters')
+      const metersAgg = await db
+        .collection('meters')
         .aggregate([
           {
             $match: {
@@ -248,7 +276,9 @@ async function main() {
             $group: {
               _id: null,
               moneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-              moneyOut: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
+              moneyOut: {
+                $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+              },
             },
           },
         ])
@@ -274,17 +304,27 @@ async function main() {
       { moneyIn: 0, moneyOut: 0, gross: 0 }
     );
 
-    console.log(`   Machines Aggregation Total: Money In = ${machinesAggTotal.moneyIn.toFixed(2)}`);
-    console.log(`   Locations with data: ${machinesAggregationResults.filter(l => l.moneyIn > 0).length}\n`);
+    console.log(
+      `   Machines Aggregation Total: Money In = ${machinesAggTotal.moneyIn.toFixed(2)}`
+    );
+    console.log(
+      `   Locations with data: ${machinesAggregationResults.filter(l => l.moneyIn > 0).length}\n`
+    );
 
     // ============================================================================
     // STEP 5: Compare results
     // ============================================================================
     console.log('📊 COMPARISON RESULTS:\n');
     console.log('='.repeat(80));
-    console.log(`Location Aggregation API: Money In = ${locationAggTotal.moneyIn.toFixed(2)}`);
-    console.log(`Machines Aggregation API: Money In = ${machinesAggTotal.moneyIn.toFixed(2)}`);
-    console.log(`Difference: ${Math.abs(locationAggTotal.moneyIn - machinesAggTotal.moneyIn).toFixed(2)}`);
+    console.log(
+      `Location Aggregation API: Money In = ${locationAggTotal.moneyIn.toFixed(2)}`
+    );
+    console.log(
+      `Machines Aggregation API: Money In = ${machinesAggTotal.moneyIn.toFixed(2)}`
+    );
+    console.log(
+      `Difference: ${Math.abs(locationAggTotal.moneyIn - machinesAggTotal.moneyIn).toFixed(2)}`
+    );
     console.log('='.repeat(80));
     console.log();
 
@@ -293,8 +333,10 @@ async function main() {
     const differences = [];
     for (let i = 0; i < locationAggregationResults.length; i++) {
       const locAgg = locationAggregationResults[i];
-      const machAgg = machinesAggregationResults.find(m => m.location === locAgg.location);
-      
+      const machAgg = machinesAggregationResults.find(
+        m => m.location === locAgg.location
+      );
+
       if (machAgg && Math.abs(locAgg.moneyIn - machAgg.moneyIn) > 0.01) {
         differences.push({
           location: locAgg.locationName,
@@ -310,11 +352,17 @@ async function main() {
     if (differences.length === 0) {
       console.log('   ✅ No differences found - APIs return the same values\n');
     } else {
-      console.log(`   ⚠️  Found ${differences.length} locations with differences:\n`);
+      console.log(
+        `   ⚠️  Found ${differences.length} locations with differences:\n`
+      );
       differences.forEach(diff => {
         console.log(`   ${diff.location}:`);
-        console.log(`      Location Agg: ${diff.locationAgg.toFixed(2)} (${diff.locMachines} machines)`);
-        console.log(`      Machines Agg: ${diff.machinesAgg.toFixed(2)} (${diff.machMachines} machines)`);
+        console.log(
+          `      Location Agg: ${diff.locationAgg.toFixed(2)} (${diff.locMachines} machines)`
+        );
+        console.log(
+          `      Machines Agg: ${diff.machinesAgg.toFixed(2)} (${diff.machMachines} machines)`
+        );
         console.log(`      Difference: ${diff.diff.toFixed(2)}\n`);
       });
     }
@@ -324,7 +372,9 @@ async function main() {
     locationAggregationResults
       .filter(l => l.moneyIn > 0)
       .forEach(loc => {
-        console.log(`   ${loc.locationName}: ${loc.moneyIn.toFixed(2)} (${loc.machineCount} machines)`);
+        console.log(
+          `   ${loc.locationName}: ${loc.moneyIn.toFixed(2)} (${loc.machineCount} machines)`
+        );
       });
     console.log();
 
@@ -332,10 +382,11 @@ async function main() {
     machinesAggregationResults
       .filter(l => l.moneyIn > 0)
       .forEach(loc => {
-        console.log(`   ${loc.locationName}: ${loc.moneyIn.toFixed(2)} (${loc.machineCount} machines)`);
+        console.log(
+          `   ${loc.locationName}: ${loc.moneyIn.toFixed(2)} (${loc.machineCount} machines)`
+        );
       });
     console.log();
-
   } catch (error) {
     console.error('❌ Error:', error);
   } finally {
@@ -345,4 +396,3 @@ async function main() {
 }
 
 main();
-

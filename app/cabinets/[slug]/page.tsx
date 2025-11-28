@@ -52,6 +52,9 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import AccountingDetails from '@/components/cabinetDetails/AccountingDetails';
 import { NetworkError, NotFoundError, UnauthorizedError } from '@/components/ui/errors';
 import RefreshButton from '@/components/ui/RefreshButton';
+import Chart from '@/components/ui/dashboard/Chart';
+import { getMachineChartData } from '@/lib/helpers/machineChart';
+import type { dashboardData } from '@/lib/types';
 import { format } from 'date-fns';
 import { Check, Pencil, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -121,7 +124,7 @@ function CabinetDetailPageContent() {
     customDateRange,
     setDisplayCurrency: setDashboardCurrency,
   } = useDashBoardStore();
-  const { setDisplayCurrency } = useCurrency();
+  const { setDisplayCurrency, displayCurrency } = useCurrency();
   const { openEditModal } = useCabinetActionsStore();
   const hasMounted = useHasMounted();
 
@@ -130,6 +133,8 @@ function CabinetDetailPageContent() {
   // ============================================================================
   const [isClient, setIsClient] = useState(false);
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
+  const [chartData, setChartData] = useState<dashboardData[]>([]);
+  const [loadingChart, setLoadingChart] = useState(false);
 
   // ============================================================================
   // Computed Values - Permissions
@@ -245,6 +250,39 @@ function CabinetDetailPageContent() {
 
     setDefaultCurrencyForCabinet();
   }, [cabinet?.gamingLocation, user, setDisplayCurrency, setDashboardCurrency]);
+
+  // Fetch chart data for this specific machine
+  useEffect(() => {
+    const fetchChartData = async () => {
+      if (!cabinet?._id || !activeMetricsFilter) return;
+
+      setLoadingChart(true);
+      try {
+        const data = await getMachineChartData(
+          String(cabinet._id),
+          activeMetricsFilter,
+          customDateRange.startDate,
+          customDateRange.endDate,
+          displayCurrency
+        );
+
+        setChartData(data);
+      } catch (error) {
+        console.error('Error fetching chart data:', error);
+        setChartData([]);
+      } finally {
+        setLoadingChart(false);
+      }
+    };
+
+    fetchChartData();
+  }, [
+    cabinet?._id,
+    activeMetricsFilter,
+    customDateRange.startDate,
+    customDateRange.endDate,
+    displayCurrency,
+  ]);
 
   // ============================================================================
   // Event Handlers
@@ -2094,6 +2132,25 @@ function CabinetDetailPageContent() {
           </div>
         </div>
 
+        {/* Chart - Above Accounting Details on md+ screens, below on mobile */}
+        <div className="hidden md:block mb-6">
+          {loadingChart ? (
+            <div className="rounded-lg bg-container p-6 shadow-md">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="h-6 w-32 animate-pulse rounded bg-gray-200"></div>
+                <div className="h-8 w-24 animate-pulse rounded bg-gray-200"></div>
+              </div>
+              <div className="h-[320px] w-full animate-pulse rounded-md bg-gray-200" />
+            </div>
+          ) : (
+            <Chart
+              loadingChartData={loadingChart}
+              chartData={chartData}
+              activeMetricsFilter={activeMetricsFilter}
+            />
+          )}
+        </div>
+
         {/* Accounting Details with Sidebar Menu */}
         {cabinet ? (
           <AccountingDetails
@@ -2105,6 +2162,25 @@ function CabinetDetailPageContent() {
             onDataRefresh={fetchCabinetDetailsData}
           />
         ) : null}
+
+        {/* Chart - Below Accounting Details on mobile */}
+        <div className="md:hidden mt-6">
+          {loadingChart ? (
+            <div className="rounded-lg bg-container p-6 shadow-md">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="h-6 w-32 animate-pulse rounded bg-gray-200"></div>
+                <div className="h-8 w-24 animate-pulse rounded bg-gray-200"></div>
+              </div>
+              <div className="h-[320px] w-full animate-pulse rounded-md bg-gray-200" />
+            </div>
+          ) : (
+            <Chart
+              loadingChartData={loadingChart}
+              chartData={chartData}
+              activeMetricsFilter={activeMetricsFilter}
+            />
+          )}
+        </div>
 
         {/* Floating Refresh Button */}
         <AnimatePresence>

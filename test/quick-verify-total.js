@@ -1,6 +1,6 @@
 /**
  * Quick Verify Total - Production Database
- * 
+ *
  * Quickly determines the correct total by sampling and comparing
  * READ-ONLY - Does not modify any data
  */
@@ -8,18 +8,22 @@
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.DATABASE_URL;
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URL ||
+  process.env.DATABASE_URL;
 
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI not found in environment variables');
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not found in environment variables');
   process.exit(1);
 }
 
 async function main() {
   console.log('🔍 Quick Verify Total - Production Database\n');
   console.log('⚠️  READ-ONLY MODE - No data will be modified\n');
-  
-  const client = new MongoClient(MONGO_URI);
+
+  const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
@@ -30,7 +34,9 @@ async function main() {
     // Calculate gaming day range for "Yesterday"
     const nowUtc = new Date();
     const timezoneOffset = -4;
-    const nowLocal = new Date(nowUtc.getTime() + timezoneOffset * 60 * 60 * 1000);
+    const nowLocal = new Date(
+      nowUtc.getTime() + timezoneOffset * 60 * 60 * 1000
+    );
     const today = new Date(
       Date.UTC(
         nowLocal.getUTCFullYear(),
@@ -47,22 +53,28 @@ async function main() {
     // ============================================================================
     // STEP 1: Get all locations with deletedAt filter
     // ============================================================================
-    const locations = await db.collection('gaminglocations')
-      .find({
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2020-01-01') } },
-        ],
-      }, {
-        projection: {
-          _id: 1,
-          name: 1,
-          gameDayOffset: 1,
+    const locations = await db
+      .collection('gaminglocations')
+      .find(
+        {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2020-01-01') } },
+          ],
         },
-      })
+        {
+          projection: {
+            _id: 1,
+            name: 1,
+            gameDayOffset: 1,
+          },
+        }
+      )
       .toArray();
 
-    console.log(`📍 Found ${locations.length} locations (with deletedAt filter)\n`);
+    console.log(
+      `📍 Found ${locations.length} locations (with deletedAt filter)\n`
+    );
 
     // ============================================================================
     // STEP 2: Calculate total using same logic as APIs
@@ -75,42 +87,54 @@ async function main() {
     const batchSize = 50;
     for (let i = 0; i < locations.length; i += batchSize) {
       const batch = locations.slice(i, i + batchSize);
-      console.log(`   Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(locations.length / batchSize)} (${batch.length} locations)...`);
+      console.log(
+        `   Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(locations.length / batchSize)} (${batch.length} locations)...`
+      );
 
       const batchResults = await Promise.all(
-        batch.map(async (location) => {
+        batch.map(async location => {
           const locationId = location._id.toString();
           const gameDayOffset = location.gameDayOffset ?? 8;
-          
+
           const rangeStart = new Date(yesterdayBase);
           rangeStart.setUTCHours(gameDayOffset - timezoneOffset, 0, 0, 0);
-          
+
           const rangeEnd = new Date(yesterdayBase);
           rangeEnd.setDate(rangeEnd.getDate() + 1);
           rangeEnd.setUTCHours(gameDayOffset - timezoneOffset, 0, 0, 0);
           rangeEnd.setMilliseconds(rangeEnd.getMilliseconds() - 1);
 
           // Get machines with deletedAt filter
-          const machines = await db.collection('machines')
-            .find({
-              gamingLocation: locationId,
-              $or: [
-                { deletedAt: null },
-                { deletedAt: { $lt: new Date('2020-01-01') } },
-              ],
-            }, {
-              projection: { _id: 1 },
-            })
+          const machines = await db
+            .collection('machines')
+            .find(
+              {
+                gamingLocation: locationId,
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date('2020-01-01') } },
+                ],
+              },
+              {
+                projection: { _id: 1 },
+              }
+            )
             .toArray();
 
           if (machines.length === 0) {
-            return { locationId, locationName: location.name, moneyIn: 0, machineCount: 0 };
+            return {
+              locationId,
+              locationName: location.name,
+              moneyIn: 0,
+              machineCount: 0,
+            };
           }
 
           const machineIds = machines.map(m => m._id.toString());
 
           // Aggregate meters
-          const metrics = await db.collection('meters')
+          const metrics = await db
+            .collection('meters')
             .aggregate([
               {
                 $match: {
@@ -122,7 +146,9 @@ async function main() {
                 $group: {
                   _id: null,
                   moneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-                  moneyOut: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
+                  moneyOut: {
+                    $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                  },
                 },
               },
             ])
@@ -175,10 +201,16 @@ async function main() {
     const dashboardDiff = Math.abs(total.moneyIn - 62592.19);
 
     if (locationsDiff < dashboardDiff) {
-      console.log(`✅ Locations Page is CLOSER to database (difference: $${locationsDiff.toFixed(2)})`);
-      console.log(`   Dashboard/Cabinets difference: $${dashboardDiff.toFixed(2)}`);
+      console.log(
+        `✅ Locations Page is CLOSER to database (difference: $${locationsDiff.toFixed(2)})`
+      );
+      console.log(
+        `   Dashboard/Cabinets difference: $${dashboardDiff.toFixed(2)}`
+      );
     } else {
-      console.log(`✅ Dashboard/Cabinets is CLOSER to database (difference: $${dashboardDiff.toFixed(2)})`);
+      console.log(
+        `✅ Dashboard/Cabinets is CLOSER to database (difference: $${dashboardDiff.toFixed(2)})`
+      );
       console.log(`   Locations Page difference: $${locationsDiff.toFixed(2)}`);
     }
     console.log();
@@ -189,10 +221,11 @@ async function main() {
       .sort((a, b) => b.moneyIn - a.moneyIn)
       .slice(0, 15)
       .forEach((loc, idx) => {
-        console.log(`   ${(idx + 1).toString().padStart(2)}. ${loc.locationName.padEnd(40)} $${loc.moneyIn.toFixed(2).padStart(12)} (${loc.machineCount} machines)`);
+        console.log(
+          `   ${(idx + 1).toString().padStart(2)}. ${loc.locationName.padEnd(40)} $${loc.moneyIn.toFixed(2).padStart(12)} (${loc.machineCount} machines)`
+        );
       });
     console.log();
-
   } catch (error) {
     console.error('❌ Error:', error);
   } finally {
@@ -202,4 +235,3 @@ async function main() {
 }
 
 main();
-

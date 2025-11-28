@@ -1849,7 +1849,9 @@ export default function NewCollectionModal({
       }
 
       // Update the machine's collection history (remove the entry)
-      if (entryData) {
+      // Only do this for completed collections that have a locationReportId
+      // Incomplete collections don't have history entries yet
+      if (entryData && entryData.locationReportId) {
         try {
           console.warn('🔄 Deleting from machine collection history:', {
             machineId: entryData.machineId,
@@ -1858,6 +1860,7 @@ export default function NewCollectionModal({
             prevOut: entryData.prevOut,
             metersIn: entryData.metersIn,
             metersOut: entryData.metersOut,
+            locationReportId: entryData.locationReportId,
           });
 
           await updateMachineCollectionHistory(
@@ -1903,6 +1906,10 @@ export default function NewCollectionModal({
             );
           }
         }
+      } else if (entryData) {
+        console.warn(
+          '📝 Skipping machine collection history update - incomplete collection (no locationReportId)'
+        );
       }
 
       toast.success('Machine deleted!', { position: 'top-left' });

@@ -15,9 +15,9 @@ const mongooseCache: {
  * Reads directly from process.env to support dynamic updates
  */
 function getMongodbUri(): string {
-  const uri = process.env.MONGO_URI;
+  const uri = process.env.MONGODB_URI;
   if (typeof window === 'undefined' && !uri) {
-    throw new Error('MONGO_URI not set in environment variables');
+    throw new Error('MONGODB_URI not set in environment variables');
   }
   return uri || '';
 }
@@ -55,7 +55,7 @@ export async function connectDB() {
   const MONGODB_URI = getMongodbUri();
 
   if (!MONGODB_URI) {
-    throw new Error('MONGO_URI not set in environment variables');
+    throw new Error('MONGODB_URI not set in environment variables');
   }
 
   // Detect connection string change - close old connection and reconnect

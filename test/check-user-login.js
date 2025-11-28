@@ -6,10 +6,10 @@
 require('dotenv').config({ path: '.env' });
 const mongoose = require('mongoose');
 
-const MONGO_URI = process.env.MONGO_URI;
+const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI not found in .env');
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not found in .env');
   process.exit(1);
 }
 
@@ -18,7 +18,7 @@ const emailToCheck = process.argv[2] || 'aaronsploit@gmail.com';
 async function checkUser() {
   try {
     console.log('🔌 Connecting to MongoDB...');
-    await mongoose.connect(MONGO_URI);
+    await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to MongoDB\n');
 
     const UserModel = mongoose.model(
@@ -54,7 +54,9 @@ async function checkUser() {
         if (similarUsers.length > 0) {
           console.log(`\n📋 Found ${similarUsers.length} similar user(s):`);
           similarUsers.forEach(u => {
-            console.log(`   - ${u.emailAddress} (username: ${u.username}, enabled: ${u.isEnabled})`);
+            console.log(
+              `   - ${u.emailAddress} (username: ${u.username}, enabled: ${u.isEnabled})`
+            );
           });
         } else {
           console.log('❌ No similar users found');
@@ -70,9 +72,15 @@ async function checkUser() {
       console.log('   Has Password:', !!user.password);
       console.log('   Deleted At:', user.deletedAt);
       console.log('   Session Version:', user.sessionVersion);
-      console.log('   Assigned Locations:', user.assignedLocations?.length || 0);
-      console.log('   Assigned Licensees:', user.assignedLicensees?.length || 0);
-      
+      console.log(
+        '   Assigned Locations:',
+        user.assignedLocations?.length || 0
+      );
+      console.log(
+        '   Assigned Licensees:',
+        user.assignedLicensees?.length || 0
+      );
+
       if (!user.isEnabled) {
         console.log('\n⚠️  WARNING: User account is DISABLED');
       }
@@ -94,4 +102,3 @@ async function checkUser() {
 }
 
 checkUser();
-

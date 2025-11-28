@@ -4,10 +4,10 @@ import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 import { InfoConfirmationDialog } from '@/components/ui/InfoConfirmationDialog';
 import { LocationSelect } from '@/components/ui/custom-select';
 import {
-  Dialog,
-  DialogContent,
-  DialogPortal,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogPortal,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { PCDateTimePicker } from '@/components/ui/pc-date-time-picker';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,8 +17,8 @@ import { useDebounce, useDebouncedCallback } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-  CollectionReportLocationWithMachines,
-  CollectionReportMachineSummary,
+    CollectionReportLocationWithMachines,
+    CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collections';
 import { formatDate } from '@/lib/utils/formatting';
@@ -763,35 +763,60 @@ export default function MobileEditCollectionModal({
 
   // Delete machine from collection list
   const deleteMachineFromList = useCallback(
-    (entryId: string) => {
-      setModalState(prev => {
-        const newCollectedMachines = prev.collectedMachines.filter(
-          m => m._id !== entryId
+    async (entryId: string) => {
+      setModalState(prev => ({ ...prev, isProcessing: true }));
+      
+      try {
+        // Find the entry data before deletion for logging
+        const entryToDeleteData = modalState.collectedMachines.find(
+          e => e._id === entryId
         );
-        const newLockedLocationId =
-          newCollectedMachines.length === 0 ? undefined : prev.lockedLocationId;
-
-        // Persist to Zustand store
-        setStoreCollectedMachines(newCollectedMachines);
-        if (newLockedLocationId !== prev.lockedLocationId) {
-          setStoreLockedLocation(newLockedLocationId);
-        }
-
-        return {
-          ...prev,
-          collectedMachines: newCollectedMachines,
-          // CRITICAL: Also update originalCollections to prevent batch update errors
-          // When we delete a machine, it's no longer in the report
-          originalCollections: prev.originalCollections.filter(
+        
+        // Call the delete API to actually delete from database
+        await axios.delete(`/api/collections?id=${entryId}`);
+        
+        console.warn('📱 Mobile Edit: Collection deleted from database:', entryId);
+        
+        // Update local state after successful deletion
+        setModalState(prev => {
+          const newCollectedMachines = prev.collectedMachines.filter(
             m => m._id !== entryId
-          ),
-          // Unlock location if no machines remain
-          lockedLocationId: newLockedLocationId,
-        };
-      });
-      // Success feedback is handled by UI state changes
+          );
+          const newLockedLocationId =
+            newCollectedMachines.length === 0 ? undefined : prev.lockedLocationId;
+
+          // Persist to Zustand store
+          setStoreCollectedMachines(newCollectedMachines);
+          if (newLockedLocationId !== prev.lockedLocationId) {
+            setStoreLockedLocation(newLockedLocationId);
+          }
+
+          return {
+            ...prev,
+            collectedMachines: newCollectedMachines,
+            // CRITICAL: Also update originalCollections to prevent batch update errors
+            // When we delete a machine, it's no longer in the report
+            originalCollections: prev.originalCollections.filter(
+              m => m._id !== entryId
+            ),
+            // Unlock location if no machines remain
+            lockedLocationId: newLockedLocationId,
+            isProcessing: false,
+          };
+        });
+        
+        toast.success(
+          entryToDeleteData?.machineCustomName 
+            ? `Removed ${entryToDeleteData.machineCustomName} from collection`
+            : 'Collection removed successfully'
+        );
+      } catch (error) {
+        console.error('📱 Mobile Edit: Failed to delete collection:', error);
+        setModalState(prev => ({ ...prev, isProcessing: false }));
+        toast.error('Failed to remove collection. Please try again.');
+      }
     },
-    [setStoreCollectedMachines, setStoreLockedLocation]
+    [setStoreCollectedMachines, setStoreLockedLocation, modalState.collectedMachines]
   );
 
   // Edit machine in collection list
@@ -3336,6 +3361,23 @@ export default function MobileEditCollectionModal({
                                 modalState.isProcessing
                               )
                                 return;
+                              
+                              // Check if user is currently editing a machine entry
+                              if (modalState.editingEntryId) {
+                                setShowUnsavedChangesWarning(true);
+                                return;
+                              }
+                              
+                              // Check if there's unsaved form data
+                              const enteredMetersIn = modalState.formData.metersIn ? Number(modalState.formData.metersIn) : 0;
+                              const enteredMetersOut = modalState.formData.metersOut ? Number(modalState.formData.metersOut) : 0;
+                              const hasNotes = modalState.formData.notes?.trim().length > 0;
+                              
+                              if (modalState.selectedMachineData || enteredMetersIn !== 0 || enteredMetersOut !== 0 || hasNotes) {
+                                setShowUnsavedChangesWarning(true);
+                                return;
+                              }
+                              
                               setShowCreateReportConfirmation(true);
                             }}
                             disabled={

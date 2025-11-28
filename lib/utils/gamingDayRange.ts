@@ -213,6 +213,18 @@ export function getGamingDayRangeForPeriod(
         );
       }
 
+      // Validate dates are valid Date objects
+      if (
+        !(customStartDate instanceof Date) ||
+        !(customEndDate instanceof Date) ||
+        isNaN(customStartDate.getTime()) ||
+        isNaN(customEndDate.getTime())
+      ) {
+        throw new Error(
+          `Invalid date values: startDate=${customStartDate}, endDate=${customEndDate}`
+        );
+      }
+
       // For custom dates, apply gaming day offset
       // User selects: Oct 31 to Oct 31 (same day)
       // Means: Oct 31 gaming day start (e.g., 11 AM) to Nov 1 gaming day start (e.g., 11 AM) exclusive

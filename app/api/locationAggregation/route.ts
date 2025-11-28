@@ -104,8 +104,26 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      customStartDate = new Date(customStart + 'T00:00:00.000Z');
-      customEndDate = new Date(customEnd + 'T00:00:00.000Z');
+      // Parse dates - check if they already include time (ISO format) or just date
+      customStartDate = customStart.includes('T')
+        ? new Date(customStart)
+        : new Date(customStart + 'T00:00:00.000Z');
+      customEndDate = customEnd.includes('T')
+        ? new Date(customEnd)
+        : new Date(customEnd + 'T00:00:00.000Z');
+      
+      // Validate dates are valid
+      if (isNaN(customStartDate.getTime()) || isNaN(customEndDate.getTime())) {
+        const duration = Date.now() - startTime;
+        console.error(
+          `[Location Aggregation GET API] Invalid date format after ${duration}ms. startDate: ${customStart}, endDate: ${customEnd}`
+        );
+        return NextResponse.json(
+          { error: 'Invalid date format' },
+          { status: 400 }
+        );
+      }
+      
       startDate = customStartDate;
       endDate = customEndDate;
     } else {

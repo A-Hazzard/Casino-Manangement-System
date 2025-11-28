@@ -8,16 +8,16 @@
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URI;
 
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI not found in environment variables');
-  console.error('   Make sure .env.local exists with MONGO_URI set');
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not found in environment variables');
+  console.error('   Make sure .env.local exists with MONGODB_URI set');
   process.exit(1);
 }
 
 async function investigate() {
-  const client = new MongoClient(MONGO_URI);
+  const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();

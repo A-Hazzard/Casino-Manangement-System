@@ -1,8 +1,8 @@
 # Collection Reports System - Critical Guidelines for Cursor AI
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 4th, 2025  
-**Version:** 2.0.0
+**Last Updated:** November 28th, 2025  
+**Version:** 2.1.0
 
 ---
 
@@ -22,6 +22,13 @@ This document provides critical guidelines for understanding, debugging, and mod
 6. [API Endpoints Reference](#api-endpoints-reference)
 7. [State Management](#state-management)
 8. [Testing Guidelines](#testing-guidelines)
+9. [Related Documentation](#related-documentation)
+
+## Related Documentation
+
+- **Mobile Collection Modal Context**: See `.cursor/mobile-collection-modal-context.md` for detailed mobile modal state management, debugging, and common issues
+- **Collection Report Frontend Docs**: See `Documentation/frontend/collection-report.md` for feature documentation
+- **Collection Report Backend Docs**: See `Documentation/backend/collection-report.md` for API documentation
 
 ---
 

@@ -60,8 +60,8 @@ import { hasManagerAccess } from '@/lib/utils/permissions';
 // GSAP will be loaded dynamically in useEffect
 
 import {
-  fetchMonthlyReportLocations,
   fetchCollectionReportsByLicencee,
+  fetchMonthlyReportLocations,
   fetchMonthlyReportSummaryAndDetails,
   getLocationsWithMachines,
 } from '@/lib/helpers/collectionReport';
@@ -959,7 +959,7 @@ function CollectionReportContent() {
   ]);
 
   // Check if user has permission to edit/delete reports
-  // Only managers, admins, and developers can edit/delete
+  // Managers, admins, developers, and location admins can edit/delete
   // Collectors and technicians can only CREATE reports, not edit or delete
   const isDeveloper = useMemo(() => {
     return user?.roles?.includes('developer') ?? false;
@@ -972,8 +972,8 @@ function CollectionReportContent() {
     if (userRoles.includes('collector') || userRoles.includes('technician')) {
       return false;
     }
-    // Only manager-level access and above can edit/delete
-    return hasManagerAccess(user.roles);
+    // Manager-level access and above, plus location admins can edit/delete
+    return hasManagerAccess(user.roles) || userRoles.includes('location admin');
   }, [user]);
 
   // Determine which reports can be edited (only most recent per location)

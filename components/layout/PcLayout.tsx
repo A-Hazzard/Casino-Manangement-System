@@ -20,6 +20,8 @@
 'use client';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import TopPerformingLocationModal from '@/components/modals/TopPerformingLocationModal';
+import TopPerformingMachineModal from '@/components/modals/TopPerformingMachineModal';
 import Chart from '@/components/ui/dashboard/Chart';
 import MapPreview from '@/components/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons';
@@ -34,13 +36,14 @@ import type { TopPerformingItem } from '@/lib/types';
 import { PcLayoutProps } from '@/lib/types/componentProps';
 import { formatCurrency } from '@/lib/utils/currency';
 import {
+  getGrossColorClass,
   getMoneyInColorClass,
   getMoneyOutColorClass,
-  getGrossColorClass,
 } from '@/lib/utils/financialColors';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import axios from 'axios';
-import { RefreshCw } from 'lucide-react';
+import { ExternalLink, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import CustomSelect from '../ui/CustomSelect';
@@ -49,10 +52,24 @@ export default function PcLayout(props: PcLayoutProps) {
   // ============================================================================
   // Hooks & State
   // ============================================================================
+  const router = useRouter();
+  const [selectedMachine, setSelectedMachine] = useState<{
+    machineId?: string;
+    locationId?: string;
+    machineName?: string;
+    locationName?: string;
+    game?: string;
+    isLocation?: boolean;
+  } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    locationId?: string;
+    locationName?: string;
+  } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
-  const { shouldShowCurrency, displayCurrency } =
-    useCurrencyFormat();
+  const { shouldShowCurrency, displayCurrency } = useCurrencyFormat();
   const licenseeName =
     getLicenseeName(selectedLicencee) || selectedLicencee || 'any licensee';
 
@@ -114,9 +131,12 @@ export default function PcLayout(props: PcLayoutProps) {
 
       // Create unique key for this fetch
       const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${customDateRange?.startDate?.getTime()}-${customDateRange?.endDate?.getTime()}`;
-      
+
       // Skip if this exact fetch is already in progress
-      if (aggFetchInProgressRef.current && lastAggFetchRef.current === fetchKey) {
+      if (
+        aggFetchInProgressRef.current &&
+        lastAggFetchRef.current === fetchKey
+      ) {
         return;
       }
 
@@ -236,7 +256,10 @@ export default function PcLayout(props: PcLayoutProps) {
                   >
                     {props.totals
                       ? shouldShowCurrency()
-                        ? formatAmountWithCode(props.totals.moneyIn, displayCurrency)
+                        ? formatAmountWithCode(
+                            props.totals.moneyIn,
+                            displayCurrency
+                          )
                         : formatCurrency(props.totals.moneyIn)
                       : '--'}
                   </p>
@@ -257,7 +280,10 @@ export default function PcLayout(props: PcLayoutProps) {
                   >
                     {props.totals
                       ? shouldShowCurrency()
-                        ? formatAmountWithCode(props.totals.moneyOut, displayCurrency)
+                        ? formatAmountWithCode(
+                            props.totals.moneyOut,
+                            displayCurrency
+                          )
                         : formatCurrency(props.totals.moneyOut)
                       : '--'}
                   </p>
@@ -277,7 +303,10 @@ export default function PcLayout(props: PcLayoutProps) {
                   >
                     {props.totals
                       ? shouldShowCurrency()
-                        ? formatAmountWithCode(props.totals.gross, displayCurrency)
+                        ? formatAmountWithCode(
+                            props.totals.gross,
+                            displayCurrency
+                          )
                         : formatCurrency(props.totals.gross)
                       : '--'}
                   </p>
@@ -335,26 +364,32 @@ export default function PcLayout(props: PcLayoutProps) {
                   <h2 className="text-lg font-semibold">Top Performing</h2>
                   <div className="h-8 w-32 animate-pulse rounded bg-gray-200"></div>
                 </div>
-                <div className="flex overflow-hidden rounded-lg border border-gray-200">
-                  <div className="flex-1 bg-gray-100 px-4 py-2"></div>
-                  <div className="flex-1 bg-gray-100 px-4 py-2"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 space-y-2">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="flex items-center space-x-2">
-                        <div className="h-4 w-4 animate-pulse rounded-full bg-gray-200"></div>
-                        <div className="h-4 w-24 animate-pulse rounded bg-gray-200"></div>
-                      </div>
-                    ))}
+                <div
+                  className={`relative flex flex-col ${
+                    props.activeTab === 'locations'
+                      ? 'bg-container'
+                      : 'bg-buttonActive'
+                  } w-full rounded-lg rounded-tl-3xl rounded-tr-3xl shadow-md`}
+                >
+                  <div className="flex">
+                    <div className="w-full rounded-tl-xl rounded-tr-3xl bg-gray-100 px-4 py-2"></div>
+                    <div className="w-full rounded-tr-3xl bg-gray-100 px-4 py-2"></div>
                   </div>
-                  <div className="h-40 w-40 animate-pulse rounded-full bg-gray-200"></div>
+                  <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 space-y-2">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="flex items-center gap-2">
+                            <div className="h-4 w-4 flex-shrink-0 animate-pulse rounded-full bg-gray-200"></div>
+                            <div className="h-4 flex-1 animate-pulse rounded bg-gray-200"></div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="h-40 w-40 flex-shrink-0 animate-pulse rounded-full bg-gray-200"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            ) : props.topPerformingData.length === 0 ? (
-              <NoDataMessage
-                message={`No metrics found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
-              />
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -375,98 +410,236 @@ export default function PcLayout(props: PcLayoutProps) {
                   />
                 </div>
 
-                {/* Tabs */}
-                <div className="flex overflow-hidden rounded-lg border border-gray-200">
-                  <button
-                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                      props.activeTab === 'locations'
-                        ? 'bg-buttonActive text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    } ${
-                      props.activeTab !== 'locations' &&
-                      props.loadingTopPerforming
-                        ? 'cursor-not-allowed opacity-50'
-                        : ''
-                    }`}
-                    onClick={() => {
-                      if (
+                {/* Tabs with curved design matching mobile */}
+                <div
+                  className={`relative flex flex-col ${
+                    props.activeTab === 'locations'
+                      ? 'bg-container'
+                      : 'bg-buttonActive'
+                  } w-full rounded-lg rounded-tl-3xl rounded-tr-3xl shadow-md`}
+                >
+                  <div className="flex">
+                    <button
+                      className={`w-full rounded-tl-xl rounded-tr-3xl px-4 py-2 text-sm font-medium transition-colors ${
+                        props.activeTab === 'locations'
+                          ? 'bg-buttonActive text-white'
+                          : 'bg-container text-gray-700'
+                      } ${
                         props.activeTab !== 'locations' &&
                         props.loadingTopPerforming
-                      )
-                        return;
-                      props.setActiveTab('locations');
-                    }}
-                  >
-                    Locations
-                  </button>
-                  <button
-                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                      props.activeTab === 'Cabinets'
-                        ? 'bg-buttonActive text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    } ${
-                      props.activeTab !== 'Cabinets' &&
-                      props.loadingTopPerforming
-                        ? 'cursor-not-allowed opacity-50'
-                        : ''
-                    }`}
-                    onClick={() => {
-                      if (
+                          ? 'cursor-not-allowed opacity-50'
+                          : ''
+                      }`}
+                      onClick={() => {
+                        if (
+                          props.activeTab !== 'locations' &&
+                          props.loadingTopPerforming
+                        )
+                          return;
+                        props.setActiveTab('locations');
+                      }}
+                    >
+                      Locations
+                    </button>
+                    <button
+                      className={`w-full rounded-tr-3xl px-4 py-2 text-sm font-medium transition-colors ${
+                        props.activeTab === 'Cabinets'
+                          ? 'bg-buttonActive text-white'
+                          : 'bg-container text-gray-700'
+                      } ${
                         props.activeTab !== 'Cabinets' &&
                         props.loadingTopPerforming
-                      )
-                        return;
-                      props.setActiveTab('Cabinets');
-                    }}
-                  >
-                    Cabinets
-                  </button>
-                </div>
+                          ? 'cursor-not-allowed opacity-50'
+                          : ''
+                      }`}
+                      onClick={() => {
+                        if (
+                          props.activeTab !== 'Cabinets' &&
+                          props.loadingTopPerforming
+                        )
+                          return;
+                        props.setActiveTab('Cabinets');
+                      }}
+                    >
+                      Cabinets
+                    </button>
+                  </div>
 
-                {/* Chart and Legend */}
-                <div className="flex items-center justify-between">
-                  <ul className="flex-1 space-y-2">
-                    {props.topPerformingData.map(
-                      (item: TopPerformingItem, index: number) => (
-                        <li
-                          key={index}
-                          className="flex items-center space-x-2 text-sm"
-                        >
-                          <div
-                            className="h-4 w-4 rounded-full"
-                            style={{ backgroundColor: item.color }}
-                          ></div>
-                          <span className="text-gray-700">{item.name}</span>
-                        </li>
-                      )
+                  {/* Content area */}
+                  <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
+                    {props.topPerformingData.length === 0 ? (
+                      <NoDataMessage
+                        message={`No metrics found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <ul className="flex-1 space-y-2">
+                          {props.topPerformingData.map(
+                            (item: TopPerformingItem, index: number) => {
+                              // Debug: Log location data to verify locationId is present
+                              if (
+                                props.activeTab === 'locations' &&
+                                process.env.NODE_ENV === 'development'
+                              ) {
+                                console.log(
+                                  'Location item:',
+                                  item,
+                                  'has locationId:',
+                                  item.locationId
+                                );
+                              }
+                              return (
+                                <li
+                                  key={index}
+                                  className="flex items-center gap-2 text-sm"
+                                >
+                                  <div
+                                    className="h-4 w-4 flex-shrink-0 rounded-full"
+                                    style={{ backgroundColor: item.color }}
+                                  ></div>
+                                  {props.activeTab === 'Cabinets' &&
+                                  item.machineId ? (
+                                    <>
+                                      <span className="flex-1 text-gray-700">
+                                        {item.name}
+                                      </span>
+                                      <button
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          if (item.machineId) {
+                                            setSelectedMachine({
+                                              machineId: item.machineId,
+                                              machineName: item.name,
+                                              game: item.game,
+                                              locationName: item.location,
+                                              locationId: item.locationId,
+                                              isLocation: false,
+                                            });
+                                            setIsModalOpen(true);
+                                          }
+                                        }}
+                                        className="flex-shrink-0"
+                                        title="View machine preview"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
+                                      </button>
+                                    </>
+                                  ) : props.activeTab === 'locations' &&
+                                    item.locationId ? (
+                                    <>
+                                      <button
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          if (item.locationId) {
+                                            setSelectedLocation({
+                                              locationId: item.locationId,
+                                              locationName: item.name,
+                                            });
+                                            setIsLocationModalOpen(true);
+                                          }
+                                        }}
+                                        className="flex-1 cursor-pointer text-left text-gray-700 hover:text-blue-600 hover:underline"
+                                        title="View location preview"
+                                      >
+                                        {item.name}
+                                      </button>
+                                      <button
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          if (item.locationId) {
+                                            setSelectedLocation({
+                                              locationId: item.locationId,
+                                              locationName: item.name,
+                                            });
+                                            setIsLocationModalOpen(true);
+                                          }
+                                        }}
+                                        className="flex-shrink-0"
+                                        title="View location preview"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="flex-1 text-gray-700">
+                                      {item.name}
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            }
+                          )}
+                        </ul>
+                        <ResponsiveContainer width={160} height={160}>
+                          <PieChart>
+                            <Pie
+                              data={props.topPerformingData}
+                              dataKey="totalDrop"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={70}
+                              labelLine={false}
+                              label={props.renderCustomizedLabel}
+                            >
+                              {props.topPerformingData.map(
+                                (entry: TopPerformingItem, index: number) => (
+                                  <Cell key={index} fill={entry.color} />
+                                )
+                              )}
+                            </Pie>
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
                     )}
-                  </ul>
-                  <ResponsiveContainer width={160} height={160}>
-                    <PieChart>
-                      <Pie
-                        data={props.topPerformingData}
-                        dataKey="totalDrop"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={70}
-                        labelLine={false}
-                        label={props.renderCustomizedLabel}
-                      >
-                        {props.topPerformingData.map(
-                          (entry: TopPerformingItem, index: number) => (
-                            <Cell key={index} fill={entry.color} />
-                          )
-                        )}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Machine Preview Modal */}
+      {selectedMachine &&
+        selectedMachine.machineId &&
+        !selectedMachine.isLocation && (
+          <TopPerformingMachineModal
+            open={isModalOpen}
+            machineId={selectedMachine.machineId}
+            machineName={selectedMachine.machineName || ''}
+            game={selectedMachine.game}
+            locationName={selectedMachine.locationName}
+            locationId={selectedMachine.locationId}
+            onClose={() => {
+              setIsModalOpen(false);
+              setSelectedMachine(null);
+            }}
+            onNavigate={() => {
+              if (selectedMachine.machineId) {
+                router.push(`/cabinets/${selectedMachine.machineId}`);
+              }
+            }}
+          />
+        )}
+
+      {/* Location Preview Modal */}
+      {selectedLocation && selectedLocation.locationId && (
+        <TopPerformingLocationModal
+          open={isLocationModalOpen}
+          locationId={selectedLocation.locationId}
+          locationName={selectedLocation.locationName || ''}
+          onClose={() => {
+            setIsLocationModalOpen(false);
+            setSelectedLocation(null);
+          }}
+          onNavigate={() => {
+            if (selectedLocation.locationId) {
+              router.push(`/locations/${selectedLocation.locationId}`);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

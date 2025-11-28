@@ -137,6 +137,7 @@ export default function MembersContent() {
           disabled: false,
         }}
         hideLicenceeFilter={true}
+        hideCurrencyFilter={true}
         showToaster={false}
       >
         {/* Navigation */}

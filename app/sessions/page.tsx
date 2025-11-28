@@ -95,6 +95,7 @@ function SessionsPageContent() {
           selectedLicencee,
           setSelectedLicencee,
         }}
+        hideCurrencyFilter={true}
         showToaster={false}
       >
         {/* Main Content Section: Sessions page with animations */}

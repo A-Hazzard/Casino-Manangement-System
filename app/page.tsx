@@ -30,18 +30,18 @@ import { TimePeriod } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {
-  fetchMetricsData,
-  fetchTopPerformingDataHelper,
-  loadGamingLocations,
+    fetchMetricsData,
+    fetchTopPerformingDataHelper,
+    loadGamingLocations,
 } from '@/lib/helpers/dashboard';
 import { DashboardTotals, TopPerformingData } from '@/lib/types';
 import { CustomizedLabelProps } from '@/lib/types/componentProps';
 
 // Custom hooks
 import {
-  useDashboardFilters,
-  useDashboardRefresh,
-  useDashboardScroll,
+    useDashboardFilters,
+    useDashboardRefresh,
+    useDashboardScroll,
 } from '@/lib/hooks/data';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import { useUserStore } from '@/lib/store/userStore';
@@ -235,6 +235,11 @@ function DashboardContent() {
     stableHandleApiCallWithRetry,
   ]);
 
+  // Track if we're in initial load phase for automatic fallback
+  const isInitialLoadRef = useRef(true);
+  const fallbackAttemptsRef = useRef<TimePeriod[]>([]);
+  const isAutomaticFallbackRef = useRef(false);
+
   // Fetch top performing data when tab or filter changes
   useEffect(() => {
     // Fetch top performing data whenever we have a valid filter
@@ -242,13 +247,54 @@ function DashboardContent() {
       return;
     }
 
+    const currentFilter = (activePieChartFilter || 'Today') as TimePeriod;
+
+    // If this is not an automatic fallback and we're not in initial load, user manually changed filter
+    if (!isAutomaticFallbackRef.current && !isInitialLoadRef.current) {
+      // User manually changed filter, disable automatic fallbacks
+      fallbackAttemptsRef.current = [];
+    }
+
     stableHandleApiCallWithRetry(
       () =>
         fetchTopPerformingDataHelper(
           activeTab,
-          (activePieChartFilter || 'Today') as TimePeriod,
-          (data: TopPerformingData[]) =>
-            setTopPerformingData(data as unknown as TopPerformingData),
+          currentFilter,
+          (data: TopPerformingData) => {
+            setTopPerformingData(data);
+
+            // If no data and we're in initial load, try fallback periods
+            if (
+              isInitialLoadRef.current &&
+              data.length === 0 &&
+              !fallbackAttemptsRef.current.includes(currentFilter)
+            ) {
+              fallbackAttemptsRef.current.push(currentFilter);
+
+              // Define fallback order: Today -> Yesterday -> 7d -> 30d
+              const fallbackOrder: TimePeriod[] = ['Today', 'Yesterday', '7d', '30d'];
+              const currentIndex = fallbackOrder.indexOf(currentFilter);
+              const nextFallback = fallbackOrder[currentIndex + 1];
+
+              if (nextFallback && !fallbackAttemptsRef.current.includes(nextFallback)) {
+                // Automatically switch to next fallback period
+                isAutomaticFallbackRef.current = true;
+                setActivePieChartFilter(nextFallback);
+                // Reset flag after state update
+                setTimeout(() => {
+                  isAutomaticFallbackRef.current = false;
+                }, 0);
+              } else {
+                // All fallbacks exhausted, mark initial load as complete
+                isInitialLoadRef.current = false;
+                isAutomaticFallbackRef.current = false;
+              }
+            } else if (data.length > 0) {
+              // Data found, mark initial load as complete
+              isInitialLoadRef.current = false;
+              isAutomaticFallbackRef.current = false;
+            }
+          },
           setLoadingTopPerforming,
           selectedLicencee // Pass selected licensee for filtering
         ),
@@ -331,8 +377,8 @@ function DashboardContent() {
           setTotals={setTotals}
           setChartData={setChartData}
           setPieChartSortIsOpen={setPieChartSortIsOpen}
-          setTopPerformingData={(data: TopPerformingData[]) =>
-            setTopPerformingData(data as unknown as TopPerformingData)
+          setTopPerformingData={(data: TopPerformingData) =>
+            setTopPerformingData(data)
           }
           setActiveMetricsFilter={setActiveMetricsFilter}
           setActivePieChartFilter={setActivePieChartFilter}
@@ -365,8 +411,8 @@ function DashboardContent() {
           setTotals={setTotals}
           setChartData={setChartData}
           setPieChartSortIsOpen={setPieChartSortIsOpen}
-          setTopPerformingData={(data: TopPerformingData[]) =>
-            setTopPerformingData(data as unknown as TopPerformingData)
+          setTopPerformingData={(data: TopPerformingData) =>
+            setTopPerformingData(data)
           }
           setActiveMetricsFilter={setActiveMetricsFilter}
           setActivePieChartFilter={setActivePieChartFilter}

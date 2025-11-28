@@ -172,6 +172,28 @@ export default function Chart({
     console.warn('Final chart data (aggregated):', finalChartData);
   }
 
+  // Calculate Y-axis domain from actual data to avoid showing negative values when data doesn't go negative
+  const allValues: number[] = [];
+  finalChartData.forEach(item => {
+    allValues.push(item.moneyIn || 0);
+    allValues.push(item.moneyOut || 0);
+    allValues.push(item.gross || 0);
+  });
+  
+  let yAxisDomain: [number, number] | undefined = undefined;
+  
+  if (allValues.length > 0) {
+    const minValue = Math.min(...allValues);
+    const maxValue = Math.max(...allValues);
+    
+    // Calculate domain: only go negative if data actually goes negative
+    // Add 10% padding to the top, but don't go below 0 unless data actually goes negative
+    yAxisDomain = [
+      minValue < 0 ? minValue * 1.1 : 0,
+      maxValue > 0 ? maxValue * 1.1 : 0
+    ];
+  }
+
   return (
     <div className="rounded-lg bg-container p-6 shadow-md">
       <ResponsiveContainer width="100%" height={320}>
@@ -190,28 +212,26 @@ export default function Chart({
             }}
           />
           <YAxis
+            domain={yAxisDomain || ['auto', 'auto']}
             tickFormatter={(value) => {
-              // Format Y-axis values to 2 decimal places
-              return typeof value === 'number'
-                ? value.toFixed(2)
-                : typeof value === 'string'
-                  ? parseFloat(value).toFixed(2)
-                  : String(value);
+              // Format large numbers compactly for Y-axis to prevent overflow
+              const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+              if (numValue === 0) return '0';
+              if (numValue < 1000) return numValue.toFixed(0);
+              if (numValue < 1000000) return `${(numValue / 1000).toFixed(1)}K`;
+              if (numValue < 1000000000) return `${(numValue / 1000000).toFixed(1)}M`;
+              if (numValue < 1000000000000) return `${(numValue / 1000000000).toFixed(1)}B`;
+              return `${(numValue / 1000000000000).toFixed(1)}T`;
             }}
           />
           <Tooltip
             formatter={(value, name) => {
-              // Debug: Log the tooltip values
-              if (process.env.NODE_ENV === 'development') {
-                console.warn('Tooltip value:', value, 'name:', name);
-              }
-              // Format value to 2 decimal places
-              const formattedValue =
-                typeof value === 'number'
-                  ? value.toFixed(2)
-                  : typeof value === 'string'
-                    ? parseFloat(value).toFixed(2)
-                    : value;
+              // Format value with full number (not abbreviated) in tooltip
+              const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+              const formattedValue = numValue.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
               return [formattedValue, name];
             }}
             labelFormatter={label => {

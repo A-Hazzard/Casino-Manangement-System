@@ -1,19 +1,19 @@
 import { CollectionReport } from "@/app/api/lib/models/collectionReport";
 import { Collections } from "@/app/api/lib/models/collections";
-import { CollectionReportRow } from "@/lib/types/componentProps";
-import { PipelineStage } from "mongoose";
-import axios from "axios";
 import type {
-  MonthlyReportSummary,
-  MonthlyReportDetailsRow,
-} from "@/lib/types/componentProps";
-import type {
-  CreateCollectionReportPayload,
-  CollectionReportLocationWithMachines,
-  CollectionReportData,
+    CollectionReportData,
+    CollectionReportLocationWithMachines,
+    CreateCollectionReportPayload,
 } from "@/lib/types/api";
 import type { CollectionDocument } from "@/lib/types/collections";
+import type {
+    MonthlyReportDetailsRow,
+    MonthlyReportSummary,
+} from "@/lib/types/componentProps";
+import { CollectionReportRow } from "@/lib/types/componentProps";
 import { getLicenseeObjectId } from "@/lib/utils/licenseeMapping";
+import axios from "axios";
+import { PipelineStage } from "mongoose";
 
 /**
  * Fetches all collection reports from the database, filtered by licencee if provided.
@@ -703,11 +703,16 @@ export async function fetchCollectionReportsByLicencee(
     else if (dateRange?.from && dateRange?.to) {
       params.startDate = dateRange.from.toISOString();
       params.endDate = dateRange.to.toISOString();
+      // CRITICAL: Explicitly set timePeriod to 'Custom' so the API route knows 
+      // to return the collection reports list, not the monthly report summary.
+      params.timePeriod = 'Custom';
     }
 
     // Add pagination parameters
     params.page = String(page);
     params.limit = String(limit);
+
+    console.log('[fetchCollectionReportsByLicencee] Fetching with params:', params);
 
     const { data } = await axios.get("/api/collectionReport", {
       params,

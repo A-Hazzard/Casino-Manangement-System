@@ -12,9 +12,9 @@
  * - Handles errors gracefully with empty array fallback.
  */
 
-import axios from 'axios';
-import { TopPerformingData } from '@/lib/types';
 import { colorPalette } from '@/lib/constants/uiConstants';
+import { TopPerformingData, TopPerformingItem } from '@/lib/types';
+import axios from 'axios';
 
 // ============================================================================
 // Type Definitions
@@ -38,7 +38,7 @@ export async function fetchTopPerformingData(
   activeTab: ActiveTab,
   timePeriod: string,
   licensee?: string
-): Promise<TopPerformingData[]> {
+): Promise<TopPerformingData> {
   try {
     const params: Record<string, string> = { activeTab, timePeriod };
     if (licensee) {
@@ -51,13 +51,32 @@ export async function fetchTopPerformingData(
     });
 
     // The API returns { activeTab, timePeriod, data }
-    const rawData: TopPerformingData[] = response.data.data || [];
+    const rawData: TopPerformingItem[] = response.data.data || [];
 
-    // Assign colors from the palette
-    return rawData.map((item, index) => ({
-      ...item,
-      color: colorPalette[index % colorPalette.length],
-    }));
+    // Assign colors from the palette and format machine names with game
+    return rawData.map((item, index) => {
+      // Format machine name with game in brackets if it's a machine (Cabinets tab)
+      let formattedName = item.name;
+      if (activeTab === 'Cabinets' && item.game) {
+        // Format: SerialNumber (Game) or SerialNumber (CustomName, Game)
+        const bracketParts: string[] = [];
+        if (item.customName && item.customName !== item.name) {
+          bracketParts.push(item.customName);
+        }
+        if (item.game) {
+          bracketParts.push(item.game);
+        }
+        if (bracketParts.length > 0) {
+          formattedName = `${item.name} (${bracketParts.join(', ')})`;
+        }
+      }
+
+      return {
+        ...item,
+        name: formattedName,
+        color: colorPalette[index % colorPalette.length],
+      };
+    });
   } catch (error) {
     // Error handling for top-performing data fetch
     if (process.env.NODE_ENV === 'development') {

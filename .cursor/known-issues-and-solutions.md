@@ -639,13 +639,13 @@ const collection = {
 **Problem:**
 
 - Test script hardcodes `DB_NAME = 'test'`
-- MONGO_URI points to `/sas-dev`
+- MONGODB_URI points to `/sas-dev`
 - API connects to `/sas-dev`, script connects to `/test`
 - API can't find test data, shows "0 issues"
 
 **Root Cause:**
 
-- Database name extracted from MONGO_URI for API
+- Database name extracted from MONGODB_URI for API
 - Script hardcodes different database name
 - Data written to wrong database
 
@@ -655,9 +655,10 @@ const collection = {
 // ❌ WRONG - Hardcoded database name
 const DB_NAME = 'test';
 
-// ✅ CORRECT - Extract from MONGO_URI
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/sas-dev';
-const DB_NAME = MONGO_URI.split('/').pop()?.split('?')[0] || 'sas-dev';
+// ✅ CORRECT - Extract from MONGODB_URI
+const MONGODB_URI =
+  process.env.MONGODB_URI || 'mongodb://localhost:27017/sas-dev';
+const DB_NAME = MONGODB_URI.split('/').pop()?.split('?')[0] || 'sas-dev';
 
 console.log(`🔗 Connecting to database: ${DB_NAME}`);
 ```
@@ -665,7 +666,7 @@ console.log(`🔗 Connecting to database: ${DB_NAME}`);
 **Prevention:**
 
 - Never hardcode database names in scripts
-- Always extract from `MONGO_URI` environment variable
+- Always extract from `MONGODB_URI` environment variable
 - Log database name at script start
 - Verify API and script use same database
 
@@ -1646,7 +1647,7 @@ export default config;
 
 1. **Always use `locationReportId` as unique identifier** for collections/history
 2. **Collections are source of truth** - history is denormalized copy
-3. **Extract database name from MONGO_URI** - never hardcode
+3. **Extract database name from MONGODB_URI** - never hardcode
 4. **Match schema types** - check if `_id` is String or ObjectId
 5. **Use String coercion** for unknown types before string methods
 
@@ -1676,7 +1677,7 @@ export default config;
 
 ### Testing
 
-1. **Use correct database** - extract from MONGO_URI
+1. **Use correct database** - extract from MONGODB_URI
 2. **Match schema types** - String vs ObjectId for \_id
 3. **Test all corruption types** - duplicates, wrong values, orphans, future values
 4. **Triple-layer verification** - API, immediate, database checks
@@ -1704,7 +1705,7 @@ export default config;
 
 ### When Writing Tests:
 
-- ✅ Extract database name from MONGO_URI
+- ✅ Extract database name from MONGODB_URI
 - ✅ Check schema for \_id type (String vs ObjectId)
 - ✅ Use `.toString()` for String \_id fields
 - ✅ Test with multiple corruption types

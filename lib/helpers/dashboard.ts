@@ -1,10 +1,10 @@
 import {
-  ActiveFilters,
-  ActiveTab,
-  dashboardData,
-  DashboardTotals,
-  locations,
-  TopPerformingData,
+    ActiveFilters,
+    ActiveTab,
+    dashboardData,
+    DashboardTotals,
+    locations,
+    TopPerformingData,
 } from '@/lib/types';
 
 import getAllGamingLocations from '@/lib/helpers/locations';
@@ -237,7 +237,7 @@ export const fetchMetricsData = async (
 export const fetchTopPerformingDataHelper = async (
   activeTab: ActiveTab,
   activePieChartFilter: TimePeriod,
-  setTopPerformingData: (data: TopPerformingData[]) => void,
+  setTopPerformingData: (data: TopPerformingData) => void,
   setLoadingTopPerforming: (loading: boolean) => void,
   selectedLicencee?: string
 ) => {
@@ -283,7 +283,7 @@ export const handleDashboardRefresh = async (
   setChartData: (data: dashboardData[]) => void,
   setActiveFilters: (filters: ActiveFilters) => void,
   setShowDatePicker: (show: boolean) => void,
-  setTopPerformingData: (data: TopPerformingData[]) => void,
+  setTopPerformingData: (data: TopPerformingData) => void,
   displayCurrency?: string
 ) => {
   setRefreshing(true);

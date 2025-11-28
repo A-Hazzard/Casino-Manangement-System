@@ -118,8 +118,20 @@ export default function Header({
   const selectedLicenceeValue = selectedLicencee ?? '';
   const isAllLicenseeSelected =
     selectedLicenceeValue === '' || selectedLicenceeValue === 'all';
+  // Check if the current path is related to members
+  const isMembersPath =
+    pathname === '/members' || pathname.startsWith('/members/');
+
+  // Check if the current path is related to sessions
+  const isSessionsPath =
+    pathname === '/sessions' || pathname.startsWith('/sessions/');
+
+  // Hide currency selector on members, sessions, and member details pages
+  const shouldHideCurrency = isMembersPath || isSessionsPath;
+
   const shouldRenderCurrencyFilter =
     !hideCurrencyFilter &&
+    !shouldHideCurrency &&
     (isAdmin || (hasMultipleLicensees && isAllLicenseeSelected));
 
   const [licenseeCurrencyMap, setLicenseeCurrencyMap] = useState<
@@ -313,14 +325,6 @@ export default function Header({
   // Check if the current path is related to reports
   const isReportsPath =
     pathname === '/reports' || pathname.startsWith('/reports/');
-
-  // Check if the current path is related to members
-  const isMembersPath =
-    pathname === '/members' || pathname.startsWith('/members/');
-
-  // Check if the current path is related to sessions
-  const isSessionsPath =
-    pathname === '/sessions' || pathname.startsWith('/sessions/');
 
   useEffect(() => {
     let cancelled = false;

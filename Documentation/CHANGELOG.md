@@ -8,6 +8,11 @@ All notable changes to the project and its documentation are recorded here. The 
 
 ### Added
 
+- **Mobile Collection Modal State Management (November 28, 2025)**
+  - Dual-state architecture documentation (local state + Zustand store)
+  - Context file `.cursor/mobile-collection-modal-context.md` with comprehensive debugging guide
+  - Updated `Documentation/frontend/collection-report.md` with mobile state management section
+
 - **Meters Tab Enhancements (Reports Page)**
   - Top Performing Machines interactive pie chart with navigation to location details
   - Machine names display with game information in brackets (e.g., "CustomName (SerialNumber, Game)")
@@ -46,6 +51,18 @@ All notable changes to the project and its documentation are recorded here. The 
   - Updated API documentation to reflect current JWT token structure
 
 ### Fixed
+
+- **Mobile Collection Modal Issues (November 28, 2025)**
+  - Fixed race condition on modal open where collections were cleared after auto-selecting location
+  - Fixed buttons not enabling despite collections being loaded (button logic simplified to check `modalState.collectedMachines.length`)
+  - Fixed delete operation not calling API (only removed from local state)
+  - Fixed "Cannot update component while rendering" error when updating Zustand store inside `setModalState`
+  - Added `useRef` to prevent refetch when auto-selecting location
+  - Added loading guards in sync effects to prevent race conditions
+
+- **Desktop Collection Delete 400 Error (November 28, 2025)**
+  - Fixed 400 error when deleting incomplete collections (no `locationReportId`)
+  - Machine collection history update now only called for completed collections
 
 - **Feedback Management System**
   - Complete feedback management interface in Administration page

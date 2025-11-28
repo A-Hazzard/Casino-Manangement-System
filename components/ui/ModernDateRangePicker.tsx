@@ -23,16 +23,16 @@
 
 import { CustomSelect } from '@/components/ui/custom-select';
 import {
-  DateRangePicker,
-  type DateRange,
+    DateRangePicker,
+    type DateRange,
 } from '@/components/ui/dateRangePicker';
 import { Label } from '@/components/ui/label';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from 'react';
 
 // ============================================================================
@@ -197,15 +197,19 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   const handleDateRangeChange = useCallback(
     (range?: DateRange) => {
       if (range?.from && range?.to) {
+        // Determine times based on whether time inputs are enabled
+        const startH = enableTimeInputs ? parseInt(startTime.split(':')[0]) : 0;
+        const startM = enableTimeInputs ? parseInt(startTime.split(':')[1]) : 0;
+        const endH = enableTimeInputs ? parseInt(endTime.split(':')[0]) : 23;
+        const endM = enableTimeInputs ? parseInt(endTime.split(':')[1]) : 59;
+
         // Apply start time to the from date
-        const [startHours, startMinutes] = startTime.split(':').map(Number);
         const newFromDate = new Date(range.from);
-        newFromDate.setHours(startHours, startMinutes, 0, 0);
+        newFromDate.setHours(startH, startM, 0, 0);
 
         // Apply end time to the to date
-        const [endHours, endMinutes] = endTime.split(':').map(Number);
         const newToDate = new Date(range.to);
-        newToDate.setHours(endHours, endMinutes, 59, 999);
+        newToDate.setHours(endH, endM, 59, 999);
 
         // Validate that the dates are valid
         if (isNaN(newFromDate.getTime()) || isNaN(newToDate.getTime())) {
@@ -223,9 +227,11 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
         });
       } else if (range?.from) {
         // Handle partial selection (only from date selected)
-        const [startHours, startMinutes] = startTime.split(':').map(Number);
+        const startH = enableTimeInputs ? parseInt(startTime.split(':')[0]) : 0;
+        const startM = enableTimeInputs ? parseInt(startTime.split(':')[1]) : 0;
+        
         const newFromDate = new Date(range.from);
-        newFromDate.setHours(startHours, startMinutes, 0, 0);
+        newFromDate.setHours(startH, startM, 0, 0);
 
         if (isNaN(newFromDate.getTime())) {
           return;
@@ -240,7 +246,7 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
         onChange(range);
       }
     },
-    [startTime, endTime, onChange]
+    [startTime, endTime, onChange, enableTimeInputs]
   );
 
   // Memoized time change handler

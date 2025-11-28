@@ -85,6 +85,9 @@ export type TopPerformingItem = {
   location?: string;
   locationId?: string;
   machine?: string;
+  machineId?: string;
+  customName?: string;
+  assetNumber?: string;
   game?: string;
 };
 

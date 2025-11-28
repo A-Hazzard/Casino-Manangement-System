@@ -687,10 +687,11 @@ export type MemberSummary = {
 
 export type SummaryStats = {
   totalMembers: number;
+  totalLocations: number;
   activeMembers: number;
-  totalSessions: number;
-  averageSessionDuration: number;
-  topPerformers: unknown[];
+  totalSessions?: number;
+  averageSessionDuration?: number;
+  topPerformers?: unknown[];
 };
 
 export type SmibLocation = {

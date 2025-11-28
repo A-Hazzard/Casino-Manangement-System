@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer
 
-**Last Updated:** December 2025
+**Last Updated:** November 28th, 2025
 
 ## 📚 Essential Documentation References
 
@@ -16,6 +16,7 @@ Before working on any part of the Collection Report system or making database ch
 - **[Collection Report Details Backend](../Documentation/backend/collection-report-details.md)** - Report details page implementation, issue detection, and fix operations
 - **[Collection Report Details Frontend](../Documentation/frontend/collection-report-details.md)** - Machine metrics, location metrics, SAS comparisons, and issue detection UI
 - **[isEditing Flag System Guide](./isediting-system.md)** - High-level conceptual guide to the isEditing flag system and unsaved changes protection
+- **[Mobile Collection Modal Context](./mobile-collection-modal-context.md)** - Mobile modal dual-state architecture, debugging guide, and common issues (NEW - November 28, 2025)
 
 ### Database & Type System Documentation
 
@@ -1342,7 +1343,7 @@ This context file provides a comprehensive overview of the Evolution One Casino 
      - **Future value corruption** (Oct 21 has values from Oct 29) ← TTRHP022 scenario
    - **Test Results:** ALL PASSED ✅ (6 issues before → 0 issues after, including future values)
    - **Enhanced Logging:** Comprehensive debug logging for production troubleshooting
-   - **Database Fix:** Test uses correct database from MONGO_URI
+   - **Database Fix:** Test uses correct database from MONGODB_URI
    - **Schema Fix:** Collections/Reports use String \_id fields (not ObjectId)
    - **Verification:** Triple-layer verification (API check, immediate check, database check)
    - Files: `fix-report/route.ts`, `check-all-issues/route.ts`, `check-sas-times/route.ts`, `CollectionHistoryTable.tsx`, `comprehensive-fix-test.js`

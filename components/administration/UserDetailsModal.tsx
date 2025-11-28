@@ -609,8 +609,8 @@ export default function UserDetailsModal({
           >
             <X className="h-6 w-6 text-gray-700" />
           </button>
-          <div className="mb-6 flex flex-col items-center">
-            <h2 className="mb-4 text-2xl font-bold text-gray-900">
+          <div className="mb-4 flex flex-col items-center">
+            <h2 className="mb-2 text-xl font-semibold text-gray-900">
               Edit User Details
             </h2>
           </div>
@@ -656,14 +656,14 @@ export default function UserDetailsModal({
                 </div>
                 <div className="flex w-full flex-col items-center space-y-4 lg:items-start">
                   <div className="w-full">
-                    <label className="mb-1 block text-sm font-semibold text-gray-900">
-                      Username:
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Username
                     </label>
                     {isLoading ? (
-                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-10 w-full" />
                     ) : (
                       <input
-                        className="w-full rounded-md border border-border bg-white p-3 text-center lg:text-left"
+                        className="w-full rounded-md border border-border bg-muted p-2.5 text-center text-sm lg:text-left"
                         value={user?.username || ''}
                         disabled
                         placeholder="Username"
@@ -671,15 +671,15 @@ export default function UserDetailsModal({
                     )}
                   </div>
                   <div className="w-full">
-                    <label className="mb-1 block text-sm font-semibold text-gray-900">
-                      Email Address:
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Email Address
                     </label>
                     {isLoading ? (
-                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-10 w-full" />
                     ) : (
                       <input
                         type="email"
-                        className="w-full rounded-md border border-border bg-white p-3 text-center lg:text-left"
+                        className="w-full rounded-md border border-border bg-muted p-2.5 text-center text-sm lg:text-left"
                         value={user?.email || user?.emailAddress || ''}
                         disabled
                         placeholder="Email Address"
@@ -687,15 +687,15 @@ export default function UserDetailsModal({
                     )}
                   </div>
                   <div className="w-full">
-                    <label className="mb-1 block text-sm font-semibold text-gray-900">
-                      Phone Number:
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Phone Number
                     </label>
                     {isLoading ? (
-                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-10 w-full" />
                     ) : (
                       <input
                         type="tel"
-                        className="w-full rounded-md border border-border bg-white p-3 text-center lg:text-left"
+                        className="w-full rounded-md border border-border bg-white p-2.5 text-center text-sm lg:text-left"
                         value={formData.phoneNumber}
                         onChange={e =>
                           handleInputChange('phoneNumber', e.target.value)
@@ -728,11 +728,11 @@ export default function UserDetailsModal({
                 ) : (
                   <>
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        First Name:
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        First Name
                       </label>
                       <input
-                        className="w-full rounded-md border border-border bg-white p-3"
+                        className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                         value={formData.firstName}
                         onChange={e =>
                           handleInputChange('firstName', e.target.value)
@@ -742,11 +742,11 @@ export default function UserDetailsModal({
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Last Name:
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        Last Name
                       </label>
                       <input
-                        className="w-full rounded-md border border-border bg-white p-3"
+                        className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                         value={formData.lastName}
                         onChange={e =>
                           handleInputChange('lastName', e.target.value)
@@ -756,11 +756,11 @@ export default function UserDetailsModal({
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Middle Name:
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        Middle Name
                       </label>
                       <input
-                        className="w-full rounded-md border border-border bg-white p-3"
+                        className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                         value={formData.middleName}
                         onChange={e =>
                           handleInputChange('middleName', e.target.value)
@@ -769,11 +769,11 @@ export default function UserDetailsModal({
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Other Name:
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        Other Name
                       </label>
                       <input
-                        className="w-full rounded-md border border-border bg-white p-3"
+                        className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                         value={formData.otherName}
                         onChange={e =>
                           handleInputChange('otherName', e.target.value)
@@ -782,11 +782,11 @@ export default function UserDetailsModal({
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="mb-1 block text-sm font-semibold text-gray-900">
-                        Gender:
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        Gender
                       </label>
                       <select
-                        className="w-full rounded-md border border-border bg-white p-3"
+                        className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                         value={formData.gender}
                         onChange={e =>
                           handleInputChange('gender', e.target.value)
@@ -807,60 +807,60 @@ export default function UserDetailsModal({
             {/* Address Section */}
             <hr className="my-6 w-full border-gray-400" />
             <div className="flex w-full flex-col items-center">
-              <h3 className="mb-4 text-center text-2xl font-bold text-gray-900">
+              <h3 className="mb-3 text-center text-lg font-semibold text-gray-900">
                 Address
               </h3>
               <div className="grid w-full max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Street:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Street
                   </label>
                   <input
-                    className="w-full rounded-md border border-border bg-white p-3"
+                    className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.street}
                     onChange={e => handleInputChange('street', e.target.value)}
                     placeholder="Enter Street"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Town:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Town
                   </label>
                   <input
-                    className="w-full rounded-md border border-border bg-white p-3"
+                    className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.town}
                     onChange={e => handleInputChange('town', e.target.value)}
                     placeholder="Enter Town"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Region:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Region
                   </label>
                   <input
-                    className="w-full rounded-md border border-border bg-white p-3"
+                    className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.region}
                     onChange={e => handleInputChange('region', e.target.value)}
                     placeholder="Enter Region"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Country:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Country
                   </label>
                   <input
-                    className="w-full rounded-md border border-border bg-white p-3"
+                    className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.country}
                     onChange={e => handleInputChange('country', e.target.value)}
                     placeholder="Enter Country"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Postal Code:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Postal Code
                   </label>
                   <input
-                    className="w-full rounded-md border border-border bg-white p-3"
+                    className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.postalCode}
                     onChange={e =>
                       handleInputChange('postalCode', e.target.value)
@@ -874,16 +874,16 @@ export default function UserDetailsModal({
             {/* Identification Section */}
             <hr className="my-6 w-full border-gray-400" />
             <div className="flex w-full flex-col items-center">
-              <h3 className="mb-4 text-center text-2xl font-bold text-gray-900">
+              <h3 className="mb-3 text-center text-lg font-semibold text-gray-900">
                 Identification
               </h3>
               <div className="grid w-full max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    D.O.B:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Date of Birth
                   </label>
                   <input
-                    className="w-full rounded-md border border-border bg-white p-3"
+                    className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.dateOfBirth}
                     onChange={e =>
                       handleInputChange('dateOfBirth', e.target.value)
@@ -893,22 +893,22 @@ export default function UserDetailsModal({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    ID Type:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    ID Type
                   </label>
                   <input
-                    className="w-full rounded-md border border-border bg-white p-3"
+                    className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.idType}
                     onChange={e => handleInputChange('idType', e.target.value)}
                     placeholder="Enter ID Type"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    ID Number:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    ID Number
                   </label>
                   <input
-                    className="w-full rounded-md border border-border bg-white p-3"
+                    className="w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.idNumber}
                     onChange={e =>
                       handleInputChange('idNumber', e.target.value)
@@ -917,11 +917,11 @@ export default function UserDetailsModal({
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-semibold text-gray-900">
-                    Notes:
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Notes
                   </label>
                   <textarea
-                    className="min-h-[56px] w-full rounded-md border border-border bg-white p-3"
+                    className="min-h-[56px] w-full rounded-md border border-border bg-white p-2.5 text-sm"
                     value={formData.notes}
                     onChange={e => handleInputChange('notes', e.target.value)}
                     placeholder="Enter Notes"

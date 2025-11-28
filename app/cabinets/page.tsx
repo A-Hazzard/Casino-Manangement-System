@@ -48,11 +48,11 @@ import { RefreshCw } from 'lucide-react';
 
 // Custom hooks
 import {
-  useCabinetData,
-  useCabinetFilters,
-  useCabinetModals,
-  useCabinetSorting,
-  useLocationMachineStats,
+    useCabinetData,
+    useCabinetFilters,
+    useCabinetModals,
+    useCabinetSorting,
+    useLocationMachineStats,
 } from '@/lib/hooks/data';
 import { useCabinetNavigation } from '@/lib/hooks/navigation';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -461,7 +461,7 @@ function CabinetsPageContent() {
                 hideAllTime={true}
                 onCustomRangeGo={loadCabinets}
                 enableTimeInputs={true}
-                mode="desktop"
+                mode="auto"
                 showIndicatorOnly={true}
               />
             </div>
@@ -472,7 +472,7 @@ function CabinetsPageContent() {
                   hideAllTime={true}
                   onCustomRangeGo={loadCabinets}
                   enableTimeInputs={true}
-                  mode="desktop"
+                  mode="auto"
                   hideIndicator={true}
                 />
               </div>

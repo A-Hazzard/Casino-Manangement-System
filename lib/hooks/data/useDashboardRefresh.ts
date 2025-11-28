@@ -3,15 +3,15 @@
  * Handles refresh logic, loading states, and error handling
  */
 
-import { useCallback } from 'react';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { handleDashboardRefresh } from '@/lib/helpers/dashboard';
-import { TimePeriod } from '@/shared/types/common';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { TopPerformingData } from '@/lib/types';
 import type {
-  UseDashboardRefreshProps,
-  UseDashboardRefreshReturn,
+    UseDashboardRefreshProps,
+    UseDashboardRefreshReturn,
 } from '@/lib/types/dashboardRefresh';
+import { TimePeriod } from '@/shared/types/common';
+import { useCallback } from 'react';
 
 export function useDashboardRefresh({
   selectedLicencee,
@@ -54,8 +54,8 @@ export function useDashboardRefresh({
       setChartData,
       setActiveFilters,
       setShowDatePicker,
-      (data: TopPerformingData[]) =>
-        setTopPerformingData(data as unknown as TopPerformingData),
+      (data: TopPerformingData) =>
+        setTopPerformingData(data),
       displayCurrency
     );
   }, [

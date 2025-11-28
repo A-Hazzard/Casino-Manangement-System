@@ -13,11 +13,17 @@
 const { MongoClient, ObjectId } = require('mongodb');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.DATABASE_URL;
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URL ||
+  process.env.DATABASE_URL;
 
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI not found in environment variables');
-  console.error('   Checked: MONGO_URI, MONGODB_URI, MONGODB_URL, DATABASE_URL');
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not found in environment variables');
+  console.error(
+    '   Checked: MONGODB_URI, MONGODB_URI, MONGODB_URL, DATABASE_URL'
+  );
   process.exit(1);
 }
 
@@ -91,7 +97,7 @@ function getGamingDayRangeForPeriod(
         currentHour < gameDayOffset
           ? new Date(today.getTime() - 24 * 60 * 60 * 1000)
           : today;
-      
+
       const sevenDaysAgo = new Date(today7d);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // -6 because today is day 1
 
@@ -113,7 +119,7 @@ function getGamingDayRangeForPeriod(
         currentHour < gameDayOffset
           ? new Date(today.getTime() - 24 * 60 * 60 * 1000)
           : today;
-      
+
       const thirtyDaysAgo = new Date(today30d);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 because today is day 1
 
@@ -139,8 +145,13 @@ function getGamingDayRangeForPeriod(
  */
 function generateMeterValues(machineId, timePeriod, dayOffset = 0) {
   // Use machine ID and time period to generate consistent values
-  const hash = machineId.toString().split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const periodHash = timePeriod.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = machineId
+    .toString()
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const periodHash = timePeriod
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const seed = (hash + periodHash + dayOffset) % 1000;
 
   // Generate values based on seed for consistency
@@ -161,7 +172,7 @@ function generateMeterValues(machineId, timePeriod, dayOffset = 0) {
     jackpot: Math.round((seed % 10) * 100) / 100,
     currentCredits: 0,
     totalWonCredits: Math.round(moneyOut * 1.1 * 100) / 100,
-    totalHandPaidCancelledCredits: Math.round((moneyOut * 0.1) * 100) / 100,
+    totalHandPaidCancelledCredits: Math.round(moneyOut * 0.1 * 100) / 100,
   };
 }
 
@@ -180,26 +191,34 @@ async function createMeterRecordsForPeriod(
 
   // For multi-day periods, create one meter per day
   // For single-day periods, create 3-5 meters throughout the day
-  const isMultiDay = timePeriod === '7d' || timePeriod === '30d' || timePeriod === 'last7days' || timePeriod === 'last30days';
-  
+  const isMultiDay =
+    timePeriod === '7d' ||
+    timePeriod === '30d' ||
+    timePeriod === 'last7days' ||
+    timePeriod === 'last30days';
+
   let records = [];
-  
+
   if (isMultiDay) {
     // Create one meter per day for multi-day periods
     const days = timePeriod === '7d' || timePeriod === 'last7days' ? 7 : 30;
     const dayMs = 24 * 60 * 60 * 1000;
-    
+
     for (let day = 0; day < days; day++) {
       const dayStart = new Date(range.rangeStart.getTime() + day * dayMs);
-      const dayEnd = new Date(Math.min(dayStart.getTime() + dayMs - 1, range.rangeEnd.getTime()));
-      
+      const dayEnd = new Date(
+        Math.min(dayStart.getTime() + dayMs - 1, range.rangeEnd.getTime())
+      );
+
       // Use middle of the day for readAt
-      const readAt = new Date(dayStart.getTime() + (dayEnd.getTime() - dayStart.getTime()) / 2);
-      
+      const readAt = new Date(
+        dayStart.getTime() + (dayEnd.getTime() - dayStart.getTime()) / 2
+      );
+
       const values = generateMeterValues(machineId, timePeriod, day);
-      
+
       const meterId = generateMongoIdHex();
-      
+
       const meterRecord = {
         _id: meterId,
         machine: machineId,
@@ -237,14 +256,14 @@ async function createMeterRecordsForPeriod(
         createdAt: readAt,
         updatedAt: readAt,
       };
-      
+
       records.push(meterRecord);
     }
   } else {
     // For single-day periods, create 3-5 meters throughout the day
     const numRecords = 3 + (machineId.charCodeAt(0) % 3); // 3-5 records
     const totalValues = generateMeterValues(machineId, timePeriod, 0);
-    
+
     for (let i = 0; i < numRecords; i++) {
       const progress = (i + 1) / (numRecords + 1);
       const readAt = new Date(
@@ -255,15 +274,21 @@ async function createMeterRecordsForPeriod(
       // Divide values across records
       const recordValues = {
         drop: Math.round((totalValues.drop / numRecords) * 100) / 100,
-        totalCancelledCredits: Math.round((totalValues.totalCancelledCredits / numRecords) * 100) / 100,
+        totalCancelledCredits:
+          Math.round((totalValues.totalCancelledCredits / numRecords) * 100) /
+          100,
         coinIn: Math.round((totalValues.coinIn / numRecords) * 100) / 100,
         coinOut: Math.round((totalValues.coinOut / numRecords) * 100) / 100,
         gamesPlayed: Math.floor(totalValues.gamesPlayed / numRecords),
         gamesWon: Math.floor(totalValues.gamesWon / numRecords),
         jackpot: i === numRecords - 1 ? totalValues.jackpot : 0, // Only last record has jackpot
         currentCredits: 0,
-        totalWonCredits: Math.round((totalValues.totalWonCredits / numRecords) * 100) / 100,
-        totalHandPaidCancelledCredits: Math.round((totalValues.totalHandPaidCancelledCredits / numRecords) * 100) / 100,
+        totalWonCredits:
+          Math.round((totalValues.totalWonCredits / numRecords) * 100) / 100,
+        totalHandPaidCancelledCredits:
+          Math.round(
+            (totalValues.totalHandPaidCancelledCredits / numRecords) * 100
+          ) / 100,
       };
 
       const meterId = generateMongoIdHex();
@@ -285,7 +310,8 @@ async function createMeterRecordsForPeriod(
           gamesWon: recordValues.gamesWon,
           currentCredits: recordValues.currentCredits,
           totalWonCredits: recordValues.totalWonCredits,
-          totalHandPaidCancelledCredits: recordValues.totalHandPaidCancelledCredits,
+          totalHandPaidCancelledCredits:
+            recordValues.totalHandPaidCancelledCredits,
         },
         // Top-level fields
         drop: recordValues.drop,
@@ -297,7 +323,8 @@ async function createMeterRecordsForPeriod(
         gamesWon: recordValues.gamesWon,
         currentCredits: recordValues.currentCredits,
         totalWonCredits: recordValues.totalWonCredits,
-        totalHandPaidCancelledCredits: recordValues.totalHandPaidCancelledCredits,
+        totalHandPaidCancelledCredits:
+          recordValues.totalHandPaidCancelledCredits,
         viewingAccountDenomination: {
           drop: recordValues.drop,
           totalCancelledCredits: recordValues.totalCancelledCredits,
@@ -315,9 +342,11 @@ async function createMeterRecordsForPeriod(
 
 async function main() {
   console.log('🚀 Starting meter regeneration script...');
-  console.log(`📡 Connecting to MongoDB: ${MONGO_URI ? 'URI found' : 'NO URI'}\n`);
-  
-  const client = new MongoClient(MONGO_URI);
+  console.log(
+    `📡 Connecting to MongoDB: ${MONGODB_URI ? 'URI found' : 'NO URI'}\n`
+  );
+
+  const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
@@ -336,21 +365,27 @@ async function main() {
     // STEP 2: Get all locations and machines
     // ============================================================================
     console.log('📊 Fetching locations and machines...');
-    const locations = await db.collection('gaminglocations').find({
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    }).toArray();
+    const locations = await db
+      .collection('gaminglocations')
+      .find({
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      })
+      .toArray();
 
     console.log(`   Found ${locations.length} locations`);
 
-    const allMachines = await db.collection('machines').find({
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2020-01-01') } },
-      ],
-    }).toArray();
+    const allMachines = await db
+      .collection('machines')
+      .find({
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2020-01-01') } },
+        ],
+      })
+      .toArray();
 
     console.log(`   Found ${allMachines.length} machines\n`);
 
@@ -391,8 +426,12 @@ async function main() {
           const machineTotals = records.reduce(
             (acc, record) => ({
               moneyIn: acc.moneyIn + (record.movement.drop || 0),
-              moneyOut: acc.moneyOut + (record.movement.totalCancelledCredits || 0),
-              gross: acc.gross + ((record.movement.drop || 0) - (record.movement.totalCancelledCredits || 0)),
+              moneyOut:
+                acc.moneyOut + (record.movement.totalCancelledCredits || 0),
+              gross:
+                acc.gross +
+                ((record.movement.drop || 0) -
+                  (record.movement.totalCancelledCredits || 0)),
             }),
             { moneyIn: 0, moneyOut: 0, gross: 0 }
           );
@@ -424,7 +463,7 @@ async function main() {
     console.log('\n' + '='.repeat(80));
     console.log('📊 EXPECTED TOTALS BY TIME PERIOD');
     console.log('='.repeat(80));
-    
+
     for (const [period, totals] of Object.entries(totalsByPeriod)) {
       console.log(`\n${period}:`);
       console.log(`   Machines: ${totals.machines}`);
@@ -437,7 +476,6 @@ async function main() {
     console.log('\n' + '='.repeat(80));
     console.log('✅ Meter regeneration complete!');
     console.log('='.repeat(80) + '\n');
-
   } catch (error) {
     console.error('❌ Error:', error);
     throw error;
@@ -448,4 +486,3 @@ async function main() {
 }
 
 main().catch(console.error);
-

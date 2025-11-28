@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import { useDebounce } from '@/lib/utils/hooks';
 
 import { useMemberActionsStore } from '@/lib/store/memberActionsStore';
 import type { CasinoMember as Member } from '@/shared/types/entities';
@@ -31,7 +32,7 @@ import {
 import {
   MagnifyingGlassIcon,
 } from '@radix-ui/react-icons';
-import { PlusCircle, RefreshCw, ArrowUpDown } from 'lucide-react';
+import { PlusCircle, RefreshCw, ArrowUpDown, Users, MapPin, Calendar } from 'lucide-react';
 import { Toaster } from 'sonner';
 import Image from 'next/image';
 import PaginationControls from '@/components/ui/PaginationControls';
@@ -46,6 +47,7 @@ import MemberTableSkeleton from '@/components/ui/members/MemberTableSkeleton';
 import EditMemberModal from '@/components/ui/members/EditMemberModal';
 import DeleteMemberModal from '@/components/ui/members/DeleteMemberModal';
 import NewMemberModal from '@/components/ui/members/NewMemberModal';
+import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 
 export default function MembersListTab() {
   const {
@@ -64,12 +66,20 @@ export default function MembersListTab() {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [sortOption, setSortOption] = useState<MemberSortOption>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [isNewMemberModalOpen, setIsNewMemberModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [summaryStats, setSummaryStats] = useState<{
+    totalMembers: number;
+    totalLocations: number;
+    activeMembers: number;
+  } | null>(null);
 
   const itemsPerPage = 10;
   const itemsPerBatch = 50;
@@ -124,13 +134,54 @@ export default function MembersListTab() {
     [itemsPerBatch]
   );
 
+  // Fetch locations for the filter dropdown
+  const fetchLocations = useCallback(async () => {
+    try {
+      const response = await axios.get('/api/machines/locations');
+      const data = response.data;
+      if (data.locations && Array.isArray(data.locations)) {
+        setLocations(data.locations.map((loc: { _id: string; name: string }) => ({
+          id: loc._id,
+          name: loc.name || '',
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+    }
+  }, []);
+
+  // Fetch summary stats
+  const fetchSummaryStats = useCallback(async () => {
+    try {
+      const response = await axios.get('/api/members/summary?page=1&limit=1&dateFilter=all');
+      const data = response.data;
+      if (data.data?.summary) {
+        setSummaryStats(data.data.summary);
+      }
+    } catch (error) {
+      console.error('Error fetching summary stats:', error);
+    }
+  }, []);
+
+  // Fetch locations on mount
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
+
   // Load initial batch on mount and when filters change
   useEffect(() => {
     setAllMembers([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
-    fetchMembers(1, searchTerm, sortOption, sortOrder);
-  }, [searchTerm, sortOption, sortOrder, setAllMembers, setLoadedBatches, setCurrentPage, fetchMembers]);
+    fetchMembers(1, debouncedSearchTerm, sortOption, sortOrder);
+  }, [debouncedSearchTerm, sortOption, sortOrder, setAllMembers, setLoadedBatches, setCurrentPage, fetchMembers]);
+
+  // Fetch summary stats on mount
+  useEffect(() => {
+    fetchSummaryStats();
+  }, [fetchSummaryStats]);
+
+  // Frontend search is handled in filteredMembers useMemo
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
@@ -176,9 +227,42 @@ export default function MembersListTab() {
     [sortOption, sortOrder]
   );
 
+  // Filter by location and search term (frontend filtering)
+  const filteredMembers = useMemo(() => {
+    let filtered = allMembers;
+    
+    // Apply location filter
+    if (locationFilter !== 'all') {
+      filtered = filtered.filter(member => {
+        const memberLocationId = member.gamingLocation || '';
+        return memberLocationId === locationFilter || member.locationName === locationFilter;
+      });
+    }
+    
+    // Apply frontend search filter
+    if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
+      const lowerSearchValue = debouncedSearchTerm.toLowerCase().trim();
+      filtered = filtered.filter(member => {
+        const fullName = `${member.profile?.firstName || ''} ${member.profile?.lastName || ''}`.toLowerCase();
+        const phoneNumber = (member.phoneNumber || '').toLowerCase();
+        const locationName = (member.locationName || '').toLowerCase();
+        const memberId = String(member._id || '').toLowerCase();
+
+        return (
+          fullName.includes(lowerSearchValue) ||
+          phoneNumber.includes(lowerSearchValue) ||
+          locationName.includes(lowerSearchValue) ||
+          memberId.includes(lowerSearchValue)
+        );
+      });
+    }
+    
+    return filtered;
+  }, [allMembers, locationFilter, debouncedSearchTerm]);
+
   // Sort members (backend already sorts, but we keep this for consistency)
   const sortedMembers = useMemo(() => {
-    const sorted = [...allMembers].sort((a, b) => {
+    const sorted = [...filteredMembers].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
 
@@ -228,7 +312,7 @@ export default function MembersListTab() {
     });
 
     return sorted;
-  }, [allMembers, sortOption, sortOrder]);
+  }, [filteredMembers, sortOption, sortOrder]);
 
   // Pagination
   const paginatedMembers = useMemo(() => {
@@ -271,6 +355,59 @@ export default function MembersListTab() {
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     fetchMembers(1, searchTerm, sortOption, sortOrder);
+  };
+
+  // Render summary cards (similar to summary report)
+  const renderSummaryCards = () => {
+    if (!summaryStats) return null;
+
+    return (
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="flex items-center">
+            <div className="rounded-lg bg-blue-100 p-2">
+              <Users className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Total Members</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {summaryStats.totalMembers}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="flex items-center">
+            <div className="rounded-lg bg-green-100 p-2">
+              <MapPin className="h-6 w-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Locations</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {summaryStats.totalLocations}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="flex items-center">
+            <div className="rounded-lg bg-orange-100 p-2">
+              <Calendar className="h-6 w-6 text-orange-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">
+                Active Members
+              </p>
+              <p className="text-2xl font-bold text-gray-900">
+                {summaryStats.activeMembers}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -339,7 +476,8 @@ export default function MembersListTab() {
               setAllMembers([]);
               setLoadedBatches(new Set([1]));
               setCurrentPage(0);
-              await fetchMembers(1, searchTerm, sortOption, sortOrder);
+              await fetchMembers(1, debouncedSearchTerm, sortOption, sortOrder);
+              await fetchSummaryStats();
               setRefreshing(false);
             }}
             disabled={refreshing}
@@ -407,6 +545,9 @@ export default function MembersListTab() {
         </div>
       </div>
 
+      {/* Summary Cards */}
+      {renderSummaryCards()}
+
       {/* Search Row - Purple box */}
       <div className="mt-4 hidden items-center gap-4 rounded-b-none rounded-t-lg bg-buttonActive p-4 lg:flex">
         <div className="relative min-w-0 max-w-md flex-1">
@@ -419,6 +560,20 @@ export default function MembersListTab() {
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
+        {locations.length > 0 && (
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-white">Location:</span>
+            <LocationSingleSelect
+              locations={locations}
+              selectedLocation={locationFilter}
+              onSelectionChange={setLocationFilter}
+              includeAllOption={true}
+              allOptionLabel="All Locations"
+              showSasBadge={false}
+              className="w-48"
+            />
+          </div>
+        )}
       </div>
 
       {/* Content Section */}

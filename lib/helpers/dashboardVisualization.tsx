@@ -13,20 +13,20 @@
  * - Creates time filter button configurations.
  */
 
+import { RADIAN } from '@/lib/constants/uiConstants';
+import { fetchMetricsData } from '@/lib/helpers/dashboard';
+import getAllGamingLocations from '@/lib/helpers/locations';
+import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
 import {
-  dashboardData,
-  DashboardTotals,
-  locations,
-  ActiveFilters,
-  TopPerformingData,
-  ActiveTab,
+    ActiveFilters,
+    ActiveTab,
+    dashboardData,
+    DashboardTotals,
+    locations,
+    TopPerformingData,
 } from '@/lib/types';
 import { CustomizedLabelProps } from '@/lib/types/componentProps';
-import { RADIAN } from '@/lib/constants/uiConstants';
-import { fetchTopPerformingData } from '@/lib/helpers/topPerforming';
-import getAllGamingLocations from '@/lib/helpers/locations';
 import { TimePeriod } from '@/shared/types/common';
-import { fetchMetricsData } from '@/lib/helpers/dashboard';
 
 // ============================================================================
 // Chart Rendering Functions
@@ -93,7 +93,7 @@ export const loadGamingLocations = async (
 export const fetchTopPerformingDataHelper = async (
   activeTab: ActiveTab,
   activePieChartFilter: TimePeriod,
-  setTopPerformingData: (data: TopPerformingData[]) => void,
+  setTopPerformingData: (data: TopPerformingData) => void,
   setLoadingTopPerforming: (loading: boolean) => void
 ) => {
   // Only fetch data if there's a valid filter
@@ -129,7 +129,7 @@ export const handleDashboardRefresh = async (
   setChartData: (data: dashboardData[]) => void,
   setActiveFilters: (filters: ActiveFilters) => void,
   setShowDatePicker: (show: boolean) => void,
-  setTopPerformingData: (data: TopPerformingData[]) => void
+  setTopPerformingData: (data: TopPerformingData) => void
 ) => {
   setRefreshing(true);
   setLoadingChartData(true);

@@ -12,10 +12,14 @@
 const { MongoClient, ObjectId } = require('mongodb');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.DATABASE_URL;
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URI ||
+  process.env.MONGODB_URL ||
+  process.env.DATABASE_URL;
 
-if (!MONGO_URI) {
-  console.error('❌ MONGO_URI not found in environment variables');
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI not found in environment variables');
   process.exit(1);
 }
 
@@ -59,8 +63,8 @@ function getYesterdayGamingDayRange(gameDayOffset = 8, timezoneOffset = -4) {
 
 async function main() {
   console.log('🚀 Starting simple meter test...\n');
-  
-  const client = new MongoClient(MONGO_URI);
+
+  const client = new MongoClient(MONGODB_URI);
 
   try {
     await client.connect();
@@ -108,7 +112,9 @@ async function main() {
       return;
     }
 
-    console.log(`   Machine: ${machine.serialNumber || machine.custom?.name || machineId}`);
+    console.log(
+      `   Machine: ${machine.serialNumber || machine.custom?.name || machineId}`
+    );
     console.log(`   Location: ${location.name || locationId}`);
     console.log(`   Machine ID: ${machineId}`);
     console.log(`   Location ID: ${locationId}\n`);
@@ -117,13 +123,15 @@ async function main() {
     // STEP 3: Create ONE simple meter with movement.drop: 2
     // ============================================================================
     console.log('📝 Creating simple meter with movement.drop: 2...');
-    
+
     const gameDayOffset = location.gameDayOffset ?? 8;
     const { rangeStart, rangeEnd } = getYesterdayGamingDayRange(gameDayOffset);
-    
+
     // Use middle of the gaming day for readAt
-    const readAt = new Date(rangeStart.getTime() + (rangeEnd.getTime() - rangeStart.getTime()) / 2);
-    
+    const readAt = new Date(
+      rangeStart.getTime() + (rangeEnd.getTime() - rangeStart.getTime()) / 2
+    );
+
     const meterId = generateMongoIdHex();
     const sessionId = generateMongoIdHex();
 
@@ -168,7 +176,9 @@ async function main() {
     await db.collection('meters').insertOne(meterRecord);
     console.log(`   ✅ Created meter with _id: ${meterId}`);
     console.log(`   ✅ readAt: ${readAt.toISOString()}`);
-    console.log(`   ✅ Gaming day range: ${rangeStart.toISOString()} to ${rangeEnd.toISOString()}\n`);
+    console.log(
+      `   ✅ Gaming day range: ${rangeStart.toISOString()} to ${rangeEnd.toISOString()}\n`
+    );
 
     // ============================================================================
     // STEP 4: Verify the meter was created correctly
@@ -176,7 +186,9 @@ async function main() {
     console.log('🔍 Verifying meter in database...');
     const verifyMeter = await db.collection('meters').findOne({ _id: meterId });
     if (verifyMeter) {
-      console.log(`   ✅ Meter found: movement.drop = ${verifyMeter.movement?.drop}`);
+      console.log(
+        `   ✅ Meter found: movement.drop = ${verifyMeter.movement?.drop}`
+      );
       console.log(`   ✅ Machine: ${verifyMeter.machine}`);
       console.log(`   ✅ Location: ${verifyMeter.location}`);
       console.log(`   ✅ readAt: ${verifyMeter.readAt?.toISOString()}\n`);
@@ -192,7 +204,9 @@ async function main() {
     console.log('📊 EXPECTED RESULTS');
     console.log('='.repeat(80));
     console.log('\nFor time period: Yesterday');
-    console.log(`   Machine: ${machine.serialNumber || machine.custom?.name || machineId}`);
+    console.log(
+      `   Machine: ${machine.serialNumber || machine.custom?.name || machineId}`
+    );
     console.log(`   Location: ${location.name || locationId}`);
     console.log(`   Expected Money In: $2.00`);
     console.log(`   Expected Money Out: $0.00`);
@@ -204,9 +218,10 @@ async function main() {
     console.log(`   Machine ID: ${machineId}`);
     console.log(`   Location ID: ${locationId}`);
     console.log(`   Meter ID: ${meterId}`);
-    console.log(`   Gaming Day Range: ${rangeStart.toISOString()} to ${rangeEnd.toISOString()}`);
+    console.log(
+      `   Gaming Day Range: ${rangeStart.toISOString()} to ${rangeEnd.toISOString()}`
+    );
     console.log(`   readAt: ${readAt.toISOString()}\n`);
-
   } catch (error) {
     console.error('❌ Error:', error);
     throw error;
@@ -217,4 +232,3 @@ async function main() {
 }
 
 main().catch(console.error);
-

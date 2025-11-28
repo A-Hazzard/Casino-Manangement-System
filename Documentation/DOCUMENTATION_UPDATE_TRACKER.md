@@ -1,6 +1,6 @@
 # Documentation Update Tracker
 
-**Last Updated:** November 27, 2025
+**Last Updated:** November 28, 2025
 
 This tracker documents all documentation files that have been reviewed and updated to align with the actual codebase implementation.
 
@@ -62,8 +62,8 @@ For each documentation file:
   - **Date**: Nov 27, 2025
 
 - ✅ **Reviewed - Updated** `frontend/collection-report.md` - Collection report page
-  - **Changes**: Added note that rel.licencee is correct for GamingLocation schema, updated version date
-  - **Date**: Nov 27, 2025
+  - **Changes**: Added Mobile Collection Modal State Management section (dual-state architecture, fetch flow, delete operation, sync effects, debugging guide), updated version to 2.6.0
+  - **Date**: Nov 28, 2025
 
 - ✅ **Reviewed - Updated** `frontend/collection-report-details.md` - Collection report details
   - **Changes**: Updated version date (no assignedLocations references found - already accurate)

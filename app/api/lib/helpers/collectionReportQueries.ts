@@ -5,12 +5,12 @@
  * including fetching locations with machines and processing date ranges.
  */
 
+import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
 import { connectDB } from '../middleware/db';
 import { GamingLocations } from '../models/gaminglocations';
+import type { TimePeriod } from '../types';
 import { getUserLocationFilter } from './licenseeFilter';
 import { getUserFromServer } from './users';
-import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
-import type { TimePeriod } from '../types';
 
 /**
  * Fetches locations with machines for collection reports
@@ -179,17 +179,11 @@ export function calculateDateRangeForTimePeriod(
 
   if (!timePeriod || timePeriod === 'Custom') {
     if (startDateStr && endDateStr) {
-      // For custom date range, use local Trinidad time boundaries
-      const customStart = new Date(startDateStr);
-      const customEnd = new Date(endDateStr);
-
-      // Set to Trinidad time boundaries (midnight to midnight Trinidad time)
-      // Trinidad time is UTC-4, so we add 4 hours to get to UTC
-      customStart.setUTCHours(4, 0, 0, 0); // Midnight Trinidad = 4 AM UTC
-      customEnd.setDate(customEnd.getDate() + 1); // Move to next day
-      customEnd.setUTCHours(3, 59, 59, 999); // 11:59 PM Trinidad = 3:59 AM UTC next day
-
-      return { startDate: customStart, endDate: customEnd };
+      // For custom date range, trust the provided ISO strings which now contain precise times
+      // from the frontend (00:00:00 to 23:59:59 local time converted to UTC)
+      const startDate = new Date(startDateStr);
+      const endDate = new Date(endDateStr);
+      return { startDate, endDate };
     }
     return {};
   }

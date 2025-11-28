@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { TimePeriod } from '@/app/api/lib/types';
 import { Button } from '@/components/ui/button';
+import { CustomSelect } from '@/components/ui/custom-select';
+import DateRangeIndicator from '@/components/ui/DateRangeIndicator';
+import { type DateRange } from '@/components/ui/dateRangePicker';
 import { ModernDateRangePicker } from '@/components/ui/ModernDateRangePicker';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { TimePeriod } from '@/app/api/lib/types';
-import { CustomSelect } from '@/components/ui/custom-select';
 import type { DashboardDateFiltersProps } from '@/lib/types/componentProps';
-import DateRangeIndicator from '@/components/ui/DateRangeIndicator';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function DashboardDateFilters({
   disabled,
@@ -17,7 +18,10 @@ export default function DashboardDateFilters({
   enableTimeInputs = false,
   hideIndicator = false,
   showIndicatorOnly = false,
-}: DashboardDateFiltersProps & { hideIndicator?: boolean; showIndicatorOnly?: boolean }) {
+}: DashboardDateFiltersProps & {
+  hideIndicator?: boolean;
+  showIndicatorOnly?: boolean;
+}) {
   const {
     activeMetricsFilter,
     setActiveMetricsFilter,
@@ -31,12 +35,39 @@ export default function DashboardDateFilters({
 
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
+  // Local state for the picker to allow partial ranges (start date only)
+  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     if (hideAllTime && activeMetricsFilter === 'All Time') {
       setActiveMetricsFilter('30d');
     }
   }, [activeMetricsFilter, hideAllTime, setActiveMetricsFilter]);
+
+  // Initialize temp range when picker opens
+  useEffect(() => {
+    if (showCustomPicker) {
+      if (pendingCustomDateRange) {
+        setTempDateRange({
+          from: pendingCustomDateRange.startDate,
+          to: pendingCustomDateRange.endDate,
+        });
+      } else if (
+        activeMetricsFilter === 'Custom' &&
+        useDashBoardStore.getState().customDateRange
+      ) {
+        const current = useDashBoardStore.getState().customDateRange;
+        setTempDateRange({
+          from: current.startDate,
+          to: current.endDate,
+        });
+      } else {
+        setTempDateRange(undefined);
+      }
+    }
+  }, [showCustomPicker, pendingCustomDateRange, activeMetricsFilter]);
 
   const timeFilterButtons: { label: string; value: TimePeriod }[] = useMemo(
     () =>
@@ -71,13 +102,18 @@ export default function DashboardDateFilters({
   }, [shouldTriggerCallback, onCustomRangeGo]);
 
   const handleApplyCustomRange = () => {
-    if (pendingCustomDateRange?.startDate && pendingCustomDateRange?.endDate) {
+    if (tempDateRange?.from && tempDateRange?.to) {
       // Use the exact dates with time information from the ModernDateRangePicker
-      // The ModernDateRangePicker now handles time inputs and provides complete datetime objects
       setCustomDateRange({
-        startDate: pendingCustomDateRange.startDate,
-        endDate: pendingCustomDateRange.endDate,
+        startDate: tempDateRange.from,
+        endDate: tempDateRange.to,
       });
+      // Also update pending in store to keep it in sync if needed, or just rely on customDateRange
+      setPendingCustomDateRange({
+        startDate: tempDateRange.from,
+        endDate: tempDateRange.to,
+      });
+
       setActiveMetricsFilter('Custom');
       setShowCustomPicker(false);
 
@@ -88,6 +124,7 @@ export default function DashboardDateFilters({
 
   const handleCancelCustomRange = () => {
     setShowCustomPicker(false);
+    setTempDateRange(undefined);
     setPendingCustomDateRange(undefined);
   };
 
@@ -95,7 +132,7 @@ export default function DashboardDateFilters({
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-    setPendingCustomDateRange({ startDate: firstDay, endDate: lastDay });
+    setTempDateRange({ from: firstDay, to: lastDay });
   };
 
   const handleFilterClick = (filter: TimePeriod) => {
@@ -130,7 +167,15 @@ export default function DashboardDateFilters({
       {/* Filter Controls - This section aligns with Machine Status Widget */}
       <div className="flex w-full flex-wrap items-center gap-2">
         {/* Select dropdown - used below lg: (mobile and tablet) */}
-        <div className={mode === 'auto' ? 'w-full lg:hidden' : mode === 'mobile' ? 'w-full' : 'hidden'}>
+        <div
+          className={
+            mode === 'auto'
+              ? 'w-full lg:hidden'
+              : mode === 'mobile'
+                ? 'w-full'
+                : 'hidden'
+          }
+        >
           <CustomSelect
             value={activeMetricsFilter}
             onValueChange={handleSelectChange}
@@ -150,7 +195,13 @@ export default function DashboardDateFilters({
 
         {/* Desktop buttons - shown on lg: and above when mode is auto or desktop */}
         {(mode === 'auto' || mode === 'desktop') && (
-          <div className={mode === 'auto' ? 'hidden flex-wrap items-center gap-2 lg:flex' : 'flex flex-wrap items-center gap-2'}>
+          <div
+            className={
+              mode === 'auto'
+                ? 'hidden flex-wrap items-center gap-2 lg:flex'
+                : 'flex flex-wrap items-center gap-2'
+            }
+          >
             {timeFilterButtons.map(filter => (
               <Button
                 key={filter.value}
@@ -172,21 +223,8 @@ export default function DashboardDateFilters({
         {showCustomPicker && (
           <div className="mt-4 w-full">
             <ModernDateRangePicker
-              value={
-                pendingCustomDateRange
-                  ? {
-                      from: pendingCustomDateRange.startDate,
-                      to: pendingCustomDateRange.endDate,
-                    }
-                  : undefined
-              }
-              onChange={range =>
-                setPendingCustomDateRange(
-                  range && range.from && range.to
-                    ? { startDate: range.from, endDate: range.to }
-                    : undefined
-                )
-              }
+              value={tempDateRange}
+              onChange={setTempDateRange}
               onGo={handleApplyCustomRange}
               onCancel={handleCancelCustomRange}
               onSetLastMonth={handleSetLastMonth}

@@ -18,13 +18,13 @@ COPY . .
 
 # Set environment variables (will be replaced via GitLab CI)
 ARG NODE_ENV
-ARG MONGO_URI
+ARG MONGODB_URI
 ARG JWT_SECRET
 ARG EMAIL_USER
 ARG SENDGRID_API_KEY
 
 ENV NODE_ENV=${NODE_ENV}
-ENV MONGO_URI=${MONGO_URI}
+ENV MONGODB_URI=${MONGODB_URI}
 ENV JWT_SECRET=${JWT_SECRET}
 ENV EMAIL_USER=${EMAIL_USER}
 ENV SENDGRID_API_KEY=${SENDGRID_API_KEY}
@@ -32,7 +32,7 @@ ENV SENDGRID_API_KEY=${SENDGRID_API_KEY}
 # Build the Next.js app
 # Provide placeholder values for build-time checks if not passed via --build-arg
 # The actual runtime values will be set by the ENV instructions above using ARGs passed during build or CI/CD runtime injection
-RUN MONGO_URI=${MONGO_URI:-dummy_mongo_uri} \
+RUN MONGODB_URI=${MONGODB_URI:-dummy_MONGODB_URI} \
     JWT_SECRET=${JWT_SECRET:-dummy_jwt_secret} \
     EMAIL_USER=${EMAIL_USER:-dummy_email_user} \
     SENDGRID_API_KEY=${SENDGRID_API_KEY:-dummy_sendgrid_key} \

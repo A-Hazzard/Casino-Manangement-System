@@ -18,7 +18,7 @@ build_and_push_to_registry:
     - |
       docker build --pull \
         --build-arg NODE_ENV="production" \
-        --build-arg MONGO_URI="$MONGO_URI" \
+        --build-arg MONGODB_URI="$MONGODB_URI" \
         --build-arg JWT_SECRET="$JWT_SECRET" \
         --build-arg EMAIL_USER="$EMAIL_USER" \
         --build-arg SENDGRID_API_KEY="$SENDGRID_API_KEY" \

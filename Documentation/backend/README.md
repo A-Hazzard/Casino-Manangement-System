@@ -18,8 +18,8 @@
 This directory contains comprehensive documentation for all backend API routes in the Evolution One CMS system. The documentation is organized by functionality and provides detailed information about endpoints, request/response formats, and usage patterns.
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** November 13th, 2025  
-**Version:** 2.2.1
+**Last Updated:** November 28th, 2025  
+**Version:** 2.3.0
 
 ## Documentation Structure
 

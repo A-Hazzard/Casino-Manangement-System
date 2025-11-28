@@ -10,11 +10,13 @@ const envPath = fs.existsSync(localEnv) ? localEnv : rootEnv;
 require('dotenv').config({ path: envPath });
 
 async function migrateUsers() {
-  const srcUri = process.env.SRC_MONGO_URI;
-  const dstUri = process.env.DST_MONGO_URI;
+  const srcUri = process.env.SRC_MONGODB_URI;
+  const dstUri = process.env.DST_MONGODB_URI;
 
   if (!srcUri || !dstUri) {
-    console.error('SRC_MONGO_URI or DST_MONGO_URI is missing from the environment.');
+    console.error(
+      'SRC_MONGODB_URI or DST_MONGODB_URI is missing from the environment.'
+    );
     process.exit(1);
   }
 
@@ -47,7 +49,9 @@ async function migrateUsers() {
       }
     }
 
-    console.log(`✅ Migration complete. Migrated ${migrated} users in ${(Date.now() - start) / 1000}s.`);
+    console.log(
+      `✅ Migration complete. Migrated ${migrated} users in ${(Date.now() - start) / 1000}s.`
+    );
   } catch (error) {
     console.error('Migration failed:', error);
     process.exit(1);
@@ -57,4 +61,3 @@ async function migrateUsers() {
 }
 
 migrateUsers();
-

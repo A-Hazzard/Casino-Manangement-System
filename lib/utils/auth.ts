@@ -46,10 +46,10 @@ export function getRefreshTokenSecret(): string {
 }
 
 export function getCurrentDbConnectionString(): string {
-  const mongoUri = process.env.MONGO_URI || process.env.MONGO_URI;
+  const mongoUri = process.env.MONGODB_URI as string;
   if (!mongoUri) {
     throw new Error(
-      'MONGODB_URI or MONGO_URI is not defined in environment variables.'
+      'MONGODB_URI or MONGODB_URI is not defined in environment variables.'
     );
   }
   return mongoUri;

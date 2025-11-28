@@ -3,58 +3,58 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/ui/card';
 import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
 import PaginationControls from '@/components/ui/PaginationControls';
-import { MetersTabSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MetersTabSkeleton } from '@/components/ui/skeletons/ReportsSkeletons';
+import { colorPalette } from '@/lib/constants/uiConstants';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { useUserStore } from '@/lib/store/userStore';
+import type { TopPerformingItem } from '@/lib/types';
+import { formatCurrency } from '@/lib/utils/currency';
 import {
-  exportMetersReportExcel,
-  exportMetersReportPDF,
+    exportMetersReportExcel,
+    exportMetersReportPDF,
 } from '@/lib/utils/export';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import { useDebounce } from '@/lib/utils/hooks';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
-import { formatCurrency } from '@/lib/utils/currency';
 import type {
-  MetersReportData,
-  MetersReportResponse,
+    MetersReportData,
+    MetersReportResponse,
 } from '@/shared/types/meters';
 import axios from 'axios';
 import {
-  AlertCircle,
-  BarChart3,
-  ChevronDown,
-  Download,
-  ExternalLink,
-  FileSpreadsheet,
-  FileText,
-  Monitor,
-  RefreshCw,
-  Search,
+    AlertCircle,
+    BarChart3,
+    ChevronDown,
+    Download,
+    ExternalLink,
+    FileSpreadsheet,
+    FileText,
+    Monitor,
+    RefreshCw,
+    Search,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { colorPalette } from '@/lib/constants/uiConstants';
-import type { TopPerformingItem } from '@/lib/types';
+import { toast } from 'sonner';
 
 export default function MetersTab() {
   const router = useRouter();
@@ -994,16 +994,16 @@ export default function MetersTab() {
                           <span className="flex-1 truncate font-medium text-gray-700">
                             {item.name}
                           </span>
-                          {item.locationId && (
+                          {item._id && (
                             <button
                               onClick={e => {
                                 e.stopPropagation();
-                                if (item.locationId) {
-                                  router.push(`/locations/${item.locationId}`);
+                                if (item._id) {
+                                  router.push(`/cabinets/${item._id}`);
                                 }
                               }}
                               className="flex-shrink-0"
-                              title="View location details"
+                              title="View machine details"
                             >
                               <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
                             </button>

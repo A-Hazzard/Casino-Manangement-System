@@ -21,6 +21,7 @@
   - 📋 **Collection Report Details** - Individual report analysis with SAS time validation
   - ✏️ **Edit/Delete Reports** - Full lifecycle management with meter reversion
   - 🔧 **Fix SAS Times** - Automatic detection and correction of SAS time issues
+  - 📱 **Mobile Collection Modal** - Responsive mobile interface with dual-state architecture
   - Movement Delta Method for accurate financial calculations
 - 📍 **Location Management** ([docs](Documentation/frontend/locations.md))
   - 🎰 **Location Cabinets** ([docs](Documentation/frontend/location-cabinets.md))
@@ -97,7 +98,7 @@ docker build -t evolution1-cms:local .
 
 ```sh
 docker run --rm -p 3000:3000 \
-  -e MONGO_URI="your_mongodb_connection_string" \
+  -e MONGODB_URI="your_mongodb_connection_string" \
   -e JWT_SECRET="cms" \
   -e NODE_ENV="production" \
   evolution1-cms:local
@@ -128,13 +129,13 @@ docker push registry.gitlab.com/sunny-group/sas/evolution-one-cms
 
 ```sh
 # Windows (CMD or PowerShell): run as one line (no backslashes)
-docker run --rm -p 3000:3000 -e MONGO_URI="mongo uri in .env" -e JWT_SECRET="jwt secret in .env" -e NODE_ENV="production" -e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="api key in .env" registry.gitlab.com/sunny-group/sas/evolution-one-cms
+docker run --rm -p 3000:3000 -e MONGODB_URI="mongo uri in .env" -e JWT_SECRET="jwt secret in .env" -e NODE_ENV="production" -e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="api key in .env" registry.gitlab.com/sunny-group/sas/evolution-one-cms
 ```
 
 ```sh
 # Mac/Linux (bash/zsh): use backslash \ to split lines
 docker run --rm -p 3000:3000 \
-  -e MONGO_URI="mongo uri in .env" \
+  -e MONGODB_URI="mongo uri in .env" \
   -e JWT_SECRET="jwt secret in .env" \
   -e NODE_ENV="production" \
   -e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="api key in .env" \
@@ -191,7 +192,7 @@ go run main.go
 
 **Configuration:**
 
-- Requires `.env` file with `MONGO_URI` connection string
+- Requires `.env` file with `MONGODB_URI` connection string
 - Connects to `sas-prod` database
 - Supports 5-minute timeout for complex queries
 - Includes progress monitoring for long-running queries
@@ -383,4 +384,4 @@ Evolution1 CMS enforces strict engineering discipline in type safety, code style
 
 ---
 
-**Last Updated:** November 4th, 2025
+**Last Updated:** November 28th, 2025
