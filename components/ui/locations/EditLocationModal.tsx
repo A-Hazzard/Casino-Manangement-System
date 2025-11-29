@@ -93,9 +93,11 @@ export default function EditLocationModal({
       setUseMap(false);
     }
   }, [isDeveloper, useMap]);
-  
+
   // Store original form data exactly as loaded from API for accurate comparison
-  const [originalFormData, setOriginalFormData] = useState<typeof formData | null>(null);
+  const [originalFormData, setOriginalFormData] = useState<
+    typeof formData | null
+  >(null);
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
     if (!user) return 'Unknown User';
@@ -260,7 +262,9 @@ export default function EditLocationModal({
     setLicenseesLoading(true);
     try {
       const result = await fetchLicensees();
-      const licenseesData = Array.isArray(result.licensees) ? result.licensees : [];
+      const licenseesData = Array.isArray(result.licensees)
+        ? result.licensees
+        : [];
       setLicensees(licenseesData);
     } catch (error) {
       console.error('Failed to fetch licensees:', error);
@@ -438,22 +442,21 @@ export default function EditLocationModal({
         latitude: locationDetails.geoCoords?.latitude?.toString() || '',
         longitude: locationDetails.geoCoords?.longitude?.toString() || '',
         dayStartTime: dayStartTime,
-        billValidatorOptions:
-          locationDetails.billValidatorOptions || {
-            denom1: false,
-            denom2: false,
-            denom5: false,
-            denom10: false,
-            denom20: false,
-            denom50: false,
-            denom100: false,
-            denom200: false,
-            denom500: false,
-            denom1000: false,
-            denom2000: false,
-            denom5000: false,
-            denom10000: false,
-          },
+        billValidatorOptions: locationDetails.billValidatorOptions || {
+          denom1: false,
+          denom2: false,
+          denom5: false,
+          denom10: false,
+          denom20: false,
+          denom50: false,
+          denom100: false,
+          denom200: false,
+          denom500: false,
+          denom1000: false,
+          denom2000: false,
+          denom5000: false,
+          denom10000: false,
+        },
       };
 
       // Store original form data for comparison on submit
@@ -591,7 +594,8 @@ export default function EditLocationModal({
         },
         country: originalFormData.country,
         profitShare: parseInt(originalFormData.profitShare) || 0,
-        gameDayOffset: parseInt(originalFormData.dayStartTime.split(':')[0]) || 8,
+        gameDayOffset:
+          parseInt(originalFormData.dayStartTime.split(':')[0]) || 8,
         rel: {
           licencee: originalFormData.licencee,
         },
@@ -749,9 +753,9 @@ export default function EditLocationModal({
 
   if (!isEditModalOpen || !selectedLocation) return null;
 
-  // Desktop View Modal Content
+  // Modal Content - full viewport overlay with high z-index to cover sidebar
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[70]">
       {/* Backdrop */}
       <div
         ref={backdropRef}

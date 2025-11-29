@@ -1,15 +1,17 @@
 'use client';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, BarChart3 } from 'lucide-react';
-import type { MembersView, MembersTab } from '@/shared/types/entities';
-import Image from 'next/image';
-import { IMAGES } from '@/lib/constants/images';
+import type { MembersTab, MembersView } from '@/shared/types/entities';
+import { BarChart3, PlusCircle, RefreshCw, Users } from 'lucide-react';
 
 type MembersNavigationProps = {
   availableTabs: MembersTab[];
   activeTab: MembersView;
   onTabChange: (tabId: string) => void;
   selectedLicencee?: string;
+  onRefresh?: () => void;
+  onNewMember?: () => void;
+  refreshing?: boolean;
 };
 
 /**
@@ -21,6 +23,9 @@ export default function MembersNavigation({
   activeTab,
   onTabChange,
   selectedLicencee,
+  onRefresh,
+  onNewMember,
+  refreshing = false,
 }: MembersNavigationProps) {
   const getIcon = (iconName: string) => {
     switch (iconName) {
@@ -33,51 +38,94 @@ export default function MembersNavigation({
     }
   };
 
-  return (
-    <div className="border-b border-gray-200 bg-white px-6 py-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Title and Description */}
-        <div className="flex flex-col">
-          <div className="flex items-center justify-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">Members</h1>
-            <Image
-              src={IMAGES.membersIcon}
-              alt="Members Icon"
-              width={32}
-              height={32}
-              className="h-6 w-6 sm:h-8 sm:w-8"
-            />
-            {/* Preserve selected licencee context for a11y without showing a badge */}
-            {selectedLicencee ? (
-              <span className="sr-only">Selected licencee: {selectedLicencee}</span>
-            ) : null}
-          </div>
-          <p className="mt-2 text-sm text-gray-600 text-left">
-            Manage member profiles, sessions, and analytics
-          </p>
-        </div>
+  const activeTabConfig = availableTabs.find(tab => tab.id === activeTab);
 
-        {/* Tab Navigation */}
-        <div className="flex-shrink-0">
-          <Tabs
-            value={activeTab}
-            onValueChange={onTabChange}
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2 bg-gray-100">
-              {availableTabs.map(tab => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="flex items-center gap-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-gray-900"
-                >
-                  {getIcon(tab.icon)}
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+  return (
+    <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+      <div className="flex flex-col gap-3 sm:gap-4">
+        {/* Description */}
+        <p className="hidden text-sm text-gray-600 md:block">
+          Manage member profiles, sessions, and analytics
+        </p>
+
+        {/* Tab Navigation with Title and Actions */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+            {/* Tab Title */}
+            <div className="flex items-center gap-2">
+              {activeTabConfig && getIcon(activeTabConfig.icon)}
+              <h1 className="text-lg font-bold text-gray-900 sm:text-2xl">
+                {activeTabConfig?.label || 'Members'}
+              </h1>
+              {selectedLicencee && (
+                <span className="max-w-[140px] truncate text-xs text-gray-500 sm:max-w-xs">
+                  ({selectedLicencee})
+                </span>
+              )}
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="w-full flex-shrink-0 sm:w-auto">
+              <Tabs
+                value={activeTab}
+                onValueChange={onTabChange}
+                className="w-full"
+              >
+                <TabsList className="grid grid-cols-2 bg-gray-100">
+                  {availableTabs.map(tab => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      className="flex items-center gap-1.5 text-xs font-medium data-[state=active]:bg-white data-[state=active]:text-gray-900 sm:gap-2 sm:text-sm"
+                    >
+                      {getIcon(tab.icon)}
+                      <span className="hidden sm:inline">{tab.label}</span>
+                      <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            {onRefresh && (
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (typeof onRefresh === 'function') {
+                    onRefresh();
+                  }
+                }}
+                disabled={refreshing}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                title="Refresh data"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+            )}
+            {onNewMember && (
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (typeof onNewMember === 'function') {
+                    onNewMember();
+                  }
+                }}
+                variant="default"
+                size="sm"
+                className="flex items-center gap-2 bg-button hover:bg-buttonActive"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Create New Member</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

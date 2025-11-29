@@ -156,7 +156,8 @@ export const fetchCabinetById = async (
   cabinetId: string,
   timePeriod?: string,
   customDateRange?: DateRange,
-  currency?: string
+  currency?: string,
+  licensee?: string | null
 ) => {
   try {
     // Use the main machines endpoint with time period filtering
@@ -182,6 +183,10 @@ export const fetchCabinetById = async (
 
     if (currency) {
       queryParams.push(`currency=${encodeURIComponent(currency)}`);
+    }
+
+    if (licensee) {
+      queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
     }
 
     // Add cache-busting timestamp to prevent caching issues
@@ -466,6 +471,10 @@ export const fetchCabinetLocations = async (licensee?: string) => {
  * @param licencee - (Optional) Licencee filter.
  * @param timePeriod - (Optional) Time period filter.
  * @param searchTerm - (Optional) Search term filter.
+ * @param customDateRange - (Optional) Custom date range for timePeriod \"Custom\".
+ * @param page - (Optional) Page number for pagination.
+ * @param limit - (Optional) Page size for pagination.
+ * @param currency - (Optional) Display currency for financial data conversion.
  * @returns Promise resolving to an array of cabinets, or an empty array on error.
  */
 export async function fetchCabinetsForLocation(
@@ -475,7 +484,8 @@ export async function fetchCabinetsForLocation(
   searchTerm?: string,
   customDateRange?: DateRange,
   page?: number,
-  limit?: number
+  limit?: number,
+  currency?: string
 ): Promise<{
   data: GamingMachine[];
   pagination?: {
@@ -516,6 +526,10 @@ export async function fetchCabinetsForLocation(
     }
     if (limit !== undefined) {
       params.limit = limit.toString();
+    }
+
+    if (currency) {
+      params.currency = currency;
     }
 
     // Handle custom date range

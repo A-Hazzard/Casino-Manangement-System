@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 type Firmware = {
@@ -29,7 +29,7 @@ export function useSmibOTA(onUpdateComplete?: () => void) {
   /**
    * Fetch available firmware versions
    */
-  const fetchFirmwares = async (): Promise<void> => {
+  const fetchFirmwares = useCallback(async (): Promise<void> => {
     setIsLoadingFirmwares(true);
     try {
       const response = await axios.get('/api/firmwares');
@@ -40,7 +40,7 @@ export function useSmibOTA(onUpdateComplete?: () => void) {
     } finally {
       setIsLoadingFirmwares(false);
     }
-  };
+  }, []);
 
   /**
    * Trigger OTA update for a single SMIB

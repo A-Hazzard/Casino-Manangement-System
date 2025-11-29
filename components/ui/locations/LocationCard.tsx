@@ -119,7 +119,12 @@ export default function LocationCard({
       {/* Action Buttons */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
         <Button
-          onClick={() => onLocationClick(location._id)}
+          onClick={() => {
+            const locationId = (location.location as string) || location._id;
+            if (locationId) {
+              onLocationClick(locationId);
+            }
+          }}
           variant="outline"
           size="sm"
           className="flex-1 flex items-center justify-center gap-1.5 text-xs"

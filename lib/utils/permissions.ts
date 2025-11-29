@@ -59,13 +59,7 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'technician',
       'collector',
     ],
-    locations: [
-      'developer',
-      'admin',
-      'manager',
-      'location admin',
-      'collector',
-    ],
+    locations: ['developer', 'admin', 'manager', 'location admin', 'collector'],
     'location-details': [
       'developer',
       'admin',
@@ -74,8 +68,8 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'technician',
       'collector',
     ],
-    members: ['developer'], // ✅ Restricted to developer only
-    'member-details': ['developer'], // ✅ Restricted to developer only
+    members: ['developer', 'admin'], // ✅ Restricted to developer and admin
+    'member-details': ['developer', 'admin'], // ✅ Restricted to developer and admin
     'collection-report': [
       'developer',
       'admin',
@@ -84,7 +78,7 @@ export const hasPageAccess = (userRoles: string[], page: PageName): boolean => {
       'collector',
     ],
     reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
-    sessions: ['developer'], // ✅ Restricted to developer only
+    sessions: ['developer', 'admin'], // ✅ Restricted to developer and admin
     administration: ['developer', 'admin', 'manager', 'location admin'],
   };
 
@@ -107,7 +101,12 @@ export const hasTabAccess = (
   const tabPermissions: Record<string, string[]> = {
     'administration-users': ['developer', 'admin', 'manager', 'location admin'],
     'administration-licensees': ['developer', 'admin'],
-    'administration-activity-logs': ['developer', 'admin', 'manager', 'location admin'],
+    'administration-activity-logs': [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+    ],
     'administration-feedback': ['developer', 'admin'],
     'collection-reports-monthly': [
       'developer',
@@ -115,11 +114,7 @@ export const hasTabAccess = (
       'manager',
       'location admin',
     ],
-    'collection-reports-manager-schedules': [
-      'developer',
-      'admin',
-      'manager',
-    ],
+    'collection-reports-manager-schedules': ['developer', 'admin', 'manager'],
     'collection-reports-collector-schedules': [
       'developer',
       'admin',
@@ -270,7 +265,7 @@ export const shouldShowNavigationLink = (
   // the highest-level role. This affects NAV/Sidebar visibility only and
   // does not change actual route access rules handled by hasPageAccess.
   if (page === 'sessions' || page === 'members') {
-    return userRoles.includes('developer');
+    return userRoles.includes('developer') || userRoles.includes('admin');
   }
 
   return hasPageAccess(userRoles, page);
@@ -283,7 +278,7 @@ export const shouldShowNavigationLink = (
  */
 export const getRoleDisplayName = (userRoles: string[]): string => {
   const roleDisplayNames: Record<string, string> = {
-    'developer': 'Developer',
+    developer: 'Developer',
     admin: 'Administrator',
     manager: 'Manager',
     'location admin': 'Location Admin',

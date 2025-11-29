@@ -133,8 +133,8 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'technician',
       'collector',
     ],
-    members: ['developer'],
-    'member-details': ['developer'],
+    members: ['developer', 'admin'],
+    'member-details': ['developer', 'admin'],
     'collection-report': [
       'developer',
       'admin',
@@ -143,7 +143,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'collector',
     ],
     reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
-    sessions: ['developer'],
+    sessions: ['developer', 'admin'],
     administration: ['developer', 'admin', 'manager', 'location admin'],
   };
 

@@ -63,7 +63,7 @@ import {
 import { getNext30Days } from '@/lib/utils/licensee';
 import { PlusCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 // import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
 
@@ -299,9 +299,20 @@ function AdministrationPageContent() {
     [pagesPerBatch]
   );
 
+  // Track if we've attempted backend search for role/status filter
+  const hasAttemptedBackendFilterRef = useRef(false);
+  const lastFilterKeyRef = useRef<string>('');
+
   // Reset users data when licensee or status changes
   useEffect(() => {
     if (!mounted) return;
+
+    // Reset backend filter attempt tracking when filters change
+    const filterKey = `${selectedLicencee}-${selectedStatus}-${selectedRole}`;
+    if (lastFilterKeyRef.current !== filterKey) {
+      hasAttemptedBackendFilterRef.current = false;
+      lastFilterKeyRef.current = filterKey;
+    }
 
     setAllUsers([]);
     setAllLoadedUsers([]);
@@ -319,6 +330,7 @@ function AdministrationPageContent() {
   }, [
     selectedLicencee,
     selectedStatus,
+    selectedRole,
     mounted,
     setAllUsers,
     setAllLoadedUsers,
@@ -433,12 +445,13 @@ function AdministrationPageContent() {
   // Handle pagination for backend search results
   useEffect(() => {
     if (isLoading || activeSection !== 'users') return;
-    if (
-      !usingBackendSearch ||
-      !debouncedSearchValue ||
-      !debouncedSearchValue.trim()
-    )
-      return;
+    if (!usingBackendSearch) return;
+    
+    // Only handle pagination if we're searching OR if we're using backend filter
+    const isSearching = debouncedSearchValue && debouncedSearchValue.trim();
+    const isFiltering = (selectedRole !== 'all' || selectedStatus !== 'all') && !isSearching;
+    
+    if (!isSearching && !isFiltering) return;
 
     // When using backend search, fetch the current page from backend
     const currentPage1Indexed = currentPage + 1;
@@ -449,9 +462,10 @@ function AdministrationPageContent() {
           selectedLicencee,
           currentPage1Indexed,
           itemsPerBatch,
-          debouncedSearchValue,
-          'all', // Search all fields
-          selectedStatus as 'all' | 'active' | 'disabled' | 'deleted'
+          isSearching ? debouncedSearchValue : undefined,
+          isSearching ? 'all' : 'username', // Search all fields if searching, otherwise username
+          selectedStatus as 'all' | 'active' | 'disabled' | 'deleted',
+          selectedRole
         );
         setAllUsers(result.users || []);
         setPaginationMetadata({
@@ -475,6 +489,7 @@ function AdministrationPageContent() {
     debouncedSearchValue,
     selectedLicencee,
     selectedStatus,
+    selectedRole,
     itemsPerBatch,
     isLoading,
     activeSection,
@@ -753,6 +768,91 @@ function AdministrationPageContent() {
       );
     });
   }, [allUsers, selectedRole]);
+
+  // Fallback to backend search when frontend filtering returns no results
+  useEffect(() => {
+    if (activeSection !== 'users' || !mounted) return;
+    if (isLoading || isSearching) return;
+    if (debouncedSearchValue && debouncedSearchValue.trim()) return; // Skip if searching
+    if (usingBackendSearch) return; // Already using backend search
+
+    // Only check if we have loaded users and filters are applied
+    const hasRoleFilter = selectedRole !== 'all';
+    const hasStatusFilter = selectedStatus !== 'all';
+    
+    if (!hasRoleFilter && !hasStatusFilter) {
+      // No filters applied, no need for backend search
+      hasAttemptedBackendFilterRef.current = false;
+      return;
+    }
+
+    // Check if frontend filtering resulted in no results
+    if (roleFilteredUsers.length === 0 && allUsers.length > 0) {
+      // Frontend filtering found no results, but we have users loaded
+      // This means the filter doesn't match any loaded users
+      // Try backend search as fallback
+      if (!hasAttemptedBackendFilterRef.current) {
+        hasAttemptedBackendFilterRef.current = true;
+        setUsingBackendSearch(true);
+        setIsSearching(true);
+        
+        const loadBackendFilter = async () => {
+          try {
+            const result = await fetchUsers(
+              selectedLicencee,
+              1,
+              itemsPerBatch,
+              undefined,
+              'username',
+              selectedStatus as 'all' | 'active' | 'disabled' | 'deleted',
+              selectedRole
+            );
+            setAllUsers(result.users || []);
+            setAllLoadedUsers(result.users || []);
+            setPaginationMetadata({
+              total: result.pagination.total,
+              totalPages: result.pagination.totalPages,
+            });
+            setCurrentPage(0);
+            setLoadedBatches(new Set([1]));
+          } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Failed to fetch filtered users:', error);
+            }
+            setAllUsers([]);
+            hasAttemptedBackendFilterRef.current = false;
+          } finally {
+            setIsSearching(false);
+          }
+        };
+        
+        loadBackendFilter();
+      }
+    } else if (roleFilteredUsers.length > 0) {
+      // Frontend filtering found results, reset backend search flag
+      hasAttemptedBackendFilterRef.current = false;
+    }
+  }, [
+    activeSection,
+    mounted,
+    isLoading,
+    isSearching,
+    debouncedSearchValue,
+    usingBackendSearch,
+    selectedRole,
+    selectedStatus,
+    selectedLicencee,
+    roleFilteredUsers.length,
+    allUsers.length,
+    itemsPerBatch,
+    setAllUsers,
+    setAllLoadedUsers,
+    setCurrentPage,
+    setIsSearching,
+    setPaginationMetadata,
+    setUsingBackendSearch,
+    setLoadedBatches,
+  ]);
 
   // Get items for current page from the role-filtered users
   const paginatedUsers = useMemo(() => {

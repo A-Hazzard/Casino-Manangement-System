@@ -239,7 +239,8 @@ export const fetchTopPerformingDataHelper = async (
   activePieChartFilter: TimePeriod,
   setTopPerformingData: (data: TopPerformingData) => void,
   setLoadingTopPerforming: (loading: boolean) => void,
-  selectedLicencee?: string
+  selectedLicencee?: string,
+  currency?: string
 ) => {
   // Only fetch data if there's a valid filter
   if (!activePieChartFilter) {
@@ -252,7 +253,8 @@ export const fetchTopPerformingDataHelper = async (
     const data = await fetchTopPerformingData(
       activeTab,
       activePieChartFilter,
-      selectedLicencee
+      selectedLicencee,
+      currency
     );
     setTopPerformingData(data);
   } catch (error) {
@@ -310,7 +312,12 @@ export const handleDashboardRefresh = async (
         setShowDatePicker,
         displayCurrency
       ),
-      fetchTopPerformingData(activeTab, activePieChartFilter, selectedLicencee),
+      fetchTopPerformingData(
+        activeTab,
+        activePieChartFilter,
+        selectedLicencee,
+        displayCurrency
+      ),
       axios.get(`/api/locations?${locationsParams.toString()}`),
     ]);
     setTopPerformingData(topPerformingDataResult);

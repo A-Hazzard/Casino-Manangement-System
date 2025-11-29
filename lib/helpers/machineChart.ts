@@ -49,7 +49,8 @@ export async function getMachineMetrics(
   timePeriod: TimePeriod,
   startDate?: Date | string,
   endDate?: Date | string,
-  displayCurrency?: string
+  displayCurrency?: string,
+  selectedLicencee?: string | null
 ): Promise<MachineMetricsData | null> {
   try {
     let url = `/api/machines/${machineId}?timePeriod=${timePeriod}`;
@@ -62,6 +63,10 @@ export async function getMachineMetrics(
 
     if (displayCurrency) {
       url += `&currency=${displayCurrency}`;
+    }
+
+    if (selectedLicencee) {
+      url += `&licensee=${encodeURIComponent(selectedLicencee)}`;
     }
 
     const response = await axios.get(url);
@@ -106,7 +111,8 @@ export async function getMachineChartData(
   timePeriod: TimePeriod,
   startDate?: Date | string,
   endDate?: Date | string,
-  displayCurrency?: string
+  displayCurrency?: string,
+  selectedLicencee?: string | null
 ): Promise<dashboardData[]> {
   try {
     // Build URL for machine chart API
@@ -120,6 +126,11 @@ export async function getMachineChartData(
 
     if (displayCurrency) {
       url += `&currency=${displayCurrency}`;
+    }
+
+    // Pass selectedLicencee to API so it can check if "all licensees" is selected
+    if (selectedLicencee !== undefined && selectedLicencee !== null) {
+      url += `&licensee=${encodeURIComponent(selectedLicencee)}`;
     }
 
     const response = await axios.get<{

@@ -20,6 +20,7 @@ import {
   MembersListTabSkeleton,
   MembersSummaryTabSkeleton,
 } from '@/components/ui/skeletons/MembersSkeletons';
+import { MembersHandlersProvider, useMembersHandlers } from '@/components/members/context/MembersHandlersContext';
 
 // Tab Components
 import MembersListTab from '@/components/members/tabs/MembersListTab';
@@ -47,11 +48,12 @@ import type { MembersView } from '@/shared/types/entities';
  * - Access control
  * - Responsive layout
  */
-export default function MembersContent() {
+function MembersContentInner() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+  const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
 
   // All authenticated users have access to members
   const hasAccess = true;
@@ -146,6 +148,9 @@ export default function MembersContent() {
           activeTab={activeTab}
           onTabChange={handleTabClick}
           selectedLicencee={selectedLicencee}
+          onRefresh={onRefresh}
+          onNewMember={onNewMember}
+          refreshing={refreshing}
         />
 
         {/* Main Content */}
@@ -153,7 +158,15 @@ export default function MembersContent() {
       </PageLayout>
 
       {/* Toast Notifications */}
-      <Toaster richColors />
+      <Toaster richColors position="top-center" />
     </>
+  );
+}
+
+export default function MembersContent() {
+  return (
+    <MembersHandlersProvider>
+      <MembersContentInner />
+    </MembersHandlersProvider>
   );
 }

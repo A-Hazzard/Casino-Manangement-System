@@ -254,12 +254,6 @@ export async function GET(request: NextRequest) {
                         { $toString: '$$memberLocation' },
                       ],
                     },
-                    {
-                      $eq: [
-                        '$_id',
-                        { $toObjectId: { $ifNull: ['$$memberLocation', ''] } },
-                      ],
-                    },
                   ],
                 },
               },

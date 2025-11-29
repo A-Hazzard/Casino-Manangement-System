@@ -12,6 +12,7 @@ import axios from 'axios';
  * @param search - (Optional) Search term to filter users by username, email, or _id
  * @param searchMode - (Optional) Search mode: 'username', 'email', '_id', or 'all' (default: 'username', 'all' searches all fields)
  * @param status - (Optional) Status filter: 'all', 'active', 'disabled', or 'deleted' (default: 'all')
+ * @param role - (Optional) Role filter: 'all', 'developer', 'admin', 'manager', 'location admin', 'technician', 'collector' (default: 'all')
  * @returns A promise that resolves to paginated users with pagination metadata.
  */
 export const fetchUsers = async (
@@ -20,7 +21,8 @@ export const fetchUsers = async (
   limit: number = 50,
   search?: string,
   searchMode: 'username' | 'email' | '_id' | 'all' = 'username',
-  status: 'all' | 'active' | 'disabled' | 'deleted' = 'all'
+  status: 'all' | 'active' | 'disabled' | 'deleted' = 'all',
+  role?: string
 ): Promise<{
   users: User[];
   pagination: {
@@ -40,6 +42,9 @@ export const fetchUsers = async (
   }
   if (status && status !== 'all') {
     params.status = status;
+  }
+  if (role && role !== 'all') {
+    params.role = role;
   }
   params.page = String(page);
   params.limit = String(limit);

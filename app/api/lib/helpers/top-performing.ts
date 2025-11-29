@@ -1,11 +1,10 @@
 import { Db } from 'mongodb';
-import { getDatesForTimePeriod } from '../utils/dates';
 import {
   PipelineStage,
   QueryFilter,
   TimePeriod,
-  CustomDate,
 } from '@/lib/types/api';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 
 type ActiveTab = 'locations' | 'Cabinets';
 
@@ -24,13 +23,16 @@ export async function getTopPerformingMetrics(
   timePeriod: TimePeriod,
   licensee?: string
 ) {
-  const { startDate, endDate }: CustomDate = getDatesForTimePeriod(timePeriod);
-
   const filter: QueryFilter = {};
 
-  // Only add date filter if we have valid dates (not "All Time")
-  if (startDate && endDate) {
-    filter.readAt = { $gte: startDate, $lte: endDate };
+  // Align date filtering with gaming-day logic used by location aggregation,
+  // machines detail, etc. For "All Time" we deliberately skip the date filter.
+  if (timePeriod !== 'All Time') {
+    const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod(
+      timePeriod,
+      8 // Default gaming day start hour (8 AM Trinidad time)
+    );
+    filter.readAt = { $gte: rangeStart, $lte: rangeEnd };
   }
 
   const aggregationQuery =

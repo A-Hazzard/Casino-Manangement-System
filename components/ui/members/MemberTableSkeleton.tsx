@@ -1,89 +1,86 @@
 import React from 'react';
-import { ChevronDownIcon } from '@radix-ui/react-icons';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const MemberTableSkeleton: React.FC = () => (
-  <div className="w-full overflow-x-auto">
-    <table className="w-full table-fixed border-collapse text-center">
-      <thead className="bg-button text-white">
-        <tr>
-          {/* Match headers from MemberTable */}
-          <th className="relative w-[20%] p-3 text-sm">
-            <div className="flex items-center justify-center">
-              <span className="font-semibold">MEMBER ID</span>
-              <div className="ml-1 h-4 w-4 text-white">
-                <ChevronDownIcon className="h-full w-full" />
-              </div>
-            </div>
-          </th>
-          <th className="relative w-[30%] p-3 text-sm">
-            <div className="flex items-center justify-center">
-              <span className="font-semibold">FULL NAME</span>
-              <div className="ml-1 h-4 w-4 text-white">
-                <ChevronDownIcon className="h-full w-full" />
-              </div>
-            </div>
-          </th>
-          <th className="relative w-[20%] p-3 text-sm">
-            <div className="flex items-center justify-center">
-              <span className="font-semibold">JOINED</span>
-              <div className="ml-1 h-4 w-4 text-white">
-                <ChevronDownIcon className="h-full w-full" />
-              </div>
-            </div>
-          </th>
-          <th className="w-[15%] p-3 text-sm">
-            <span className="font-semibold">DETAILS</span>
-          </th>
-          <th className="w-[15%] p-3 text-sm">
-            <span className="font-semibold">ACTIONS</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {Array.from({ length: 8 }).map((_, rowIndex) => (
-          <tr
-            key={rowIndex}
-            className="border-b border-gray-200 hover:bg-gray-50"
+  <div className="overflow-x-auto rounded-lg bg-white shadow">
+    <Table className="w-full table-fixed">
+      <TableHeader>
+        <TableRow className="bg-button hover:bg-button">
+          <TableHead
+            isFirstColumn={true}
+            className="relative cursor-pointer font-semibold text-white"
           >
-            {/* Member ID Column */}
-            <td className="border border-border bg-container p-3 text-left text-sm hover:bg-accent">
-              <div className="skeleton-bg h-4 w-3/4 rounded font-mono text-xs"></div>
-            </td>
-            {/* Full Name Column */}
-            <td className="border border-border bg-container p-3 text-left text-sm hover:bg-accent">
-              <div className="skeleton-bg mb-1 h-4 w-4/5 rounded"></div>
-              <div className="flex gap-1">
-                <div className="skeleton-bg h-3 w-16 rounded"></div>
-                <div className="skeleton-bg h-3 w-12 rounded"></div>
+            <span>LOCATION</span>
+          </TableHead>
+          <TableHead
+            isFirstColumn={true}
+            centered
+            className="relative cursor-pointer font-semibold text-white"
+          >
+            <span>FULL NAME</span>
+          </TableHead>
+          <TableHead
+            centered
+            className="relative cursor-pointer font-semibold text-white"
+          >
+            <span>WIN/LOSS</span>
+          </TableHead>
+          <TableHead
+            centered
+            className="relative cursor-pointer font-semibold text-white"
+          >
+            <span>JOINED</span>
+          </TableHead>
+          <TableHead centered className="font-semibold text-white">
+            ACTIONS
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {Array.from({ length: 8 }).map((_, rowIndex) => (
+          <TableRow
+            key={rowIndex}
+            className="cursor-pointer hover:bg-muted"
+          >
+            <TableCell isFirstColumn={true}>
+              <Skeleton className="h-4 w-24" />
+            </TableCell>
+            <TableCell centered>
+              <Skeleton className="mb-1 h-4 w-32" />
+              <div className="mt-1 flex gap-1">
+                <Skeleton className="h-3 w-16 rounded-full" />
+                <Skeleton className="h-3 w-12 rounded-full" />
               </div>
-            </td>
-            {/* Joined Column */}
-            <td className="border border-border bg-container p-3 text-sm hover:bg-accent">
-              <div className="skeleton-bg mx-auto h-4 w-3/4 rounded"></div>
-            </td>
-            {/* Details Column */}
-            <td className="border border-border bg-container p-3 text-sm hover:bg-accent">
+            </TableCell>
+            <TableCell centered>
+              <Skeleton className="mx-auto h-4 w-20" />
+              <div className="mt-1 flex items-center justify-center gap-1 text-xs">
+                <Skeleton className="h-3 w-12" />
+                <span className="text-gray-400">|</span>
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </TableCell>
+            <TableCell centered>
+              <Skeleton className="mx-auto h-4 w-24" />
+            </TableCell>
+            <TableCell centered>
               <div className="flex items-center justify-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded bg-gray-200">
-                  <div className="h-4 w-4 rounded bg-gray-300"></div>
-                </div>
-                <div className="flex h-7 w-7 items-center justify-center rounded bg-gray-200">
-                  <div className="h-4 w-4 rounded bg-gray-300"></div>
-                </div>
+                <Skeleton className="h-8 w-8 rounded" />
+                <Skeleton className="h-8 w-8 rounded" />
               </div>
-            </td>
-            {/* Actions Column */}
-            <td className="border border-border bg-container p-3 text-sm hover:bg-accent">
-              <div className="flex items-center justify-center">
-                <div className="flex h-7 w-7 items-center justify-center rounded bg-gray-200">
-                  <div className="h-4 w-4 rounded bg-gray-300"></div>
-                </div>
-              </div>
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   </div>
 );
 

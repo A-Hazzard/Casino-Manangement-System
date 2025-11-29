@@ -14,19 +14,20 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
+  getLicenseeCurrency,
 } from '@/lib/helpers/rates';
+import type { MachineDocument } from '@/lib/types/mongo';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
-import type { MachineDocument } from '@/lib/types/mongo';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -61,7 +62,6 @@ export async function GET(
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
-
     // ============================================================================
     // STEP 2: Validate timePeriod or date range parameters
     // ============================================================================
@@ -87,7 +87,7 @@ export async function GET(
     // Since aggregation endpoint converts _id to string, but DB might have ObjectId,
     // we need to try both formats
     let machine: MachineDocument | null = null;
-    
+
     // First try as string (schema says String type)
     machine = (await Machine.findOne({
       _id: machineId,
@@ -95,7 +95,11 @@ export async function GET(
     }).lean()) as MachineDocument | null;
 
     // If not found and ID looks like ObjectId hex string, try as ObjectId
-    if (!machine && machineId.length === 24 && /^[0-9a-fA-F]{24}$/.test(machineId)) {
+    if (
+      !machine &&
+      machineId.length === 24 &&
+      /^[0-9a-fA-F]{24}$/.test(machineId)
+    ) {
       try {
         const { default: mongoose } = await import('mongoose');
         const objectId = new mongoose.Types.ObjectId(machineId);
@@ -113,7 +117,10 @@ export async function GET(
         }
       } catch (objectIdError) {
         // Invalid ObjectId format or DB error, continue with 404
-        console.warn(`[Machines API GET] Failed to query as ObjectId:`, objectIdError);
+        console.warn(
+          `[Machines API GET] Failed to query as ObjectId:`,
+          objectIdError
+        );
       }
     }
 
@@ -232,7 +239,9 @@ export async function GET(
         coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
         gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
         gamesWon: { $sum: { $ifNull: ['$movement.gamesWon', 0] } },
-        handPaidCancelledCredits: { $sum: { $ifNull: ['$movement.handPaidCancelledCredits', 0] } },
+        handPaidCancelledCredits: {
+          $sum: { $ifNull: ['$movement.handPaidCancelledCredits', 0] },
+        },
         meterCount: { $sum: 1 },
       },
     });
@@ -274,16 +283,11 @@ export async function GET(
     let finalCoinIn = coinIn;
     let finalCoinOut = coinOut;
 
-    // Get user's role to determine if currency conversion should apply
-    const user = await getUserFromServer();
-    const userRoles = (user?.roles as string[]) || [];
-    const isAdminOrDev = userRoles.some(role =>
-      ['admin', 'developer'].includes(role)
-    );
+    // For cabinet detail pages we ALWAYS convert from the machine's native currency
+    // into the selected display currency (including USD), regardless of licensee filter or role.
+    const shouldConvert = Boolean(displayCurrency);
 
-    // Currency conversion ONLY for Admin/Developer when viewing "All Licensees" (no specific licensee selected)
-    // For detail pages, we check if currency parameter is provided (which means "All Licensees" was selected)
-    if (isAdminOrDev && displayCurrency && displayCurrency !== 'USD') {
+    if (shouldConvert) {
       // Get location details to determine native currency
       let locationData: {
         rel?: { licencee?: string };
@@ -308,55 +312,52 @@ export async function GET(
       }
 
       // Determine native currency from licensee or country
-      let nativeCurrency: string = 'USD';
+      let nativeCurrency: CurrencyCode = 'USD';
       if (locationData?.rel?.licencee) {
-        // Get licensee name from ID
-        const { default: db } = await import('mongoose');
-        const Licencee = db.connection.collection('licencees');
-        const licenseeDoc = await Licencee.findOne({
-          _id: new db.Types.ObjectId(locationData.rel.licencee),
-        });
-        const licenseeName = licenseeDoc?.name as string | undefined;
+        try {
+          // Licencee _id is stored as a String in this project, not ObjectId
+          const licenseeDoc = await Licencee.findOne({
+            _id: locationData.rel.licencee,
+          })
+            .select('name')
+            .lean();
 
-        if (licenseeName) {
-          // Map licensee name to currency
-          const LICENSEE_CURRENCY: Record<string, string> = {
-            TTG: 'TTD',
-            Cabana: 'GYD',
-            Barbados: 'BBD',
-          };
-          nativeCurrency = LICENSEE_CURRENCY[licenseeName] || 'USD';
+          if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
+            // Map licensee name/id to its native currency (TTD, GYD, BBD, etc.)
+            nativeCurrency = getLicenseeCurrency(licenseeDoc.name);
+          }
+        } catch (licenseeError) {
+          console.warn(
+            'Failed to resolve licensee for currency conversion:',
+            licenseeError
+          );
         }
       } else if (locationData?.country) {
-        // Get country name from ID
-        const { default: db } = await import('mongoose');
-        const Country = db.connection.collection('countries');
-        const countryDoc = await Country.findOne({
-          _id: new db.Types.ObjectId(locationData.country),
-        });
-        const countryName = countryDoc?.name as string | undefined;
-
-        if (countryName) {
-          nativeCurrency = getCountryCurrency(countryName) || 'USD';
+        try {
+          // location.country already stores the country name in most cases
+          nativeCurrency = getCountryCurrency(locationData.country);
+        } catch (countryError) {
+          console.warn(
+            'Failed to resolve country for currency conversion:',
+            countryError
+          );
         }
       }
 
       // Convert from native currency to USD, then to display currency
-      if (nativeCurrency !== 'USD') {
-        const moneyInUSD = convertToUSD(moneyIn, nativeCurrency);
-        const moneyOutUSD = convertToUSD(moneyOut, nativeCurrency);
-        const jackpotUSD = convertToUSD(jackpot, nativeCurrency);
-        const coinInUSD = convertToUSD(coinIn, nativeCurrency);
-        const coinOutUSD = convertToUSD(coinOut, nativeCurrency);
+      const moneyInUSD = convertToUSD(moneyIn, nativeCurrency);
+      const moneyOutUSD = convertToUSD(moneyOut, nativeCurrency);
+      const jackpotUSD = convertToUSD(jackpot, nativeCurrency);
+      const coinInUSD = convertToUSD(coinIn, nativeCurrency);
+      const coinOutUSD = convertToUSD(coinOut, nativeCurrency);
 
-        finalMoneyIn = convertFromUSD(moneyInUSD, displayCurrency);
-        finalMoneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
-        finalCancelledCredits = finalMoneyOut;
-        finalJackpot = convertFromUSD(jackpotUSD, displayCurrency);
-        finalGross = finalMoneyIn - finalMoneyOut;
-        finalCoinIn = convertFromUSD(coinInUSD, displayCurrency);
-        finalCoinOut = convertFromUSD(coinOutUSD, displayCurrency);
-      }
+      finalMoneyIn = convertFromUSD(moneyInUSD, displayCurrency);
+      finalMoneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
+      finalCancelledCredits = finalMoneyOut;
+      finalJackpot = convertFromUSD(jackpotUSD, displayCurrency);
+      finalGross = finalMoneyIn - finalMoneyOut;
+      finalCoinIn = convertFromUSD(coinInUSD, displayCurrency);
+      finalCoinOut = convertFromUSD(coinOutUSD, displayCurrency);
     }
 
     // ============================================================================

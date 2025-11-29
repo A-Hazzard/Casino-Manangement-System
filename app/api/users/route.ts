@@ -34,15 +34,16 @@ import { NextRequest } from 'next/server';
  * Flow:
  * 1. Initialize API logging
  * 2. Connect to database
- * 3. Parse query parameters (licensee, search, searchMode, status, pagination)
+ * 3. Parse query parameters (licensee, search, searchMode, status, role, pagination)
  * 4. Get current user and permissions
  * 5. Fetch users from database (based on status filter)
  * 6. Apply role-based filtering (Manager, Location Admin)
  * 7. Apply status filtering (Active, Disabled, Deleted)
- * 8. Apply licensee filtering
- * 9. Apply search filtering
- * 10. Apply pagination
- * 11. Return paginated user list
+ * 8. Apply role filtering (if role parameter provided)
+ * 9. Apply licensee filtering
+ * 10. Apply search filtering
+ * 11. Apply pagination
+ * 12. Return paginated user list
  */
 export async function GET(request: NextRequest): Promise<Response> {
   const startTime = Date.now();
@@ -71,6 +72,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     const search = searchParams.get('search');
     const searchMode = searchParams.get('searchMode') || 'username'; // 'username', 'email', '_id', or 'all'
     const status = searchParams.get('status') || 'all'; // 'all', 'active', 'disabled', 'deleted'
+    const role = searchParams.get('role'); // Optional role filter
 
     // ============================================================================
     // STEP 3: Get current user and permissions
@@ -271,6 +273,20 @@ export async function GET(request: NextRequest): Promise<Response> {
         result = result.filter(user => user.enabled === false);
       }
       // For 'deleted' status, users are already filtered by getDeletedUsers query above
+    }
+
+    // ============================================================================
+    // STEP 5.6: Apply role filtering
+    // ============================================================================
+    if (role && role !== 'all') {
+      result = result.filter(user => {
+        const userRoles = Array.isArray(user.roles) ? user.roles : [];
+        return userRoles.some(
+          userRole =>
+            typeof userRole === 'string' &&
+            userRole.toLowerCase() === role.toLowerCase()
+        );
+      });
     }
 
     // ============================================================================

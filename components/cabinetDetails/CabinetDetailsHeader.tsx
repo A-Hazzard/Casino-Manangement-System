@@ -342,7 +342,7 @@ export const CabinetDetailsHeader = ({
                         <label className="text-sm font-medium text-gray-600">
                           MQTT URI
                         </label>
-                        <p className="mt-1 font-mono text-sm text-gray-900">
+                        <p className="mt-1 break-words font-mono text-sm text-gray-900">
                           {cabinetDetails.smibConfig.mqtt?.mqttURI || 'N/A'}
                         </p>
                       </div>

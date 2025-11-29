@@ -26,7 +26,7 @@ import type { GamingMachine } from '@/shared/types/entities';
 import axios from 'axios';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ComsConfigSection } from './smibManagement/ComsConfigSection';
 import { MeterDataSection } from './smibManagement/MeterDataSection';
@@ -54,108 +54,155 @@ export default function SMIBManagementTab({
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [machineData, setMachineData] = useState<GamingMachine | null>(null);
 
-  // Initialize selected SMIB from URL on mount
+  // Track if we've initialized from URL to prevent infinite loops
+  const hasInitializedFromUrl = useRef(false);
+
+  // Initialize selected SMIB from URL on mount (only once)
   useEffect(() => {
+    if (hasInitializedFromUrl.current) return;
+    
     const smibFromUrl = searchParams?.get('smib');
-    if (smibFromUrl && !selectedRelayId) {
+    if (smibFromUrl && smibFromUrl !== selectedRelayId) {
       setSelectedRelayId(smibFromUrl);
+      hasInitializedFromUrl.current = true;
+    } else if (!smibFromUrl) {
+      // Mark as initialized even if no SMIB in URL
+      hasInitializedFromUrl.current = true;
     }
-  }, [searchParams, selectedRelayId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
-  // Update URL when SMIB selection changes
-  const handleSmibSelection = (relayId: string) => {
-    setSelectedRelayId(relayId);
+  // Update URL when SMIB selection changes (but only if different from URL)
+  const handleSmibSelection = useCallback((relayId: string) => {
+    const currentSmibInUrl = searchParams?.get('smib');
+    
+    // Only update if the relayId is different from what's in the URL
+    if (relayId !== currentSmibInUrl) {
+      setSelectedRelayId(relayId);
 
-    // Update URL with smib parameter
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    if (relayId) {
-      params.set('smib', relayId);
-    } else {
-      params.delete('smib');
+      // Update URL with smib parameter
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      if (relayId) {
+        params.set('smib', relayId);
+      } else {
+        params.delete('smib');
+      }
+
+      // Update URL without scroll
+      router.push(`?${params.toString()}`, { scroll: false });
+    } else if (relayId !== selectedRelayId) {
+      // If URL matches but state doesn't, just sync state
+      setSelectedRelayId(relayId);
     }
+  }, [searchParams, router, selectedRelayId]);
 
-    // Update URL without scroll
-    router.push(`?${params.toString()}`, { scroll: false });
-  };
+  // Store smibConfig functions in refs to avoid dependency issues
+  const connectToConfigStreamRef = useRef(smibConfig.connectToConfigStream);
+  const requestLiveConfigRef = useRef(smibConfig.requestLiveConfig);
+
+  useEffect(() => {
+    connectToConfigStreamRef.current = smibConfig.connectToConfigStream;
+    requestLiveConfigRef.current = smibConfig.requestLiveConfig;
+  }, [smibConfig.connectToConfigStream, smibConfig.requestLiveConfig]);
+
+  // Track last selectedRelayId to prevent re-running when availableSmibs changes
+  const lastSelectedRelayIdRef = useRef<string | null>(null);
 
   // When a SMIB is selected, connect to its config stream
   useEffect(() => {
-    if (selectedRelayId) {
-      // Set loading state - will persist until we receive actual data
-      setIsInitialLoading(true);
+    if (!selectedRelayId) {
+      lastSelectedRelayIdRef.current = null;
+      return;
+    }
 
-      smibConfig.connectToConfigStream(selectedRelayId);
-
-      // Request initial config
-      Promise.all([
-        smibConfig.requestLiveConfig(selectedRelayId, 'mqtt'),
-        smibConfig.requestLiveConfig(selectedRelayId, 'net'),
-        smibConfig.requestLiveConfig(selectedRelayId, 'coms'),
-      ]).catch(err => {
-        console.error('Failed to request initial config:', err);
-        // If request fails, stop loading after 5 seconds
-        setTimeout(() => {
-          setIsInitialLoading(false);
-        }, 5000);
-      });
-
-      // Find machine ID for this relayId
+    // Only run if selectedRelayId actually changed
+    if (lastSelectedRelayIdRef.current === selectedRelayId) {
+      // If relayId hasn't changed, only update machineId if availableSmibs changed
       const smib = availableSmibs.find(s => s.relayId === selectedRelayId);
-      if (smib) {
+      if (smib && smib.machineId !== selectedMachineId) {
         setSelectedMachineId(smib.machineId);
       }
-
-      return () => {
-        // Only disconnect if selectedRelayId is actually changing
-        // Don't disconnect on every render - let connectToConfigStream handle reusing connections
-        setIsInitialLoading(false);
-      };
+      return;
     }
-    return undefined;
-  }, [
-    selectedRelayId,
-    setIsInitialLoading,
-    availableSmibs,
-    smibConfig,
-    setSelectedMachineId,
-  ]);
+
+    lastSelectedRelayIdRef.current = selectedRelayId;
+
+    // Set loading state - will persist until we receive actual data
+    setIsInitialLoading(true);
+
+    connectToConfigStreamRef.current(selectedRelayId);
+
+    // Request initial config
+    Promise.all([
+      requestLiveConfigRef.current(selectedRelayId, 'mqtt'),
+      requestLiveConfigRef.current(selectedRelayId, 'net'),
+      requestLiveConfigRef.current(selectedRelayId, 'coms'),
+    ]).catch(err => {
+      console.error('Failed to request initial config:', err);
+      // If request fails, stop loading after 5 seconds
+      setTimeout(() => {
+        setIsInitialLoading(false);
+      }, 5000);
+    });
+
+    // Find machine ID for this relayId
+    const smib = availableSmibs.find(s => s.relayId === selectedRelayId);
+    if (smib) {
+      setSelectedMachineId(smib.machineId);
+    }
+
+    return () => {
+      // Only disconnect if selectedRelayId is actually changing
+      // Don't disconnect on every render - let connectToConfigStream handle reusing connections
+      setIsInitialLoading(false);
+    };
+  }, [selectedRelayId, availableSmibs, selectedMachineId, setSelectedMachineId]);
 
   // Stop loading skeleton when we receive actual config data
+  // Use refs to track formData to avoid dependency issues
+  const formDataRef = useRef(smibConfig.formData);
+  useEffect(() => {
+    formDataRef.current = smibConfig.formData;
+  }, [smibConfig.formData]);
+
   useEffect(() => {
     if (
       isInitialLoading &&
-      (smibConfig.formData.networkSSID ||
-        smibConfig.formData.comsMode ||
-        smibConfig.formData.mqttPubTopic)
+      (formDataRef.current.networkSSID ||
+        formDataRef.current.comsMode ||
+        formDataRef.current.mqttPubTopic)
     ) {
       setIsInitialLoading(false);
     }
-  }, [
-    isInitialLoading,
-    smibConfig.formData.networkSSID,
-    smibConfig.formData.comsMode,
-    smibConfig.formData.mqttPubTopic,
-  ]);
+  }, [isInitialLoading]);
+
+  // Store fetchMqttConfig in ref to avoid dependency issues
+  const fetchMqttConfigRef = useRef(smibConfig.fetchMqttConfig);
+  useEffect(() => {
+    fetchMqttConfigRef.current = smibConfig.fetchMqttConfig;
+  }, [smibConfig.fetchMqttConfig]);
 
   // Fetch machine data from database to show as fallback when SMIB is offline
   useEffect(() => {
-    if (selectedRelayId && selectedMachineId) {
-      // Fetch full machine data from database with smibConfig
-      axios
-        .get(`/api/machines/by-id?id=${selectedMachineId}`)
-        .then(response => {
-          if (response.data && response.data.data) {
-            const machine = response.data.data;
-            setMachineData(machine);
-            // Also fetch MQTT config to populate formData
-            smibConfig.fetchMqttConfig(selectedMachineId);
-          }
-        })
-        .catch(err => {
-          console.error('Failed to fetch machine data from DB:', err);
-        });
+    if (!selectedRelayId || !selectedMachineId) {
+      return;
     }
-  }, [selectedRelayId, selectedMachineId, setMachineData, smibConfig]);
+
+    // Fetch full machine data from database with smibConfig
+    axios
+      .get(`/api/machines/by-id?id=${selectedMachineId}`)
+      .then(response => {
+        if (response.data && response.data.data) {
+          const machine = response.data.data;
+          setMachineData(machine);
+          // Also fetch MQTT config to populate formData
+          fetchMqttConfigRef.current(selectedMachineId);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch machine data from DB:', err);
+      });
+  }, [selectedRelayId, selectedMachineId, setMachineData]);
 
   // Handle network config update
   const handleNetworkUpdate = async (data: {
@@ -298,6 +345,12 @@ export default function SMIBManagementTab({
     }
   };
 
+  // Store requestLiveConfig in ref to avoid dependency issues
+  const requestLiveConfigForRefreshRef = useRef(smibConfig.requestLiveConfig);
+  useEffect(() => {
+    requestLiveConfigForRefreshRef.current = smibConfig.requestLiveConfig;
+  }, [smibConfig.requestLiveConfig]);
+
   // Refresh SMIB data (re-request config and reload machine data)
   const handleRefreshSmibData = useCallback(async () => {
     if (!selectedRelayId) return;
@@ -310,9 +363,9 @@ export default function SMIBManagementTab({
     // Re-request config data
     try {
       await Promise.all([
-        smibConfig.requestLiveConfig(selectedRelayId, 'mqtt'),
-        smibConfig.requestLiveConfig(selectedRelayId, 'net'),
-        smibConfig.requestLiveConfig(selectedRelayId, 'coms'),
+        requestLiveConfigForRefreshRef.current(selectedRelayId, 'mqtt'),
+        requestLiveConfigForRefreshRef.current(selectedRelayId, 'net'),
+        requestLiveConfigForRefreshRef.current(selectedRelayId, 'coms'),
       ]);
     } catch (err) {
       console.error('Failed to request config:', err);
@@ -335,7 +388,6 @@ export default function SMIBManagementTab({
     selectedRelayId,
     selectedMachineId,
     refreshSmibs,
-    smibConfig,
     setIsInitialLoading,
     setMachineData,
   ]);

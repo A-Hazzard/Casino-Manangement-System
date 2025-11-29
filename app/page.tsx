@@ -296,7 +296,8 @@ function DashboardContent() {
             }
           },
           setLoadingTopPerforming,
-          selectedLicencee // Pass selected licensee for filtering
+          selectedLicencee, // Pass selected licensee for filtering
+          displayCurrency // Pass display currency
         ),
       'Dashboard Top Performing Data'
     );
@@ -306,6 +307,7 @@ function DashboardContent() {
     activeTab,
     activePieChartFilter,
     selectedLicencee,
+    displayCurrency,
     stableHandleApiCallWithRetry,
   ]);
 
@@ -390,7 +392,7 @@ function DashboardContent() {
         />
       </div>
 
-      {/* Desktop Layout Section: Responsive layout for medium screens and up */}
+      {/* Desktop/Tablet Layout Section: md+ */}
       <div className="hidden md:block">
         <PcLayout
           activeFilters={activeFilters}

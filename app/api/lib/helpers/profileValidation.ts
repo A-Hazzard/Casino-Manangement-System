@@ -48,6 +48,7 @@ export type ProfileValidationResult = {
 type ProfileLike = {
   username?: NullableString;
   emailAddress?: NullableString;
+  roles?: string[] | unknown[];
   profile?: {
     firstName?: NullableString;
     lastName?: NullableString;
@@ -111,6 +112,21 @@ export function getInvalidProfileFields(
   user: ProfileLike,
   options: ValidationOptions = {}
 ): ProfileValidationResult {
+  // Skip validation for admins and developers
+  const userRoles = Array.isArray(user.roles) ? user.roles : [];
+  const isAdminOrDeveloper = userRoles.some(
+    role =>
+      typeof role === 'string' &&
+      (role.toLowerCase() === 'admin' || role.toLowerCase() === 'developer')
+  );
+
+  if (isAdminOrDeveloper) {
+    return {
+      invalidFields: {},
+      reasons: {},
+    };
+  }
+
   const username = normalizeNullable(user.username);
   const firstName = normalizeNullable(user.profile?.firstName);
   const lastName = normalizeNullable(user.profile?.lastName);

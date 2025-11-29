@@ -56,6 +56,7 @@ import { useParams, useRouter } from 'next/navigation';
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import { IMAGES } from '@/lib/constants/images';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
@@ -98,6 +99,7 @@ export default function LocationPage() {
   } = useDashBoardStore();
 
   const user = useUserStore(state => state.user);
+  const { displayCurrency } = useCurrencyFormat();
 
   // ============================================================================
   // State Management
@@ -233,7 +235,8 @@ export default function LocationPage() {
           ? { from: customDateRange.startDate, to: customDateRange.endDate }
           : undefined,
         nextBatchNumber,
-        itemsPerBatch
+        itemsPerBatch,
+        displayCurrency
       ).then(result => {
         if (result.data.length > 0) {
           setLoadedBatches(prev => new Set([...prev, nextBatchNumber]));
@@ -264,7 +267,8 @@ export default function LocationPage() {
           ? { from: customDateRange.startDate, to: customDateRange.endDate }
           : undefined,
         currentBatch,
-        itemsPerBatch
+        itemsPerBatch,
+        displayCurrency
       ).then(result => {
         if (result.data.length > 0) {
           setLoadedBatches(prev => new Set([...prev, currentBatch]));
@@ -290,6 +294,7 @@ export default function LocationPage() {
     calculateBatchNumber,
     pagesPerBatch,
     debouncedSearchTerm, // Skip batch fetching when searching
+    displayCurrency,
   ]);
 
   // Update allCabinets when accumulatedCabinets changes
@@ -534,7 +539,8 @@ export default function LocationPage() {
               ? { from: customDateRange.startDate, to: customDateRange.endDate }
               : undefined, // Only pass customDateRange when filter is "Custom"
             effectivePage, // page
-            effectiveLimit // limit (undefined when searching = fetch all)
+            effectiveLimit, // limit (undefined when searching = fetch all)
+            displayCurrency
           );
           setAllCabinets(result.data);
           // When search is cleared, reset accumulated data to start fresh
@@ -595,6 +601,7 @@ export default function LocationPage() {
     router,
     isAdminUser,
     debouncedSearchTerm, // Use debounced value to trigger fetch only after user stops typing
+    displayCurrency,
   ]);
 
   // Effect to re-run filtering and sorting when dependencies change
@@ -717,7 +724,8 @@ export default function LocationPage() {
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined, // Only pass customDateRange when filter is "Custom"
           effectivePage, // page
-          effectiveLimit // limit (undefined when searching = fetch all)
+          effectiveLimit, // limit (undefined when searching = fetch all)
+          displayCurrency
         );
         setAllCabinets(result.data);
         // When search is cleared, reset accumulated data to start fresh
@@ -750,6 +758,7 @@ export default function LocationPage() {
     refreshMachineStats,
     debouncedSearchTerm,
     itemsPerBatch,
+    displayCurrency,
   ]);
 
   // Handle location change without navigation - just update the selected location

@@ -21,7 +21,6 @@
  * @param activeMetricsTabContent - Currently active tab
  * @param setActiveMetricsTabContent - Callback to change active tab
  * @param activeMetricsFilter - Current time period filter
- * @param disableCurrencyConversion - Whether to disable currency conversion
  * @param onDataRefresh - Optional callback to refresh parent data after auto-fix
  */
 import {
@@ -375,14 +374,9 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
   loading,
   activeMetricsTabContent,
   setActiveMetricsTabContent,
-  disableCurrencyConversion = false,
   onDataRefresh,
 }) => {
-  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
-
-  // On specific cabinet pages, don't apply currency conversion
-  const shouldApplyCurrency =
-    !disableCurrencyConversion && shouldShowCurrency();
+  const { formatAmount } = useCurrencyFormat();
 
   const [collectionHistory, setCollectionHistory] = useState<CollectionData[]>(
     []
@@ -869,21 +863,13 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyInColorClass(Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}>
-                            {shouldApplyCurrency
-                              ? formatAmount(
-                                  Number(
-                                    cabinet?.moneyIn ??
-                                      cabinet?.sasMeters?.drop ??
-                                      0
-                                  )
-                                )
-                              : formatCurrency(
-                                  Number(
-                                    cabinet?.moneyIn ??
-                                      cabinet?.sasMeters?.drop ??
-                                      0
-                                  )
-                                )}
+                            {formatAmount(
+                              Number(
+                                cabinet?.moneyIn ??
+                                  cabinet?.sasMeters?.drop ??
+                                  0
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -904,23 +890,14 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyOutColorClass(Number(cabinet?.moneyOut ?? cabinet?.sasMeters?.totalCancelledCredits ?? 0), Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}>
-                            {shouldApplyCurrency
-                              ? formatAmount(
-                                  Number(
-                                    cabinet?.moneyOut ??
-                                      cabinet?.sasMeters
-                                        ?.totalCancelledCredits ??
-                                      0
-                                  )
-                                )
-                              : formatCurrency(
-                                  Number(
-                                    cabinet?.moneyOut ??
-                                      cabinet?.sasMeters
-                                        ?.totalCancelledCredits ??
-                                      0
-                                  )
-                                )}
+                            {formatAmount(
+                              Number(
+                                cabinet?.moneyOut ??
+                                  cabinet?.sasMeters
+                                    ?.totalCancelledCredits ??
+                                  0
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -941,21 +918,13 @@ export const AccountingDetails: React.FC<AccountingDetailsProps> = ({
                         <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getGrossColorClass(Number(cabinet?.gross ?? (Number(cabinet?.moneyIn ?? 0) - Number(cabinet?.moneyOut ?? 0))))}`}>
-                            {shouldApplyCurrency
-                              ? formatAmount(
-                                  Number(
-                                    cabinet?.gross ??
-                                      Number(cabinet?.moneyIn ?? 0) -
-                                        Number(cabinet?.moneyOut ?? 0)
-                                  )
-                                )
-                              : formatCurrency(
-                                  Number(
-                                    cabinet?.gross ??
-                                      Number(cabinet?.moneyIn ?? 0) -
-                                        Number(cabinet?.moneyOut ?? 0)
-                                  )
-                                )}
+                            {formatAmount(
+                              Number(
+                                cabinet?.gross ??
+                                  Number(cabinet?.moneyIn ?? 0) -
+                                    Number(cabinet?.moneyOut ?? 0)
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>

@@ -81,7 +81,6 @@ export type AccountingDetailsProps = {
   loading: boolean;
   activeMetricsTabContent: string;
   setActiveMetricsTabContent: (content: string) => void;
-  disableCurrencyConversion?: boolean; // For specific cabinet pages
   onDataRefresh?: () => Promise<void>; // Optional callback to refresh parent data after auto-fix
 };
 

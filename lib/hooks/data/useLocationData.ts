@@ -3,15 +3,15 @@
  * Extracts complex data fetching logic from the Locations page
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useDebounce } from '@/lib/utils/hooks';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
   fetchAggregatedLocationsData,
   searchAllLocations,
 } from '@/lib/helpers/locations';
-import { AggregatedLocation, TimePeriod } from '@/shared/types/common';
 import { LocationFilter } from '@/lib/types/location';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useDebounce } from '@/lib/utils/hooks';
+import { AggregatedLocation, TimePeriod } from '@/shared/types/common';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseLocationDataProps = {
   selectedLicencee: string;
@@ -28,7 +28,18 @@ type UseLocationDataReturn = {
   error: string | null;
   fetchData: (page?: number, limit?: number) => Promise<void>;
   totalCount: number;
-  fetchBatch: (page: number, limit: number) => Promise<{ data: AggregatedLocation[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }>;
+  fetchBatch: (
+    page: number,
+    limit: number
+  ) => Promise<{
+    data: AggregatedLocation[];
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }>;
 };
 
 export function useLocationData({
@@ -47,8 +58,8 @@ export function useLocationData({
   const selectedFiltersRef = useRef(selectedFilters);
   const selectedFiltersKeyRef = useRef<string>('');
 
-  // Get display currency from store
-  const { displayCurrency } = useDashBoardStore();
+  // Get display currency from CurrencyContext (kept in sync with dashboard store)
+  const { displayCurrency } = useCurrency();
 
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -57,7 +68,7 @@ export function useLocationData({
   const selectedFiltersKey = useMemo(() => {
     return JSON.stringify([...selectedFilters].sort());
   }, [selectedFilters]);
-  
+
   // Update ref when selectedFilters actually changes
   useEffect(() => {
     if (selectedFiltersKeyRef.current !== selectedFiltersKey) {
@@ -87,99 +98,107 @@ export function useLocationData({
   ]);
 
   // Fetch a specific batch of locations
-  const fetchBatch = useCallback(async (page: number = 1, limit: number = 50) => {
-    const effectiveLicencee = selectedLicencee || '';
-    // Use current filter string from ref to avoid dependency on array
-    const currentFilterString = selectedFiltersRef.current.length 
-      ? selectedFiltersRef.current.join(',') 
-      : '';
+  const fetchBatch = useCallback(
+    async (page: number = 1, limit: number = 50) => {
+      const effectiveLicencee = selectedLicencee || '';
+      // Use current filter string from ref to avoid dependency on array
+      const currentFilterString = selectedFiltersRef.current.length
+        ? selectedFiltersRef.current.join(',')
+        : '';
 
-    return await fetchAggregatedLocationsData(
-      (activeMetricsFilter || 'Today') as TimePeriod,
-      effectiveLicencee,
-      currentFilterString,
+      return await fetchAggregatedLocationsData(
+        (activeMetricsFilter || 'Today') as TimePeriod,
+        effectiveLicencee,
+        currentFilterString,
+        dateRangeForFetch,
+        displayCurrency,
+        page,
+        limit
+      );
+    },
+    [
+      selectedLicencee,
+      activeMetricsFilter,
       dateRangeForFetch,
       displayCurrency,
-      page,
-      limit
-    );
-  }, [
-    selectedLicencee,
-    activeMetricsFilter,
-    dateRangeForFetch,
-    displayCurrency,
-    // Note: selectedFiltersKey is intentionally excluded - we use ref to avoid recreation
-  ]);
+      // Note: selectedFiltersKey is intentionally excluded - we use ref to avoid recreation
+    ]
+  );
 
   // Track fetch to prevent duplicate calls
   const fetchInProgressRef = useRef(false);
   const lastFetchKeyRef = useRef<string>('');
 
   // Optimized data fetching with better error handling
-  const fetchData = useCallback(async (page?: number, limit?: number) => {
-    // Create unique key for this fetch
-    const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}`;
-    
-    // Skip if this exact fetch is already in progress
-    if (fetchInProgressRef.current && lastFetchKeyRef.current === fetchKey) {
-      return;
-    }
+  const fetchData = useCallback(
+    async (page?: number, limit?: number) => {
+      // Create unique key for this fetch
+      const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}`;
 
-    // Mark as in progress and update key
-    fetchInProgressRef.current = true;
-    lastFetchKeyRef.current = fetchKey;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Only use backend search if debounced search term exists
-      // Frontend filtering is handled in the component
-      if (debouncedSearchTerm.trim()) {
-        setSearchLoading(true);
-        const effectiveLicencee = selectedLicencee || '';
-        const effectiveFilter = activeMetricsFilter || 'Today';
-        const searchData = await searchAllLocations(
-          debouncedSearchTerm,
-          effectiveLicencee,
-          displayCurrency,
-          effectiveFilter,
-          dateRangeForFetch
-            ? { from: dateRangeForFetch.from, to: dateRangeForFetch.to }
-            : undefined
-        );
-        setLocationData(searchData);
-        setTotalCount(searchData.length);
-        setSearchLoading(false);
+      // Skip if this exact fetch is already in progress
+      if (fetchInProgressRef.current && lastFetchKeyRef.current === fetchKey) {
         return;
       }
 
-      // Otherwise, use the normal fetchLocationsData for metrics-based data
-      const result = await fetchBatch(page || 1, limit || 50);
-      
-      setLocationData(result.data);
-      if (result.pagination) {
-        setTotalCount(result.pagination.total);
-      } else {
-        setTotalCount(result.data.length);
+      // Mark as in progress and update key
+      fetchInProgressRef.current = true;
+      lastFetchKeyRef.current = fetchKey;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Only use backend search if debounced search term exists
+        // Frontend filtering is handled in the component
+        if (debouncedSearchTerm.trim()) {
+          setSearchLoading(true);
+          const effectiveLicencee = selectedLicencee || '';
+          const effectiveFilter = activeMetricsFilter || 'Today';
+          const searchData = await searchAllLocations(
+            debouncedSearchTerm,
+            effectiveLicencee,
+            displayCurrency,
+            effectiveFilter,
+            dateRangeForFetch
+              ? { from: dateRangeForFetch.from, to: dateRangeForFetch.to }
+              : undefined
+          );
+          setLocationData(searchData);
+          setTotalCount(searchData.length);
+          setSearchLoading(false);
+          return;
+        }
+
+        // Otherwise, use the normal fetchLocationsData for metrics-based data
+        const result = await fetchBatch(page || 1, limit || 50);
+
+        setLocationData(result.data);
+        if (result.pagination) {
+          setTotalCount(result.pagination.total);
+        } else {
+          setTotalCount(result.data.length);
+        }
+      } catch (err) {
+        setLocationData([]);
+        setTotalCount(0);
+        setError(
+          err instanceof Error ? err.message : 'Failed to load locations'
+        );
+      } finally {
+        lastFetchRef.current = Date.now();
+        setLoading(false);
+        fetchInProgressRef.current = false;
       }
-    } catch (err) {
-      setLocationData([]);
-      setTotalCount(0);
-      setError(err instanceof Error ? err.message : 'Failed to load locations');
-    } finally {
-      lastFetchRef.current = Date.now();
-      setLoading(false);
-      fetchInProgressRef.current = false;
-    }
-  }, [
-    debouncedSearchTerm,
-    displayCurrency,
-    fetchBatch,
-    selectedLicencee,
-    activeMetricsFilter,
-    dateRangeForFetch,
-  ]);
+    },
+    [
+      debouncedSearchTerm,
+      displayCurrency,
+      fetchBatch,
+      selectedLicencee,
+      activeMetricsFilter,
+      dateRangeForFetch,
+    ]
+  );
 
   // Refresh data when user returns to the page
   useEffect(() => {

@@ -135,6 +135,21 @@ export default function ProfileValidationGate() {
         return;
       }
 
+      // Skip validation for admins and developers
+      const userRoles = Array.isArray(user.roles) ? user.roles : [];
+      const isAdminOrDeveloper = userRoles.some(
+        role =>
+          typeof role === 'string' &&
+          (role.toLowerCase() === 'admin' || role.toLowerCase() === 'developer')
+      );
+
+      if (isAdminOrDeveloper) {
+        setOpen(false);
+        setInvalidFields(EMPTY_FIELDS);
+        setFieldReasons(EMPTY_REASONS);
+        return;
+      }
+
       const shouldRefetch =
         user.requiresProfileUpdate ||
         (user.invalidProfileFields &&

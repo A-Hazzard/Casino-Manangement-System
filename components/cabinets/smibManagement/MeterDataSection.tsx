@@ -50,9 +50,9 @@ export function MeterDataSection({
 
   const [isLoading, setIsLoading] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
-  const [_lastMetersSignature, setLastMetersSignature] = useState<string | null>(
-    null
-  );
+  const [_lastMetersSignature, setLastMetersSignature] = useState<
+    string | null
+  >(null);
   const [selectedNvsAction, setSelectedNvsAction] = useState<string>('');
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [isSSEConnected, setIsSSEConnected] = useState(false);
@@ -155,133 +155,172 @@ export function MeterDataSection({
   };
 
   // Message handler for processing SSE messages
-  const handleSSEMessage = useCallback(
-    (msg: SSEMessage) => {
-      try {
-        // Mark as ready when callback is actually registered
-        if (msg.type === 'callback_ready') {
-          setIsSSEConnected(true);
-          return;
-        }
+  const handleSSEMessage = useCallback((msg: SSEMessage) => {
+    try {
+      // Mark as ready when callback is actually registered
+      if (msg.type === 'callback_ready') {
+        setIsSSEConnected(true);
+        return;
+      }
 
-        if (msg?.type === 'config_update' && msg?.data) {
-          const data = msg.data as Record<string, unknown>;
-          const typ = data.typ as string | undefined;
-          const pyd = data.pyd as string | undefined;
-          const sta = data.sta as string | undefined;
+      if (msg?.type === 'config_update' && msg?.data) {
+        const data = msg.data as Record<string, unknown>;
+        const typ = data.typ as string | undefined;
+        const pyd = data.pyd as string | undefined;
+        const sta = data.sta as string | undefined;
 
-          // Handle NVS action responses (srsp)
-          if (typ === 'srsp' && sta === '162') {
-            // Check for success/failure responses
-            if (pyd === 'E10101' || pyd?.startsWith('E10101')) {
-              setRequestMessage('NVS action completed successfully');
-              setIsProcessingAction(false);
-            } else if (pyd === 'E10100' || pyd?.startsWith('E10100')) {
-              setRequestMessage('NVS action failed');
-              setIsProcessingAction(false);
-            }
-          }
-
-          // Handle exception/completion messages (exp)
-          if (typ === 'exp' && pyd === '00') {
+        // Handle NVS action responses (srsp)
+        if (typ === 'srsp' && sta === '162') {
+          // Check for success/failure responses
+          if (pyd === 'E10101' || pyd?.startsWith('E10101')) {
             setRequestMessage('NVS action completed successfully');
             setIsProcessingAction(false);
+          } else if (pyd === 'E10100' || pyd?.startsWith('E10100')) {
+            setRequestMessage('NVS action failed');
+            setIsProcessingAction(false);
           }
+        }
 
-          // Handle meter responses (rsp)
-          if (typ === 'rsp' && pyd && typeof pyd === 'string') {
-            // Check for error response before parsing
-            if (pyd === '-1' || pyd.trim() === '-1') {
-              setLiveMeters({
-                error: 'SMIB returned error: -1 (Unable to read meters)',
-                lastAt: new Date().toISOString(),
-              });
-              setRequestMessage('SMIB error: Unable to read meters');
-              setIsLoading(false);
-              if (requestTimeoutRef.current) {
-                window.clearTimeout(requestTimeoutRef.current);
-                requestTimeoutRef.current = null;
-              }
-              return;
-            }
+        // Handle exception/completion messages (exp)
+        if (typ === 'exp' && pyd === '00') {
+          setRequestMessage('NVS action completed successfully');
+          setIsProcessingAction(false);
+        }
 
-            const parsed = parseSasPyd(pyd);
-
-            // Handle error case from parser
-            if (parsed.error) {
-              setLiveMeters({
-                error: parsed.error,
-                lastAt: new Date().toISOString(),
-              });
-              setIsLoading(false);
-              if (requestTimeoutRef.current) {
-                window.clearTimeout(requestTimeoutRef.current);
-                requestTimeoutRef.current = null;
-              }
-              return;
-            }
-
-            // Parse successful, extract all values
-            const next = {
-              totalCoinCredits: parsed.totalCoinCredits,
-              totalCoinOut: parsed.totalCoinOut,
-              totalCancelledCredits: parsed.totalCancelledCredits,
-              totalHandPaidCancelCredits: parsed.totalHandPaidCancelCredits,
-              totalWonCredits: parsed.totalWonCredits,
-              totalDrop: parsed.totalDrop,
-              totalAttendantPaidProgressiveWin:
-                parsed.totalAttendantPaidProgressiveWin,
-              currentCredits: parsed.currentCredits,
-              total20KBillsAccepted: parsed.total20KBillsAccepted,
-              total200BillsToDrop: parsed.total200BillsToDrop,
+        // Handle meter responses (rsp)
+        if (typ === 'rsp' && pyd && typeof pyd === 'string') {
+          // Check for error response before parsing
+          if (pyd === '-1' || pyd.trim() === '-1') {
+            setLiveMeters({
+              error: 'SMIB returned error: -1 (Unable to read meters)',
               lastAt: new Date().toISOString(),
-            } as typeof liveMeters;
-
-            const signature = JSON.stringify({ ...next, lastAt: undefined });
-            setLastMetersSignature(prev => {
-              if (prev && signature === prev) {
-              setRequestMessage('No new SAS meters detected');
-            } else {
-              setRequestMessage(null);
-            }
-              return signature;
             });
-            setLiveMeters(next);
+            setRequestMessage('SMIB error: Unable to read meters');
             setIsLoading(false);
             if (requestTimeoutRef.current) {
               window.clearTimeout(requestTimeoutRef.current);
               requestTimeoutRef.current = null;
             }
+            return;
+          }
+
+          const parsed = parseSasPyd(pyd);
+
+          // Handle error case from parser
+          if (parsed.error) {
+            setLiveMeters({
+              error: parsed.error,
+              lastAt: new Date().toISOString(),
+            });
+            setIsLoading(false);
+            if (requestTimeoutRef.current) {
+              window.clearTimeout(requestTimeoutRef.current);
+              requestTimeoutRef.current = null;
+            }
+            return;
+          }
+
+          // Parse successful, extract all values
+          const next = {
+            totalCoinCredits: parsed.totalCoinCredits,
+            totalCoinOut: parsed.totalCoinOut,
+            totalCancelledCredits: parsed.totalCancelledCredits,
+            totalHandPaidCancelCredits: parsed.totalHandPaidCancelCredits,
+            totalWonCredits: parsed.totalWonCredits,
+            totalDrop: parsed.totalDrop,
+            totalAttendantPaidProgressiveWin:
+              parsed.totalAttendantPaidProgressiveWin,
+            currentCredits: parsed.currentCredits,
+            total20KBillsAccepted: parsed.total20KBillsAccepted,
+            total200BillsToDrop: parsed.total200BillsToDrop,
+            lastAt: new Date().toISOString(),
+          } as typeof liveMeters;
+
+          const signature = JSON.stringify({ ...next, lastAt: undefined });
+          setLastMetersSignature(prev => {
+            if (prev && signature === prev) {
+              setRequestMessage('No new SAS meters detected');
+            } else {
+              setRequestMessage(null);
+            }
+            return signature;
+          });
+          setLiveMeters(next);
+          setIsLoading(false);
+          if (requestTimeoutRef.current) {
+            window.clearTimeout(requestTimeoutRef.current);
+            requestTimeoutRef.current = null;
           }
         }
-      } catch {
-        // ignore malformed
       }
-    },
-    []
-  );
+    } catch {
+      // ignore malformed
+    }
+  }, []);
+
+  // Track subscription to prevent infinite loops
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const lastRelayIdRef = useRef<string | null>(null);
+  const handleSSEMessageRef = useRef(handleSSEMessage);
+  const subscribeToMessagesRef = useRef(smibConfig?.subscribeToMessages);
+
+  // Keep refs up to date
+  useEffect(() => {
+    handleSSEMessageRef.current = handleSSEMessage;
+  }, [handleSSEMessage]);
+
+  useEffect(() => {
+    subscribeToMessagesRef.current = smibConfig?.subscribeToMessages;
+  }, [smibConfig?.subscribeToMessages]);
 
   // Subscribe to SSE messages - either from shared connection or create our own
   useEffect(() => {
     console.log(
-      `🔗 [MeterDataSection] useEffect triggered, relayId: ${relayId}, hasSmibConfig: ${!!smibConfig}`
+      `🔗 [MeterDataSection] useEffect triggered, relayId: ${relayId}, hasSmibConfig: ${!!subscribeToMessagesRef.current}`
     );
+
+    // Cleanup previous subscription if relayId changed
+    if (lastRelayIdRef.current !== relayId && unsubscribeRef.current) {
+      console.log(
+        `🔄 [MeterDataSection] RelayId changed, cleaning up previous subscription`
+      );
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
 
     if (!relayId) {
       console.warn(
         `⚠️ [MeterDataSection] No relayId provided, skipping SSE connection`
       );
+      lastRelayIdRef.current = null;
       return;
     }
 
+    // Skip if already subscribed to this relayId
+    if (lastRelayIdRef.current === relayId && unsubscribeRef.current) {
+      console.log(
+        `⏭️ [MeterDataSection] Already subscribed to relayId: ${relayId}, skipping`
+      );
+      return;
+    }
+
+    lastRelayIdRef.current = relayId;
+
     // If smibConfig is provided, use the shared SSE connection
-    if (smibConfig) {
+    const subscribeFn = subscribeToMessagesRef.current;
+    if (subscribeFn) {
       console.log(
         `📡 [MeterDataSection] Using shared SSE connection from smibConfig`
       );
-      const unsubscribe = smibConfig.subscribeToMessages(handleSSEMessage);
+      const unsubscribe = subscribeFn((msg: SSEMessage) => {
+        handleSSEMessageRef.current(msg);
+      });
+      unsubscribeRef.current = unsubscribe;
       return () => {
-        unsubscribe();
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+        }
         if (requestTimeoutRef.current) {
           window.clearTimeout(requestTimeoutRef.current);
           requestTimeoutRef.current = null;
@@ -301,15 +340,14 @@ export function MeterDataSection({
       sseRef.current = null;
     }
 
-    const es = new EventSource(
-      `/api/mqtt/config/subscribe?relayId=${relayId}`
-    );
+    const es = new EventSource(`/api/mqtt/config/subscribe?relayId=${relayId}`);
     sseRef.current = es;
 
     es.onopen = () => {
       console.log(
         `✅ [MeterDataSection] SSE connection opened for relayId: ${relayId}`
       );
+      setIsSSEConnected(true);
     };
 
     es.onerror = error => {
@@ -328,7 +366,7 @@ export function MeterDataSection({
             `✅ [MeterDataSection] Callback ready received for relayId: ${relayId}`
           );
         }
-        handleSSEMessage(msg);
+        handleSSEMessageRef.current(msg);
       } catch {
         // ignore malformed
       }
@@ -347,7 +385,7 @@ export function MeterDataSection({
         requestTimeoutRef.current = null;
       }
     };
-  }, [relayId, smibConfig, handleSSEMessage]);
+  }, [relayId, smibConfig?.subscribeToMessages]);
 
   return (
     <>

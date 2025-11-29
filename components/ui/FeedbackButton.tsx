@@ -15,13 +15,23 @@ import { Button } from '@/components/ui/button';
 import FeedbackForm from '@/components/ui/FeedbackForm';
 import { motion } from 'framer-motion';
 import { MessageSquare } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function FeedbackButton() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Avoid rendering on the server to prevent hydration mismatches
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <>

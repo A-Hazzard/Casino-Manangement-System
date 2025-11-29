@@ -165,7 +165,12 @@ export function formatChangeItem(change: ChangeItem): string {
  */
 export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
   return changes.filter(change => {
-    const { oldValue, newValue } = change;
+    const { oldValue, newValue, path } = change;
+
+    // Always include gamingLocation changes (it's a required field)
+    if (path === 'gamingLocation') {
+      return true;
+    }
 
     // Filter out changes where both values are empty strings
     if (oldValue === '' && newValue === '') return false;

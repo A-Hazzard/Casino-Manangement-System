@@ -15,11 +15,9 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { TimePeriod } from '@/app/api/lib/types';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
   convertToUSD,
@@ -546,13 +544,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if currency conversion should be applied
-    const currentUser = await getUserFromServer();
-    const currentUserRoles = (currentUser?.roles as string[]) || [];
-    const isAdminOrDev =
-      currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
-    const shouldConvert =
-      isAdminOrDev && shouldApplyCurrencyConversion(licencee || undefined);
+    // For location details we ALWAYS convert cabinet-level financials into the
+    // currently selected display currency when a currency is provided, so that
+    // the cards, table rows, and cabinet drill‑downs all match.
+    const shouldConvert = Boolean(displayCurrency);
 
     // Transform the results to ensure proper data types
     const transformedCabinets: TransformedCabinet[] = cabinetsWithMeters.map(

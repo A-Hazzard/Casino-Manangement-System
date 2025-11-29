@@ -10,8 +10,8 @@
  * @module app/api/members/[id]/route
  */
 
-import { Member } from '@/app/api/lib/models/members';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Member } from '@/app/api/lib/models/members';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -56,8 +56,12 @@ export async function GET(
                 $expr: {
                   $or: [
                     { $eq: ['$_id', '$$memberLocation'] },
-                    { $eq: [{ $toString: '$_id' }, { $toString: '$$memberLocation' }] },
-                    { $eq: ['$_id', { $toObjectId: { $ifNull: ['$$memberLocation', ''] } }] },
+                    {
+                      $eq: [
+                        { $toString: '$_id' },
+                        { $toString: '$$memberLocation' },
+                      ],
+                    },
                   ],
                 },
               },
@@ -95,10 +99,7 @@ export async function GET(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Member API GET] Error after ${duration}ms:`,
-      errorMessage
-    );
+    console.error(`[Member API GET] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -160,16 +161,168 @@ export async function PUT(
     // STEP 5: Update member fields
     // ============================================================================
     if (body.profile) {
-      member.profile = { ...member.profile, ...body.profile };
+      // Ensure member.profile exists and has all required fields
+      if (!member.profile) {
+        member.profile = {
+          firstName: '',
+          lastName: '',
+          email: '',
+          occupation: '',
+          address: '',
+          gender: '',
+          dob: '',
+          indentification: {
+            number: '',
+            type: '',
+          },
+        };
+      }
+
+      // Preserve existing indentification field (not editable in UI, but required by schema)
+      const existingIndentification = member.profile.indentification || {
+        number: '',
+        type: '',
+      };
+
+      // Ensure indentification is always an object with number and type
+      const safeIndentification = {
+        number: existingIndentification.number || '',
+        type: existingIndentification.type || '',
+      };
+
+      // Only update fields that are explicitly provided in body.profile
+      // and are not undefined, preserving indentification
+      const updatedProfile = {
+        firstName: member.profile.firstName || '',
+        lastName: member.profile.lastName || '',
+        email: member.profile.email || '',
+        occupation: member.profile.occupation || '',
+        address: member.profile.address || '',
+        gender: member.profile.gender || '',
+        dob: member.profile.dob || '',
+        indentification: safeIndentification,
+      };
+
+      // Helper function to trim string or return empty string
+      const trimString = (value: unknown): string => {
+        if (typeof value === 'string') {
+          return value.trim();
+        }
+        return '';
+      };
+
+      // Update only defined fields from body.profile, trimming all string values
+      if (body.profile.firstName !== undefined) {
+        const trimmedFirstName = trimString(body.profile.firstName);
+        if (!trimmedFirstName) {
+          return NextResponse.json(
+            { error: 'First name cannot be blank' },
+            { status: 400 }
+          );
+        }
+        updatedProfile.firstName = trimmedFirstName;
+      }
+      if (body.profile.lastName !== undefined) {
+        const trimmedLastName = trimString(body.profile.lastName);
+        if (!trimmedLastName) {
+          return NextResponse.json(
+            { error: 'Last name cannot be blank' },
+            { status: 400 }
+          );
+        }
+        updatedProfile.lastName = trimmedLastName;
+      }
+      if (body.profile.email !== undefined) {
+        const trimmedEmail = trimString(body.profile.email);
+        // Check if email is already taken by another member (if email is provided)
+        if (trimmedEmail) {
+          const existingMember = await Member.findOne({
+            'profile.email': trimmedEmail,
+            _id: { $ne: memberId },
+          });
+          if (existingMember) {
+            return NextResponse.json(
+              { error: 'Email address already in use' },
+              { status: 400 }
+            );
+          }
+        }
+        updatedProfile.email = trimmedEmail;
+      }
+      if (body.profile.occupation !== undefined) {
+        updatedProfile.occupation = trimString(body.profile.occupation);
+      }
+      if (body.profile.address !== undefined) {
+        updatedProfile.address = trimString(body.profile.address);
+      }
+      if (body.profile.gender !== undefined) {
+        updatedProfile.gender = trimString(body.profile.gender);
+      }
+      if (body.profile.dob !== undefined) {
+        updatedProfile.dob = trimString(body.profile.dob);
+      }
+
+      // Always ensure indentification is set (never undefined)
+      updatedProfile.indentification = safeIndentification;
+
+      member.profile = updatedProfile;
+    }
+    if (body.username !== undefined) {
+      const trimmedUsername =
+        typeof body.username === 'string' ? body.username.trim() : '';
+      if (!trimmedUsername) {
+        return NextResponse.json(
+          { error: 'Username is required and cannot be blank' },
+          { status: 400 }
+        );
+      }
+      // Check if username is already taken by another member
+      const existingMember = await Member.findOne({
+        username: trimmedUsername,
+        _id: { $ne: memberId },
+      });
+      if (existingMember) {
+        return NextResponse.json(
+          { error: 'Username already exists' },
+          { status: 400 }
+        );
+      }
+      member.username = trimmedUsername;
     }
     if (body.phoneNumber !== undefined) {
-      member.phoneNumber = body.phoneNumber;
+      member.phoneNumber =
+        typeof body.phoneNumber === 'string'
+          ? body.phoneNumber.trim()
+          : body.phoneNumber;
     }
     if (body.points !== undefined) {
       member.points = body.points;
     }
     if (body.uaccount !== undefined) {
       member.uaccount = body.uaccount;
+    }
+    if (body.gamingLocation !== undefined) {
+      // Ensure gamingLocation is always a valid non-empty string (required field)
+      const trimmedLocation =
+        typeof body.gamingLocation === 'string'
+          ? body.gamingLocation.trim()
+          : '';
+
+      if (trimmedLocation) {
+        member.gamingLocation = trimmedLocation;
+      } else {
+        // If empty or invalid, return error since gamingLocation is required
+        return NextResponse.json(
+          { error: 'gamingLocation is required and cannot be empty' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Ensure gamingLocation is always set (required field)
+    // This is a safety check in case gamingLocation wasn't in the update payload
+    if (!member.gamingLocation || member.gamingLocation.trim() === '') {
+      member.gamingLocation = 'default';
     }
 
     // ============================================================================
@@ -185,10 +338,7 @@ export async function PUT(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Member API PUT] Error after ${duration}ms:`,
-      errorMessage
-    );
+    console.error(`[Member API PUT] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

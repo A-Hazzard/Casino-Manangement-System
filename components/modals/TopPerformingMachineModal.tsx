@@ -66,6 +66,9 @@ export default function TopPerformingMachineModal({
   useEffect(() => {
     if (!open || !machineId) return;
 
+    const startDate = customDateRange?.startDate;
+    const endDate = customDateRange?.endDate;
+
     const fetchData = async () => {
       setLoading(true);
       setLoadingChart(true);
@@ -79,15 +82,15 @@ export default function TopPerformingMachineModal({
           getMachineMetrics(
             machineId,
             timePeriod,
-            customDateRange.startDate,
-            customDateRange.endDate,
+            startDate,
+            endDate,
             displayCurrency
           ),
           getMachineChartData(
             machineId,
             timePeriod,
-            customDateRange.startDate,
-            customDateRange.endDate,
+            startDate,
+            endDate,
             displayCurrency
           ),
         ]);
@@ -103,14 +106,7 @@ export default function TopPerformingMachineModal({
     };
 
     fetchData();
-  }, [
-    open,
-    machineId,
-    activePieChartFilter,
-    customDateRange.startDate,
-    customDateRange.endDate,
-    displayCurrency,
-  ]);
+  }, [open, machineId, activePieChartFilter, customDateRange, displayCurrency]);
 
   // Animate modal on open/close
   useEffect(() => {
@@ -169,7 +165,7 @@ export default function TopPerformingMachineModal({
   return (
       <div
         ref={backdropRef}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
         onClick={onClose}
       >
         <div

@@ -1021,52 +1021,64 @@ export const MetersTabSkeleton = () => (
           <Skeleton className="mt-2 h-4 w-48" />
         </div>
 
-        {/* Desktop table skeleton with proper column structure */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
-            <thead className="border-b border-gray-200 bg-gray-50">
-              <tr>
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <th key={i} className="px-4 py-3">
-                    <Skeleton className="h-4 w-20 mx-auto" />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <tr key={i}>
-                  {Array.from({ length: 10 }).map((_, j) => (
-                    <td key={j} className="px-4 py-3 text-center">
-                      <Skeleton className="h-4 w-16 mx-auto" />
-                    </td>
+            {/* Desktop table skeleton with proper column structure - lg and above */}
+            <div className="hidden min-w-0 overflow-x-auto lg:block">
+          <div className="min-w-full">
+            <table className="w-full min-w-[800px]">
+              <thead className="border-b border-gray-200 bg-gray-50">
+                <tr>
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <th key={i} className="px-4 py-3">
+                      <Skeleton className="h-4 w-20 mx-auto" />
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 10 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3 text-center">
+                        <Skeleton className="h-4 w-16 mx-auto" />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Mobile cards skeleton */}
-        <div className="space-y-4 md:hidden">
+        {/* Cards skeleton - md and below (2x2 grid on md, single column on mobile) */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
+            <div key={i} className="relative overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-5 shadow-sm">
+              {/* Header skeleton */}
+              <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
+                <Skeleton className="mb-2 h-6 w-24 rounded-lg" />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-24" />
                   </div>
-                  <Skeleton className="h-3 w-20" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {Array.from({ length: 6 }).map((_, j) => (
-                    <div key={j}>
-                      <Skeleton className="h-3 w-20 mb-1" />
-                      <Skeleton className="h-4 w-16" />
-                    </div>
-                  ))}
+              </div>
+              {/* Metrics grid skeleton */}
+              <div className="grid grid-cols-2 gap-4">
+                {Array.from({ length: 6 }).map((_, j) => (
+                  <div key={j} className="rounded-lg bg-white p-3 shadow-sm">
+                    <Skeleton className="mb-1 h-3 w-20" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                ))}
+                <div className="col-span-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-3 shadow-sm">
+                  <Skeleton className="mb-1 h-3 w-24" />
+                  <Skeleton className="h-6 w-20" />
                 </div>
+              </div>
+              {/* View Machine button skeleton */}
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <Skeleton className="h-10 w-full rounded-lg" />
               </div>
             </div>
           ))}

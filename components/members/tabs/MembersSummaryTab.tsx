@@ -1,43 +1,43 @@
 'use client';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
+import { useMembersHandlers } from '@/components/members/context/MembersHandlersContext';
 import MemberDetailsModal from '@/components/members/MemberDetailsModal';
 import { Button } from '@/components/ui/button';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useDebounce } from '@/lib/utils/hooks';
 import { formatPhoneNumber } from '@/lib/utils/phoneFormatter';
 import type {
-  Location,
-  MemberSummary,
-  SummaryStats,
+    Location,
+    MemberSummary,
+    SummaryStats,
 } from '@/shared/types/entities';
 import type { PaginationInfo } from '@/shared/types/reports';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import {
-  Activity,
-  Calendar,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Download,
-  Eye,
-  FileSpreadsheet,
-  FileText,
-  Filter,
-  MapPin,
-  RefreshCw,
-  Search,
-  Users,
+    Activity,
+    Calendar,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
+    Download,
+    Eye,
+    FileSpreadsheet,
+    FileText,
+    MapPin,
+    RefreshCw,
+    Search,
+    Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -69,6 +69,11 @@ export default function MembersSummaryTab() {
   const [usingBackendSearch, setUsingBackendSearch] = useState(false);
   const [allLoadedMembers, setAllLoadedMembers] = useState<MemberSummary[]>([]);
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
+  const {
+    setOnRefresh,
+    setOnNewMember,
+    setRefreshing: setRefreshingContext,
+  } = useMembersHandlers();
 
   // Fetch locations for the filter dropdown
   const fetchLocations = useCallback(async () => {
@@ -196,6 +201,27 @@ export default function MembersSummaryTab() {
   useEffect(() => {
     fetchMembersSummary();
   }, [fetchMembersSummary]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshingContext(true);
+    setCurrentPage(1);
+    await fetchMembersSummary();
+    setRefreshingContext(false);
+  }, [fetchMembersSummary, setRefreshingContext]);
+
+  // Register refresh handler with context
+  useEffect(() => {
+    setOnRefresh(handleRefresh);
+    // Register handler to navigate to Members List tab with newMember parameter
+    const newMemberHandler = () => {
+      router.push('/members?tab=members&newMember=true');
+    };
+    setOnNewMember(newMemberHandler);
+    return () => {
+      setOnRefresh(undefined);
+      setOnNewMember(undefined);
+    };
+  }, [handleRefresh, setOnRefresh, setOnNewMember, router]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -1087,75 +1113,64 @@ export default function MembersSummaryTab() {
             sortedMembers.map(member => (
               <div
                 key={member._id}
-                className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
+                className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-medium text-gray-900">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-base font-semibold text-gray-900">
                       {member.fullName}
                     </h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="truncate text-xs text-gray-500">
                       {member.locationName}
                     </p>
                   </div>
-                  <div className="ml-4 flex flex-col gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewMember(member)}
-                      className="flex items-center gap-1 whitespace-nowrap"
-                    >
-                      <Eye className="h-3 w-3" />
-                      View Details
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewSessions(member._id)}
-                      className="flex items-center gap-1 whitespace-nowrap"
-                    >
-                      <Activity className="h-3 w-3" />
-                      View Sessions
-                    </Button>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className={`text-xs font-medium ${(member.winLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(member.winLoss || 0)}
+                    </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Address:</span>
-                    <p className="font-medium text-gray-900">
-                      {member.address || '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Phone:</span>
-                    <p className="font-medium text-gray-900">
+
+                <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs text-gray-500">Phone</span>
+                    <span className="truncate text-xs font-medium">
                       {formatPhoneNumber(member.phoneNumber)}
-                    </p>
+                    </span>
                   </div>
-                  <div>
-                    <span className="text-gray-500">Last Login:</span>
-                    <p className="font-medium text-gray-900">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs text-gray-500">Last Login</span>
+                    <span className="truncate text-xs font-medium">
                       {formatDateTime(member.lastLogin)}
-                    </p>
+                    </span>
                   </div>
-                  <div>
-                    <span className="text-gray-500">Joined:</span>
-                    <p className="font-medium text-gray-900">
-                      {formatDate(member.createdAt)}
-                    </p>
+                  <div className="col-span-2 flex flex-col gap-0.5">
+                    <span className="text-xs text-gray-500">Address</span>
+                    <span className="truncate text-xs font-medium">
+                      {member.address || '-'}
+                    </span>
                   </div>
-                  <div>
-                    <span className="text-gray-500">Win/Loss:</span>
-                    <p
-                      className={`font-medium ${
-                        (member.winLoss || 0) >= 0
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {formatCurrency(member.winLoss || 0)}
-                    </p>
-                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 border-t border-gray-200 pt-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewMember(member)}
+                    className="flex items-center justify-center gap-1.5 text-xs h-9"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>Details</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewSessions(member._id)}
+                    className="flex items-center justify-center gap-1.5 text-xs h-9"
+                  >
+                    <Activity className="h-3.5 w-3.5" />
+                    <span>Sessions</span>
+                  </Button>
                 </div>
               </div>
             ))
@@ -1168,19 +1183,12 @@ export default function MembersSummaryTab() {
 
   return (
     <motion.div
-      className="w-full"
+      className="w-full pb-24"
       variants={pageVariants}
       initial="initial"
       animate="animate"
       transition={{ duration: 0.3 }}
     >
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Members Summary</h1>
-        <p className="text-gray-600">
-          Overview of member information and registration data
-        </p>
-      </div>
-
       {/* Date Filters */}
       <div className="mb-6">
         <DashboardDateFilters hideAllTime={false} />
@@ -1191,74 +1199,77 @@ export default function MembersSummaryTab() {
 
       {/* Search and Filter Controls */}
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
             <input
               type="text"
-              placeholder="Search by name, phone, address..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={e => handleSearch(e.target.value)}
-              className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="flex items-center space-x-2">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-600">Location:</span>
-            <LocationSingleSelect
-              locations={locations.map(loc => ({
-                id: loc._id,
-                name: loc.name || loc.locationName || '',
-              }))}
-              selectedLocation={locationFilter}
-              onSelectionChange={handleLocationFilter}
-              includeAllOption={true}
-              allOptionLabel="All Locations"
-              showSasBadge={false}
-              className="w-48"
-            />
-          </div>
-          <Button
-            onClick={() => {
-              setCurrentPage(1);
-              fetchMembersSummary();
-            }}
-            variant="outline"
-            className="flex items-center gap-2"
-            title="Refresh data"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-full sm:w-auto">
+              <LocationSingleSelect
+                locations={locations.map(loc => ({
+                  id: loc._id,
+                  name: loc.name || loc.locationName || '',
+                }))}
+                selectedLocation={locationFilter}
+                onSelectionChange={handleLocationFilter}
+                includeAllOption={true}
+                allOptionLabel="All Locations"
+                showSasBadge={false}
+                showFilterIcon={true}
+                className="w-full sm:w-48"
+              />
+            </div>
+            <div className="flex flex-1 gap-2 sm:flex-none">
               <Button
+                onClick={() => {
+                  setCurrentPage(1);
+                  fetchMembersSummary();
+                }}
                 variant="outline"
-                disabled={sortedMembers.length === 0}
-                className="flex items-center gap-2"
+                className="flex-1 items-center gap-2 sm:flex-none"
+                title="Refresh data"
               >
-                <Download className="h-4 w-4" />
-                Export
-                <ChevronDown className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleExport('pdf')}
-                className="cursor-pointer"
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Export as PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('csv')}
-                className="cursor-pointer"
-              >
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export as CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={sortedMembers.length === 0}
+                    className="flex-1 items-center gap-2 sm:flex-none"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Export</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExport('pdf')}
+                    className="cursor-pointer"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport('csv')}
+                    className="cursor-pointer"
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -12,15 +12,16 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import {
-    convertFromUSD,
-    convertToUSD,
-    getCountryCurrency,
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenseeCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -270,15 +271,13 @@ export async function GET(
     // ============================================================================
     // STEP 9: Apply currency conversion if needed
     // ============================================================================
-    const user = await getUserFromServer();
-    const userRoles = (user?.roles as string[]) || [];
-    const isAdminOrDev = userRoles.some(role =>
-      ['admin', 'developer'].includes(role)
-    );
-
+    // For cabinet detail charts we ALWAYS convert from the machine's native currency
+    // into the selected display currency (including USD), regardless of licensee filter or role.
     let convertedChartData = chartData;
 
-    if (isAdminOrDev && displayCurrency && displayCurrency !== 'USD') {
+    const shouldConvert = Boolean(displayCurrency);
+
+    if (shouldConvert) {
       // Get location details to determine native currency
       let locationData: {
         rel?: { licencee?: string };
@@ -302,58 +301,55 @@ export async function GET(
         }
       }
 
-      // Determine native currency
-      let nativeCurrency: string = 'USD';
+      // Determine native currency from licensee or country
+      let nativeCurrency: CurrencyCode = 'USD';
       if (locationData?.rel?.licencee) {
-        const { default: db } = await import('mongoose');
-        const Licencee = db.connection.collection('licencees');
-        const licenseeDoc = await Licencee.findOne({
-          _id: new db.Types.ObjectId(locationData.rel.licencee),
-        });
-        const licenseeName = licenseeDoc?.name as string | undefined;
+        try {
+          const licenseeDoc = await Licencee.findOne({
+            _id: locationData.rel.licencee,
+          })
+            .select('name')
+            .lean();
 
-        if (licenseeName) {
-          const LICENSEE_CURRENCY: Record<string, string> = {
-            TTG: 'TTD',
-            Cabana: 'GYD',
-            Barbados: 'BBD',
-          };
-          nativeCurrency = LICENSEE_CURRENCY[licenseeName] || 'USD';
+          if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
+            nativeCurrency = getLicenseeCurrency(licenseeDoc.name);
+          }
+        } catch (licenseeError) {
+          console.warn(
+            '[Machine Chart API] Failed to resolve licensee for currency conversion:',
+            licenseeError
+          );
         }
       } else if (locationData?.country) {
-        const { default: db } = await import('mongoose');
-        const Country = db.connection.collection('countries');
-        const countryDoc = await Country.findOne({
-          _id: new db.Types.ObjectId(locationData.country),
-        });
-        const countryName = countryDoc?.name as string | undefined;
-
-        if (countryName) {
-          nativeCurrency = getCountryCurrency(countryName) || 'USD';
+        try {
+          nativeCurrency = getCountryCurrency(locationData.country);
+        } catch (countryError) {
+          console.warn(
+            '[Machine Chart API] Failed to resolve country for currency conversion:',
+            countryError
+          );
         }
       }
 
       // Convert from native currency to USD, then to display currency
-      if (nativeCurrency !== 'USD') {
-        convertedChartData = chartData.map(item => {
-          const dropUSD = convertToUSD(item.drop, nativeCurrency);
-          const cancelledUSD = convertToUSD(
-            item.totalCancelledCredits,
-            nativeCurrency
-          );
-          const grossUSD = convertToUSD(item.gross, nativeCurrency);
+      convertedChartData = chartData.map(item => {
+        const dropUSD = convertToUSD(item.drop || 0, nativeCurrency);
+        const cancelledUSD = convertToUSD(
+          item.totalCancelledCredits || 0,
+          nativeCurrency
+        );
+        const grossUSD = convertToUSD(item.gross || 0, nativeCurrency);
 
-          return {
-            ...item,
-            drop: convertFromUSD(dropUSD, displayCurrency),
-            totalCancelledCredits: convertFromUSD(
-              cancelledUSD,
-              displayCurrency
-            ),
-            gross: convertFromUSD(grossUSD, displayCurrency),
-          };
-        });
-      }
+        return {
+          ...item,
+          drop: convertFromUSD(dropUSD, displayCurrency),
+          totalCancelledCredits: convertFromUSD(
+            cancelledUSD,
+            displayCurrency
+          ),
+          gross: convertFromUSD(grossUSD, displayCurrency),
+        };
+      });
     }
 
     // ============================================================================
@@ -390,4 +386,6 @@ export async function GET(
     );
   }
 }
+
+
 

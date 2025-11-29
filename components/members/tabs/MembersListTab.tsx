@@ -1,12 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
 import { useDebounce } from '@/lib/utils/hooks';
+import axios from 'axios';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import PaginationControls from '@/components/ui/PaginationControls';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { useMemberActionsStore } from '@/lib/store/memberActionsStore';
 import type { CasinoMember as Member } from '@/shared/types/entities';
+import {
+    MagnifyingGlassIcon,
+} from '@radix-ui/react-icons';
+import { ArrowUpDown, Calendar, MapPin, Users } from 'lucide-react';
 type MemberSortOption =
   | 'name'
   | 'playerId'
@@ -20,34 +34,18 @@ type MemberSortOption =
   | 'locationName'
   | 'winLoss'
   | 'lastLogin';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  MagnifyingGlassIcon,
-} from '@radix-ui/react-icons';
-import { PlusCircle, RefreshCw, ArrowUpDown, Users, MapPin, Calendar } from 'lucide-react';
-import { Toaster } from 'sonner';
-import Image from 'next/image';
-import PaginationControls from '@/components/ui/PaginationControls';
 
 // Import SVG icons for pre-rendering
-import membersIcon from '@/public/membersIcon.svg';
 
-import MemberCard from '@/components/ui/members/MemberCard';
-import MemberTable from '@/components/ui/members/MemberTable';
-import MemberSkeleton from '@/components/ui/members/MemberSkeleton';
-import MemberTableSkeleton from '@/components/ui/members/MemberTableSkeleton';
-import EditMemberModal from '@/components/ui/members/EditMemberModal';
-import DeleteMemberModal from '@/components/ui/members/DeleteMemberModal';
-import NewMemberModal from '@/components/ui/members/NewMemberModal';
+import { useMembersHandlers } from '@/components/members/context/MembersHandlersContext';
 import LocationSingleSelect from '@/components/ui/common/LocationSingleSelect';
+import DeleteMemberModal from '@/components/ui/members/DeleteMemberModal';
+import EditMemberModal from '@/components/ui/members/EditMemberModal';
+import MemberCard from '@/components/ui/members/MemberCard';
+import MemberSkeleton from '@/components/ui/members/MemberSkeleton';
+import MemberTable from '@/components/ui/members/MemberTable';
+import MemberTableSkeleton from '@/components/ui/members/MemberTableSkeleton';
+import NewMemberModal from '@/components/ui/members/NewMemberModal';
 
 export default function MembersListTab() {
   const {
@@ -59,8 +57,10 @@ export default function MembersListTab() {
     closeEditModal,
     closeDeleteModal,
   } = useMemberActionsStore();
+  const { setOnRefresh, setOnNewMember, setRefreshing: setRefreshingContext } = useMembersHandlers();
 
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // State management
   const [allMembers, setAllMembers] = useState<Member[]>([]);
@@ -72,7 +72,6 @@ export default function MembersListTab() {
   const [currentPage, setCurrentPage] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [isNewMemberModalOpen, setIsNewMemberModalOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [locationFilter, setLocationFilter] = useState('all');
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [summaryStats, setSummaryStats] = useState<{
@@ -180,6 +179,20 @@ export default function MembersListTab() {
   useEffect(() => {
     fetchSummaryStats();
   }, [fetchSummaryStats]);
+
+  // Check for newMember parameter and open modal (only once)
+  useEffect(() => {
+    const newMember = searchParams?.get('newMember');
+    if (newMember === 'true' && !isNewMemberModalOpen) {
+      // Remove the parameter from URL first to prevent re-triggering
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.delete('newMember');
+      const newUrl = params.toString() ? `?${params.toString()}` : '';
+      router.replace(`/members${newUrl}`, { scroll: false });
+      // Then open the modal
+      setIsNewMemberModalOpen(true);
+    }
+  }, [searchParams, router, isNewMemberModalOpen]);
 
   // Frontend search is handled in filteredMembers useMemo
 
@@ -341,21 +354,67 @@ export default function MembersListTab() {
     }
   };
 
-
-  const handleNewMember = () => {
+  const handleNewMember = useCallback(() => {
     setIsNewMemberModalOpen(true);
-  };
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshingContext(true);
+    setAllMembers([]);
+    setLoadedBatches(new Set([1]));
+    setCurrentPage(0);
+    await fetchMembers(1, debouncedSearchTerm, sortOption, sortOrder);
+    await fetchSummaryStats();
+    setRefreshingContext(false);
+  }, [debouncedSearchTerm, sortOption, sortOrder, fetchMembers, fetchSummaryStats, setRefreshingContext]);
+
+  // Register handlers with context
+  useEffect(() => {
+    setOnRefresh(handleRefresh);
+    setOnNewMember(handleNewMember);
+    return () => {
+      setOnRefresh(undefined);
+      setOnNewMember(undefined);
+    };
+  }, [handleRefresh, handleNewMember, setOnRefresh, setOnNewMember]);
 
   const handleCloseNewMemberModal = () => {
     setIsNewMemberModalOpen(false);
   };
 
-  const handleMemberCreated = () => {
+  const handleMemberCreated = useCallback(async () => {
+    // Reset state and refetch all members (like page load)
+    // This ensures the new member appears in the list
     setAllMembers([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
-    fetchMembers(1, searchTerm, sortOption, sortOrder);
-  };
+    setLoading(true);
+    try {
+      // Fetch from page 1 with current filters (like page load)
+      await fetchMembers(1, debouncedSearchTerm, sortOption, sortOrder);
+      await fetchSummaryStats();
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearchTerm, sortOption, sortOrder, fetchMembers, fetchSummaryStats]);
+
+  const handleMemberUpdated = useCallback(async () => {
+    // Reset state and refetch all members (like page load)
+    // This ensures the updated member data is fresh
+    setAllMembers([]);
+    setLoadedBatches(new Set([1]));
+    setCurrentPage(0);
+    setLoading(true);
+    try {
+      // Fetch from page 1 with current filters (like page load)
+      await fetchMembers(1, debouncedSearchTerm, sortOption, sortOrder);
+      await fetchSummaryStats();
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearchTerm, sortOption, sortOrder, fetchMembers, fetchSummaryStats]);
+
+  // Date formatting helpers were used for exports only; keep here if needed in future.
 
   // Render summary cards (similar to summary report)
   const renderSummaryCards = () => {
@@ -412,116 +471,28 @@ export default function MembersListTab() {
 
   return (
     <>
-      {/* Title Row */}
-      <div className="mt-4 w-full max-w-full">
-        {/* Mobile Layout - All on same line */}
-        <div className="flex items-center gap-2 md:hidden">
-          <h1 className="text-lg sm:text-xl font-bold text-gray-800 flex-1 min-w-0 truncate flex items-center gap-2">
-            Members List
-            <Image
-              src={membersIcon}
-              alt="Members Icon"
-              width={32}
-              height={32}
-              className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
-            />
-          </h1>
-          {/* Mobile: Refresh icon */}
-          <button
-            onClick={async () => {
-              setRefreshing(true);
-              setAllMembers([]);
-              setLoadedBatches(new Set([1]));
-              setCurrentPage(0);
-              await fetchMembers(1, searchTerm, sortOption, sortOrder);
-              setRefreshing(false);
-            }}
-            disabled={refreshing}
-            className="p-1.5 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-            aria-label="Refresh"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-            />
-          </button>
-          {/* Create icon */}
-          <button
-            onClick={handleNewMember}
-            disabled={refreshing}
-            className="p-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-            aria-label="New Member"
-          >
-            <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-          </button>
-        </div>
-
-        {/* Desktop Layout - Title on left, actions on right */}
-        <div className="hidden md:flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2">
-            Members List
-            <Image
-              src={membersIcon}
-              alt="Members Icon"
-              width={32}
-              height={32}
-              className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0"
-            />
-          </h1>
-          {/* Desktop: Refresh icon and Create button onido far right */}
-          <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-          {/* Refresh icon */}
-          <button
-            onClick={async () => {
-              setRefreshing(true);
-              setAllMembers([]);
-              setLoadedBatches(new Set([1]));
-              setCurrentPage(0);
-              await fetchMembers(1, debouncedSearchTerm, sortOption, sortOrder);
-              await fetchSummaryStats();
-              setRefreshing(false);
-            }}
-            disabled={refreshing}
-            className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-            aria-label="Refresh"
-          >
-            <RefreshCw
-              className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
-            />
-          </button>
-            {/* Create button */}
-            <Button
-              onClick={handleNewMember}
-              disabled={refreshing}
-              className="flex items-center gap-2 rounded-md bg-button px-4 py-2 text-white hover:bg-buttonActive disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <PlusCircle className="h-4 w-4" />
-              New Member
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {/* Mobile: Search */}
-      <div className="mt-4 flex flex-col gap-4 lg:hidden">
+      {/* Mobile: Search and Sort */}
+      <div className="mt-4 flex flex-col gap-3 lg:hidden">
         <div className="relative w-full">
           <Input
             type="text"
             placeholder="Search members..."
-            className="h-11 w-full rounded-full border border-gray-300 bg-white px-4 pr-10 text-base text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
 
-        {/* Mobile: Sort controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="flex-1">
             <Select
               value={sortOption}
               onValueChange={v => setSortOption(v as MemberSortOption)}
             >
-              <SelectTrigger className="h-10 w-full">
+              <SelectTrigger className="h-10 w-full text-sm">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -536,7 +507,7 @@ export default function MembersListTab() {
           </div>
           <Button
             variant="outline"
-            className="h-10 w-10 p-0"
+            className="h-10 w-10 shrink-0 p-0"
             onClick={() => setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))}
             aria-label="Toggle sort order"
           >
@@ -561,71 +532,68 @@ export default function MembersListTab() {
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
         {locations.length > 0 && (
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-white">Location:</span>
-            <LocationSingleSelect
-              locations={locations}
-              selectedLocation={locationFilter}
-              onSelectionChange={setLocationFilter}
-              includeAllOption={true}
-              allOptionLabel="All Locations"
-              showSasBadge={false}
-              className="w-48"
-            />
-          </div>
+          <LocationSingleSelect
+            locations={locations}
+            selectedLocation={locationFilter}
+            onSelectionChange={setLocationFilter}
+            includeAllOption={true}
+            allOptionLabel="All Locations"
+            showSasBadge={false}
+            showFilterIcon={true}
+            className="w-48"
+          />
         )}
       </div>
 
       {/* Content Section */}
+      {/* Content Section */}
       <div className="w-full flex-1">
-        {loading ? (
-          <>
-            {/* Mobile: show 3 card skeletons */}
-            <div className="block lg:hidden">
-              <div className="grid grid-cols-1 gap-4">
-                {[...Array(3)].map((_, i) => (
-                  <MemberSkeleton key={i} />
-                ))}
-              </div>
+        {/* Mobile View */}
+        <div className="mt-4 space-y-4 pb-24 lg:hidden">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <MemberSkeleton key={i} />
+            ))
+          ) : paginatedMembers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
+              <Users className="mb-3 h-10 w-10 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900">No members found</h3>
+              <p className="text-sm text-gray-500">
+                Try adjusting your search or filters
+              </p>
             </div>
-            {/* Desktop: show 1 table skeleton */}
-            <div className="hidden lg:block">
-              <MemberTableSkeleton />
-            </div>
-          </>
-        ) : paginatedMembers.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <span className="text-lg text-gray-500">No members found.</span>
-          </div>
-        ) : (
-          <>
-            {/* Mobile: show cards */}
-            <div className="block lg:hidden">
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {paginatedMembers.map(member => (
-                  <MemberCard
-                    key={member._id}
-                    member={member}
-                    onMemberClick={handleMemberClick}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
-            </div>
-            {/* Desktop: show table */}
-            <div className="hidden lg:block">
-              <MemberTable
-                members={paginatedMembers}
-                sortOption={sortOption}
-                sortOrder={sortOrder}
-                onSort={handleSort}
+          ) : (
+            paginatedMembers.map(member => (
+              <MemberCard
+                key={member._id}
+                member={member}
                 onMemberClick={handleMemberClick}
-                onAction={handleTableAction}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
-            </div>
-          </>
-        )}
+            ))
+          )}
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden lg:block">
+          {loading ? (
+            <MemberTableSkeleton />
+          ) : paginatedMembers.length === 0 ? (
+             <div className="flex items-center justify-center py-12">
+               <span className="text-lg text-gray-500">No members found.</span>
+             </div>
+          ) : (
+            <MemberTable
+              members={paginatedMembers}
+              sortOption={sortOption}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+              onMemberClick={handleMemberClick}
+              onAction={handleTableAction}
+            />
+          )}
+        </div>
       </div>
 
       {/* Pagination - Mobile Responsive */}
@@ -645,7 +613,7 @@ export default function MembersListTab() {
         isOpen={isEditModalOpen}
         onClose={closeEditModal}
         member={selectedMember._id ? (selectedMember as Member) : null}
-        onMemberUpdated={fetchMembers}
+        onMemberUpdated={handleMemberUpdated}
       />
       <DeleteMemberModal
         isOpen={isDeleteModalOpen}
@@ -659,7 +627,6 @@ export default function MembersListTab() {
         onMemberCreated={handleMemberCreated}
       />
 
-      <Toaster richColors />
     </>
   );
 }

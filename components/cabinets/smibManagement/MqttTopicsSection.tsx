@@ -269,7 +269,7 @@ export function MqttTopicsSection({
                   className="placeholder-gray-400 focus:border-buttonActive focus:ring-1 focus:ring-buttonActive sm:col-start-2"
                 />
               ) : (
-                <div className="text-sm font-medium sm:col-start-2">
+                <div className="break-words text-sm font-medium sm:col-start-2">
                   {mqttURI || 'Not configured'}
                 </div>
               )}

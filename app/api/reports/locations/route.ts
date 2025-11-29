@@ -26,7 +26,6 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
-import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { getLicenseeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -717,11 +716,12 @@ export async function GET(req: NextRequest) {
     // Need to convert to display currency
     let convertedData = paginatedData;
 
-    // Currency conversion ONLY for Admin/Developer viewing "All Licensees"
-    const isAdminOrDev =
-      userRoles.includes('admin') || userRoles.includes('developer');
+    // For the locations report we ALWAYS convert row-level financials into the
+    // selected display currency when a currency is provided, so that the
+    // totals cards, table rows, and drill-down views stay consistent.
+    const shouldConvert = Boolean(displayCurrency);
 
-    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
+    if (shouldConvert) {
       try {
         // Import conversion helpers
         const { convertCurrency, getLicenseeCurrency } = await import(
@@ -833,7 +833,7 @@ export async function GET(req: NextRequest) {
         hasPrevPage: page > 1,
       },
       currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licencee),
+      converted: shouldConvert,
       performance: {
         totalTime,
         breakdown: perfTimers,

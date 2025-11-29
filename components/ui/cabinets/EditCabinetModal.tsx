@@ -810,9 +810,9 @@ export const EditCabinetModal = ({
 
   if (!isEditModalOpen || !selectedCabinet) return null;
 
-  // Desktop View Modal Content
+  // Modal Content - full viewport overlay with high z-index to cover sidebar
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[70]">
       {/* Backdrop */}
       <div
         ref={backdropRef}
@@ -820,7 +820,7 @@ export const EditCabinetModal = ({
         onClick={handleClose}
       />
 
-      {/* Desktop Modal */}
+      {/* Modal */}
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}

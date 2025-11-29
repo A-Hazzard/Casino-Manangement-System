@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, ChevronDown, Search } from 'lucide-react';
+import { Check, ChevronDown, Filter, Search } from 'lucide-react';
 
 type LocationSingleSelectOption = {
   id: string;
@@ -49,6 +49,7 @@ type LocationSingleSelectProps = {
   dropdownLabel?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
+  showFilterIcon?: boolean;
 };
 
 export default function LocationSingleSelect({
@@ -63,6 +64,7 @@ export default function LocationSingleSelect({
   dropdownLabel = 'Select Location',
   searchPlaceholder = 'Search locations...',
   emptyMessage = 'No locations found',
+  showFilterIcon = false,
 }: LocationSingleSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -129,7 +131,10 @@ export default function LocationSingleSelect({
         onClick={() => setIsOpen(!isOpen)}
         className={`${buttonWidthClass} justify-between text-left font-normal whitespace-nowrap`}
       >
-        <span>{displayText}</span>
+        <div className="flex items-center gap-2">
+          {showFilterIcon && <Filter className="h-4 w-4 text-gray-400" />}
+          <span>{displayText}</span>
+        </div>
         <ChevronDown
           className={`h-4 w-4 transition-transform flex-shrink-0 ml-2 ${
             isOpen ? 'rotate-180' : ''

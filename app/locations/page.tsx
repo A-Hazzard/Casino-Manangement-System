@@ -230,7 +230,8 @@ function LocationsPageContent() {
   // ============================================================================
   // Custom Hooks - Additional Functionality
   // ============================================================================
-  const { machineStats, machineStatsLoading } = useLocationMachineStats();
+  const { machineStats, machineStatsLoading, refreshMachineStats } =
+    useLocationMachineStats();
 
   const {
     isNewLocationModalOpen,
@@ -268,6 +269,7 @@ function LocationsPageContent() {
   // Handler for refresh button
   const handleRefresh = async () => {
     setRefreshing(true);
+    await refreshMachineStats();
     await fetchData();
     setRefreshing(false);
   };
@@ -289,16 +291,19 @@ function LocationsPageContent() {
     // Only fetch batch data when search is cleared or not active
     if (!searchTerm.trim()) {
       // Create a unique key for this fetch to prevent duplicate calls
-      const fetchKey = `${selectedLicencee}-${activeMetricsFilter}-${startDateTimestamp}-${endDateTimestamp}-${selectedFiltersKey}`;
-      
+      const fetchKey = `${selectedLicencee}-${activeMetricsFilter}-${startDateTimestamp}-${endDateTimestamp}-${selectedFiltersKey}-${displayCurrency}`;
+
       // Skip if this exact fetch was already triggered
-      if (lastFetchParamsRef.current === fetchKey && hasInitialFetchRef.current) {
+      if (
+        lastFetchParamsRef.current === fetchKey &&
+        hasInitialFetchRef.current
+      ) {
         return;
       }
-      
+
       // Update the last fetch params
       lastFetchParamsRef.current = fetchKey;
-      
+
       // Reset accumulated data when filters change
       isResettingRef.current = true;
       setAccumulatedLocations([]);
@@ -306,7 +311,7 @@ function LocationsPageContent() {
       lastLocationDataRef.current = [];
       fetchData(1, itemsPerBatch);
       hasInitialFetchRef.current = true;
-      
+
       // Reset flag after a short delay to allow state updates to complete
       setTimeout(() => {
         isResettingRef.current = false;
@@ -320,6 +325,7 @@ function LocationsPageContent() {
     selectedFiltersKey,
     itemsPerBatch,
     fetchData,
+    displayCurrency,
     searchTerm, // Include searchTerm to reset when search is cleared
   ]);
 
@@ -384,7 +390,11 @@ function LocationsPageContent() {
     // Only initialize once when user is first loaded
     if (hasInitializedLicenseeRef.current) {
       // Validate that selected licensee is still accessible
-      if (selectedLicencee && selectedLicencee !== '' && selectedLicencee !== 'all') {
+      if (
+        selectedLicencee &&
+        selectedLicencee !== '' &&
+        selectedLicencee !== 'all'
+      ) {
         if (!canAccessLicensee(user, selectedLicencee)) {
           // User can't access this licensee anymore, reset to default
           const defaultLicensee = getDefaultSelectedLicensee(user);
@@ -443,9 +453,13 @@ function LocationsPageContent() {
 
       // Create unique key for this fetch
       const metricsFetchKey = `${activeMetricsFilter}-${selectedLicencee}-${customDateRange?.startDate?.getTime()}-${customDateRange?.endDate?.getTime()}-${displayCurrency}`;
-      
+
       // Skip if this exact fetch was already triggered or is in progress
-      if ((lastMetricsFetchRef.current === metricsFetchKey && metricsFetchInProgressRef.current) || metricsFetchInProgressRef.current) {
+      if (
+        (lastMetricsFetchRef.current === metricsFetchKey &&
+          metricsFetchInProgressRef.current) ||
+        metricsFetchInProgressRef.current
+      ) {
         return;
       }
 
@@ -586,7 +600,7 @@ function LocationsPageContent() {
       // Check if items actually changed (compare IDs)
       const currentIds = currentItems.map(item => item._id).join(',');
       const prevIds = prevItemsRef.current.map(item => item._id).join(',');
-      
+
       // Only animate if items changed AND we've already done initial render
       if (currentIds !== prevIds && hasAnimatedRef.current) {
         // Animate table rows for desktop view
@@ -598,7 +612,7 @@ function LocationsPageContent() {
           animateCards(cardsRef);
         }
       }
-      
+
       // Update refs
       prevItemsRef.current = currentItems;
       if (!hasAnimatedRef.current && currentItems.length > 0) {
@@ -711,8 +725,8 @@ function LocationsPageContent() {
           />
         </div>
 
-        {/* Date Filters Section: Desktop layout with date filters and machine status */}
-        <div className="mb-0 mt-4 hidden md:block">
+        {/* Date Filters Section: Desktop layout with date filters and machine status (lg+) */}
+        <div className="mb-0 mt-4 hidden lg:block">
           <div className="mb-3">
             <DashboardDateFilters
               hideAllTime={true}
@@ -723,7 +737,7 @@ function LocationsPageContent() {
             />
           </div>
           <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0 flex-1 flex items-center">
+            <div className="flex min-w-0 flex-1 items-center">
               <DashboardDateFilters
                 hideAllTime={true}
                 onCustomRangeGo={fetchData}
@@ -732,7 +746,7 @@ function LocationsPageContent() {
                 hideIndicator={true}
               />
             </div>
-            <div className="w-auto flex-shrink-0 flex items-center">
+            <div className="flex w-auto flex-shrink-0 items-center">
               <MachineStatusWidget
                 isLoading={machineStatsLoading}
                 onlineCount={machineStats?.onlineMachines || 0}
@@ -744,8 +758,8 @@ function LocationsPageContent() {
           </div>
         </div>
 
-        {/* Mobile/Tablet: Date Filters and Machine Status stacked layout */}
-        <div className="mt-4 flex flex-col gap-4 md:hidden">
+        {/* Mobile/Tablet: Date Filters and Machine Status stacked layout (<= md, and md-only before lg) */}
+        <div className="mt-4 flex flex-col gap-4 lg:hidden">
           <div className="w-full">
             <DashboardDateFilters
               hideAllTime={true}
@@ -762,7 +776,7 @@ function LocationsPageContent() {
               showTotal={true}
             />
           </div>
-          <div className="relative w-full">
+          <div className="md:hidden relative w-full">
             <Input
               type="text"
               placeholder="Search locations..."

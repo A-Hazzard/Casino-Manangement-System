@@ -17,6 +17,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import axios from 'axios';
 import PageLayout from '@/components/layout/PageLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 
@@ -540,7 +541,7 @@ export default function SessionEventsPage() {
   // Render
   // ============================================================================
   return (
-    <>
+    <ProtectedRoute requiredPage="sessions">
       <PageLayout
         headerProps={{
           selectedLicencee,
@@ -602,6 +603,6 @@ export default function SessionEventsPage() {
           )}
         </div>
       </PageLayout>
-    </>
+    </ProtectedRoute>
   );
 }

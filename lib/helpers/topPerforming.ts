@@ -37,12 +37,16 @@ type ActiveTab = 'locations' | 'Cabinets';
 export async function fetchTopPerformingData(
   activeTab: ActiveTab,
   timePeriod: string,
-  licensee?: string
+  licensee?: string,
+  currency?: string
 ): Promise<TopPerformingData> {
   try {
     const params: Record<string, string> = { activeTab, timePeriod };
     if (licensee) {
       params.licensee = licensee;
+    }
+    if (currency) {
+      params.currency = currency;
     }
     const headers = { 'Content-Type': 'application/json' };
     const response = await axios.get(`/api/metrics/top-performing`, {

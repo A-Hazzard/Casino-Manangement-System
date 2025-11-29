@@ -85,6 +85,7 @@ export const useCabinetData = ({
     gross: number;
   } | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
+  const [lastFilterBackendKey, setLastFilterBackendKey] = useState<string>('');
 
   // PERFORMANCE OPTIMIZATION: Memoize financial totals calculation (for backward compatibility)
   // Note: This is now only used for table display, metrics cards use metricsTotals from API
@@ -359,6 +360,53 @@ export const useCabinetData = ({
   useEffect(() => {
     loadCabinets();
   }, [loadCabinets]);
+
+  // Frontend-first filtering for location/status, with backend fallback when no results
+  useEffect(() => {
+    // Only consider fallback when we actually have some cabinets loaded
+    if (!allCabinets.length) {
+      return;
+    }
+
+    const hasLocationOrStatusFilter =
+      (selectedLocation && selectedLocation !== 'all') ||
+      (selectedStatus &&
+        selectedStatus !== 'All' &&
+        selectedStatus !== 'all');
+
+    if (!hasLocationOrStatusFilter) {
+      return;
+    }
+
+    const filterKey = `${selectedLocation}|${selectedStatus}|${selectedGameType}|${debouncedSearchTerm}`;
+
+    // If frontend filtering returns zero results for the current filters,
+    // perform a backend query without pagination to ensure we didn't miss
+    // matches that live outside the initial batch.
+    if (
+      filteredCabinets.length === 0 &&
+      !loading &&
+      filterKey !== lastFilterBackendKey
+    ) {
+      setLastFilterBackendKey(filterKey);
+      // Fetch full dataset for this licensee/time period/currency, then
+      // frontend filters will re-run automatically on the larger set.
+      // Passing undefined page/limit lets the API decide (typically "all").
+      // We intentionally ignore the returned promise here – errors are
+      // handled inside loadCabinets.
+      void loadCabinets(undefined, undefined);
+    }
+  }, [
+    allCabinets.length,
+    filteredCabinets.length,
+    selectedLocation,
+    selectedStatus,
+    selectedGameType,
+    debouncedSearchTerm,
+    loading,
+    lastFilterBackendKey,
+    loadCabinets,
+  ]);
 
   // Removed useEffect for filtering - now handled by memoized filteredCabinets
 

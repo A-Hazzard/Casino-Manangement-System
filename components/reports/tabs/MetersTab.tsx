@@ -3,18 +3,18 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
 import LocationMultiSelect from '@/components/ui/common/LocationMultiSelect';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { MetersHourlyCharts } from '@/components/ui/MetersHourlyCharts';
@@ -28,28 +28,28 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { TopPerformingItem } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils/currency';
 import {
-    exportMetersReportExcel,
-    exportMetersReportPDF,
+  exportMetersReportExcel,
+  exportMetersReportPDF,
 } from '@/lib/utils/export';
 import { getFinancialColorClass } from '@/lib/utils/financialColors';
 import { useDebounce } from '@/lib/utils/hooks';
 import { getLicenseeName } from '@/lib/utils/licenseeMapping';
 import type {
-    MetersReportData,
-    MetersReportResponse,
+  MetersReportData,
+  MetersReportResponse,
 } from '@/shared/types/meters';
 import axios from 'axios';
 import {
-    AlertCircle,
-    BarChart3,
-    ChevronDown,
-    Download,
-    ExternalLink,
-    FileSpreadsheet,
-    FileText,
-    Monitor,
-    RefreshCw,
-    Search,
+  AlertCircle,
+  BarChart3,
+  ChevronDown,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  Monitor,
+  RefreshCw,
+  Search,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -973,9 +973,9 @@ export default function MetersTab() {
                 {loading || topMachinesLoading ? (
                   <TopPerformingMachinesSkeleton />
                 ) : topMachinesData.length > 0 ? (
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                  <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center">
                     {/* Legend */}
-                    <div className="flex-1 space-y-2">
+                    <div className="min-w-0 flex-1 space-y-2">
                       {topMachinesData.map((item, index) => (
                         <div
                           key={item._id}
@@ -1156,29 +1156,31 @@ export default function MetersTab() {
             </div>
 
             {/* Desktop table skeleton with proper column structure */}
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full">
-                <thead className="border-b border-gray-200 bg-gray-50">
-                  <tr>
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <th key={i} className="px-4 py-3 text-center">
-                        <Skeleton className="mx-auto h-4 w-20" />
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <tr key={i}>
-                      {Array.from({ length: 10 }).map((_, j) => (
-                        <td key={j} className="px-4 py-3 text-center">
-                          <Skeleton className="mx-auto h-4 w-16" />
-                        </td>
+            <div className="hidden min-w-0 overflow-x-auto md:block">
+              <div className="min-w-full">
+                <table className="w-full min-w-[800px]">
+                  <thead className="border-b border-gray-200 bg-gray-50">
+                    <tr>
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <th key={i} className="px-4 py-3 text-center">
+                          <Skeleton className="mx-auto h-4 w-20" />
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <tr key={i}>
+                        {Array.from({ length: 10 }).map((_, j) => (
+                          <td key={j} className="px-4 py-3 text-center">
+                            <Skeleton className="mx-auto h-4 w-16" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Mobile cards skeleton */}
@@ -1301,201 +1303,250 @@ export default function MetersTab() {
                   </p>
                 </div>
 
-                {/* Desktop Table View */}
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full">
-                    <thead className="border-b border-gray-200 bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Machine ID
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Location
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Meters In
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Money Won
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Jackpot
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Bill In
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Voucher Out
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Hand Paid Cancelled Credits
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Games Played
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                          Date
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                      {paginatedMetersData.map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div className="font-mono text-sm text-gray-900">
+                {/* Desktop Table View - lg and above */}
+                <div className="hidden min-w-0 overflow-x-auto lg:block">
+                  <div className="min-w-full">
+                    <table className="w-full min-w-[800px]">
+                      <thead className="border-b border-gray-200 bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Machine ID
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Location
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Meters In
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Money Won
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Jackpot
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Bill In
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Voucher Out
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Hand Paid Cancelled Credits
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Games Played
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Date
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {paginatedMetersData.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              {item.machineDocumentId ? (
+                                <button
+                                  onClick={() => {
+                                    router.push(
+                                      `/cabinets/${item.machineDocumentId}`
+                                    );
+                                  }}
+                                  className="group mx-auto flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                                >
+                                  <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                    {/* machineId is already computed by the API with proper fallback:
+                                        1. serialNumber (if not blank/whitespace)
+                                        2. custom.name (if serialNumber is blank) */}
+                                    {item.machineId}
+                                  </span>
+                                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                </button>
+                              ) : (
+                                <div className="font-mono text-sm text-gray-900">
+                                  {item.machineId}
+                                </div>
+                              )}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.location}
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div
+                                className={`text-sm ${getFinancialColorClass(item.metersIn)}`}
+                              >
+                                {item.metersIn.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div
+                                className={`text-sm ${getFinancialColorClass(item.metersOut)}`}
+                              >
+                                {item.metersOut.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div
+                                className={`text-sm ${getFinancialColorClass(item.jackpot)}`}
+                              >
+                                {item.jackpot.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div
+                                className={`text-sm ${getFinancialColorClass(item.billIn)}`}
+                              >
+                                {item.billIn.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div
+                                className={`text-sm ${getFinancialColorClass(item.voucherOut)}`}
+                              >
+                                {item.voucherOut.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div
+                                className={`text-sm ${getFinancialColorClass(item.attPaidCredits)}`}
+                              >
+                                {item.attPaidCredits.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div className="text-sm text-gray-900">
+                                {item.gamesPlayed.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-center">
+                              <div className="text-sm text-gray-900">
+                                {new Date(item.createdAt).toLocaleDateString()}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Card View - md and below (2x2 grid on md, single column on mobile) */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
+                  {paginatedMetersData.map((item, index) => (
+                    <div
+                      key={index}
+                      className="group relative overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
+                    >
+                      {/* Header */}
+                      <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
+                        <div className="mb-2 w-fit flex-shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="break-words font-mono text-base font-semibold text-gray-900">
                               {/* machineId is already computed by the API with proper fallback:
                                   1. serialNumber (if not blank/whitespace)
                                   2. custom.name (if serialNumber is blank) */}
                               {item.machineId}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div className="text-sm font-medium text-gray-900">
+                            </h3>
+                            <p className="mt-1 truncate text-sm text-gray-600">
                               {item.location}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div
-                              className={`text-sm ${getFinancialColorClass(item.metersIn)}`}
-                            >
-                              {item.metersIn.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div
-                              className={`text-sm ${getFinancialColorClass(item.metersOut)}`}
-                            >
-                              {item.metersOut.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div
-                              className={`text-sm ${getFinancialColorClass(item.jackpot)}`}
-                            >
-                              {item.jackpot.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div
-                              className={`text-sm ${getFinancialColorClass(item.billIn)}`}
-                            >
-                              {item.billIn.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div
-                              className={`text-sm ${getFinancialColorClass(item.voucherOut)}`}
-                            >
-                              {item.voucherOut.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div
-                              className={`text-sm ${getFinancialColorClass(item.attPaidCredits)}`}
-                            >
-                              {item.attPaidCredits.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div className="text-sm text-gray-900">
-                              {item.gamesPlayed.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-center">
-                            <div className="text-sm text-gray-900">
-                              {new Date(item.createdAt).toLocaleDateString()}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Card View */}
-                <div className="space-y-4 md:hidden">
-                  {paginatedMetersData.map((item, index) => (
-                    <div
-                      key={index}
-                      className="space-y-3 rounded-lg border border-gray-200 bg-white p-4"
-                    >
-                      {/* Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="truncate font-mono text-sm font-medium text-gray-900">
-                            {/* machineId is already computed by the API with proper fallback:
-                                1. serialNumber (if not blank/whitespace)
-                                2. custom.name (if serialNumber is blank) */}
-                            {item.machineId}
-                          </h3>
-                          <p className="truncate text-xs text-gray-500">
-                            {item.location}
-                          </p>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(item.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
                       {/* Metrics Grid */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-xs text-gray-500">Meters In</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Meters In
+                          </p>
                           <p
-                            className={`text-sm font-medium ${getFinancialColorClass(item.metersIn)}`}
+                            className={`text-base font-bold ${getFinancialColorClass(item.metersIn)}`}
                           >
                             {item.metersIn.toLocaleString()}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Money Won</p>
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Money Won
+                          </p>
                           <p
-                            className={`text-sm font-medium ${getFinancialColorClass(item.metersOut)}`}
+                            className={`text-base font-bold ${getFinancialColorClass(item.metersOut)}`}
                           >
                             {item.metersOut.toLocaleString()}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Jackpot</p>
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Jackpot
+                          </p>
                           <p
-                            className={`text-sm font-medium ${getFinancialColorClass(item.jackpot)}`}
+                            className={`text-base font-bold ${getFinancialColorClass(item.jackpot)}`}
                           >
                             {item.jackpot.toLocaleString()}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Bill In</p>
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Bill In
+                          </p>
                           <p
-                            className={`text-sm font-medium ${getFinancialColorClass(item.billIn)}`}
+                            className={`text-base font-bold ${getFinancialColorClass(item.billIn)}`}
                           >
                             {item.billIn.toLocaleString()}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Voucher Out</p>
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Voucher Out
+                          </p>
                           <p
-                            className={`text-sm font-medium ${getFinancialColorClass(item.voucherOut)}`}
+                            className={`text-base font-bold ${getFinancialColorClass(item.voucherOut)}`}
                           >
                             {item.voucherOut.toLocaleString()}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">
-                            Hand Paid Cancelled Credits
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Hand Paid
                           </p>
                           <p
-                            className={`text-sm font-medium ${getFinancialColorClass(item.attPaidCredits)}`}
+                            className={`text-base font-bold ${getFinancialColorClass(item.attPaidCredits)}`}
                           >
                             {item.attPaidCredits.toLocaleString()}
                           </p>
                         </div>
-                        <div className="col-span-2">
-                          <p className="text-xs text-gray-500">Games Played</p>
-                          <p className="text-sm font-medium text-gray-900">
+                        <div className="col-span-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-3 shadow-sm">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-600">
+                            Games Played
+                          </p>
+                          <p className="text-lg font-bold text-gray-900">
                             {item.gamesPlayed.toLocaleString()}
                           </p>
                         </div>
                       </div>
+
+                      {/* View Machine Button */}
+                      {item.machineDocumentId && (
+                        <div className="mt-4 border-t border-gray-100 pt-4">
+                          <button
+                            onClick={() => {
+                              router.push(
+                                `/cabinets/${item.machineDocumentId}`
+                              );
+                            }}
+                            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            View Machine
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1522,29 +1573,28 @@ export default function MetersTab() {
  *
  * Shown in the exact spot where the Top Performing Machines chart renders
  * while the meters/top-machines query is loading.
+ * Responsive layout: list + pie chart (stacked on mobile, side-by-side on desktop).
  */
 function TopPerformingMachinesSkeleton() {
   return (
-    <div className="flex h-[300px] items-center justify-center">
-      <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center">
-        {/* Legend skeleton */}
-        <div className="flex-1 space-y-2">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-2 rounded px-2 py-1.5"
-            >
-              <Skeleton className="h-4 w-4 rounded-full" />
-              <Skeleton className="h-4 flex-1" />
-              <Skeleton className="h-3.5 w-3.5" />
-              <Skeleton className="h-4 w-16" />
-            </div>
-          ))}
-        </div>
-        {/* Pie chart skeleton */}
-        <div className="flex-shrink-0">
-          <Skeleton className="h-[200px] w-[200px] rounded-full" />
-        </div>
+    <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center">
+      {/* Legend skeleton */}
+      <div className="min-w-0 flex-1 space-y-2">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div
+            key={index}
+            className="flex items-center gap-2 rounded px-2 py-1.5"
+          >
+            <Skeleton className="h-4 w-4 flex-shrink-0 rounded-full" />
+            <Skeleton className="h-4 min-w-0 flex-1" />
+            <Skeleton className="h-3.5 w-3.5 flex-shrink-0" />
+            <Skeleton className="h-4 w-16 flex-shrink-0" />
+          </div>
+        ))}
+      </div>
+      {/* Pie chart skeleton */}
+      <div className="flex-shrink-0">
+        <Skeleton className="h-[200px] w-[200px] rounded-full" />
       </div>
     </div>
   );

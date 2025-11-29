@@ -11,8 +11,16 @@
  */
 
 import { getTopPerformingMetrics } from '@/app/api/lib/helpers/top-performing';
+import {
+  convertTopPerformingCurrency,
+} from '@/app/api/lib/helpers/topPerformingCurrencyConversion';
+import type { TopPerformingItem } from '@/app/api/lib/helpers/topPerformingCurrencyConversion';
+import { shouldApplyCurrencyConversion } from '@/app/api/lib/helpers/currencyHelper';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
+import { getLicenseeObjectId } from '@/lib/utils/licenseeMapping';
+import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
 type ActiveTab = 'locations' | 'Cabinets';
@@ -24,7 +32,8 @@ type ActiveTab = 'locations' | 'Cabinets';
  * 1. Parse and validate request parameters
  * 2. Connect to database
  * 3. Fetch top performing metrics
- * 4. Return top performing data
+ * 4. Apply currency conversion if needed
+ * 5. Return top performing data
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
@@ -38,8 +47,30 @@ export async function GET(req: NextRequest) {
       (searchParams.get('activeTab') as ActiveTab) || 'locations';
     const timePeriod: TimePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || '7d';
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licencee');
+
+    // Raw licensee from query (name, id, or "all")
+    const rawLicensee =
+      searchParams.get('licensee') || searchParams.get('licencee') || null;
+
+    // Normalize licensee for DB filtering:
+    // - Map known names (TTG, Cabana, etc.) → ObjectId
+    // - Treat "all" / empty as undefined (no filter)
+    let licenseeForFilter: string | undefined;
+    if (rawLicensee && rawLicensee !== 'all') {
+      licenseeForFilter = getLicenseeObjectId(rawLicensee) || rawLicensee;
+    }
+
+    const currencyParam = searchParams.get('currency') as CurrencyCode | null;
+    const displayCurrency: CurrencyCode = currencyParam || 'USD';
+
+    console.log('[TopPerforming API] Params:', {
+      activeTab,
+      timePeriod,
+      rawLicensee,
+      licenseeForFilter,
+      currencyParam,
+      displayCurrency,
+    });
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -59,17 +90,59 @@ export async function GET(req: NextRequest) {
       db,
       activeTab,
       timePeriod,
-      licensee || undefined
+      licenseeForFilter
     );
 
     // ============================================================================
-    // STEP 4: Return top performing data
+    // STEP 4: Apply currency conversion if needed
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    const isAdminOrDev =
+      currentUserRoles.includes('admin') ||
+      currentUserRoles.includes('developer');
+
+    let convertedData = data as unknown as TopPerformingItem[];
+
+    // Currency conversion ONLY for Admin/Developer when viewing "All Licensees" (no specific licensee selected)
+    // Only apply conversion if "all licensees" is selected AND display currency is not USD
+    const shouldConvert =
+      isAdminOrDev &&
+      shouldApplyCurrencyConversion(rawLicensee) &&
+      displayCurrency &&
+      displayCurrency !== 'USD';
+
+    if (shouldConvert) {
+      console.log('[TopPerforming API] Applying currency conversion to', displayCurrency);
+      convertedData = await convertTopPerformingCurrency(
+        convertedData,
+        displayCurrency,
+        licenseeForFilter,
+        db
+      );
+    } else {
+      console.log('[TopPerforming API] Skipping conversion:', {
+        isAdminOrDev,
+        shouldApplyConversion: shouldApplyCurrencyConversion(rawLicensee),
+        displayCurrency,
+        rawLicensee,
+        licenseeForFilter,
+      });
+    }
+
+    // ============================================================================
+    // STEP 5: Return top performing data
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
       console.warn(`[Top Performing API] Completed in ${duration}ms`);
     }
-    return NextResponse.json({ activeTab, timePeriod, data });
+    return NextResponse.json({
+      activeTab,
+      timePeriod,
+      data: convertedData,
+      currency: displayCurrency,
+    });
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =

@@ -8,7 +8,7 @@ import { differenceInMinutes } from 'date-fns';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import { toast } from 'sonner';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useCurrency } from '@/lib/contexts/CurrencyContext';
 
 type UseCabinetDetailsDataProps = {
   slug: string;
@@ -48,8 +48,8 @@ export function useCabinetDetailsData({
   const [isOnline, setIsOnline] = useState(false);
   const [metricsLoading, setMetricsLoading] = useState(false);
 
-  // Get display currency from store for currency conversion
-  const { displayCurrency } = useDashBoardStore();
+  // Get display currency from context (synced with store) for currency conversion
+  const { displayCurrency } = useCurrency();
 
   // ============================================================================
   // Data Fetching
@@ -77,8 +77,9 @@ export function useCabinetDetailsData({
         return;
       }
 
-      // Pass currency for conversion when viewing "All Licensees"
-      const currency = selectedLicencee === '' || !selectedLicencee ? displayCurrency : undefined;
+      // Always pass current display currency so cabinet detail values
+      // are returned in the header-selected currency.
+      const currency = displayCurrency;
 
       const cabinetData = await fetchCabinetById(
         slug,
@@ -86,7 +87,8 @@ export function useCabinetDetailsData({
         activeMetricsFilter === 'Custom' && customDateRange
           ? { from: customDateRange.startDate, to: customDateRange.endDate }
           : undefined,
-        currency
+        currency,
+        selectedLicencee || null
       );
 
       // Check if cabinet was not found

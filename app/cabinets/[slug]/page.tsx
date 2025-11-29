@@ -237,9 +237,9 @@ function CabinetDetailPageContent() {
         const assignedLicensees = user.assignedLicensees || [];
         const hasMultipleLicensees = assignedLicensees.length > 1;
 
-        // Set default currency if user has multiple licensees (allows them to change it)
-        // or if it's different from current currency
-        if (hasMultipleLicensees || defaultCurrency !== 'USD') {
+        // Only set default currency when "all licensees" is selected (selectedLicencee is null/empty)
+        // This ensures the currency matches the location's licensee currency
+        if ((!selectedLicencee || selectedLicencee === '') && (hasMultipleLicensees || defaultCurrency !== 'USD')) {
           setDisplayCurrency(defaultCurrency);
           setDashboardCurrency(defaultCurrency);
         }
@@ -249,7 +249,13 @@ function CabinetDetailPageContent() {
     };
 
     setDefaultCurrencyForCabinet();
-  }, [cabinet?.gamingLocation, user, setDisplayCurrency, setDashboardCurrency]);
+  }, [
+    cabinet?.gamingLocation,
+    user,
+    selectedLicencee,
+    setDisplayCurrency,
+    setDashboardCurrency,
+  ]);
 
   // Fetch chart data for this specific machine
   useEffect(() => {
@@ -263,7 +269,8 @@ function CabinetDetailPageContent() {
           activeMetricsFilter,
           customDateRange.startDate,
           customDateRange.endDate,
-          displayCurrency
+          displayCurrency,
+          selectedLicencee
         );
 
         setChartData(data);
@@ -282,6 +289,7 @@ function CabinetDetailPageContent() {
     customDateRange.startDate,
     customDateRange.endDate,
     displayCurrency,
+    selectedLicencee,
   ]);
 
   // ============================================================================
@@ -377,28 +385,55 @@ function CabinetDetailPageContent() {
   // ============================================================================
   // Effects - Data Fetching & Initialization
   // ============================================================================
+  // Track cabinet ID to prevent unnecessary re-runs
+  const lastCabinetIdRef = useRef<string | null>(null);
+  
+  // Store functions in refs to avoid dependency issues
+  const fetchMqttConfigRef = useRef(fetchMqttConfig);
+  const setCommunicationModeFromDataRef = useRef(setCommunicationModeFromData);
+  const setFirmwareVersionFromDataRef = useRef(setFirmwareVersionFromData);
+  const disconnectFromConfigStreamRef = useRef(disconnectFromConfigStream);
+
+  // Keep refs up to date
+  useEffect(() => {
+    fetchMqttConfigRef.current = fetchMqttConfig;
+    setCommunicationModeFromDataRef.current = setCommunicationModeFromData;
+    setFirmwareVersionFromDataRef.current = setFirmwareVersionFromData;
+    disconnectFromConfigStreamRef.current = disconnectFromConfigStream;
+  }, [
+    fetchMqttConfig,
+    setCommunicationModeFromData,
+    setFirmwareVersionFromData,
+    disconnectFromConfigStream,
+  ]);
+
   // Update SMIB configuration when cabinet data changes
   useEffect(() => {
-    if (cabinet) {
-      setCommunicationModeFromData(cabinet);
-      setFirmwareVersionFromData(cabinet);
-      // Fetch MQTT configuration from API
-      fetchMqttConfig(String(cabinet._id));
-
-      // Note: SMIB connection is now manual - only when user clicks "Get SMIB Configuration"
+    if (!cabinet) {
+      return;
     }
+
+    const cabinetId = String(cabinet._id);
+    
+    // Only run if cabinet ID actually changed
+    if (lastCabinetIdRef.current === cabinetId) {
+      return;
+    }
+
+    lastCabinetIdRef.current = cabinetId;
+
+    setCommunicationModeFromDataRef.current(cabinet);
+    setFirmwareVersionFromDataRef.current(cabinet);
+    // Fetch MQTT configuration from API
+    fetchMqttConfigRef.current(cabinetId);
+
+    // Note: SMIB connection is now manual - only when user clicks "Get SMIB Configuration"
 
     // Cleanup on unmount or cabinet change
     return () => {
-      disconnectFromConfigStream();
+      disconnectFromConfigStreamRef.current();
     };
-  }, [
-    cabinet,
-    setCommunicationModeFromData,
-    setFirmwareVersionFromData,
-    fetchMqttConfig,
-    disconnectFromConfigStream,
-  ]);
+  }, [cabinet]);
 
   // Don't show loading state on initial load
   useEffect(() => {
@@ -683,7 +718,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
-          hideCurrencyFilter: user ? (user.assignedLicensees || []).length <= 1 : undefined,
+          hideCurrencyFilter: false,
         }}
         pageTitle=""
         hideOptions={true}
@@ -714,7 +749,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
-          hideCurrencyFilter: user ? (user.assignedLicensees || []).length <= 1 : undefined,
+          hideCurrencyFilter: false,
         }}
         pageTitle=""
         hideOptions={true}
@@ -785,7 +820,7 @@ function CabinetDetailPageContent() {
         headerProps={{
           selectedLicencee,
           setSelectedLicencee,
-          hideCurrencyFilter: user ? (user.assignedLicensees || []).length <= 1 : undefined,
+          hideCurrencyFilter: false,
         }}
         pageTitle=""
         hideOptions={true}
@@ -1859,7 +1894,7 @@ function CabinetDetailPageContent() {
                                       placeholder="mqtt://mqtt:mqtt@mq.sas.backoffice.ltd:1883"
                                     />
                                   ) : (
-                                    <div className="text-sm">
+                                    <div className="break-words text-sm">
                                       {formData.mqttURI ||
                                         cabinet?.smibConfig?.mqtt?.mqttURI ||
                                         'No Value Provided'}
@@ -2080,28 +2115,40 @@ function CabinetDetailPageContent() {
         )}
 
         {/* Date Filters */}
-        {hasMounted ? (
-          <motion.div
-            className="mb-4 mt-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+        {/* Desktop/tablet (md and up): use button-style filters */}
+        <div className="hidden md:block mb-4 mt-4">
+          {hasMounted ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <DashboardDateFilters
+                hideAllTime={false}
+                onCustomRangeGo={fetchCabinetDetailsData}
+                enableTimeInputs={true}
+                mode="desktop"
+              />
+            </motion.div>
+          ) : (
             <DashboardDateFilters
               hideAllTime={false}
               onCustomRangeGo={fetchCabinetDetailsData}
               enableTimeInputs={true}
+              mode="desktop"
             />
-          </motion.div>
-        ) : (
-          <div className="mb-4 mt-4">
-            <DashboardDateFilters
-              hideAllTime={false}
-              onCustomRangeGo={fetchCabinetDetailsData}
-              enableTimeInputs={true}
-            />
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Mobile (below md): use CustomSelect-based dropdown */}
+        <div className="block md:hidden mb-4 mt-4">
+          <DashboardDateFilters
+            hideAllTime={false}
+            onCustomRangeGo={fetchCabinetDetailsData}
+            enableTimeInputs={true}
+            mode="mobile"
+          />
+        </div>
 
         {/* Horizontal Slider for Mobile and Tablet - visible below lg */}
         <div className="custom-scrollbar mb-2 mt-4 w-full touch-pan-x overflow-x-auto rounded-md p-2 pb-4 lg:hidden">
@@ -2157,7 +2204,6 @@ function CabinetDetailPageContent() {
             cabinet={cabinet}
             loading={metricsLoading}
             activeMetricsTabContent={activeMetricsTabContent}
-            disableCurrencyConversion={user ? (user.assignedLicensees || []).length <= 1 : undefined}
             setActiveMetricsTabContent={handleTabChange}
             onDataRefresh={fetchCabinetDetailsData}
           />

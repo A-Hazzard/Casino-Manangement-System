@@ -22,6 +22,7 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
+import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
     pipeline.push({ $match: query });
 
     // Stage 2: Join members with gaming locations to get location names
-    // Handle both string and ObjectId formats for gamingLocation
+    // _id is a string, so compare directly without ObjectId conversion
     pipeline.push({
       $lookup: {
         from: 'gaminglocations',
@@ -149,12 +150,6 @@ export async function GET(request: NextRequest) {
                     $eq: [
                       { $toString: '$_id' },
                       { $toString: '$$memberLocation' },
-                    ],
-                  },
-                  {
-                    $eq: [
-                      '$_id',
-                      { $toObjectId: { $ifNull: ['$$memberLocation', ''] } },
                     ],
                   },
                 ],
@@ -390,9 +385,24 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 3: Validate required fields
     // ============================================================================
-    if (!body.profile?.firstName || !body.profile?.lastName || !body.username) {
+    // Helper function to trim and check if empty
+    const trimString = (value: unknown): string => {
+      if (typeof value === 'string') {
+        return value.trim();
+      }
+      return '';
+    };
+
+    const trimmedFirstName = trimString(body.profile?.firstName);
+    const trimmedLastName = trimString(body.profile?.lastName);
+    const trimmedUsername = trimString(body.username);
+
+    if (!trimmedFirstName || !trimmedLastName || !trimmedUsername) {
       return NextResponse.json(
-        { error: 'First name, last name, and username are required' },
+        {
+          error:
+            'First name, last name, and username are required and cannot be blank',
+        },
         { status: 400 }
       );
     }
@@ -400,7 +410,7 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 4: Check if username already exists
     // ============================================================================
-    const existingMember = await Member.findOne({ username: body.username });
+    const existingMember = await Member.findOne({ username: trimmedUsername });
     if (existingMember) {
       return NextResponse.json(
         { error: 'Username already exists' },
@@ -409,16 +419,42 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 5: Create new member document
+    // STEP 5: Generate ObjectId hex string for _id
+    // ============================================================================
+    const memberId = await generateMongoId();
+
+    // ============================================================================
+    // STEP 6: Create new member document
     // ============================================================================
     const newMember = new Member({
-      _id: body.username, // Use username as ID
+      _id: memberId, // Use ObjectId hex string as ID
+      accountLocked: false,
+      areaCode: '',
+      authType: 0,
+      avgBet: 0,
+      billsIn: 0,
+      currentSession: '',
+      deletedAt: new Date(-1), // SMIB boards require all fields to be present
+      freePlayAwardId: 0,
+      gameName: '',
+      gamesPlayed: 0,
+      gamesWon: 0,
+      gamingLocation: body.gamingLocation || 'default',
+      loggedIn: false,
+      machineId: '',
+      machineSerialNumber: '',
+      memberId: '',
+      nonRestricted: 0,
+      numFailedLoginAttempts: 0,
+      phoneNumber: trimString(body.phoneNumber),
+      pin: trimString(body.pin) || '0000',
+      points: body.points || 0,
       profile: {
-        firstName: body.profile.firstName,
-        lastName: body.profile.lastName,
-        email: body.profile.email || '',
-        occupation: body.profile.occupation || '',
-        address: body.profile.address || '',
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        email: trimString(body.profile.email),
+        occupation: trimString(body.profile.occupation),
+        address: trimString(body.profile.address),
         gender: '',
         dob: '',
         indentification: {
@@ -426,49 +462,57 @@ export async function POST(request: NextRequest) {
           type: '',
         },
       },
-      username: body.username,
-      phoneNumber: body.phoneNumber || '',
-      points: body.points || 0,
+      relayId: '',
+      restricted: 0,
+      status: '',
       uaccount: body.uaccount || 0,
-      pin: body.pin || '0000',
-      gamingLocation: body.gamingLocation || 'default', // Allow specifying gaming location
-      deletedAt: new Date(-1), // SMIB boards require all fields to be present
+      ucardId: '',
+      ulock: 0,
+      upassFull: 0,
+      user: '',
+      username: trimmedUsername,
+      utype: 0,
+      uvalid: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
     // ============================================================================
-    // STEP 6: Save member to database
+    // STEP 7: Save member to database
     // ============================================================================
     await newMember.save();
 
     // ============================================================================
-    // STEP 7: Log activity
+    // STEP 8: Log activity
     // ============================================================================
     const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
+    if (
+      currentUser &&
+      currentUser._id &&
+      (currentUser.emailAddress || currentUser.username)
+    ) {
       try {
         const createChanges = [
-          { field: 'username', oldValue: null, newValue: body.username },
+          { field: 'username', oldValue: null, newValue: trimmedUsername },
           {
             field: 'firstName',
             oldValue: null,
-            newValue: body.profile.firstName,
+            newValue: trimmedFirstName,
           },
           {
             field: 'lastName',
             oldValue: null,
-            newValue: body.profile.lastName,
+            newValue: trimmedLastName,
           },
           {
             field: 'email',
             oldValue: null,
-            newValue: body.profile.email || '',
+            newValue: trimString(body.profile.email),
           },
           {
             field: 'phoneNumber',
             oldValue: null,
-            newValue: body.phoneNumber || '',
+            newValue: trimString(body.phoneNumber),
           },
           {
             field: 'gamingLocation',
@@ -479,16 +523,20 @@ export async function POST(request: NextRequest) {
 
         await logActivity({
           action: 'CREATE',
-          details: `Created new member "${body.profile.firstName} ${body.profile.lastName}" with username "${body.username}"`,
+          details: `Created new member "${trimmedFirstName} ${trimmedLastName}" with username "${trimmedUsername}"`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username:
+            (currentUser.emailAddress as string) ||
+            (currentUser.username as string) ||
+            'unknown',
           metadata: {
-            userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'member',
             resourceId: newMember._id,
-            resourceName: `${body.profile.firstName} ${body.profile.lastName}`,
+            resourceName: `${trimmedFirstName} ${trimmedLastName}`,
             changes: createChanges,
           },
         });
@@ -509,7 +557,10 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(`[Members API POST] Error after ${duration}ms:`, errorMessage);
+    console.error(
+      `[Members API POST] Error after ${duration}ms:`,
+      errorMessage
+    );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

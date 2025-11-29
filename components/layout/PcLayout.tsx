@@ -28,6 +28,7 @@ import { RefreshButtonSkeleton } from '@/components/ui/skeletons/ButtonSkeletons
 import {
   DashboardChartSkeleton,
   DashboardFinancialMetricsSkeleton,
+  DashboardTopPerformingSkeleton,
 } from '@/components/ui/skeletons/DashboardSkeletons';
 import { timeFrames } from '@/lib/constants/uiConstants';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -359,37 +360,7 @@ export default function PcLayout(props: PcLayoutProps) {
           {/* Top Performing Section */}
           <div className="rounded-lg bg-container p-6 shadow-md">
             {props.loadingTopPerforming ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Top Performing</h2>
-                  <div className="h-8 w-32 animate-pulse rounded bg-gray-200"></div>
-                </div>
-                <div
-                  className={`relative flex flex-col ${
-                    props.activeTab === 'locations'
-                      ? 'bg-container'
-                      : 'bg-buttonActive'
-                  } w-full rounded-lg rounded-tl-3xl rounded-tr-3xl shadow-md`}
-                >
-                  <div className="flex">
-                    <div className="w-full rounded-tl-xl rounded-tr-3xl bg-gray-100 px-4 py-2"></div>
-                    <div className="w-full rounded-tr-3xl bg-gray-100 px-4 py-2"></div>
-                  </div>
-                  <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 space-y-2">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="flex items-center gap-2">
-                            <div className="h-4 w-4 flex-shrink-0 animate-pulse rounded-full bg-gray-200"></div>
-                            <div className="h-4 flex-1 animate-pulse rounded bg-gray-200"></div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="h-40 w-40 flex-shrink-0 animate-pulse rounded-full bg-gray-200"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <DashboardTopPerformingSkeleton />
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -472,8 +443,8 @@ export default function PcLayout(props: PcLayoutProps) {
                         message={`No metrics found for ${selectedLicencee === 'all' ? 'any licensee' : licenseeName}`}
                       />
                     ) : (
-                      <div className="flex items-center justify-between">
-                        <ul className="flex-1 space-y-2">
+                      <div className="flex flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
+                        <ul className="flex-1 space-y-2 lg:min-w-0">
                           {props.topPerformingData.map(
                             (item: TopPerformingItem, index: number) => {
                               // Debug: Log location data to verify locationId is present
@@ -570,26 +541,28 @@ export default function PcLayout(props: PcLayoutProps) {
                             }
                           )}
                         </ul>
-                        <ResponsiveContainer width={160} height={160}>
-                          <PieChart>
-                            <Pie
-                              data={props.topPerformingData}
-                              dataKey="totalDrop"
-                              nameKey="name"
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={70}
-                              labelLine={false}
-                              label={props.renderCustomizedLabel}
-                            >
-                              {props.topPerformingData.map(
-                                (entry: TopPerformingItem, index: number) => (
-                                  <Cell key={index} fill={entry.color} />
-                                )
-                              )}
-                            </Pie>
-                          </PieChart>
-                        </ResponsiveContainer>
+                        <div className="mt-4 flex justify-center lg:mt-0 lg:flex-shrink-0 lg:justify-end">
+                          <ResponsiveContainer width={160} height={160}>
+                            <PieChart>
+                              <Pie
+                                data={props.topPerformingData}
+                                dataKey="totalDrop"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={70}
+                                labelLine={false}
+                                label={props.renderCustomizedLabel}
+                              >
+                                {props.topPerformingData.map(
+                                  (entry: TopPerformingItem, index: number) => (
+                                    <Cell key={index} fill={entry.color} />
+                                  )
+                                )}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
                     )}
                   </div>
