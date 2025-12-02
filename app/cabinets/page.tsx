@@ -42,17 +42,18 @@ import { CabinetSearchFilters } from '@/components/cabinets/CabinetSearchFilters
 // UI components
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import { CabinetTableSkeleton } from '@/components/ui/cabinets/CabinetSkeletonLoader';
+import Chart from '@/components/ui/dashboard/Chart';
 import FinancialMetricsCards from '@/components/ui/FinancialMetricsCards';
 import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
 import { RefreshCw } from 'lucide-react';
 
 // Custom hooks
 import {
-    useCabinetData,
-    useCabinetFilters,
-    useCabinetModals,
-    useCabinetSorting,
-    useLocationMachineStats,
+  useCabinetData,
+  useCabinetFilters,
+  useCabinetModals,
+  useCabinetSorting,
+  useLocationMachineStats,
 } from '@/lib/hooks/data';
 import { useCabinetNavigation } from '@/lib/hooks/navigation';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -62,7 +63,10 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 
 // Utilities
+import { getMetrics } from '@/lib/helpers/metrics';
+import type { dashboardData } from '@/lib/types';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
+import { TimePeriod } from '@/shared/types/common';
 
 // Constants and types
 import { CABINET_TABS_CONFIG } from '@/lib/constants/cabinets';
@@ -168,6 +172,8 @@ function CabinetsPageContent() {
   const [smibRefreshTrigger, setSmibRefreshTrigger] = useState(0);
   const [firmwareRefreshTrigger, setFirmwareRefreshTrigger] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [chartData, setChartData] = useState<dashboardData[]>([]);
+  const [loadingChartData, setLoadingChartData] = useState(false);
 
   // ============================================================================
   // Computed Values
@@ -245,6 +251,83 @@ function CabinetsPageContent() {
     loadedBatches,
   ]);
 
+  // Fetch chart data for cabinets based on time period and filters
+  useEffect(() => {
+    if (activeSection !== 'cabinets') return;
+
+    const fetchChartData = async () => {
+      setLoadingChartData(true);
+      try {
+        const timePeriod = activeMetricsFilter as TimePeriod;
+
+        // Fetch chart data using the same API as top performing locations
+        const allChartData = await getMetrics(
+          timePeriod,
+          customDateRange.startDate,
+          customDateRange.endDate,
+          selectedLicencee && selectedLicencee !== 'all'
+            ? selectedLicencee
+            : undefined,
+          displayCurrency
+        );
+
+        // Filter chart data by selected location if a specific location is selected
+        let filteredChartData = allChartData;
+        if (selectedLocation && selectedLocation !== 'all') {
+          const selectedLocationObj = locations.find(
+            loc => String(loc._id) === selectedLocation
+          );
+          const locationName = selectedLocationObj?.name;
+
+          // Filter by location ID or name - try multiple matching strategies
+          filteredChartData = allChartData.filter(item => {
+            const itemLocation = item.location;
+            if (!itemLocation) return false;
+
+            // Convert to strings for comparison
+            const selectedLocationStr = String(selectedLocation);
+            const locationIdStr = selectedLocationObj?._id
+              ? String(selectedLocationObj._id)
+              : '';
+            const locationNameStr = locationName
+              ? String(locationName).toLowerCase()
+              : '';
+            const itemLocationStr = String(itemLocation).toLowerCase();
+
+            return (
+              itemLocation === selectedLocation ||
+              itemLocation === selectedLocationStr ||
+              itemLocation === locationIdStr ||
+              itemLocation === locationName ||
+              itemLocationStr === locationNameStr ||
+              // Also check if location name matches (case-insensitive)
+              (locationName && itemLocationStr.includes(locationNameStr)) ||
+              (locationName && locationNameStr.includes(itemLocationStr))
+            );
+          });
+        }
+
+        setChartData(filteredChartData);
+      } catch (error) {
+        console.error('Error fetching chart data:', error);
+        setChartData([]);
+      } finally {
+        setLoadingChartData(false);
+      }
+    };
+
+    fetchChartData();
+  }, [
+    activeSection,
+    activeMetricsFilter,
+    customDateRange.startDate,
+    customDateRange.endDate,
+    selectedLicencee,
+    selectedLocation,
+    locations,
+    displayCurrency,
+  ]);
+
   // ============================================================================
   // Event Handlers
   // ============================================================================
@@ -256,6 +339,68 @@ function CabinetsPageContent() {
       await refreshMachineStats();
       if (activeSection === 'cabinets') {
         await loadCabinets();
+        // Refresh chart data
+        setLoadingChartData(true);
+        try {
+          const timePeriod = activeMetricsFilter as TimePeriod;
+          const allChartData = await getMetrics(
+            timePeriod,
+            customDateRange.startDate,
+            customDateRange.endDate,
+            selectedLicencee && selectedLicencee !== 'all'
+              ? selectedLicencee
+              : undefined,
+            displayCurrency
+          );
+
+          // Filter chart data by selected location if a specific location is selected
+          let filteredChartData = allChartData;
+          if (selectedLocation && selectedLocation !== 'all') {
+            const selectedLocationObj = locations.find(
+              loc => String(loc._id) === selectedLocation
+            );
+            const locationName = selectedLocationObj?.name;
+
+            // Filter by location ID or name - try multiple matching strategies
+            filteredChartData = allChartData.filter(item => {
+              const itemLocation = item.location;
+              if (!itemLocation) return false;
+
+              // Convert to strings for comparison
+              const selectedLocationStr = String(selectedLocation);
+              const locationIdStr = selectedLocationObj?._id
+                ? String(selectedLocationObj._id)
+                : '';
+              const locationNameStr = locationName
+                ? String(locationName).toLowerCase()
+                : '';
+              const itemLocationStr = String(itemLocation).toLowerCase();
+
+              return (
+                itemLocation === selectedLocation ||
+                itemLocation === selectedLocationStr ||
+                itemLocation === locationIdStr ||
+                itemLocation === locationName ||
+                itemLocationStr === locationNameStr ||
+                // Also check if location name matches (case-insensitive)
+                (locationName && itemLocationStr.includes(locationNameStr)) ||
+                (locationName && locationNameStr.includes(itemLocationStr))
+              );
+            });
+          }
+
+          // If no filtered data found, try showing all data (might be aggregated already)
+          if (filteredChartData.length === 0 && allChartData.length > 0) {
+            filteredChartData = allChartData;
+          }
+
+          setChartData(filteredChartData);
+        } catch (error) {
+          console.error('Error refreshing chart data:', error);
+          setChartData([]);
+        } finally {
+          setLoadingChartData(false);
+        }
       } else if (activeSection === 'movement') {
         setMovementRefreshTrigger(prev => prev + 1);
       } else if (activeSection === 'smib') {
@@ -444,12 +589,23 @@ function CabinetsPageContent() {
 
         {/* Financial Metrics Cards - Only show on cabinets section */}
         {activeSection === 'cabinets' && (
-          <FinancialMetricsCards
-            totals={metricsTotals || financialTotals}
-            loading={loading || metricsTotalsLoading}
-            title="Total for all Machines"
-            className="mb-4 mt-4"
-          />
+          <>
+            <FinancialMetricsCards
+              totals={metricsTotals || financialTotals}
+              loading={loading || metricsTotalsLoading}
+              title="Total for all Machines"
+              className="mb-4 mt-4"
+            />
+
+            {/* Chart - Only show on cabinets section */}
+            <div className="mb-4">
+              <Chart
+                loadingChartData={loadingChartData}
+                chartData={chartData}
+                activeMetricsFilter={activeMetricsFilter as TimePeriod}
+              />
+            </div>
+          </>
         )}
 
         {/* Date Filters and Machine Status - Only show on cabinets section */}
@@ -466,7 +622,7 @@ function CabinetsPageContent() {
               />
             </div>
             <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0 flex-1 flex items-center">
+              <div className="flex min-w-0 flex-1 items-center">
                 <DashboardDateFilters
                   disabled={loading}
                   hideAllTime={true}
@@ -476,7 +632,7 @@ function CabinetsPageContent() {
                   hideIndicator={true}
                 />
               </div>
-              <div className="w-auto flex-shrink-0 flex items-center">
+              <div className="flex w-auto flex-shrink-0 items-center">
                 <MachineStatusWidget
                   isLoading={machineStatsLoading}
                   onlineCount={machineStats?.onlineMachines || 0}

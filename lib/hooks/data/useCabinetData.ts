@@ -127,14 +127,12 @@ export const useCabinetData = ({
     });
 
     // If searchTerm is provided, the API already filtered the results by search
-    // We still need to apply frontend filters (location, game type, status)
-    // But we don't need to apply search filter again since API already did it
+    // Location filter is now handled by the API (passed via locationId parameter)
+    // We only need to apply frontend filters (game type, status)
     let filtered = allCabinets;
 
-    // Apply location filter
-    if (selectedLocation !== 'all') {
-      filtered = filtered.filter(cab => cab.locationId === selectedLocation);
-    }
+    // Note: Location filter is now handled at API level via locationId parameter
+    // No need to filter by location here since API already filtered it
 
     // Apply game type filter
     if (selectedGameType && selectedGameType !== 'all') {
@@ -232,7 +230,8 @@ export const useCabinetData = ({
           displayCurrency,
           effectivePage,
           effectiveLimit,
-          debouncedSearchTerm
+          debouncedSearchTerm,
+          selectedLocation // Pass locationId to filter at API level
         );
 
         console.warn('✅ [USE CABINET DATA] Fetch completed, received:', {
@@ -349,6 +348,7 @@ export const useCabinetData = ({
       customDateRange,
       displayCurrency,
       debouncedSearchTerm,
+      selectedLocation,
     ]
   );
 

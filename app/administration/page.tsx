@@ -63,7 +63,14 @@ import {
 import { getNext30Days } from '@/lib/utils/licensee';
 import { PlusCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 // import { useUrlProtection } from '@/lib/hooks/useUrlProtection';
 
@@ -446,11 +453,12 @@ function AdministrationPageContent() {
   useEffect(() => {
     if (isLoading || activeSection !== 'users') return;
     if (!usingBackendSearch) return;
-    
+
     // Only handle pagination if we're searching OR if we're using backend filter
     const isSearching = debouncedSearchValue && debouncedSearchValue.trim();
-    const isFiltering = (selectedRole !== 'all' || selectedStatus !== 'all') && !isSearching;
-    
+    const isFiltering =
+      (selectedRole !== 'all' || selectedStatus !== 'all') && !isSearching;
+
     if (!isSearching && !isFiltering) return;
 
     // When using backend search, fetch the current page from backend
@@ -779,7 +787,7 @@ function AdministrationPageContent() {
     // Only check if we have loaded users and filters are applied
     const hasRoleFilter = selectedRole !== 'all';
     const hasStatusFilter = selectedStatus !== 'all';
-    
+
     if (!hasRoleFilter && !hasStatusFilter) {
       // No filters applied, no need for backend search
       hasAttemptedBackendFilterRef.current = false;
@@ -795,7 +803,7 @@ function AdministrationPageContent() {
         hasAttemptedBackendFilterRef.current = true;
         setUsingBackendSearch(true);
         setIsSearching(true);
-        
+
         const loadBackendFilter = async () => {
           try {
             const result = await fetchUsers(
@@ -825,7 +833,7 @@ function AdministrationPageContent() {
             setIsSearching(false);
           }
         };
-        
+
         loadBackendFilter();
       }
     } else if (roleFilteredUsers.length > 0) {
@@ -963,7 +971,6 @@ function AdministrationPageContent() {
         updated.profile !== undefined ||
         updated.profilePicture !== undefined ||
         updated.password !== undefined ||
-        updated.rel !== undefined ||
         updated.assignedLocations !== undefined ||
         updated.assignedLicensees !== undefined ||
         (updated as { isEnabled?: boolean }).isEnabled !== undefined ||
@@ -993,10 +1000,6 @@ function AdministrationPageContent() {
         JSON.stringify(selectedUser.roles, null, 2)
       );
       console.log(
-        '[Administration]   rel:',
-        JSON.stringify(selectedUser.rel, null, 2)
-      );
-      console.log(
         '[Administration]   profile:',
         JSON.stringify(selectedUser.profile, null, 2)
       );
@@ -1024,10 +1027,6 @@ function AdministrationPageContent() {
       console.log(
         '[Administration]   roles:',
         JSON.stringify(updated.roles, null, 2)
-      );
-      console.log(
-        '[Administration]   rel:',
-        JSON.stringify(updated.rel, null, 2)
       );
       console.log(
         '[Administration]   profile:',
@@ -1073,7 +1072,6 @@ function AdministrationPageContent() {
         profile: selectedUser.profile,
         roles: selectedUser.roles || [],
         profilePicture: selectedUser.profilePicture,
-        rel: selectedUser.rel,
         // Include new fields for comparison
         assignedLocations: selectedUser.assignedLocations,
         assignedLicensees: selectedUser.assignedLicensees,
@@ -1087,8 +1085,6 @@ function AdministrationPageContent() {
         roles: updated.roles || [],
         profilePicture: updated.profilePicture,
         password: updated.password, // Include if changing password
-        // Always use what's being sent - if rel is undefined, it means it wasn't included
-        rel: updated.rel,
         // Include new fields for comparison
         assignedLocations: updated.assignedLocations,
         assignedLicensees: updated.assignedLicensees,
@@ -1101,14 +1097,6 @@ function AdministrationPageContent() {
         '[Administration] ============================================'
       );
       console.log('[Administration] STEP 3: Comparing original vs updated:');
-      console.log(
-        '[Administration]   Original rel:',
-        JSON.stringify(originalData.rel, null, 2)
-      );
-      console.log(
-        '[Administration]   Updated rel:',
-        JSON.stringify(formDataComparison.rel, null, 2)
-      );
       console.log(
         '[Administration]   Original assignedLocations:',
         JSON.stringify(originalData.assignedLocations, null, 2)
@@ -1230,11 +1218,8 @@ function AdministrationPageContent() {
       } else if ('enabled' in updated && updated.enabled !== undefined) {
         updatePayload.isEnabled = updated.enabled;
       }
-      if (updated.rel !== undefined) {
-        updatePayload.rel = updated.rel;
-      }
-
       // IMPORTANT: Always include assignedLocations and assignedLicensees if they exist in updated object
+      // Note: rel and resourcePermissions are no longer used - removed from payload
       // This ensures the new fields are always sent
       if (updated.assignedLocations !== undefined) {
         updatePayload.assignedLocations = updated.assignedLocations;
@@ -1272,7 +1257,6 @@ function AdministrationPageContent() {
         '[Administration]   Payload keys:',
         Object.keys(updatePayload)
       );
-      console.log('[Administration]   Has rel:', 'rel' in updatePayload);
       console.log();
       console.log(
         '[Administration]   Has assignedLocations:',

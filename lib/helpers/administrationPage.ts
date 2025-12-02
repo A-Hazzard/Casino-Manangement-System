@@ -129,6 +129,7 @@ export const userManagement = {
       gender,
       profilePicture,
       licenseeIds,
+      allowedLocations,
       street,
       town,
       region,
@@ -195,9 +196,8 @@ export const userManagement = {
       profile: Record<string, unknown>;
       isEnabled: boolean;
       profilePicture: string | null;
-      rel?: {
-        licencee?: string[];
-      };
+      assignedLicensees?: string[];
+      assignedLocations?: string[];
     } = {
       username,
       emailAddress: email,
@@ -209,13 +209,24 @@ export const userManagement = {
     };
 
     // Include licensee assignments (required for all users)
-    if (!licenseeIds || !Array.isArray(licenseeIds) || licenseeIds.length === 0) {
+    if (
+      !licenseeIds ||
+      !Array.isArray(licenseeIds) ||
+      licenseeIds.length === 0
+    ) {
       toast.error('A user must be assigned to at least one licensee');
       return;
     }
-    payload.rel = {
-      licencee: licenseeIds,
-    };
+    payload.assignedLicensees = licenseeIds;
+
+    // Include location assignments if provided
+    if (
+      allowedLocations &&
+      Array.isArray(allowedLocations) &&
+      allowedLocations.length > 0
+    ) {
+      payload.assignedLocations = allowedLocations;
+    }
 
     try {
       await createUser(payload);
@@ -225,12 +236,12 @@ export const userManagement = {
     } catch (err) {
       // Handle axios errors - axios wraps errors in AxiosError
       let errorMessage = 'Failed to create user';
-      
+
       // Log the full error for debugging
       if (process.env.NODE_ENV === 'development') {
         console.error('User creation error:', err);
       }
-      
+
       if (err && typeof err === 'object') {
         // Check if it's an axios error with response data
         const axiosError = err as {
@@ -240,7 +251,7 @@ export const userManagement = {
           };
           message?: string;
         };
-        
+
         // Prioritize server error message from response.data
         if (axiosError.response?.data) {
           errorMessage =
@@ -254,7 +265,7 @@ export const userManagement = {
       } else if (err instanceof Error) {
         errorMessage = err.message;
       }
-      
+
       toast.error(errorMessage);
     }
   },
@@ -275,7 +286,9 @@ export const licenseeManagement = {
     try {
       const result = await fetchLicensees();
       // Extract licensees array from the result
-      const licenseesData = Array.isArray(result.licensees) ? result.licensees : [];
+      const licenseesData = Array.isArray(result.licensees)
+        ? result.licensees
+        : [];
       setAllLicensees(licenseesData);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -504,7 +517,7 @@ export const administrationUtils = {
     const email = (user.email || user.emailAddress || '').trim();
     const firstName = user.profile?.firstName?.trim() || '';
     const lastName = user.profile?.lastName?.trim() || '';
-    
+
     return (
       testPattern.test(username) ||
       testPattern.test(email) ||
@@ -531,9 +544,17 @@ export const administrationUtils = {
     isDeveloper: boolean = false
   ) => {
     // First filter out test users (unless developer)
-    const filteredUsers = administrationUtils.filterTestUsers(allUsers, isDeveloper);
+    const filteredUsers = administrationUtils.filterTestUsers(
+      allUsers,
+      isDeveloper
+    );
     // Then apply search and sort
-    return filterAndSortUsers(filteredUsers, searchValue, searchMode, sortConfig);
+    return filterAndSortUsers(
+      filteredUsers,
+      searchValue,
+      searchMode,
+      sortConfig
+    );
   },
 
   /**

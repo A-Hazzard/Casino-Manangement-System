@@ -107,7 +107,6 @@ export async function PATCH(
       emailAddress?: string;
       assignedLocations?: string[];
       assignedLicensees?: string[];
-      rel?: { licencee?: string | string[] };
       sessionVersion?: number;
     };
 
@@ -123,7 +122,6 @@ export async function PATCH(
         emailAddress: userDoc.emailAddress,
         assignedLocations: userDoc.assignedLocations || [],
         assignedLicensees: userDoc.assignedLicensees || [],
-        rel: userDoc.rel || undefined,
         sessionVersion: userDoc.sessionVersion,
       },
     });

@@ -37,7 +37,8 @@ export const fetchCabinets = async (
   currency?: string,
   page?: number,
   limit?: number,
-  searchTerm?: string
+  searchTerm?: string,
+  locationId?: string
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -46,6 +47,11 @@ export const fetchCabinets = async (
     // Add query parameters if they exist
     const queryParams = [];
     if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
+
+    // Add locationId parameter if provided (filter at API level for better performance)
+    if (locationId && locationId !== 'all') {
+      queryParams.push(`locationId=${encodeURIComponent(locationId)}`);
+    }
 
     if (
       timePeriod === 'Custom' &&
@@ -169,7 +175,9 @@ export const fetchCabinetById = async (
     if (timePeriod === 'Custom') {
       // For Custom time period, dates are required
       if (!customDateRange?.from || !customDateRange?.to) {
-        throw new Error('Custom start and end dates are required for Custom time period');
+        throw new Error(
+          'Custom start and end dates are required for Custom time period'
+        );
       }
       // Extract just the date part (YYYY-MM-DD)
       const fromDate = customDateRange.from.toISOString().split('T')[0];
@@ -850,7 +858,10 @@ export async function fetchCabinetTotals(
 
     // Sum up totals from all machines
     const totals = machineData.reduce(
-      (acc: { moneyIn: number; moneyOut: number; gross: number }, machine: { moneyIn?: number; moneyOut?: number; gross?: number }) => ({
+      (
+        acc: { moneyIn: number; moneyOut: number; gross: number },
+        machine: { moneyIn?: number; moneyOut?: number; gross?: number }
+      ) => ({
         moneyIn: acc.moneyIn + (machine.moneyIn || 0),
         moneyOut: acc.moneyOut + (machine.moneyOut || 0),
         gross: acc.gross + (machine.gross || 0),

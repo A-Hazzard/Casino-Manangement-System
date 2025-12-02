@@ -7,18 +7,18 @@
  * @module app/api/lib/helpers/meterTrends
  */
 
-import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
 } from '@/lib/helpers/rates';
-import { getUserLocationFilter } from './licenseeFilter';
+import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { Db } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
+import { getUserLocationFilter } from './licenseeFilter';
 
 /**
  * Meter trend metric item
@@ -273,6 +273,199 @@ export function buildLocationMetricsPipeline(
 }
 
 /**
+ * Processes location metrics using single aggregation (optimized for 7d/30d)
+ *
+ * @param db - Database connection
+ * @param locations - Array of location data
+ * @param machinesByLocation - Map of location ID to machine IDs
+ * @param gamingDayRanges - Map of location ID to gaming day range
+ * @param shouldUseHourly - Whether to use hourly aggregation
+ * @returns Array of meter trend metrics
+ */
+async function processLocationMetricsSingleAggregation(
+  db: Db,
+  locations: LocationData[],
+  machinesByLocation: Map<string, string[]>,
+  gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>,
+  shouldUseHourly: boolean
+): Promise<MeterTrendMetric[]> {
+  console.log(
+    `[processLocationMetricsSingleAggregation] Processing ${locations.length} locations with single aggregation`
+  );
+
+  // Get global date range (earliest start, latest end) for initial query
+  let globalStart = new Date();
+  let globalEnd = new Date(0);
+  gamingDayRanges.forEach(range => {
+    if (range.rangeStart < globalStart) globalStart = range.rangeStart;
+    if (range.rangeEnd > globalEnd) globalEnd = range.rangeEnd;
+  });
+
+  // Get all machine IDs across all locations
+  const allMachineIds: string[] = [];
+  const machineToLocation = new Map<string, string>();
+
+  machinesByLocation.forEach((machineIds, locationId) => {
+    machineIds.forEach(machineId => {
+      allMachineIds.push(machineId);
+      machineToLocation.set(machineId, locationId);
+    });
+  });
+
+  if (allMachineIds.length === 0) {
+    return [];
+  }
+
+  // Single aggregation for all machines - group by machine, day, and time
+  // We'll filter by gaming day ranges per location after grouping
+  const pipeline: PipelineStage[] = [
+    {
+      $match: {
+        machine: { $in: allMachineIds },
+        readAt: {
+          $gte: globalStart,
+          $lte: globalEnd,
+        },
+      },
+    },
+    {
+      $addFields: {
+        day: {
+          $dateToString: {
+            date: '$readAt',
+            format: '%Y-%m-%d',
+            timezone: 'UTC',
+          },
+        },
+        time: shouldUseHourly
+          ? {
+              $dateToString: {
+                date: '$readAt',
+                format: '%H:%M',
+                timezone: 'UTC',
+              },
+            }
+          : '00:00',
+      },
+    },
+    {
+      $group: {
+        _id: {
+          machine: '$machine',
+          day: '$day',
+          time: '$time',
+        },
+        totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+        totalCancelledCredits: {
+          $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+        },
+        totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+        totalGamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
+        minReadAt: { $min: '$readAt' }, // Keep for filtering by gaming day range
+        maxReadAt: { $max: '$readAt' }, // Keep for filtering by gaming day range
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        machine: '$_id.machine',
+        day: '$_id.day',
+        time: '$_id.time',
+        drop: '$totalDrop',
+        totalCancelledCredits: '$totalCancelledCredits',
+        gross: {
+          $subtract: [
+            { $subtract: ['$totalDrop', '$totalJackpot'] },
+            '$totalCancelledCredits',
+          ],
+        },
+        gamesPlayed: '$totalGamesPlayed',
+        jackpot: '$totalJackpot',
+        minReadAt: 1,
+        maxReadAt: 1,
+      },
+    },
+  ];
+
+  const allMetrics = await db
+    .collection('meters')
+    .aggregate(pipeline, {
+      allowDiskUse: true,
+      hint: { machine: 1, readAt: 1 },
+    })
+    .toArray();
+
+  // Filter by gaming day ranges per location and group by location/day/time
+  // Since we grouped by machine/day/time, we need to check if the day falls within
+  // the gaming day range for that location
+  const locationMetricsMap = new Map<string, MeterTrendMetric>();
+
+  for (const metric of allMetrics) {
+    const machineId = metric.machine;
+    const locationId = machineToLocation.get(machineId);
+    if (!locationId) continue;
+
+    const gamingDayRange = gamingDayRanges.get(locationId);
+    if (!gamingDayRange) continue;
+
+    // Check if the day falls within the gaming day range
+    // We check both minReadAt and maxReadAt to handle cases where the day spans boundaries
+    const minReadAt = new Date(metric.minReadAt);
+    const maxReadAt = new Date(metric.maxReadAt);
+
+    // Check if any part of this day/time group falls within the gaming day range
+    // The day is included if minReadAt or maxReadAt falls within the range, or if the range spans the group
+    const isInRange =
+      (minReadAt >= gamingDayRange.rangeStart &&
+        minReadAt <= gamingDayRange.rangeEnd) ||
+      (maxReadAt >= gamingDayRange.rangeStart &&
+        maxReadAt <= gamingDayRange.rangeEnd) ||
+      (minReadAt <= gamingDayRange.rangeStart &&
+        maxReadAt >= gamingDayRange.rangeEnd);
+
+    if (!isInRange) {
+      continue;
+    }
+
+    const location = locations.find(loc => String(loc._id) === locationId);
+    if (!location) continue;
+
+    // Group by location/day/time
+    const key = `${locationId}_${metric.day}_${metric.time}`;
+    const existing = locationMetricsMap.get(key);
+
+    if (existing) {
+      existing.drop += metric.drop || 0;
+      existing.totalCancelledCredits += metric.totalCancelledCredits || 0;
+      existing.gross += metric.gross || 0;
+      existing.gamesPlayed += metric.gamesPlayed || 0;
+      existing.jackpot += metric.jackpot || 0;
+    } else {
+      locationMetricsMap.set(key, {
+        day: metric.day,
+        time: metric.time,
+        drop: metric.drop || 0,
+        totalCancelledCredits: metric.totalCancelledCredits || 0,
+        gross: metric.gross || 0,
+        gamesPlayed: metric.gamesPlayed || 0,
+        jackpot: metric.jackpot || 0,
+        licencee:
+          typeof location.rel?.licencee === 'string'
+            ? location.rel.licencee
+            : Array.isArray(location.rel?.licencee)
+              ? (location.rel?.licencee?.[0]?.toString() ?? null)
+              : null,
+        country: location.country ? String(location.country) : null,
+        location: locationId,
+        geoCoords: location.geoCoords ?? null,
+      });
+    }
+  }
+
+  return Array.from(locationMetricsMap.values());
+}
+
+/**
  * Processes location metrics in batches
  *
  * @param db - Database connection
@@ -287,10 +480,7 @@ export async function processLocationMetricsBatches(
   db: Db,
   locations: LocationData[],
   machinesByLocation: Map<string, string[]>,
-  gamingDayRanges: Map<
-    string,
-    { rangeStart: Date; rangeEnd: Date }
-  >,
+  gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>,
   shouldUseHourly: boolean,
   batchSize: number = 20
 ): Promise<MeterTrendMetric[]> {
@@ -342,7 +532,7 @@ export async function processLocationMetricsBatches(
             typeof location.rel?.licencee === 'string'
               ? location.rel.licencee
               : Array.isArray(location.rel?.licencee)
-                ? location.rel?.licencee?.[0]?.toString() ?? null
+                ? (location.rel?.licencee?.[0]?.toString() ?? null)
                 : null,
           country: location.country ? String(location.country) : null,
           location: locationId,
@@ -524,10 +714,7 @@ export function aggregateMetricsWithConversion(
       );
 
       const convertedDrop = convertFromUSD(dropUSD, displayCurrency);
-      const convertedCancelled = convertFromUSD(
-        cancelledUSD,
-        displayCurrency
-      );
+      const convertedCancelled = convertFromUSD(cancelledUSD, displayCurrency);
       const convertedGross = convertFromUSD(grossUSD, displayCurrency);
       const convertedJackpot = convertFromUSD(jackpotUSD, displayCurrency);
 
@@ -605,10 +792,7 @@ export async function getMeterTrends(
 
   const locationsCollection = db.collection('gaminglocations');
   const locationQuery: Record<string, unknown> = {
-    $or: [
-      { deletedAt: null },
-      { deletedAt: { $lt: new Date('2020-01-01') } },
-    ],
+    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2020-01-01') } }],
   };
 
   if (licencee) {
@@ -642,8 +826,8 @@ export async function getMeterTrends(
       userLocationPermissions
     );
     locations = filteredLocations as typeof locations;
-    } else {
-      const allowedLocationIds = await getUserLocationFilter(
+  } else {
+    const allowedLocationIds = await getUserLocationFilter(
       accessibleLicensees,
       undefined,
       userLocationPermissions,
@@ -655,9 +839,7 @@ export async function getMeterTrends(
     } else if (allowedLocationIds.length === 0) {
       return [];
     } else {
-      const allowedSet = new Set(
-        allowedLocationIds.map(id => id.toString())
-      );
+      const allowedSet = new Set(allowedLocationIds.map(id => id.toString()));
       locations = locations.filter(location =>
         allowedSet.has(String(location._id))
       );
@@ -703,13 +885,24 @@ export async function getMeterTrends(
 
   const machinesByLocation = buildMachinesByLocationMap(machineDocs);
 
-  const metricsPerLocation = await processLocationMetricsBatches(
-    db,
-    locations as LocationData[],
-    machinesByLocation,
-    gamingDayRanges,
-    shouldUseHourly
-  );
+  // 🚀 OPTIMIZED: Use single aggregation for 7d/30d periods (much faster)
+  const useSingleAggregation = timePeriod === '7d' || timePeriod === '30d';
+
+  const metricsPerLocation = useSingleAggregation
+    ? await processLocationMetricsSingleAggregation(
+        db,
+        locations as LocationData[],
+        machinesByLocation,
+        gamingDayRanges,
+        shouldUseHourly
+      )
+    : await processLocationMetricsBatches(
+        db,
+        locations as LocationData[],
+        machinesByLocation,
+        gamingDayRanges,
+        shouldUseHourly
+      );
 
   if (metricsPerLocation.length === 0) {
     return [];
@@ -732,4 +925,3 @@ export async function getMeterTrends(
     countryIdToName
   );
 }
-

@@ -55,12 +55,16 @@ import { useParams, useRouter } from 'next/navigation';
 
 import DashboardDateFilters from '@/components/dashboard/DashboardDateFilters';
 import MachineStatusWidget from '@/components/ui/MachineStatusWidget';
+import Chart from '@/components/ui/dashboard/Chart';
 import { IMAGES } from '@/lib/constants/images';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { shouldShowNoLicenseeMessage } from '@/lib/utils/licenseeAccess';
 import { useLocationMachineStats } from '@/lib/hooks/data';
+import { getMetrics } from '@/lib/helpers/metrics';
+import type { dashboardData } from '@/lib/types';
+import { TimePeriod } from '@/shared/types/common';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import Image from 'next/image';
@@ -149,6 +153,8 @@ export default function LocationPage() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [chartData, setChartData] = useState<dashboardData[]>([]);
+  const [loadingChartData, setLoadingChartData] = useState(false);
 
   // ============================================================================
   // Refs
@@ -609,6 +615,83 @@ export default function LocationPage() {
     applyFiltersAndSort();
   }, [applyFiltersAndSort]);
 
+  // Fetch chart data for location based on time period and filters
+  useEffect(() => {
+    if (!locationId || !activeMetricsFilter || !dateFilterInitialized) {
+      setChartData([]);
+      return;
+    }
+
+    const fetchChartData = async () => {
+      setLoadingChartData(true);
+      try {
+        const timePeriod = activeMetricsFilter as TimePeriod;
+
+        // Fetch chart data using the same API as top performing locations
+        const allChartData = await getMetrics(
+          timePeriod,
+          customDateRange.startDate,
+          customDateRange.endDate,
+          selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : undefined,
+          displayCurrency
+        );
+
+        // Filter chart data by the current location
+        // The location field in chart data can be either ID or name
+        // Try multiple matching strategies to ensure we catch the data
+        let filteredChartData = allChartData.filter(item => {
+          const itemLocation = item.location;
+          if (!itemLocation) return false;
+          
+          // Convert to strings for comparison
+          const locationIdStr = String(locationId);
+          const selectedLocationIdStr = selectedLocationId ? String(selectedLocationId) : '';
+          const locationNameStr = locationName ? String(locationName).toLowerCase() : '';
+          const itemLocationStr = String(itemLocation).toLowerCase();
+          
+          return (
+            itemLocation === locationId ||
+            itemLocation === locationIdStr ||
+            itemLocation === selectedLocationId ||
+            itemLocation === selectedLocationIdStr ||
+            itemLocation === locationName ||
+            itemLocationStr === locationNameStr ||
+            // Also check if location name matches (case-insensitive)
+            (locationName && itemLocationStr.includes(locationNameStr)) ||
+            (locationName && locationNameStr.includes(itemLocationStr))
+          );
+        });
+
+        // If no filtered data found, try showing all data (might be aggregated already)
+        // This handles cases where location filtering might not work due to data structure
+        if (filteredChartData.length === 0 && allChartData.length > 0) {
+          // If we have data but filtering returned nothing, use all data
+          // This might happen if the API already filtered by location or if location field format differs
+          filteredChartData = allChartData;
+        }
+
+        setChartData(filteredChartData);
+      } catch (error) {
+        console.error('Error fetching chart data:', error);
+        setChartData([]);
+      } finally {
+        setLoadingChartData(false);
+      }
+    };
+
+    fetchChartData();
+  }, [
+    locationId,
+    selectedLocationId,
+    locationName,
+    activeMetricsFilter,
+    customDateRange.startDate,
+    customDateRange.endDate,
+    selectedLicencee,
+    displayCurrency,
+    dateFilterInitialized,
+  ]);
+
   // ====== Sorting / Pagination Logic ======
   const handleSortToggle = () => {
     animateSortDirection(sortOrder);
@@ -706,43 +789,100 @@ export default function LocationPage() {
           setAccumulatedCabinets([]);
           setLoadedBatches(new Set());
           setError('No time period filter selected');
-          return;
-        }
-
-        // When searching, fetch all results (no pagination limit) to find matches across all machines
-        const effectivePage = debouncedSearchTerm?.trim() ? 1 : 1;
-        const effectiveLimit = debouncedSearchTerm?.trim()
-          ? undefined
-          : itemsPerBatch;
-
-        const result = await fetchCabinetsForLocation(
-          locationId, // Always use the URL slug for cabinet fetching
-          selectedLicencee,
-          activeMetricsFilter,
-          debouncedSearchTerm?.trim() || undefined, // Pass debouncedSearchTerm to API
-          activeMetricsFilter === 'Custom' && customDateRange
-            ? { from: customDateRange.startDate, to: customDateRange.endDate }
-            : undefined, // Only pass customDateRange when filter is "Custom"
-          effectivePage, // page
-          effectiveLimit, // limit (undefined when searching = fetch all)
-          displayCurrency
-        );
-        setAllCabinets(result.data);
-        // When search is cleared, reset accumulated data to start fresh
-        if (!debouncedSearchTerm?.trim()) {
-          setAccumulatedCabinets(result.data);
-          setLoadedBatches(new Set([1]));
         } else {
-          // When searching, use allCabinets directly (API returns all results)
-          setAccumulatedCabinets([]);
-          setLoadedBatches(new Set());
+          // When searching, fetch all results (no pagination limit) to find matches across all machines
+          const effectivePage = debouncedSearchTerm?.trim() ? 1 : 1;
+          const effectiveLimit = debouncedSearchTerm?.trim()
+            ? undefined
+            : itemsPerBatch;
+
+          const result = await fetchCabinetsForLocation(
+            locationId, // Always use the URL slug for cabinet fetching
+            selectedLicencee,
+            activeMetricsFilter,
+            debouncedSearchTerm?.trim() || undefined, // Pass debouncedSearchTerm to API
+            activeMetricsFilter === 'Custom' && customDateRange
+              ? { from: customDateRange.startDate, to: customDateRange.endDate }
+              : undefined, // Only pass customDateRange when filter is "Custom"
+            effectivePage, // page
+            effectiveLimit, // limit (undefined when searching = fetch all)
+            displayCurrency
+          );
+          setAllCabinets(result.data);
+          // When search is cleared, reset accumulated data to start fresh
+          if (!debouncedSearchTerm?.trim()) {
+            setAccumulatedCabinets(result.data);
+            setLoadedBatches(new Set([1]));
+          } else {
+            // When searching, use allCabinets directly (API returns all results)
+            setAccumulatedCabinets([]);
+            setLoadedBatches(new Set());
+          }
+          setError(null); // Clear any previous errors on successful refresh
         }
-        setError(null); // Clear any previous errors on successful refresh
       } catch {
         setAllCabinets([]);
         setAccumulatedCabinets([]);
         setLoadedBatches(new Set());
         setError('Failed to refresh cabinets. Please try again later.');
+      }
+
+      // Refresh chart data
+      setLoadingChartData(true);
+      try {
+        const timePeriod = activeMetricsFilter as TimePeriod;
+        const allChartData = await getMetrics(
+          timePeriod,
+          customDateRange.startDate,
+          customDateRange.endDate,
+          selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : undefined,
+          displayCurrency
+        );
+
+        // Filter chart data by the current location
+        // The location field in chart data can be either ID or name
+        // Try multiple matching strategies to ensure we catch the data
+        let filteredChartData = allChartData.filter(item => {
+          const itemLocation = item.location;
+          if (!itemLocation) return false;
+
+          // Convert to strings for comparison
+          const locationIdStr = String(locationId);
+          const selectedLocationIdStr = selectedLocationId
+            ? String(selectedLocationId)
+            : '';
+          const locationNameStr = locationName
+            ? String(locationName).toLowerCase()
+            : '';
+          const itemLocationStr = String(itemLocation).toLowerCase();
+
+          return (
+            itemLocation === locationId ||
+            itemLocation === locationIdStr ||
+            itemLocation === selectedLocationId ||
+            itemLocation === selectedLocationIdStr ||
+            itemLocation === locationName ||
+            itemLocationStr === locationNameStr ||
+            // Also check if location name matches (case-insensitive)
+            (locationName && itemLocationStr.includes(locationNameStr)) ||
+            (locationName && locationNameStr.includes(itemLocationStr))
+          );
+        });
+
+        // If no filtered data found, try showing all data (might be aggregated already)
+        // This handles cases where location filtering might not work due to data structure
+        if (filteredChartData.length === 0 && allChartData.length > 0) {
+          // If we have data but filtering returned nothing, use all data
+          // This might happen if the API already filtered by location or if location field format differs
+          filteredChartData = allChartData;
+        }
+
+        setChartData(filteredChartData);
+      } catch (error) {
+        console.error('Error refreshing chart data:', error);
+        setChartData([]);
+      } finally {
+        setLoadingChartData(false);
       }
     } finally {
       setRefreshing(false);
@@ -755,6 +895,8 @@ export default function LocationPage() {
     customDateRange,
     dateFilterInitialized,
     locationId,
+    selectedLocationId,
+    locationName,
     refreshMachineStats,
     debouncedSearchTerm,
     itemsPerBatch,
@@ -946,6 +1088,15 @@ export default function LocationPage() {
           />
         </div>
 
+        {/* Chart Section: Location-specific metrics chart */}
+        <div className="mt-4">
+          <Chart
+            loadingChartData={loadingChartData}
+            chartData={chartData}
+            activeMetricsFilter={activeMetricsFilter as TimePeriod}
+          />
+        </div>
+
         {/* Date Filters and Machine Status Section: Responsive layout for filters and status */}
         <div className="mt-4">
           {/* Desktop and md: Side by side layout */}
@@ -992,94 +1143,97 @@ export default function LocationPage() {
         </div>
 
         {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
-        <div className="mt-4 hidden flex-col gap-4 bg-buttonActive p-4 md:flex">
-          {/* Search Input - Full Width */}
-          <div className="relative w-full">
-            <Input
-              type="text"
-              placeholder="Search machines (Asset, SMID, Serial, Game)..."
-              className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-              value={searchTerm}
-              disabled={loading || cabinetsLoading || refreshing}
-              onChange={e => {
-                if (loading || cabinetsLoading || refreshing) return;
-                setSearchTerm(e.target.value);
+        <div className="mt-4 hidden bg-buttonActive p-4 md:flex">
+          {/* Search Input and Filters on same row */}
+          <div className="flex w-full flex-wrap items-center gap-4">
+            {/* Search Input - Takes available space */}
+            <div className="relative min-w-0 flex-1">
+              <Input
+                type="text"
+                placeholder="Search machines (Asset, SMID, Serial, Game)..."
+                className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+                value={searchTerm}
+                disabled={loading || cabinetsLoading || refreshing}
+                onChange={e => {
+                  if (loading || cabinetsLoading || refreshing) return;
+                  setSearchTerm(e.target.value);
 
-                // Highlight matched items when searching
-                if (tableRef.current && e.target.value.trim() !== '') {
-                  // Add a subtle highlight pulse animation
-                  gsap.to(tableRef.current, {
-                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                    duration: 0.2,
-                    onComplete: () => {
-                      gsap.to(tableRef.current, {
-                        backgroundColor: 'transparent',
-                        duration: 0.5,
-                      });
-                    },
-                  });
-                }
-              }}
-            />
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
-
-          {/* Filter Buttons - Below Search */}
-          <div className="flex flex-wrap items-center gap-4">
-            {showLocationSelect && (
-              <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
-                <LocationSingleSelect
-                  locations={locationSelectOptions}
-                  selectedLocation={selectedLocationId || locationId}
-                  onSelectionChange={handleLocationChangeInPlace}
-                  includeAllOption={true}
-                  allOptionLabel="All Locations"
-                  showSasBadge={false}
-                  className="w-full"
-                />
-              </div>
-            )}
-
-            {/* Game Type Filter */}
-            <div className="w-auto min-w-[180px] max-w-[200px] flex-shrink-0">
-              <CustomSelect
-                value={selectedGameType}
-                onValueChange={setSelectedGameType}
-                options={[
-                  { value: 'all', label: 'All Games' },
-                  ...gameTypes
-                    .filter((gameType): gameType is string => !!gameType)
-                    .map(gameType => ({
-                      value: gameType,
-                      label: gameType,
-                    })),
-                ]}
-                placeholder="All Games"
-                className="w-full"
-                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
-                emptyMessage="No game types found"
+                  // Highlight matched items when searching
+                  if (tableRef.current && e.target.value.trim() !== '') {
+                    // Add a subtle highlight pulse animation
+                    gsap.to(tableRef.current, {
+                      backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                      duration: 0.2,
+                      onComplete: () => {
+                        gsap.to(tableRef.current, {
+                          backgroundColor: 'transparent',
+                          duration: 0.5,
+                        });
+                      },
+                    });
+                  }
+                }}
               />
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             </div>
 
-            {/* Status Filter */}
-            <div className="w-auto min-w-[120px] max-w-[150px] flex-shrink-0">
-              <CustomSelect
-                value={selectedStatus}
-                onValueChange={value =>
-                  handleFilterChange(value as 'All' | 'Online' | 'Offline')
-                }
-                options={[
-                  { value: 'All', label: 'All Machines' },
-                  { value: 'Online', label: 'Online' },
-                  { value: 'Offline', label: 'Offline' },
-                ]}
-                placeholder="All Status"
-                className="w-full"
-                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
-                emptyMessage="No status options found"
-              />
+            {/* Filter Buttons - On the right, wrap when needed */}
+            <div className="flex items-center gap-4 flex-wrap">
+              {showLocationSelect && (
+                <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+                  <LocationSingleSelect
+                    locations={locationSelectOptions}
+                    selectedLocation={selectedLocationId || locationId}
+                    onSelectionChange={handleLocationChangeInPlace}
+                    includeAllOption={true}
+                    allOptionLabel="All Locations"
+                    showSasBadge={false}
+                    className="w-full"
+                  />
+                </div>
+              )}
+
+              {/* Game Type Filter */}
+              <div className="w-auto min-w-[180px] max-w-[200px] flex-shrink-0">
+                <CustomSelect
+                  value={selectedGameType}
+                  onValueChange={setSelectedGameType}
+                  options={[
+                    { value: 'all', label: 'All Games' },
+                    ...gameTypes
+                      .filter((gameType): gameType is string => !!gameType)
+                      .map(gameType => ({
+                        value: gameType,
+                        label: gameType,
+                      })),
+                  ]}
+                  placeholder="All Games"
+                  className="w-full"
+                  triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                  searchable={true}
+                  emptyMessage="No game types found"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="w-auto min-w-[120px] max-w-[150px] flex-shrink-0">
+                <CustomSelect
+                  value={selectedStatus}
+                  onValueChange={value =>
+                    handleFilterChange(value as 'All' | 'Online' | 'Offline')
+                  }
+                  options={[
+                    { value: 'All', label: 'All Machines' },
+                    { value: 'Online', label: 'Online' },
+                    { value: 'Offline', label: 'Offline' },
+                  ]}
+                  placeholder="All Status"
+                  className="w-full"
+                  triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                  searchable={true}
+                  emptyMessage="No status options found"
+                />
+              </div>
             </div>
           </div>
         </div>

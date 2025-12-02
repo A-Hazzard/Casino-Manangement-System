@@ -1,3 +1,6 @@
+import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
+import { ChartProps } from '@/lib/types/componentProps';
+import { formatDisplayDate, formatTime } from '@/shared/utils/dateFormat';
 import {
   Area,
   AreaChart,
@@ -8,9 +11,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatTime, formatDisplayDate } from '@/shared/utils/dateFormat';
-import { ChartProps } from '@/lib/types/componentProps';
-import { DashboardChartSkeleton } from '@/components/ui/skeletons/DashboardSkeletons';
 
 import type { dashboardData } from '@/lib/types';
 
@@ -67,6 +67,11 @@ export default function Chart({
 
   // Determine if we should use hourly or daily formatting
   const shouldUseHourlyFormat = () => {
+    // Explicitly check for 7d and 30d - always use daily format
+    if (activeMetricsFilter === '7d' || activeMetricsFilter === '30d') {
+      return false;
+    }
+
     if (
       activeMetricsFilter === 'Today' ||
       activeMetricsFilter === 'Yesterday'
@@ -179,18 +184,18 @@ export default function Chart({
     allValues.push(item.moneyOut || 0);
     allValues.push(item.gross || 0);
   });
-  
+
   let yAxisDomain: [number, number] | undefined = undefined;
-  
+
   if (allValues.length > 0) {
     const minValue = Math.min(...allValues);
     const maxValue = Math.max(...allValues);
-    
+
     // Calculate domain: only go negative if data actually goes negative
     // Add 10% padding to the top, but don't go below 0 unless data actually goes negative
     yAxisDomain = [
       minValue < 0 ? minValue * 1.1 : 0,
-      maxValue > 0 ? maxValue * 1.1 : 0
+      maxValue > 0 ? maxValue * 1.1 : 0,
     ];
   }
 
@@ -213,21 +218,29 @@ export default function Chart({
           />
           <YAxis
             domain={yAxisDomain || ['auto', 'auto']}
-            tickFormatter={(value) => {
+            tickFormatter={value => {
               // Format large numbers compactly for Y-axis to prevent overflow
-              const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+              const numValue =
+                typeof value === 'number'
+                  ? value
+                  : parseFloat(String(value)) || 0;
               if (numValue === 0) return '0';
               if (numValue < 1000) return numValue.toFixed(0);
               if (numValue < 1000000) return `${(numValue / 1000).toFixed(1)}K`;
-              if (numValue < 1000000000) return `${(numValue / 1000000).toFixed(1)}M`;
-              if (numValue < 1000000000000) return `${(numValue / 1000000000).toFixed(1)}B`;
+              if (numValue < 1000000000)
+                return `${(numValue / 1000000).toFixed(1)}M`;
+              if (numValue < 1000000000000)
+                return `${(numValue / 1000000000).toFixed(1)}B`;
               return `${(numValue / 1000000000000).toFixed(1)}T`;
             }}
           />
           <Tooltip
             formatter={(value, name) => {
               // Format value with full number (not abbreviated) in tooltip
-              const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+              const numValue =
+                typeof value === 'number'
+                  ? value
+                  : parseFloat(String(value)) || 0;
               const formattedValue = numValue.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,

@@ -442,7 +442,7 @@ export default function NewCollectionModal({
 
   // Base value typed by the user before entering collected amount
   const [baseBalanceCorrection, setBaseBalanceCorrection] =
-    useState<string>('');
+    useState<string>('0');
 
   const [prevIn, setPrevIn] = useState<number | null>(null);
   const [prevOut, setPrevOut] = useState<number | null>(null);
@@ -1326,12 +1326,12 @@ export default function NewCollectionModal({
         varianceReason: '',
         amountToCollect: '0',
         collectedAmount: '',
-        balanceCorrection: '',
+        balanceCorrection: '0',
         balanceCorrectionReason: '',
         previousBalance: '0',
         reasonForShortagePayment: '',
       });
-      setBaseBalanceCorrection('');
+      setBaseBalanceCorrection('0');
     }
   }, [show, resetMachineSpecificInputFields]);
 
@@ -1380,12 +1380,12 @@ export default function NewCollectionModal({
         varianceReason: '',
         amountToCollect: '0',
         collectedAmount: '',
-        balanceCorrection: '',
+        balanceCorrection: '0',
         balanceCorrectionReason: '',
         previousBalance: '0',
         reasonForShortagePayment: '',
       });
-      setBaseBalanceCorrection('');
+      setBaseBalanceCorrection('0');
       setPrevIn(null);
       setPrevOut(null);
       setPreviousCollectionTime(undefined);

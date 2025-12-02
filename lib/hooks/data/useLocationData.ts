@@ -36,7 +36,8 @@ type UseLocationDataReturn = {
     pagination?: {
       page: number;
       limit: number;
-      total: number;
+      total?: number;
+      totalCount?: number;
       totalPages: number;
     };
   }>;
@@ -172,12 +173,13 @@ export function useLocationData({
         // Otherwise, use the normal fetchLocationsData for metrics-based data
         const result = await fetchBatch(page || 1, limit || 50);
 
-        setLocationData(result.data);
-        if (result.pagination) {
-          setTotalCount(result.pagination.total);
-        } else {
-          setTotalCount(result.data.length);
-        }
+  setLocationData(result.data);
+  if (result.pagination) {
+    const total = result.pagination.totalCount ?? result.pagination.total ?? 0;
+    setTotalCount(total);
+  } else {
+    setTotalCount(result.data.length);
+  }
       } catch (err) {
         setLocationData([]);
         setTotalCount(0);

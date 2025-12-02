@@ -26,7 +26,13 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
-import { getLicenseeCurrency } from '@/lib/helpers/rates';
+import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
+import {
+  getLicenseeCurrency,
+  getCountryCurrency,
+  convertToUSD,
+  convertFromUSD,
+} from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
@@ -167,6 +173,10 @@ export async function GET(req: NextRequest) {
 
       userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
     }
+
+    // Check if user is admin or developer for currency conversion
+    const isAdminOrDev =
+      userRoles.includes('admin') || userRoles.includes('developer');
 
     // ============================================================================
     // STEP 4: Determine display currency
@@ -360,12 +370,16 @@ export async function GET(req: NextRequest) {
     const processingStart = Date.now();
     const locationResults = [];
 
-    // Note: Single aggregation approach was attempted but caused timeouts for 7d/30d
-    // due to fetching 1.5M+ meter records at once. Parallel batching is faster.
-    const useSingleAggregation = false; // Disabled for now
+    // 🚀 OPTIMIZED: Use single aggregation for 7d/30d periods (much faster)
+    // For shorter periods (Today/Yesterday/Custom), use batch processing
+    const useSingleAggregation =
+      timePeriod === '7d' ||
+      timePeriod === '30d' ||
+      timePeriod === 'last7days' ||
+      timePeriod === 'last30days';
 
     console.log(
-      `[LOCATIONS API] Processing ${locations.length} locations in parallel batches`
+      `[LOCATIONS API] Processing ${locations.length} locations using ${useSingleAggregation ? 'single aggregation' : 'parallel batches'} for ${timePeriod}`
     );
 
     if (useSingleAggregation) {
@@ -413,6 +427,7 @@ export async function GET(req: NextRequest) {
       );
 
       // Fetch meters WITHOUT $lookup (much faster!)
+      // Group by machine first, then we'll filter by gaming day ranges per location
       const allMeters = await Meters.aggregate([
         {
           $match: {
@@ -426,6 +441,7 @@ export async function GET(req: NextRequest) {
         {
           $project: {
             machine: 1,
+            readAt: 1,
             drop: '$movement.drop',
             totalCancelledCredits: '$movement.totalCancelledCredits',
           },
@@ -433,11 +449,25 @@ export async function GET(req: NextRequest) {
       ]);
 
       // Group meters by location using the machine-to-location map (in-memory, very fast!)
+      // Filter by gaming day ranges per location to respect each location's gaming day offset
       const locationMetricsMap = new Map();
       allMeters.forEach(meter => {
         const machineId = meter.machine;
         const locationId = machineToLocation.get(machineId);
         if (!locationId) return;
+
+        // Get gaming day range for this location
+        const gamingDayRange = gamingDayRanges.get(locationId);
+        if (!gamingDayRange) return;
+
+        // Filter by gaming day range for this location
+        const readAt = new Date(meter.readAt);
+        if (
+          readAt < gamingDayRange.rangeStart ||
+          readAt > gamingDayRange.rangeEnd
+        ) {
+          return; // Skip meters outside this location's gaming day range
+        }
 
         if (!locationMetricsMap.has(locationId)) {
           locationMetricsMap.set(locationId, {
@@ -534,9 +564,9 @@ export async function GET(req: NextRequest) {
         });
       }
     } else {
-      // 🚀 OPTIMIZED: Adaptive batch size based on time period
-      // Longer periods (7d/30d) need LARGER batches to reduce overhead
-      const BATCH_SIZE = timePeriod === '7d' || timePeriod === '30d' ? 50 : 20;
+      // 🚀 OPTIMIZED: Use smaller batch size for shorter periods
+      // (Today/Yesterday/Custom/All Time) - these are already fast with smaller batches
+      const BATCH_SIZE = 20;
 
       console.log(
         `[LOCATIONS API] Using batch size: ${BATCH_SIZE} for ${timePeriod}`
@@ -716,89 +746,108 @@ export async function GET(req: NextRequest) {
     // Need to convert to display currency
     let convertedData = paginatedData;
 
-    // For the locations report we ALWAYS convert row-level financials into the
-    // selected display currency when a currency is provided, so that the
-    // totals cards, table rows, and drill-down views stay consistent.
-    const shouldConvert = Boolean(displayCurrency);
+    // Currency conversion ONLY for Admin/Developer when viewing "All Licensees"
+    // Managers and other users ALWAYS see native currency (TTD for TTG, GYD for Cabana, etc.)
+    const shouldConvert =
+      isAdminOrDev && shouldApplyCurrencyConversion(licencee);
 
     if (shouldConvert) {
       try {
-        // Import conversion helpers
-        const { convertCurrency, getLicenseeCurrency } = await import(
-          '@/lib/helpers/rates'
-        );
+        const db = await connectDB();
+        if (!db) {
+          console.error('❌ DB connection failed during currency conversion');
+          convertedData = paginatedData;
+        } else {
+          // Get licensee details for currency mapping
+          const licenseesData = await Licencee.find({
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          })
+            .select('_id name')
+            .lean();
 
-        // Get licensee details for currency mapping
-        const licenseesData = await Licencee.find({
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2020-01-01') } },
-          ],
-        })
-          .select('_id name')
-          .lean();
+          // Create a map of licensee ID to name
+          const licenseeIdToName = new Map<string, string>();
+          licenseesData.forEach((lic: { _id: unknown; name?: string }) => {
+            if (!Array.isArray(lic) && lic._id && lic.name) {
+              licenseeIdToName.set(String(lic._id), lic.name);
+            }
+          });
 
-        // Create a map of licensee ID to name
-        const licenseeIdToName = new Map<string, string>();
-        licenseesData.forEach((lic: { _id: unknown; name?: string }) => {
-          if (!Array.isArray(lic) && lic._id && lic.name) {
-            licenseeIdToName.set(String(lic._id), lic.name);
-          }
-        });
+          // Get country details for currency mapping (for unassigned locations)
+          const countriesData = await db.collection('countries').find({}).toArray();
+          const countryIdToName = new Map<string, string>();
+          countriesData.forEach(country => {
+            countryIdToName.set(country._id.toString(), country.name);
+          });
 
-        // Convert each location's financial data
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        convertedData = paginatedData.map((location: any) => {
-          const locationLicenseeId = location.rel?.licencee as
-            | string
-            | undefined;
+          // Convert each location's financial data
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          convertedData = paginatedData.map((location: any) => {
+            const locationLicenseeId = location.rel?.licencee as
+              | string
+              | undefined;
 
-          if (!locationLicenseeId) {
-            return location;
-          }
+            let nativeCurrency: CurrencyCode = 'USD';
 
-          const licenseeName =
-            licenseeIdToName.get(locationLicenseeId.toString()) || '';
+            if (!locationLicenseeId) {
+              // Unassigned locations - determine currency from country
+              const countryId = location.country as string | undefined;
+              const countryName = countryId
+                ? countryIdToName.get(countryId.toString())
+                : undefined;
+              nativeCurrency = countryName
+                ? getCountryCurrency(countryName)
+                : 'USD';
+            } else {
+              // Get licensee's native currency
+              const licenseeName =
+                licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
+              if (!licenseeName || licenseeName === 'Unknown') {
+                // Fallback to country-based currency if licensee not found
+                const countryId = location.country as string | undefined;
+                const countryName = countryId
+                  ? countryIdToName.get(countryId.toString())
+                  : undefined;
+                nativeCurrency = countryName
+                  ? getCountryCurrency(countryName)
+                  : 'USD';
+              } else {
+                nativeCurrency = getLicenseeCurrency(licenseeName);
+              }
+            }
 
-          if (!licenseeName || licenseeName === 'Unknown') {
-            return location;
-          }
+            // If native currency matches display currency, no conversion needed
+            if (nativeCurrency === displayCurrency) {
+              return location;
+            }
 
-          const sourceCurrency = getLicenseeCurrency(licenseeName);
+            // Convert financial fields: Native Currency → USD → Display Currency
+            const convertedLocation = { ...location };
 
-          if (sourceCurrency === displayCurrency) {
-            return location;
-          }
+            if (typeof location.moneyIn === 'number') {
+              const usdValue = convertToUSD(location.moneyIn, nativeCurrency);
+              convertedLocation.moneyIn = convertFromUSD(usdValue, displayCurrency);
+            }
 
-          // Convert financial fields
-          const convertedLocation = { ...location };
+            if (typeof location.moneyOut === 'number') {
+              const usdValue = convertToUSD(location.moneyOut, nativeCurrency);
+              convertedLocation.moneyOut = convertFromUSD(
+                usdValue,
+                displayCurrency
+              );
+            }
 
-          if (typeof location.moneyIn === 'number') {
-            convertedLocation.moneyIn = convertCurrency(
-              location.moneyIn,
-              sourceCurrency,
-              displayCurrency
-            );
-          }
+            if (typeof location.gross === 'number') {
+              const usdValue = convertToUSD(location.gross, nativeCurrency);
+              convertedLocation.gross = convertFromUSD(usdValue, displayCurrency);
+            }
 
-          if (typeof location.moneyOut === 'number') {
-            convertedLocation.moneyOut = convertCurrency(
-              location.moneyOut,
-              sourceCurrency,
-              displayCurrency
-            );
-          }
-
-          if (typeof location.gross === 'number') {
-            convertedLocation.gross = convertCurrency(
-              location.gross,
-              sourceCurrency,
-              displayCurrency
-            );
-          }
-
-          return convertedLocation;
-        });
+            return convertedLocation;
+          });
+        }
       } catch (conversionError) {
         console.error(`❌ Currency conversion failed:`, conversionError);
         convertedData = paginatedData;

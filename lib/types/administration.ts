@@ -10,9 +10,6 @@ export type User = {
   enabled: boolean;
   roles: string[];
   profilePicture: string | null;
-  rel?: {
-    licencee?: string[];
-  };
   assignedLocations?: string[]; // Array of location IDs user has access to
   assignedLicensees?: string[]; // Array of licensee IDs user has access to
   password?: string;

@@ -82,11 +82,14 @@ export async function GET(request: NextRequest) {
       await connectDB();
 
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const location = await GamingLocations.findOne({ _id: locationId }, {
-        _id: 1,
-        name: 1,
-        'rel.licencee': 1,
-      });
+      const location = await GamingLocations.findOne(
+        { _id: locationId },
+        {
+          _id: 1,
+          name: 1,
+          'rel.licencee': 1,
+        }
+      );
 
       if (!location) {
         return NextResponse.json(
@@ -100,7 +103,7 @@ export async function GET(request: NextRequest) {
         location: {
           _id: location._id,
           name: location.name,
-          licenseeId: location.rel?.licencee,
+          licenseeId: location.rel?.licencee as string[] | undefined || [],
         },
       });
     }
@@ -246,106 +249,107 @@ export async function GET(request: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 8: Build aggregation pipeline
+    // STEP 8: Build aggregation pipeline (OPTIMIZED)
     // ============================================================================
-    // Build aggregation pipeline based on your MongoDB compass query
-    const aggregationPipeline: Record<string, unknown>[] = [
-      // Match the specific location (similar to your $match: { name: "Big Shot" })
-      {
-        $match: { _id: { $in: [locationId, locationIdObj] } },
-      },
-      // Lookup machines for this location (include deleted machines with sentinel date)
-      // CRITICAL: gamingLocation is stored as String, not ObjectId
-      {
-        $lookup: {
-          from: 'machines',
-          let: {
-            locationIdStr: { $toString: '$_id' },
-            locationIdObj: '$_id',
-          },
-          pipeline: [
-            {
-              $match: {
-                $and: [
-                  {
-                    $expr: {
-                      $or: [
-                        {
-                          $eq: [
-                            { $toString: '$gamingLocation' },
-                            '$$locationIdStr',
-                          ],
-                        }, // String match
-                        { $eq: ['$gamingLocation', '$$locationIdObj'] }, // ObjectId match (if stored as ObjectId)
-                      ],
-                    },
-                  },
-                  {
-                    // Include machines that are not deleted OR have sentinel deletedAt date
-                    $or: [
-                      { deletedAt: null },
-                      { deletedAt: { $lt: new Date('2020-01-01') } },
-                    ],
-                  },
-                ],
-              },
-            },
-          ],
-          as: 'machines',
-        },
-      },
-      // Unwind machines to get individual machine documents
-      {
-        $unwind: {
-          path: '$machines',
-          preserveNullAndEmptyArrays: false, // Only return locations that have machines
-        },
-      },
-    ];
+    // 🚀 OPTIMIZED: Fetch machines first, then do single aggregation for all meters
+    // This avoids N+1 query pattern from $lookup with nested pipeline
 
-    // Add search filter if provided (search by serial number, relay ID, smib board, custom.name, or machine _id)
-    if (searchTerm) {
-      aggregationPipeline.push({
-        $match: {
-          $or: [
-            { 'machines.serialNumber': { $regex: searchTerm, $options: 'i' } },
-            { 'machines.relayId': { $regex: searchTerm, $options: 'i' } },
-            { 'machines.smibBoard': { $regex: searchTerm, $options: 'i' } },
-            { 'machines.custom.name': { $regex: searchTerm, $options: 'i' } },
-            // Search by _id (case-insensitive partial match)
+    // First, fetch all machines for this location
+    const machines = await db
+      .collection('machines')
+      .find(
+        {
+          $and: [
             {
-              $expr: {
-                $regexMatch: {
-                  input: { $toString: '$machines._id' },
-                  regex: searchTerm,
-                  options: 'i',
-                },
-              },
+              $or: [
+                { gamingLocation: locationId }, // String match
+                { gamingLocation: locationIdObj }, // ObjectId match
+              ],
+            },
+            {
+              // Include machines that are not deleted OR have sentinel deletedAt date
+              $or: [
+                { deletedAt: null },
+                { deletedAt: { $lt: new Date('2020-01-01') } },
+              ],
             },
           ],
+        },
+        {
+          projection: {
+            _id: 1,
+            serialNumber: 1,
+            relayId: 1,
+            smibBoard: 1,
+            'custom.name': 1,
+            lastActivity: 1,
+            game: 1,
+            manufacturer: 1,
+            manuf: 1,
+            cabinetType: 1,
+            assetStatus: 1,
+            gameType: 1,
+            isCronosMachine: 1,
+            sasMeters: 1,
+          },
+        }
+      )
+      .toArray();
+
+    if (machines.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        pagination: {
+          page: 1,
+          limit: limit || 0,
+          total: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
         },
       });
     }
 
-    // Add meter data lookup using gaming day range
-    // IMPORTANT: Meters are CUMULATIVE, so we calculate last - first, NOT sum
-    aggregationPipeline.push({
-      $lookup: {
-        from: 'meters',
-        let: {
-          machineIdStr: { $toString: '$machines._id' },
-          machineIdObj: '$machines._id',
-        },
-        pipeline: [
+    // Apply search filter if provided
+    let filteredMachines = machines;
+    if (searchTerm) {
+      filteredMachines = machines.filter(machine => {
+        const serialNumber = (machine.serialNumber as string) || '';
+        const relayId = (machine.relayId as string) || '';
+        const smibBoard = (machine.smibBoard as string) || '';
+        const customName =
+          ((machine.custom as Record<string, unknown>)?.name as string) || '';
+        const machineId = String(machine._id);
+
+        return (
+          serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          relayId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          smibBoard.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          customName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machineId.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      });
+    }
+
+    // Get all machine IDs for meter aggregation
+    const machineIds = filteredMachines.map(m => String(m._id));
+
+    // 🚀 OPTIMIZED: Single aggregation for ALL meters (much faster than per-machine lookups)
+    const metersAggregation = await db
+      .collection('meters')
+      .aggregate(
+        [
           {
             $match: {
-              $expr: {
-                $or: [
-                  { $eq: [{ $toString: '$machine' }, '$$machineIdStr'] }, // String match
-                  { $eq: ['$machine', '$$machineIdObj'] }, // ObjectId match (if stored as ObjectId)
-                ],
-              },
-              // Use the calculated gaming day range for this location
+              $or: [
+                { machine: { $in: machineIds } }, // String match
+                {
+                  machine: {
+                    $in: filteredMachines.map(m => m._id),
+                  },
+                }, // ObjectId match
+              ],
               readAt: {
                 $gte: gamingDayRange.rangeStart,
                 $lte: gamingDayRange.rangeEnd,
@@ -354,8 +358,7 @@ export async function GET(request: NextRequest) {
           },
           {
             $group: {
-              _id: null,
-              // Use sum of deltas to match locations list API and MongoDB Compass results
+              _id: '$machine',
               moneyIn: { $sum: '$movement.drop' },
               moneyOut: { $sum: '$movement.totalCancelledCredits' },
               jackpot: { $sum: '$movement.jackpot' },
@@ -369,136 +372,89 @@ export async function GET(request: NextRequest) {
             },
           },
         ],
-        as: 'metersData',
-      },
+        {
+          allowDiskUse: true,
+          maxTimeMS: 60000,
+        }
+      )
+      .toArray();
+
+    // Create metrics map for fast lookup
+    const metricsMap = new Map();
+    metersAggregation.forEach(metrics => {
+      const machineId = String(metrics._id);
+      metricsMap.set(machineId, metrics);
     });
 
-    // Project the final structure (similar to your $project)
-    aggregationPipeline.push({
-      $project: {
-        _id: '$machines._id',
-        locationId: '$_id',
-        locationName: '$name',
-        assetNumber: {
-          $ifNull: [
-            {
-              $cond: [
-                {
-                  $eq: [{ $trim: { input: '$machines.serialNumber' } }, ''],
-                },
-                null,
-                '$machines.serialNumber',
-              ],
-            },
-            '$machines.custom.name',
-          ],
-        },
-        serialNumber: {
-          $ifNull: [
-            {
-              $cond: [
-                {
-                  $eq: [{ $trim: { input: '$machines.serialNumber' } }, ''],
-                },
-                null,
-                '$machines.serialNumber',
-              ],
-            },
-            '$machines.custom.name',
-          ],
-        },
-        relayId: '$machines.relayId',
-        smibBoard: '$machines.smibBoard',
-        smbId: {
-          $ifNull: [
-            '$machines.smibBoard',
-            { $ifNull: ['$machines.relayId', ''] },
-          ],
-        },
-        lastActivity: '$machines.lastActivity',
-        lastOnline: '$machines.lastActivity',
-        game: '$machines.game',
-        installedGame: '$machines.game',
-        manufacturer: {
-          $ifNull: [
-            '$machines.manufacturer',
-            '$machines.manuf',
-            'Unknown Manufacturer',
-          ],
-        },
-        cabinetType: '$machines.cabinetType',
-        assetStatus: '$machines.assetStatus',
-        status: '$machines.assetStatus',
-        gameType: '$machines.gameType',
-        isCronosMachine: '$machines.isCronosMachine',
-        // Use aggregated meter data with proper fallbacks (exactly like your query)
-        moneyIn: { $ifNull: [{ $arrayElemAt: ['$metersData.moneyIn', 0] }, 0] },
-        moneyOut: {
-          $ifNull: [{ $arrayElemAt: ['$metersData.moneyOut', 0] }, 0],
-        },
-        jackpot: { $ifNull: [{ $arrayElemAt: ['$metersData.jackpot', 0] }, 0] },
-        gross: { $ifNull: [{ $arrayElemAt: ['$metersData.gross', 0] }, 0] },
-        gamesPlayed: {
-          $ifNull: [{ $arrayElemAt: ['$metersData.gamesPlayed', 0] }, 0],
-        },
-        gamesWon: {
-          $ifNull: [{ $arrayElemAt: ['$metersData.gamesWon', 0] }, 0],
-        },
-        cancelledCredits: {
-          $ifNull: [{ $arrayElemAt: ['$metersData.moneyOut', 0] }, 0],
-        },
-        sasMeters: '$machines.sasMeters',
-        // Calculate online status (3 minutes threshold)
-        online: {
-          $cond: [
-            {
-              $and: [
-                { $ne: ['$machines.lastActivity', null] },
-                {
-                  $gte: [
-                    '$machines.lastActivity',
-                    { $subtract: [new Date(), 3 * 60 * 1000] },
-                  ],
-                },
-              ],
-            },
-            true,
-            false,
-          ],
-        },
-      },
+    // Get location name for response
+    const locationName = locationCheck.name || 'Location';
+
+    // ============================================================================
+    // STEP 9: Build cabinet results by joining machines with metrics
+    // ============================================================================
+    // Build cabinet objects by joining machine data with meter metrics
+    const cabinetsWithMeters = filteredMachines.map(machine => {
+      const machineId = String(machine._id);
+      const metrics = metricsMap.get(machineId) || {
+        moneyIn: 0,
+        moneyOut: 0,
+        gross: 0,
+        jackpot: 0,
+        gamesPlayed: 0,
+        gamesWon: 0,
+      };
+
+      const serialNumber = (machine.serialNumber as string)?.trim() || '';
+      const customName =
+        ((machine.custom as Record<string, unknown>)?.name as string)?.trim() ||
+        '';
+      const assetNumber = serialNumber || customName || '';
+
+      const lastActivity = machine.lastActivity as Date | null;
+      const online =
+        lastActivity &&
+        new Date(lastActivity) > new Date(Date.now() - 3 * 60 * 1000); // 3 minutes threshold
+
+      return {
+        _id: machineId,
+        locationId: locationId,
+        locationName: locationName,
+        assetNumber: assetNumber,
+        serialNumber: assetNumber,
+        relayId: (machine.relayId as string) || '',
+        smibBoard: (machine.smibBoard as string) || '',
+        smbId:
+          (machine.smibBoard as string) || (machine.relayId as string) || '',
+        lastActivity: lastActivity,
+        lastOnline: lastActivity,
+        game: (machine.game as string) || '',
+        installedGame: (machine.game as string) || '',
+        manufacturer:
+          (machine.manufacturer as string) ||
+          (machine.manuf as string) ||
+          'Unknown Manufacturer',
+        cabinetType: (machine.cabinetType as string) || '',
+        assetStatus: (machine.assetStatus as string) || '',
+        status: (machine.assetStatus as string) || '',
+        gameType: (machine.gameType as string) || '',
+        isCronosMachine: Boolean(machine.isCronosMachine),
+        moneyIn: Number(metrics.moneyIn) || 0,
+        moneyOut: Number(metrics.moneyOut) || 0,
+        gross: Number(metrics.gross) || 0,
+        jackpot: Number(metrics.jackpot) || 0,
+        gamesPlayed: Number(metrics.gamesPlayed) || 0,
+        gamesWon: Number(metrics.gamesWon) || 0,
+        cancelledCredits: Number(metrics.moneyOut) || 0,
+        sasMeters: (machine.sasMeters as Record<string, unknown>) || null,
+        online: Boolean(online),
+      };
     });
 
-    // ============================================================================
-    // STEP 9: Execute aggregation with pagination
-    // ============================================================================
-    // First, get total count for pagination metadata
-    const countPipeline = [...aggregationPipeline, { $count: 'total' }];
-    const countResult = await db
-      .collection('gaminglocations')
-      .aggregate(countPipeline, {
-        allowDiskUse: true,
-        maxTimeMS: 60000,
-      })
-      .toArray();
-    const totalCount = countResult[0]?.total || 0;
-
-    // Add pagination stages to the aggregation pipeline
-    // When limit is undefined (search mode), fetch all results
-    const paginatedPipeline = [
-      ...aggregationPipeline,
-      ...(skip > 0 ? [{ $skip: skip }] : []),
-      ...(limit ? [{ $limit: limit }] : []),
-    ];
-
-    // Execute the aggregation with pagination
-    const cabinetsWithMeters = await db
-      .collection('gaminglocations')
-      .aggregate(paginatedPipeline, {
-        allowDiskUse: true,
-        maxTimeMS: 60000,
-      })
-      .toArray();
+    // Apply pagination
+    const totalCount = cabinetsWithMeters.length;
+    const paginatedCabinets = limit
+      ? cabinetsWithMeters.slice(skip, skip + limit)
+      : cabinetsWithMeters;
 
     // ============================================================================
     // STEP 10: Transform and return results
@@ -550,7 +506,7 @@ export async function GET(request: NextRequest) {
     const shouldConvert = Boolean(displayCurrency);
 
     // Transform the results to ensure proper data types
-    const transformedCabinets: TransformedCabinet[] = cabinetsWithMeters.map(
+    const transformedCabinets: TransformedCabinet[] = paginatedCabinets.map(
       (cabinet: Record<string, unknown>) => {
         let moneyIn = Number(cabinet.moneyIn) || 0;
         let moneyOut = Number(cabinet.moneyOut) || 0;

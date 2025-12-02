@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
       username: payload.username,
       isEnabled: payload.isEnabled,
       roles: payload.roles,
-      rel: payload.rel,
+      assignedLocations: payload.assignedLocations,
+      assignedLicensees: payload.assignedLicensees,
       sessionId: payload.sessionId,
       dbContext: payload.dbContext,
     });

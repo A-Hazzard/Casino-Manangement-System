@@ -37,7 +37,9 @@ export const getLocationsWithMetrics = async (
   const locationIdFilter: { _id?: { $in: string[] } } = {};
 
   // Debug logging
-  console.log('🔍 [getLocationsWithMetrics] ========================================');
+  console.log(
+    '🔍 [getLocationsWithMetrics] ========================================'
+  );
   if (allowedLocationIds === 'all') {
     console.log(
       '🔍 [getLocationsWithMetrics] allowedLocationIds is "all" - no location filtering will be applied'
@@ -46,7 +48,10 @@ export const getLocationsWithMetrics = async (
     console.log(
       `🔍 [getLocationsWithMetrics] allowedLocationIds is array with ${allowedLocationIds.length} locations - filtering will be applied`
     );
-    console.log('🔍 [getLocationsWithMetrics] Allowed location IDs (first 10):', allowedLocationIds.slice(0, 10));
+    console.log(
+      '🔍 [getLocationsWithMetrics] Allowed location IDs (first 10):',
+      allowedLocationIds.slice(0, 10)
+    );
   } else {
     console.log(
       '🔍 [getLocationsWithMetrics] allowedLocationIds is undefined - will check licensee filter'
@@ -58,14 +63,18 @@ export const getLocationsWithMetrics = async (
     // This already includes licensee filtering if applicable
     if (allowedLocationIds.length === 0) {
       // No accessible locations
-      console.warn('⚠️⚠️⚠️ [getLocationsWithMetrics] EMPTY allowedLocationIds - returning empty result ⚠️⚠️⚠️');
+      console.warn(
+        '⚠️⚠️⚠️ [getLocationsWithMetrics] EMPTY allowedLocationIds - returning empty result ⚠️⚠️⚠️'
+      );
       return {
         rows: [],
         totalCount: 0,
       };
     }
     locationIdFilter._id = { $in: allowedLocationIds };
-    console.log('🔍 [getLocationsWithMetrics] Applied location filter:', { _id: { $in: allowedLocationIds.slice(0, 5) } });
+    console.log('🔍 [getLocationsWithMetrics] Applied location filter:', {
+      _id: { $in: allowedLocationIds.slice(0, 5) },
+    });
   } else if (licencee && licencee !== 'all') {
     // No user location permissions provided, but licensee filter is specified
     // Prefetch location ids for this licensee
@@ -123,7 +132,10 @@ export const getLocationsWithMetrics = async (
   // This means when no selectedLocations are provided, we load ALL locations with financial data
   if (!basicList) {
     // Execute the location pipeline first to get all matching locations
-    console.log('🔍 [getLocationsWithMetrics] Executing location pipeline with filter:', JSON.stringify(basePipeline[0].$match, null, 2));
+    console.log(
+      '🔍 [getLocationsWithMetrics] Executing location pipeline with filter:',
+      JSON.stringify(basePipeline[0].$match, null, 2)
+    );
     const locations = await db
       .collection('gaminglocations')
       .aggregate(basePipeline)
@@ -131,15 +143,19 @@ export const getLocationsWithMetrics = async (
 
     console.log('🔍 [getLocationsWithMetrics] Pipeline returned locations:', {
       count: locations.length,
-      firstFew: locations.slice(0, 5).map((loc: { _id?: string; name?: string }) => ({
-        _id: String(loc._id),
-        name: loc.name
-      }))
+      firstFew: locations
+        .slice(0, 5)
+        .map((loc: { _id?: string; name?: string }) => ({
+          _id: String(loc._id),
+          name: loc.name,
+        })),
     });
 
     // If no locations found, return empty result
     if (locations.length === 0) {
-      console.warn('⚠️⚠️⚠️ [getLocationsWithMetrics] NO LOCATIONS FOUND - returning empty result ⚠️⚠️⚠️');
+      console.warn(
+        '⚠️⚠️⚠️ [getLocationsWithMetrics] NO LOCATIONS FOUND - returning empty result ⚠️⚠️⚠️'
+      );
       return {
         rows: [],
         totalCount: 0,
@@ -147,142 +163,408 @@ export const getLocationsWithMetrics = async (
     }
 
     // Now aggregate meters for each location using gaming day ranges
-    const locationsWithMetrics = await Promise.all(
-      locations.map(async location => {
-        const locationId = location._id.toString();
-        const gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
+    // 🚀 OPTIMIZED: Use single aggregation for 7d/30d periods (much faster)
+    // For shorter periods (Today/Yesterday/Custom), use batch processing
+    const useSingleAggregation =
+      timePeriod === '7d' ||
+      timePeriod === '30d' ||
+      timePeriod === 'last7days' ||
+      timePeriod === 'last30days';
 
-        // Calculate gaming day range for this location
+    console.log(
+      `[getLocationsWithMetrics] Processing ${locations.length} locations using ${useSingleAggregation ? 'single aggregation' : 'parallel batches'} for ${timePeriod || 'Today'}`
+    );
+
+    const locationsWithMetrics: AggregatedLocation[] = [];
+
+    if (useSingleAggregation) {
+      // 🚀 SUPER OPTIMIZED: Single aggregation for ALL locations (much faster for 7d/30d)
+      // Get global date range (earliest start, latest end)
+      const gamingDayRanges = new Map<
+        string,
+        { rangeStart: Date; rangeEnd: Date }
+      >();
+      locations.forEach(location => {
+        const locationId = location._id.toString();
+        const gameDayOffset = location.gameDayOffset ?? 8;
         const gamingDayRange = getGamingDayRangeForPeriod(
           timePeriod || 'Today',
           gameDayOffset,
           customStartDate,
           customEndDate
         );
+        gamingDayRanges.set(locationId, gamingDayRange);
+      });
 
-        // First get all machines for this location
-        // All _id fields are strings, not ObjectIds
-        const locationIdStr = location._id.toString();
-        const machinesForLocation = await db
-          .collection('machines')
-          .find(
-            {
-              gamingLocation: locationIdStr, // Use string, not ObjectId
-              $or: [
-                { deletedAt: null },
-                { deletedAt: { $lt: new Date('2020-01-01') } },
-              ],
+      let globalStart = new Date();
+      let globalEnd = new Date(0);
+      gamingDayRanges.forEach(range => {
+        if (range.rangeStart < globalStart) globalStart = range.rangeStart;
+        if (range.rangeEnd > globalEnd) globalEnd = range.rangeEnd;
+      });
+
+      // Get all location IDs
+      const allLocationIds = locations.map(loc => loc._id.toString());
+
+      // Get all machines for all locations
+      const allMachinesData = await db
+        .collection('machines')
+        .find(
+          {
+            gamingLocation: { $in: allLocationIds },
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2020-01-01') } },
+            ],
+          },
+          {
+            projection: {
+              _id: 1,
+              gamingLocation: 1,
+              lastActivity: 1,
+              isSasMachine: 1,
             },
-            { projection: { _id: 1 } }
-          )
-          .toArray();
+          }
+        )
+        .toArray();
 
-        // Convert machine IDs to strings (meters.machine is stored as String, not ObjectId)
-        const machineIds = machinesForLocation.map(m => m._id.toString());
+      // Create machine-to-location map and location-to-machines map
+      const machineToLocation = new Map<string, string>();
+      const locationToMachines = new Map<string, typeof allMachinesData>();
+      allMachinesData.forEach(machine => {
+        const machineId = machine._id.toString();
+        const locationId = machine.gamingLocation?.toString();
+        if (locationId) {
+          machineToLocation.set(machineId, locationId);
+          if (!locationToMachines.has(locationId)) {
+            locationToMachines.set(locationId, []);
+          }
+          locationToMachines.get(locationId)!.push(machine);
+        }
+      });
 
-        // Now aggregate meters for all machines in this location using gaming day range
-        const metersAggregation = await db
+      // Get all machine IDs
+      const allMachineIds = allMachinesData.map(m => m._id.toString());
+
+      if (allMachineIds.length > 0) {
+        // Single aggregation for all meters
+        const allMeters = await db
           .collection('meters')
           .aggregate([
             {
               $match: {
-                machine: { $in: machineIds }, // Match by machine IDs (as strings), not location
+                machine: { $in: allMachineIds },
                 readAt: {
-                  $gte: gamingDayRange.rangeStart,
-                  $lte: gamingDayRange.rangeEnd,
+                  $gte: globalStart,
+                  $lte: globalEnd,
                 },
               },
             },
             {
-              $group: {
-                _id: null,
-                totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-                totalMoneyOut: {
-                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-                },
-                totalGamesPlayed: {
-                  $sum: { $ifNull: ['$movement.gamesPlayed', 0] },
-                },
-                totalCoinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
-                totalCoinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
-                totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+              $project: {
+                machine: 1,
+                readAt: 1,
+                'movement.drop': 1,
+                'movement.totalCancelledCredits': 1,
+                'movement.gamesPlayed': 1,
+                'movement.coinIn': 1,
+                'movement.coinOut': 1,
+                'movement.jackpot': 1,
               },
             },
           ])
           .toArray();
 
-        // Get machine data for this location
-        const machineData = await db
-          .collection('machines')
-          .aggregate([
-            {
-              $match: {
-                gamingLocation: locationIdStr, // Use string, not ObjectId
-                $or: [
-                  { deletedAt: null },
-                  { deletedAt: { $lt: new Date('2020-01-01') } },
-                ],
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: 1 },
-                online: {
-                  $sum: {
-                    $cond: [{ $gte: ['$lastActivity', onlineThreshold] }, 1, 0],
+        // Group meters by location and filter by gaming day ranges (in memory)
+        const locationMetricsMap = new Map<
+          string,
+          {
+            moneyIn: number;
+            moneyOut: number;
+            gamesPlayed: number;
+            coinIn: number;
+            coinOut: number;
+            jackpot: number;
+          }
+        >();
+
+        allMeters.forEach((meter: Record<string, unknown>) => {
+          const machineId = meter.machine as string;
+          const locationId = machineToLocation.get(machineId);
+          if (!locationId) return;
+
+          const gamingDayRange = gamingDayRanges.get(locationId);
+          if (!gamingDayRange) return;
+
+          // Filter by gaming day range for this location
+          const readAt = new Date(meter.readAt as Date);
+          if (
+            readAt < gamingDayRange.rangeStart ||
+            readAt > gamingDayRange.rangeEnd
+          ) {
+            return; // Skip meters outside this location's gaming day range
+          }
+
+          if (!locationMetricsMap.has(locationId)) {
+            locationMetricsMap.set(locationId, {
+              moneyIn: 0,
+              moneyOut: 0,
+              gamesPlayed: 0,
+              coinIn: 0,
+              coinOut: 0,
+              jackpot: 0,
+            });
+          }
+
+          const metrics = locationMetricsMap.get(locationId)!;
+          const movement = meter.movement as
+            | Record<string, unknown>
+            | undefined;
+          metrics.moneyIn += (movement?.drop as number) || 0;
+          metrics.moneyOut += (movement?.totalCancelledCredits as number) || 0;
+          metrics.gamesPlayed += (movement?.gamesPlayed as number) || 0;
+          metrics.coinIn += (movement?.coinIn as number) || 0;
+          metrics.coinOut += (movement?.coinOut as number) || 0;
+          metrics.jackpot += (movement?.jackpot as number) || 0;
+        });
+
+        // Build location results
+        for (const location of locations) {
+          const locationId = location._id.toString();
+          const machines = locationToMachines.get(locationId) || [];
+          const metrics = locationMetricsMap.get(locationId) || {
+            moneyIn: 0,
+            moneyOut: 0,
+            gamesPlayed: 0,
+            coinIn: 0,
+            coinOut: 0,
+            jackpot: 0,
+          };
+
+          // Calculate machine status metrics
+          const totalMachines = machines.length;
+          const onlineMachines = machines.filter(
+            m => m.lastActivity && new Date(m.lastActivity) >= onlineThreshold
+          ).length;
+          const sasMachines = machines.filter(m => m.isSasMachine).length;
+          const nonSasMachines = totalMachines - sasMachines;
+
+          locationsWithMetrics.push({
+            location: locationId,
+            locationName: location.name || 'Unknown Location',
+            moneyIn: metrics.moneyIn,
+            moneyOut: metrics.moneyOut,
+            gross: metrics.moneyIn - metrics.moneyOut,
+            coinIn: metrics.coinIn,
+            coinOut: metrics.coinOut,
+            jackpot: metrics.jackpot,
+            totalMachines,
+            onlineMachines,
+            sasMachines,
+            nonSasMachines,
+            hasSasMachines: sasMachines > 0,
+            hasNonSasMachines: nonSasMachines > 0,
+            isLocalServer: location.isLocalServer || false,
+            noSMIBLocation: sasMachines === 0,
+            hasSmib: sasMachines > 0,
+            gamesPlayed: metrics.gamesPlayed,
+            rel: location.rel,
+            country: location.country,
+          } as unknown as AggregatedLocation);
+        }
+      } else {
+        // No machines found, return locations with zero metrics
+        for (const location of locations) {
+          const locationId = location._id.toString();
+          locationsWithMetrics.push({
+            location: locationId,
+            locationName: location.name || 'Unknown Location',
+            moneyIn: 0,
+            moneyOut: 0,
+            gross: 0,
+            coinIn: 0,
+            coinOut: 0,
+            jackpot: 0,
+            totalMachines: 0,
+            onlineMachines: 0,
+            sasMachines: 0,
+            nonSasMachines: 0,
+            hasSasMachines: false,
+            hasNonSasMachines: false,
+            isLocalServer: location.isLocalServer || false,
+            noSMIBLocation: true,
+            hasSmib: false,
+            gamesPlayed: 0,
+            rel: location.rel,
+            country: location.country,
+          } as unknown as AggregatedLocation);
+        }
+      }
+    } else {
+      // 🚀 OPTIMIZED: Process locations in batches to reduce database load
+      // Instead of processing all locations in parallel (which can cause 300+ concurrent queries),
+      // we process them in batches of 10 to maintain performance while reducing load
+      const BATCH_SIZE = 10;
+
+      for (let i = 0; i < locations.length; i += BATCH_SIZE) {
+        const batch = locations.slice(i, i + BATCH_SIZE);
+        const batchStartTime = Date.now();
+
+        // Process batch in parallel
+        const batchResults = await Promise.all(
+          batch.map(async location => {
+            const locationId = location._id.toString();
+            const gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
+
+            // Calculate gaming day range for this location
+            const gamingDayRange = getGamingDayRangeForPeriod(
+              timePeriod || 'Today',
+              gameDayOffset,
+              customStartDate,
+              customEndDate
+            );
+
+            // First get all machines for this location
+            // All _id fields are strings, not ObjectIds
+            const locationIdStr = location._id.toString();
+            const machinesForLocation = await db
+              .collection('machines')
+              .find(
+                {
+                  gamingLocation: locationIdStr, // Use string, not ObjectId
+                  $or: [
+                    { deletedAt: null },
+                    { deletedAt: { $lt: new Date('2020-01-01') } },
+                  ],
+                },
+                { projection: { _id: 1 } }
+              )
+              .toArray();
+
+            // Convert machine IDs to strings (meters.machine is stored as String, not ObjectId)
+            const machineIds = machinesForLocation.map(m => m._id.toString());
+
+            // Now aggregate meters for all machines in this location using gaming day range
+            const metersAggregation = await db
+              .collection('meters')
+              .aggregate([
+                {
+                  $match: {
+                    machine: { $in: machineIds }, // Match by machine IDs (as strings), not location
+                    readAt: {
+                      $gte: gamingDayRange.rangeStart,
+                      $lte: gamingDayRange.rangeEnd,
+                    },
                   },
                 },
-                sasMachines: { $sum: { $cond: ['$isSasMachine', 1, 0] } },
-                nonSasMachines: {
-                  $sum: { $cond: [{ $eq: ['$isSasMachine', false] }, 1, 0] },
+                {
+                  $group: {
+                    _id: null,
+                    totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+                    totalMoneyOut: {
+                      $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                    },
+                    totalGamesPlayed: {
+                      $sum: { $ifNull: ['$movement.gamesPlayed', 0] },
+                    },
+                    totalCoinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
+                    totalCoinOut: {
+                      $sum: { $ifNull: ['$movement.coinOut', 0] },
+                    },
+                    totalJackpot: {
+                      $sum: { $ifNull: ['$movement.jackpot', 0] },
+                    },
+                  },
                 },
-              },
-            },
-          ])
-          .toArray();
+              ])
+              .toArray();
 
-        // Extract metrics from aggregation results
-        const meterMetrics = metersAggregation[0] || {
-          totalDrop: 0,
-          totalMoneyOut: 0,
-          totalGamesPlayed: 0,
-          totalCoinIn: 0,
-          totalCoinOut: 0,
-          totalJackpot: 0,
-        };
+            // Get machine data for this location
+            const machineData = await db
+              .collection('machines')
+              .aggregate([
+                {
+                  $match: {
+                    gamingLocation: locationIdStr, // Use string, not ObjectId
+                    $or: [
+                      { deletedAt: null },
+                      { deletedAt: { $lt: new Date('2020-01-01') } },
+                    ],
+                  },
+                },
+                {
+                  $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    online: {
+                      $sum: {
+                        $cond: [
+                          { $gte: ['$lastActivity', onlineThreshold] },
+                          1,
+                          0,
+                        ],
+                      },
+                    },
+                    sasMachines: { $sum: { $cond: ['$isSasMachine', 1, 0] } },
+                    nonSasMachines: {
+                      $sum: {
+                        $cond: [{ $eq: ['$isSasMachine', false] }, 1, 0],
+                      },
+                    },
+                  },
+                },
+              ])
+              .toArray();
 
-        const machineMetrics = machineData[0] || {
-          total: 0,
-          online: 0,
-          sasMachines: 0,
-          nonSasMachines: 0,
-        };
+            // Extract metrics from aggregation results
+            const meterMetrics = metersAggregation[0] || {
+              totalDrop: 0,
+              totalMoneyOut: 0,
+              totalGamesPlayed: 0,
+              totalCoinIn: 0,
+              totalCoinOut: 0,
+              totalJackpot: 0,
+            };
 
-        return {
-          location: locationId,
-          locationName: location.name || 'Unknown Location',
-          moneyIn: meterMetrics.totalDrop,
-          moneyOut: meterMetrics.totalMoneyOut,
-          gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut,
-          coinIn: meterMetrics.totalCoinIn,
-          coinOut: meterMetrics.totalCoinOut,
-          jackpot: meterMetrics.totalJackpot,
-          totalMachines: machineMetrics.total,
-          onlineMachines: machineMetrics.online,
-          sasMachines: machineMetrics.sasMachines,
-          nonSasMachines: machineMetrics.nonSasMachines,
-          hasSasMachines: machineMetrics.sasMachines > 0,
-          hasNonSasMachines: machineMetrics.nonSasMachines > 0,
-          isLocalServer: location.isLocalServer || false,
-          noSMIBLocation: machineMetrics.sasMachines === 0,
-          hasSmib: machineMetrics.sasMachines > 0,
-          gamesPlayed: meterMetrics.totalGamesPlayed,
-          rel: location.rel, // Include for currency conversion
-          country: location.country, // Include for currency conversion
-        } as unknown as AggregatedLocation;
-      })
-    );
+            const machineMetrics = machineData[0] || {
+              total: 0,
+              online: 0,
+              sasMachines: 0,
+              nonSasMachines: 0,
+            };
+
+            return {
+              location: locationId,
+              locationName: location.name || 'Unknown Location',
+              moneyIn: meterMetrics.totalDrop,
+              moneyOut: meterMetrics.totalMoneyOut,
+              gross: meterMetrics.totalDrop - meterMetrics.totalMoneyOut,
+              coinIn: meterMetrics.totalCoinIn,
+              coinOut: meterMetrics.totalCoinOut,
+              jackpot: meterMetrics.totalJackpot,
+              totalMachines: machineMetrics.total,
+              onlineMachines: machineMetrics.online,
+              sasMachines: machineMetrics.sasMachines,
+              nonSasMachines: machineMetrics.nonSasMachines,
+              hasSasMachines: machineMetrics.sasMachines > 0,
+              hasNonSasMachines: machineMetrics.nonSasMachines > 0,
+              isLocalServer: location.isLocalServer || false,
+              noSMIBLocation: machineMetrics.sasMachines === 0,
+              hasSmib: machineMetrics.sasMachines > 0,
+              gamesPlayed: meterMetrics.totalGamesPlayed,
+              rel: location.rel, // Include for currency conversion
+              country: location.country, // Include for currency conversion
+            } as unknown as AggregatedLocation;
+          })
+        );
+
+        locationsWithMetrics.push(...batchResults);
+        const batchDuration = Date.now() - batchStartTime;
+        console.log(
+          `[getLocationsWithMetrics] Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(locations.length / BATCH_SIZE)} (${batch.length} locations) in ${batchDuration}ms`
+        );
+      }
+    }
 
     // Filter by SAS evaluation if requested
     const filteredLocations = sasEvaluationOnly

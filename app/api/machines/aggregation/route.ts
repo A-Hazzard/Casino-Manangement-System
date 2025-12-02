@@ -165,13 +165,16 @@ export async function GET(req: NextRequest) {
     // Apply location filter based on user permissions
     if (locationId) {
       // Specific location requested - validate access
+      // Convert locationId to string for comparison
+      const locationIdStr = String(locationId);
       if (
         allowedLocationIds !== 'all' &&
-        !allowedLocationIds.includes(locationId)
+        !allowedLocationIds.some(id => String(id) === locationIdStr)
       ) {
         return NextResponse.json({ success: true, data: [] });
       }
-      matchStage._id = locationId;
+      // Support both string and ObjectId matching
+      matchStage._id = { $in: [locationId, locationIdStr] };
     } else if (allowedLocationIds !== 'all') {
       // Apply allowed locations filter
       matchStage._id = { $in: allowedLocationIds };

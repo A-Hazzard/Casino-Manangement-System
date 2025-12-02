@@ -68,7 +68,6 @@ const UserSchema = new Schema(
         validate: [roleValidator],
       },
     ],
-    permissions: [{ type: String }],
     username: {
       type: String,
       required: true,
@@ -101,9 +100,6 @@ const UserSchema = new Schema(
         },
         message: 'Email address must be a valid email format.',
       },
-    },
-    rel: {
-      licencee: [{ type: String }],
     },
     assignedLocations: [{ type: String }], // Array of location IDs user has access to
     assignedLicensees: [{ type: String }], // Array of licensee IDs user has access to

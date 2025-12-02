@@ -296,7 +296,7 @@ export async function POST(request: Request) {
         city: address?.city || '',
       },
       rel: {
-        licencee: rel?.licencee || '',
+        licencee: rel?.licencee as string[] | undefined || [],
       },
       profitShare: profitShare || 50,
       gameDayOffset: gameDayOffset ?? 8,

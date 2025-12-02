@@ -162,9 +162,8 @@ export const createUser = async (user: {
   };
   isEnabled?: boolean;
   profilePicture?: string | null;
-  rel?: {
-    licencee?: string[];
-  };
+  assignedLicensees?: string[];
+  assignedLocations?: string[];
 }) => {
   const response = await axios.post('/api/users', user);
   return response.data.user;

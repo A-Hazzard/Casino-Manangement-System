@@ -362,9 +362,6 @@ export type User = {
   isEnabled: boolean; // Added for API compatibility
   roles: string[];
   profilePicture: string | null;
-  rel?: {
-    licencee?: string[];
-  };
   assignedLocations?: string[]; // Array of location IDs user has access to
   assignedLicensees?: string[]; // Array of licensee IDs user has access to
   password?: string;

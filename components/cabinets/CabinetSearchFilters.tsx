@@ -164,70 +164,73 @@ export const CabinetSearchFilters = ({
       </div>
 
       {/* Desktop: Search Row - Purple box */}
-      <div className="mt-4 hidden flex-col gap-4 rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex">
-        {/* Search Input - Full Width */}
-        <div className="relative w-full">
-          <Input
-            type="text"
-            placeholder="Search machines..."
-            className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        </div>
+      <div className="mt-4 hidden rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex">
+        {/* Search Input and Filters on same row */}
+        <div className="flex w-full flex-wrap items-center gap-4">
+          {/* Search Input - Takes available space */}
+          <div className="relative min-w-0 flex-1">
+            <Input
+              type="text"
+              placeholder="Search machines..."
+              className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+            <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
 
-        {/* Filter Buttons - Below Search */}
-        <div className="flex items-center gap-4 flex-wrap">
-          {showLocationFilter && (
+          {/* Filter Buttons - On the right, wrap when needed */}
+          <div className="flex items-center gap-4 flex-wrap">
+            {showLocationFilter && (
+              <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+                <LocationSingleSelect
+                  locations={locationSelectItems}
+                  selectedLocation={selectedLocation}
+                  onSelectionChange={handleLocationChange}
+                  placeholder="All Locations"
+                  includeAllOption={true}
+                  dropdownLabel="Select Location"
+                  searchPlaceholder="Search locations..."
+                  emptyMessage="No locations found"
+                  showSasBadge={false}
+                  className="w-full"
+                />
+              </div>
+            )}
+
             <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
               <LocationSingleSelect
-                locations={locationSelectItems}
-                selectedLocation={selectedLocation}
-                onSelectionChange={handleLocationChange}
-                placeholder="All Locations"
+                locations={gameTypeSelectItems}
+                selectedLocation={selectedGameType}
+                onSelectionChange={handleGameTypeChange}
+                placeholder="All Game Types"
                 includeAllOption={true}
-                dropdownLabel="Select Location"
-                searchPlaceholder="Search locations..."
-                emptyMessage="No locations found"
+                allOptionLabel="All Game Types"
+                dropdownLabel="Select Game Type"
+                searchPlaceholder="Search game types..."
+                emptyMessage="No game types found"
                 showSasBadge={false}
                 className="w-full"
               />
             </div>
-          )}
 
-          <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
-            <LocationSingleSelect
-              locations={gameTypeSelectItems}
-              selectedLocation={selectedGameType}
-              onSelectionChange={handleGameTypeChange}
-              placeholder="All Game Types"
-              includeAllOption={true}
-              allOptionLabel="All Game Types"
-              dropdownLabel="Select Game Type"
-              searchPlaceholder="Search game types..."
-              emptyMessage="No game types found"
-              showSasBadge={false}
-              className="w-full"
-            />
-          </div>
-
-          {/* Status Filter with Search */}
-          <div className="w-auto min-w-[120px] max-w-[150px] flex-shrink-0">
-            <CustomSelect
-              value={selectedStatus}
-              onValueChange={onStatusChange}
-              options={[
-                { value: 'All', label: 'All Machines' },
-                { value: 'Online', label: 'Online' },
-                { value: 'Offline', label: 'Offline' },
-              ]}
-              placeholder="All Status"
-              className="w-full"
-              triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-              searchable={true}
-              emptyMessage="No status options found"
-            />
+            {/* Status Filter with Search */}
+            <div className="w-auto min-w-[120px] max-w-[150px] flex-shrink-0">
+              <CustomSelect
+                value={selectedStatus}
+                onValueChange={onStatusChange}
+                options={[
+                  { value: 'All', label: 'All Machines' },
+                  { value: 'Online', label: 'Online' },
+                  { value: 'Offline', label: 'Offline' },
+                ]}
+                placeholder="All Status"
+                className="w-full"
+                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={true}
+                emptyMessage="No status options found"
+              />
+            </div>
           </div>
         </div>
       </div>

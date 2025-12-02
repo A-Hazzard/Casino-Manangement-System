@@ -578,9 +578,6 @@ export default function UserDetailsModal({
       profilePicture: formData.profilePicture || null,
       roles,
       enabled: isEnabled,
-      rel: {
-        licencee: allLicenseesSelected ? ['all'] : selectedLicenseeIds,
-      },
       assignedLicensees: allLicenseesSelected ? ['all'] : selectedLicenseeIds,
       assignedLocations: allLocationsSelected ? ['all'] : selectedLocationIds,
     });

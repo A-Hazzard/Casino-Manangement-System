@@ -17,9 +17,6 @@ type CurrentUserResponse = {
     emailAddress: string;
     profile: UserAuthPayload['profile'];
     roles: string[];
-    rel?: {
-      licencee?: string[];
-    };
     isEnabled: boolean;
     assignedLocations?: string[];
     assignedLicensees?: string[];
@@ -93,7 +90,6 @@ export function useCurrentUserQuery() {
         emailAddress: dbUser.emailAddress,
         profile: dbUser.profile,
         roles: dbUser.roles,
-        rel: dbUser.rel, // ✅ Include rel field
         isEnabled: dbUser.isEnabled,
         assignedLocations: dbUser.assignedLocations,
         assignedLicensees: dbUser.assignedLicensees,
@@ -110,7 +106,10 @@ export function useCurrentUserQuery() {
         setUser(userPayload);
 
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ User store updated with assignedLicensees:', dbUser.assignedLicensees);
+          console.log(
+            '✅ User store updated with assignedLicensees:',
+            dbUser.assignedLicensees
+          );
         }
       }
 

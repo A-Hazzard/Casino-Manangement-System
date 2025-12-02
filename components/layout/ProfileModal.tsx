@@ -886,9 +886,6 @@ export default function ProfileModal({
       ) ?? false;
 
     if (canEditAssignments) {
-      payload.rel = {
-        licencee: normalizedSelectedLicensees,
-      };
       payload.assignedLicensees = normalizedSelectedLicensees;
       payload.assignedLocations = normalizedSelectedLocations;
     }
@@ -898,16 +895,12 @@ export default function ProfileModal({
       profile: userData.profile,
       profilePicture: userData.profilePicture,
       roles: userData.roles,
-      rel: userData.rel || {},
     };
 
     const formDataComparison = {
       profile: sanitizedProfile,
       profilePicture: profilePicture ?? null,
       roles: selectedRoles,
-      rel: {
-        licencee: normalizedSelectedLicensees,
-      },
     };
 
     let changes: ReturnType<typeof detectChanges> = [];

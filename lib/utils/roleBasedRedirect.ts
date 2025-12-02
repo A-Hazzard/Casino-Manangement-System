@@ -14,10 +14,10 @@ import type { UserRole } from './permissions';
  */
 export function getDefaultRedirectPath(userRole: UserRole): string {
   const roleRedirectMap: Record<UserRole, string> = {
-    'developer': '/',
+    developer: '/',
     admin: '/',
     manager: '/',
-    'location admin': '/locations',
+    'location admin': '/collection-report', // Updated: location admin redirects to collection reports
     technician: '/cabinets', // machines page
     collector: '/collection-report', // collection report page
   };
@@ -29,6 +29,12 @@ export function getDefaultRedirectPath(userRole: UserRole): string {
  * Gets the default redirect path for multiple roles
  * Uses the highest priority role to determine redirect
  *
+ * Priority order:
+ * 1. admin, developer, manager, administration → dashboard (/)
+ * 2. technician → cabinets (/cabinets)
+ * 3. location admin → collection reports (/collection-report)
+ * 4. collector → collection reports (/collection-report)
+ *
  * @param userRoles - Array of user roles
  * @returns The appropriate redirect path
  */
@@ -37,21 +43,29 @@ export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
     return '/cabinets'; // fallback
   }
 
-  // Role priority order (highest to lowest)
-  const rolePriority: UserRole[] = [
-    'developer',
-    'admin',
-    'manager',
-    'location admin',
-    'technician',
-    'collector',
-  ];
+  // Priority 1: If user has admin, developer, manager, or administration → dashboard
+  // (If user has any of these 4 roles, always redirect to dashboard, even with other roles)
+  const highPriorityRoles = ['admin', 'developer', 'manager', 'administration'];
+  const hasHighPriorityRole = highPriorityRoles.some(role =>
+    userRoles.includes(role)
+  );
+  if (hasHighPriorityRole) {
+    return '/'; // Dashboard
+  }
 
-  // Find the highest priority role the user has
-  for (const role of rolePriority) {
-    if (userRoles.includes(role)) {
-      return getDefaultRedirectPath(role);
-    }
+  // Priority 2: If user has technician → cabinets
+  if (userRoles.includes('technician')) {
+    return '/cabinets';
+  }
+
+  // Priority 3: If user has location admin → collection reports
+  if (userRoles.includes('location admin')) {
+    return '/collection-report';
+  }
+
+  // Priority 4: If user only has collector → collection reports
+  if (userRoles.includes('collector')) {
+    return '/collection-report';
   }
 
   // Fallback if no recognized roles
@@ -67,10 +81,10 @@ export function getDefaultRedirectPathFromRoles(userRoles: string[]): string {
  */
 export function getRedirectDestinationName(userRole: UserRole): string {
   const destinationNames: Record<UserRole, string> = {
-    'developer': 'Dashboard',
+    developer: 'Dashboard',
     admin: 'Dashboard',
     manager: 'Dashboard',
-    'location admin': 'Locations',
+    'location admin': 'Collection Report', // Updated: location admin redirects to collection reports
     technician: 'Machines',
     collector: 'Collection Report',
   };
@@ -80,6 +94,7 @@ export function getRedirectDestinationName(userRole: UserRole): string {
 
 /**
  * Gets a user-friendly redirect message for multiple roles
+ * Uses the same priority logic as getDefaultRedirectPathFromRoles
  *
  * @param userRoles - Array of user roles
  * @returns Human-readable redirect destination
@@ -91,21 +106,28 @@ export function getRedirectDestinationNameFromRoles(
     return 'Machines';
   }
 
-  // Role priority order (highest to lowest)
-  const rolePriority: UserRole[] = [
-    'developer',
-    'admin',
-    'manager',
-    'location admin',
-    'technician',
-    'collector',
-  ];
+  // Priority 1: If user has admin, developer, manager, or administration → Dashboard
+  const highPriorityRoles = ['admin', 'developer', 'manager', 'administration'];
+  const hasHighPriorityRole = highPriorityRoles.some(role =>
+    userRoles.includes(role)
+  );
+  if (hasHighPriorityRole) {
+    return 'Dashboard';
+  }
 
-  // Find the highest priority role the user has
-  for (const role of rolePriority) {
-    if (userRoles.includes(role)) {
-      return getRedirectDestinationName(role);
-    }
+  // Priority 2: If user has technician → Machines
+  if (userRoles.includes('technician')) {
+    return 'Machines';
+  }
+
+  // Priority 3: If user has location admin → Collection Report
+  if (userRoles.includes('location admin')) {
+    return 'Collection Report';
+  }
+
+  // Priority 4: If user only has collector → Collection Report
+  if (userRoles.includes('collector')) {
+    return 'Collection Report';
   }
 
   return 'Machines';

@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   LocationsRevenueAnalysisSkeleton,
   LocationsSASEvaluationSkeleton,
@@ -41,23 +42,22 @@ import {
   SummaryCardsSkeleton,
   TopMachinesTableSkeleton,
 } from '@/components/ui/skeletons/ReportsSkeletons';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 // import { formatCurrency } from "@/lib/utils/formatting";
 import LocationMap from '@/components/reports/common/LocationMap';
 import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
 import { fetchAggregatedLocationsData } from '@/lib/helpers/locations';
 import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from '@/lib/helpers/reportsPage';
-import {
-  getMoneyInColorClass,
-  getMoneyOutColorClass,
-  getGrossColorClass,
-} from '@/lib/utils/financialColors';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { DashboardTotals } from '@/lib/types';
 import type { ExtendedLegacyExportData } from '@/lib/utils/exportUtils';
+import {
+  getGrossColorClass,
+  getMoneyInColorClass,
+  getMoneyOutColorClass,
+} from '@/lib/utils/financialColors';
 // Error handling imports removed - using wrapper component instead
 
 // Recharts imports for CasinoLocationCard charts - Commented out since Top 5 Locations section is hidden
@@ -84,9 +84,9 @@ import axios from 'axios';
 
 // Types for location data
 import { LocationExportData, TopLocationData } from '@/lib/types';
+import { TimePeriod } from '@/lib/types/api';
 import { LocationMetrics, TopLocation } from '@/shared/types';
 import { MachineData } from '@/shared/types/machines';
-import { TimePeriod } from '@/lib/types/api';
 
 // Skeleton loader components - now imported from ReportsSkeletons
 
@@ -159,9 +159,11 @@ export default function LocationsTab() {
   const [metricsOverview, setMetricsOverview] =
     useState<LocationMetrics | null>(null);
   const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
-  
+
   // Separate state for metrics totals (from dedicated API call)
-  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(null);
+  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(
+    null
+  );
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 
   // Add state for top machines data
@@ -246,7 +248,9 @@ export default function LocationsTab() {
   const itemsPerBatch = 50; // Items per batch (5 pages of 10 items each)
 
   // Store accumulated locations for batch loading (like locations page)
-  const [accumulatedLocations, setAccumulatedLocations] = useState<AggregatedLocation[]>([]);
+  const [accumulatedLocations, setAccumulatedLocations] = useState<
+    AggregatedLocation[]
+  >([]);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
   const [paginatedLocations, setPaginatedLocations] = useState<
     AggregatedLocation[]
@@ -285,58 +289,72 @@ export default function LocationsTab() {
   }, [selectedLicencee]);
 
   // Calculate which batch we need based on current page (each batch covers 5 pages of 10 items)
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor((page - 1) / (itemsPerBatch / itemsPerPage)) + 1;
-  }, [itemsPerBatch, itemsPerPage]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor((page - 1) / (itemsPerBatch / itemsPerPage)) + 1;
+    },
+    [itemsPerBatch, itemsPerPage]
+  );
 
   // Fetch a specific batch of locations (like locations page)
-  const fetchBatch = useCallback(async (page: number = 1, limit: number = 50) => {
-    const effectiveLicencee = selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : '';
-    
-    // Build date range for custom dates
-    let dateRange: { from: Date; to: Date } | undefined;
-    if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
-      dateRange = {
-        from: customDateRange.startDate instanceof Date 
-          ? customDateRange.startDate 
-          : new Date(customDateRange.startDate as string),
-        to: customDateRange.endDate instanceof Date 
-          ? customDateRange.endDate 
-          : new Date(customDateRange.endDate as string),
-      };
-    }
+  const fetchBatch = useCallback(
+    async (page: number = 1, limit: number = 50) => {
+      const effectiveLicencee =
+        selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : '';
 
-    // Convert activeMetricsFilter to TimePeriod
-    let timePeriod: string = 'Today';
-    if (activeMetricsFilter === 'Today') {
-      timePeriod = 'Today';
-    } else if (activeMetricsFilter === 'Yesterday') {
-      timePeriod = 'Yesterday';
-    } else if (activeMetricsFilter === 'last7days' || activeMetricsFilter === '7d') {
-      timePeriod = '7d';
-    } else if (activeMetricsFilter === 'last30days' || activeMetricsFilter === '30d') {
-      timePeriod = '30d';
-    } else if (activeMetricsFilter === 'All Time') {
-      timePeriod = 'All Time';
-    } else if (activeMetricsFilter === 'Custom') {
-      timePeriod = 'Custom';
-    }
+      // Build date range for custom dates
+      let dateRange: { from: Date; to: Date } | undefined;
+      if (
+        activeMetricsFilter === 'Custom' &&
+        customDateRange?.startDate &&
+        customDateRange?.endDate
+      ) {
+        dateRange = {
+          from:
+            customDateRange.startDate instanceof Date
+              ? customDateRange.startDate
+              : new Date(customDateRange.startDate as string),
+          to:
+            customDateRange.endDate instanceof Date
+              ? customDateRange.endDate
+              : new Date(customDateRange.endDate as string),
+        };
+      }
 
-    return await fetchAggregatedLocationsData(
-      timePeriod as TimePeriod,
-      effectiveLicencee,
-      '', // No filter string for reports page
-      dateRange,
-      displayCurrency,
-      page,
-      limit
-    );
-  }, [
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    displayCurrency,
-  ]);
+      // Convert activeMetricsFilter to TimePeriod
+      let timePeriod: string = 'Today';
+      if (activeMetricsFilter === 'Today') {
+        timePeriod = 'Today';
+      } else if (activeMetricsFilter === 'Yesterday') {
+        timePeriod = 'Yesterday';
+      } else if (
+        activeMetricsFilter === 'last7days' ||
+        activeMetricsFilter === '7d'
+      ) {
+        timePeriod = '7d';
+      } else if (
+        activeMetricsFilter === 'last30days' ||
+        activeMetricsFilter === '30d'
+      ) {
+        timePeriod = '30d';
+      } else if (activeMetricsFilter === 'All Time') {
+        timePeriod = 'All Time';
+      } else if (activeMetricsFilter === 'Custom') {
+        timePeriod = 'Custom';
+      }
+
+      return await fetchAggregatedLocationsData(
+        timePeriod as TimePeriod,
+        effectiveLicencee,
+        '', // No filter string for reports page
+        dateRange,
+        displayCurrency,
+        page,
+        limit
+      );
+    },
+    [selectedLicencee, activeMetricsFilter, customDateRange, displayCurrency]
+  );
 
   // Simplified data fetching for locations with batch loading
   const fetchLocationDataAsync = useCallback(
@@ -365,10 +383,14 @@ export default function LocationsTab() {
 
         // Fetch first batch (50 items) for table
         const firstBatchResult = await fetchBatch(1, itemsPerBatch);
-        
+
         if (firstBatchResult.pagination) {
-          setTotalCount(firstBatchResult.pagination.total);
-          setTotalPages(Math.ceil(firstBatchResult.pagination.total / itemsPerPage));
+          const pagination = firstBatchResult.pagination;
+          const total = pagination.totalCount ?? pagination.total ?? 0;
+          setTotalCount(total);
+          setTotalPages(
+            pagination.totalPages ?? Math.ceil(total / itemsPerPage)
+          );
         } else {
           setTotalCount(firstBatchResult.data.length);
           setTotalPages(Math.ceil(firstBatchResult.data.length / itemsPerPage));
@@ -379,7 +401,8 @@ export default function LocationsTab() {
         setPaginationLoading(false);
         setLocationsLoading(false);
 
-        // Build API parameters for dropdown (still fetch all for dropdown selection)
+        // Build API parameters for dropdown (use same API as locations page for consistency and performance)
+        // Use /api/reports/locations instead of /api/locationAggregation for better performance
         const params: Record<string, string> = {
           limit: '1000', // Get all locations for dropdown
           page: '1',
@@ -448,7 +471,8 @@ export default function LocationsTab() {
         console.warn(`🔍 Location data API params: ${JSON.stringify(params)}`);
 
         // API call to get location data with financial metrics
-        const response = await axios.get('/api/locationAggregation', {
+        // Use /api/reports/locations instead of /api/locationAggregation for better performance and consistency
+        const response = await axios.get('/api/reports/locations', {
           params,
         });
 
@@ -461,7 +485,9 @@ export default function LocationsTab() {
           throw new Error(response.data.error);
         }
 
-        const { data: locationData } = response.data;
+        // Handle response structure from /api/reports/locations
+        // Response structure: { data: [...], pagination: {...} }
+        const locationData = response.data.data || [];
 
         console.warn(`🔍 Location data from API: ${locationData.length}`);
 
@@ -900,7 +926,9 @@ export default function LocationsTab() {
   useEffect(() => {
     const fetchMetrics = async () => {
       if (!activeMetricsFilter) {
-        console.log('🔍 [LocationsTab] Skipping metrics fetch - no activeMetricsFilter');
+        console.log(
+          '🔍 [LocationsTab] Skipping metrics fetch - no activeMetricsFilter'
+        );
         return;
       }
 
@@ -908,10 +936,12 @@ export default function LocationsTab() {
         activeMetricsFilter,
         selectedLicencee,
         displayCurrency,
-        customDateRange: customDateRange ? {
-          startDate: customDateRange.startDate?.toISOString(),
-          endDate: customDateRange.endDate?.toISOString()
-        } : null
+        customDateRange: customDateRange
+          ? {
+              startDate: customDateRange.startDate?.toISOString(),
+              endDate: customDateRange.endDate?.toISOString(),
+            }
+          : null,
       });
 
       setMetricsTotalsLoading(true);
@@ -925,21 +955,30 @@ export default function LocationsTab() {
             },
             selectedLicencee,
             totals => {
-              console.log('🔍 [LocationsTab] fetchDashboardTotals callback received:', {
-                totals,
-                moneyIn: totals?.moneyIn,
-                moneyOut: totals?.moneyOut,
-                gross: totals?.gross
-              });
+              console.log(
+                '🔍 [LocationsTab] fetchDashboardTotals callback received:',
+                {
+                  totals,
+                  moneyIn: totals?.moneyIn,
+                  moneyOut: totals?.moneyOut,
+                  gross: totals?.gross,
+                }
+              );
               setMetricsTotals(totals);
-              console.log('🔍 [LocationsTab] setMetricsTotals called with:', totals);
+              console.log(
+                '🔍 [LocationsTab] setMetricsTotals called with:',
+                totals
+              );
               resolve();
             },
             displayCurrency
           ).catch(reject);
         });
       } catch (error) {
-        console.error('❌ [LocationsTab] Failed to fetch metrics totals:', error);
+        console.error(
+          '❌ [LocationsTab] Failed to fetch metrics totals:',
+          error
+        );
         setMetricsTotals(null);
       } finally {
         setMetricsTotalsLoading(false);
@@ -1114,7 +1153,9 @@ export default function LocationsTab() {
       fetchBatch(nextBatch, itemsPerBatch).then(result => {
         if (result.data.length > 0) {
           setAccumulatedLocations(prev => {
-            const existingIds = new Set(prev.map(loc => loc._id || loc.location));
+            const existingIds = new Set(
+              prev.map(loc => loc._id || loc.location)
+            );
             const newLocations = result.data.filter(
               loc => !existingIds.has(loc._id || loc.location)
             );
@@ -1134,7 +1175,9 @@ export default function LocationsTab() {
       fetchBatch(currentBatch, itemsPerBatch).then(result => {
         if (result.data.length > 0) {
           setAccumulatedLocations(prev => {
-            const existingIds = new Set(prev.map(loc => loc._id || loc.location));
+            const existingIds = new Set(
+              prev.map(loc => loc._id || loc.location)
+            );
             const newLocations = result.data.filter(
               loc => !existingIds.has(loc._id || loc.location)
             );
@@ -1194,10 +1237,11 @@ export default function LocationsTab() {
   // Handle export for location overview
   const handleExportLocationOverview = async (format: 'pdf' | 'excel') => {
     // For export, use dropdown data (all locations) or accumulated locations
-    const locationsToExport = allLocationsForDropdown.length > 0 
-      ? allLocationsForDropdown 
-      : accumulatedLocations;
-    
+    const locationsToExport =
+      allLocationsForDropdown.length > 0
+        ? allLocationsForDropdown
+        : accumulatedLocations;
+
     if (locationsToExport.length === 0) {
       toast.error('No location data to export', {
         duration: 3000,
@@ -1545,17 +1589,65 @@ export default function LocationsTab() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    const currentSelectedLocations =
-                      activeTab === 'sas-evaluation' ||
-                      activeTab === 'location-evaluation'
-                        ? selectedSasLocations
-                        : selectedRevenueLocations;
-                    fetchLocationDataAsync(
-                      currentSelectedLocations.length > 0
-                        ? currentSelectedLocations
-                        : undefined
-                    );
+                  onClick={async () => {
+                    // Set loading states but don't clear data immediately
+                    setPaginationLoading(true);
+                    setLocationsLoading(true);
+                    setMetricsLoading(true);
+                    setLoading(true);
+
+                    try {
+                      const currentSelectedLocations =
+                        activeTab === 'sas-evaluation' ||
+                        activeTab === 'location-evaluation'
+                          ? selectedSasLocations
+                          : selectedRevenueLocations;
+
+                      // Reset batches and page
+                      setAccumulatedLocations([]);
+                      setLoadedBatches(new Set());
+                      setCurrentPage(1);
+
+                      // Fetch first batch
+                      const firstBatchResult = await fetchBatch(
+                        1,
+                        itemsPerBatch
+                      );
+
+                      if (firstBatchResult.pagination) {
+                        const pagination = firstBatchResult.pagination;
+                        const total =
+                          pagination.totalCount ?? pagination.total ?? 0;
+                        setTotalCount(total);
+                        setTotalPages(
+                          pagination.totalPages ??
+                            Math.ceil(total / itemsPerPage)
+                        );
+                      } else {
+                        setTotalCount(firstBatchResult.data.length);
+                        setTotalPages(
+                          Math.ceil(firstBatchResult.data.length / itemsPerPage)
+                        );
+                      }
+
+                      setAccumulatedLocations(firstBatchResult.data);
+                      setLoadedBatches(new Set([1]));
+
+                      // Also refresh dropdown data
+                      await fetchLocationDataAsync(
+                        currentSelectedLocations.length > 0
+                          ? currentSelectedLocations
+                          : undefined
+                      );
+                    } catch (error) {
+                      console.error('Error refreshing data:', error);
+                      toast.error('Failed to refresh data', { duration: 3000 });
+                    } finally {
+                      setPaginationLoading(false);
+                      setLocationsLoading(false);
+                      setMetricsLoading(false);
+                      setLoading(false);
+                    }
                   }}
                 >
                   <RefreshCw className="mr-2 h-4 w-4" /> Refresh
@@ -1567,7 +1659,9 @@ export default function LocationsTab() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   <Card>
                     <CardContent className="p-4">
-                      <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsOverview.totalGross)}`}>
+                      <div
+                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsOverview.totalGross)}`}
+                      >
                         {shouldShowCurrency()
                           ? formatAmount(metricsOverview.totalGross)
                           : `$${metricsOverview.totalGross.toLocaleString()}`}
@@ -1579,7 +1673,9 @@ export default function LocationsTab() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsOverview.totalDrop)}`}>
+                      <div
+                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsOverview.totalDrop)}`}
+                      >
                         {shouldShowCurrency()
                           ? formatAmount(metricsOverview.totalDrop)
                           : `$${metricsOverview.totalDrop.toLocaleString()}`}
@@ -1591,7 +1687,9 @@ export default function LocationsTab() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsOverview.totalCancelledCredits, metricsOverview.totalDrop)}`}>
+                      <div
+                        className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsOverview.totalCancelledCredits, metricsOverview.totalDrop)}`}
+                      >
                         {shouldShowCurrency()
                           ? formatAmount(metricsOverview.totalCancelledCredits)
                           : `$${metricsOverview.totalCancelledCredits.toLocaleString()}`}
@@ -1678,7 +1776,9 @@ export default function LocationsTab() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={accumulatedLocations.length === 0 || locationsLoading}
+                        disabled={
+                          accumulatedLocations.length === 0 || locationsLoading
+                        }
                         className="flex items-center gap-2"
                       >
                         <Download className="h-4 w-4" />
@@ -1706,14 +1806,117 @@ export default function LocationsTab() {
                 </div>
               </CardHeader>
               <CardContent>
-                {locationsLoading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <div
-                        key={i}
-                        className="h-12 w-full animate-pulse rounded bg-gray-100"
-                      />
-                    ))}
+                {locationsLoading || paginationLoading ? (
+                  <div className="space-y-0">
+                    {/* Table skeleton - Desktop */}
+                    <div className="hidden overflow-x-auto md:block">
+                      <table className="w-full">
+                        <thead className="border-b bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left">
+                              <Skeleton className="h-4 w-32" />
+                            </th>
+                            <th className="px-4 py-3 text-center">
+                              <Skeleton className="mx-auto h-4 w-24" />
+                            </th>
+                            <th className="px-4 py-3 text-center">
+                              <Skeleton className="mx-auto h-4 w-24" />
+                            </th>
+                            <th className="px-4 py-3 text-right">
+                              <Skeleton className="ml-auto h-4 w-20" />
+                            </th>
+                            <th className="px-4 py-3 text-right">
+                              <Skeleton className="ml-auto h-4 w-20" />
+                            </th>
+                            <th className="px-4 py-3 text-right">
+                              <Skeleton className="ml-auto h-4 w-24" />
+                            </th>
+                            <th className="px-4 py-3 text-center">
+                              <Skeleton className="mx-auto h-4 w-16" />
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {Array.from({ length: 10 }).map((_, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              <td className="whitespace-nowrap px-4 py-3">
+                                <Skeleton className="h-4 w-40" />
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <Skeleton className="mx-auto h-4 w-12" />
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <Skeleton className="mx-auto h-4 w-12" />
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right">
+                                <Skeleton className="ml-auto h-4 w-24" />
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right">
+                                <Skeleton className="ml-auto h-4 w-24" />
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right">
+                                <Skeleton className="ml-auto h-4 w-24" />
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center">
+                                <Skeleton className="mx-auto h-4 w-16" />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Mobile cards skeleton */}
+                    <div className="space-y-3 md:hidden">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="rounded-lg border border-gray-200 bg-white p-4"
+                        >
+                          <div className="mb-3 space-y-2">
+                            <Skeleton className="h-5 w-3/4" />{' '}
+                            {/* Location Name */}
+                            <div className="flex items-center gap-4">
+                              <div className="space-y-1">
+                                <Skeleton className="h-3 w-20" />
+                                <Skeleton className="h-4 w-12" />
+                              </div>
+                              <div className="space-y-1">
+                                <Skeleton className="h-3 w-20" />
+                                <Skeleton className="h-4 w-12" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-2 border-t border-gray-100 pt-3">
+                            <div className="flex justify-between">
+                              <Skeleton className="h-3 w-16" />
+                              <Skeleton className="h-4 w-20" />
+                            </div>
+                            <div className="flex justify-between">
+                              <Skeleton className="h-3 w-16" />
+                              <Skeleton className="h-4 w-20" />
+                            </div>
+                            <div className="flex justify-between">
+                              <Skeleton className="h-3 w-20" />
+                              <Skeleton className="h-4 w-24" />
+                            </div>
+                            <div className="flex justify-between">
+                              <Skeleton className="h-3 w-12" />
+                              <Skeleton className="h-4 w-16" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Pagination skeleton */}
+                    <div className="mt-4 flex justify-center">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-24" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </div>
                   </div>
                 ) : accumulatedLocations.length > 0 ? (
                   <>
@@ -1766,17 +1969,23 @@ export default function LocationsTab() {
                                 <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-500">
                                   {loc.onlineMachines || 0}
                                 </td>
-                                <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getMoneyInColorClass(loc.moneyIn)}`}>
+                                <td
+                                  className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getMoneyInColorClass(loc.moneyIn)}`}
+                                >
                                   {shouldShowCurrency()
                                     ? formatAmount(loc.moneyIn || 0)
                                     : `$${((loc.moneyIn as number) || 0).toLocaleString()}`}
                                 </td>
-                                <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getMoneyOutColorClass(loc.moneyOut, loc.moneyIn)}`}>
+                                <td
+                                  className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getMoneyOutColorClass(loc.moneyOut, loc.moneyIn)}`}
+                                >
                                   {shouldShowCurrency()
                                     ? formatAmount(loc.moneyOut || 0)
                                     : `$${((loc.moneyOut as number) || 0).toLocaleString()}`}
                                 </td>
-                                <td className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getGrossColorClass(loc.gross)}`}>
+                                <td
+                                  className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium ${getGrossColorClass(loc.gross)}`}
+                                >
                                   {shouldShowCurrency()
                                     ? formatAmount(loc.gross || 0)
                                     : `$${((loc.gross as number) || 0).toLocaleString()}`}
@@ -2096,15 +2305,20 @@ export default function LocationsTab() {
                       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
                         <Card>
                           <CardContent className="p-4">
-                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals?.gross || 0)}`}>
+                            <div
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals?.gross || 0)}`}
+                            >
                               {(() => {
                                 const value = metricsTotals?.gross || 0;
-                                console.log('🔍 [LocationsTab] Rendering Gross card (SAS Evaluation):', {
-                                  metricsTotals,
-                                  value,
-                                  isLoading: metricsTotalsLoading,
-                                  shouldShowCurrency: shouldShowCurrency()
-                                });
+                                console.log(
+                                  '🔍 [LocationsTab] Rendering Gross card (SAS Evaluation):',
+                                  {
+                                    metricsTotals,
+                                    value,
+                                    isLoading: metricsTotalsLoading,
+                                    shouldShowCurrency: shouldShowCurrency(),
+                                  }
+                                );
                                 return metricsTotalsLoading ? (
                                   <Skeleton className="h-8 w-24" />
                                 ) : shouldShowCurrency() ? (
@@ -2124,15 +2338,20 @@ export default function LocationsTab() {
                         </Card>
                         <Card>
                           <CardContent className="p-4">
-                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals?.moneyIn || 0)}`}>
+                            <div
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals?.moneyIn || 0)}`}
+                            >
                               {(() => {
                                 const value = metricsTotals?.moneyIn || 0;
-                                console.log('🔍 [LocationsTab] Rendering MoneyIn card (SAS Evaluation):', {
-                                  metricsTotals,
-                                  value,
-                                  isLoading: metricsTotalsLoading,
-                                  shouldShowCurrency: shouldShowCurrency()
-                                });
+                                console.log(
+                                  '🔍 [LocationsTab] Rendering MoneyIn card (SAS Evaluation):',
+                                  {
+                                    metricsTotals,
+                                    value,
+                                    isLoading: metricsTotalsLoading,
+                                    shouldShowCurrency: shouldShowCurrency(),
+                                  }
+                                );
                                 return metricsTotalsLoading ? (
                                   <Skeleton className="h-8 w-24" />
                                 ) : shouldShowCurrency() ? (
@@ -2149,15 +2368,20 @@ export default function LocationsTab() {
                         </Card>
                         <Card>
                           <CardContent className="p-4">
-                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals?.moneyOut || 0, metricsTotals?.moneyIn || 0)}`}>
+                            <div
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals?.moneyOut || 0, metricsTotals?.moneyIn || 0)}`}
+                            >
                               {(() => {
                                 const value = metricsTotals?.moneyOut || 0;
-                                console.log('🔍 [LocationsTab] Rendering MoneyOut card (SAS Evaluation):', {
-                                  metricsTotals,
-                                  value,
-                                  isLoading: metricsTotalsLoading,
-                                  shouldShowCurrency: shouldShowCurrency()
-                                });
+                                console.log(
+                                  '🔍 [LocationsTab] Rendering MoneyOut card (SAS Evaluation):',
+                                  {
+                                    metricsTotals,
+                                    value,
+                                    isLoading: metricsTotalsLoading,
+                                    shouldShowCurrency: shouldShowCurrency(),
+                                  }
+                                );
                                 return metricsTotalsLoading ? (
                                   <Skeleton className="h-8 w-24" />
                                 ) : shouldShowCurrency() ? (
@@ -2812,7 +3036,9 @@ export default function LocationsTab() {
                       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
                         <Card>
                           <CardContent className="p-4">
-                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals?.gross || 0)}`}>
+                            <div
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getGrossColorClass(metricsTotals?.gross || 0)}`}
+                            >
                               {metricsTotalsLoading ? (
                                 <Skeleton className="h-8 w-24" />
                               ) : shouldShowCurrency() ? (
@@ -2832,7 +3058,9 @@ export default function LocationsTab() {
 
                         <Card>
                           <CardContent className="p-4">
-                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals?.moneyIn || 0)}`}>
+                            <div
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyInColorClass(metricsTotals?.moneyIn || 0)}`}
+                            >
                               {metricsTotalsLoading ? (
                                 <Skeleton className="h-8 w-24" />
                               ) : shouldShowCurrency() ? (
@@ -2849,7 +3077,9 @@ export default function LocationsTab() {
 
                         <Card>
                           <CardContent className="p-4">
-                            <div className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals?.moneyOut || 0, metricsTotals?.moneyIn || 0)}`}>
+                            <div
+                              className={`break-words text-lg font-bold sm:text-xl lg:text-2xl ${getMoneyOutColorClass(metricsTotals?.moneyOut || 0, metricsTotals?.moneyIn || 0)}`}
+                            >
                               {metricsTotalsLoading ? (
                                 <Skeleton className="h-8 w-24" />
                               ) : shouldShowCurrency() ? (

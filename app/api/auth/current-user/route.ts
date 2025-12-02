@@ -80,7 +80,6 @@ export async function GET(_request: NextRequest) {
         emailAddress: dbUser.emailAddress || '',
         profile: dbUser.profile || {},
         roles: dbUser.roles || [],
-        rel: dbUser.rel || undefined,
         isEnabled: dbUser.isEnabled ?? true,
         assignedLocations: dbUser.assignedLocations || undefined,
         assignedLicensees: dbUser.assignedLicensees || undefined,

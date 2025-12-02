@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { jwtVerify } from 'jose';
-import { getJwtSecret, getCurrentDbConnectionString } from '@/lib/utils/auth';
+import { NextRequest, NextResponse } from 'next/server';
 
 const publicPaths = ['/login', '/forgot-password', '/reset-password'];
 

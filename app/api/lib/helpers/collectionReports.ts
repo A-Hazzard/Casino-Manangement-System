@@ -133,7 +133,6 @@ export function buildCollectionReportsQuery(
  */
 export function extractUserPermissions(userPayload: {
   roles?: unknown;
-  rel?: { licencee?: unknown };
   assignedLocations?: string[];
   assignedLicensees?: string[];
 }): UserPermissions {

@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
 
     const userPermissions = extractUserPermissions(userPayload as {
       roles?: unknown;
-      rel?: { licencee?: unknown };
       assignedLocations?: string[];
       assignedLicensees?: string[];
     });

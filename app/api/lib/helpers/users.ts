@@ -102,7 +102,6 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
 
     const jwtPayload = payload as JWTPayload & {
       roles?: string[];
-      rel?: { licencee?: string[] };
       permissions?: string[];
       assignedLocations?: string[];
       assignedLicensees?: string[];
@@ -111,7 +110,6 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
     let dbUser: {
       sessionVersion?: number;
       roles?: string[];
-      rel?: { licencee?: string[] };
       permissions?: string[];
       assignedLocations?: string[];
       assignedLicensees?: string[];
@@ -125,12 +123,11 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         const UserModel = (await import('../models/user')).default;
         dbUser = (await UserModel.findOne({ _id: jwtPayload._id })
           .select(
-            'sessionVersion roles rel permissions assignedLocations assignedLicensees isEnabled deletedAt'
+            'sessionVersion roles permissions assignedLocations assignedLicensees isEnabled deletedAt'
           )
           .lean()) as {
           sessionVersion?: number;
           roles?: string[];
-          rel?: { licencee?: string[] };
           permissions?: string[];
           assignedLocations?: string[];
           assignedLicensees?: string[];
@@ -190,10 +187,6 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         jwtPayload.roles = dbUser.roles;
       }
 
-      if (!jwtPayload.rel && dbUser.rel) {
-        jwtPayload.rel = dbUser.rel;
-      }
-
       if (!jwtPayload.permissions && dbUser.permissions) {
         jwtPayload.permissions = dbUser.permissions;
       }
@@ -204,7 +197,11 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       if (process.env.NODE_ENV === 'development') {
         const jwtHasLocations = Array.isArray(jwtPayload.assignedLocations);
         const dbHasLocations = Array.isArray(dbUser.assignedLocations);
-        if (jwtHasLocations && !dbHasLocations && jwtPayload.assignedLocations) {
+        if (
+          jwtHasLocations &&
+          !dbHasLocations &&
+          jwtPayload.assignedLocations
+        ) {
           console.warn(
             `[getUserFromServer] JWT has ${jwtPayload.assignedLocations.length} locations but DB doesn't - using JWT`
           );
@@ -679,41 +676,7 @@ export async function updateUser(
   }
 
   // Prevent managers from changing licensee assignments
-  // Check both old and new fields
   if (isManager) {
-    // Check old field
-    if (updateFields.rel && typeof updateFields.rel === 'object') {
-      const relUpdate = updateFields.rel as Record<string, unknown>;
-      if (relUpdate.licencee !== undefined) {
-        // Get original licensee assignments (use only new field)
-        let originalLicensees: string[] = [];
-        if (
-          Array.isArray(
-            (user as { assignedLicensees?: string[] })?.assignedLicensees
-          )
-        ) {
-          originalLicensees = (user as { assignedLicensees: string[] })
-            .assignedLicensees;
-        }
-        const newLicensees = Array.isArray(relUpdate.licencee)
-          ? relUpdate.licencee.map(id => String(id))
-          : [];
-
-        // Check if licensee assignments changed
-        const originalNormalized = originalLicensees
-          .map(id => String(id))
-          .sort();
-        const newNormalized = newLicensees.sort();
-        const licenseeChanged =
-          originalNormalized.length !== newNormalized.length ||
-          !originalNormalized.every((id, idx) => id === newNormalized[idx]);
-
-        if (licenseeChanged) {
-          throw new Error('Managers cannot change licensee assignments');
-        }
-      }
-    }
-
     // Check new field
     if (updateFields.assignedLicensees !== undefined) {
       // Get original licensee assignments (use only new field)
@@ -1100,6 +1063,13 @@ export async function updateUser(
   }
 
   // No longer syncing to old fields - only using assignedLocations and assignedLicensees
+  // Remove rel and resourcePermissions from updateFields if present
+  if ('rel' in updateFields) {
+    delete updateFields.rel;
+  }
+  if ('resourcePermissions' in updateFields) {
+    delete updateFields.resourcePermissions;
+  }
 
   // Separate MongoDB operators from regular fields
   const mongoOperators: Record<string, unknown> = {};

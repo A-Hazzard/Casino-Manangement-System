@@ -62,9 +62,6 @@ export type UserAuthPayload = {
   username: string;
   isEnabled: boolean;
   roles?: string[];
-  rel?: {
-    licencee?: string[];
-  };
   assignedLocations?: string[];
   assignedLicensees?: string[];
   profile?: {
@@ -123,9 +120,6 @@ export type JwtPayload = {
   username: string;
   isEnabled: boolean;
   roles?: string[];
-  rel?: {
-    licencee?: string[];
-  };
   assignedLocations?: string[];
   assignedLicensees?: string[];
   // Enhanced security

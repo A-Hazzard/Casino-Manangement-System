@@ -469,7 +469,7 @@ export async function fetchAggregatedLocationsData(
   displayCurrency?: string,
   page?: number,
   limit?: number
-): Promise<{ data: AggregatedLocation[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }> {
+): Promise<{ data: AggregatedLocation[]; pagination?: { page: number; limit: number; total?: number; totalCount?: number; totalPages: number } }> {
   try {
     // Construct the URL with appropriate parameters
     let url = `/api/reports/locations`;

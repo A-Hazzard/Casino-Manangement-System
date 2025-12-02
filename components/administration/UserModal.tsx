@@ -190,6 +190,14 @@ export default function UserModal({
     username: '',
     email: '',
   });
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [accountErrors, setAccountErrors] = useState<Record<string, string>>(
+    {}
+  );
+  const [accountTouched, setAccountTouched] = useState<Record<string, boolean>>(
+    {}
+  );
 
   // Form state for roles and permissions
   const [password, setPassword] = useState('');
@@ -264,6 +272,8 @@ export default function UserModal({
       username: targetUser.username || '',
       email: targetUser.email || targetUser.emailAddress || '',
     });
+    setAccountErrors({});
+    setAccountTouched({});
 
     setRoles(targetUser.roles || []);
     setIsEnabled(targetUser.enabled !== undefined ? targetUser.enabled : true);
@@ -377,6 +387,11 @@ export default function UserModal({
       // Also reset selectedLocationIds when modal closes
       setSelectedLocationIds([]);
       setAllLocationsSelected(false);
+      // Reset validation states
+      setCheckingUsername(false);
+      setCheckingEmail(false);
+      setAccountErrors({});
+      setAccountTouched({});
     }
   }, [open]);
 
@@ -920,6 +935,123 @@ export default function UserModal({
     }
   }, [password]);
 
+  // Debounced username availability check (for edit mode)
+  useEffect(() => {
+    if (!user?._id || !isEditMode || !canEditAccountFields) {
+      return undefined;
+    }
+
+    const username = (accountData.username || '').trim();
+    const originalUsername = (user.username || '').trim();
+
+    // Only check if username changed and is valid
+    if (
+      username &&
+      username.length >= 3 &&
+      username !== originalUsername &&
+      accountTouched.username
+    ) {
+      const timeoutId = setTimeout(async () => {
+        setCheckingUsername(true);
+        try {
+          const response = await fetch(
+            `/api/users/check-username?username=${encodeURIComponent(username)}&excludeId=${encodeURIComponent(user._id)}`
+          );
+          const data = await response.json();
+          if (data.success && data.usernameExists) {
+            setAccountErrors(prev => ({
+              ...prev,
+              username: 'This username is already taken.',
+            }));
+          } else {
+            setAccountErrors(prev => {
+              const newErrors = { ...prev };
+              if (newErrors.username === 'This username is already taken.') {
+                delete newErrors.username;
+              }
+              return newErrors;
+            });
+          }
+        } catch (error) {
+          console.error('Error checking username:', error);
+        } finally {
+          setCheckingUsername(false);
+        }
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+    setCheckingUsername(false);
+    return undefined;
+  }, [
+    accountData.username,
+    accountTouched.username,
+    user?._id,
+    user?.username,
+    isEditMode,
+    canEditAccountFields,
+  ]);
+
+  // Debounced email availability check (for edit mode)
+  useEffect(() => {
+    if (!user?._id || !isEditMode || !canEditAccountFields) {
+      return undefined;
+    }
+
+    const email = (accountData.email || '').trim();
+    const originalEmail = (user.email || user.emailAddress || '').trim();
+
+    // Only check if email changed, is valid, and has been touched
+    if (
+      email &&
+      validateEmail(email) &&
+      email !== originalEmail &&
+      accountTouched.email
+    ) {
+      const timeoutId = setTimeout(async () => {
+        setCheckingEmail(true);
+        try {
+          const response = await fetch(
+            `/api/users/check-username?email=${encodeURIComponent(email)}&excludeId=${encodeURIComponent(user._id)}`
+          );
+          const data = await response.json();
+          if (data.success && data.emailExists) {
+            setAccountErrors(prev => ({
+              ...prev,
+              email: 'This email address is already registered.',
+            }));
+          } else {
+            setAccountErrors(prev => {
+              const newErrors = { ...prev };
+              if (
+                newErrors.email === 'This email address is already registered.'
+              ) {
+                delete newErrors.email;
+              }
+              return newErrors;
+            });
+          }
+        } catch (error) {
+          console.error('Error checking email:', error);
+        } finally {
+          setCheckingEmail(false);
+        }
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+    setCheckingEmail(false);
+    return undefined;
+  }, [
+    accountData.email,
+    accountTouched.email,
+    user?._id,
+    user?.email,
+    user?.emailAddress,
+    isEditMode,
+    canEditAccountFields,
+  ]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -935,6 +1067,15 @@ export default function UserModal({
       ...prev,
       [field]: value,
     }));
+    setAccountTouched(prev => ({ ...prev, [field]: true }));
+    // Clear error for this field when user starts typing
+    if (accountErrors[field]) {
+      setAccountErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1131,6 +1272,12 @@ export default function UserModal({
       'updatedEmail length': updatedEmail.length,
       'updatedEmail isEmpty': !updatedEmail || updatedEmail.length === 0,
     });
+
+    // Check for validation errors
+    if (Object.keys(accountErrors).length > 0) {
+      toast.error('Please fix the validation errors before saving');
+      return;
+    }
 
     if (!updatedUsername) {
       toast.error('Username is required');
@@ -1388,16 +1535,10 @@ export default function UserModal({
         );
 
       if (locationAdminLicenseeChanged) {
-        updatedUser.rel = {
-          licencee: currentUserLicenseeIds,
-        };
         updatedUser.assignedLicensees = currentUserLicenseeIds;
       }
     } else if (licenseeIdsChanged && !isManager && !isLocationAdmin) {
       // Update licensee if it changed (and user can edit it)
-      updatedUser.rel = {
-        licencee: selectedLicenseeIds,
-      };
       updatedUser.assignedLicensees = selectedLicenseeIds;
     }
 
@@ -1591,7 +1732,6 @@ export default function UserModal({
     console.log('[UserModal]   email:', updatedUser.email);
     console.log('[UserModal]   emailAddress:', updatedUser.emailAddress);
     console.log('[UserModal]   roles:', updatedUser.roles);
-    console.log('[UserModal]   rel:', JSON.stringify(updatedUser.rel, null, 2));
     console.log(
       '[UserModal]   assignedLocations:',
       updatedUser.assignedLocations
@@ -1746,15 +1886,27 @@ export default function UserModal({
                     {isLoading ? (
                       <Skeleton className="h-12 w-full" />
                     ) : isEditMode && canEditAccountFields ? (
-                      <Input
-                        value={accountData.username}
-                        onChange={e =>
-                          handleAccountInputChange('username', e.target.value)
-                        }
-                        placeholder="Enter username"
-                        className="w-full"
-                        required
-                      />
+                      <div className="relative w-full">
+                        <Input
+                          value={accountData.username}
+                          onChange={e =>
+                            handleAccountInputChange('username', e.target.value)
+                          }
+                          placeholder="Enter username"
+                          className={`w-full pr-10 ${accountErrors.username ? 'border-red-500' : ''}`}
+                          required
+                        />
+                        {checkingUsername && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          </div>
+                        )}
+                        {accountErrors.username && (
+                          <p className="mt-1 text-sm text-red-500">
+                            {accountErrors.username}
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <div className="w-full text-center text-gray-700 lg:text-left">
                         {accountData.username || 'Not specified'}
@@ -1768,16 +1920,28 @@ export default function UserModal({
                     {isLoading ? (
                       <Skeleton className="h-12 w-full" />
                     ) : isEditMode && canEditAccountFields ? (
-                      <Input
-                        type="email"
-                        value={accountData.email}
-                        onChange={e =>
-                          handleAccountInputChange('email', e.target.value)
-                        }
-                        placeholder="Enter email address"
-                        className="w-full"
-                        required
-                      />
+                      <div className="relative w-full">
+                        <Input
+                          type="email"
+                          value={accountData.email}
+                          onChange={e =>
+                            handleAccountInputChange('email', e.target.value)
+                          }
+                          placeholder="Enter email address"
+                          className={`w-full pr-10 ${accountErrors.email ? 'border-red-500' : ''}`}
+                          required
+                        />
+                        {checkingEmail && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          </div>
+                        )}
+                        {accountErrors.email && (
+                          <p className="mt-1 text-sm text-red-500">
+                            {accountErrors.email}
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <div className="w-full text-center text-gray-700 lg:text-left">
                         {accountData.email || 'Not specified'}

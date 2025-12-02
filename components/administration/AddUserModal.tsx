@@ -150,6 +150,8 @@ export default function AddUserModal({
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const [licensees, setLicensees] = useState<Licensee[]>([]);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [countries, setCountries] = useState<
@@ -202,6 +204,8 @@ export default function AddUserModal({
       setSubmitAttempted(false);
       setErrors({});
       setConfirmPassword('');
+      setCheckingUsername(false);
+      setCheckingEmail(false);
     }
   }, [open]);
 
@@ -355,6 +359,76 @@ export default function AddUserModal({
   }, [open, formState.licenseeIds, isLocationAdmin, currentUserLocationPermissions]);
 
   // Debounced validation - only validate fields that have been touched or on submit
+  // Debounced username and email availability check
+  useEffect(() => {
+    const username = (formState.username || '').trim();
+
+    // Check username availability
+    if (username && username.length >= 3 && touched.username && validateUsername(username) && !containsEmailPattern(username) && !containsPhonePattern(username)) {
+      const timeoutId = setTimeout(async () => {
+        setCheckingUsername(true);
+        try {
+          const response = await fetch(`/api/users/check-username?username=${encodeURIComponent(username)}`);
+          const data = await response.json();
+          if (data.success && data.usernameExists) {
+            setErrors(prev => ({ ...prev, username: 'This username is already taken.' }));
+          } else {
+            setErrors(prev => {
+              const newErrors = { ...prev };
+              if (newErrors.username === 'This username is already taken.') {
+                delete newErrors.username;
+              }
+              return newErrors;
+            });
+          }
+        } catch (error) {
+          console.error('Error checking username:', error);
+        } finally {
+          setCheckingUsername(false);
+        }
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+    setCheckingUsername(false);
+    return undefined;
+  }, [formState.username, touched.username]);
+
+  // Debounced email availability check
+  useEffect(() => {
+    const email = (formState.email || '').trim();
+
+    // Check email availability
+    if (email && validateEmail(email) && !isPlaceholderEmail(email) && touched.email) {
+      const timeoutId = setTimeout(async () => {
+        setCheckingEmail(true);
+        try {
+          const response = await fetch(`/api/users/check-username?email=${encodeURIComponent(email)}`);
+          const data = await response.json();
+          if (data.success && data.emailExists) {
+            setErrors(prev => ({ ...prev, email: 'This email address is already registered.' }));
+          } else {
+            setErrors(prev => {
+              const newErrors = { ...prev };
+              if (newErrors.email === 'This email address is already registered.') {
+                delete newErrors.email;
+              }
+              return newErrors;
+            });
+          }
+        } catch (error) {
+          console.error('Error checking email:', error);
+        } finally {
+          setCheckingEmail(false);
+        }
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }
+    setCheckingEmail(false);
+    return undefined;
+  }, [formState.email, touched.email]);
+
   useEffect(() => {
     const handler = setTimeout(() => {
       const newErrors: Record<string, string> = {};
@@ -378,38 +452,46 @@ export default function AddUserModal({
       const shouldValidateFormat = (_field: string) => touched[_field];
       const shouldValidateRequired = (_field: string) => submitAttempted;
 
-      // Username validation
+      // Username validation (don't override API check errors)
       if (shouldValidateRequired('username') && !username) {
         newErrors.username = 'Username is required.';
       } else if (shouldValidateFormat('username') && username) {
-        if (username.length < 3) {
-          newErrors.username = 'Username must be at least 3 characters.';
-        } else if (containsEmailPattern(username)) {
-          newErrors.username = 'Username cannot look like an email address.';
-        } else if (containsPhonePattern(username)) {
-          newErrors.username = 'Username cannot look like a phone number.';
-        } else if (!validateUsername(username)) {
-          newErrors.username =
-            'Username may only contain letters, numbers, spaces, hyphens, and apostrophes.';
-        } else if (email && username.toLowerCase() === email.toLowerCase()) {
-          newErrors.username =
-            'Username must be different from your email address.';
+        // Only set format errors if there's no API check error
+        const hasApiError = errors.username?.includes('already taken');
+        if (!hasApiError) {
+          if (username.length < 3) {
+            newErrors.username = 'Username must be at least 3 characters.';
+          } else if (containsEmailPattern(username)) {
+            newErrors.username = 'Username cannot look like an email address.';
+          } else if (containsPhonePattern(username)) {
+            newErrors.username = 'Username cannot look like a phone number.';
+          } else if (!validateUsername(username)) {
+            newErrors.username =
+              'Username may only contain letters, numbers, spaces, hyphens, and apostrophes.';
+          } else if (email && username.toLowerCase() === email.toLowerCase()) {
+            newErrors.username =
+              'Username must be different from your email address.';
+          }
         }
       }
 
-      // Email validation
+      // Email validation (don't override API check errors)
       if (shouldValidateRequired('email') && !email) {
         newErrors.email = 'Email address is required.';
       } else if (shouldValidateFormat('email') && email) {
-        if (!validateEmail(email)) {
-          newErrors.email = 'Provide a valid email address.';
-        } else if (isPlaceholderEmail(email)) {
-          newErrors.email =
-            'Please use a real email address. Placeholder emails like example@example.com are not allowed.';
-        } else if (username && email.toLowerCase() === username.toLowerCase()) {
-          newErrors.email = 'Email address must differ from your username.';
-        } else if (containsPhonePattern(email)) {
-          newErrors.email = 'Email address cannot resemble a phone number.';
+        // Only set format errors if there's no API check error
+        const hasApiError = errors.email?.includes('already registered');
+        if (!hasApiError) {
+          if (!validateEmail(email)) {
+            newErrors.email = 'Provide a valid email address.';
+          } else if (isPlaceholderEmail(email)) {
+            newErrors.email =
+              'Please use a real email address. Placeholder emails like example@example.com are not allowed.';
+          } else if (username && email.toLowerCase() === username.toLowerCase()) {
+            newErrors.email = 'Email address must differ from your username.';
+          } else if (containsPhonePattern(email)) {
+            newErrors.email = 'Email address cannot resemble a phone number.';
+          }
         }
       }
 
@@ -589,6 +671,8 @@ export default function AddUserModal({
     isManager,
     touched,
     submitAttempted,
+    errors.username,
+    errors.email,
   ]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -693,11 +777,16 @@ export default function AddUserModal({
       return;
     }
 
-    // Wait a bit for validation to run
-    await new Promise(resolve => setTimeout(resolve, 350));
+    // Wait a bit for validation to run (including debounced API checks)
+    await new Promise(resolve => setTimeout(resolve, 600));
 
-    if (Object.keys(errors).length > 0) {
-      toast.error('Please fix the errors before submitting.');
+    // Check if there are any validation errors (including API check errors)
+    if (Object.keys(errors).length > 0 || checkingUsername || checkingEmail) {
+      if (checkingUsername || checkingEmail) {
+        toast.error('Please wait for username/email validation to complete');
+      } else {
+        toast.error('Please fix the errors before submitting.');
+      }
       return;
     }
 
@@ -826,22 +915,29 @@ export default function AddUserModal({
                     <label className="mb-1 block text-sm font-semibold text-gray-900">
                       Username: <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      autoComplete="off"
-                      name="new-username"
-                      id="new-username"
-                      className={`w-full rounded-md border bg-white p-3 ${
-                        errors.username ? 'border-red-500' : 'border-border'
-                      }`}
-                      value={formState.username || ''}
-                      onChange={e => {
-                        setFormState({ username: e.target.value });
-                        setTouched(prev => ({ ...prev, username: true }));
-                      }}
-                      placeholder="Enter Username"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        autoComplete="off"
+                        name="new-username"
+                        id="new-username"
+                        className={`w-full rounded-md border bg-white p-3 pr-10 ${
+                          errors.username ? 'border-red-500' : 'border-border'
+                        }`}
+                        value={formState.username || ''}
+                        onChange={e => {
+                          setFormState({ username: e.target.value });
+                          setTouched(prev => ({ ...prev, username: true }));
+                        }}
+                        placeholder="Enter Username"
+                        required
+                      />
+                      {checkingUsername && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                        </div>
+                      )}
+                    </div>
                     {errors.username && (
                       <p className="mt-1 text-sm text-red-500">
                         {errors.username}
@@ -852,19 +948,26 @@ export default function AddUserModal({
                     <label className="mb-1 block text-sm font-semibold text-gray-900">
                       Email Address: <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="email"
-                      className={`w-full rounded-md border bg-white p-3 ${
-                        errors.email ? 'border-red-500' : 'border-border'
-                      }`}
-                      value={formState.email || ''}
-                      onChange={e => {
-                        setFormState({ email: e.target.value });
-                        setTouched(prev => ({ ...prev, email: true }));
-                      }}
-                      placeholder="Enter Email Address"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type="email"
+                        className={`w-full rounded-md border bg-white p-3 pr-10 ${
+                          errors.email ? 'border-red-500' : 'border-border'
+                        }`}
+                        value={formState.email || ''}
+                        onChange={e => {
+                          setFormState({ email: e.target.value });
+                          setTouched(prev => ({ ...prev, email: true }));
+                        }}
+                        placeholder="Enter Email Address"
+                        required
+                      />
+                      {checkingEmail && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                        </div>
+                      )}
+                    </div>
                     {errors.email && (
                       <p className="mt-1 text-sm text-red-500">
                         {errors.email}
